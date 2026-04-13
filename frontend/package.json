@@ -1,0 +1,41 @@
+{
+  "name": "transferx-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "start": "serve -s dist -l $PORT --no-clipboard",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "axios": "^1.7.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.0.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "@vitest/ui": "^4.1.0",
+    "jsdom": "^29.0.1",
+    "msw": "^2.12.14",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0",
+    "serve": "^14.2.0",
+    "vite": "^6.0.0",
+    "vitest": "^4.1.0"
+  }
+}

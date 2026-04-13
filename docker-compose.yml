@@ -1,0 +1,55 @@
+services:
+
+  # ── Shared infrastructure ─────────────────────────────────────────────────
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI backend ────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8001:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ── React frontend ─────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      # Tells Vite's dev-server proxy where to find the API inside Docker.
+      # Outside Docker (local npm run dev), API_TARGET is unset and Vite
+      # falls back to http://localhost:8001.
+      API_TARGET: http://api:8001
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # anonymous volume prevents host override of container node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  db_data:

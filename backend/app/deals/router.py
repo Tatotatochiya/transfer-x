@@ -1,0 +1,356 @@
+"""M4 — Deal lifecycle endpoints."""
+
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.auth.models import User
+from app.clubs import service as clubs_service
+from app.common.schemas import Paginated
+from app.database import get_db
+from app.deals import service
+from app.deals.models import DealStatus
+from app.deals.schemas import DealNoteRequest, DealNoteResponse, DealResponse, TransferActivityItem, TransferAnalytics, CompletedStats, OngoingStats, ClubTransferStat, PositionBreakdown
+from app.deps import get_current_user
+from app.notifications import service as notif_service
+from app.notifications.models import NotificationType
+from app.ws.manager import manager as ws_manager
+
+router = APIRouter(tags=["deals"])
+
+
+async def _get_club_or_403(db: AsyncSession, user: User):
+    club = await clubs_service.get_club_by_user_id(db, user.id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+    return club
+
+
+async def _notify_deal_parties(db: AsyncSession, deal_id: uuid.UUID) -> None:
+    """Push DEAL_UPDATED to both clubs involved in a deal."""
+    deal = await service.get_deal_by_id(db, deal_id)
+    if deal is None:
+        return
+    user_ids = []
+    for club_id in [deal.buyer_club_id, deal.seller_club_id]:
+        if club_id is None:
+            continue
+        club = await clubs_service.get_club_by_id(db, uuid.UUID(str(club_id)))
+        if club:
+            user_ids.append(club.user_id)
+    await ws_manager.broadcast_to_users(
+        list(set(user_ids)),
+        {"type": "DEAL_UPDATED", "id": str(deal_id)},
+    )
+
+
+async def _db_notify_deal_parties(
+    db: AsyncSession,
+    deal,
+    *,
+    ntype: NotificationType,
+    message: str,
+) -> None:
+    """Create DB notifications for both parties of a deal. Must be called before commit."""
+    player_id = deal.player_id
+    deal_link = f"/deals/{deal.id}"
+    for club_id in [deal.buyer_club_id, deal.seller_club_id]:
+        if club_id is None:
+            continue
+        club = await clubs_service.get_club_by_id(db, uuid.UUID(str(club_id)))
+        if club:
+            await notif_service.create_notification(
+                db,
+                recipient_user_id=club.user_id,
+                type=ntype,
+                message=message,
+                link=deal_link,
+                related_player_id=player_id,
+            )
+
+
+async def _get_deal_or_404(db: AsyncSession, deal_id: uuid.UUID):
+    deal = await service.get_deal_by_id(db, deal_id)
+    if deal is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deal not found")
+    return deal
+
+
+def _build_deal_response(deal) -> DealResponse:
+    return DealResponse(
+        id=deal.id,
+        sale_id=deal.sale_id,
+        bid_id=deal.bid_id,
+        offer_id=deal.offer_id,
+        buyer_club_id=deal.buyer_club_id,
+        seller_club_id=deal.seller_club_id,
+        player_id=deal.player_id,
+        agreed_fee=deal.agreed_fee,
+        agreed_wage_weekly=deal.agreed_wage_weekly,
+        status=deal.status,
+        stage=deal.stage,
+        notes=deal.notes,
+        completed_at=deal.completed_at,
+        created_at=deal.created_at,
+        updated_at=deal.updated_at,
+        is_auction_deal=deal.is_auction_deal,
+        buyer_club=deal.buyer_club,
+        seller_club=deal.seller_club,
+        player=deal.player,
+        deal_notes=deal.deal_notes,
+    )
+
+
+# ── Public transfer feed ──────────────────────────────────────────────────────
+
+
+@router.get("/transfers/analytics", response_model=TransferAnalytics)
+async def get_transfer_analytics(
+    db: AsyncSession = Depends(get_db),
+):
+    """Market-wide transfer analytics — no auth required."""
+    data = await service.get_transfer_analytics(db)
+
+    def _to_item(deal) -> TransferActivityItem | None:
+        if deal is None:
+            return None
+        return TransferActivityItem.model_validate(deal)
+
+    def _to_club_stat(raw) -> ClubTransferStat | None:
+        if raw is None:
+            return None
+        from app.deals.schemas import ClubSummary
+        return ClubTransferStat(
+            club=ClubSummary.model_validate(raw["club"]),
+            count=raw["count"],
+            total_spend=raw["total_spend"],
+        )
+
+    c = data["completed"]
+    o = data["ongoing"]
+    return TransferAnalytics(
+        completed=CompletedStats(
+            total_count=c["total_count"],
+            total_spend=c["total_spend"],
+            avg_fee=c["avg_fee"],
+            highest_fee_deal=_to_item(c["highest_fee_deal"]),
+            top_transfers=[TransferActivityItem.model_validate(d) for d in c["top_transfers"]],
+            most_active_buyer=_to_club_stat(c["most_active_buyer"]),
+            most_active_seller=_to_club_stat(c["most_active_seller"]),
+            by_position=[PositionBreakdown(**p) for p in c["by_position"]],
+            auction_count=c["auction_count"],
+            offer_count=c["offer_count"],
+            recent_30d_count=c["recent_30d_count"],
+            recent_30d_spend=c["recent_30d_spend"],
+        ),
+        ongoing=OngoingStats(
+            total_count=o["total_count"],
+            by_stage=o["by_stage"],
+            total_committed_fees=o["total_committed_fees"],
+        ),
+    )
+
+
+@router.get("/transfers", response_model=Paginated[TransferActivityItem])
+async def list_transfers(
+    page: int = 1,
+    page_size: int = 30,
+    position: str | None = None,
+    is_auction: bool | None = None,
+    club_id: uuid.UUID | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Public feed of completed transfers — no auth required."""
+    deals, total = await service.list_transfer_activity(
+        db, page=page, page_size=page_size,
+        position=position, is_auction=is_auction, club_id=club_id,
+    )
+    items = [TransferActivityItem.model_validate(d) for d in deals]
+    return Paginated(items=items, total=total, page=page, page_size=page_size)
+
+
+# ── List + detail ─────────────────────────────────────────────────────────────
+
+
+@router.get("/deals", response_model=Paginated[DealResponse])
+async def list_deals(
+    deal_status: DealStatus | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deals, total = await service.list_deals(
+        db, club_id=club.id, status=deal_status, page=page, page_size=page_size
+    )
+    return Paginated(
+        items=[_build_deal_response(d) for d in deals],
+        total=total, page=page, page_size=page_size,
+    )
+
+
+@router.get("/deals/{deal_id}", response_model=DealResponse)
+async def get_deal(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+    parties = {deal.buyer_club_id, deal.seller_club_id}
+    if club.id not in parties and not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
+    return _build_deal_response(deal)
+
+
+# ── Stage advancement ─────────────────────────────────────────────────────────
+
+
+@router.post("/deals/{deal_id}/advance", response_model=DealResponse)
+async def advance_deal(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+
+    try:
+        await service.advance_deal(
+            db, deal, actor_club_id=club.id, is_staff=current_user.is_superuser
+        )
+        if deal.status == DealStatus.COMPLETED:
+            player_name = deal.player.name if deal.player else "the player"
+            await _db_notify_deal_parties(
+                db, deal,
+                ntype=NotificationType.DEAL_COMPLETED,
+                message=f"Transfer of {player_name} completed",
+            )
+        await db.commit()
+    except PermissionError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    deal = await service.get_deal_by_id(db, deal_id)
+    await _notify_deal_parties(db, deal_id)
+    return _build_deal_response(deal)
+
+
+# ── Collapse ──────────────────────────────────────────────────────────────────
+
+
+@router.post("/deals/{deal_id}/collapse", response_model=DealResponse)
+async def collapse_deal(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+
+    try:
+        await service.collapse_deal(
+            db, deal, actor_club_id=club.id, is_staff=current_user.is_superuser
+        )
+        player_name = deal.player.name if deal.player else "the player"
+        await _db_notify_deal_parties(
+            db, deal,
+            ntype=NotificationType.DEAL_COLLAPSED,
+            message=f"Deal for {player_name} has collapsed",
+        )
+        await db.commit()
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    deal = await service.get_deal_by_id(db, deal_id)
+    await _notify_deal_parties(db, deal_id)
+    return _build_deal_response(deal)
+
+
+# ── Notes ─────────────────────────────────────────────────────────────────────
+
+
+@router.post("/deals/{deal_id}/notes", response_model=DealNoteResponse, status_code=status.HTTP_201_CREATED)
+async def add_note(
+    deal_id: uuid.UUID,
+    body: DealNoteRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+
+    try:
+        note = await service.add_note(db, deal, author_club_id=club.id, body=body.body)
+        await db.commit()
+        await db.refresh(note)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return DealNoteResponse.model_validate(note)
+
+
+# ── Staff endpoints ───────────────────────────────────────────────────────────
+
+
+@router.post("/deals/{deal_id}/staff/complete", response_model=DealResponse)
+async def staff_complete_deal(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff only")
+    deal = await _get_deal_or_404(db, deal_id)
+
+    try:
+        await service.staff_complete(db, deal)
+        player_name = deal.player.name if deal.player else "the player"
+        await _db_notify_deal_parties(
+            db, deal,
+            ntype=NotificationType.DEAL_COMPLETED,
+            message=f"Transfer of {player_name} completed",
+        )
+        await db.commit()
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    deal = await service.get_deal_by_id(db, deal_id)
+    await _notify_deal_parties(db, deal_id)
+    return _build_deal_response(deal)
+
+
+@router.post("/deals/{deal_id}/staff/collapse", response_model=DealResponse)
+async def staff_collapse_deal(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff only")
+    deal = await _get_deal_or_404(db, deal_id)
+
+    try:
+        await service.staff_collapse(db, deal)
+        player_name = deal.player.name if deal.player else "the player"
+        await _db_notify_deal_parties(
+            db, deal,
+            ntype=NotificationType.DEAL_COLLAPSED,
+            message=f"Deal for {player_name} has collapsed",
+        )
+        await db.commit()
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    deal = await service.get_deal_by_id(db, deal_id)
+    await _notify_deal_parties(db, deal_id)
+    return _build_deal_response(deal)
