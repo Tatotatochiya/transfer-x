@@ -15,6 +15,7 @@ const NAV_LINKS = [
   { to: "/admin/analytics",  label: "Analytics",   icon: "📊" },
   { to: "/admin/windows",    label: "TW Windows",  icon: "🗓" },
   { to: "/admin/health",     label: "Health",      icon: "🩺" },
+  { to: "/admin/ai",         label: "AI",          icon: "✦"  },
 ];
 
 export default function AdminLayout() {

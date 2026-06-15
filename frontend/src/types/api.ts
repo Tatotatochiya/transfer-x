@@ -758,3 +758,107 @@ export interface OrderBook {
   is_leading: boolean;
   your_entry: OrderBookEntry | null;
 }
+
+// ── AI admin ──────────────────────────────────────────────────────────────────
+
+export interface AIUsageStats {
+  total_requests: number;
+  total_prompt_tokens: number;
+  total_completion_tokens: number;
+  total_cost_usd: number;
+  by_endpoint: Record<string, { requests: number; cost_usd: number }>;
+  note: string;
+}
+
+export interface PromptInfo {
+  key: string;
+  content: string;
+  is_overridden: boolean;
+  default_content: string;
+}
+
+// ── AI ────────────────────────────────────────────────────────────────────────
+
+export interface RecommendedProfile {
+  position: string;
+  age_range: string;
+  priority: "high" | "medium" | "low";
+  reason: string;
+}
+
+export interface SquadAnalysisResponse {
+  summary: string;
+  positional_gaps: string[];
+  age_risks: string[];
+  contract_risks: string[];
+  recommended_profiles: RecommendedProfile[];
+  cached: boolean;
+}
+
+export interface PlayerFitResponse {
+  fit_score: number;
+  summary: string;
+  strengths: string[];
+  concerns: string[];
+  cached: boolean;
+}
+
+export interface PlayerRecommendation {
+  player_id: string;
+  sale_id: string | null;
+  name: string;
+  position: string | null;
+  fit_score: number;
+  reason: string;
+}
+
+export interface MarketRecommendationsResponse {
+  recommendations: PlayerRecommendation[];
+  total_candidates: number;
+  cached: boolean;
+}
+
+export interface ShortlistPlayerAssessment {
+  player_id: string;
+  name: string;
+  fit_priority: "high" | "medium" | "low";
+  addresses_gap: boolean;
+  reason: string;
+}
+
+export interface ShortlistReviewResponse {
+  summary: string;
+  overall_verdict: "strong" | "adequate" | "weak";
+  player_assessments: ShortlistPlayerAssessment[];
+  top_picks: string[];
+  missing_positions: string[];
+  cached: boolean;
+}
+
+export interface NLParsedFilters {
+  position: string | null;
+  min_age: number | null;
+  max_age: number | null;
+  min_form_score: number | null;
+  nationalities: string[] | null;
+  min_height_cm: number | null;
+  open_to_offers: boolean | null;
+  interpreted_as: string;
+}
+
+export interface NLPlayerSearchResult {
+  player_id: string;
+  name: string;
+  age: number | null;
+  position: string | null;
+  nationality: string | null;
+  current_club: string | null;
+  form_score: number | null;
+  open_to_offers: boolean;
+}
+
+export interface NLSearchResponse {
+  players: NLPlayerSearchResult[];
+  filters: NLParsedFilters;
+  total: number;
+}

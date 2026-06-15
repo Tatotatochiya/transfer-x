@@ -20,6 +20,7 @@ import AddToShortlistButton from "../../components/scouting/AddToShortlistButton
 import { useCompare } from "../../context/CompareContext";
 import CareerHistoryPanel from "../../components/players/CareerHistoryPanel";
 import InjuryHistoryPanel from "../../components/players/InjuryHistoryPanel";
+import { PlayerFitCard } from "../../components/ai/PlayerFitCard";
 
 // ── Deal banner ───────────────────────────────────────────────────────────────
 
@@ -622,6 +623,9 @@ export default function PlayerMarketDetailPage() {
             onCancelValuation={() => setEditingValuation(false)}
             onNavigateLogin={() => navigate("/login")}
           />
+          {isAuthenticated && !isMyPlayer && (
+            <PlayerFitCard playerId={player.id} />
+          )}
         </div>
       </div>
     </div>

@@ -56,6 +56,7 @@ const AdminVendorPage           = lazy(() => import("./pages/admin/AdminVendorPa
 const AdminAnalyticsPage        = lazy(() => import("./pages/admin/AdminAnalyticsPage"));
 const AdminTransferWindowPage   = lazy(() => import("./pages/admin/AdminTransferWindowPage"));
 const AdminHealthPage           = lazy(() => import("./pages/admin/AdminHealthPage"));
+const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage"));
 
 const NotFoundPage = () => (
   <div className="flex min-h-screen items-center justify-center bg-slate-950">
@@ -185,6 +186,7 @@ export default function App() {
             <Route path="analytics"      element={<AdminAnalyticsPage />} />
             <Route path="windows"        element={<AdminTransferWindowPage />} />
             <Route path="health"         element={<AdminHealthPage />} />
+            <Route path="ai"             element={<AdminAIPage />} />
           </Route>
 
           {/* ── Defaults ── */}

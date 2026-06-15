@@ -83,6 +83,15 @@ class Settings(BaseSettings):
     apisports_key: str | None = None
     api_football_base_url: str = "https://v3.football.api-sports.io"
 
+    # AI / LLM — set LLM_MODEL to the provider-prefixed model string, e.g.:
+    #   "claude-sonnet-4-6"       (Anthropic)
+    #   "gpt-4o"                  (OpenAI)
+    #   "deepseek/deepseek-chat"  (DeepSeek)
+    llm_model: str = "claude-sonnet-4-6"
+    anthropic_api_key: str | None = None
+    openai_api_key: str | None = None
+    deepseek_api_key: str | None = None
+
     # Feature flags
     transferx_enable_anti_sniping: bool = False
     transferx_sniping_window_minutes: int = 2

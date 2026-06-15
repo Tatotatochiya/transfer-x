@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Player, Shortlist } from "../../types/api";
+import { ShortlistReviewPanel } from "../../components/ai/ShortlistReviewPanel";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import EmptyState from "../../components/ui/EmptyState";
@@ -258,6 +259,10 @@ export default function ShortlistDetailPage() {
 
       {adding && id && (
         <AddPlayerForm shortlistId={id} onDone={() => setAdding(false)} />
+      )}
+
+      {!adding && shortlist.items.length > 0 && id && (
+        <ShortlistReviewPanel shortlistId={id} itemCount={shortlist.items.length} />
       )}
 
       {shortlist.items.length === 0 && !adding && (

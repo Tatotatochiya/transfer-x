@@ -38,16 +38,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    environment:
-      # Tells Vite's dev-server proxy where to find the API inside Docker.
-      # Outside Docker (local npm run dev), API_TARGET is unset and Vite
-      # falls back to http://localhost:8001.
-      API_TARGET: http://api:8001
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules  # anonymous volume prevents host override of container node_modules
+      args:
+        VITE_API_BASE_URL: http://localhost:8001
+        VITE_WS_URL: ws://localhost:8001
     ports:
-      - "5173:5173"
+      - "5173:3000"
     depends_on:
       - api
 

@@ -26,6 +26,7 @@ import {
 import { formatCurrency, formatDate } from "../../lib/utils";
 import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 import type { PlayerPosition } from "../../types/enums";
+import { ScoutReportPanel } from "../../components/ai/ScoutReportPanel";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -777,6 +778,9 @@ export default function DashboardPage() {
             <ShortlistPulsePanel />
             <ExpiringContractsPanel />
           </div>
+
+          {/* AI Scout Report */}
+          <ScoutReportPanel />
 
           {/* Completed transfers */}
           <RecentCompletedDealsPanel />

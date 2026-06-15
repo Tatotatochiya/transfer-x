@@ -16,6 +16,8 @@ import PageHeader from "../../components/ui/PageHeader";
 import Pagination from "../../components/ui/Pagination";
 import EmptyState from "../../components/ui/EmptyState";
 import Spinner from "../../components/ui/Spinner";
+import { MarketRecommendationsPanel } from "../../components/ai/MarketRecommendationsPanel";
+import { NLPlayerSearch } from "../../components/ai/NLPlayerSearch";
 
 // ── Saveable filter keys (search + club_search are intentionally excluded) ────
 
@@ -263,12 +265,21 @@ export default function PlayerMarketPage() {
         />
       )}
 
+      {isAuthenticated && <NLPlayerSearch />}
+
       <PlayerFilters
         filters={filters}
         onChange={handleFiltersChange}
         view={view}
         onViewChange={handleViewChange}
       />
+
+      {isAuthenticated && (
+        <MarketRecommendationsPanel
+          positionFilter={filters.position || undefined}
+          maxBudget={undefined}
+        />
+      )}
 
       {isLoading && (
         <div className="flex justify-center py-16">

@@ -16,9 +16,10 @@ from app.database import Base  # noqa: F401 — imports all models via metadata
 from app.auth.models import RefreshToken, User  # noqa: F401
 from app.clubs.models import Club, ClubFinance  # noqa: F401
 from app.deals.models import Deal, DealNote  # noqa: F401
-from app.notifications.models import Notification  # noqa: F401
+from app.fixtures.models import Fixture  # noqa: F401
+from app.notifications.models import Notification, NotificationPreference  # noqa: F401
 from app.offers.models import Offer, OfferEvent, OfferMessage  # noqa: F401
-from app.players.models import Contract, Player  # noqa: F401
+from app.players.models import Contract, Player, PlayerInjury, PlayerTransfer  # noqa: F401
 from app.sales.models import Bid, Sale, SaleEvent  # noqa: F401
 from app.scouting.models import PlayerInterest, Shortlist, ShortlistItem  # noqa: F401
 from app.stats.models import PlayerForm, PlayerStats, PlayerStatsSnapshot, VendorSyncState  # noqa: F401
