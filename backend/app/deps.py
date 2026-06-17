@@ -88,3 +88,18 @@ async def require_club_write_access(
             detail="Read-only staff cannot perform this action",
         )
     return current_user
+
+
+async def get_current_agent_profile(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> "AgentProfile":
+    from sqlalchemy import select
+    from app.auth.models import AgentProfile, UserType
+    if current_user.user_type != UserType.AGENT:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Agent access required")
+    result = await db.execute(select(AgentProfile).where(AgentProfile.user_id == current_user.id))
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent profile not found")
+    return profile
