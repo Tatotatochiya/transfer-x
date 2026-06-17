@@ -1,5 +1,6 @@
 """M4 — Deal lifecycle tests."""
 
+import uuid
 from decimal import Decimal
 
 import pytest
@@ -283,3 +284,204 @@ async def test_offer_deal_not_flagged_as_auction(client: AsyncClient, buyer: dic
     deal = await _create_deal_via_offer(client, buyer, seller, db)
     resp = await client.get(f"/deals/{deal['id']}", headers=_auth_headers(buyer))
     assert resp.json()["is_auction_deal"] is False
+
+
+# ── Finance settlement tests (TRA-51) ──────────────────────────────────────────
+
+
+async def _give_wage_budget(db, amount: Decimal = Decimal("1000000")):
+    from app.clubs.models import ClubFinance
+    from sqlalchemy import select
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.wage_budget_total_weekly = amount
+    await db.commit()
+
+
+async def _get_finance(client: AsyncClient, headers: dict) -> dict:
+    r = await client.get("/clubs/me", headers=headers)
+    assert r.status_code == 200, r.text
+    return r.json()["finance"]
+
+
+async def _make_superuser(db) -> None:
+    from app.auth.models import User
+    from sqlalchemy import select
+
+    result = await db.execute(select(User))
+    for u in result.scalars():
+        u.is_superuser = True
+    await db.commit()
+
+
+async def _staff_complete(client: AsyncClient, deal_id: str, headers: dict) -> dict:
+    r = await client.post(f"/deals/{deal_id}/staff/complete", headers=headers)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+@pytest.mark.asyncio
+async def test_completion_settles_buyer_transfer_finance(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Fee moves from transfer_committed → transfer_spent; remaining is unchanged."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db, fee=5_000_000)
+    buy_h = _auth_headers(buyer)
+
+    before = await _get_finance(client, buy_h)
+    await _make_superuser(db)
+    await _staff_complete(client, deal["id"], buy_h)
+    after = await _get_finance(client, buy_h)
+
+    fee = Decimal("5000000")
+    assert Decimal(before["transfer_committed"]) - Decimal(after["transfer_committed"]) == fee
+    assert Decimal(after["transfer_spent"]) - Decimal(before["transfer_spent"]) == fee
+    # remaining is unchanged — committed→spent nets to zero
+    assert Decimal(after["transfer_remaining"]) == Decimal(before["transfer_remaining"])
+
+
+@pytest.mark.asyncio
+async def test_completion_credits_seller_transfer_finance(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Seller's transfer_budget_total rises by the agreed fee on completion."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db, fee=5_000_000)
+    sel_h = _auth_headers(seller)
+
+    before = await _get_finance(client, sel_h)
+    await _make_superuser(db)
+    await _staff_complete(client, deal["id"], _auth_headers(buyer))
+    after = await _get_finance(client, sel_h)
+
+    fee = Decimal("5000000")
+    assert Decimal(after["transfer_remaining"]) - Decimal(before["transfer_remaining"]) == fee
+
+
+@pytest.mark.asyncio
+async def test_money_conservation_on_completion(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Σ(transfer_budget_total − transfer_spent) is conserved across both clubs."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db, fee=5_000_000)
+    buy_h, sel_h = _auth_headers(buyer), _auth_headers(seller)
+
+    buyer_before = await _get_finance(client, buy_h)
+    seller_before = await _get_finance(client, sel_h)
+
+    await _make_superuser(db)
+    await _staff_complete(client, deal["id"], buy_h)
+
+    buyer_after = await _get_finance(client, buy_h)
+    seller_after = await _get_finance(client, sel_h)
+
+    def liquid(f):
+        return Decimal(f["transfer_budget_total"]) - Decimal(f["transfer_spent"])
+
+    assert liquid(buyer_before) + liquid(seller_before) == liquid(buyer_after) + liquid(seller_after)
+
+
+@pytest.mark.asyncio
+async def test_completion_settles_buyer_wage(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """agreed_wage_weekly ends up in the buyer's wage_reserved_weekly on completion."""
+    from app.deals.models import Deal
+    from sqlalchemy import update as sa_update
+
+    deal = await _create_deal_via_offer(client, buyer, seller, db, fee=5_000_000)
+    await _give_wage_budget(db)
+
+    wage = Decimal("50000")
+    await db.execute(
+        sa_update(Deal).where(Deal.id == uuid.UUID(deal["id"])).values(agreed_wage_weekly=wage)
+    )
+    await db.commit()
+
+    buy_h = _auth_headers(buyer)
+    before = await _get_finance(client, buy_h)
+    await _make_superuser(db)
+    await _staff_complete(client, deal["id"], buy_h)
+    after = await _get_finance(client, buy_h)
+
+    assert Decimal(after["wage_reserved_weekly"]) - Decimal(before["wage_reserved_weekly"]) == wage
+
+
+@pytest.mark.asyncio
+async def test_completion_releases_seller_wage(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Seller's wage_reserved_weekly drops by the departing player's wage on completion."""
+    from app.clubs.models import ClubFinance
+    from app.players.models import Player
+    from app.players import service as players_service
+    from sqlalchemy import select
+
+    deal = await _create_deal_via_offer(client, buyer, seller, db, fee=5_000_000)
+    await _give_wage_budget(db)
+
+    # Fetch the player and create an active contract at a known wage.
+    old_wage = Decimal("40000")
+    player_result = await db.execute(select(Player).where(Player.id == uuid.UUID(deal["player_id"])))
+    player = player_result.scalar_one()
+
+    sel_club_r = await client.get("/clubs/me", headers=_auth_headers(seller))
+    seller_club_id = sel_club_r.json()["id"]
+
+    # create_contract doesn't touch finance — seed wage_reserved_weekly manually
+    # to simulate that the seller had this wage reserved before completion.
+    await players_service.create_contract(
+        db, player=player, club_id=uuid.UUID(seller_club_id), wage_weekly=old_wage
+    )
+    seller_fin = (
+        await db.execute(select(ClubFinance).where(ClubFinance.club_id == uuid.UUID(seller_club_id)))
+    ).scalar_one()
+    seller_fin.wage_reserved_weekly = old_wage
+    await db.commit()
+
+    # Snapshot AFTER setup so baseline includes the reserved wage.
+    sel_h = _auth_headers(seller)
+    before = await _get_finance(client, sel_h)
+
+    await _make_superuser(db)
+    await _staff_complete(client, deal["id"], _auth_headers(buyer))
+    after = await _get_finance(client, sel_h)
+
+    assert Decimal(before["wage_reserved_weekly"]) - Decimal(after["wage_reserved_weekly"]) == old_wage
+
+
+@pytest.mark.asyncio
+async def test_collapse_releases_committed_budget(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Collapse returns the fee from transfer_committed back to transfer_remaining."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db, fee=5_000_000)
+    buy_h = _auth_headers(buyer)
+
+    before = await _get_finance(client, buy_h)
+    await client.post(f"/deals/{deal['id']}/collapse", headers=buy_h)
+    after = await _get_finance(client, buy_h)
+
+    fee = Decimal("5000000")
+    assert Decimal(after["transfer_remaining"]) - Decimal(before["transfer_remaining"]) == fee
+    assert Decimal(after["transfer_committed"]) == Decimal("0")
+
+
+@pytest.mark.asyncio
+async def test_double_complete_is_rejected(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Completing an already-completed deal returns HTTP 400."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+    await _make_superuser(db)
+
+    await _staff_complete(client, deal["id"], buy_h)  # first — succeeds
+
+    r = await client.post(f"/deals/{deal['id']}/staff/complete", headers=buy_h)
+    assert r.status_code == 400
+
+
+# NOTE: Concurrent-completion overspend guard is NOT tested here.
+# It requires two parallel DB sessions against a real Postgres instance;
+# SQLite ignores SELECT FOR UPDATE so the test would be a false pass.
