@@ -164,11 +164,18 @@ def can_buy(role: ClubRole) -> bool:
 
 
 async def get_finance_for_update(db: AsyncSession, club_id: uuid.UUID) -> ClubFinance | None:
-    """Fetch ClubFinance row with a row-level lock (SELECT FOR UPDATE)."""
+    """Fetch ClubFinance row with a row-level lock (SELECT FOR UPDATE).
+
+    populate_existing forces the locked row to refresh the identity-map instance —
+    without it, a finance row already loaded earlier in the session (e.g. via
+    selectinload(Club.finance)) would be returned with stale attribute values,
+    defeating the lock under concurrent read-modify-write.
+    """
     result = await db.execute(
         select(ClubFinance)
         .where(ClubFinance.club_id == club_id)
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
     return result.scalar_one_or_none()
 
