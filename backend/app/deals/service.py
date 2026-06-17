@@ -426,11 +426,7 @@ async def staff_collapse(db: AsyncSession, deal: Deal) -> Deal:
 
 
 async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
-    """Execute the transfer:
-    1. Deactivate player's existing active contract (with seller)
-    2. Create a new contract with buyer
-    3. Normalize player status
-    """
+    """Execute the transfer: settle finance for both clubs, then swap the contract."""
     now = datetime.now(timezone.utc)
     deal.status = DealStatus.COMPLETED
     deal.completed_at = now
@@ -440,7 +436,53 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
     if player is None:
         raise ValueError("Player not found")
 
-    # Deactivate active contracts with the seller (bulk update before create_contract handles it too)
+    fee = deal.agreed_fee or Decimal("0")
+    new_wage = deal.agreed_wage_weekly or Decimal("0")
+
+    # Capture the seller's outgoing wage BEFORE the contract is deactivated.
+    old_wage = Decimal("0")
+    if deal.seller_club_id:
+        old_wage = (
+            await db.execute(
+                select(Contract.wage_weekly)
+                .where(
+                    Contract.player_id == deal.player_id,
+                    Contract.club_id == deal.seller_club_id,
+                    Contract.is_active == True,  # noqa: E712
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none() or Decimal("0")
+
+    # Lock both finance rows in deterministic order (sorted by club_id) to avoid deadlock.
+    club_ids = [deal.buyer_club_id] + ([deal.seller_club_id] if deal.seller_club_id else [])
+    finances = {}
+    for cid in sorted(club_ids, key=str):
+        finances[cid] = await clubs_module.service.get_finance_for_update(db, cid)
+    buyer_fin = finances.get(deal.buyer_club_id)
+    seller_fin = finances.get(deal.seller_club_id) if deal.seller_club_id else None
+
+    # Buyer: fee committed → spent; wage committed → reserved (clamped — wage commit isn't wired yet).
+    if buyer_fin:
+        if fee > 0:
+            buyer_fin.transfer_committed = max(Decimal("0"), buyer_fin.transfer_committed - fee)
+            buyer_fin.transfer_spent += fee
+        if new_wage > 0:
+            buyer_fin.wage_committed_weekly = max(
+                Decimal("0"), buyer_fin.wage_committed_weekly - new_wage
+            )
+            buyer_fin.wage_reserved_weekly += new_wage
+
+    # Seller: credit fee to budget; release the departing player's wage (clamped).
+    if seller_fin:
+        if fee > 0:
+            seller_fin.transfer_budget_total += fee
+        if old_wage > 0:
+            seller_fin.wage_reserved_weekly = max(
+                Decimal("0"), seller_fin.wage_reserved_weekly - old_wage
+            )
+
+    # Deactivate active contracts with the seller
     if deal.seller_club_id:
         await db.execute(
             update(Contract)

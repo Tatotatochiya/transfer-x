@@ -80,6 +80,9 @@ class ClubFinance(Base):
     transfer_committed: Mapped[Decimal] = mapped_column(
         Numeric(15, 2), nullable=False, default=Decimal("0")
     )
+    transfer_spent: Mapped[Decimal] = mapped_column(
+        Numeric(15, 2), nullable=False, default=Decimal("0")
+    )
     wage_committed_weekly: Mapped[Decimal] = mapped_column(
         Numeric(15, 2), nullable=False, default=Decimal("0")
     )
@@ -91,7 +94,12 @@ class ClubFinance(Base):
 
     @property
     def transfer_remaining(self) -> Decimal:
-        return self.transfer_budget_total - self.transfer_reserved - self.transfer_committed
+        return (
+            self.transfer_budget_total
+            - self.transfer_reserved
+            - self.transfer_committed
+            - self.transfer_spent
+        )
 
     @property
     def wage_remaining_weekly(self) -> Decimal:

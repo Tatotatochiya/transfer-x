@@ -17,6 +17,7 @@ class ClubFinanceResponse(BaseModel):
     transfer_reserved: Decimal
     wage_reserved_weekly: Decimal
     transfer_committed: Decimal
+    transfer_spent: Decimal
     wage_committed_weekly: Decimal
     transfer_remaining: Decimal
     wage_remaining_weekly: Decimal
