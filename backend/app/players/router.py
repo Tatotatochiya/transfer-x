@@ -399,3 +399,46 @@ async def get_player_injuries(
         .order_by(PlayerInjury.fixture_date.desc().nulls_last())
     )
     return [PlayerInjuryResponse.model_validate(r) for r in result.scalars()]
+
+
+# ── Representation (mandates) ─────────────────────────────────────────────────
+
+
+@router.get("/{player_id}/representation")
+async def get_player_representation(
+    player_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list:
+    from sqlalchemy import select as sa_select
+    from app.mandates.models import Mandate, MandateStatus
+    from app.mandates.schemas import MandateResponse
+    result = await db.execute(
+        sa_select(Mandate).where(
+            Mandate.player_id == player_id,
+            Mandate.status == MandateStatus.ACTIVE,
+        )
+    )
+    return [MandateResponse.model_validate(m) for m in result.scalars()]
+
+
+@router.post("/{player_id}/representation/{mandate_id}/revoke")
+async def player_revoke_representation(
+    player_id: uuid.UUID,
+    mandate_id: uuid.UUID,
+    player_profile=Depends(get_current_player_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.mandates.schemas import MandateResponse
+    from app.mandates.service import revoke_mandate_as_player
+    if player_profile.player_id != player_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your player record")
+    try:
+        mandate = await revoke_mandate_as_player(db, mandate_id=mandate_id, player_id=player_id)
+    except ValueError as exc:
+        detail = str(exc)
+        if "not found" in detail.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+    await db.commit()
+    return MandateResponse.model_validate(mandate)

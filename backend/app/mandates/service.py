@@ -50,6 +50,32 @@ async def create_mandate(
     return mandate
 
 
+async def revoke_mandate_as_player(
+    db: AsyncSession,
+    mandate_id: uuid.UUID,
+    player_id: uuid.UUID,
+) -> Mandate:
+    mandate = await db.get(Mandate, mandate_id)
+    if mandate is None:
+        raise ValueError("Mandate not found")
+    if mandate.player_id != player_id:
+        raise ValueError("Not your mandate")
+    if mandate.status != MandateStatus.ACTIVE:
+        raise ValueError("Mandate is not active")
+
+    mandate.status = MandateStatus.REVOKED
+    await db.flush()
+
+    if mandate.exclusive:
+        await db.execute(
+            sa_update(Player)
+            .where(Player.id == player_id, Player.agent_id == mandate.agent_id)
+            .values(agent_id=None)
+        )
+
+    return mandate
+
+
 async def revoke_mandate(
     db: AsyncSession,
     mandate_id: uuid.UUID,
