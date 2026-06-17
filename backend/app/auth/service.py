@@ -121,11 +121,64 @@ async def change_password(db: AsyncSession, user: User, current_password: str, n
     await db.flush()
 
 
-async def create_user(db: AsyncSession, email: str, password: str) -> User:
+async def create_user(
+    db: AsyncSession,
+    email: str,
+    password: str,
+    user_type: "UserType | None" = None,
+) -> User:
+    from app.auth.models import UserType
+
     existing = await get_user_by_email(db, email)
     if existing:
         raise ValueError("Email already registered")
-    user = User(email=email, hashed_password=hash_password(password))
+    user = User(
+        email=email,
+        hashed_password=hash_password(password),
+        user_type=user_type or UserType.CLUB,
+    )
     db.add(user)
     await db.flush()
     return user
+
+
+async def create_agent_profile(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    display_name: str,
+    agency_name: str,
+    country: str,
+    licence_no: str | None = None,
+) -> "AgentProfile":
+    from app.auth.models import AgentProfile
+
+    profile = AgentProfile(
+        user_id=user_id,
+        display_name=display_name,
+        agency_name=agency_name,
+        licence_no=licence_no,
+        country=country,
+    )
+    db.add(profile)
+    await db.flush()
+    return profile
+
+
+async def create_player_profile(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    player_id: uuid.UUID,
+) -> "PlayerProfile":
+    from app.auth.models import PlayerProfile
+
+    # Reject if another user already claimed this player
+    existing = await db.execute(
+        select(PlayerProfile).where(PlayerProfile.player_id == player_id)
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise ValueError("Player record is already claimed by another user")
+
+    profile = PlayerProfile(user_id=user_id, player_id=player_id)
+    db.add(profile)
+    await db.flush()
+    return profile

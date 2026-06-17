@@ -20,15 +20,50 @@ router = APIRouter(tags=["auth"])
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+    from app.auth.models import UserType
+
     try:
-        user = await auth_service.create_user(db, email=body.email, password=body.password)
+        user = await auth_service.create_user(
+            db, email=body.email, password=body.password, user_type=body.user_type
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
 
-    # Auto-create club + finance for every new user (explicit, no signal)
-    club_name = body.club_name.strip() or body.email.split("@")[0]
-    club = await clubs_service.create_club(db, user_id=user.id, name=club_name)
-    await clubs_service.create_club_finance(db, club_id=club.id)
+    if body.user_type == UserType.CLUB:
+        club_name = body.club_name.strip() or body.email.split("@")[0]
+        club = await clubs_service.create_club(db, user_id=user.id, name=club_name)
+        await clubs_service.create_club_finance(db, club_id=club.id)
+
+    elif body.user_type == UserType.AGENT:
+        if not body.display_name or not body.agency_name or not body.country:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="display_name, agency_name, and country are required for agent registration",
+            )
+        try:
+            await auth_service.create_agent_profile(
+                db,
+                user_id=user.id,
+                display_name=body.display_name,
+                agency_name=body.agency_name,
+                country=body.country,
+                licence_no=body.licence_no,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+
+    elif body.user_type == UserType.PLAYER:
+        if body.player_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="player_id is required for player registration",
+            )
+        try:
+            await auth_service.create_player_profile(
+                db, user_id=user.id, player_id=body.player_id
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
 
     access_token = auth_service.create_access_token(user.id, user.email)
     refresh_token = await auth_service.create_refresh_token(db, user.id)

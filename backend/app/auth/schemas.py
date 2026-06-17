@@ -3,11 +3,21 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
+from app.auth.models import UserType
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
-    club_name: str = ""  # Defaults to email prefix if empty
+    user_type: UserType = UserType.CLUB
+    club_name: str = ""  # Defaults to email prefix if empty (CLUB only)
+    # Agent fields
+    display_name: str = ""
+    agency_name: str = ""
+    licence_no: str | None = None
+    country: str = ""
+    # Player fields
+    player_id: uuid.UUID | None = None
 
 
 class LoginRequest(BaseModel):
@@ -37,6 +47,7 @@ class UserResponse(BaseModel):
     email: str
     is_active: bool
     is_superuser: bool
+    user_type: UserType
     created_at: datetime
 
 

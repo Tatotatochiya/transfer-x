@@ -196,3 +196,124 @@ async def test_create_and_decode_access_token(db: AsyncSession):
     assert payload["sub"] == str(user_id)
     assert payload["email"] == "test@example.com"
     assert payload["type"] == "access"
+
+
+# ── UserType / profile tests (TRA-52) ─────────────────────────────────────────
+
+
+async def test_default_registration_is_club_type(client: AsyncClient):
+    data = await register(client, "club@example.com", "password123")
+    resp = await client.get(
+        "/auth/me", headers={"Authorization": f"Bearer {data['access_token']}"}
+    )
+    assert resp.json()["user_type"] == "CLUB"
+
+
+async def test_register_as_agent(client: AsyncClient):
+    resp = await client.post("/auth/register", json={
+        "email": "agent@example.com",
+        "password": "password123",
+        "user_type": "AGENT",
+        "display_name": "John Agent",
+        "agency_name": "Top Agency",
+        "country": "England",
+    })
+    assert resp.status_code == 201, resp.text
+    tokens = resp.json()
+    me = await client.get("/auth/me", headers={"Authorization": f"Bearer {tokens['access_token']}"})
+    assert me.json()["user_type"] == "AGENT"
+
+
+async def test_agent_registration_missing_required_fields(client: AsyncClient):
+    resp = await client.post("/auth/register", json={
+        "email": "agent2@example.com",
+        "password": "password123",
+        "user_type": "AGENT",
+    })
+    assert resp.status_code == 422
+
+
+async def test_register_as_player(client: AsyncClient, db: AsyncSession):
+    from app.players.models import Player
+    import uuid
+
+    player = Player(name="Test Player", position="FWD")
+    db.add(player)
+    await db.commit()
+
+    resp = await client.post("/auth/register", json={
+        "email": "player@example.com",
+        "password": "password123",
+        "user_type": "PLAYER",
+        "player_id": str(player.id),
+    })
+    assert resp.status_code == 201, resp.text
+    tokens = resp.json()
+    me = await client.get("/auth/me", headers={"Authorization": f"Bearer {tokens['access_token']}"})
+    assert me.json()["user_type"] == "PLAYER"
+
+
+async def test_player_registration_missing_player_id(client: AsyncClient):
+    resp = await client.post("/auth/register", json={
+        "email": "player2@example.com",
+        "password": "password123",
+        "user_type": "PLAYER",
+    })
+    assert resp.status_code == 422
+
+
+async def test_player_profile_uniqueness(client: AsyncClient, db: AsyncSession):
+    """Two users cannot claim the same player record."""
+    from app.players.models import Player
+    import uuid
+
+    player = Player(name="Claimed Player", position="MID")
+    db.add(player)
+    await db.commit()
+
+    await client.post("/auth/register", json={
+        "email": "first@example.com",
+        "password": "password123",
+        "user_type": "PLAYER",
+        "player_id": str(player.id),
+    })
+    resp = await client.post("/auth/register", json={
+        "email": "second@example.com",
+        "password": "password123",
+        "user_type": "PLAYER",
+        "player_id": str(player.id),
+    })
+    assert resp.status_code == 409
+
+
+async def test_club_registration_still_creates_club(client: AsyncClient):
+    """Regression: existing CLUB registration behaviour is unchanged."""
+    resp = await client.post("/auth/register", json={
+        "email": "newclub@example.com",
+        "password": "password123",
+        "user_type": "CLUB",
+        "club_name": "New Club FC",
+    })
+    assert resp.status_code == 201
+    tokens = resp.json()
+    club_resp = await client.get(
+        "/clubs/me", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+    )
+    assert club_resp.status_code == 200
+    assert club_resp.json()["name"] == "New Club FC"
+
+
+async def test_agent_registration_does_not_create_club(client: AsyncClient):
+    resp = await client.post("/auth/register", json={
+        "email": "agent3@example.com",
+        "password": "password123",
+        "user_type": "AGENT",
+        "display_name": "Jane Agent",
+        "agency_name": "Agency B",
+        "country": "Spain",
+    })
+    tokens = resp.json()
+    club_resp = await client.get(
+        "/clubs/me", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+    )
+    assert club_resp.status_code == 404
