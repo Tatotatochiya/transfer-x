@@ -1,14 +1,15 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
 from app.common.schemas import Paginated
 from app.database import get_db
-from app.deps import get_buyer_user, get_current_user, get_optional_user, get_seller_user
+from app.deps import get_buyer_user, get_current_user, get_current_player_profile, get_optional_user, get_seller_user
 from app.players import service as players_service
-from app.players.models import PlayerPosition, PlayerStatus
+from app.players.models import PlayerPosition, PlayerStatus, PlayerVisibility
 from app.players.schemas import (
     ActiveDealStub,
     ContractCreateRequest,
@@ -143,6 +144,42 @@ async def create_player(
     await db.commit()
     await db.refresh(player)
     return PlayerResponse.model_validate(player)
+
+
+# ── Player self-service (PLAYER user type) ───────────────────────────────────
+
+
+class _PlayerSelfUpdateBody(BaseModel):
+    visibility: PlayerVisibility | None = None
+    open_to_offers: bool | None = None
+
+
+@router.get("/me", response_model=PlayerDetailResponse)
+async def get_my_player_profile(
+    player_profile=Depends(get_current_player_profile),
+    db: AsyncSession = Depends(get_db),
+) -> PlayerDetailResponse:
+    player = await players_service.get_player_by_id(db, player_profile.player_id)
+    if player is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    return PlayerDetailResponse.model_validate(player)
+
+
+@router.patch("/me", response_model=PlayerDetailResponse)
+async def update_my_player_profile(
+    body: _PlayerSelfUpdateBody,
+    player_profile=Depends(get_current_player_profile),
+    db: AsyncSession = Depends(get_db),
+) -> PlayerDetailResponse:
+    player = await players_service.get_player_by_id(db, player_profile.player_id)
+    if player is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    updates = body.model_dump(exclude_none=True)
+    if updates:
+        await players_service.update_player(db, player, **updates)
+        await db.commit()
+        await db.refresh(player)
+    return PlayerDetailResponse.model_validate(player)
 
 
 @router.patch("/{player_id}", response_model=PlayerResponse)

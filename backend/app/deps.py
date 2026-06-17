@@ -103,3 +103,18 @@ async def get_current_agent_profile(
     if profile is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent profile not found")
     return profile
+
+
+async def get_current_player_profile(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> "PlayerProfile":
+    from sqlalchemy import select
+    from app.auth.models import PlayerProfile, UserType
+    if current_user.user_type != UserType.PLAYER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Player access required")
+    result = await db.execute(select(PlayerProfile).where(PlayerProfile.user_id == current_user.id))
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player profile not found")
+    return profile
