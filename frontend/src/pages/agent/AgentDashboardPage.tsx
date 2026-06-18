@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import api from "../../lib/api";
 import type { AgentProfileResponse, RepresentedPlayerItem } from "../../types/api";
@@ -8,10 +9,24 @@ import Spinner from "../../components/ui/Spinner";
 import Badge from "../../components/ui/Badge";
 
 function ClientCard({ client }: { client: RepresentedPlayerItem }) {
+  const queryClient = useQueryClient();
+  const [revoking, setRevoking] = useState(false);
+
+  async function handleRevoke() {
+    setRevoking(true);
+    try {
+      await api.post(`/mandates/${client.mandate_id}/revoke`);
+      queryClient.invalidateQueries({ queryKey: ["agents", "me", "players"] });
+      queryClient.invalidateQueries({ queryKey: ["players", client.player_id, "representation"] });
+    } finally {
+      setRevoking(false);
+    }
+  }
+
   return (
     <Card>
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <Link
             to={`/players/market/${client.player_id}`}
             className="text-sm font-semibold text-white hover:text-emerald-400 transition-colors"
@@ -22,7 +37,7 @@ function ClientCard({ client }: { client: RepresentedPlayerItem }) {
             <p className="text-xs text-slate-400 mt-0.5">{client.player_position}</p>
           )}
         </div>
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 text-xs shrink-0">
           {client.exclusive && (
             <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-400 font-medium">
               Exclusive
@@ -31,6 +46,13 @@ function ClientCard({ client }: { client: RepresentedPlayerItem }) {
           {client.end_date && (
             <span className="text-slate-500">Until {client.end_date}</span>
           )}
+          <button
+            onClick={handleRevoke}
+            disabled={revoking}
+            className="rounded-lg bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-400 ring-1 ring-red-500/30 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+          >
+            {revoking ? "…" : "Revoke"}
+          </button>
         </div>
       </div>
     </Card>

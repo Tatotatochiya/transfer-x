@@ -124,7 +124,10 @@ export default function RegisterPage() {
       const { data: me } = await api.get<User>("/auth/me");
       setUser(me);
 
-      navigate(actorType === "AGENT" ? "/agent/dashboard" : "/dashboard", { replace: true });
+      const dest = actorType === "AGENT" ? "/agent/dashboard"
+                 : actorType === "PLAYER" ? "/player/profile"
+                 : "/dashboard";
+      navigate(dest, { replace: true });
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??

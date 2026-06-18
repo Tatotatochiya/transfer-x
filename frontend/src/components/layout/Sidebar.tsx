@@ -70,6 +70,13 @@ function getNavGroups(userType: UserType | null): NavGroup[] {
           { label: "Transfers",      to: "/transfers",      icon: "arrow-right-left", iconColor: "text-purple-400", iconBg: "bg-purple-500/15" },
         ],
       },
+      {
+        title: "My Profile",
+        authRequired: true,
+        items: [
+          { label: "My Profile", to: "/player/profile", icon: "user", iconColor: "text-indigo-400", iconBg: "bg-indigo-500/15", end: true },
+        ],
+      },
       ADMIN_GROUP,
     ];
   }

@@ -60,6 +60,7 @@ const AdminHealthPage           = lazy(() => import("./pages/admin/AdminHealthPa
 const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage"));
 const AgentDashboardPage        = lazy(() => import("./pages/agent/AgentDashboardPage"));
 const AgentProfilePage          = lazy(() => import("./pages/agent/AgentProfilePage"));
+const PlayerProfilePage         = lazy(() => import("./pages/player/PlayerProfilePage"));
 
 const NotFoundPage = () => (
   <div className="flex min-h-screen items-center justify-center bg-slate-950">
@@ -117,11 +118,20 @@ function AgentRoute({ children }: { children: React.ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }
 
+function PlayerRoute({ children }: { children: React.ReactNode }) {
+  const { user, accessToken, refreshToken, isBootstrapping } = useAuthStore();
+  if (isBootstrapping) return <LoadingScreen />;
+  if (!accessToken && !refreshToken) return <Navigate to="/login" replace />;
+  if (user && user.user_type !== "PLAYER") return <Navigate to="/" replace />;
+  return <AppShell>{children}</AppShell>;
+}
+
 function SmartRedirect() {
   const { user, accessToken, refreshToken, isBootstrapping } = useAuthStore();
   if (isBootstrapping) return <LoadingScreen />;
   if (!accessToken && !refreshToken) return <Navigate to="/login" replace />;
   if (user?.user_type === "AGENT") return <Navigate to="/agent/dashboard" replace />;
+  if (user?.user_type === "PLAYER") return <Navigate to="/player/profile" replace />;
   return <Navigate to="/dashboard" replace />;
 }
 
@@ -184,6 +194,9 @@ export default function App() {
           {/* ── Agent portal ── */}
           <Route path="/agent/dashboard" element={<AgentRoute><AgentDashboardPage /></AgentRoute>} />
           <Route path="/agent/profile"   element={<AgentRoute><AgentProfilePage /></AgentRoute>} />
+
+          {/* ── Player portal ── */}
+          <Route path="/player/profile" element={<PlayerRoute><PlayerProfilePage /></PlayerRoute>} />
 
           {/* ── Scouting (protected) ── */}
           {/* /scouting/shortlists/:id must come before catch-alls */}

@@ -19,7 +19,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const me = await login(email, password);
-      navigate(me.user_type === "AGENT" ? "/agent/dashboard" : "/dashboard", { replace: true });
+      const dest = me.user_type === "AGENT" ? "/agent/dashboard"
+                 : me.user_type === "PLAYER" ? "/player/profile"
+                 : "/dashboard";
+      navigate(dest, { replace: true });
     } catch (err) {
       console.error("Login error:", err);
       setError("Invalid email or password.");

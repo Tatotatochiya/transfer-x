@@ -65,6 +65,18 @@ export interface RepresentedPlayerItem {
   status: "ACTIVE" | "EXPIRED" | "REVOKED";
 }
 
+export interface MandateResponse {
+  id: string;
+  agent_id: string;
+  player_id: string;
+  start_date: string | null;
+  end_date: string | null;
+  exclusive: boolean;
+  territory: string | null;
+  status: "ACTIVE" | "EXPIRED" | "REVOKED";
+  created_at: string;
+}
+
 // ── Clubs ─────────────────────────────────────────────────────────────────────
 
 export interface ClubFinance {

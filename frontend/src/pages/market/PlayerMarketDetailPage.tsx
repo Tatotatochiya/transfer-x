@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { ActiveDealStub, Club, OrderBook, PlayerDetail, PlayerForm, PlayerStats } from "../../types/api";
+import type { ActiveDealStub, Club, MandateResponse, OrderBook, PlayerDetail, PlayerForm, PlayerStats } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -289,14 +289,157 @@ function TabBar({
   );
 }
 
+// ── Agent representation card ─────────────────────────────────────────────────
+
+function AgentRepresentationCard({ playerId }: { playerId: string }) {
+  const queryClient = useQueryClient();
+
+  const { data: mandates = [], refetch } = useQuery<MandateResponse[]>({
+    queryKey: ["players", playerId, "representation"],
+    queryFn: () =>
+      api.get<MandateResponse[]>(`/players/${playerId}/representation`).then((r) => r.data),
+  });
+
+  const [exclusive, setExclusive]   = useState(false);
+  const [startDate, setStartDate]   = useState("");
+  const [endDate, setEndDate]       = useState("");
+  const [territory, setTerritory]   = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError]           = useState<string | null>(null);
+  const [success, setSuccess]       = useState(false);
+
+  async function handleCreate() {
+    setError(null);
+    setSubmitting(true);
+    try {
+      await api.post("/mandates/", {
+        player_id: playerId,
+        exclusive,
+        start_date:  startDate  || null,
+        end_date:    endDate    || null,
+        territory:   territory.trim() || null,
+      });
+      setSuccess(true);
+      queryClient.invalidateQueries({ queryKey: ["players", playerId, "representation"] });
+      queryClient.invalidateQueries({ queryKey: ["agents", "me", "players"] });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(typeof msg === "string" ? msg : "Failed to create mandate.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleRevoke(mandateId: string) {
+    try {
+      await api.post(`/mandates/${mandateId}/revoke`);
+      queryClient.invalidateQueries({ queryKey: ["players", playerId, "representation"] });
+      queryClient.invalidateQueries({ queryKey: ["agents", "me", "players"] });
+      refetch();
+      setSuccess(false);
+    } catch {
+      // silent — player still sees mandate until page refresh
+    }
+  }
+
+  const INPUT = "w-full rounded bg-slate-800 px-2 py-1.5 text-xs text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500";
+
+  return (
+    <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] px-4 py-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        Representation
+      </p>
+
+      {mandates.length > 0 && (
+        <div className="mb-3 divide-y divide-white/[0.05]">
+          {mandates.map((m) => (
+            <div key={m.id} className="flex items-center justify-between py-2">
+              <div className="text-xs">
+                {m.exclusive
+                  ? <span className="font-semibold text-emerald-400">Exclusive</span>
+                  : <span className="text-slate-400">Non-exclusive</span>}
+                {m.end_date && (
+                  <span className="ml-2 text-slate-500">until {m.end_date}</span>
+                )}
+                {m.territory && (
+                  <span className="ml-2 text-slate-500">· {m.territory}</span>
+                )}
+              </div>
+              <button
+                onClick={() => handleRevoke(m.id)}
+                className="ml-3 text-xs text-red-400 hover:text-red-300 transition-colors"
+              >
+                Revoke
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {success ? (
+        <p className="text-sm text-emerald-400">
+          Mandate created. Player added to your clients.
+        </p>
+      ) : (
+        <div className="space-y-2.5">
+          {error && (
+            <p className="rounded bg-red-500/10 px-3 py-2 text-xs text-red-400 ring-1 ring-red-500/25">
+              {error}
+            </p>
+          )}
+          <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={exclusive}
+              onChange={(e) => setExclusive(e.target.checked)}
+              className="accent-emerald-500"
+            />
+            Exclusive mandate
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-[10px] text-slate-500 mb-1">Start date</p>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={INPUT} />
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-500 mb-1">End date</p>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={INPUT} />
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-500 mb-1">Territory (optional)</p>
+            <input
+              type="text"
+              value={territory}
+              onChange={(e) => setTerritory(e.target.value)}
+              placeholder="e.g. Europe"
+              className={INPUT + " placeholder-slate-600"}
+            />
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            className="w-full"
+            loading={submitting}
+            onClick={handleCreate}
+          >
+            Represent this player
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function PlayerMarketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { accessToken } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
   const isAuthenticated = !!accessToken;
+  const isAgent = user?.user_type === "AGENT";
   const { toggle, has } = useCompare();
   const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
 
@@ -625,6 +768,9 @@ export default function PlayerMarketDetailPage() {
           />
           {isAuthenticated && !isMyPlayer && (
             <PlayerFitCard playerId={player.id} />
+          )}
+          {isAgent && !isMyPlayer && id && (
+            <AgentRepresentationCard playerId={id} />
           )}
         </div>
       </div>
