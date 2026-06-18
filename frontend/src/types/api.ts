@@ -26,11 +26,14 @@ export interface Paginated<T> {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
+export type UserType = "CLUB" | "AGENT" | "PLAYER" | "STAFF" | "ADMIN";
+
 export interface User {
   id: string;
   email: string;
   is_active: boolean;
   is_superuser: boolean;
+  user_type: UserType;
   created_at: string;
 }
 
@@ -38,6 +41,28 @@ export interface TokenResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
+}
+
+export interface AgentProfileResponse {
+  id: string;
+  user_id: string;
+  display_name: string;
+  agency_name: string;
+  licence_no: string | null;
+  country: string;
+  verified: boolean;
+  created_at: string;
+}
+
+export interface RepresentedPlayerItem {
+  mandate_id: string;
+  player_id: string;
+  player_name: string;
+  player_position: string | null;
+  exclusive: boolean;
+  start_date: string | null;
+  end_date: string | null;
+  status: "ACTIVE" | "EXPIRED" | "REVOKED";
 }
 
 // ── Clubs ─────────────────────────────────────────────────────────────────────

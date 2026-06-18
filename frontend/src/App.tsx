@@ -15,6 +15,7 @@ import { usePageTracking } from "./hooks/usePageTracking";
 
 // ── Eager (hot-path) ──────────────────────────────────────────────────────────
 import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
 import DashboardPage from "./pages/dashboard/DashboardPage";
 import PlayerMarketPage from "./pages/market/PlayerMarketPage";
 import PlayerMarketDetailPage from "./pages/market/PlayerMarketDetailPage";
@@ -57,6 +58,8 @@ const AdminAnalyticsPage        = lazy(() => import("./pages/admin/AdminAnalytic
 const AdminTransferWindowPage   = lazy(() => import("./pages/admin/AdminTransferWindowPage"));
 const AdminHealthPage           = lazy(() => import("./pages/admin/AdminHealthPage"));
 const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage"));
+const AgentDashboardPage        = lazy(() => import("./pages/agent/AgentDashboardPage"));
+const AgentProfilePage          = lazy(() => import("./pages/agent/AgentProfilePage"));
 
 const NotFoundPage = () => (
   <div className="flex min-h-screen items-center justify-center bg-slate-950">
@@ -85,19 +88,41 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }
 
+const LoadingScreen = () => (
+  <div className="flex min-h-screen items-center justify-center bg-slate-950">
+    <Spinner size="lg" />
+  </div>
+);
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken, refreshToken, isBootstrapping } = useAuthStore();
-  if (isBootstrapping) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-  if (!accessToken && !refreshToken) {
-    return <Navigate to="/login" replace />;
-  }
+  if (isBootstrapping) return <LoadingScreen />;
+  if (!accessToken && !refreshToken) return <Navigate to="/login" replace />;
   return <AppShell>{children}</AppShell>;
+}
+
+function ClubRoute({ children }: { children: React.ReactNode }) {
+  const { user, accessToken, refreshToken, isBootstrapping } = useAuthStore();
+  if (isBootstrapping) return <LoadingScreen />;
+  if (!accessToken && !refreshToken) return <Navigate to="/login" replace />;
+  if (user && user.user_type !== "CLUB" && !user.is_superuser) return <Navigate to="/" replace />;
+  return <AppShell>{children}</AppShell>;
+}
+
+function AgentRoute({ children }: { children: React.ReactNode }) {
+  const { user, accessToken, refreshToken, isBootstrapping } = useAuthStore();
+  if (isBootstrapping) return <LoadingScreen />;
+  if (!accessToken && !refreshToken) return <Navigate to="/login" replace />;
+  if (user && user.user_type !== "AGENT") return <Navigate to="/" replace />;
+  return <AppShell>{children}</AppShell>;
+}
+
+function SmartRedirect() {
+  const { user, accessToken, refreshToken, isBootstrapping } = useAuthStore();
+  if (isBootstrapping) return <LoadingScreen />;
+  if (!accessToken && !refreshToken) return <Navigate to="/login" replace />;
+  if (user?.user_type === "AGENT") return <Navigate to="/agent/dashboard" replace />;
+  return <Navigate to="/dashboard" replace />;
 }
 
 // ── Query client ──────────────────────────────────────────────────────────────
@@ -123,7 +148,8 @@ export default function App() {
         <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950"><Spinner size="lg" /></div>}>
         <Routes>
           {/* ── Auth (no shell) ── */}
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login"    element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
           {/* ── Public market ── */}
           <Route path="/players/market"     element={<PublicRoute><PlayerMarketPage /></PublicRoute>} />
@@ -150,12 +176,14 @@ export default function App() {
           <Route path="/deals"     element={<ProtectedRoute><DealListPage /></ProtectedRoute>} />
           <Route path="/deals/:id" element={<ProtectedRoute><DealDetailPage /></ProtectedRoute>} />
 
-          {/* ── Protected ── */}
-          <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          {/* ── Club (protected, club-only) ── */}
+          <Route path="/dashboard"    element={<ClubRoute><DashboardPage /></ClubRoute>} />
+          <Route path="/club"         element={<ClubRoute><MyClubPage /></ClubRoute>} />
+          <Route path="/club/finance" element={<ClubRoute><FinancePage /></ClubRoute>} />
 
-          {/* ── Club (protected) ── */}
-          <Route path="/club"         element={<ProtectedRoute><MyClubPage /></ProtectedRoute>} />
-          <Route path="/club/finance" element={<ProtectedRoute><FinancePage /></ProtectedRoute>} />
+          {/* ── Agent portal ── */}
+          <Route path="/agent/dashboard" element={<AgentRoute><AgentDashboardPage /></AgentRoute>} />
+          <Route path="/agent/profile"   element={<AgentRoute><AgentProfilePage /></AgentRoute>} />
 
           {/* ── Scouting (protected) ── */}
           {/* /scouting/shortlists/:id must come before catch-alls */}
@@ -190,7 +218,7 @@ export default function App() {
           </Route>
 
           {/* ── Defaults ── */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<SmartRedirect />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
         </Suspense>

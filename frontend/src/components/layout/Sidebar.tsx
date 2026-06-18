@@ -6,7 +6,7 @@ import { useAuth } from "../../hooks/useAuth";
 import api from "../../lib/api";
 import Icon from "./Icon";
 import type { IconName } from "./Icon";
-import type { UnreadCount } from "../../types/api";
+import type { UnreadCount, UserType } from "../../types/api";
 
 interface NavItem {
   label: string;
@@ -24,50 +24,95 @@ interface NavGroup {
   superuserOnly?: boolean;
 }
 
-const NAV_GROUPS: NavGroup[] = [
-  {
-    title: "Market",
-    items: [
-      { label: "Browse Players",  to: "/players/market", icon: "users",           iconColor: "text-sky-400",     iconBg: "bg-sky-500/15" },
-      { label: "Listings",        to: "/sales",          icon: "tag",             iconColor: "text-amber-400",   iconBg: "bg-amber-500/15",  end: true },
-      { label: "Transfers",       to: "/transfers",      icon: "arrow-right-left",iconColor: "text-purple-400",  iconBg: "bg-purple-500/15" },
-    ],
-  },
-  {
-    title: "My Deals",
-    authRequired: true,
-    items: [
-      { label: "Auctions",    to: "/sales/mine",       icon: "gavel",           iconColor: "text-orange-400",  iconBg: "bg-orange-500/15" },
-      { label: "Inbox",       to: "/offers/received",  icon: "inbox",           iconColor: "text-emerald-400", iconBg: "bg-emerald-500/15" },
-      { label: "Sent Offers", to: "/offers/sent",      icon: "send",            iconColor: "text-teal-400",    iconBg: "bg-teal-500/15" },
-      { label: "Deals",       to: "/deals",            icon: "tag",             iconColor: "text-violet-400",  iconBg: "bg-violet-500/15" },
-    ],
-  },
-  {
-    title: "Club",
-    authRequired: true,
-    items: [
-      { label: "War Room", to: "/dashboard",    icon: "layout-dashboard", iconColor: "text-blue-400",   iconBg: "bg-blue-500/15" },
-      { label: "My Club",  to: "/club",         icon: "shield",           iconColor: "text-indigo-400", iconBg: "bg-indigo-500/15",  end: true },
-      { label: "Finance",  to: "/club/finance", icon: "wallet",           iconColor: "text-green-400",  iconBg: "bg-green-500/15" },
-    ],
-  },
-  {
-    title: "Scouting",
-    authRequired: true,
-    items: [
-      { label: "Shortlists", to: "/scouting/shortlists", icon: "list",      iconColor: "text-cyan-400",  iconBg: "bg-cyan-500/15" },
-    ],
-  },
-  {
-    title: "Admin",
-    authRequired: true,
-    superuserOnly: true,
-    items: [
-      { label: "Admin Panel", to: "/admin", icon: "settings", iconColor: "text-amber-400", iconBg: "bg-amber-500/15" },
-    ],
-  },
-];
+const ADMIN_GROUP: NavGroup = {
+  title: "Admin",
+  authRequired: true,
+  superuserOnly: true,
+  items: [
+    { label: "Admin Panel", to: "/admin", icon: "settings", iconColor: "text-amber-400", iconBg: "bg-amber-500/15" },
+  ],
+};
+
+function getNavGroups(userType: UserType | null): NavGroup[] {
+  if (userType === "AGENT") {
+    return [
+      {
+        title: "Market",
+        items: [
+          { label: "Browse Players", to: "/players/market", icon: "users",            iconColor: "text-sky-400",    iconBg: "bg-sky-500/15" },
+          { label: "Transfers",      to: "/transfers",      icon: "arrow-right-left", iconColor: "text-purple-400", iconBg: "bg-purple-500/15" },
+        ],
+      },
+      {
+        title: "My Clients",
+        authRequired: true,
+        items: [
+          { label: "Clients",       to: "/agent/dashboard", icon: "users", iconColor: "text-sky-400",    iconBg: "bg-sky-500/15",    end: true },
+        ],
+      },
+      {
+        title: "My Profile",
+        authRequired: true,
+        items: [
+          { label: "Agent Profile", to: "/agent/profile",   icon: "user",  iconColor: "text-indigo-400", iconBg: "bg-indigo-500/15" },
+        ],
+      },
+      ADMIN_GROUP,
+    ];
+  }
+
+  if (userType === "PLAYER") {
+    return [
+      {
+        title: "Market",
+        items: [
+          { label: "Browse Players", to: "/players/market", icon: "users",            iconColor: "text-sky-400",    iconBg: "bg-sky-500/15" },
+          { label: "Transfers",      to: "/transfers",      icon: "arrow-right-left", iconColor: "text-purple-400", iconBg: "bg-purple-500/15" },
+        ],
+      },
+      ADMIN_GROUP,
+    ];
+  }
+
+  // CLUB / unauthenticated / STAFF / ADMIN
+  return [
+    {
+      title: "Market",
+      items: [
+        { label: "Browse Players", to: "/players/market", icon: "users",            iconColor: "text-sky-400",    iconBg: "bg-sky-500/15" },
+        { label: "Listings",       to: "/sales",          icon: "tag",              iconColor: "text-amber-400",  iconBg: "bg-amber-500/15", end: true },
+        { label: "Transfers",      to: "/transfers",      icon: "arrow-right-left", iconColor: "text-purple-400", iconBg: "bg-purple-500/15" },
+      ],
+    },
+    {
+      title: "My Deals",
+      authRequired: true,
+      items: [
+        { label: "Auctions",    to: "/sales/mine",      icon: "gavel", iconColor: "text-orange-400",  iconBg: "bg-orange-500/15" },
+        { label: "Inbox",       to: "/offers/received", icon: "inbox", iconColor: "text-emerald-400", iconBg: "bg-emerald-500/15" },
+        { label: "Sent Offers", to: "/offers/sent",     icon: "send",  iconColor: "text-teal-400",    iconBg: "bg-teal-500/15" },
+        { label: "Deals",       to: "/deals",           icon: "tag",   iconColor: "text-violet-400",  iconBg: "bg-violet-500/15" },
+      ],
+    },
+    {
+      title: "Club",
+      authRequired: true,
+      items: [
+        { label: "War Room", to: "/dashboard",    icon: "layout-dashboard", iconColor: "text-blue-400",   iconBg: "bg-blue-500/15" },
+        { label: "My Club",  to: "/club",         icon: "shield",           iconColor: "text-indigo-400", iconBg: "bg-indigo-500/15", end: true },
+        { label: "Finance",  to: "/club/finance", icon: "wallet",           iconColor: "text-green-400",  iconBg: "bg-green-500/15" },
+      ],
+    },
+    {
+      title: "Scouting",
+      authRequired: true,
+      items: [
+        { label: "Shortlists", to: "/scouting/shortlists", icon: "list", iconColor: "text-cyan-400", iconBg: "bg-cyan-500/15" },
+      ],
+    },
+    ADMIN_GROUP,
+  ];
+}
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -179,8 +224,9 @@ function SidebarLink({ item, expanded }: { item: NavItem; expanded: boolean }) {
 }
 
 export default function Sidebar({ mobileOpen, onMobileClose, expanded, onToggle }: SidebarProps) {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, userType } = useAuth();
   const navigate = useNavigate();
+  const navGroups = getNavGroups(userType);
   // Show text labels when desktop sidebar is expanded OR mobile drawer is open
   const showText = expanded || mobileOpen;
 
@@ -223,7 +269,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, expanded, onToggle 
               <NotificationNavItem expanded={showText} />
             </div>
           )}
-          {NAV_GROUPS.map((group) => {
+          {navGroups.map((group) => {
             if (group.authRequired && !isAuthenticated) return null;
             if (group.superuserOnly && !user?.is_superuser) return null;
             return (

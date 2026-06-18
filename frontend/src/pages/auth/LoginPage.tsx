@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import Button from "../../components/ui/Button";
 import Icon from "../../components/layout/Icon";
@@ -18,8 +18,8 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await login(email, password);
-      navigate("/dashboard", { replace: true });
+      const me = await login(email, password);
+      navigate(me.user_type === "AGENT" ? "/agent/dashboard" : "/dashboard", { replace: true });
     } catch (err) {
       console.error("Login error:", err);
       setError("Invalid email or password.");
@@ -93,6 +93,13 @@ export default function LoginPage() {
             </Button>
           </form>
         </div>
+
+        <p className="mt-6 text-center text-sm text-slate-500">
+          New to TransferX?{" "}
+          <Link to="/register" className="text-emerald-400 hover:underline">
+            Create an account
+          </Link>
+        </p>
       </div>
     </div>
   );

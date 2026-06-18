@@ -40,7 +40,7 @@ export function useAuth() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string): Promise<User> => {
       const { data } = await api.post<TokenResponse>("/auth/login", {
         email,
         password,
@@ -48,6 +48,7 @@ export function useAuth() {
       setTokens(data.access_token, data.refresh_token);
       const { data: me } = await api.get<User>("/auth/me");
       setUser(me);
+      return me;
     },
     [setTokens, setUser]
   );
@@ -68,6 +69,10 @@ export function useAuth() {
     accessToken,
     isAuthenticated: !!accessToken,
     isSuperuser: user?.is_superuser ?? false,
+    userType: user?.user_type ?? null,
+    isClub: user?.user_type === "CLUB",
+    isAgent: user?.user_type === "AGENT",
+    isPlayer: user?.user_type === "PLAYER",
     login,
     logout: logoutAndRevoke,
   };
