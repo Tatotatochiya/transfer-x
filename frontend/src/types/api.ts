@@ -48,6 +48,7 @@ export interface ClubFinance {
   transfer_reserved: number;
   wage_reserved_weekly: number;
   transfer_committed: number;
+  transfer_spent: number;
   wage_committed_weekly: number;
   transfer_remaining: number;
   wage_remaining_weekly: number;
@@ -481,6 +482,7 @@ export interface AdminClubFinance {
   transfer_reserved: number;
   wage_reserved_weekly: number;
   transfer_committed: number;
+  transfer_spent: number;
   wage_committed_weekly: number;
   transfer_remaining: number;
   wage_remaining_weekly: number;

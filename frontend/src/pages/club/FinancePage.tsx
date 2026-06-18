@@ -31,6 +31,7 @@ interface FinanceSectionProps {
   remaining: number;
   reserved: number;
   committed: number;
+  spent?: number;
   formatFn: (v: number) => string;
 }
 
@@ -40,22 +41,21 @@ function FinanceSection({
   remaining,
   reserved,
   committed,
+  spent,
   formatFn,
 }: FinanceSectionProps) {
-  const spent = total - remaining;
   return (
     <Card>
       <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
         {title}
       </p>
 
-      {/* Big remaining figure */}
       <p className="text-3xl font-bold text-white tabular-nums">
         {formatFn(remaining)}
       </p>
       <p className="mt-0.5 text-xs text-slate-500">remaining</p>
 
-      <BudgetBar used={spent} total={total} />
+      <BudgetBar used={total - remaining} total={total} />
 
       <div className="mt-4 space-y-2 border-t border-white/[0.06] pt-4">
         <div className="flex items-center justify-between text-sm">
@@ -64,17 +64,19 @@ function FinanceSection({
             {formatFn(total)}
           </span>
         </div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-400">Reserved</span>
-          <span className="text-amber-400 tabular-nums">{formatFn(reserved)}</span>
-        </div>
+        {spent !== undefined && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-slate-400">Spent</span>
+            <span className="text-emerald-400 tabular-nums">{formatFn(spent)}</span>
+          </div>
+        )}
         <div className="flex items-center justify-between text-sm">
           <span className="text-slate-400">Committed</span>
           <span className="text-sky-400 tabular-nums">{formatFn(committed)}</span>
         </div>
-        <div className="flex items-center justify-between text-sm border-t border-white/[0.06] pt-2">
-          <span className="text-slate-400">Spent / reserved / committed</span>
-          <span className="text-slate-300 tabular-nums">{formatFn(spent)}</span>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-slate-400">Reserved</span>
+          <span className="text-amber-400 tabular-nums">{formatFn(reserved)}</span>
         </div>
       </div>
     </Card>
@@ -119,6 +121,7 @@ export default function FinancePage() {
             remaining={Number(finance.transfer_remaining)}
             reserved={Number(finance.transfer_reserved)}
             committed={Number(finance.transfer_committed)}
+            spent={Number(finance.transfer_spent)}
             formatFn={formatCurrency}
           />
           <FinanceSection
