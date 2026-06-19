@@ -6,7 +6,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.schemas import (
-    ImportRow,
     MatchCandidate,
     RosterImportRequest,
     RosterImportResult,
@@ -125,13 +124,32 @@ async def parse_csv_roster(
     return RosterPreviewResponse(rows=rows)
 
 
+_POSITION_MAP: dict[str, PlayerPosition] = {
+    # Goalkeeper
+    "GK": PlayerPosition.GK, "GOALKEEPER": PlayerPosition.GK, "KEEPER": PlayerPosition.GK,
+    # Defence
+    "DEF": PlayerPosition.DEF, "DEFENDER": PlayerPosition.DEF, "DEFENCE": PlayerPosition.DEF,
+    "DEFENSE": PlayerPosition.DEF, "CB": PlayerPosition.DEF, "LB": PlayerPosition.DEF,
+    "RB": PlayerPosition.DEF, "LWB": PlayerPosition.DEF, "RWB": PlayerPosition.DEF,
+    "FULLBACK": PlayerPosition.DEF, "FULL-BACK": PlayerPosition.DEF,
+    "CENTRE-BACK": PlayerPosition.DEF, "CENTER-BACK": PlayerPosition.DEF,
+    "WING-BACK": PlayerPosition.DEF,
+    # Midfield
+    "MID": PlayerPosition.MID, "MIDFIELD": PlayerPosition.MID, "MIDFIELDER": PlayerPosition.MID,
+    "CM": PlayerPosition.MID, "CDM": PlayerPosition.MID, "CAM": PlayerPosition.MID,
+    "DM": PlayerPosition.MID, "AM": PlayerPosition.MID, "LM": PlayerPosition.MID,
+    "RM": PlayerPosition.MID, "WINGER": PlayerPosition.MID, "WING": PlayerPosition.MID,
+    # Forward
+    "FWD": PlayerPosition.FWD, "FORWARD": PlayerPosition.FWD, "STRIKER": PlayerPosition.FWD,
+    "ATTACKER": PlayerPosition.FWD, "CF": PlayerPosition.FWD, "ST": PlayerPosition.FWD,
+    "LW": PlayerPosition.FWD, "RW": PlayerPosition.FWD,
+}
+
+
 def _parse_position(raw: str | None) -> PlayerPosition | None:
     if not raw:
         return None
-    try:
-        return PlayerPosition(raw.strip().upper()[:3])
-    except ValueError:
-        return None
+    return _POSITION_MAP.get(raw.strip().upper())
 
 
 async def import_roster(

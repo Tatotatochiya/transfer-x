@@ -27,9 +27,8 @@ function UploadStep({ onPreview }: { onPreview: (rows: RosterPreviewRow[]) => vo
     try {
       const form = new FormData();
       form.append("file", file);
-      const { data } = await api.post<{ rows: RosterPreviewRow[] }>("/agents/me/roster/preview", form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // Let the browser set Content-Type with the multipart boundary.
+      const { data } = await api.post<{ rows: RosterPreviewRow[] }>("/agents/me/roster/preview", form);
       if (data.rows.length === 0) {
         setError("No valid rows found in the file. Make sure the CSV has a 'Name' column.");
         return;

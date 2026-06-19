@@ -9,7 +9,8 @@ export type IconName =
   | "users" | "tag" | "user-plus" | "gavel" | "inbox" | "bell"
   | "send" | "layout-dashboard" | "shield" | "wallet" | "crosshair"
   | "list" | "settings" | "log-out" | "menu" | "x" | "chevron-right"
-  | "chevrons-right" | "chevrons-left" | "bolt" | "check" | "arrow-right-left";
+  | "chevrons-right" | "chevrons-left" | "bolt" | "check" | "arrow-right-left"
+  | "user" | "briefcase";
 
 const paths: Record<IconName, React.ReactNode> = {
   users: <><path strokeLinecap="round" strokeLinejoin="round" d="M17 20H7m10 0a3 3 0 003-3v-1a5 5 0 00-5-5H9a5 5 0 00-5 5v1a3 3 0 003 3m10 0v-2a7 7 0 00-7-7m0 0a3 3 0 10-6 0 3 3 0 006 0z" /></>,
@@ -34,6 +35,8 @@ const paths: Record<IconName, React.ReactNode> = {
   bolt: <><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></>,
   check: <><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></>,
   "arrow-right-left": <><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 3M21 7.5H7.5" /></>,
+  user: <><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></>,
+  briefcase: <><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></>,
 };
 
 export default function Icon({ name, className = "h-5 w-5" }: IconProps) {

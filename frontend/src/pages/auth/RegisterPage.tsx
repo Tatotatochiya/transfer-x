@@ -4,6 +4,7 @@ import api from "../../lib/api";
 import { useAuthStore } from "../../store/auth";
 import Button from "../../components/ui/Button";
 import Icon from "../../components/layout/Icon";
+import type { IconName } from "../../components/layout/Icon";
 import type { Paginated, Player, TokenResponse, User } from "../../types/api";
 
 type ActorType = "CLUB" | "AGENT" | "PLAYER";
@@ -15,7 +16,7 @@ const LABEL_CLS = "mb-1.5 block text-sm font-medium text-slate-300";
 
 interface TypeCardProps {
   type: ActorType;
-  icon: string;
+  icon: IconName;
   title: string;
   description: string;
   selected: boolean;
@@ -33,7 +34,7 @@ function TypeCard({ icon, title, description, selected, onSelect }: TypeCardProp
           : "bg-slate-800 ring-white/10 text-slate-400 hover:ring-white/20 hover:text-white"
       }`}
     >
-      <Icon name={icon as "shield"} className={`h-5 w-5 mb-1 ${selected ? "text-emerald-400" : ""}`} />
+      <Icon name={icon} className={`h-5 w-5 mb-1 ${selected ? "text-emerald-400" : ""}`} />
       <span className="text-sm font-semibold text-white">{title}</span>
       <span className="text-xs leading-snug">{description}</span>
     </button>

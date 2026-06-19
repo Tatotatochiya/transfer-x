@@ -5,9 +5,11 @@ import { useAuthStore } from "../store/auth";
 const _baseURL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 console.log("[api] baseURL =", _baseURL);
 
+// No default Content-Type: axios sets application/json for object bodies
+// automatically, and a hardcoded default would break multipart/form-data uploads
+// (axios 1.x serializes FormData to JSON when Content-Type is application/json).
 const api = axios.create({
   baseURL: _baseURL,
-  headers: { "Content-Type": "application/json" },
 });
 
 // ── Request interceptor — attach access token ─────────────────────────────────

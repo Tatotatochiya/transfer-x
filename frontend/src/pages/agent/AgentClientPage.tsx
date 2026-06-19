@@ -8,7 +8,6 @@ import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
-import { formatCurrency } from "../../lib/utils";
 
 const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {
   ACTIVE:             "Active",

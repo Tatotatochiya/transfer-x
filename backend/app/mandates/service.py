@@ -18,6 +18,17 @@ async def create_mandate(
     end_date: date | None = None,
     territory: str | None = None,
 ) -> Mandate:
+    # Prevent duplicate active mandates for the same agent+player (double-submit, re-import).
+    existing = await db.execute(
+        select(Mandate).where(
+            Mandate.agent_id == agent_profile_id,
+            Mandate.player_id == player_id,
+            Mandate.status == MandateStatus.ACTIVE,
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise ValueError("You already represent this player")
+
     if exclusive:
         result = await db.execute(
             select(Mandate).where(

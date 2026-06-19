@@ -1,7 +1,5 @@
-import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useAuthStore } from "../../store/auth";
 import { useAuth } from "../../hooks/useAuth";
 import api from "../../lib/api";
 import Icon from "./Icon";
