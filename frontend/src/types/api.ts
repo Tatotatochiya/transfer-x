@@ -63,6 +63,7 @@ export interface RepresentedPlayerItem {
   start_date: string | null;
   end_date: string | null;
   status: "ACTIVE" | "EXPIRED" | "REVOKED";
+  client_status: ClientStatus;
 }
 
 export interface MandateResponse {
@@ -75,6 +76,90 @@ export interface MandateResponse {
   territory: string | null;
   status: "ACTIVE" | "EXPIRED" | "REVOKED";
   created_at: string;
+}
+
+export type ClientStatus =
+  | "ACTIVE"
+  | "SEEKING_MOVE"
+  | "LOAN_AVAILABLE"
+  | "CONTRACT_EXTENSION"
+  | "UNAVAILABLE";
+
+export interface MandateDetailResponse extends MandateResponse {
+  client_status: ClientStatus;
+  agent_notes: string | null;
+  preferred_destinations: string | null;
+  asking_price: number | null;
+  asking_wage: number | null;
+  player_name: string;
+  player_position: string | null;
+  player_nationality: string | null;
+  player_age: number | null;
+  player_club_name: string | null;
+  contract_expiry: string | null;
+}
+
+export interface UpdateMandateRequest {
+  client_status?: ClientStatus;
+  agent_notes?: string | null;
+  preferred_destinations?: string | null;
+  asking_price?: number | null;
+  asking_wage?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  territory?: string | null;
+  exclusive?: boolean;
+}
+
+// ── Roster import ─────────────────────────────────────────────────────────────
+
+export interface MatchCandidate {
+  player_id: string;
+  player_name: string;
+  player_position: string | null;
+  player_club: string | null;
+}
+
+export interface RosterPreviewRow {
+  row_index: number;
+  name: string;
+  dob: string | null;
+  nationality: string | null;
+  position: string | null;
+  current_club: string | null;
+  contract_expiry: string | null;
+  match_status: "matched" | "ambiguous" | "no_match";
+  match_candidates: MatchCandidate[];
+}
+
+export interface RosterPreviewResponse {
+  rows: RosterPreviewRow[];
+}
+
+export interface ImportRow {
+  action: "create" | "link" | "skip";
+  player_id?: string;
+  name?: string;
+  dob?: string;
+  nationality?: string;
+  position?: string;
+  current_club?: string;
+}
+
+export interface RosterImportRequest {
+  rows: ImportRow[];
+  exclusive: boolean;
+  start_date: string | null;
+  end_date: string | null;
+  territory: string | null;
+}
+
+export interface RosterImportResult {
+  created: number;
+  linked: number;
+  skipped: number;
+  errors: string[];
+  mandate_ids: string[];
 }
 
 // ── Clubs ─────────────────────────────────────────────────────────────────────

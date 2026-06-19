@@ -6,7 +6,7 @@ from sqlalchemy import update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.mandates.models import Mandate, MandateStatus
-from app.players.models import Player
+from app.players.models import Contract, Player
 
 
 async def create_mandate(
@@ -73,6 +73,49 @@ async def revoke_mandate_as_player(
             .values(agent_id=None)
         )
 
+    return mandate
+
+
+async def get_mandate_detail(
+    db: AsyncSession,
+    mandate_id: uuid.UUID,
+    agent_profile_id: uuid.UUID,
+) -> tuple[Mandate, Player, Contract | None]:
+    from sqlalchemy.orm import selectinload
+
+    result = await db.execute(
+        select(Mandate, Player)
+        .join(Player, Player.id == Mandate.player_id)
+        .options(selectinload(Player.current_club))
+        .where(Mandate.id == mandate_id, Mandate.agent_id == agent_profile_id)
+    )
+    row = result.one_or_none()
+    if row is None:
+        raise ValueError("Mandate not found")
+    mandate, player = row
+
+    contract_result = await db.execute(
+        select(Contract)
+        .where(Contract.player_id == player.id, Contract.is_active.is_(True))
+        .order_by(Contract.end_date.desc().nullslast())
+        .limit(1)
+    )
+    contract = contract_result.scalar_one_or_none()
+    return mandate, player, contract
+
+
+async def patch_mandate(
+    db: AsyncSession,
+    mandate_id: uuid.UUID,
+    agent_profile_id: uuid.UUID,
+    updates: dict,
+) -> Mandate:
+    mandate = await db.get(Mandate, mandate_id)
+    if mandate is None or mandate.agent_id != agent_profile_id:
+        raise ValueError("Mandate not found")
+    for k, v in updates.items():
+        setattr(mandate, k, v)
+    await db.flush()
     return mandate
 
 

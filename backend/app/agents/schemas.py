@@ -1,9 +1,10 @@
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from app.mandates.models import MandateStatus
+from app.mandates.models import ClientStatus, MandateStatus
 
 
 class AgentProfileResponse(BaseModel):
@@ -35,3 +36,56 @@ class RepresentedPlayerItem(BaseModel):
     start_date: date | None
     end_date: date | None
     status: MandateStatus
+    client_status: ClientStatus
+
+
+# ── Roster import ─────────────────────────────────────────────────────────────
+
+class MatchCandidate(BaseModel):
+    player_id: str
+    player_name: str
+    player_position: str | None
+    player_club: str | None
+
+
+class RosterPreviewRow(BaseModel):
+    row_index: int
+    name: str
+    dob: str | None
+    nationality: str | None
+    position: str | None
+    current_club: str | None
+    contract_expiry: str | None
+    match_status: Literal["matched", "ambiguous", "no_match"]
+    match_candidates: list[MatchCandidate]
+
+
+class RosterPreviewResponse(BaseModel):
+    rows: list[RosterPreviewRow]
+
+
+class ImportRow(BaseModel):
+    action: Literal["create", "link", "skip"]
+    player_id: str | None = None  # UUID string, required for "link"
+    # fields for "create"
+    name: str | None = None
+    dob: date | None = None
+    nationality: str | None = None
+    position: str | None = None
+    current_club: str | None = None
+
+
+class RosterImportRequest(BaseModel):
+    rows: list[ImportRow]
+    exclusive: bool = False
+    start_date: date | None = None
+    end_date: date | None = None
+    territory: str | None = None
+
+
+class RosterImportResult(BaseModel):
+    created: int
+    linked: int
+    skipped: int
+    errors: list[str]
+    mandate_ids: list[str]

@@ -60,6 +60,8 @@ const AdminHealthPage           = lazy(() => import("./pages/admin/AdminHealthPa
 const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage"));
 const AgentDashboardPage        = lazy(() => import("./pages/agent/AgentDashboardPage"));
 const AgentProfilePage          = lazy(() => import("./pages/agent/AgentProfilePage"));
+const AgentClientPage           = lazy(() => import("./pages/agent/AgentClientPage"));
+const AgentRosterImportPage     = lazy(() => import("./pages/agent/AgentRosterImportPage"));
 const PlayerProfilePage         = lazy(() => import("./pages/player/PlayerProfilePage"));
 
 const NotFoundPage = () => (
@@ -192,8 +194,10 @@ export default function App() {
           <Route path="/club/finance" element={<ClubRoute><FinancePage /></ClubRoute>} />
 
           {/* ── Agent portal ── */}
-          <Route path="/agent/dashboard" element={<AgentRoute><AgentDashboardPage /></AgentRoute>} />
-          <Route path="/agent/profile"   element={<AgentRoute><AgentProfilePage /></AgentRoute>} />
+          <Route path="/agent/dashboard"          element={<AgentRoute><AgentDashboardPage /></AgentRoute>} />
+          <Route path="/agent/profile"            element={<AgentRoute><AgentProfilePage /></AgentRoute>} />
+          <Route path="/agent/clients/:mandateId" element={<AgentRoute><AgentClientPage /></AgentRoute>} />
+          <Route path="/agent/roster/import"      element={<AgentRoute><AgentRosterImportPage /></AgentRoute>} />
 
           {/* ── Player portal ── */}
           <Route path="/player/profile" element={<PlayerRoute><PlayerProfilePage /></PlayerRoute>} />

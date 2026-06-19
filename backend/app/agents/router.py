@@ -1,8 +1,15 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents import service
-from app.agents.schemas import AgentProfileResponse, AgentUpdateRequest, RepresentedPlayerItem
+from app.agents.schemas import (
+    AgentProfileResponse,
+    AgentUpdateRequest,
+    RepresentedPlayerItem,
+    RosterImportRequest,
+    RosterImportResult,
+    RosterPreviewResponse,
+)
 from app.auth.models import AgentProfile
 from app.database import get_db
 from app.deps import get_current_agent_profile
@@ -46,6 +53,28 @@ async def list_represented_players(
             start_date=mandate.start_date,
             end_date=mandate.end_date,
             status=mandate.status,
+            client_status=mandate.client_status,
         )
         for mandate, player in rows
     ]
+
+
+@router.post("/me/roster/preview", response_model=RosterPreviewResponse)
+async def preview_roster_import(
+    file: UploadFile,
+    profile: AgentProfile = Depends(get_current_agent_profile),
+    db: AsyncSession = Depends(get_db),
+) -> RosterPreviewResponse:
+    content = await file.read()
+    return await service.parse_csv_roster(db, content)
+
+
+@router.post("/me/roster/import", response_model=RosterImportResult)
+async def import_roster(
+    body: RosterImportRequest,
+    profile: AgentProfile = Depends(get_current_agent_profile),
+    db: AsyncSession = Depends(get_db),
+) -> RosterImportResult:
+    result = await service.import_roster(db, profile.id, body)
+    await db.commit()
+    return result
