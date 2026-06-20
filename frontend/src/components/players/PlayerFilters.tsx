@@ -18,6 +18,10 @@ export interface PlayerFilterState {
   min_appearances: string;
   min_avg_rating: string;
   min_form_score: string;
+  // Enrichment filters
+  min_value: string;
+  max_value: string;
+  contract_expiry_months: string;
   sort_by: "name" | "age" | "goals" | "assists" | "appearances" | "avg_rating" | "form_score";
   sort_dir: "asc" | "desc";
 }
@@ -36,6 +40,9 @@ export const DEFAULT_PLAYER_FILTERS: PlayerFilterState = {
   min_appearances: "",
   min_avg_rating: "",
   min_form_score: "",
+  min_value: "",
+  max_value: "",
+  contract_expiry_months: "",
   sort_by: "name",
   sort_dir: "asc",
 };
@@ -78,6 +85,8 @@ function countActiveFilters(f: PlayerFilterState): number {
   if (f.min_appearances) n++;
   if (f.min_avg_rating) n++;
   if (f.min_form_score) n++;
+  if (f.min_value || f.max_value) n++;
+  if (f.contract_expiry_months) n++;
   if (f.sort_by !== "name" || f.sort_dir !== "asc") n++;
   return n;
 }
@@ -116,6 +125,8 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange }:
   if (filters.min_appearances) chips.push({ label: `Apps ≥ ${filters.min_appearances}`, clear: () => set("min_appearances", "") });
   if (filters.min_avg_rating) chips.push({ label: `Rating ≥ ${filters.min_avg_rating}`, clear: () => set("min_avg_rating", "") });
   if (filters.min_form_score) chips.push({ label: `Form ≥ ${filters.min_form_score}`, clear: () => set("min_form_score", "") });
+  if (filters.min_value || filters.max_value) chips.push({ label: `Value: ${filters.min_value || "0"}–${filters.max_value || "∞"}M`, clear: () => onChange({ ...filters, min_value: "", max_value: "" }) });
+  if (filters.contract_expiry_months) chips.push({ label: `Expiring ≤ ${filters.contract_expiry_months}mo`, clear: () => set("contract_expiry_months", "") });
 
   return (
     <div className="mb-5 space-y-2">
@@ -303,6 +314,22 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange }:
               <div className="relative">
                 <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">Form≥</span>
                 <input type="number" placeholder="0" min={0} max={100} value={filters.min_form_score} onChange={(e) => set("min_form_score", e.target.value)} className={`${numInputCls} pl-12`} />
+              </div>
+            </div>
+          </div>
+
+          {/* Market Value & Contract */}
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Valuation</p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <input type="number" placeholder="Min €M" min={0} value={filters.min_value} onChange={(e) => set("min_value", e.target.value)} className={numInputCls} />
+                <span className="text-slate-600 text-xs shrink-0">–</span>
+                <input type="number" placeholder="Max €M" min={0} value={filters.max_value} onChange={(e) => set("max_value", e.target.value)} className={numInputCls} />
+              </div>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">Exp≤</span>
+                <input type="number" placeholder="months" min={1} max={36} value={filters.contract_expiry_months} onChange={(e) => set("contract_expiry_months", e.target.value)} className={`${numInputCls} pl-10`} />
               </div>
             </div>
           </div>

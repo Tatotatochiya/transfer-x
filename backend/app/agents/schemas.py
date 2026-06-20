@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from app.agents.models import InvitationStatus
+from app.agents.models import CommissionStatus, InvitationStatus
 from app.mandates.models import ClientStatus, MandateStatus
 
 
@@ -136,3 +136,37 @@ class AgentPipelineResponse(BaseModel):
     deals_completed_this_window: int
     total_commission_pipeline: Decimal
     items: list[PipelineDealItem]
+
+
+class AgentCommissionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    deal_id: uuid.UUID
+    agent_id: uuid.UUID
+    window_id: uuid.UUID | None
+    window_label: str | None
+    amount: Decimal
+    pct: Decimal | None
+    payer: str | None
+    status: CommissionStatus
+    created_at: datetime
+    confirmed_at: datetime | None
+    invoiced_at: datetime | None
+    paid_at: datetime | None
+
+
+class CommissionSummary(BaseModel):
+    earned: Decimal
+    pipeline: Decimal
+    outstanding: Decimal
+    total: int
+
+
+class AgentCommissionsResponse(BaseModel):
+    summary: CommissionSummary
+    commissions: list[AgentCommissionResponse]
+
+
+class CommissionStatusUpdate(BaseModel):
+    status: CommissionStatus

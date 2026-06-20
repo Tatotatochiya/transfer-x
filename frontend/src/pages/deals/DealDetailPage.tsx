@@ -489,6 +489,20 @@ export default function DealDetailPage() {
   const [showCollapsePanel, setShowCollapsePanel] = useState(false);
   const [collapseReason, setCollapseReason] = useState("");
 
+  // Deal builder state (TRA-59)
+  const [editingDealStructure, setEditingDealStructure] = useState(false);
+  const [dealDraft, setDealDraft] = useState({
+    deal_type: "PERMANENT",
+    loan_start: "", loan_end: "", loan_fee: "",
+    option_to_buy: "", sell_on_pct: "",
+  });
+  const [addingClause, setAddingClause] = useState(false);
+  const [clauseDraft, setClauseDraft] = useState({
+    clause_type: "APPEARANCES", trigger_description: "", amount: "", cap: "",
+  });
+  const [editingInstalments, setEditingInstalments] = useState(false);
+  const [instalmentRows, setInstalmentRows] = useState<Array<{due_date: string; amount: string}>>([]);
+
   const { data: deal, isLoading, isError } = useQuery<Deal>({
     queryKey: ["deals", id],
     queryFn: () => api.get<Deal>(`/deals/${id}`).then((r) => r.data),
@@ -525,6 +539,41 @@ export default function DealDetailPage() {
     onError: (err) => addToast(getApiError(err, "Failed to collapse deal."), "error"),
   });
 
+  // Deal builder mutations (TRA-59)
+  const updateDealMutation = useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      api.patch<Deal>(`/deals/${id}`, body).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals", id] });
+      setEditingDealStructure(false);
+      addToast("Deal updated.", "success");
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Failed to update deal."), "error"),
+  });
+
+  const addClauseMutation = useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      api.post(`/deals/${id}/clauses`, body).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals", id] });
+      setAddingClause(false);
+      setClauseDraft({ clause_type: "APPEARANCES", trigger_description: "", amount: "", cap: "" });
+      addToast("Clause added.", "success");
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Failed to add clause."), "error"),
+  });
+
+  const setInstalmentsMutation = useMutation({
+    mutationFn: (instalments: Array<{due_date: string; amount: number}>) =>
+      api.put(`/deals/${id}/instalments`, { instalments }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals", id] });
+      setEditingInstalments(false);
+      addToast("Payment schedule saved.", "success");
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Failed to save schedule."), "error"),
+  });
+
   // Load AgentNegotiation when deal is in that stage (TRA-128/129)
   const { data: negotiation } = useQuery<AgentNegotiation>({
     queryKey: ["deals", id, "agent-negotiation"],
@@ -558,6 +607,7 @@ export default function DealDetailPage() {
   const isParty    = isBuyer || isSeller;
   const isActive   = deal.status === "IN_PROGRESS" || deal.status === "PENDING_COMPLETION";
 
+  const atAgreement        = deal.stage === "AGREEMENT";
   const atAgentNegotiation = deal.stage === "AGENT_NEGOTIATION";
   const atPersonalTerms    = deal.stage === "PERSONAL_TERMS";
   // At PAPERWORK stage, clubs cannot advance — only staff can
@@ -567,7 +617,8 @@ export default function DealDetailPage() {
   // Agent can advance when both sides have AGREED (TRA-128)
   const agentCanAdvance    = isAgent && isActive && atAgentNegotiation &&
     negotiation?.club_agreement === "AGREED" && negotiation?.player_agreement === "AGREED";
-  const clubCanCollapse    = isParty && isActive;
+  const clubCanCollapse       = isParty && isActive;
+  const canEditDealStructure  = isParty && isActive && atAgreement;
 
   const advanceError =
     advanceMutation.isError ? getApiError(advanceMutation.error, "Failed.") : null;
@@ -820,75 +871,310 @@ export default function DealDetailPage() {
         {/* ── Right: builder panels + notes + timeline ── */}
         <div className="lg:col-span-2 space-y-4">
 
-          {/* Loan details (TRA-56) */}
-          {deal.deal_type === "LOAN" && (
-            <Panel title="Loan Details">
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                {deal.loan_start && (
-                  <><dt className="text-slate-500">Loan start</dt><dd className="text-white">{formatDate(deal.loan_start)}</dd></>
-                )}
-                {deal.loan_end && (
-                  <><dt className="text-slate-500">Loan end</dt><dd className="text-white">{formatDate(deal.loan_end)}</dd></>
-                )}
-                {deal.loan_fee != null && (
-                  <><dt className="text-slate-500">Loan fee</dt><dd className="text-white">{formatCurrency(deal.loan_fee)}</dd></>
-                )}
-                {deal.option_to_buy != null && (
-                  <><dt className="text-slate-500">Option to buy</dt><dd className="text-white">{formatCurrency(deal.option_to_buy)}</dd></>
-                )}
-                {deal.obligation_to_buy && (
-                  <><dt className="text-slate-500">Obligation to buy</dt><dd className="text-amber-300">Yes{deal.obligation_conditions ? ` — ${deal.obligation_conditions}` : ""}</dd></>
-                )}
-                {deal.sell_on_pct != null && (
-                  <><dt className="text-slate-500">Sell-on %</dt><dd className="text-white">{(deal.sell_on_pct * 100).toFixed(1)}%</dd></>
-                )}
-              </dl>
+          {/* Deal Structure (TRA-56/59) — editable in AGREEMENT stage */}
+          {(canEditDealStructure || deal.deal_type === "LOAN") && (
+            <Panel title="Deal Structure">
+              {editingDealStructure ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-400">Transfer type</label>
+                    <div className="flex gap-2">
+                      {(["PERMANENT", "LOAN"] as const).map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setDealDraft((d) => ({ ...d, deal_type: t }))}
+                          className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 transition-colors ${
+                            dealDraft.deal_type === t
+                              ? "bg-emerald-500/20 text-emerald-400 ring-emerald-500/40"
+                              : "bg-slate-800 text-slate-400 ring-white/10 hover:text-white"
+                          }`}
+                        >
+                          {t === "PERMANENT" ? "Permanent" : "Loan"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {dealDraft.deal_type === "LOAN" && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1 block text-xs text-slate-400">Loan start</label>
+                        <input type="date" value={dealDraft.loan_start} onChange={(e) => setDealDraft((d) => ({ ...d, loan_start: e.target.value }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs text-slate-400">Loan end</label>
+                        <input type="date" value={dealDraft.loan_end} onChange={(e) => setDealDraft((d) => ({ ...d, loan_end: e.target.value }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs text-slate-400">Loan fee (€)</label>
+                        <input type="number" min={0} value={dealDraft.loan_fee} onChange={(e) => setDealDraft((d) => ({ ...d, loan_fee: e.target.value }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs text-slate-400">Option to buy (€)</label>
+                        <input type="number" min={0} value={dealDraft.option_to_buy} onChange={(e) => setDealDraft((d) => ({ ...d, option_to_buy: e.target.value }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="mb-1 block text-xs text-slate-400">Sell-on % (decimal, e.g. 0.05 = 5%)</label>
+                        <input type="number" step="0.01" min={0} max={1} value={dealDraft.sell_on_pct} onChange={(e) => setDealDraft((d) => ({ ...d, sell_on_pct: e.target.value }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={updateDealMutation.isPending}
+                      onClick={() => {
+                        const payload: Record<string, unknown> = { deal_type: dealDraft.deal_type };
+                        if (dealDraft.deal_type === "LOAN") {
+                          if (dealDraft.loan_start)   payload.loan_start   = dealDraft.loan_start;
+                          if (dealDraft.loan_end)     payload.loan_end     = dealDraft.loan_end;
+                          if (dealDraft.loan_fee)     payload.loan_fee     = Number(dealDraft.loan_fee);
+                          if (dealDraft.option_to_buy) payload.option_to_buy = Number(dealDraft.option_to_buy);
+                          if (dealDraft.sell_on_pct)  payload.sell_on_pct  = Number(dealDraft.sell_on_pct);
+                        }
+                        updateDealMutation.mutate(payload);
+                      }}
+                    >
+                      Save
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setEditingDealStructure(false)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                    <dt className="text-slate-500">Type</dt>
+                    <dd className="text-white">{deal.deal_type === "LOAN" ? "Loan" : "Permanent"}</dd>
+                    {deal.loan_start && (
+                      <><dt className="text-slate-500">Loan start</dt><dd className="text-white">{formatDate(deal.loan_start)}</dd></>
+                    )}
+                    {deal.loan_end && (
+                      <><dt className="text-slate-500">Loan end</dt><dd className="text-white">{formatDate(deal.loan_end)}</dd></>
+                    )}
+                    {deal.loan_fee != null && (
+                      <><dt className="text-slate-500">Loan fee</dt><dd className="text-white">{formatCurrency(deal.loan_fee)}</dd></>
+                    )}
+                    {deal.option_to_buy != null && (
+                      <><dt className="text-slate-500">Option to buy</dt><dd className="text-white">{formatCurrency(deal.option_to_buy)}</dd></>
+                    )}
+                    {deal.obligation_to_buy && (
+                      <><dt className="text-slate-500">Obligation to buy</dt><dd className="text-amber-300">Yes{deal.obligation_conditions ? ` — ${deal.obligation_conditions}` : ""}</dd></>
+                    )}
+                    {deal.sell_on_pct != null && (
+                      <><dt className="text-slate-500">Sell-on %</dt><dd className="text-white">{(deal.sell_on_pct * 100).toFixed(1)}%</dd></>
+                    )}
+                  </dl>
+                  {canEditDealStructure && (
+                    <button
+                      onClick={() => {
+                        setDealDraft({
+                          deal_type: deal.deal_type ?? "PERMANENT",
+                          loan_start: deal.loan_start ?? "",
+                          loan_end: deal.loan_end ?? "",
+                          loan_fee: deal.loan_fee != null ? String(deal.loan_fee) : "",
+                          option_to_buy: deal.option_to_buy != null ? String(deal.option_to_buy) : "",
+                          sell_on_pct: deal.sell_on_pct != null ? String(deal.sell_on_pct) : "",
+                        });
+                        setEditingDealStructure(true);
+                      }}
+                      className="mt-3 text-xs text-slate-500 hover:text-emerald-400 transition-colors"
+                    >
+                      Edit deal structure →
+                    </button>
+                  )}
+                </>
+              )}
             </Panel>
           )}
 
-          {/* Add-on clauses (TRA-57) */}
-          {deal.clauses.length > 0 && (
-            <Panel title={`Add-on Clauses (${deal.clauses.length})`}>
-              <div className="space-y-2">
-                {deal.clauses.map((c) => (
-                  <div key={c.id} className="rounded-lg bg-slate-800/60 px-3 py-2.5 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-300 capitalize">
-                        {c.clause_type.toLowerCase()} clause
-                      </p>
-                      <p className="text-xs text-slate-500 truncate">{c.trigger_description}</p>
+          {/* Add-on clauses (TRA-57/59) */}
+          {(canEditDealStructure || deal.clauses.length > 0) && (
+            <Panel title={`Add-on Clauses${deal.clauses.length > 0 ? ` (${deal.clauses.length})` : ""}`}>
+              {deal.clauses.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  {deal.clauses.map((c) => (
+                    <div key={c.id} className="rounded-lg bg-slate-800/60 px-3 py-2.5 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-300 capitalize">
+                          {c.clause_type.toLowerCase()} clause
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">{c.trigger_description}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold text-white">{formatCurrency(c.amount)}</p>
+                        {c.cap != null && (
+                          <p className="text-[10px] text-slate-500">cap {formatCurrency(c.cap)}</p>
+                        )}
+                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                        c.status === "PAID"      ? "bg-emerald-500/20 text-emerald-400" :
+                        c.status === "TRIGGERED" ? "bg-amber-500/20 text-amber-400"    :
+                                                    "bg-slate-700 text-slate-400"
+                      }`}>{c.status}</span>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold text-white">{formatCurrency(c.amount)}</p>
-                      {c.cap != null && (
-                        <p className="text-[10px] text-slate-500">cap {formatCurrency(c.cap)}</p>
+                  ))}
+                </div>
+              )}
+              {canEditDealStructure && !addingClause && (
+                <button
+                  onClick={() => setAddingClause(true)}
+                  className="text-xs text-slate-500 hover:text-emerald-400 transition-colors"
+                >
+                  + Add clause
+                </button>
+              )}
+              {addingClause && (
+                <div className="rounded-lg bg-slate-800/60 px-4 py-3 ring-1 ring-white/[0.06] space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="mb-1 block text-xs text-slate-400">Type</label>
+                      <select
+                        value={clauseDraft.clause_type}
+                        onChange={(e) => setClauseDraft((d) => ({ ...d, clause_type: e.target.value }))}
+                        className="w-full rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                      >
+                        {["APPEARANCES", "GOALS", "PROMOTION", "RESALE", "OTHER"].map((t) => (
+                          <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-slate-400">Amount (€)</label>
+                      <input
+                        type="number" min={0}
+                        value={clauseDraft.amount}
+                        onChange={(e) => setClauseDraft((d) => ({ ...d, amount: e.target.value }))}
+                        className="w-full rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-400">Trigger description</label>
+                    <input
+                      type="text"
+                      value={clauseDraft.trigger_description}
+                      onChange={(e) => setClauseDraft((d) => ({ ...d, trigger_description: e.target.value }))}
+                      placeholder="e.g. Player makes 10+ appearances"
+                      className="w-full rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-400">Cap (€, optional)</label>
+                    <input
+                      type="number" min={0}
+                      value={clauseDraft.cap}
+                      onChange={(e) => setClauseDraft((d) => ({ ...d, cap: e.target.value }))}
+                      className="w-full rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={addClauseMutation.isPending}
+                      disabled={!clauseDraft.trigger_description || !clauseDraft.amount}
+                      onClick={() => addClauseMutation.mutate({
+                        clause_type: clauseDraft.clause_type,
+                        trigger_description: clauseDraft.trigger_description,
+                        amount: Number(clauseDraft.amount),
+                        ...(clauseDraft.cap ? { cap: Number(clauseDraft.cap) } : {}),
+                      })}
+                    >
+                      Add clause
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setAddingClause(false)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+            </Panel>
+          )}
+
+          {/* Instalment schedule (TRA-58/59) */}
+          {(canEditDealStructure || deal.instalments.length > 0) && (
+            <Panel title={`Payment Schedule${deal.instalments.length > 0 ? ` (${deal.instalments.length} instalments)` : ""}`}>
+              {deal.instalments.length > 0 && !editingInstalments && (
+                <div className="space-y-1.5 mb-3">
+                  {deal.instalments.map((inst) => (
+                    <div key={inst.id} className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">{formatDate(inst.due_date)}</span>
+                      <span className="font-semibold text-white">{formatCurrency(inst.amount)}</span>
+                      <span className={inst.paid ? "text-emerald-400 text-xs" : "text-slate-500 text-xs"}>
+                        {inst.paid ? `Paid ${inst.paid_at ? formatDate(inst.paid_at) : ""}` : "Pending"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {canEditDealStructure && !editingInstalments && (
+                <button
+                  onClick={() => {
+                    setInstalmentRows(
+                      deal.instalments.length > 0
+                        ? deal.instalments.map((i) => ({ due_date: i.due_date, amount: String(i.amount) }))
+                        : [{ due_date: "", amount: "" }]
+                    );
+                    setEditingInstalments(true);
+                  }}
+                  className="text-xs text-slate-500 hover:text-emerald-400 transition-colors"
+                >
+                  {deal.instalments.length > 0 ? "Edit schedule →" : "Set payment schedule"}
+                </button>
+              )}
+              {editingInstalments && (
+                <div className="space-y-2">
+                  {instalmentRows.map((row, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={row.due_date}
+                        onChange={(e) => setInstalmentRows((rows) => rows.map((r, j) => j === i ? { ...r, due_date: e.target.value } : r))}
+                        className="flex-1 rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="Amount (€)"
+                        value={row.amount}
+                        onChange={(e) => setInstalmentRows((rows) => rows.map((r, j) => j === i ? { ...r, amount: e.target.value } : r))}
+                        className="flex-1 rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                      />
+                      <button
+                        onClick={() => setInstalmentRows((rows) => rows.filter((_, j) => j !== i))}
+                        className="px-1 text-slate-500 hover:text-red-400 transition-colors text-xs"
+                        title="Remove"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <div className="text-xs text-slate-500 pt-1">
+                    Total: <span className="text-white font-semibold">{formatCurrency(instalmentRows.reduce((s, r) => s + (Number(r.amount) || 0), 0))}</span>
+                    {" / "}
+                    <span className="text-slate-400">{formatCurrency(deal.agreed_fee)} agreed fee</span>
+                  </div>
+                  <div className="flex items-center gap-3 flex-wrap pt-1">
+                    <button
+                      onClick={() => setInstalmentRows((rows) => [...rows, { due_date: "", amount: "" }])}
+                      className="text-xs text-slate-500 hover:text-emerald-400 transition-colors"
+                    >
+                      + Add instalment
+                    </button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={setInstalmentsMutation.isPending}
+                      disabled={instalmentRows.some((r) => !r.due_date || !r.amount)}
+                      onClick={() => setInstalmentsMutation.mutate(
+                        instalmentRows.map((r) => ({ due_date: r.due_date, amount: Number(r.amount) }))
                       )}
-                    </div>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-                      c.status === "PAID"      ? "bg-emerald-500/20 text-emerald-400" :
-                      c.status === "TRIGGERED" ? "bg-amber-500/20 text-amber-400"    :
-                                                  "bg-slate-700 text-slate-400"
-                    }`}>{c.status}</span>
+                    >
+                      Save schedule
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setEditingInstalments(false)}>Cancel</Button>
                   </div>
-                ))}
-              </div>
-            </Panel>
-          )}
-
-          {/* Instalment schedule (TRA-58) */}
-          {deal.instalments.length > 0 && (
-            <Panel title={`Payment Schedule (${deal.instalments.length} instalments)`}>
-              <div className="space-y-1.5">
-                {deal.instalments.map((inst) => (
-                  <div key={inst.id} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-400">{formatDate(inst.due_date)}</span>
-                    <span className="font-semibold text-white">{formatCurrency(inst.amount)}</span>
-                    <span className={inst.paid ? "text-emerald-400 text-xs" : "text-slate-500 text-xs"}>
-                      {inst.paid ? `Paid ${inst.paid_at ? formatDate(inst.paid_at) : ""}` : "Pending"}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                </div>
+              )}
             </Panel>
           )}
 

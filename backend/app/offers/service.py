@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app import clubs as clubs_module
+from app.audit import service as audit_service
 from app.deals.models import Deal, DealStage, DealStatus
 from app.offers.models import Offer, OfferEvent, OfferEventType, OfferMessage, OfferStatus
 
@@ -147,6 +148,14 @@ async def create_offer(
     db.add(offer)
     await db.flush()
 
+    await audit_service.emit(
+        db,
+        entity_type="OFFER", entity_id=offer.id,
+        action="OFFER_CREATED",
+        payload={"fee_amount": str(fee_amount) if fee_amount else None, "player_id": str(player_id)},
+        description=f"Offer created by club {from_club_id}",
+    )
+
     db.add(OfferEvent(
         offer_id=offer.id,
         event_type=OfferEventType.CREATED,
@@ -268,6 +277,20 @@ async def accept_offer(
     )
     db.add(deal)
     await db.flush()
+
+    await audit_service.emit(
+        db,
+        entity_type="OFFER", entity_id=offer.id,
+        action="OFFER_ACCEPTED",
+        description=f"Offer accepted — deal {deal.id} created",
+    )
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="DEAL_CREATED",
+        payload={"agreed_fee": str(deal.agreed_fee), "stage": deal.stage.value},
+        description="Deal created from accepted offer",
+    )
 
     # TRA-125: if the player has an active mandate, pull the agent in immediately.
     await _maybe_invite_agent(db, deal, offer)

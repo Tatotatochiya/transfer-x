@@ -106,6 +106,7 @@ export default function SquadTable({ players, showContractDetails = false, formS
                 <>
                   <th className="px-4 py-3 text-right">Wage / wk</th>
                   <th className="px-4 py-3 text-left">Contract ends</th>
+                  <th className="px-4 py-3 text-right">Mkt Value</th>
                   <th className="px-4 py-3 text-right">Valuation</th>
                 </>
               )}
@@ -242,6 +243,11 @@ export default function SquadTable({ players, showContractDetails = false, formS
                               year: "numeric",
                             })
                           : <span className="text-slate-600">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-semibold tabular-nums text-slate-300">
+                        {player.market_value != null
+                          ? formatCurrency(player.market_value)
+                          : <span className="text-slate-600 font-normal">—</span>}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {onSetValuation && player.active_contract ? (

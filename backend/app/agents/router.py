@@ -1,11 +1,18 @@
-from fastapi import APIRouter, Depends, UploadFile
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents import service
+from app.agents.models import AgentCommission
 from app.agents.schemas import (
+    AgentCommissionsResponse,
+    AgentCommissionResponse,
     AgentPipelineResponse,
     AgentProfileResponse,
     AgentUpdateRequest,
+    CommissionStatusUpdate,
     DealSummary,
     InvitationResponse,
     RepresentedPlayerItem,
@@ -113,3 +120,41 @@ async def list_invitations(
         )
         for inv in invitations
     ]
+
+
+# ── TRA-132: Commission endpoints ─────────────────────────────────────────────
+
+@router.get("/me/commissions", response_model=AgentCommissionsResponse)
+async def get_commissions(
+    profile: AgentProfile = Depends(get_current_agent_profile),
+    db: AsyncSession = Depends(get_db),
+) -> AgentCommissionsResponse:
+    data = await service.get_agent_commissions(db, profile.id)
+    return AgentCommissionsResponse(
+        summary=data["summary"],
+        commissions=[AgentCommissionResponse.model_validate(c) for c in data["commissions"]],
+    )
+
+
+@router.patch("/me/commissions/{commission_id}/status", response_model=AgentCommissionResponse)
+async def update_commission_status(
+    commission_id: uuid.UUID,
+    body: CommissionStatusUpdate,
+    profile: AgentProfile = Depends(get_current_agent_profile),
+    db: AsyncSession = Depends(get_db),
+) -> AgentCommissionResponse:
+    result = await db.execute(
+        select(AgentCommission).where(
+            AgentCommission.id == commission_id,
+            AgentCommission.agent_id == profile.id,
+        )
+    )
+    commission = result.scalar_one_or_none()
+    if not commission:
+        raise HTTPException(status_code=404, detail="Commission not found")
+    try:
+        commission = await service.update_commission_status(db, commission, new_status=body.status)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    await db.commit()
+    return AgentCommissionResponse.model_validate(commission)

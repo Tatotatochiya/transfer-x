@@ -10,7 +10,7 @@ import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import { positionVariant } from "../../lib/badges";
-import { getApiError } from "../../lib/utils";
+import { formatCurrency, getApiError } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
 import type { PlayerPosition } from "../../types/enums";
 
@@ -286,6 +286,9 @@ export default function ShortlistDetailPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Status
                 </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Market Value
+                </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Priority
                 </th>
@@ -337,6 +340,11 @@ export default function ShortlistDetailPage() {
                           ? "Contracted"
                           : (item.player.status ?? "—")
                         : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-semibold text-slate-300 tabular-nums">
+                      {item.player?.market_value != null
+                        ? formatCurrency(item.player.market_value)
+                        : <span className="text-slate-600 font-normal">—</span>}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span

@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -43,6 +44,9 @@ async def player_market(
     min_appearances: int | None = Query(None, ge=0),
     min_avg_rating: float | None = Query(None, ge=0, le=10),
     min_form_score: float | None = Query(None, ge=0, le=100),
+    min_market_value: Decimal | None = Query(None, ge=0),
+    max_market_value: Decimal | None = Query(None, ge=0),
+    contract_expiry_within_months: int | None = Query(None, ge=1, le=36),
     sort_by: str = Query("name", pattern="^(name|age|goals|assists|appearances|avg_rating|form_score)$"),
     sort_dir: str = Query("asc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
@@ -66,6 +70,9 @@ async def player_market(
         min_appearances=min_appearances,
         min_avg_rating=min_avg_rating,
         min_form_score=min_form_score,
+        min_market_value=min_market_value,
+        max_market_value=max_market_value,
+        contract_expiry_within_months=contract_expiry_within_months,
         sort_by=sort_by,
         sort_dir=sort_dir,
         page=page,

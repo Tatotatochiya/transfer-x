@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import and_, case, func, nullslast, or_, select, update
@@ -125,6 +125,10 @@ async def list_market_players(
     min_appearances: int | None = None,
     min_avg_rating: float | None = None,
     min_form_score: float | None = None,
+    # Enrichment-based filters
+    min_market_value: Decimal | None = None,
+    max_market_value: Decimal | None = None,
+    contract_expiry_within_months: int | None = None,
     sort_by: str = "name",
     sort_dir: str = "asc",
     page: int = 1,
@@ -196,6 +200,15 @@ async def list_market_players(
             PlayerForm.form_score >= D(str(min_form_score))
         )
         q = q.where(Player.id.in_(form_sq))
+
+    # Enrichment-based filters
+    if min_market_value is not None:
+        q = q.where(Player.market_value >= min_market_value)
+    if max_market_value is not None:
+        q = q.where(Player.market_value <= max_market_value)
+    if contract_expiry_within_months is not None:
+        cutoff = date.today() + timedelta(days=30 * contract_expiry_within_months)
+        q = q.where(Player.contract_expiry.is_not(None), Player.contract_expiry <= cutoff)
 
     # Sorting — stats columns require a left-join to aggregated stats
     stats_sort_cols = ("goals", "assists", "appearances", "avg_rating")

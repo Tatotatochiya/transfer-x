@@ -27,6 +27,8 @@ from app.stats.models import PlayerForm, PlayerStats, PlayerStatsSnapshot, Vendo
 from app.world.models import WorldLeague, WorldTeam  # noqa: F401
 from app.analytics.models import AnalyticsEvent  # noqa: F401
 from app.transfer_window.models import TransferWindow  # noqa: F401
+from app.audit.models import AuditEvent  # noqa: F401
+from app.agents.models import AgentDealInvitation, AgentCommission  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url_sync)

@@ -27,6 +27,9 @@ async def sync_all_players(db: AsyncSession) -> None:
     if val_source == "ETV":
         from app.enrichment.etv import ETVAdapter
         val_provider = ETVAdapter()
+    elif val_source == "TRANSFERMARKT":
+        from app.enrichment.transfermarkt import TransfermarktAdapter
+        val_provider = TransfermarktAdapter()
 
     if wage_source == "CAPOLOGY":
         from app.enrichment.capology import CapologyAdapter

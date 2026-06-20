@@ -4,9 +4,10 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from sqlalchemy import or_, and_, select
+from sqlalchemy import func, or_, and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.models import AgentCommission, CommissionStatus
 from app.agents.schemas import (
     MatchCandidate,
     RosterImportRequest,
@@ -348,3 +349,98 @@ async def import_roster(
         errors=errors,
         mandate_ids=mandate_ids,
     )
+
+
+# ── TRA-132: Commission service ───────────────────────────────────────────────
+
+async def create_commission_from_negotiation(
+    db: AsyncSession,
+    *,
+    deal_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    amount: Decimal,
+    pct: Decimal | None,
+    payer: str | None,
+    window_id: uuid.UUID | None = None,
+    window_label: str | None = None,
+) -> AgentCommission:
+    """Create a PENDING commission when deal reaches PERSONAL_TERMS stage."""
+    commission = AgentCommission(
+        deal_id=deal_id,
+        agent_id=agent_id,
+        window_id=window_id,
+        amount=amount,
+        pct=pct,
+        payer=payer,
+        status=CommissionStatus.PENDING,
+        window_label=window_label,
+    )
+    db.add(commission)
+    await db.flush()
+    return commission
+
+
+async def confirm_commission(
+    db: AsyncSession,
+    commission: AgentCommission,
+) -> AgentCommission:
+    """Move commission to CONFIRMED when deal completes."""
+    commission.status = CommissionStatus.CONFIRMED
+    commission.confirmed_at = datetime.now(timezone.utc)
+    await db.flush()
+    return commission
+
+
+async def update_commission_status(
+    db: AsyncSession,
+    commission: AgentCommission,
+    *,
+    new_status: CommissionStatus,
+) -> AgentCommission:
+    """Agent-driven lifecycle advance: CONFIRMED → INVOICED → PAID."""
+    valid_transitions = {
+        CommissionStatus.CONFIRMED: CommissionStatus.INVOICED,
+        CommissionStatus.INVOICED: CommissionStatus.PAID,
+    }
+    expected = valid_transitions.get(commission.status)
+    if expected != new_status:
+        raise ValueError(
+            f"Cannot transition commission from {commission.status} to {new_status}"
+        )
+    commission.status = new_status
+    now = datetime.now(timezone.utc)
+    if new_status == CommissionStatus.INVOICED:
+        commission.invoiced_at = now
+    elif new_status == CommissionStatus.PAID:
+        commission.paid_at = now
+    await db.flush()
+    return commission
+
+
+async def get_agent_commissions(
+    db: AsyncSession,
+    agent_id: uuid.UUID,
+) -> dict:
+    """Return all commissions for an agent with summary aggregates."""
+    result = await db.execute(
+        select(AgentCommission)
+        .where(AgentCommission.agent_id == agent_id)
+        .order_by(AgentCommission.created_at.desc())
+    )
+    commissions = list(result.scalars().all())
+
+    earned = sum(c.amount for c in commissions if c.status == CommissionStatus.PAID)
+    pipeline = sum(c.amount for c in commissions if c.status in (
+        CommissionStatus.PENDING, CommissionStatus.CONFIRMED
+    ))
+    outstanding = sum(c.amount for c in commissions if c.status == CommissionStatus.INVOICED)
+
+    return {
+        "summary": {
+            "earned": earned,
+            "pipeline": pipeline,
+            "outstanding": outstanding,
+            "total": len(commissions),
+        },
+        "commissions": commissions,
+    }

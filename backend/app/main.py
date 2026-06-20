@@ -28,6 +28,7 @@ from app.fixtures import router as fixtures_router
 from app.transfer_window import router as transfer_window_router
 from app.mandates import router as mandates_router
 from app.agents import router as agents_router
+from app.audit import router as audit_router
 
 logger = logging.getLogger(__name__)
 
@@ -152,3 +153,4 @@ app.include_router(ws_router.router)
 app.include_router(ai_router)
 app.include_router(mandates_router.router, prefix="/mandates")
 app.include_router(agents_router.router, prefix="/agents")
+app.include_router(audit_router.router, prefix="")

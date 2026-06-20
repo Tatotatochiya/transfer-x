@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -9,6 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import RefreshToken, User
 from app.config import settings
+
+
+def _hash_token(raw: str) -> str:
+    """SHA-256 hex digest of a raw refresh-token string."""
+    return hashlib.sha256(raw.encode()).hexdigest()
 
 
 # ── Passwords ─────────────────────────────────────────────────────────────────
@@ -53,10 +59,11 @@ def _new_refresh_token_string() -> str:
 
 async def create_refresh_token(db: AsyncSession, user_id: uuid.UUID) -> str:
     token_str = _new_refresh_token_string()
+    token_hash = _hash_token(token_str)
     expires_at = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_token_expire_days)
-    db.add(RefreshToken(user_id=user_id, token=token_str, expires_at=expires_at))
+    db.add(RefreshToken(user_id=user_id, token=token_hash, expires_at=expires_at))
     await db.flush()
-    return token_str
+    return token_str  # return raw; only the hash is stored
 
 
 async def rotate_refresh_token(db: AsyncSession, old_token_str: str) -> tuple[str, "User"]:
@@ -65,7 +72,7 @@ async def rotate_refresh_token(db: AsyncSession, old_token_str: str) -> tuple[st
     Returns (new_token_str, user). Raises ValueError if invalid/expired.
     """
     result = await db.execute(
-        select(RefreshToken).where(RefreshToken.token == old_token_str)
+        select(RefreshToken).where(RefreshToken.token == _hash_token(old_token_str))
     )
     rt = result.scalar_one_or_none()
 
@@ -86,7 +93,7 @@ async def rotate_refresh_token(db: AsyncSession, old_token_str: str) -> tuple[st
 
 async def revoke_refresh_token(db: AsyncSession, token_str: str) -> None:
     result = await db.execute(
-        select(RefreshToken).where(RefreshToken.token == token_str)
+        select(RefreshToken).where(RefreshToken.token == _hash_token(token_str))
     )
     rt = result.scalar_one_or_none()
     if rt:

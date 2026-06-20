@@ -1119,3 +1119,46 @@ export interface NLSearchResponse {
   filters: NLParsedFilters;
   total: number;
 }
+
+// TRA-132/133: Commission tracking
+export type CommissionStatus = "PENDING" | "CONFIRMED" | "INVOICED" | "PAID";
+
+export interface AgentCommission {
+  id: string;
+  deal_id: string;
+  agent_id: string;
+  window_id: string | null;
+  window_label: string | null;
+  amount: number;
+  pct: number | null;
+  payer: CommissionPayer | null;
+  status: CommissionStatus;
+  created_at: string;
+  confirmed_at: string | null;
+  invoiced_at: string | null;
+  paid_at: string | null;
+}
+
+export interface CommissionSummary {
+  earned: number;
+  pipeline: number;
+  outstanding: number;
+  total: number;
+}
+
+export interface AgentCommissionsResponse {
+  summary: CommissionSummary;
+  commissions: AgentCommission[];
+}
+
+// TRA-62: Audit log
+export interface AuditEvent {
+  id: string;
+  actor_user_id: string | null;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  description: string | null;
+  payload_json: Record<string, unknown> | null;
+  created_at: string;
+}

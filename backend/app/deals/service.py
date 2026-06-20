@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app import clubs as clubs_module
+from app.audit import service as audit_service
 from app.deals.models import (
     ClauseStatus,
     ClauseType,
@@ -386,6 +387,18 @@ async def advance_deal(
         deal.commission_agent_id = neg.agent_id
         deal.stage = DealStage.PERSONAL_TERMS
 
+        # TRA-132: create PENDING commission record
+        if neg.commission_amount and neg.agent_id:
+            from app.agents.service import create_commission_from_negotiation
+            await create_commission_from_negotiation(
+                db,
+                deal_id=deal.id,
+                agent_id=neg.agent_id,
+                amount=neg.commission_amount,
+                pct=neg.commission_pct,
+                payer=neg.commission_payer.value if neg.commission_payer else None,
+            )
+
     elif stage == DealStage.PERSONAL_TERMS:
         from app.agents.models import AgreementStatus
 
@@ -411,11 +424,24 @@ async def advance_deal(
     elif stage == DealStage.CONFIRMED:
         deal.stage = DealStage.COMPLETED
         await _complete_deal(db, deal)
+        await audit_service.emit(
+            db,
+            entity_type="DEAL", entity_id=deal.id,
+            action="DEAL_COMPLETED",
+            description=f"Deal completed — player transferred",
+        )
         return deal
 
     elif stage == DealStage.COMPLETED:
         raise ValueError("Deal is already completed")
 
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="STAGE_ADVANCED",
+        payload={"from_stage": stage.value, "to_stage": deal.stage.value},
+        description=f"Deal advanced from {stage.value} to {deal.stage.value}",
+    )
     await db.flush()
     return deal
 
@@ -444,6 +470,12 @@ async def collapse_deal(
                 )
 
     deal.status = DealStatus.COLLAPSED
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="DEAL_COLLAPSED",
+        description="Deal collapsed — committed budget released",
+    )
     await db.flush()
     return deal
 
@@ -612,6 +644,17 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
         club_id=deal.buyer_club_id,
         wage_weekly=deal.agreed_wage_weekly,
     )
+
+    # TRA-132: confirm any pending commission for this deal
+    from app.agents.models import AgentCommission as _AgentCommission
+    from app.agents.service import confirm_commission
+    comm_result = await db.execute(
+        select(_AgentCommission).where(_AgentCommission.deal_id == deal.id)
+    )
+    existing_commission = comm_result.scalar_one_or_none()
+    if existing_commission:
+        await confirm_commission(db, existing_commission)
+
     await db.flush()
 
 

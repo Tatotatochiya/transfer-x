@@ -47,6 +47,9 @@ function applySavedFilters(saved: Record<string, unknown>, current: PlayerFilter
     min_appearances: (saved.min_appearances as string) ?? "",
     min_avg_rating: (saved.min_avg_rating as string) ?? "",
     min_form_score: (saved.min_form_score as string) ?? "",
+    min_value: (saved.min_value as string) ?? "",
+    max_value: (saved.max_value as string) ?? "",
+    contract_expiry_months: (saved.contract_expiry_months as string) ?? "",
     sort_by: (saved.sort_by as PlayerFilterState["sort_by"]) ?? "name",
     sort_dir: (saved.sort_dir as PlayerFilterState["sort_dir"]) ?? "asc",
   };
@@ -205,6 +208,9 @@ export default function PlayerMarketPage() {
             ...(filters.min_assists      && { min_assists: Number(filters.min_assists) }),
             ...(filters.min_appearances  && { min_appearances: Number(filters.min_appearances) }),
             ...(filters.min_avg_rating   && { min_avg_rating: Number(filters.min_avg_rating) }),
+            ...(filters.min_value        && { min_market_value: Number(filters.min_value) * 1_000_000 }),
+            ...(filters.max_value        && { max_market_value: Number(filters.max_value) * 1_000_000 }),
+            ...(filters.contract_expiry_months && { contract_expiry_within_months: Number(filters.contract_expiry_months) }),
             ...(filters.min_form_score   && { min_form_score: Number(filters.min_form_score) }),
           },
         })

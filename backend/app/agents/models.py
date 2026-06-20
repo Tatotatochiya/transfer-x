@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, Text, Uuid, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -114,6 +114,57 @@ class AgentNegotiation(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     agreed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    deal: Mapped["app.deals.models.Deal"] = relationship(  # type: ignore[name-defined]
+        "Deal", foreign_keys=[deal_id]
+    )
+    agent: Mapped["app.auth.models.AgentProfile"] = relationship(  # type: ignore[name-defined]
+        "AgentProfile", foreign_keys=[agent_id]
+    )
+
+
+class CommissionStatus(str, enum.Enum):
+    PENDING   = "PENDING"    # Terms agreed; deal not yet complete
+    CONFIRMED = "CONFIRMED"  # Deal completed; commission due
+    INVOICED  = "INVOICED"   # Agent has raised invoice
+    PAID      = "PAID"       # Commission paid
+
+
+class AgentCommission(Base):
+    """Per-deal commission record derived from AgentNegotiation (TRA-132)."""
+    __tablename__ = "agent_commissions"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deal_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"),
+        nullable=False, unique=True, index=True,
+    )
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("agent_profiles.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    window_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("transfer_windows.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
+    payer: Mapped[CommissionPayer | None] = mapped_column(
+        SAEnum(CommissionPayer, name="commissionpayer"), nullable=True
+    )
+    status: Mapped[CommissionStatus] = mapped_column(
+        SAEnum(CommissionStatus, name="commissionstatus"),
+        nullable=False,
+        default=CommissionStatus.PENDING,
+        server_default="PENDING",
+    )
+    window_label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    invoiced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     deal: Mapped["app.deals.models.Deal"] = relationship(  # type: ignore[name-defined]
         "Deal", foreign_keys=[deal_id]
