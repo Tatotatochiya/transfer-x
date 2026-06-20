@@ -71,12 +71,25 @@ async def _notify_upcoming_events_job() -> None:
             logger.exception("Error in notify_upcoming_events job")
 
 
+async def _enrichment_sync_job() -> None:
+    """TRA-67: daily sync of player valuations and wage data from external providers."""
+    from app.enrichment.sync import sync_all_players
+
+    async with AsyncSessionLocal() as db:
+        try:
+            async with db.begin():
+                await sync_all_players(db)
+        except Exception:
+            logger.exception("Error in enrichment sync job")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     _scheduler.add_job(_close_expired_sales_job, "interval", minutes=1, id="close_expired_sales")
     _scheduler.add_job(_expire_stale_offers_job, "interval", minutes=5, id="expire_stale_offers")
     _scheduler.add_job(_notify_upcoming_events_job, "interval", hours=1, id="notify_upcoming_events")
+    _scheduler.add_job(_enrichment_sync_job, "interval", hours=24, id="enrichment_sync")
     _scheduler.start()
     logger.info("APScheduler started")
     yield
