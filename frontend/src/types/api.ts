@@ -535,6 +535,33 @@ export interface AgentDealInvitation {
   deal: DealInvitationDealSummary | null;
 }
 
+// ── Agent pipeline (TRA-130) ──────────────────────────────────────────────────
+
+export interface PipelineDealItem {
+  deal_id: string;
+  player_id: string;
+  player_name: string;
+  player_photo_url: string | null;
+  buyer_club_name: string | null;
+  seller_club_name: string | null;
+  stage: string;
+  deal_status: string;
+  agreed_fee: number | null;
+  commission_amount: number | null;
+  commission_pct: number | null;
+  action_required: boolean;
+  action_description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentPipelineResponse {
+  deals_in_progress: number;
+  deals_completed_this_window: number;
+  total_commission_pipeline: number;
+  items: PipelineDealItem[];
+}
+
 // ── Transfer activity ─────────────────────────────────────────────────────────
 
 export interface TransferActivity {

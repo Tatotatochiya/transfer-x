@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../lib/api";
-import type { AgentDealInvitation, AgentProfileResponse, RepresentedPlayerItem } from "../../types/api";
+import type { AgentDealInvitation, AgentPipelineResponse, AgentProfileResponse, PipelineDealItem, RepresentedPlayerItem } from "../../types/api";
 import Card from "../../components/ui/Card";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
@@ -81,6 +81,57 @@ function ClientCard({ client }: { client: RepresentedPlayerItem }) {
   );
 }
 
+const STAGE_LABELS: Record<string, string> = {
+  AGREEMENT: "Agreement",
+  AGENT_NEGOTIATION: "Agent Negotiation",
+  PERSONAL_TERMS: "Personal Terms",
+  PAPERWORK: "Paperwork",
+  CONFIRMED: "Confirmed",
+  COMPLETED: "Completed",
+};
+
+function PipelineRow({ item }: { item: PipelineDealItem }) {
+  return (
+    <Link to={`/deals/${item.deal_id}`} className="block">
+      <div
+        className={`rounded-xl px-4 py-3 ring-1 transition-all hover:ring-emerald-500/30 ${
+          item.action_required
+            ? "bg-amber-500/5 ring-amber-500/20 hover:ring-amber-500/40"
+            : "bg-slate-900 ring-white/[0.07]"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="truncate text-sm font-semibold text-white">
+                {item.player_name}
+              </p>
+              {item.action_required && (
+                <span className="shrink-0 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-400">
+                  Action needed
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 truncate text-xs text-slate-500">
+              {item.seller_club_name ?? "?"} → {item.buyer_club_name ?? "?"}
+            </p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-xs font-medium text-slate-400">
+              {STAGE_LABELS[item.stage] ?? item.stage}
+            </p>
+            {item.commission_amount != null && (
+              <p className="text-[11px] text-emerald-400 tabular-nums mt-0.5">
+                {formatCurrency(item.commission_amount)}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function AgentDashboardPage() {
   const navigate = useNavigate();
   const { data: profile, isLoading: profileLoading } = useQuery<AgentProfileResponse>({
@@ -96,6 +147,11 @@ export default function AgentDashboardPage() {
   const { data: invitations = [] } = useQuery<AgentDealInvitation[]>({
     queryKey: ["agents", "me", "invitations"],
     queryFn: () => api.get<AgentDealInvitation[]>("/agents/me/invitations").then((r) => r.data),
+  });
+
+  const { data: pipeline } = useQuery<AgentPipelineResponse>({
+    queryKey: ["agents", "me", "pipeline"],
+    queryFn: () => api.get<AgentPipelineResponse>("/agents/me/pipeline").then((r) => r.data),
   });
 
   if (profileLoading || clientsLoading) {
@@ -164,6 +220,35 @@ export default function AgentDashboardPage() {
                   </div>
                 </div>
               </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Pipeline (TRA-130) */}
+      {pipeline && pipeline.items.length > 0 && (
+        <div className="mt-6">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Deal pipeline
+            </p>
+            <div className="flex items-center gap-4 text-xs text-slate-500">
+              <span>
+                <span className="text-white font-semibold">{pipeline.deals_in_progress}</span> active
+              </span>
+              <span>
+                <span className="text-white font-semibold">{pipeline.deals_completed_this_window}</span> completed
+              </span>
+              {pipeline.total_commission_pipeline > 0 && (
+                <span className="text-emerald-400 font-semibold">
+                  {formatCurrency(pipeline.total_commission_pipeline)} pipeline
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="space-y-2">
+            {pipeline.items.map((item) => (
+              <PipelineRow key={item.deal_id} item={item} />
             ))}
           </div>
         </div>

@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents import service
 from app.agents.schemas import (
+    AgentPipelineResponse,
     AgentProfileResponse,
     AgentUpdateRequest,
     DealSummary,
@@ -80,6 +81,14 @@ async def import_roster(
     result = await service.import_roster(db, profile.id, body)
     await db.commit()
     return result
+
+
+@router.get("/me/pipeline", response_model=AgentPipelineResponse)
+async def get_pipeline(
+    profile: AgentProfile = Depends(get_current_agent_profile),
+    db: AsyncSession = Depends(get_db),
+) -> AgentPipelineResponse:
+    return await service.get_agent_pipeline(db, profile.id)
 
 
 @router.get("/me/invitations", response_model=list[InvitationResponse])

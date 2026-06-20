@@ -109,3 +109,30 @@ class InvitationResponse(BaseModel):
     status: InvitationStatus
     created_at: datetime
     deal: DealSummary | None = None
+
+
+# ── Pipeline view (TRA-130) ───────────────────────────────────────────────────
+
+class PipelineDealItem(BaseModel):
+    deal_id: uuid.UUID
+    player_id: uuid.UUID
+    player_name: str
+    player_photo_url: str | None
+    buyer_club_name: str | None
+    seller_club_name: str | None
+    stage: str
+    deal_status: str
+    agreed_fee: Decimal | None
+    commission_amount: Decimal | None
+    commission_pct: Decimal | None
+    action_required: bool
+    action_description: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AgentPipelineResponse(BaseModel):
+    deals_in_progress: int
+    deals_completed_this_window: int
+    total_commission_pipeline: Decimal
+    items: list[PipelineDealItem]

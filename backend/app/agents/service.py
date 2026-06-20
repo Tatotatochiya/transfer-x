@@ -1,8 +1,10 @@
 import csv
 import io
 import uuid
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import or_, and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.schemas import (
@@ -88,6 +90,110 @@ async def list_represented_players(
         .order_by(Player.name)
     )
     return result.all()
+
+
+async def get_agent_pipeline(
+    db: AsyncSession, agent_profile_id: uuid.UUID
+) -> dict:
+    """TRA-130: aggregate pipeline view across all mandated clients."""
+    from sqlalchemy.orm import selectinload
+    from app.agents.models import AgentNegotiation, NegotiationStatus
+    from app.agents.schemas import AgentPipelineResponse, PipelineDealItem
+    from app.deals.models import Deal, DealStatus, DealStage
+
+    # Active mandates for this agent
+    mandate_result = await db.execute(
+        select(Mandate).where(
+            Mandate.agent_id == agent_profile_id,
+            Mandate.status == MandateStatus.ACTIVE,
+        )
+    )
+    mandates = mandate_result.scalars().all()
+
+    if not mandates:
+        return AgentPipelineResponse(
+            deals_in_progress=0,
+            deals_completed_this_window=0,
+            total_commission_pipeline=Decimal(0),
+            items=[],
+        )
+
+    player_ids = [m.player_id for m in mandates]
+    cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+
+    deal_result = await db.execute(
+        select(Deal)
+        .where(
+            Deal.player_id.in_(player_ids),
+            or_(
+                Deal.status.in_([DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION]),
+                and_(
+                    Deal.status == DealStatus.COMPLETED,
+                    Deal.completed_at >= cutoff,
+                ),
+            ),
+        )
+        .options(
+            selectinload(Deal.player),
+            selectinload(Deal.buyer_club),
+            selectinload(Deal.seller_club),
+        )
+        .order_by(Deal.updated_at.desc())
+    )
+    deals = deal_result.scalars().all()
+
+    # Bulk-load AgentNegotiation for AGENT_NEGOTIATION stage deals
+    ag_neg_deal_ids = [d.id for d in deals if d.stage == DealStage.AGENT_NEGOTIATION]
+    negotiations: dict[uuid.UUID, AgentNegotiation] = {}
+    if ag_neg_deal_ids:
+        neg_result = await db.execute(
+            select(AgentNegotiation).where(AgentNegotiation.deal_id.in_(ag_neg_deal_ids))
+        )
+        for neg in neg_result.scalars().all():
+            negotiations[neg.deal_id] = neg
+
+    items: list[PipelineDealItem] = []
+    for deal in deals:
+        neg = negotiations.get(deal.id)
+        action_required = (
+            deal.stage == DealStage.AGENT_NEGOTIATION
+            and neg is not None
+            and neg.status == NegotiationStatus.IN_PROGRESS
+        )
+        items.append(
+            PipelineDealItem(
+                deal_id=deal.id,
+                player_id=deal.player_id,
+                player_name=deal.player.name if deal.player else "Unknown",
+                player_photo_url=deal.player.photo_url if deal.player else None,
+                buyer_club_name=deal.buyer_club.name if deal.buyer_club else None,
+                seller_club_name=deal.seller_club.name if deal.seller_club else None,
+                stage=deal.stage,
+                deal_status=deal.status,
+                agreed_fee=deal.agreed_fee,
+                commission_amount=deal.agent_commission_amount,
+                commission_pct=deal.agent_commission_pct,
+                action_required=action_required,
+                action_description="Update negotiation terms and await agreement" if action_required else None,
+                created_at=deal.created_at,
+                updated_at=deal.updated_at,
+            )
+        )
+
+    # Action-required items float to top; within each group keep updated_at desc order
+    items.sort(key=lambda x: (not x.action_required, x.updated_at), reverse=False)
+
+    active_statuses = {DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION}
+    return AgentPipelineResponse(
+        deals_in_progress=sum(1 for d in deals if d.status in active_statuses),
+        deals_completed_this_window=sum(1 for d in deals if d.status == DealStatus.COMPLETED),
+        total_commission_pipeline=sum(
+            (d.agent_commission_amount or Decimal(0))
+            for d in deals
+            if d.status in active_statuses
+        ),
+        items=items,
+    )
 
 
 # ── Roster import ─────────────────────────────────────────────────────────────
