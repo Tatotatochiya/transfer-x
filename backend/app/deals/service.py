@@ -19,6 +19,8 @@ from app.deals.models import (
     DealStage,
     DealStatus,
     DealType,
+    MedicalCheck,
+    MedicalStatus,
     PersonalTerms,
 )
 from app.players import service as players_service
@@ -36,6 +38,7 @@ def _load_options():
         selectinload(Deal.clauses),
         selectinload(Deal.instalments),
         selectinload(Deal.personal_terms),
+        selectinload(Deal.medical_check),
     ]
 
 
@@ -396,6 +399,13 @@ async def advance_deal(
     elif stage == DealStage.PAPERWORK:
         if not is_staff:
             raise PermissionError("TransferX is handling the paperwork — staff only action")
+        # TRA-61: block if medical check exists and is FAILED (missing = not yet done, allowed)
+        mc_result = await db.execute(
+            select(MedicalCheck).where(MedicalCheck.deal_id == deal.id)
+        )
+        mc = mc_result.scalar_one_or_none()
+        if mc is not None and mc.status == MedicalStatus.FAILED:
+            raise ValueError("Cannot advance: medical check has failed")
         deal.stage = DealStage.CONFIRMED
 
     elif stage == DealStage.CONFIRMED:
@@ -603,6 +613,39 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
         wage_weekly=deal.agreed_wage_weekly,
     )
     await db.flush()
+
+
+# ── TRA-61: medical check ────────────────────────────────────────────────────
+
+
+async def get_medical_check(db: AsyncSession, deal_id: uuid.UUID) -> MedicalCheck | None:
+    result = await db.execute(
+        select(MedicalCheck).where(MedicalCheck.deal_id == deal_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def upsert_medical_check(
+    db: AsyncSession,
+    deal: Deal,
+    *,
+    status: MedicalStatus,
+    notes: str | None = None,
+    is_staff: bool = False,
+) -> MedicalCheck:
+    """Staff creates or updates the medical check for a deal."""
+    if not is_staff:
+        raise PermissionError("Staff only")
+
+    mc = await get_medical_check(db, deal.id)
+    if mc is None:
+        mc = MedicalCheck(deal_id=deal.id)
+        db.add(mc)
+
+    mc.status = status
+    mc.notes = notes
+    await db.flush()
+    return mc
 
 
 # ── TRA-60: personal terms ───────────────────────────────────────────────────

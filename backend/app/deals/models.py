@@ -142,6 +142,9 @@ class Deal(Base):
     personal_terms: Mapped["PersonalTerms | None"] = relationship(
         "PersonalTerms", back_populates="deal", uselist=False, cascade="all, delete-orphan"
     )
+    medical_check: Mapped["MedicalCheck | None"] = relationship(
+        "MedicalCheck", back_populates="deal", uselist=False, cascade="all, delete-orphan"
+    )
 
     @property
     def is_auction_deal(self) -> bool:
@@ -211,6 +214,40 @@ class DealInstalment(Base):
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     deal: Mapped["Deal"] = relationship("Deal", back_populates="instalments")
+
+
+class MedicalStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    PASSED  = "PASSED"
+    FAILED  = "FAILED"
+
+
+class MedicalCheck(Base):
+    """Medical check stub (TRA-61). A missing record is treated as not-yet-requested,
+    which does NOT block PAPERWORK → CONFIRMED. A FAILED record does block it.
+    """
+    __tablename__ = "medical_checks"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deal_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"),
+        nullable=False, unique=True, index=True,
+    )
+    status: Mapped[MedicalStatus] = mapped_column(
+        SAEnum(MedicalStatus, name="medicalstatus"),
+        nullable=False,
+        default=MedicalStatus.PENDING,
+        server_default="PENDING",
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    deal: Mapped["Deal"] = relationship("Deal", back_populates="medical_check")
 
 
 class PersonalTerms(Base):

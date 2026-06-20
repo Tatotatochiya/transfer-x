@@ -23,6 +23,7 @@ from app.deals.schemas import (
     DealNoteRequest,
     DealNoteResponse,
     DealResponse,
+    MedicalCheckResponse,
     NegotiationRespondRequest,
     OngoingStats,
     PersonalTermsResponse,
@@ -33,6 +34,7 @@ from app.deals.schemas import (
     UpdateClauseStatusRequest,
     UpdateDealRequest,
     UpdateNegotiationTermsRequest,
+    UpsertMedicalCheckRequest,
 )
 from app.deps import get_current_user
 from app.notifications import service as notif_service
@@ -127,6 +129,7 @@ def _build_deal_response(deal) -> DealResponse:
         commission_payer=deal.commission_payer,
         commission_agent_id=deal.commission_agent_id,
         personal_terms=deal.personal_terms,
+        medical_check=deal.medical_check,
         notes=deal.notes,
         completed_at=deal.completed_at,
         created_at=deal.created_at,
@@ -543,6 +546,47 @@ async def list_instalments(
     if club.id not in parties and not current_user.is_superuser:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
     return [DealInstalmentResponse.model_validate(i) for i in deal.instalments]
+
+
+# ── TRA-61: medical check ────────────────────────────────────────────────────
+
+
+@router.get("/deals/{deal_id}/medical-check", response_model=MedicalCheckResponse)
+async def get_medical_check(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    deal = await _get_deal_or_404(db, deal_id)
+    mc = await service.get_medical_check(db, deal.id)
+    if mc is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No medical check found")
+    return mc
+
+
+@router.put("/deals/{deal_id}/medical-check", response_model=MedicalCheckResponse)
+async def upsert_medical_check(
+    deal_id: uuid.UUID,
+    body: UpsertMedicalCheckRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Staff only: create or update the medical check for a deal."""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff only")
+
+    deal = await _get_deal_or_404(db, deal_id)
+    try:
+        mc = await service.upsert_medical_check(
+            db, deal, status=body.status, notes=body.notes, is_staff=True
+        )
+        await db.commit()
+        await db.refresh(mc)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return mc
 
 
 # ── TRA-60: personal terms ───────────────────────────────────────────────────

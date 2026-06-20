@@ -5,7 +5,7 @@ from decimal import Decimal
 from pydantic import BaseModel, model_validator
 
 from app.agents.models import AgreementStatus, CommissionPayer, NegotiationStatus  # noqa: F401 (re-exported)
-from app.deals.models import ClauseStatus, ClauseType, DealStage, DealStatus, DealType
+from app.deals.models import ClauseStatus, ClauseType, DealStage, DealStatus, DealType, MedicalStatus
 
 
 class ClubSummary(BaseModel):
@@ -135,6 +135,23 @@ class DealInstalmentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Medical check schemas (TRA-61) ───────────────────────────────────────────
+
+class MedicalCheckResponse(BaseModel):
+    id: uuid.UUID
+    deal_id: uuid.UUID
+    status: MedicalStatus
+    notes: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+
+
+class UpsertMedicalCheckRequest(BaseModel):
+    status: MedicalStatus
+    notes: str | None = None
+
+
 # ── Personal terms schemas (TRA-60) ──────────────────────────────────────────
 
 class PersonalTermsResponse(BaseModel):
@@ -246,6 +263,8 @@ class DealResponse(BaseModel):
     commission_agent_id: uuid.UUID | None = None
     # TRA-60
     personal_terms: PersonalTermsResponse | None = None
+    # TRA-61
+    medical_check: MedicalCheckResponse | None = None
     notes: str | None
     completed_at: datetime | None
     created_at: datetime
