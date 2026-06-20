@@ -1,10 +1,10 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
-from app.deals.models import DealStage, DealStatus
+from app.deals.models import ClauseStatus, ClauseType, DealStage, DealStatus, DealType
 
 
 class ClubSummary(BaseModel):
@@ -88,6 +88,73 @@ class TransferAnalytics(BaseModel):
     ongoing: OngoingStats
 
 
+# ── Clause schemas (TRA-57) ───────────────────────────────────────────────────
+
+class DealClauseResponse(BaseModel):
+    id: uuid.UUID
+    deal_id: uuid.UUID
+    clause_type: ClauseType
+    trigger_description: str
+    amount: Decimal
+    cap: Decimal | None
+    status: ClauseStatus
+    created_at: datetime
+    model_config = {"from_attributes": True}
+
+
+class CreateClauseRequest(BaseModel):
+    clause_type: ClauseType
+    trigger_description: str
+    amount: Decimal
+    cap: Decimal | None = None
+
+
+class UpdateClauseStatusRequest(BaseModel):
+    status: ClauseStatus
+
+
+# ── Instalment schemas (TRA-58) ───────────────────────────────────────────────
+
+class InstalmentItem(BaseModel):
+    due_date: date
+    amount: Decimal
+
+
+class CreateInstalmentsRequest(BaseModel):
+    instalments: list[InstalmentItem]
+
+
+class DealInstalmentResponse(BaseModel):
+    id: uuid.UUID
+    deal_id: uuid.UUID
+    due_date: date
+    amount: Decimal
+    paid: bool
+    paid_at: datetime | None
+    model_config = {"from_attributes": True}
+
+
+# ── Update deal request (TRA-56) ──────────────────────────────────────────────
+
+class UpdateDealRequest(BaseModel):
+    deal_type: DealType | None = None
+    loan_start: date | None = None
+    loan_end: date | None = None
+    loan_fee: Decimal | None = None
+    option_to_buy: Decimal | None = None
+    obligation_to_buy: bool | None = None
+    obligation_conditions: str | None = None
+    sell_on_pct: Decimal | None = None
+
+    @model_validator(mode="after")
+    def _validate_sell_on(self) -> "UpdateDealRequest":
+        if self.sell_on_pct is not None and not (Decimal("0") <= self.sell_on_pct <= Decimal("1")):
+            raise ValueError("sell_on_pct must be between 0 and 1")
+        return self
+
+
+# ── Deal response ─────────────────────────────────────────────────────────────
+
 class DealResponse(BaseModel):
     id: uuid.UUID
     sale_id: uuid.UUID | None
@@ -100,6 +167,19 @@ class DealResponse(BaseModel):
     agreed_wage_weekly: Decimal | None
     status: DealStatus
     stage: DealStage
+    # TRA-56
+    deal_type: DealType = DealType.PERMANENT
+    loan_start: date | None = None
+    loan_end: date | None = None
+    loan_fee: Decimal | None = None
+    option_to_buy: Decimal | None = None
+    obligation_to_buy: bool = False
+    obligation_conditions: str | None = None
+    # TRA-57
+    sell_on_pct: Decimal | None = None
+    clauses: list[DealClauseResponse] = []
+    # TRA-58
+    instalments: list[DealInstalmentResponse] = []
     notes: str | None
     completed_at: datetime | None
     created_at: datetime

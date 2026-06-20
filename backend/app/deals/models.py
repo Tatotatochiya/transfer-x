@@ -1,9 +1,9 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, Uuid, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text, Uuid, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,6 +22,25 @@ class DealStage(str, enum.Enum):
     PAPERWORK = "PAPERWORK"
     CONFIRMED = "CONFIRMED"
     COMPLETED = "COMPLETED"
+
+
+class DealType(str, enum.Enum):
+    PERMANENT = "PERMANENT"
+    LOAN = "LOAN"
+
+
+class ClauseType(str, enum.Enum):
+    APPEARANCES = "APPEARANCES"
+    GOALS = "GOALS"
+    PROMOTION = "PROMOTION"
+    RESALE = "RESALE"
+    OTHER = "OTHER"
+
+
+class ClauseStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    TRIGGERED = "TRIGGERED"
+    PAID = "PAID"
 
 
 class Deal(Base):
@@ -60,6 +79,21 @@ class Deal(Base):
         default=DealStage.AGREEMENT,
         index=True,
     )
+    # TRA-56: loan fields
+    deal_type: Mapped[DealType] = mapped_column(
+        SAEnum(DealType, name="dealtype"),
+        nullable=False,
+        default=DealType.PERMANENT,
+        server_default="PERMANENT",
+    )
+    loan_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    loan_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    loan_fee: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    option_to_buy: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    obligation_to_buy: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    obligation_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # TRA-57: sell-on percentage (0.0–1.0), recorded on the selling club's side
+    sell_on_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -86,6 +120,13 @@ class Deal(Base):
     )
     deal_notes: Mapped[list["DealNote"]] = relationship(
         "DealNote", back_populates="deal", cascade="all, delete-orphan", order_by="DealNote.created_at"
+    )
+    clauses: Mapped[list["DealClause"]] = relationship(
+        "DealClause", back_populates="deal", cascade="all, delete-orphan"
+    )
+    instalments: Mapped[list["DealInstalment"]] = relationship(
+        "DealInstalment", back_populates="deal", cascade="all, delete-orphan",
+        order_by="DealInstalment.due_date",
     )
 
     @property
@@ -115,3 +156,44 @@ class DealNote(Base):
     author_club: Mapped["app.clubs.models.Club | None"] = relationship(  # type: ignore[name-defined]
         "Club", foreign_keys=[author_club_id]
     )
+
+
+class DealClause(Base):
+    __tablename__ = "deal_clauses"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deal_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    clause_type: Mapped[ClauseType] = mapped_column(
+        SAEnum(ClauseType, name="clausetype"), nullable=False
+    )
+    trigger_description: Mapped[str] = mapped_column(Text, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    cap: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    status: Mapped[ClauseStatus] = mapped_column(
+        SAEnum(ClauseStatus, name="clausestatus"),
+        nullable=False,
+        default=ClauseStatus.PENDING,
+        server_default="PENDING",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    deal: Mapped["Deal"] = relationship("Deal", back_populates="clauses")
+
+
+class DealInstalment(Base):
+    __tablename__ = "deal_instalments"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deal_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    due_date: Mapped[date] = mapped_column(Date, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    paid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    deal: Mapped["Deal"] = relationship("Deal", back_populates="instalments")

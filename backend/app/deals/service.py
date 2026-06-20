@@ -9,7 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app import clubs as clubs_module
-from app.deals.models import Deal, DealNote, DealStage, DealStatus
+from app.deals.models import (
+    ClauseStatus,
+    ClauseType,
+    Deal,
+    DealClause,
+    DealInstalment,
+    DealNote,
+    DealStage,
+    DealStatus,
+    DealType,
+)
 from app.players import service as players_service
 from app.players.models import Contract, Player
 
@@ -22,6 +32,8 @@ def _load_options():
         selectinload(Deal.deal_notes).selectinload(DealNote.author_club),
         selectinload(Deal.sale),
         selectinload(Deal.offer),
+        selectinload(Deal.clauses),
+        selectinload(Deal.instalments),
     ]
 
 
@@ -436,8 +448,19 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
     if player is None:
         raise ValueError("Player not found")
 
-    fee = deal.agreed_fee or Decimal("0")
+    # For LOAN deals use loan_fee if set, otherwise agreed_fee.
+    fee = (
+        deal.loan_fee
+        if deal.deal_type == DealType.LOAN and deal.loan_fee is not None
+        else deal.agreed_fee
+    ) or Decimal("0")
     new_wage = deal.agreed_wage_weekly or Decimal("0")
+
+    # TRA-58: if an instalment schedule exists, transfer_spent is driven by mark-paid, not here.
+    inst_count_result = await db.execute(
+        select(func.count()).where(DealInstalment.deal_id == deal.id)
+    )
+    has_instalments = (inst_count_result.scalar_one() or 0) > 0
 
     # Capture the seller's outgoing wage BEFORE the contract is deactivated.
     old_wage = Decimal("0")
@@ -462,11 +485,12 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
     buyer_fin = finances.get(deal.buyer_club_id)
     seller_fin = finances.get(deal.seller_club_id) if deal.seller_club_id else None
 
-    # Buyer: fee committed → spent; wage committed → reserved (clamped — wage commit isn't wired yet).
+    # Buyer: fee committed → spent (skipped when instalments drive spending); wage committed → reserved.
     if buyer_fin:
         if fee > 0:
             buyer_fin.transfer_committed = max(Decimal("0"), buyer_fin.transfer_committed - fee)
-            buyer_fin.transfer_spent += fee
+            if not has_instalments:
+                buyer_fin.transfer_spent += fee
         if new_wage > 0:
             buyer_fin.wage_committed_weekly = max(
                 Decimal("0"), buyer_fin.wage_committed_weekly - new_wage
@@ -494,6 +518,45 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
             .values(is_active=False)
         )
 
+    # TRA-57: surface sell-on obligation if a prior completed deal had sell_on_pct.
+    if deal.seller_club_id and fee > 0:
+        prior_result = await db.execute(
+            select(Deal)
+            .where(
+                Deal.player_id == deal.player_id,
+                Deal.id != deal.id,
+                Deal.status == DealStatus.COMPLETED,
+                Deal.sell_on_pct.is_not(None),
+                Deal.seller_club_id.is_not(None),
+            )
+            .order_by(Deal.completed_at.desc())
+            .limit(1)
+        )
+        prior_deal = prior_result.scalar_one_or_none()
+        if prior_deal and prior_deal.sell_on_pct and prior_deal.sell_on_pct > 0:
+            from app.clubs.models import Club
+            from app.notifications import service as notif_service
+            from app.notifications.models import NotificationType
+
+            club_result = await db.execute(
+                select(Club).where(Club.id == prior_deal.seller_club_id)
+            )
+            original_seller = club_result.scalar_one_or_none()
+            if original_seller:
+                pct = float(prior_deal.sell_on_pct) * 100
+                obligation = fee * prior_deal.sell_on_pct
+                await notif_service.create_notification(
+                    db,
+                    recipient_user_id=original_seller.user_id,
+                    type=NotificationType.DEAL_SELL_ON,
+                    message=(
+                        f"Sell-on clause triggered: {player.name} has been resold. "
+                        f"You are owed {pct:.1f}% (≈£{obligation:,.0f})"
+                    ),
+                    link=f"/deals/{deal.id}",
+                    related_player_id=deal.player_id,
+                )
+
     # Clear open_to_offers — the flag belongs to the seller's context; new owner decides fresh
     player.open_to_offers = False
 
@@ -515,3 +578,155 @@ def _require_party(deal: Deal, club_id: uuid.UUID, is_staff: bool = False) -> No
         parties.add(deal.seller_club_id)
     if club_id not in parties:
         raise ValueError("You are not a party to this deal")
+
+
+# ── TRA-56: loan deal update ──────────────────────────────────────────────────
+
+
+async def update_deal(
+    db: AsyncSession,
+    deal: Deal,
+    *,
+    actor_club_id: uuid.UUID,
+    is_staff: bool = False,
+    updates: dict,
+) -> Deal:
+    """Update loan/sell-on fields while deal is still in AGREEMENT stage."""
+    if deal.status != DealStatus.IN_PROGRESS:
+        raise ValueError("Only IN_PROGRESS deals can be updated")
+    if deal.stage != DealStage.AGREEMENT:
+        raise ValueError("Deal terms can only be updated at AGREEMENT stage")
+    _require_party(deal, actor_club_id, is_staff)
+    for k, v in updates.items():
+        setattr(deal, k, v)
+    await db.flush()
+    return deal
+
+
+# ── TRA-57: deal clauses ──────────────────────────────────────────────────────
+
+
+async def add_clause(
+    db: AsyncSession,
+    deal: Deal,
+    *,
+    actor_club_id: uuid.UUID,
+    clause_type: ClauseType,
+    trigger_description: str,
+    amount: Decimal,
+    cap: Decimal | None,
+) -> DealClause:
+    if deal.status != DealStatus.IN_PROGRESS:
+        raise ValueError("Clauses can only be added to in-progress deals")
+    _require_party(deal, actor_club_id)
+    clause = DealClause(
+        deal_id=deal.id,
+        clause_type=clause_type,
+        trigger_description=trigger_description,
+        amount=amount,
+        cap=cap,
+    )
+    db.add(clause)
+    await db.flush()
+    return clause
+
+
+async def update_clause_status(
+    db: AsyncSession,
+    deal: Deal,
+    clause_id: uuid.UUID,
+    *,
+    actor_club_id: uuid.UUID,
+    is_staff: bool = False,
+    new_status: ClauseStatus,
+) -> DealClause:
+    _require_party(deal, actor_club_id, is_staff)
+    result = await db.execute(
+        select(DealClause).where(DealClause.id == clause_id, DealClause.deal_id == deal.id)
+    )
+    clause = result.scalar_one_or_none()
+    if clause is None:
+        raise ValueError("Clause not found")
+    clause.status = new_status
+    await db.flush()
+    return clause
+
+
+# ── TRA-58: instalment schedule ───────────────────────────────────────────────
+
+
+async def set_instalments(
+    db: AsyncSession,
+    deal: Deal,
+    *,
+    actor_club_id: uuid.UUID,
+    items: list[dict],
+) -> list[DealInstalment]:
+    """Replace the instalment schedule. Total must equal agreed_fee."""
+    if deal.status != DealStatus.IN_PROGRESS:
+        raise ValueError("Instalments can only be set on in-progress deals")
+    if deal.stage != DealStage.AGREEMENT:
+        raise ValueError("Instalment schedule must be set at AGREEMENT stage")
+    _require_party(deal, actor_club_id)
+
+    total = sum(Decimal(str(item["amount"])) for item in items)
+    if total != deal.agreed_fee:
+        raise ValueError(
+            f"Instalment total ({total}) must equal agreed_fee ({deal.agreed_fee})"
+        )
+
+    # Remove existing schedule
+    await db.execute(
+        update(DealInstalment).where(DealInstalment.deal_id == deal.id).values()
+    )
+    existing = await db.execute(
+        select(DealInstalment).where(DealInstalment.deal_id == deal.id)
+    )
+    for inst in existing.scalars():
+        await db.delete(inst)
+
+    new_instalments: list[DealInstalment] = []
+    for item in items:
+        inst = DealInstalment(
+            deal_id=deal.id,
+            due_date=item["due_date"],
+            amount=Decimal(str(item["amount"])),
+        )
+        db.add(inst)
+        new_instalments.append(inst)
+
+    await db.flush()
+    return new_instalments
+
+
+async def mark_instalment_paid(
+    db: AsyncSession,
+    deal: Deal,
+    instalment_id: uuid.UUID,
+    *,
+    actor_club_id: uuid.UUID,
+    is_staff: bool = False,
+) -> DealInstalment:
+    """Mark one instalment as paid; increments buyer's transfer_spent."""
+    _require_party(deal, actor_club_id, is_staff)
+    result = await db.execute(
+        select(DealInstalment).where(
+            DealInstalment.id == instalment_id,
+            DealInstalment.deal_id == deal.id,
+        )
+    )
+    inst = result.scalar_one_or_none()
+    if inst is None:
+        raise ValueError("Instalment not found")
+    if inst.paid:
+        raise ValueError("Instalment already marked as paid")
+
+    inst.paid = True
+    inst.paid_at = datetime.now(timezone.utc)
+
+    buyer_fin = await clubs_module.service.get_finance_for_update(db, deal.buyer_club_id)
+    if buyer_fin:
+        buyer_fin.transfer_spent += inst.amount
+
+    await db.flush()
+    return inst

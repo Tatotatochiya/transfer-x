@@ -11,7 +11,23 @@ from app.common.schemas import Paginated
 from app.database import get_db
 from app.deals import service
 from app.deals.models import DealStatus
-from app.deals.schemas import DealNoteRequest, DealNoteResponse, DealResponse, TransferActivityItem, TransferAnalytics, CompletedStats, OngoingStats, ClubTransferStat, PositionBreakdown
+from app.deals.schemas import (
+    ClubTransferStat,
+    CompletedStats,
+    CreateClauseRequest,
+    CreateInstalmentsRequest,
+    DealClauseResponse,
+    DealInstalmentResponse,
+    DealNoteRequest,
+    DealNoteResponse,
+    DealResponse,
+    OngoingStats,
+    PositionBreakdown,
+    TransferActivityItem,
+    TransferAnalytics,
+    UpdateClauseStatusRequest,
+    UpdateDealRequest,
+)
 from app.deps import get_current_user
 from app.notifications import service as notif_service
 from app.notifications.models import NotificationType
@@ -90,6 +106,16 @@ def _build_deal_response(deal) -> DealResponse:
         agreed_wage_weekly=deal.agreed_wage_weekly,
         status=deal.status,
         stage=deal.stage,
+        deal_type=deal.deal_type,
+        loan_start=deal.loan_start,
+        loan_end=deal.loan_end,
+        loan_fee=deal.loan_fee,
+        option_to_buy=deal.option_to_buy,
+        obligation_to_buy=deal.obligation_to_buy,
+        obligation_conditions=deal.obligation_conditions,
+        sell_on_pct=deal.sell_on_pct,
+        clauses=deal.clauses,
+        instalments=deal.instalments,
         notes=deal.notes,
         completed_at=deal.completed_at,
         created_at=deal.created_at,
@@ -354,3 +380,180 @@ async def staff_collapse_deal(
     deal = await service.get_deal_by_id(db, deal_id)
     await _notify_deal_parties(db, deal_id)
     return _build_deal_response(deal)
+
+
+# ── TRA-56: update deal terms (loan / sell-on) ────────────────────────────────
+
+
+@router.patch("/deals/{deal_id}", response_model=DealResponse)
+async def update_deal(
+    deal_id: uuid.UUID,
+    body: UpdateDealRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+
+    try:
+        updates = body.model_dump(exclude_unset=True)
+        await service.update_deal(
+            db, deal,
+            actor_club_id=club.id,
+            is_staff=current_user.is_superuser,
+            updates=updates,
+        )
+        await db.commit()
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    deal = await service.get_deal_by_id(db, deal_id)
+    return _build_deal_response(deal)
+
+
+# ── TRA-57: deal clauses ──────────────────────────────────────────────────────
+
+
+@router.post(
+    "/deals/{deal_id}/clauses",
+    response_model=DealClauseResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_clause(
+    deal_id: uuid.UUID,
+    body: CreateClauseRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+
+    try:
+        clause = await service.add_clause(
+            db, deal,
+            actor_club_id=club.id,
+            clause_type=body.clause_type,
+            trigger_description=body.trigger_description,
+            amount=body.amount,
+            cap=body.cap,
+        )
+        await db.commit()
+        await db.refresh(clause)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return DealClauseResponse.model_validate(clause)
+
+
+@router.get("/deals/{deal_id}/clauses", response_model=list[DealClauseResponse])
+async def list_clauses(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+    parties = {deal.buyer_club_id, deal.seller_club_id}
+    if club.id not in parties and not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
+    return [DealClauseResponse.model_validate(c) for c in deal.clauses]
+
+
+@router.patch("/deals/{deal_id}/clauses/{clause_id}/status", response_model=DealClauseResponse)
+async def update_clause_status(
+    deal_id: uuid.UUID,
+    clause_id: uuid.UUID,
+    body: UpdateClauseStatusRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+
+    try:
+        clause = await service.update_clause_status(
+            db, deal, clause_id,
+            actor_club_id=club.id,
+            is_staff=current_user.is_superuser,
+            new_status=body.status,
+        )
+        await db.commit()
+        await db.refresh(clause)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return DealClauseResponse.model_validate(clause)
+
+
+# ── TRA-58: instalment schedule ───────────────────────────────────────────────
+
+
+@router.post(
+    "/deals/{deal_id}/instalments",
+    response_model=list[DealInstalmentResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def set_instalments(
+    deal_id: uuid.UUID,
+    body: CreateInstalmentsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+
+    items = [{"due_date": i.due_date, "amount": i.amount} for i in body.instalments]
+    try:
+        instalments = await service.set_instalments(
+            db, deal, actor_club_id=club.id, items=items
+        )
+        await db.commit()
+        for inst in instalments:
+            await db.refresh(inst)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return [DealInstalmentResponse.model_validate(i) for i in instalments]
+
+
+@router.get("/deals/{deal_id}/instalments", response_model=list[DealInstalmentResponse])
+async def list_instalments(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+    parties = {deal.buyer_club_id, deal.seller_club_id}
+    if club.id not in parties and not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
+    return [DealInstalmentResponse.model_validate(i) for i in deal.instalments]
+
+
+@router.patch("/deals/{deal_id}/instalments/{instalment_id}/paid", response_model=DealInstalmentResponse)
+async def mark_instalment_paid(
+    deal_id: uuid.UUID,
+    instalment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+
+    try:
+        inst = await service.mark_instalment_paid(
+            db, deal, instalment_id,
+            actor_club_id=club.id,
+            is_staff=current_user.is_superuser,
+        )
+        await db.commit()
+        await db.refresh(inst)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return DealInstalmentResponse.model_validate(inst)
