@@ -3,7 +3,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text, Uuid, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,6 +20,7 @@ class DealStatus(str, enum.Enum):
 class DealStage(str, enum.Enum):
     AGREEMENT = "AGREEMENT"
     AGENT_NEGOTIATION = "AGENT_NEGOTIATION"  # TRA-125/127: inserted when player has active mandate
+    PERSONAL_TERMS = "PERSONAL_TERMS"        # TRA-60: player consents to wage/contract terms
     PAPERWORK = "PAPERWORK"
     CONFIRMED = "CONFIRMED"
     COMPLETED = "COMPLETED"
@@ -129,6 +130,9 @@ class Deal(Base):
         "DealInstalment", back_populates="deal", cascade="all, delete-orphan",
         order_by="DealInstalment.due_date",
     )
+    personal_terms: Mapped["PersonalTerms | None"] = relationship(
+        "PersonalTerms", back_populates="deal", uselist=False, cascade="all, delete-orphan"
+    )
 
     @property
     def is_auction_deal(self) -> bool:
@@ -198,3 +202,36 @@ class DealInstalment(Base):
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     deal: Mapped["Deal"] = relationship("Deal", back_populates="instalments")
+
+
+class PersonalTerms(Base):
+    """Player personal terms proposed during PERSONAL_TERMS stage (TRA-60).
+
+    Player (or agent on their behalf) must set player_consent = AGREED before the deal
+    can advance to PAPERWORK. DECLINED collapses the deal.
+    """
+    __tablename__ = "personal_terms"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deal_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"),
+        nullable=False, unique=True, index=True,
+    )
+    # The agent who drafted these terms (FK to agent_profiles; nullable if no agent involved)
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("agent_profiles.id", ondelete="SET NULL"), nullable=True
+    )
+    wage_weekly: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    signing_bonus: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    length_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    player_consent: Mapped["app.agents.models.AgreementStatus"] = mapped_column(  # type: ignore[name-defined]
+        SAEnum("PENDING", "AGREED", "DECLINED", name="agreementstatus"),
+        nullable=False,
+        server_default="PENDING",
+    )
+    agreed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    deal: Mapped["Deal"] = relationship("Deal", back_populates="personal_terms")

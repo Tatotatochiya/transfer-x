@@ -19,6 +19,7 @@ from app.deals.models import (
     DealStage,
     DealStatus,
     DealType,
+    PersonalTerms,
 )
 from app.players import service as players_service
 from app.players.models import Contract, Player
@@ -34,6 +35,7 @@ def _load_options():
         selectinload(Deal.offer),
         selectinload(Deal.clauses),
         selectinload(Deal.instalments),
+        selectinload(Deal.personal_terms),
     ]
 
 
@@ -374,7 +376,17 @@ async def advance_deal(
             raise ValueError("Player has not yet agreed to the proposed personal terms")
         neg.status = NegotiationStatus.TERMS_AGREED
         neg.agreed_at = datetime.now(timezone.utc)
-        deal.stage = DealStage.PAPERWORK  # TRA-60 inserts PERSONAL_TERMS before this
+        deal.stage = DealStage.PERSONAL_TERMS
+
+    elif stage == DealStage.PERSONAL_TERMS:
+        from app.agents.models import AgreementStatus
+
+        pt = await get_personal_terms(db, deal.id)
+        if pt is None:
+            raise ValueError("Personal terms have not been set yet")
+        if pt.player_consent != AgreementStatus.AGREED:
+            raise ValueError("Player has not consented to the personal terms")
+        deal.stage = DealStage.PAPERWORK
 
     elif stage == DealStage.PAPERWORK:
         if not is_staff:
@@ -586,6 +598,71 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
         wage_weekly=deal.agreed_wage_weekly,
     )
     await db.flush()
+
+
+# ── TRA-60: personal terms ───────────────────────────────────────────────────
+
+
+async def get_personal_terms(db: AsyncSession, deal_id: uuid.UUID) -> PersonalTerms | None:
+    result = await db.execute(
+        select(PersonalTerms).where(PersonalTerms.deal_id == deal_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def set_personal_terms(
+    db: AsyncSession,
+    deal: Deal,
+    *,
+    agent_profile_id: uuid.UUID | None,
+    wage_weekly: Decimal | None,
+    signing_bonus: Decimal | None,
+    length_years: int | None,
+) -> PersonalTerms:
+    """Create or replace the personal-terms record for a deal in PERSONAL_TERMS stage."""
+    if deal.stage != DealStage.PERSONAL_TERMS:
+        raise ValueError("Deal is not in PERSONAL_TERMS stage")
+
+    pt = await get_personal_terms(db, deal.id)
+    if pt is None:
+        pt = PersonalTerms(deal_id=deal.id)
+        db.add(pt)
+
+    pt.agent_id = agent_profile_id
+    pt.wage_weekly = wage_weekly
+    pt.signing_bonus = signing_bonus
+    pt.length_years = length_years
+    # Reset consent whenever terms change
+    pt.player_consent = "PENDING"  # type: ignore[assignment]
+    pt.agreed_at = None
+    await db.flush()
+    return pt
+
+
+async def player_consent_to_terms(
+    db: AsyncSession,
+    deal: Deal,
+    agreement: "AgreementStatus",  # type: ignore[name-defined]
+) -> PersonalTerms:
+    """Player agrees or declines personal terms. Decline collapses the deal."""
+    from app.agents.models import AgreementStatus
+
+    if deal.stage != DealStage.PERSONAL_TERMS:
+        raise ValueError("Deal is not in PERSONAL_TERMS stage")
+
+    pt = await get_personal_terms(db, deal.id)
+    if pt is None:
+        raise ValueError("No personal terms have been set")
+
+    pt.player_consent = agreement
+    if agreement == AgreementStatus.AGREED:
+        pt.agreed_at = datetime.now(timezone.utc)
+    await db.flush()
+
+    if agreement == AgreementStatus.DECLINED:
+        await collapse_deal(db, deal, actor_club_id=deal.buyer_club_id, is_staff=True)
+
+    return pt
 
 
 # ── TRA-127: agent negotiation ────────────────────────────────────────────────

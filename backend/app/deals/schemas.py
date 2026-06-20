@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, model_validator
 
-from app.agents.models import AgreementStatus, CommissionPayer, NegotiationStatus
+from app.agents.models import AgreementStatus, CommissionPayer, NegotiationStatus  # noqa: F401 (re-exported)
 from app.deals.models import ClauseStatus, ClauseType, DealStage, DealStatus, DealType
 
 
@@ -135,6 +135,27 @@ class DealInstalmentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Personal terms schemas (TRA-60) ──────────────────────────────────────────
+
+class PersonalTermsResponse(BaseModel):
+    id: uuid.UUID
+    deal_id: uuid.UUID
+    agent_id: uuid.UUID | None = None
+    wage_weekly: Decimal | None = None
+    signing_bonus: Decimal | None = None
+    length_years: int | None = None
+    player_consent: AgreementStatus
+    agreed_at: datetime | None = None
+    created_at: datetime
+    model_config = {"from_attributes": True}
+
+
+class SetPersonalTermsRequest(BaseModel):
+    wage_weekly: Decimal | None = None
+    signing_bonus: Decimal | None = None
+    length_years: int | None = None
+
+
 # ── Agent negotiation schemas (TRA-127) ──────────────────────────────────────
 
 class AgentNegotiationResponse(BaseModel):
@@ -218,6 +239,8 @@ class DealResponse(BaseModel):
     clauses: list[DealClauseResponse] = []
     # TRA-58
     instalments: list[DealInstalmentResponse] = []
+    # TRA-60
+    personal_terms: PersonalTermsResponse | None = None
     notes: str | None
     completed_at: datetime | None
     created_at: datetime

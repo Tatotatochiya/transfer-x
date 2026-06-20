@@ -25,7 +25,9 @@ from app.deals.schemas import (
     DealResponse,
     NegotiationRespondRequest,
     OngoingStats,
+    PersonalTermsResponse,
     PositionBreakdown,
+    SetPersonalTermsRequest,
     TransferActivityItem,
     TransferAnalytics,
     UpdateClauseStatusRequest,
@@ -120,6 +122,7 @@ def _build_deal_response(deal) -> DealResponse:
         sell_on_pct=deal.sell_on_pct,
         clauses=deal.clauses,
         instalments=deal.instalments,
+        personal_terms=deal.personal_terms,
         notes=deal.notes,
         completed_at=deal.completed_at,
         created_at=deal.created_at,
@@ -536,6 +539,100 @@ async def list_instalments(
     if club.id not in parties and not current_user.is_superuser:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
     return [DealInstalmentResponse.model_validate(i) for i in deal.instalments]
+
+
+# ── TRA-60: personal terms ───────────────────────────────────────────────────
+
+
+@router.get("/deals/{deal_id}/personal-terms", response_model=PersonalTermsResponse)
+async def get_personal_terms(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    deal = await _get_deal_or_404(db, deal_id)
+    pt = await service.get_personal_terms(db, deal.id)
+    if pt is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No personal terms found")
+    return pt
+
+
+@router.put("/deals/{deal_id}/personal-terms", response_model=PersonalTermsResponse)
+async def set_personal_terms(
+    deal_id: uuid.UUID,
+    body: SetPersonalTermsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Agent (or staff) sets/updates personal terms for the player."""
+    from app.auth.models import AgentProfile, UserType
+
+    deal = await _get_deal_or_404(db, deal_id)
+
+    agent_profile_id = None
+    if current_user.user_type == UserType.AGENT:
+        profile_r = await db.execute(select(AgentProfile).where(AgentProfile.user_id == current_user.id))
+        profile = profile_r.scalar_one_or_none()
+        if profile is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Agent profile not found")
+        agent_profile_id = profile.id
+    elif not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Agent or admin access required")
+
+    try:
+        pt = await service.set_personal_terms(
+            db, deal,
+            agent_profile_id=agent_profile_id,
+            wage_weekly=body.wage_weekly,
+            signing_bonus=body.signing_bonus,
+            length_years=body.length_years,
+        )
+        await db.commit()
+        await db.refresh(pt)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return pt
+
+
+@router.post("/deals/{deal_id}/personal-terms/player-consent", response_model=PersonalTermsResponse)
+async def player_consent_to_terms(
+    deal_id: uuid.UUID,
+    body: NegotiationRespondRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Player (or mandated agent on player's behalf) consents to or declines personal terms."""
+    from app.auth.models import AgentProfile, PlayerProfile, UserType
+
+    deal = await _get_deal_or_404(db, deal_id)
+
+    if current_user.user_type == UserType.PLAYER:
+        pp_r = await db.execute(select(PlayerProfile).where(PlayerProfile.user_id == current_user.id))
+        pp = pp_r.scalar_one_or_none()
+        if pp is None or pp.player_id != deal.player_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not the player for this deal")
+    elif current_user.user_type == UserType.AGENT:
+        pt = await service.get_personal_terms(db, deal.id)
+        if pt is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No personal terms set")
+        profile_r = await db.execute(select(AgentProfile).where(AgentProfile.user_id == current_user.id))
+        profile = profile_r.scalar_one_or_none()
+        if profile is None or pt.agent_id != profile.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not the mandated agent")
+    elif not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Player or agent access required")
+
+    try:
+        pt = await service.player_consent_to_terms(db, deal, body.agreement)
+        await db.commit()
+        await db.refresh(pt)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return pt
 
 
 # ── TRA-127: agent negotiation ────────────────────────────────────────────────
