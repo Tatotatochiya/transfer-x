@@ -359,10 +359,22 @@ async def advance_deal(
         deal.stage = DealStage.PAPERWORK
 
     elif stage == DealStage.AGENT_NEGOTIATION:
-        # TRA-127 implements the gate: both club-side and player-side must reach AGREED.
-        raise ValueError(
-            "Deal is in agent negotiation — both parties must agree terms before it can advance"
+        # TRA-127: both sides must be AGREED before advancing.
+        from app.agents.models import AgentNegotiation, AgreementStatus, NegotiationStatus
+
+        neg_result = await db.execute(
+            select(AgentNegotiation).where(AgentNegotiation.deal_id == deal.id)
         )
+        neg = neg_result.scalar_one_or_none()
+        if neg is None:
+            raise ValueError("No agent negotiation record found for this deal")
+        if neg.club_agreement != AgreementStatus.AGREED:
+            raise ValueError("Club has not yet agreed to the agent's commission terms")
+        if neg.player_agreement != AgreementStatus.AGREED:
+            raise ValueError("Player has not yet agreed to the proposed personal terms")
+        neg.status = NegotiationStatus.TERMS_AGREED
+        neg.agreed_at = datetime.now(timezone.utc)
+        deal.stage = DealStage.PAPERWORK  # TRA-60 inserts PERSONAL_TERMS before this
 
     elif stage == DealStage.PAPERWORK:
         if not is_staff:
@@ -574,6 +586,101 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
         wage_weekly=deal.agreed_wage_weekly,
     )
     await db.flush()
+
+
+# ── TRA-127: agent negotiation ────────────────────────────────────────────────
+
+
+async def get_agent_negotiation(db: AsyncSession, deal_id: uuid.UUID):
+    from app.agents.models import AgentNegotiation
+    result = await db.execute(
+        select(AgentNegotiation).where(AgentNegotiation.deal_id == deal_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def upsert_negotiation_terms(
+    db: AsyncSession,
+    deal: Deal,
+    agent_profile_id: uuid.UUID,
+    updates: dict,
+) -> "AgentNegotiation":  # type: ignore[name-defined]
+    """Agent creates or updates club-side and player-side terms."""
+    from app.agents.models import AgentNegotiation, NegotiationStatus
+
+    if deal.stage != DealStage.AGENT_NEGOTIATION:
+        raise ValueError("Deal is not in AGENT_NEGOTIATION stage")
+
+    neg = await get_agent_negotiation(db, deal.id)
+    if neg is None:
+        neg = AgentNegotiation(deal_id=deal.id, agent_id=agent_profile_id)
+        db.add(neg)
+    elif neg.agent_id != agent_profile_id:
+        raise ValueError("Only the mandated agent may update negotiation terms")
+    elif neg.status != NegotiationStatus.IN_PROGRESS:
+        raise ValueError("Negotiation is no longer in progress")
+
+    for k, v in updates.items():
+        if v is not None:
+            setattr(neg, k, v)
+    await db.flush()
+    return neg
+
+
+async def club_respond_to_negotiation(
+    db: AsyncSession,
+    deal: Deal,
+    club_id: uuid.UUID,
+    agreement: "AgreementStatus",  # type: ignore[name-defined]
+) -> "AgentNegotiation":  # type: ignore[name-defined]
+    """Buying club agrees or declines commission terms. Decline collapses the deal."""
+    from app.agents.models import AgentNegotiation, AgreementStatus, NegotiationStatus
+
+    _require_party(deal, club_id)
+    if deal.stage != DealStage.AGENT_NEGOTIATION:
+        raise ValueError("Deal is not in AGENT_NEGOTIATION stage")
+
+    neg = await get_agent_negotiation(db, deal.id)
+    if neg is None:
+        raise ValueError("No agent negotiation record found")
+    if neg.status != NegotiationStatus.IN_PROGRESS:
+        raise ValueError("Negotiation is no longer in progress")
+
+    neg.club_agreement = agreement
+    await db.flush()
+
+    if agreement == AgreementStatus.DECLINED:
+        neg.status = NegotiationStatus.COLLAPSED
+        await collapse_deal(db, deal, actor_club_id=deal.buyer_club_id, is_staff=True)
+
+    return neg
+
+
+async def player_respond_to_negotiation(
+    db: AsyncSession,
+    deal: Deal,
+    agreement: "AgreementStatus",  # type: ignore[name-defined]
+) -> "AgentNegotiation":  # type: ignore[name-defined]
+    """Player (or their agent acting on their behalf) agrees or declines personal terms."""
+    from app.agents.models import AgentNegotiation, AgreementStatus, NegotiationStatus
+
+    if deal.stage != DealStage.AGENT_NEGOTIATION:
+        raise ValueError("Deal is not in AGENT_NEGOTIATION stage")
+
+    neg = await get_agent_negotiation(db, deal.id)
+    if neg is None:
+        raise ValueError("No agent negotiation record found")
+    if neg.status != NegotiationStatus.IN_PROGRESS:
+        raise ValueError("Negotiation is no longer in progress")
+
+    neg.player_agreement = agreement
+    await db.flush()
+
+    if agreement == AgreementStatus.DECLINED:
+        neg.status = NegotiationStatus.COLLAPSED
+        await collapse_deal(db, deal, actor_club_id=deal.buyer_club_id, is_staff=True)
+
+    return neg
 
 
 def _require_party(deal: Deal, club_id: uuid.UUID, is_staff: bool = False) -> None:

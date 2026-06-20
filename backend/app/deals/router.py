@@ -3,6 +3,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
@@ -12,6 +13,7 @@ from app.database import get_db
 from app.deals import service
 from app.deals.models import DealStatus
 from app.deals.schemas import (
+    AgentNegotiationResponse,
     ClubTransferStat,
     CompletedStats,
     CreateClauseRequest,
@@ -21,12 +23,14 @@ from app.deals.schemas import (
     DealNoteRequest,
     DealNoteResponse,
     DealResponse,
+    NegotiationRespondRequest,
     OngoingStats,
     PositionBreakdown,
     TransferActivityItem,
     TransferAnalytics,
     UpdateClauseStatusRequest,
     UpdateDealRequest,
+    UpdateNegotiationTermsRequest,
 )
 from app.deps import get_current_user
 from app.notifications import service as notif_service
@@ -532,6 +536,141 @@ async def list_instalments(
     if club.id not in parties and not current_user.is_superuser:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
     return [DealInstalmentResponse.model_validate(i) for i in deal.instalments]
+
+
+# ── TRA-127: agent negotiation ────────────────────────────────────────────────
+
+
+def _build_neg_response(neg, *, caller_user_type: str) -> AgentNegotiationResponse:
+    """Return a negotiation response, nulling out fields the caller should not see."""
+    is_agent_or_staff = caller_user_type in ("AGENT", "STAFF", "ADMIN")
+    is_club = caller_user_type == "CLUB"
+    is_player = caller_user_type == "PLAYER"
+
+    return AgentNegotiationResponse(
+        id=neg.id,
+        deal_id=neg.deal_id,
+        agent_id=neg.agent_id,
+        status=neg.status,
+        club_agreement=neg.club_agreement,
+        player_agreement=neg.player_agreement,
+        # Club-side: shown to agent/staff + clubs
+        commission_pct=neg.commission_pct if (is_agent_or_staff or is_club) else None,
+        commission_amount=neg.commission_amount if (is_agent_or_staff or is_club) else None,
+        commission_payer=neg.commission_payer if (is_agent_or_staff or is_club) else None,
+        additional_conditions=neg.additional_conditions if (is_agent_or_staff or is_club) else None,
+        # Player-side: shown to agent/staff + player
+        proposed_wage_weekly=neg.proposed_wage_weekly if (is_agent_or_staff or is_player) else None,
+        proposed_signing_bonus=neg.proposed_signing_bonus if (is_agent_or_staff or is_player) else None,
+        proposed_length_years=neg.proposed_length_years if (is_agent_or_staff or is_player) else None,
+        created_at=neg.created_at,
+        agreed_at=neg.agreed_at,
+    )
+
+
+@router.get("/deals/{deal_id}/agent-negotiation", response_model=AgentNegotiationResponse)
+async def get_agent_negotiation(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    deal = await _get_deal_or_404(db, deal_id)
+    neg = await service.get_agent_negotiation(db, deal.id)
+    if neg is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No negotiation found")
+    return _build_neg_response(neg, caller_user_type=current_user.user_type.value)
+
+
+@router.patch("/deals/{deal_id}/agent-negotiation/terms", response_model=AgentNegotiationResponse)
+async def update_negotiation_terms(
+    deal_id: uuid.UUID,
+    body: UpdateNegotiationTermsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.auth.models import AgentProfile, UserType
+    if current_user.user_type != UserType.AGENT:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Agent access required")
+
+    profile_result = await db.execute(
+        select(AgentProfile).where(AgentProfile.user_id == current_user.id)
+    )
+    agent_profile = profile_result.scalar_one_or_none()
+    if agent_profile is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Agent profile not found")
+
+    deal = await _get_deal_or_404(db, deal_id)
+    updates = body.model_dump(exclude_unset=True)
+
+    try:
+        neg = await service.upsert_negotiation_terms(db, deal, agent_profile.id, updates)
+        await db.commit()
+        await db.refresh(neg)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return _build_neg_response(neg, caller_user_type="AGENT")
+
+
+@router.post("/deals/{deal_id}/agent-negotiation/club-respond", response_model=AgentNegotiationResponse)
+async def club_respond_to_negotiation(
+    deal_id: uuid.UUID,
+    body: NegotiationRespondRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+
+    try:
+        neg = await service.club_respond_to_negotiation(db, deal, club.id, body.agreement)
+        await db.commit()
+        await db.refresh(neg)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return _build_neg_response(neg, caller_user_type="CLUB")
+
+
+@router.post("/deals/{deal_id}/agent-negotiation/player-respond", response_model=AgentNegotiationResponse)
+async def player_respond_to_negotiation(
+    deal_id: uuid.UUID,
+    body: NegotiationRespondRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.auth.models import AgentProfile, PlayerProfile, UserType
+
+    deal = await _get_deal_or_404(db, deal_id)
+
+    # Allow: mandated agent OR the player linked to this deal
+    if current_user.user_type == UserType.AGENT:
+        neg = await service.get_agent_negotiation(db, deal.id)
+        if neg is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No negotiation found")
+        profile_r = await db.execute(select(AgentProfile).where(AgentProfile.user_id == current_user.id))
+        profile = profile_r.scalar_one_or_none()
+        if profile is None or profile.id != neg.agent_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not the mandated agent")
+    elif current_user.user_type == UserType.PLAYER:
+        pp_r = await db.execute(select(PlayerProfile).where(PlayerProfile.user_id == current_user.id))
+        pp = pp_r.scalar_one_or_none()
+        if pp is None or pp.player_id != deal.player_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not the player for this deal")
+    elif not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Agent or player access required")
+
+    try:
+        neg = await service.player_respond_to_negotiation(db, deal, body.agreement)
+        await db.commit()
+        await db.refresh(neg)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return _build_neg_response(neg, caller_user_type=current_user.user_type.value)
 
 
 @router.patch("/deals/{deal_id}/instalments/{instalment_id}/paid", response_model=DealInstalmentResponse)

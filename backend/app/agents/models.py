@@ -1,8 +1,9 @@
 import enum
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Uuid, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, Text, Uuid, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -13,6 +14,24 @@ class InvitationStatus(str, enum.Enum):
     PENDING = "PENDING"
     ACCEPTED = "ACCEPTED"
     DECLINED = "DECLINED"
+
+
+class NegotiationStatus(str, enum.Enum):
+    IN_PROGRESS = "IN_PROGRESS"
+    TERMS_AGREED = "TERMS_AGREED"
+    COLLAPSED = "COLLAPSED"
+
+
+class AgreementStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    AGREED = "AGREED"
+    DECLINED = "DECLINED"
+
+
+class CommissionPayer(str, enum.Enum):
+    BUYER = "BUYER"
+    SELLER = "SELLER"
+    PLAYER = "PLAYER"
 
 
 class AgentDealInvitation(Base):
@@ -36,6 +55,65 @@ class AgentDealInvitation(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+    deal: Mapped["app.deals.models.Deal"] = relationship(  # type: ignore[name-defined]
+        "Deal", foreign_keys=[deal_id]
+    )
+    agent: Mapped["app.auth.models.AgentProfile"] = relationship(  # type: ignore[name-defined]
+        "AgentProfile", foreign_keys=[agent_id]
+    )
+
+
+class AgentNegotiation(Base):
+    """Three-way negotiation record created when a deal enters AGENT_NEGOTIATION stage (TRA-127).
+
+    The agent proposes club-side commission terms and player-side personal terms.
+    Both parties must reach AGREED before the deal can advance.
+    """
+    __tablename__ = "agent_negotiations"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deal_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"),
+        nullable=False, unique=True, index=True,
+    )
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("agent_profiles.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    status: Mapped[NegotiationStatus] = mapped_column(
+        SAEnum(NegotiationStatus, name="negotiationstatus"),
+        nullable=False,
+        default=NegotiationStatus.IN_PROGRESS,
+        server_default="IN_PROGRESS",
+    )
+    # Club-side terms (commission proposal to buying club)
+    commission_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
+    commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    commission_payer: Mapped[CommissionPayer | None] = mapped_column(
+        SAEnum(CommissionPayer, name="commissionpayer"), nullable=True
+    )
+    additional_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    club_agreement: Mapped[AgreementStatus] = mapped_column(
+        SAEnum(AgreementStatus, name="agreementstatus"),
+        nullable=False,
+        default=AgreementStatus.PENDING,
+        server_default="PENDING",
+    )
+    # Player-side terms (personal terms proposed to player)
+    proposed_wage_weekly: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    proposed_signing_bonus: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    proposed_length_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    player_agreement: Mapped[AgreementStatus] = mapped_column(
+        SAEnum(AgreementStatus, name="agreementstatus"),
+        nullable=False,
+        default=AgreementStatus.PENDING,
+        server_default="PENDING",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    agreed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     deal: Mapped["app.deals.models.Deal"] = relationship(  # type: ignore[name-defined]
         "Deal", foreign_keys=[deal_id]

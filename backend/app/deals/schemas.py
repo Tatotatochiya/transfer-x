@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, model_validator
 
+from app.agents.models import AgreementStatus, CommissionPayer, NegotiationStatus
 from app.deals.models import ClauseStatus, ClauseType, DealStage, DealStatus, DealType
 
 
@@ -132,6 +133,43 @@ class DealInstalmentResponse(BaseModel):
     paid: bool
     paid_at: datetime | None
     model_config = {"from_attributes": True}
+
+
+# ── Agent negotiation schemas (TRA-127) ──────────────────────────────────────
+
+class AgentNegotiationResponse(BaseModel):
+    id: uuid.UUID
+    deal_id: uuid.UUID
+    agent_id: uuid.UUID
+    status: NegotiationStatus
+    # Club-side (visible to agent, staff, and buyer club)
+    commission_pct: Decimal | None = None
+    commission_amount: Decimal | None = None
+    commission_payer: CommissionPayer | None = None
+    additional_conditions: str | None = None
+    club_agreement: AgreementStatus
+    # Player-side (visible to agent, staff, and player)
+    proposed_wage_weekly: Decimal | None = None
+    proposed_signing_bonus: Decimal | None = None
+    proposed_length_years: int | None = None
+    player_agreement: AgreementStatus
+    created_at: datetime
+    agreed_at: datetime | None = None
+    model_config = {"from_attributes": True}
+
+
+class UpdateNegotiationTermsRequest(BaseModel):
+    commission_pct: Decimal | None = None
+    commission_amount: Decimal | None = None
+    commission_payer: CommissionPayer | None = None
+    additional_conditions: str | None = None
+    proposed_wage_weekly: Decimal | None = None
+    proposed_signing_bonus: Decimal | None = None
+    proposed_length_years: int | None = None
+
+
+class NegotiationRespondRequest(BaseModel):
+    agreement: AgreementStatus
 
 
 # ── Update deal request (TRA-56) ──────────────────────────────────────────────
