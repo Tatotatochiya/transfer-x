@@ -5,6 +5,8 @@ from app.agents import service
 from app.agents.schemas import (
     AgentProfileResponse,
     AgentUpdateRequest,
+    DealSummary,
+    InvitationResponse,
     RepresentedPlayerItem,
     RosterImportRequest,
     RosterImportResult,
@@ -78,3 +80,27 @@ async def import_roster(
     result = await service.import_roster(db, profile.id, body)
     await db.commit()
     return result
+
+
+@router.get("/me/invitations", response_model=list[InvitationResponse])
+async def list_invitations(
+    profile: AgentProfile = Depends(get_current_agent_profile),
+    db: AsyncSession = Depends(get_db),
+) -> list[InvitationResponse]:
+    invitations = await service.list_invitations(db, profile.id)
+    return [
+        InvitationResponse(
+            id=inv.id,
+            deal_id=inv.deal_id,
+            status=inv.status,
+            created_at=inv.created_at,
+            deal=DealSummary(
+                id=inv.deal.id,
+                agreed_fee=inv.deal.agreed_fee,
+                buyer_club_name=inv.deal.buyer_club.name if inv.deal.buyer_club else None,
+                seller_club_name=inv.deal.seller_club.name if inv.deal.seller_club else None,
+                player_name=inv.deal.player.name if inv.deal.player else None,
+            ) if inv.deal else None,
+        )
+        for inv in invitations
+    ]

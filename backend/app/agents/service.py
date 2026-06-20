@@ -47,6 +47,27 @@ def _normalize_row(raw: dict[str, str]) -> dict[str, str | None]:
 
 # ── Profile operations ────────────────────────────────────────────────────────
 
+async def list_invitations(db: AsyncSession, agent_profile_id: uuid.UUID) -> list:
+    from sqlalchemy.orm import selectinload
+    from app.agents.models import AgentDealInvitation, InvitationStatus
+    from app.deals.models import Deal
+
+    result = await db.execute(
+        select(AgentDealInvitation)
+        .where(
+            AgentDealInvitation.agent_id == agent_profile_id,
+            AgentDealInvitation.status == InvitationStatus.PENDING,
+        )
+        .options(
+            selectinload(AgentDealInvitation.deal).selectinload(Deal.buyer_club),
+            selectinload(AgentDealInvitation.deal).selectinload(Deal.seller_club),
+            selectinload(AgentDealInvitation.deal).selectinload(Deal.player),
+        )
+        .order_by(AgentDealInvitation.created_at.desc())
+    )
+    return list(result.scalars())
+
+
 async def update_profile(db: AsyncSession, profile: AgentProfile, **kwargs) -> AgentProfile:
     for k, v in kwargs.items():
         setattr(profile, k, v)

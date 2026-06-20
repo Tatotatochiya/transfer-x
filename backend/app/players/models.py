@@ -28,6 +28,18 @@ class PlayerStatus(str, enum.Enum):
     FREE_AGENT = "FREE_AGENT"
 
 
+class ValuationSource(str, enum.Enum):
+    ETV = "ETV"
+    TRANSFERMARKT = "TRANSFERMARKT"  # prototype-only — not for production (no redistribution rights)
+    MANUAL = "MANUAL"
+
+
+class WageSource(str, enum.Enum):
+    CAPOLOGY = "CAPOLOGY"
+    ESTIMATED = "ESTIMATED"
+    MANUAL = "MANUAL"
+
+
 class Player(Base):
     __tablename__ = "players"
 
@@ -74,6 +86,27 @@ class Player(Base):
     agent_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("agent_profiles.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    # TRA-66: enrichment — valuation
+    market_value: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    market_value_currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    valuation_low: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    valuation_high: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    valuation_source: Mapped[ValuationSource | None] = mapped_column(
+        SAEnum(ValuationSource, name="valuationsource"), nullable=True
+    )
+    valuation_as_of: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # TRA-66: enrichment — contract / wages (external provider data, separate from Contract table)
+    contract_expiry: Mapped[date | None] = mapped_column(Date, nullable=True)
+    contract_signed: Mapped[date | None] = mapped_column(Date, nullable=True)
+    wage_weekly: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    wage_currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    wage_source: Mapped[WageSource | None] = mapped_column(
+        SAEnum(WageSource, name="wagesource"), nullable=True
+    )
+    wage_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # TRA-67: external provider IDs for stable re-sync
+    etv_player_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    capology_slug: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

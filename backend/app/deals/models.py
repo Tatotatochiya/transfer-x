@@ -19,6 +19,7 @@ class DealStatus(str, enum.Enum):
 
 class DealStage(str, enum.Enum):
     AGREEMENT = "AGREEMENT"
+    AGENT_NEGOTIATION = "AGENT_NEGOTIATION"  # TRA-125/127: inserted when player has active mandate
     PAPERWORK = "PAPERWORK"
     CONFIRMED = "CONFIRMED"
     COMPLETED = "COMPLETED"

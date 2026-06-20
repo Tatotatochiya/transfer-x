@@ -358,6 +358,12 @@ async def advance_deal(
     if stage == DealStage.AGREEMENT:
         deal.stage = DealStage.PAPERWORK
 
+    elif stage == DealStage.AGENT_NEGOTIATION:
+        # TRA-127 implements the gate: both club-side and player-side must reach AGREED.
+        raise ValueError(
+            "Deal is in agent negotiation — both parties must agree terms before it can advance"
+        )
+
     elif stage == DealStage.PAPERWORK:
         if not is_staff:
             raise PermissionError("TransferX is handling the paperwork — staff only action")

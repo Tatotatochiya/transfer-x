@@ -1,9 +1,11 @@
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.agents.models import InvitationStatus
 from app.mandates.models import ClientStatus, MandateStatus
 
 
@@ -89,3 +91,21 @@ class RosterImportResult(BaseModel):
     skipped: int
     errors: list[str]
     mandate_ids: list[str]
+
+
+# ── Deal invitations (TRA-125) ─────────────────────────────────────────────────
+
+class DealSummary(BaseModel):
+    id: uuid.UUID
+    agreed_fee: Decimal
+    buyer_club_name: str | None = None
+    seller_club_name: str | None = None
+    player_name: str | None = None
+
+
+class InvitationResponse(BaseModel):
+    id: uuid.UUID
+    deal_id: uuid.UUID
+    status: InvitationStatus
+    created_at: datetime
+    deal: DealSummary | None = None

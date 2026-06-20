@@ -268,7 +268,66 @@ async def accept_offer(
     )
     db.add(deal)
     await db.flush()
+
+    # TRA-125: if the player has an active mandate, pull the agent in immediately.
+    await _maybe_invite_agent(db, deal, offer)
+
     return deal
+
+
+async def _maybe_invite_agent(db: AsyncSession, deal: Deal, offer: "Offer") -> None:  # type: ignore[name-defined]
+    """Check for an active mandate and, if found, transition deal to AGENT_NEGOTIATION."""
+    from app.agents.models import AgentDealInvitation
+    from app.auth.models import AgentProfile
+    from app.mandates.models import Mandate, MandateStatus
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+    from app.players.models import Player
+
+    mandate_result = await db.execute(
+        select(Mandate)
+        .where(
+            Mandate.player_id == offer.player_id,
+            Mandate.status == MandateStatus.ACTIVE,
+        )
+        .order_by(Mandate.exclusive.desc(), Mandate.created_at.desc())
+        .limit(1)
+    )
+    mandate = mandate_result.scalar_one_or_none()
+    if mandate is None:
+        return
+
+    deal.stage = DealStage.AGENT_NEGOTIATION
+
+    invitation = AgentDealInvitation(deal_id=deal.id, agent_id=mandate.agent_id)
+    db.add(invitation)
+    await db.flush()
+
+    agent_result = await db.execute(
+        select(AgentProfile).where(AgentProfile.id == mandate.agent_id)
+    )
+    agent = agent_result.scalar_one_or_none()
+    if agent is None:
+        return
+
+    player_result = await db.execute(
+        select(Player).where(Player.id == offer.player_id)
+    )
+    player = player_result.scalar_one_or_none()
+    player_name = player.name if player else "a player"
+    fee = offer.fee_amount or Decimal("0")
+
+    await notif_service.create_notification(
+        db,
+        recipient_user_id=agent.user_id,
+        type=NotificationType.DEAL_AGENT_INVITED,
+        message=(
+            f"You have been invited to negotiate the transfer of {player_name}. "
+            f"Agreed fee: £{fee:,.0f}"
+        ),
+        link=f"/deals/{deal.id}",
+        related_player_id=offer.player_id,
+    )
 
 
 async def reject_offer(
