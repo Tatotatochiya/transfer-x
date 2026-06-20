@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { MandateResponse, PlayerDetail } from "../../types/api";
-import type { PlayerVisibility } from "../../types/enums";
+import type { MandateResponse, PersonalTerms, PlayerDetail } from "../../types/api";
+import type { AgreementStatus, PlayerVisibility } from "../../types/enums";
 import Card from "../../components/ui/Card";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import Badge from "../../components/ui/Badge";
+import { formatCurrency, formatWage } from "../../lib/utils";
 
 // ── Visibility selector ───────────────────────────────────────────────────────
 
@@ -115,6 +116,25 @@ export default function PlayerProfilePage() {
     enabled: !!player?.id,
   });
 
+  const activeDealId = player?.active_deal?.id ?? null;
+  const dealInPersonalTerms = player?.active_deal?.stage === "PERSONAL_TERMS";
+
+  const { data: personalTerms } = useQuery<PersonalTerms>({
+    queryKey: ["deals", activeDealId, "personal-terms"],
+    queryFn: () =>
+      api.get<PersonalTerms>(`/deals/${activeDealId}/personal-terms`).then((r) => r.data),
+    enabled: !!activeDealId && dealInPersonalTerms,
+  });
+
+  const consentMutation = useMutation({
+    mutationFn: (agreement: AgreementStatus) =>
+      api.post(`/deals/${activeDealId}/personal-terms/player-consent`, { agreement }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["players", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["deals", activeDealId, "personal-terms"] });
+    },
+  });
+
   const [visibility, setVisibility] = useState<PlayerVisibility>("PUBLIC");
   const [openToOffers, setOpenToOffers] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -206,6 +226,59 @@ export default function PlayerProfilePage() {
           )}
         </div>
       </Card>
+
+      {/* Personal terms consent (TRA-74) */}
+      {dealInPersonalTerms && personalTerms && personalTerms.player_consent === "PENDING" && (
+        <div className="mt-6 rounded-xl bg-amber-500/10 ring-1 ring-amber-500/25 px-5 py-5">
+          <p className="text-sm font-semibold text-amber-300 mb-1">Personal terms require your consent</p>
+          <p className="text-xs text-amber-400/80 mb-4">
+            Your agent has proposed the following contract terms. Review and respond.
+          </p>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mb-5">
+            {personalTerms.wage_weekly != null && (
+              <><dt className="text-slate-400">Weekly wage</dt><dd className="text-white font-semibold">{formatWage(personalTerms.wage_weekly)}</dd></>
+            )}
+            {personalTerms.signing_bonus != null && (
+              <><dt className="text-slate-400">Signing bonus</dt><dd className="text-white font-semibold">{formatCurrency(personalTerms.signing_bonus)}</dd></>
+            )}
+            {personalTerms.length_years != null && (
+              <><dt className="text-slate-400">Contract length</dt><dd className="text-white font-semibold">{personalTerms.length_years} yr{personalTerms.length_years !== 1 ? "s" : ""}</dd></>
+            )}
+          </dl>
+          <div className="flex gap-3">
+            <button
+              onClick={() => consentMutation.mutate("AGREED")}
+              disabled={consentMutation.isPending}
+              className="flex-1 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 transition-colors disabled:opacity-50"
+            >
+              {consentMutation.isPending ? "…" : "Accept terms"}
+            </button>
+            <button
+              onClick={() => consentMutation.mutate("DECLINED")}
+              disabled={consentMutation.isPending}
+              className="flex-1 rounded-lg bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-400 ring-1 ring-red-500/30 hover:bg-red-500/25 transition-colors disabled:opacity-50"
+            >
+              Decline
+            </button>
+          </div>
+          {consentMutation.isError && (
+            <p className="mt-2 text-xs text-red-400">Failed to respond. Please try again.</p>
+          )}
+        </div>
+      )}
+
+      {/* Personal terms accepted/declined status (read-only) */}
+      {dealInPersonalTerms && personalTerms && personalTerms.player_consent !== "PENDING" && (
+        <div className={`mt-6 rounded-xl px-5 py-4 text-sm ring-1 ${
+          personalTerms.player_consent === "AGREED"
+            ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/20"
+            : "bg-red-500/10 text-red-300 ring-red-500/20"
+        }`}>
+          <p className="font-semibold">
+            Personal terms {personalTerms.player_consent === "AGREED" ? "accepted" : "declined"}
+          </p>
+        </div>
+      )}
 
       {/* Representation */}
       <div className="mt-6">

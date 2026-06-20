@@ -505,6 +505,22 @@ export interface Deal {
   deal_notes: DealNote[];
 }
 
+export interface DealInvitationDealSummary {
+  id: string;
+  agreed_fee: number;
+  buyer_club_name: string | null;
+  seller_club_name: string | null;
+  player_name: string | null;
+}
+
+export interface AgentDealInvitation {
+  id: string;
+  deal_id: string;
+  status: "PENDING" | "ACCEPTED" | "DECLINED";
+  created_at: string;
+  deal: DealInvitationDealSummary | null;
+}
+
 // ── Transfer activity ─────────────────────────────────────────────────────────
 
 export interface TransferActivity {

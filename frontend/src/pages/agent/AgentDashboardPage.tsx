@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../lib/api";
-import type { AgentProfileResponse, RepresentedPlayerItem } from "../../types/api";
+import type { AgentDealInvitation, AgentProfileResponse, RepresentedPlayerItem } from "../../types/api";
 import Card from "../../components/ui/Card";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import Badge from "../../components/ui/Badge";
+import { formatCurrency } from "../../lib/utils";
 
 const CLIENT_STATUS_COLORS: Record<string, string> = {
   ACTIVE:             "text-emerald-400",
@@ -92,6 +93,11 @@ export default function AgentDashboardPage() {
     queryFn: () => api.get<RepresentedPlayerItem[]>("/agents/me/players").then((r) => r.data),
   });
 
+  const { data: invitations = [] } = useQuery<AgentDealInvitation[]>({
+    queryKey: ["agents", "me", "invitations"],
+    queryFn: () => api.get<AgentDealInvitation[]>("/agents/me/invitations").then((r) => r.data),
+  });
+
   if (profileLoading || clientsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -126,6 +132,41 @@ export default function AgentDashboardPage() {
             </div>
           </div>
         </Card>
+      )}
+
+      {/* Pending deal invitations (TRA-74) */}
+      {invitations.length > 0 && (
+        <div className="mt-6">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-purple-400">
+            Pending invitations · {invitations.length}
+          </p>
+          <div className="space-y-3">
+            {invitations.map((inv) => (
+              <Link key={inv.id} to={`/deals/${inv.deal_id}`} className="block">
+                <div className="rounded-xl bg-purple-500/5 ring-1 ring-purple-500/20 px-4 py-3 hover:ring-purple-500/40 transition-all">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">
+                        {inv.deal?.player_name ?? "Unknown player"}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">
+                        {inv.deal?.buyer_club_name ?? "Unknown buyer"} ← {inv.deal?.seller_club_name ?? "Unknown seller"}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {inv.deal?.agreed_fee != null && (
+                        <p className="text-sm font-semibold text-white">
+                          {formatCurrency(inv.deal.agreed_fee)}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-purple-400 font-medium mt-0.5">View deal →</p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Clients */}
