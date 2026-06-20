@@ -7,7 +7,7 @@ import Card from "../../components/ui/Card";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import Badge from "../../components/ui/Badge";
-import { formatCurrency } from "../../lib/utils";
+import { formatCurrency, formatDate } from "../../lib/utils";
 
 const CLIENT_STATUS_COLORS: Record<string, string> = {
   ACTIVE:             "text-emerald-400",
@@ -190,37 +190,56 @@ export default function AgentDashboardPage() {
         </Card>
       )}
 
-      {/* Pending deal invitations (TRA-74) */}
+      {/* Deal invitations — prominent banner (TRA-126) */}
       {invitations.length > 0 && (
-        <div className="mt-6">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-purple-400">
-            Pending invitations · {invitations.length}
-          </p>
-          <div className="space-y-3">
-            {invitations.map((inv) => (
-              <Link key={inv.id} to={`/deals/${inv.deal_id}`} className="block">
-                <div className="rounded-xl bg-purple-500/5 ring-1 ring-purple-500/20 px-4 py-3 hover:ring-purple-500/40 transition-all">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">
+        <div className="mt-6 rounded-xl bg-purple-500/10 ring-2 ring-purple-500/40 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center gap-3 bg-purple-500/15 px-5 py-3">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-500 text-[10px] font-bold text-white">
+              {invitations.length}
+            </span>
+            <p className="text-sm font-bold text-purple-300">
+              {invitations.length === 1 ? "New deal invitation" : `${invitations.length} new deal invitations`} — action required
+            </p>
+          </div>
+          {/* Cards */}
+          <div className="divide-y divide-purple-500/10">
+            {invitations.map((inv) => {
+              const daysSince = Math.floor(
+                (Date.now() - new Date(inv.created_at).getTime()) / (1000 * 60 * 60 * 24)
+              );
+              return (
+                <div key={inv.id} className="px-5 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-bold text-white truncate">
                         {inv.deal?.player_name ?? "Unknown player"}
                       </p>
-                      <p className="text-xs text-slate-400 mt-0.5 truncate">
-                        {inv.deal?.buyer_club_name ?? "Unknown buyer"} ← {inv.deal?.seller_club_name ?? "Unknown seller"}
+                      <p className="text-sm text-slate-400 mt-0.5 truncate">
+                        {inv.deal?.seller_club_name ?? "?"} → {inv.deal?.buyer_club_name ?? "?"}
                       </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                        {inv.deal?.agreed_fee != null && (
+                          <span className="font-semibold text-white">
+                            {formatCurrency(inv.deal.agreed_fee)} agreed fee
+                          </span>
+                        )}
+                        <span className={`font-medium ${daysSince === 0 ? "text-red-400" : daysSince <= 2 ? "text-amber-400" : "text-slate-400"}`}>
+                          {daysSince === 0 ? "Today" : `${daysSince}d ago`}
+                        </span>
+                        <span className="text-slate-500">Invited {formatDate(inv.created_at)}</span>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      {inv.deal?.agreed_fee != null && (
-                        <p className="text-sm font-semibold text-white">
-                          {formatCurrency(inv.deal.agreed_fee)}
-                        </p>
-                      )}
-                      <p className="text-[10px] text-purple-400 font-medium mt-0.5">View deal →</p>
-                    </div>
+                    <Link
+                      to={`/deals/${inv.deal_id}`}
+                      className="shrink-0 rounded-lg bg-purple-500 px-4 py-2 text-sm font-bold text-white hover:bg-purple-400 transition-colors"
+                    >
+                      Enter deal room →
+                    </Link>
                   </div>
                 </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

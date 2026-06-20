@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { Club, Deal } from "../../types/api";
+import type { AgentNegotiation, Club, Deal } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -60,6 +60,421 @@ function NoteForm({ dealId }: { dealId: string }) {
   );
 }
 
+// ── Agreement status chip ─────────────────────────────────────────────────────
+
+function AgreementChip({ label, status }: { label: string; status: string }) {
+  const color =
+    status === "AGREED"   ? "bg-emerald-500/20 text-emerald-400 ring-emerald-500/30" :
+    status === "DECLINED" ? "bg-red-500/20 text-red-400 ring-red-500/30"             :
+                            "bg-slate-700 text-slate-400 ring-white/10";
+  return (
+    <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${color}`}>
+      {label}: {status}
+    </span>
+  );
+}
+
+// ── Agent negotiation workspace (TRA-128) ─────────────────────────────────────
+
+interface AgentNegWorkspaceProps {
+  dealId: string;
+  negotiation: import("../../types/api").AgentNegotiation | null;
+  agentCanAdvance: boolean;
+  onAdvance: () => void;
+  advancePending: boolean;
+}
+
+function AgentNegotiationWorkspace({
+  dealId,
+  negotiation,
+  agentCanAdvance,
+  onAdvance,
+  advancePending,
+}: AgentNegWorkspaceProps) {
+  const queryClient = useQueryClient();
+  const { addToast } = useToast();
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<{
+    commission_pct: string; commission_amount: string; commission_payer: string;
+    additional_conditions: string; proposed_wage_weekly: string;
+    proposed_signing_bonus: string; proposed_length_years: string;
+  }>({
+    commission_pct:         negotiation?.commission_pct         != null ? String(negotiation.commission_pct)         : "",
+    commission_amount:      negotiation?.commission_amount      != null ? String(negotiation.commission_amount)      : "",
+    commission_payer:       negotiation?.commission_payer       ?? "BUYER",
+    additional_conditions:  negotiation?.additional_conditions  ?? "",
+    proposed_wage_weekly:   negotiation?.proposed_wage_weekly   != null ? String(negotiation.proposed_wage_weekly)   : "",
+    proposed_signing_bonus: negotiation?.proposed_signing_bonus != null ? String(negotiation.proposed_signing_bonus) : "",
+    proposed_length_years:  negotiation?.proposed_length_years  != null ? String(negotiation.proposed_length_years)  : "",
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (data: Record<string, unknown>) =>
+      api.patch(`/deals/${dealId}/agent-negotiation/terms`, data).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals", dealId, "agent-negotiation"] });
+      setEditing(false);
+      addToast("Terms saved.", "success");
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Failed to save terms."), "error"),
+  });
+
+  function handleSave() {
+    const payload: Record<string, unknown> = {};
+    if (draft.commission_pct !== "")         payload.commission_pct         = Number(draft.commission_pct);
+    if (draft.commission_amount !== "")      payload.commission_amount      = Number(draft.commission_amount);
+    if (draft.commission_payer)              payload.commission_payer       = draft.commission_payer;
+    if (draft.additional_conditions !== "")  payload.additional_conditions  = draft.additional_conditions;
+    if (draft.proposed_wage_weekly !== "")   payload.proposed_wage_weekly   = Number(draft.proposed_wage_weekly);
+    if (draft.proposed_signing_bonus !== "") payload.proposed_signing_bonus = Number(draft.proposed_signing_bonus);
+    if (draft.proposed_length_years !== "")  payload.proposed_length_years  = Number(draft.proposed_length_years);
+    saveMutation.mutate(payload);
+  }
+
+  const clubAgreed   = negotiation?.club_agreement   === "AGREED";
+  const playerAgreed = negotiation?.player_agreement === "AGREED";
+
+  return (
+    <div className="mb-6">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wider text-purple-400">
+          Negotiation Workspace
+        </p>
+        <div className="flex items-center gap-2">
+          <AgreementChip label="Club"   status={negotiation?.club_agreement   ?? "PENDING"} />
+          <AgreementChip label="Player" status={negotiation?.player_agreement ?? "PENDING"} />
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Club-side panel */}
+        <div className="rounded-xl bg-purple-500/[0.05] px-5 py-4 ring-1 ring-purple-500/20">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-purple-400">
+            Club side — Commission
+          </p>
+          {editing ? (
+            <div className="space-y-2">
+              <label className="block text-xs text-slate-400">Commission % <span className="text-slate-600">(decimal, e.g. 0.05 = 5%)</span></label>
+              <input
+                type="number" step="0.001"
+                value={draft.commission_pct}
+                onChange={(e) => setDraft((d) => ({ ...d, commission_pct: e.target.value }))}
+                className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
+              />
+              <label className="block text-xs text-slate-400 pt-1">Commission amount (€)</label>
+              <input
+                type="number"
+                value={draft.commission_amount}
+                onChange={(e) => setDraft((d) => ({ ...d, commission_amount: e.target.value }))}
+                className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
+              />
+              <label className="block text-xs text-slate-400 pt-1">Paid by</label>
+              <select
+                value={draft.commission_payer}
+                onChange={(e) => setDraft((d) => ({ ...d, commission_payer: e.target.value }))}
+                className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
+              >
+                <option value="BUYER">Buying club</option>
+                <option value="SELLER">Selling club</option>
+                <option value="PLAYER">Player</option>
+              </select>
+              <label className="block text-xs text-slate-400 pt-1">Additional conditions</label>
+              <textarea
+                rows={2}
+                value={draft.additional_conditions}
+                onChange={(e) => setDraft((d) => ({ ...d, additional_conditions: e.target.value }))}
+                className="w-full resize-none rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
+              />
+            </div>
+          ) : (
+            <dl className="space-y-1.5 text-sm">
+              {negotiation?.commission_pct != null && (
+                <><dt className="text-slate-500">Commission</dt><dd className="text-white">{(negotiation.commission_pct * 100).toFixed(2)}%</dd></>
+              )}
+              {negotiation?.commission_amount != null && (
+                <><dt className="text-slate-500">Amount</dt><dd className="text-white">{formatCurrency(negotiation.commission_amount)}</dd></>
+              )}
+              {negotiation?.commission_payer && (
+                <><dt className="text-slate-500">Paid by</dt><dd className="text-white capitalize">{negotiation.commission_payer.toLowerCase()}</dd></>
+              )}
+              {negotiation?.additional_conditions && (
+                <><dt className="text-slate-500">Conditions</dt><dd className="text-white text-xs">{negotiation.additional_conditions}</dd></>
+              )}
+              {!negotiation?.commission_pct && !negotiation?.commission_amount && (
+                <p className="text-xs text-slate-600 italic">No commission terms set yet.</p>
+              )}
+            </dl>
+          )}
+          <div className="mt-3">
+            {clubAgreed ? (
+              <span className="text-xs font-semibold text-emerald-400">✓ Club has agreed</span>
+            ) : (
+              <span className="text-xs text-slate-500">Awaiting club agreement</span>
+            )}
+          </div>
+        </div>
+
+        {/* Player-side panel */}
+        <div className="rounded-xl bg-amber-500/[0.05] px-5 py-4 ring-1 ring-amber-500/20">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-400">
+            Player side — Personal Terms
+          </p>
+          {editing ? (
+            <div className="space-y-2">
+              <label className="block text-xs text-slate-400">Weekly wage (€)</label>
+              <input
+                type="number"
+                value={draft.proposed_wage_weekly}
+                onChange={(e) => setDraft((d) => ({ ...d, proposed_wage_weekly: e.target.value }))}
+                className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+              />
+              <label className="block text-xs text-slate-400 pt-1">Signing bonus (€)</label>
+              <input
+                type="number"
+                value={draft.proposed_signing_bonus}
+                onChange={(e) => setDraft((d) => ({ ...d, proposed_signing_bonus: e.target.value }))}
+                className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+              />
+              <label className="block text-xs text-slate-400 pt-1">Contract length (years)</label>
+              <input
+                type="number" min={1} max={10}
+                value={draft.proposed_length_years}
+                onChange={(e) => setDraft((d) => ({ ...d, proposed_length_years: e.target.value }))}
+                className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+              />
+            </div>
+          ) : (
+            <dl className="space-y-1.5 text-sm">
+              {negotiation?.proposed_wage_weekly != null && (
+                <><dt className="text-slate-500">Weekly wage</dt><dd className="text-white">{formatWage(negotiation.proposed_wage_weekly)}</dd></>
+              )}
+              {negotiation?.proposed_signing_bonus != null && (
+                <><dt className="text-slate-500">Signing bonus</dt><dd className="text-white">{formatCurrency(negotiation.proposed_signing_bonus)}</dd></>
+              )}
+              {negotiation?.proposed_length_years != null && (
+                <><dt className="text-slate-500">Contract length</dt><dd className="text-white">{negotiation.proposed_length_years} yr{negotiation.proposed_length_years !== 1 ? "s" : ""}</dd></>
+              )}
+              {!negotiation?.proposed_wage_weekly && !negotiation?.proposed_signing_bonus && !negotiation?.proposed_length_years && (
+                <p className="text-xs text-slate-600 italic">No personal terms proposed yet.</p>
+              )}
+            </dl>
+          )}
+          <div className="mt-3">
+            {playerAgreed ? (
+              <span className="text-xs font-semibold text-emerald-400">✓ Player has agreed</span>
+            ) : (
+              <span className="text-xs text-slate-500">Awaiting player agreement</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Workspace footer: edit controls + advance */}
+      <div className="mt-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          {editing ? (
+            <>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={saveMutation.isPending}
+                onClick={handleSave}
+              >
+                Save terms
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button variant="secondary" size="sm" onClick={() => {
+              setDraft({
+                commission_pct:         negotiation?.commission_pct        != null ? String(negotiation.commission_pct)        : "",
+                commission_amount:      negotiation?.commission_amount     != null ? String(negotiation.commission_amount)     : "",
+                commission_payer:       negotiation?.commission_payer      ?? "BUYER",
+                additional_conditions:  negotiation?.additional_conditions ?? "",
+                proposed_wage_weekly:   negotiation?.proposed_wage_weekly  != null ? String(negotiation.proposed_wage_weekly)  : "",
+                proposed_signing_bonus: negotiation?.proposed_signing_bonus != null ? String(negotiation.proposed_signing_bonus) : "",
+                proposed_length_years:  negotiation?.proposed_length_years != null ? String(negotiation.proposed_length_years) : "",
+              });
+              setEditing(true);
+            }}>
+              Edit terms
+            </Button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          {!agentCanAdvance && (
+            <p className="text-xs text-slate-500">
+              {!clubAgreed && !playerAgreed ? "Both sides must agree before advancing." :
+               !clubAgreed  ? "Awaiting club agreement." :
+                              "Awaiting player agreement."}
+            </p>
+          )}
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!agentCanAdvance}
+            loading={advancePending}
+            onClick={onAdvance}
+          >
+            Advance to Personal Terms →
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Club: commission proposal view (TRA-129) ──────────────────────────────────
+
+function CommissionProposalView({
+  dealId,
+  negotiation,
+}: {
+  dealId: string;
+  negotiation: import("../../types/api").AgentNegotiation | null;
+}) {
+  const queryClient = useQueryClient();
+  const { addToast } = useToast();
+
+  const respondMutation = useMutation({
+    mutationFn: (agreement: string) =>
+      api.post(`/deals/${dealId}/agent-negotiation/club-respond`, { agreement }).then((r) => r.data),
+    onSuccess: (_, agreement) => {
+      queryClient.invalidateQueries({ queryKey: ["deals", dealId, "agent-negotiation"] });
+      queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
+      addToast(agreement === "AGREED" ? "Proposal accepted." : "Proposal declined.", agreement === "AGREED" ? "success" : "warning");
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Failed to respond."), "error"),
+  });
+
+  if (!negotiation) return null;
+
+  const isPending = negotiation.club_agreement === "PENDING";
+
+  return (
+    <div className="mb-6 rounded-xl bg-purple-500/[0.07] px-5 py-4 ring-1 ring-purple-500/20">
+      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-purple-400">
+        Agent Commission Proposal
+      </p>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        {negotiation.commission_pct != null && (
+          <><dt className="text-slate-400">Commission</dt><dd className="font-semibold text-white">{(negotiation.commission_pct * 100).toFixed(2)}%</dd></>
+        )}
+        {negotiation.commission_amount != null && (
+          <><dt className="text-slate-400">Amount</dt><dd className="font-semibold text-white">{formatCurrency(negotiation.commission_amount)}</dd></>
+        )}
+        {negotiation.commission_payer && (
+          <><dt className="text-slate-400">Paid by</dt><dd className="text-white capitalize">{negotiation.commission_payer.toLowerCase()}</dd></>
+        )}
+        {negotiation.additional_conditions && (
+          <><dt className="col-span-2 text-slate-400">Conditions</dt><dd className="col-span-2 text-sm text-white">{negotiation.additional_conditions}</dd></>
+        )}
+      </dl>
+
+      {isPending ? (
+        <div className="mt-4 flex gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            loading={respondMutation.isPending}
+            onClick={() => respondMutation.mutate("AGREED")}
+          >
+            Accept proposal
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            loading={respondMutation.isPending}
+            onClick={() => respondMutation.mutate("DECLINED")}
+          >
+            Decline
+          </Button>
+        </div>
+      ) : (
+        <p className={`mt-4 text-sm font-semibold ${negotiation.club_agreement === "AGREED" ? "text-emerald-400" : "text-red-400"}`}>
+          {negotiation.club_agreement === "AGREED" ? "✓ You accepted this proposal" : "✗ You declined this proposal"}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── Player: proposed terms view (TRA-129) ─────────────────────────────────────
+
+function PlayerTermsProposalView({
+  dealId,
+  negotiation,
+}: {
+  dealId: string;
+  negotiation: import("../../types/api").AgentNegotiation | null;
+}) {
+  const queryClient = useQueryClient();
+  const { addToast } = useToast();
+
+  const respondMutation = useMutation({
+    mutationFn: (agreement: string) =>
+      api.post(`/deals/${dealId}/agent-negotiation/player-respond`, { agreement }).then((r) => r.data),
+    onSuccess: (_, agreement) => {
+      queryClient.invalidateQueries({ queryKey: ["deals", dealId, "agent-negotiation"] });
+      queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
+      addToast(agreement === "AGREED" ? "Terms accepted." : "Terms declined.", agreement === "AGREED" ? "success" : "warning");
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Failed to respond."), "error"),
+  });
+
+  if (!negotiation) return null;
+
+  const isPending = negotiation.player_agreement === "PENDING";
+
+  return (
+    <div className="mb-6 rounded-xl bg-amber-500/[0.07] px-5 py-4 ring-1 ring-amber-500/20">
+      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-400">
+        Proposed Contract Terms
+      </p>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        {negotiation.proposed_wage_weekly != null && (
+          <><dt className="text-slate-400">Weekly wage</dt><dd className="font-semibold text-white">{formatWage(negotiation.proposed_wage_weekly)}</dd></>
+        )}
+        {negotiation.proposed_signing_bonus != null && (
+          <><dt className="text-slate-400">Signing bonus</dt><dd className="font-semibold text-white">{formatCurrency(negotiation.proposed_signing_bonus)}</dd></>
+        )}
+        {negotiation.proposed_length_years != null && (
+          <><dt className="text-slate-400">Contract length</dt><dd className="text-white">{negotiation.proposed_length_years} yr{negotiation.proposed_length_years !== 1 ? "s" : ""}</dd></>
+        )}
+      </dl>
+
+      {isPending ? (
+        <div className="mt-4 flex gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            loading={respondMutation.isPending}
+            onClick={() => respondMutation.mutate("AGREED")}
+          >
+            Accept terms
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            loading={respondMutation.isPending}
+            onClick={() => respondMutation.mutate("DECLINED")}
+          >
+            Decline
+          </Button>
+        </div>
+      ) : (
+        <p className={`mt-4 text-sm font-semibold ${negotiation.player_agreement === "AGREED" ? "text-emerald-400" : "text-red-400"}`}>
+          {negotiation.player_agreement === "AGREED" ? "✓ You accepted these terms" : "✗ You declined these terms"}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function DealDetailPage() {
@@ -67,8 +482,10 @@ export default function DealDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addToast } = useToast();
-  const { accessToken } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
   const isAuthenticated = !!accessToken;
+  const isAgent  = user?.user_type === "AGENT";
+  const isPlayer = user?.user_type === "PLAYER";
   const [showCollapsePanel, setShowCollapsePanel] = useState(false);
   const [collapseReason, setCollapseReason] = useState("");
 
@@ -108,6 +525,14 @@ export default function DealDetailPage() {
     onError: (err) => addToast(getApiError(err, "Failed to collapse deal."), "error"),
   });
 
+  // Load AgentNegotiation when deal is in that stage (TRA-128/129)
+  const { data: negotiation } = useQuery<AgentNegotiation>({
+    queryKey: ["deals", id, "agent-negotiation"],
+    queryFn: () =>
+      api.get<AgentNegotiation>(`/deals/${id}/agent-negotiation`).then((r) => r.data),
+    enabled: !!id && !!deal && deal.stage === "AGENT_NEGOTIATION",
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -138,7 +563,10 @@ export default function DealDetailPage() {
   // At PAPERWORK stage, clubs cannot advance — only staff can
   const atPaperwork        = deal.stage === "PAPERWORK";
   const atConfirmed        = deal.stage === "CONFIRMED";
-  const clubCanAdvance     = isParty && isActive && !atPaperwork && !atAgentNegotiation && !atPersonalTerms && !deal.is_auction_deal;
+  const clubCanAdvance     = isParty && !isAgent && isActive && !atPaperwork && !atAgentNegotiation && !atPersonalTerms && !deal.is_auction_deal;
+  // Agent can advance when both sides have AGREED (TRA-128)
+  const agentCanAdvance    = isAgent && isActive && atAgentNegotiation &&
+    negotiation?.club_agreement === "AGREED" && negotiation?.player_agreement === "AGREED";
   const clubCanCollapse    = isParty && isActive;
 
   const advanceError =
@@ -186,14 +614,41 @@ export default function DealDetailPage() {
         </div>
       )}
 
-      {/* AGENT_NEGOTIATION banner */}
-      {atAgentNegotiation && isParty && deal.status === "IN_PROGRESS" && (
+      {/* AGENT_NEGOTIATION banner — clubs only; agent and player get dedicated panels below */}
+      {atAgentNegotiation && isParty && !isAgent && !isPlayer && deal.status === "IN_PROGRESS" && (
         <div className="mb-6 rounded-xl bg-purple-500/10 px-5 py-4 text-sm text-purple-300 ring-1 ring-purple-500/20">
           <p className="font-semibold mb-1">Agent negotiation in progress</p>
           <p className="text-purple-400/80">
             The mandated agent is negotiating commission terms with the buying club and personal terms with the player. You will be notified once both parties agree.
           </p>
         </div>
+      )}
+
+      {/* Agent workspace — two-panel negotiation hub (TRA-128) */}
+      {isAgent && atAgentNegotiation && deal.status === "IN_PROGRESS" && id && (
+        <AgentNegotiationWorkspace
+          dealId={id}
+          negotiation={negotiation ?? null}
+          agentCanAdvance={agentCanAdvance}
+          onAdvance={() => advanceMutation.mutate()}
+          advancePending={advanceMutation.isPending}
+        />
+      )}
+
+      {/* Club: commission proposal from agent (TRA-129) */}
+      {isParty && !isAgent && !isPlayer && atAgentNegotiation && deal.status === "IN_PROGRESS" && id && (
+        <CommissionProposalView
+          dealId={id}
+          negotiation={negotiation ?? null}
+        />
+      )}
+
+      {/* Player: proposed personal terms from agent (TRA-129) */}
+      {isPlayer && atAgentNegotiation && deal.status === "IN_PROGRESS" && id && (
+        <PlayerTermsProposalView
+          dealId={id}
+          negotiation={negotiation ?? null}
+        />
       )}
 
       {/* PERSONAL_TERMS banner */}

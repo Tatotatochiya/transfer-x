@@ -59,6 +59,7 @@ const AdminTransferWindowPage   = lazy(() => import("./pages/admin/AdminTransfer
 const AdminHealthPage           = lazy(() => import("./pages/admin/AdminHealthPage"));
 const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage"));
 const AgentDashboardPage        = lazy(() => import("./pages/agent/AgentDashboardPage"));
+const AgentPipelinePage         = lazy(() => import("./pages/agent/AgentPipelinePage"));
 const AgentProfilePage          = lazy(() => import("./pages/agent/AgentProfilePage"));
 const AgentClientPage           = lazy(() => import("./pages/agent/AgentClientPage"));
 const AgentRosterImportPage     = lazy(() => import("./pages/agent/AgentRosterImportPage"));
@@ -132,7 +133,7 @@ function SmartRedirect() {
   const { user, accessToken, refreshToken, isBootstrapping } = useAuthStore();
   if (isBootstrapping) return <LoadingScreen />;
   if (!accessToken && !refreshToken) return <Navigate to="/login" replace />;
-  if (user?.user_type === "AGENT") return <Navigate to="/agent/dashboard" replace />;
+  if (user?.user_type === "AGENT") return <Navigate to="/agent/pipeline" replace />;
   if (user?.user_type === "PLAYER") return <Navigate to="/player/profile" replace />;
   return <Navigate to="/dashboard" replace />;
 }
@@ -194,6 +195,7 @@ export default function App() {
           <Route path="/club/finance" element={<ClubRoute><FinancePage /></ClubRoute>} />
 
           {/* ── Agent portal ── */}
+          <Route path="/agent/pipeline"           element={<AgentRoute><AgentPipelinePage /></AgentRoute>} />
           <Route path="/agent/dashboard"          element={<AgentRoute><AgentDashboardPage /></AgentRoute>} />
           <Route path="/agent/profile"            element={<AgentRoute><AgentProfilePage /></AgentRoute>} />
           <Route path="/agent/clients/:mandateId" element={<AgentRoute><AgentClientPage /></AgentRoute>} />
