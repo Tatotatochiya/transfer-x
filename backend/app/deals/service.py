@@ -376,6 +376,11 @@ async def advance_deal(
             raise ValueError("Player has not yet agreed to the proposed personal terms")
         neg.status = NegotiationStatus.TERMS_AGREED
         neg.agreed_at = datetime.now(timezone.utc)
+        # TRA-59: copy agreed commission onto deal for quick reads
+        deal.agent_commission_pct = neg.commission_pct
+        deal.agent_commission_amount = neg.commission_amount
+        deal.commission_payer = neg.commission_payer
+        deal.commission_agent_id = neg.agent_id
         deal.stage = DealStage.PERSONAL_TERMS
 
     elif stage == DealStage.PERSONAL_TERMS:

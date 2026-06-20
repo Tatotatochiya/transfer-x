@@ -239,6 +239,11 @@ class DealResponse(BaseModel):
     clauses: list[DealClauseResponse] = []
     # TRA-58
     instalments: list[DealInstalmentResponse] = []
+    # TRA-59
+    agent_commission_pct: Decimal | None = None
+    agent_commission_amount: Decimal | None = None
+    commission_payer: CommissionPayer | None = None
+    commission_agent_id: uuid.UUID | None = None
     # TRA-60
     personal_terms: PersonalTermsResponse | None = None
     notes: str | None

@@ -1,10 +1,16 @@
 import type {
+  AgreementStatus,
   BidStatus,
+  ClauseStatus,
+  ClauseType,
   ClubRole,
+  CommissionPayer,
   DealStage,
   DealStatus,
+  DealType,
   InterestLevel,
   InterestStage,
+  NegotiationStatus,
   NotificationType,
   OfferEventType,
   OfferStatus,
@@ -406,6 +412,56 @@ export interface DealNote {
   author_club: ClubSummary | null;
 }
 
+export interface DealClause {
+  id: string;
+  deal_id: string;
+  clause_type: ClauseType;
+  trigger_description: string;
+  amount: number;
+  cap: number | null;
+  status: ClauseStatus;
+  created_at: string;
+}
+
+export interface DealInstalment {
+  id: string;
+  deal_id: string;
+  due_date: string;
+  amount: number;
+  paid: boolean;
+  paid_at: string | null;
+}
+
+export interface PersonalTerms {
+  id: string;
+  deal_id: string;
+  agent_id: string | null;
+  wage_weekly: number | null;
+  signing_bonus: number | null;
+  length_years: number | null;
+  player_consent: AgreementStatus;
+  agreed_at: string | null;
+  created_at: string;
+}
+
+export interface AgentNegotiation {
+  id: string;
+  deal_id: string;
+  agent_id: string;
+  status: NegotiationStatus;
+  commission_pct: number | null;
+  commission_amount: number | null;
+  commission_payer: CommissionPayer | null;
+  additional_conditions: string | null;
+  club_agreement: AgreementStatus;
+  proposed_wage_weekly: number | null;
+  proposed_signing_bonus: number | null;
+  proposed_length_years: number | null;
+  player_agreement: AgreementStatus;
+  created_at: string;
+  agreed_at: string | null;
+}
+
 export interface Deal {
   id: string;
   sale_id: string | null;
@@ -418,6 +474,26 @@ export interface Deal {
   agreed_wage_weekly: number | null;
   status: DealStatus;
   stage: DealStage;
+  // TRA-56
+  deal_type: DealType;
+  loan_start: string | null;
+  loan_end: string | null;
+  loan_fee: number | null;
+  option_to_buy: number | null;
+  obligation_to_buy: boolean;
+  obligation_conditions: string | null;
+  // TRA-57
+  sell_on_pct: number | null;
+  clauses: DealClause[];
+  // TRA-58
+  instalments: DealInstalment[];
+  // TRA-59
+  agent_commission_pct: number | null;
+  agent_commission_amount: number | null;
+  commission_payer: CommissionPayer | null;
+  commission_agent_id: string | null;
+  // TRA-60
+  personal_terms: PersonalTerms | null;
   notes: string | null;
   completed_at: string | null;
   created_at: string;

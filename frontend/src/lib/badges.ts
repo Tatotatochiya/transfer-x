@@ -92,10 +92,12 @@ export function dealStatusVariant(s: DealStatus): BadgeVariant {
 
 export function dealStageLabel(s: DealStage): string {
   const map: Record<DealStage, string> = {
-    AGREEMENT: "Agreement",
-    PAPERWORK: "Paperwork",
-    CONFIRMED: "Ready to Execute",
-    COMPLETED: "Completed",
+    AGREEMENT:          "Agreement",
+    AGENT_NEGOTIATION:  "Agent Negotiation",
+    PERSONAL_TERMS:     "Personal Terms",
+    PAPERWORK:          "Paperwork",
+    CONFIRMED:          "Ready to Execute",
+    COMPLETED:          "Completed",
   };
-  return map[s];
+  return map[s] ?? s;
 }

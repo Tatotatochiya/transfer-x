@@ -96,6 +96,15 @@ class Deal(Base):
     obligation_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
     # TRA-57: sell-on percentage (0.0–1.0), recorded on the selling club's side
     sell_on_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
+    # TRA-59: agent commission (set during AGENT_NEGOTIATION; mirrors AgentNegotiation fields for quick read)
+    agent_commission_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
+    agent_commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    commission_payer: Mapped["app.agents.models.CommissionPayer | None"] = mapped_column(  # type: ignore[name-defined]
+        SAEnum("BUYER", "SELLER", "PLAYER", name="commissionpayer"), nullable=True
+    )
+    commission_agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("agent_profiles.id", ondelete="SET NULL"), nullable=True
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

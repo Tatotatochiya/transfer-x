@@ -133,11 +133,13 @@ export default function DealDetailPage() {
   const isParty    = isBuyer || isSeller;
   const isActive   = deal.status === "IN_PROGRESS" || deal.status === "PENDING_COMPLETION";
 
+  const atAgentNegotiation = deal.stage === "AGENT_NEGOTIATION";
+  const atPersonalTerms    = deal.stage === "PERSONAL_TERMS";
   // At PAPERWORK stage, clubs cannot advance — only staff can
-  const atPaperwork      = deal.stage === "PAPERWORK";
-  const atConfirmed      = deal.stage === "CONFIRMED";
-  const clubCanAdvance   = isParty && isActive && !atPaperwork && !deal.is_auction_deal;
-  const clubCanCollapse  = isParty && isActive;
+  const atPaperwork        = deal.stage === "PAPERWORK";
+  const atConfirmed        = deal.stage === "CONFIRMED";
+  const clubCanAdvance     = isParty && isActive && !atPaperwork && !atAgentNegotiation && !atPersonalTerms && !deal.is_auction_deal;
+  const clubCanCollapse    = isParty && isActive;
 
   const advanceError =
     advanceMutation.isError ? getApiError(advanceMutation.error, "Failed.") : null;
@@ -180,6 +182,26 @@ export default function DealDetailPage() {
           <p className="font-semibold mb-1">Documents verified — ready to execute</p>
           <p className="text-emerald-400/80">
             TransferX has processed all documentation. Use the <strong>Execute Transfer</strong> button to complete the deal and register the player.
+          </p>
+        </div>
+      )}
+
+      {/* AGENT_NEGOTIATION banner */}
+      {atAgentNegotiation && isParty && deal.status === "IN_PROGRESS" && (
+        <div className="mb-6 rounded-xl bg-purple-500/10 px-5 py-4 text-sm text-purple-300 ring-1 ring-purple-500/20">
+          <p className="font-semibold mb-1">Agent negotiation in progress</p>
+          <p className="text-purple-400/80">
+            The mandated agent is negotiating commission terms with the buying club and personal terms with the player. You will be notified once both parties agree.
+          </p>
+        </div>
+      )}
+
+      {/* PERSONAL_TERMS banner */}
+      {atPersonalTerms && isParty && deal.status === "IN_PROGRESS" && (
+        <div className="mb-6 rounded-xl bg-amber-500/10 px-5 py-4 text-sm text-amber-300 ring-1 ring-amber-500/20">
+          <p className="font-semibold mb-1">Awaiting player consent on personal terms</p>
+          <p className="text-amber-400/80">
+            The agent has proposed personal contract terms. The deal will advance once the player confirms acceptance.
           </p>
         </div>
       )}
@@ -253,6 +275,7 @@ export default function DealDetailPage() {
                 label="Seller"
                 valueNode={<ClubLink id={deal.seller_club?.id} name={deal.seller_club?.name} />}
               />
+              <Metric label="Type" value={deal.deal_type === "LOAN" ? "Loan" : "Permanent"} />
               <Metric label="Stage" value={dealStageLabel(deal.stage)} />
               <Metric label="Created" value={formatDate(deal.created_at)} />
               {deal.is_auction_deal && (
@@ -339,8 +362,121 @@ export default function DealDetailPage() {
           )}
         </div>
 
-        {/* ── Right: notes + timeline ── */}
+        {/* ── Right: builder panels + notes + timeline ── */}
         <div className="lg:col-span-2 space-y-4">
+
+          {/* Loan details (TRA-56) */}
+          {deal.deal_type === "LOAN" && (
+            <Panel title="Loan Details">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                {deal.loan_start && (
+                  <><dt className="text-slate-500">Loan start</dt><dd className="text-white">{formatDate(deal.loan_start)}</dd></>
+                )}
+                {deal.loan_end && (
+                  <><dt className="text-slate-500">Loan end</dt><dd className="text-white">{formatDate(deal.loan_end)}</dd></>
+                )}
+                {deal.loan_fee != null && (
+                  <><dt className="text-slate-500">Loan fee</dt><dd className="text-white">{formatCurrency(deal.loan_fee)}</dd></>
+                )}
+                {deal.option_to_buy != null && (
+                  <><dt className="text-slate-500">Option to buy</dt><dd className="text-white">{formatCurrency(deal.option_to_buy)}</dd></>
+                )}
+                {deal.obligation_to_buy && (
+                  <><dt className="text-slate-500">Obligation to buy</dt><dd className="text-amber-300">Yes{deal.obligation_conditions ? ` — ${deal.obligation_conditions}` : ""}</dd></>
+                )}
+                {deal.sell_on_pct != null && (
+                  <><dt className="text-slate-500">Sell-on %</dt><dd className="text-white">{(deal.sell_on_pct * 100).toFixed(1)}%</dd></>
+                )}
+              </dl>
+            </Panel>
+          )}
+
+          {/* Add-on clauses (TRA-57) */}
+          {deal.clauses.length > 0 && (
+            <Panel title={`Add-on Clauses (${deal.clauses.length})`}>
+              <div className="space-y-2">
+                {deal.clauses.map((c) => (
+                  <div key={c.id} className="rounded-lg bg-slate-800/60 px-3 py-2.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-300 capitalize">
+                        {c.clause_type.toLowerCase()} clause
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">{c.trigger_description}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-semibold text-white">{formatCurrency(c.amount)}</p>
+                      {c.cap != null && (
+                        <p className="text-[10px] text-slate-500">cap {formatCurrency(c.cap)}</p>
+                      )}
+                    </div>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                      c.status === "PAID"      ? "bg-emerald-500/20 text-emerald-400" :
+                      c.status === "TRIGGERED" ? "bg-amber-500/20 text-amber-400"    :
+                                                  "bg-slate-700 text-slate-400"
+                    }`}>{c.status}</span>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          )}
+
+          {/* Instalment schedule (TRA-58) */}
+          {deal.instalments.length > 0 && (
+            <Panel title={`Payment Schedule (${deal.instalments.length} instalments)`}>
+              <div className="space-y-1.5">
+                {deal.instalments.map((inst) => (
+                  <div key={inst.id} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">{formatDate(inst.due_date)}</span>
+                    <span className="font-semibold text-white">{formatCurrency(inst.amount)}</span>
+                    <span className={inst.paid ? "text-emerald-400 text-xs" : "text-slate-500 text-xs"}>
+                      {inst.paid ? `Paid ${inst.paid_at ? formatDate(inst.paid_at) : ""}` : "Pending"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          )}
+
+          {/* Commission block (TRA-59) — shown when set */}
+          {deal.agent_commission_pct != null || deal.agent_commission_amount != null ? (
+            <Panel title="Agent Commission">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                {deal.agent_commission_pct != null && (
+                  <><dt className="text-slate-500">Commission %</dt><dd className="text-white">{(deal.agent_commission_pct * 100).toFixed(2)}%</dd></>
+                )}
+                {deal.agent_commission_amount != null && (
+                  <><dt className="text-slate-500">Commission amount</dt><dd className="text-white">{formatCurrency(deal.agent_commission_amount)}</dd></>
+                )}
+                {deal.commission_payer && (
+                  <><dt className="text-slate-500">Paid by</dt><dd className="text-white capitalize">{deal.commission_payer.toLowerCase()}</dd></>
+                )}
+              </dl>
+            </Panel>
+          ) : null}
+
+          {/* Personal terms consent status (TRA-60) */}
+          {deal.personal_terms && (
+            <Panel title="Personal Terms">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                {deal.personal_terms.wage_weekly != null && (
+                  <><dt className="text-slate-500">Proposed wage</dt><dd className="text-white">{formatWage(deal.personal_terms.wage_weekly)}</dd></>
+                )}
+                {deal.personal_terms.signing_bonus != null && (
+                  <><dt className="text-slate-500">Signing bonus</dt><dd className="text-white">{formatCurrency(deal.personal_terms.signing_bonus)}</dd></>
+                )}
+                {deal.personal_terms.length_years != null && (
+                  <><dt className="text-slate-500">Contract length</dt><dd className="text-white">{deal.personal_terms.length_years} yr{deal.personal_terms.length_years !== 1 ? "s" : ""}</dd></>
+                )}
+                <dt className="text-slate-500">Player consent</dt>
+                <dd className={
+                  deal.personal_terms.player_consent === "AGREED"   ? "text-emerald-400 font-semibold" :
+                  deal.personal_terms.player_consent === "DECLINED" ? "text-red-400 font-semibold"     :
+                                                                        "text-amber-400"
+                }>{deal.personal_terms.player_consent}</dd>
+              </dl>
+            </Panel>
+          )}
+
           <Panel title="Deal Notes">
             {deal.deal_notes.length === 0 ? (
               <p className="text-sm text-slate-500 pb-2">No notes yet.</p>
@@ -380,10 +516,13 @@ export default function DealDetailPage() {
 
 import type { DealStage } from "../../types/enums";
 
+const STAGE_SEQ: DealStage[] = [
+  "AGREEMENT", "AGENT_NEGOTIATION", "PERSONAL_TERMS", "PAPERWORK", "CONFIRMED", "COMPLETED",
+];
+
 function nextStage(stage: DealStage): DealStage {
-  const seq: DealStage[] = ["AGREEMENT", "PAPERWORK", "CONFIRMED", "COMPLETED"];
-  const idx = seq.indexOf(stage);
-  return idx < seq.length - 1 ? seq[idx + 1] : stage;
+  const idx = STAGE_SEQ.indexOf(stage);
+  return idx >= 0 && idx < STAGE_SEQ.length - 1 ? STAGE_SEQ[idx + 1] : stage;
 }
 
 // ── Deal timeline ─────────────────────────────────────────────────────────────

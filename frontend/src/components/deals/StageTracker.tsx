@@ -1,12 +1,24 @@
 import type { DealStage, DealStatus } from "../../types/enums";
 
-const STAGES: DealStage[] = ["AGREEMENT", "PAPERWORK", "CONFIRMED", "COMPLETED"];
+// Full ordered pipeline; AGENT_NEGOTIATION and PERSONAL_TERMS are conditional stages
+// inserted when a deal has an agent mandate. We display them when present.
+const BASE_STAGES: DealStage[] = ["AGREEMENT", "PAPERWORK", "CONFIRMED", "COMPLETED"];
+const EXTENDED_STAGES: DealStage[] = [
+  "AGREEMENT",
+  "AGENT_NEGOTIATION",
+  "PERSONAL_TERMS",
+  "PAPERWORK",
+  "CONFIRMED",
+  "COMPLETED",
+];
 
 const STAGE_LABELS: Record<DealStage, string> = {
-  AGREEMENT: "Agreement",
-  PAPERWORK: "Paperwork",
-  CONFIRMED: "Confirmed",
-  COMPLETED: "Completed",
+  AGREEMENT:         "Agreement",
+  AGENT_NEGOTIATION: "Agent Nego.",
+  PERSONAL_TERMS:    "Personal Terms",
+  PAPERWORK:         "Paperwork",
+  CONFIRMED:         "Confirmed",
+  COMPLETED:         "Completed",
 };
 
 interface StageTrackerProps {
@@ -15,6 +27,9 @@ interface StageTrackerProps {
 }
 
 export default function StageTracker({ stage, status }: StageTrackerProps) {
+  const isAgentFlow =
+    stage === "AGENT_NEGOTIATION" || stage === "PERSONAL_TERMS";
+  const STAGES = isAgentFlow ? EXTENDED_STAGES : BASE_STAGES;
   const currentIdx = STAGES.indexOf(stage);
   const isCollapsed = status === "COLLAPSED";
 

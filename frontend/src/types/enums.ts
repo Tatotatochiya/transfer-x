@@ -33,7 +33,20 @@ export type DealStatus =
   | "COMPLETED"
   | "COLLAPSED";
 
-export type DealStage = "AGREEMENT" | "PAPERWORK" | "CONFIRMED" | "COMPLETED";
+export type DealStage =
+  | "AGREEMENT"
+  | "AGENT_NEGOTIATION"
+  | "PERSONAL_TERMS"
+  | "PAPERWORK"
+  | "CONFIRMED"
+  | "COMPLETED";
+
+export type DealType = "PERMANENT" | "LOAN";
+export type ClauseType = "APPEARANCES" | "GOALS" | "PROMOTION" | "RESALE" | "OTHER";
+export type ClauseStatus = "PENDING" | "TRIGGERED" | "PAID";
+export type AgreementStatus = "PENDING" | "AGREED" | "DECLINED";
+export type NegotiationStatus = "IN_PROGRESS" | "TERMS_AGREED" | "COLLAPSED";
+export type CommissionPayer = "BUYER" | "SELLER" | "PLAYER";
 
 export type NotificationType =
   | "OUTBID"
@@ -49,6 +62,9 @@ export type NotificationType =
   | "AUCTION_BID_ACCEPTED"
   | "DEAL_COMPLETED"
   | "DEAL_COLLAPSED"
+  | "DEAL_SELL_ON"
+  | "DEAL_AGENT_INVITED"
+  | "DEAL_PERSONAL_TERMS_SENT"
   | "PLAYER_AVAILABLE";
 
 export type InterestLevel = "WATCHING" | "INTERESTED" | "PRIORITY";

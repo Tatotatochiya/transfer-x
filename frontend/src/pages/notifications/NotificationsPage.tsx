@@ -25,9 +25,12 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   AUCTION_BID_RECEIVED: "Bid received",
   AUCTION_ENDING:       "Auction ending soon",
   AUCTION_BID_ACCEPTED: "Auction bid accepted",
-  DEAL_COMPLETED:       "Deal completed",
-  DEAL_COLLAPSED:       "Deal collapsed",
-  PLAYER_AVAILABLE:     "Player available",
+  DEAL_COMPLETED:             "Deal completed",
+  DEAL_COLLAPSED:             "Deal collapsed",
+  DEAL_SELL_ON:               "Sell-on clause triggered",
+  DEAL_AGENT_INVITED:         "Agent invited",
+  DEAL_PERSONAL_TERMS_SENT:   "Personal terms sent",
+  PLAYER_AVAILABLE:           "Player available",
 };
 
 const TYPE_COLOURS: Record<NotificationType, string> = {
@@ -42,9 +45,12 @@ const TYPE_COLOURS: Record<NotificationType, string> = {
   AUCTION_BID_RECEIVED: "text-sky-400",
   AUCTION_ENDING:       "text-amber-400",
   AUCTION_BID_ACCEPTED: "text-emerald-400",
-  DEAL_COMPLETED:       "text-emerald-400",
-  DEAL_COLLAPSED:       "text-red-400",
-  PLAYER_AVAILABLE:     "text-slate-300",
+  DEAL_COMPLETED:           "text-emerald-400",
+  DEAL_COLLAPSED:           "text-red-400",
+  DEAL_SELL_ON:             "text-amber-400",
+  DEAL_AGENT_INVITED:       "text-purple-400",
+  DEAL_PERSONAL_TERMS_SENT: "text-amber-400",
+  PLAYER_AVAILABLE:         "text-slate-300",
 };
 
 // ── Row component ─────────────────────────────────────────────────────────────
