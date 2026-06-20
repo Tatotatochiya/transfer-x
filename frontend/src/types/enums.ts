@@ -67,5 +67,8 @@ export type NotificationType =
   | "DEAL_PERSONAL_TERMS_SENT"
   | "PLAYER_AVAILABLE";
 
+export type ValuationSource = "ETV" | "TRANSFERMARKT" | "MANUAL";
+export type WageSource = "CAPOLOGY" | "ESTIMATED" | "MANUAL";
+
 export type InterestLevel = "WATCHING" | "INTERESTED" | "PRIORITY";
 export type InterestStage = "SCOUTED" | "CONTACTED" | "NEGOTIATING" | "DROPPED";

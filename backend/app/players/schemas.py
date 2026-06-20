@@ -5,7 +5,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from app.players.models import PlayerPosition, PlayerStatus, PlayerVisibility
+from app.players.models import PlayerPosition, PlayerStatus, PlayerVisibility, ValuationSource, WageSource
 
 
 class ContractResponse(BaseModel):
@@ -78,6 +78,18 @@ class PlayerResponse(BaseModel):
     birth_country: str | None = None
     created_at: datetime
     updated_at: datetime
+    # TRA-66/73 enrichment fields
+    market_value: Decimal | None = None
+    market_value_currency: str | None = None
+    valuation_low: Decimal | None = None
+    valuation_high: Decimal | None = None
+    valuation_source: ValuationSource | None = None
+    valuation_as_of: date | None = None
+    contract_expiry: date | None = None
+    wage_weekly: Decimal | None = None
+    wage_currency: str | None = None
+    wage_source: WageSource | None = None
+    wage_verified: bool = False
 
 
 class ActiveDealStub(BaseModel):

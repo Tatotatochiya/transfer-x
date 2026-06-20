@@ -106,6 +106,18 @@ export default function PlayerCard({ player, formScore, formTrend }: PlayerCardP
             </Badge>
           )}
 
+          {/* Market value chip */}
+          {player.market_value != null && (
+            <span className="text-[10px] font-semibold text-sky-400 tabular-nums">
+              {new Intl.NumberFormat("en-GB", {
+                style: "currency",
+                currency: player.market_value_currency ?? "EUR",
+                maximumFractionDigits: 0,
+                notation: "compact",
+              }).format(player.market_value)}
+            </span>
+          )}
+
           {/* Open to offers */}
           {player.open_to_offers && (
             <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 ring-1 ring-emerald-500/30">

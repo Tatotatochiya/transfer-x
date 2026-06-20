@@ -19,6 +19,8 @@ import type {
   PlayerVisibility,
   SaleStatus,
   SaleType,
+  ValuationSource,
+  WageSource,
 } from "./enums";
 
 // ── Shared ────────────────────────────────────────────────────────────────────
@@ -273,6 +275,18 @@ export interface Player {
   birth_country: string | null;
   created_at: string;
   updated_at: string;
+  // TRA-66/73 enrichment (optional — only present when data has been populated)
+  market_value?: number | null;
+  market_value_currency?: string | null;
+  valuation_low?: number | null;
+  valuation_high?: number | null;
+  valuation_source?: ValuationSource | null;
+  valuation_as_of?: string | null;
+  contract_expiry?: string | null;
+  wage_weekly?: number | null;
+  wage_currency?: string | null;
+  wage_source?: WageSource | null;
+  wage_verified?: boolean;
 }
 
 export interface ActiveDealStub {

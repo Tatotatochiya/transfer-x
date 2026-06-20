@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { ActiveDealStub, Club, MandateResponse, OrderBook, PlayerDetail, PlayerForm, PlayerStats } from "../../types/api";
+import type { ActiveDealStub, Club, MandateResponse, OrderBook, Player, PlayerDetail, PlayerForm, PlayerStats } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -21,6 +21,61 @@ import { useCompare } from "../../context/CompareContext";
 import CareerHistoryPanel from "../../components/players/CareerHistoryPanel";
 import InjuryHistoryPanel from "../../components/players/InjuryHistoryPanel";
 import { PlayerFitCard } from "../../components/ai/PlayerFitCard";
+
+// ── Valuation card (TRA-73) ───────────────────────────────────────────────────
+
+const SOURCE_LABEL: Record<string, string> = {
+  ETV: "ETV",
+  TRANSFERMARKT: "Transfermarkt",
+  MANUAL: "Manual",
+};
+
+function ValuationCard({ player, isAuthenticated }: { player: Player; isAuthenticated: boolean }) {
+  if (!isAuthenticated) return null;
+  if (player.market_value == null) return null;
+
+  const currency = player.market_value_currency ?? "EUR";
+  const formatter = (v: number) =>
+    new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+      notation: "compact",
+    }).format(v);
+
+  return (
+    <div className="rounded-xl bg-slate-800/50 px-4 py-3 ring-1 ring-white/[0.06]">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Market Value</p>
+        {player.valuation_source && (
+          <span className="text-[10px] font-semibold text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">
+            {SOURCE_LABEL[player.valuation_source] ?? player.valuation_source}
+          </span>
+        )}
+      </div>
+
+      <p className="text-xl font-bold text-white tabular-nums">
+        {formatter(player.market_value)}
+      </p>
+
+      {(player.valuation_low != null || player.valuation_high != null) && (
+        <p className="text-xs text-slate-500 mt-0.5">
+          Range:{" "}
+          {player.valuation_low != null ? formatter(player.valuation_low) : "—"}
+          {" – "}
+          {player.valuation_high != null ? formatter(player.valuation_high) : "—"}
+        </p>
+      )}
+
+      {player.valuation_as_of && (
+        <p className="text-[10px] text-slate-600 mt-1">
+          As of {formatDate(player.valuation_as_of)}
+        </p>
+      )}
+    </div>
+  );
+}
+
 
 // ── Deal banner ───────────────────────────────────────────────────────────────
 
@@ -152,11 +207,18 @@ function ContractSidebar({
           {contract.start_date && isMyPlayer && (
             <Row label="Start" value={formatDate(contract.start_date)} />
           )}
-          {contract.end_date && (
-            <Row label="Expires" value={formatDate(contract.end_date)} />
+          {(contract.end_date ?? player.contract_expiry) && (
+            <Row
+              label="Expires"
+              value={formatDate((contract.end_date ?? player.contract_expiry)!)}
+            />
           )}
-          {contract.wage_weekly != null && (
-            <Row label="Weekly wage" value={formatWage(contract.wage_weekly)} accent="text-emerald-400" />
+          {(contract.wage_weekly ?? player.wage_weekly) != null && (
+            <Row
+              label={`Weekly wage${player.wage_source && !contract.wage_weekly ? ` (${player.wage_source === "CAPOLOGY" ? "Capology" : "est."})` : ""}`}
+              value={formatWage((contract.wage_weekly ?? player.wage_weekly)!)}
+              accent="text-emerald-400"
+            />
           )}
           {contract.release_clause != null && (
             <Row label="Release clause" value={formatCurrency(contract.release_clause)} />
@@ -746,6 +808,10 @@ export default function PlayerMarketDetailPage() {
 
         {/* ── Right: sidebar ──────────────────────────────────────────────── */}
         <div className="space-y-3">
+          {/* Market valuation (TRA-73) */}
+          {player.market_value != null && (
+            <ValuationCard player={player} isAuthenticated={isAuthenticated} />
+          )}
           <ContractSidebar
             player={player}
             isMyPlayer={isMyPlayer}
