@@ -35,24 +35,19 @@ function getNavGroups(userType: UserType | null): NavGroup[] {
   if (userType === "AGENT") {
     return [
       {
+        title: "Agency",
+        authRequired: true,
+        items: [
+          { label: "Pipeline",     to: "/agent/pipeline",  icon: "layout-dashboard", iconColor: "text-emerald-400", iconBg: "bg-emerald-500/15", end: true },
+          { label: "My Roster",   to: "/agent/dashboard", icon: "briefcase",        iconColor: "text-sky-400",     iconBg: "bg-sky-500/15",    end: true },
+          { label: "Agent Profile", to: "/agent/profile", icon: "user",             iconColor: "text-indigo-400",  iconBg: "bg-indigo-500/15" },
+        ],
+      },
+      {
         title: "Market",
         items: [
-          { label: "Browse Players", to: "/players/market", icon: "users",            iconColor: "text-sky-400",    iconBg: "bg-sky-500/15" },
+          { label: "Browse Players", to: "/players/market", icon: "crosshair",        iconColor: "text-slate-400",  iconBg: "bg-slate-500/15" },
           { label: "Transfers",      to: "/transfers",      icon: "arrow-right-left", iconColor: "text-purple-400", iconBg: "bg-purple-500/15" },
-        ],
-      },
-      {
-        title: "My Clients",
-        authRequired: true,
-        items: [
-          { label: "Clients",       to: "/agent/dashboard", icon: "users", iconColor: "text-sky-400",    iconBg: "bg-sky-500/15",    end: true },
-        ],
-      },
-      {
-        title: "My Profile",
-        authRequired: true,
-        items: [
-          { label: "Agent Profile", to: "/agent/profile",   icon: "user",  iconColor: "text-indigo-400", iconBg: "bg-indigo-500/15" },
         ],
       },
       ADMIN_GROUP,

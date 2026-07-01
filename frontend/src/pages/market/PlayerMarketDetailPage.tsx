@@ -731,7 +731,7 @@ export default function PlayerMarketDetailPage() {
                 {!isMyPlayer && (
                   <>
                     <AddToShortlistButton playerId={player.id} />
-                    {isAuthenticated && (
+                    {isAuthenticated && !isAgent && (
                       <Button
                         variant="primary"
                         disabled={player.active_deal?.status === "IN_PROGRESS"}

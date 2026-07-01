@@ -168,8 +168,8 @@ export default function App() {
           <Route path="/players/market"     element={<PublicRoute><PlayerMarketPage /></PublicRoute>} />
           <Route path="/players/market/:id" element={<PublicRoute><PlayerMarketDetailPage /></PublicRoute>} />
           {/* /sales/mine must come before /sales/:id to avoid swallowing "mine" as an id */}
-          <Route path="/sales/mine"         element={<ProtectedRoute><MySalesPage /></ProtectedRoute>} />
-          <Route path="/sales/new"          element={<ProtectedRoute><CreateSalePage /></ProtectedRoute>} />
+          <Route path="/sales/mine"         element={<ClubRoute><MySalesPage /></ClubRoute>} />
+          <Route path="/sales/new"          element={<ClubRoute><CreateSalePage /></ClubRoute>} />
           <Route path="/sales"              element={<PublicRoute><SaleListPage /></PublicRoute>} />
           <Route path="/sales/:id"          element={<PublicRoute><SaleDetailPage /></PublicRoute>} />
           <Route path="/clubs"              element={<PublicRoute><ClubListPage /></PublicRoute>} />
@@ -178,15 +178,15 @@ export default function App() {
           <Route path="/transfers"          element={<PublicRoute><TransferActivityPage /></PublicRoute>} />
           <Route path="/compare"            element={<PublicRoute><PlayerComparePage /></PublicRoute>} />
 
-          {/* ── Offers (protected) ── */}
+          {/* ── Offers (club-only) ── */}
           {/* /offers/received and /offers/sent must come before /offers/:id */}
-          <Route path="/offers/received" element={<ProtectedRoute><OfferInboxPage /></ProtectedRoute>} />
-          <Route path="/offers/sent"     element={<ProtectedRoute><SentOffersPage /></ProtectedRoute>} />
-          <Route path="/offers/new"      element={<ProtectedRoute><CreateOfferPage /></ProtectedRoute>} />
+          <Route path="/offers/received" element={<ClubRoute><OfferInboxPage /></ClubRoute>} />
+          <Route path="/offers/sent"     element={<ClubRoute><SentOffersPage /></ClubRoute>} />
+          <Route path="/offers/new"      element={<ClubRoute><CreateOfferPage /></ClubRoute>} />
           <Route path="/offers/:id"      element={<ProtectedRoute><OfferDetailPage /></ProtectedRoute>} />
 
-          {/* ── Deals (protected) ── */}
-          <Route path="/deals"     element={<ProtectedRoute><DealListPage /></ProtectedRoute>} />
+          {/* ── Deals (club-only list; deal room accessible to all parties) ── */}
+          <Route path="/deals"     element={<ClubRoute><DealListPage /></ClubRoute>} />
           <Route path="/deals/:id" element={<ProtectedRoute><DealDetailPage /></ProtectedRoute>} />
 
           {/* ── Club (protected, club-only) ── */}

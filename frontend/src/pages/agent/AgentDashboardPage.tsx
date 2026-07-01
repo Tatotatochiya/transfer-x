@@ -165,7 +165,7 @@ export default function AgentDashboardPage() {
   return (
     <div className="max-w-3xl">
       <PageHeader
-        title="My Clients"
+        title="My Roster"
         subtitle={profile ? `${profile.agency_name} · ${profile.country}` : ""}
       />
 

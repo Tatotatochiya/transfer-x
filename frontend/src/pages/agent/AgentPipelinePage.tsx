@@ -12,7 +12,7 @@ import type {
 import Spinner from "../../components/ui/Spinner";
 import PageHeader from "../../components/ui/PageHeader";
 import { formatCurrency } from "../../lib/utils";
-import { useToast } from "../../contexts/ToastContext";
+import { useToast } from "../../context/ToastContext";
 
 // ── Stage config ──────────────────────────────────────────────────────────────
 
