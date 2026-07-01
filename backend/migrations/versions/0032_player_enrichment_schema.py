@@ -8,6 +8,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql as pg
 
 revision: str = "0032"
 down_revision: Union[str, None] = "0031"
@@ -26,7 +27,7 @@ def upgrade() -> None:
     op.add_column("players", sa.Column("valuation_high", sa.Numeric(15, 2), nullable=True))
     op.add_column("players", sa.Column(
         "valuation_source",
-        sa.Enum("ETV", "TRANSFERMARKT", "MANUAL", name="valuationsource"),
+        pg.ENUM("ETV", "TRANSFERMARKT", "MANUAL", name="valuationsource", create_type=False),
         nullable=True,
     ))
     op.add_column("players", sa.Column("valuation_as_of", sa.Date(), nullable=True))
@@ -38,7 +39,7 @@ def upgrade() -> None:
     op.add_column("players", sa.Column("wage_currency", sa.String(10), nullable=True))
     op.add_column("players", sa.Column(
         "wage_source",
-        sa.Enum("CAPOLOGY", "ESTIMATED", "MANUAL", name="wagesource"),
+        pg.ENUM("CAPOLOGY", "ESTIMATED", "MANUAL", name="wagesource", create_type=False),
         nullable=True,
     ))
     op.add_column("players", sa.Column(

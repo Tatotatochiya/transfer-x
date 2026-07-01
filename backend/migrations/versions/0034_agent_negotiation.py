@@ -8,6 +8,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql as pg
 
 revision: str = "0034"
 down_revision: Union[str, None] = "0033"
@@ -35,7 +36,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "status",
-            sa.Enum("IN_PROGRESS", "TERMS_AGREED", "COLLAPSED", name="negotiationstatus"),
+            pg.ENUM("IN_PROGRESS", "TERMS_AGREED", "COLLAPSED", name="negotiationstatus", create_type=False),
             nullable=False, server_default="IN_PROGRESS",
         ),
         # Club-side commission terms
@@ -43,13 +44,13 @@ def upgrade() -> None:
         sa.Column("commission_amount", sa.Numeric(15, 2), nullable=True),
         sa.Column(
             "commission_payer",
-            sa.Enum("BUYER", "SELLER", "PLAYER", name="commissionpayer"),
+            pg.ENUM("BUYER", "SELLER", "PLAYER", name="commissionpayer", create_type=False),
             nullable=True,
         ),
         sa.Column("additional_conditions", sa.Text, nullable=True),
         sa.Column(
             "club_agreement",
-            sa.Enum("PENDING", "AGREED", "DECLINED", name="agreementstatus"),
+            pg.ENUM("PENDING", "AGREED", "DECLINED", name="agreementstatus", create_type=False),
             nullable=False, server_default="PENDING",
         ),
         # Player-side personal terms
@@ -58,7 +59,7 @@ def upgrade() -> None:
         sa.Column("proposed_length_years", sa.Integer, nullable=True),
         sa.Column(
             "player_agreement",
-            sa.Enum("PENDING", "AGREED", "DECLINED", name="agreementstatus"),
+            pg.ENUM("PENDING", "AGREED", "DECLINED", name="agreementstatus", create_type=False),
             nullable=False, server_default="PENDING",
         ),
         sa.Column(

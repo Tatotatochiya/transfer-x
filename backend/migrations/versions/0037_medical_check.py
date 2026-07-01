@@ -8,6 +8,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql as pg
 
 revision: str = "0037"
 down_revision: Union[str, None] = "0036"
@@ -28,7 +29,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "status",
-            sa.Enum("PENDING", "PASSED", "FAILED", name="medicalstatus"),
+            pg.ENUM("PENDING", "PASSED", "FAILED", name="medicalstatus", create_type=False),
             nullable=False, server_default="PENDING",
         ),
         sa.Column("notes", sa.Text, nullable=True),

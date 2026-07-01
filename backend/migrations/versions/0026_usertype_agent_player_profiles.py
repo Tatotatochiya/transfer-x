@@ -16,11 +16,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    op.execute("CREATE TYPE usertype AS ENUM ('CLUB', 'AGENT', 'PLAYER', 'STAFF', 'ADMIN')")
     op.add_column(
         "users",
         sa.Column(
             "user_type",
-            sa.Enum("CLUB", "AGENT", "PLAYER", "STAFF", "ADMIN", name="usertype"),
+            sa.Enum("CLUB", "AGENT", "PLAYER", "STAFF", "ADMIN", name="usertype", create_type=False),
             nullable=False,
             server_default="CLUB",
         ),

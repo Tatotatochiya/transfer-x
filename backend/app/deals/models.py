@@ -8,6 +8,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.agents.models import AgreementStatus, CommissionPayer  # noqa: F401 — resolve Mapped forward refs
 
 
 class DealStatus(str, enum.Enum):
@@ -99,7 +100,7 @@ class Deal(Base):
     # TRA-59: agent commission (set during AGENT_NEGOTIATION; mirrors AgentNegotiation fields for quick read)
     agent_commission_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
     agent_commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
-    commission_payer: Mapped["app.agents.models.CommissionPayer | None"] = mapped_column(  # type: ignore[name-defined]
+    commission_payer: Mapped[CommissionPayer | None] = mapped_column(
         SAEnum("BUYER", "SELLER", "PLAYER", name="commissionpayer"), nullable=True
     )
     commission_agent_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -270,7 +271,7 @@ class PersonalTerms(Base):
     wage_weekly: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
     signing_bonus: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
     length_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    player_consent: Mapped["app.agents.models.AgreementStatus"] = mapped_column(  # type: ignore[name-defined]
+    player_consent: Mapped[AgreementStatus] = mapped_column(
         SAEnum("PENDING", "AGREED", "DECLINED", name="agreementstatus"),
         nullable=False,
         server_default="PENDING",

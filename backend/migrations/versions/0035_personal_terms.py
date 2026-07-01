@@ -8,6 +8,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql as pg
 
 revision: str = "0035"
 down_revision: Union[str, None] = "0034"
@@ -37,7 +38,7 @@ def upgrade() -> None:
         sa.Column("length_years", sa.Integer, nullable=True),
         sa.Column(
             "player_consent",
-            sa.Enum("PENDING", "AGREED", "DECLINED", name="agreementstatus"),
+            pg.ENUM("PENDING", "AGREED", "DECLINED", name="agreementstatus", create_type=False),
             nullable=False, server_default="PENDING",
         ),
         sa.Column("agreed_at", sa.DateTime(timezone=True), nullable=True),
