@@ -41,6 +41,19 @@ Documentation is split into six areas, each with a single responsibility. Busine
 
 Each area has its own `README.md` explaining its own scope in more detail. [`PRODUCT_SPEC.md`](./PRODUCT_SPEC.md) is the master index that links into all six.
 
+### Tracking documents
+
+Alongside the six areas, a small set of root-level documents track ongoing state rather than belonging to any one area:
+
+| Document | Answers |
+|---|---|
+| [`PRODUCT_SPEC.md`](./PRODUCT_SPEC.md) | What is TransferX, and where is everything else? (master index) |
+| [`CHANGELOG.md`](./CHANGELOG.md) | What changed, in order, over time? |
+| [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) | What's actually built right now, verified against the code? |
+| [`SESSION_HANDOVER.md`](./SESSION_HANDOVER.md) | What should the next working session know before starting? |
+
+These four have a different update rhythm than the six content areas — see the [`documentation-standards`](../.claude/skills/documentation-standards/SKILL.md) and [`session-lifecycle`](../.claude/skills/session-lifecycle/SKILL.md) skills for exactly when and how each gets updated.
+
 ## For AI assistants (including Claude Code)
 
 If you are an AI coding assistant working in this repository:
@@ -51,6 +64,7 @@ If you are an AI coding assistant working in this repository:
 4. When you edit a document, update its `last_updated` field to the current date.
 5. When you add a new document, give it front matter (below), add it to its area's `README.md` table of contents, and link it from anything it relates to.
 6. Prefer filling in a `TODO` over leaving a document silent on something you don't know — but don't invent facts to fill a TODO. Leave it as a TODO if you're not sure.
+7. This repository also defines five **Claude Code project skills** under [`.claude/skills/`](../.claude/skills/) — `documentation-standards`, `engineering-standards`, `linear-workflow`, `product-principles`, and `session-lifecycle`. They encode most of what this file says procedurally and will often trigger automatically based on what you're doing; you can also invoke one directly if you know which applies.
 
 ## Conventions
 

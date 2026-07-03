@@ -35,4 +35,8 @@ dist-ssr/
 .vscode/
 
 # ── Claude Code ───────────────────────────────────────────────────────────
-.claude/
+# Everything under .claude/ is local by default (e.g. settings.local.json).
+# Project skills are the exception — they're project-level conventions meant
+# to be shared, so explicitly un-ignore that subtree.
+.claude/*
+!.claude/skills/

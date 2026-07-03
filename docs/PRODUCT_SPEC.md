@@ -29,6 +29,7 @@ Out of scope: implementation detail (see `architecture/` and `engineering/`), da
   - [Engineering](#engineering)
   - [Operations](#operations)
   - [Security & Compliance](#security--compliance)
+  - [Tracking documents](#tracking-documents)
 - [System diagram](#system-diagram)
 - [Related documents](#related-documents)
 
@@ -111,6 +112,13 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 - [`security-and-compliance/permissions-model.md`](./security-and-compliance/permissions-model.md) — confidentiality and access posture
 - [`security-and-compliance/data-privacy-and-legal.md`](./security-and-compliance/data-privacy-and-legal.md) — privacy and legal surface
 
+### Tracking documents
+*Root-level documents that track ongoing state rather than belonging to one area — see [`README.md#tracking-documents`](./README.md#tracking-documents) for the full explanation.*
+
+- [`CHANGELOG.md`](./CHANGELOG.md) — chronological record of what changed
+- [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) — current build status, verified against code
+- [`SESSION_HANDOVER.md`](./SESSION_HANDOVER.md) — the current handover note for the next working session
+
 ## System diagram
 
 ```mermaid
@@ -123,3 +131,4 @@ flowchart LR
 ## Related documents
 
 - [`docs/README.md`](./README.md) — documentation conventions and structure (read this if you're adding new docs)
+- [`../.claude/skills/`](../.claude/skills/) — the five Claude Code project skills that encode this documentation system's conventions, plus engineering, product, and backlog standards, as procedural guidance
