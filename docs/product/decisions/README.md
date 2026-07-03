@@ -1,6 +1,6 @@
 ---
 title: "Product Decisions"
-last_updated: 2026-07-03
+last_updated: 2026-07-04
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -17,9 +17,9 @@ In scope: product-level decisions (what to build, what not to build, scope trade
 
 ## Table of Contents
 
-No decisions have been recorded yet.
+- [0001 — Buying club proposes personal terms in non-mandated deals](./0001-buying-club-proposes-personal-terms.md)
 
-> **TODO:** When the first significant product decision is made, add it here as `NNNN-short-title.md` (e.g. `0001-defer-multi-currency-support.md`), following a short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
+> **TODO:** Add further decisions here as `NNNN-short-title.md`, following the short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
 
 ## Related Documents
 

@@ -1,6 +1,6 @@
 ---
 title: "Session Handover"
-last_updated: 2026-07-03
+last_updated: 2026-07-04
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -22,28 +22,30 @@ This file is **overwritten**, not appended to, at the end of each session — ma
 
 ## Latest Session Summary
 
-**Session date:** 2026-07-03
+**Session date:** 2026-07-04
 
 **Completed work:**
-- Created the `/docs` documentation structure (36 files across business, product, architecture, engineering, operations, and security-and-compliance areas), committed and pushed.
-- Refined the Linear backlog: added a consistent label taxonomy, archived 32 legacy/superseded/noise issues with succession comments, reopened two tickets as regressions against their own acceptance criteria, created 38 new issues covering gaps found in a workflow audit, and folded two dormant projects into an active one.
-- Created five Claude Code project skills under `.claude/skills/` (`documentation-standards`, `engineering-standards`, `linear-workflow`, `product-principles`, `session-lifecycle`), plus this file and `docs/CHANGELOG.md` / `docs/IMPLEMENTATION_STATUS.md`, which the skills depend on.
+- Fixed **TRA-127** (any agent could claim an unstarted `AgentNegotiation` regardless of invitation) and **TRA-60** (deals with no mandated agent skipped the `PERSONAL_TERMS` consent stage entirely) — `backend/app/deals/service.py`, `backend/app/deals/router.py`.
+- Fixed a pre-existing, unrelated bug found while verifying the above: `audit_events.payload_json` used PostgreSQL's `JSONB` type directly, making the entire backend test suite uncollectable under the SQLite test database — `backend/app/audit/models.py`.
+- Added regression coverage: new file `backend/tests/test_agent_negotiation.py` (4 tests) plus additions to `backend/tests/test_deals.py`. Full suite verified: 243/243 passing.
+- Updated `docs/CHANGELOG.md`, `docs/IMPLEMENTATION_STATUS.md`, and `docs/product/workflows/transfer-lifecycle.md` to reflect both fixes.
+- Marked TRA-127 and TRA-60 Done in Linear with closing comments.
+- Committed and pushed to `main` (`a74dded`).
+- Recorded [ADR 0001](./product/decisions/0001-buying-club-proposes-personal-terms.md) for the TRA-60 design decision below — this repo's first product decision record.
 
 **Important decisions:**
-- `docs/CHANGELOG.md`, `docs/IMPLEMENTATION_STATUS.md`, and this file live at the `docs/` root as "meta" tracking documents, alongside `README.md` and `PRODUCT_SPEC.md` — distinct from the six content areas.
-- `IMPLEMENTATION_STATUS.md` is deliberately sparse on creation (mostly TODO) rather than backfilled from memory, to avoid seeding it with unverified claims — see that file's own "why verified matters" section.
-- Session Lifecycle delegates documentation mechanics to Documentation Standards, and backlog-suggestion mechanics to Linear Workflow, rather than duplicating either — see each skill's "Related skills" section for the exact boundary.
+- See [ADR 0001](./product/decisions/0001-buying-club-proposes-personal-terms.md): the **buying club**, not the player, proposes personal terms in non-mandated deals (the player consents/declines) — mirroring the mandated-agent path rather than the original TRA-60 spec's "player proposes their own terms."
 
 **Outstanding work:**
-- `docs/IMPLEMENTATION_STATUS.md`'s area-by-area status table is almost entirely TODO — the next few sessions that touch a given area should verify and fill in that row.
-- Several `docs/` documents still have real, unresolved TODOs (target market, pricing/business model, personas' goals/pain points, production environment setup) — these need real product input, not inference.
-- The five skills have not yet been exercised in a live session — worth a light sanity check that they trigger and read as intended the first few times they're used.
+- Agent-negotiated terms (`proposed_wage_weekly` / `proposed_signing_bonus` / `proposed_length_years`) are not copied into `PersonalTerms` when a mandated deal advances `AGENT_NEGOTIATION → PERSONAL_TERMS` — the agent has to re-enter the same figures twice. Flagged in the TRA-127/TRA-60 Linear comments and in ADR 0001; not yet ticketed.
+- `docs/IMPLEMENTATION_STATUS.md`'s area-by-area table is still mostly TODO outside the two rows this session verified (Marketplace Core Phase 3 & 4). Phase 0–2, Agent Experience, Differentiation & Demo Readiness, and Production & Business Readiness remain unverified.
+- The five Claude Code skills (created last session) got their first live exercise this session — `session-lifecycle` and `documentation-standards` both triggered and read as intended; no corrections needed.
 
 **Risks:**
-- None of the five skills has been through the description-optimization / trigger-testing process described in the `skill-creator` tooling — their triggering accuracy is a best effort, not empirically tuned yet.
+- None newly introduced. The JSONB/SQLite test-infra bug (now fixed) meant the backend test suite was silently uncollectable for some prior span of commits — if a regression from that window is ever suspected, note that it could not have been caught by CI/local test runs until now.
 
 **Recommended next task:**
-- Start the next substantive piece of product/engineering work normally — it should naturally exercise `session-lifecycle` (read this file and `PRODUCT_SPEC.md` first) and `documentation-standards` (update docs as part of the work), which is the real test of whether the skill set holds up in practice.
+- Ticket and fix the agent-negotiated-terms copy gap (see Outstanding work above) — a direct UX papercut on the highest-value path (mandated-agent deals), found during this session's verification rather than guessed at.
 
 ## Related documents
 
