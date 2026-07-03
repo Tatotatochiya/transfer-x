@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, Uuid, func
+from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, Uuid, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,7 +20,11 @@ class AuditEvent(Base):
     entity_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     entity_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, index=True)
     action: Mapped[str] = mapped_column(String(100), nullable=False)
-    payload_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Plain JSON everywhere except Postgres, which gets real JSONB storage/indexing.
+    # (Nothing in the codebase uses JSONB-specific operators on this column, so the
+    # fallback is behaviour-preserving — it only exists so SQLite, used by the test
+    # suite, can create this table at all.)
+    payload_json: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )

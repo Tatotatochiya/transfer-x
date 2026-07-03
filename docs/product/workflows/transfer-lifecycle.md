@@ -1,7 +1,7 @@
 ---
 title: "Workflow: Transfer Lifecycle"
 last_updated: 2026-07-03
-status: Draft
+status: Active
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -25,9 +25,9 @@ Out of scope: bidding/offer mechanics (see [`negotiation-and-offers.md`](./negot
 
 ## Overview
 
-A transfer begins with a selling club listing a player (see [`negotiation-and-offers.md`](./negotiation-and-offers.md) for how listings and bidding/offers work). Once a bid or offer is accepted, a **Deal** is created and proceeds through a sequence of stages. Where the player has an active agent mandate, the deal routes through an agent-negotiation stage before personal terms; where there is no mandate, it proceeds directly.
+A transfer begins with a selling club listing a player (see [`negotiation-and-offers.md`](./negotiation-and-offers.md) for how listings and bidding/offers work). Once a bid or offer is accepted, a **Deal** is created and proceeds through a sequence of stages. Where the player has an active agent mandate, the deal routes through an agent-negotiation stage before personal terms; where there is no mandate, it goes to personal terms directly. Both paths converge at `PERSONAL_TERMS` — every deal requires the player's consent before paperwork, whether or not an agent is involved.
 
-> **TODO:** Confirm this description against current behaviour before treating it as final — the non-mandated path in particular should be reviewed, as it is an area of active work.
+> **Verified 2026-07-03:** this description now matches the implementation. The non-mandated path previously had a regression where it skipped personal-terms consent entirely — see [`docs/CHANGELOG.md`](../../CHANGELOG.md) — fixed and covered by regression tests in `backend/tests/test_deals.py`.
 
 ## Deal stages
 

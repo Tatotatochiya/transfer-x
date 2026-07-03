@@ -650,7 +650,7 @@ async def set_personal_terms(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Agent (or staff) sets/updates personal terms for the player."""
+    """Agent, the buying club (when there's no mandated agent), or staff sets/updates personal terms."""
     from app.auth.models import AgentProfile, UserType
 
     deal = await _get_deal_or_404(db, deal_id)
@@ -662,8 +662,17 @@ async def set_personal_terms(
         if profile is None:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Agent profile not found")
         agent_profile_id = profile.id
+    elif current_user.user_type == UserType.CLUB:
+        # TRA-60: without a mandated agent, the buying club is who proposes personal
+        # terms to the player — mirroring how a real club's contract offer works.
+        club = await clubs_service.get_club_for_user(db, current_user.id)
+        if club is None or club.id != deal.buyer_club_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the buying club can propose personal terms",
+            )
     elif not current_user.is_superuser:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Agent or admin access required")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Buying club, agent, or admin access required")
 
     try:
         pt = await service.set_personal_terms(

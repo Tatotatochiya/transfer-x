@@ -350,7 +350,12 @@ async def advance_deal(
     """Advance deal to next stage.
 
     Stage rules:
-    - AGREEMENT → PAPERWORK: clubs or staff
+    - AGREEMENT → PERSONAL_TERMS: clubs or staff. Every deal — mandated or not —
+      passes through personal-terms consent; a mandated deal instead reaches
+      PERSONAL_TERMS via the AGENT_NEGOTIATION branch below and never sits at
+      AGREEMENT in the first place (see offers/service.py _maybe_invite_agent).
+    - AGENT_NEGOTIATION → PERSONAL_TERMS: clubs or staff, once both sides agreed
+    - PERSONAL_TERMS → PAPERWORK: clubs or staff, once the player has consented
     - PAPERWORK → CONFIRMED: staff only (clubs get 403 hint via ValueError)
     - CONFIRMED → COMPLETED: clubs or staff (triggers player transfer)
     """
@@ -362,7 +367,9 @@ async def advance_deal(
     stage = deal.stage
 
     if stage == DealStage.AGREEMENT:
-        deal.stage = DealStage.PAPERWORK
+        # TRA-60: this used to skip straight to PAPERWORK, letting a deal with no
+        # agent complete without the player ever consenting to personal terms.
+        deal.stage = DealStage.PERSONAL_TERMS
 
     elif stage == DealStage.AGENT_NEGOTIATION:
         # TRA-127: both sides must be AGREED before advancing.
@@ -774,13 +781,24 @@ async def upsert_negotiation_terms(
     updates: dict,
 ) -> "AgentNegotiation":  # type: ignore[name-defined]
     """Agent creates or updates club-side and player-side terms."""
-    from app.agents.models import AgentNegotiation, NegotiationStatus
+    from app.agents.models import AgentDealInvitation, AgentNegotiation, NegotiationStatus
 
     if deal.stage != DealStage.AGENT_NEGOTIATION:
         raise ValueError("Deal is not in AGENT_NEGOTIATION stage")
 
     neg = await get_agent_negotiation(db, deal.id)
     if neg is None:
+        # TRA-127: the first write to a deal's negotiation creates the record and
+        # names its agent_id — so this is the one place that must check the caller
+        # is actually who was invited, not just any agent on the platform.
+        invitation_result = await db.execute(
+            select(AgentDealInvitation).where(
+                AgentDealInvitation.deal_id == deal.id,
+                AgentDealInvitation.agent_id == agent_profile_id,
+            )
+        )
+        if invitation_result.scalar_one_or_none() is None:
+            raise ValueError("Only the agent invited to this deal may start the negotiation")
         neg = AgentNegotiation(deal_id=deal.id, agent_id=agent_profile_id)
         db.add(neg)
     elif neg.agent_id != agent_profile_id:

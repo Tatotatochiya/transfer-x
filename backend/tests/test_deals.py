@@ -99,6 +99,59 @@ async def _create_deal_via_bid(
     return deal_resp.json()
 
 
+async def _register_player_account(client: AsyncClient, email: str, player_id: str) -> dict:
+    resp = await client.post("/auth/register", json={
+        "email": email, "password": "password123",
+        "user_type": "PLAYER", "player_id": player_id,
+    })
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+async def _advance_through_personal_terms(
+    client: AsyncClient, deal_id: str, buyer: dict, db,
+) -> None:
+    """Advance a deal from AGREEMENT through PERSONAL_TERMS to PAPERWORK.
+
+    No player account exists in the generic `buyer`/`seller` fixtures, so
+    consent here goes through a dedicated, throwaway superuser account rather
+    than a real player. Deliberately does NOT touch buyer/seller's own
+    superuser status — callers like test_paperwork_stage_blocked_for_clubs
+    rely on them staying regular (non-staff) club accounts afterward. Real
+    player consent is covered separately by
+    test_player_can_consent_to_personal_terms_without_agent below.
+    """
+    from app.auth.models import User
+    from sqlalchemy import select
+
+    buy_h = _auth_headers(buyer)
+    r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
+    assert r.json()["stage"] == "PERSONAL_TERMS", r.text
+
+    r = await client.put(
+        f"/deals/{deal_id}/personal-terms",
+        json={"wage_weekly": 50000, "signing_bonus": 100000, "length_years": 4},
+        headers=buy_h,
+    )
+    assert r.status_code == 200, r.text
+
+    consent_email = f"consent-staff-{uuid.uuid4()}@test.com"
+    consent_tokens = await _register(client, consent_email)
+    result = await db.execute(select(User).where(User.email == consent_email))
+    result.scalar_one().is_superuser = True
+    await db.commit()
+
+    r = await client.post(
+        f"/deals/{deal_id}/personal-terms/player-consent",
+        json={"agreement": "AGREED"},
+        headers=_auth_headers(consent_tokens),
+    )
+    assert r.status_code == 200, r.text
+
+    r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
+    assert r.json()["stage"] == "PAPERWORK", r.text
+
+
 # ── Deal retrieval ────────────────────────────────────────────────────────────
 
 
@@ -129,20 +182,36 @@ async def test_deal_list_for_club(client: AsyncClient, buyer: dict, seller: dict
 
 
 @pytest.mark.asyncio
-async def test_advance_agreement_to_paperwork(client: AsyncClient, buyer: dict, seller: dict, db):
+async def test_advance_agreement_to_personal_terms(client: AsyncClient, buyer: dict, seller: dict, db):
+    """TRA-60 regression: AGREEMENT must route to PERSONAL_TERMS, not skip straight
+    to PAPERWORK — a deal with no agent still owes the player a consent step."""
     deal = await _create_deal_via_offer(client, buyer, seller, db)
     resp = await client.post(f"/deals/{deal['id']}/advance", headers=_auth_headers(buyer))
     assert resp.status_code == 200
-    assert resp.json()["stage"] == "PAPERWORK"
+    assert resp.json()["stage"] == "PERSONAL_TERMS"
+
+
+@pytest.mark.asyncio
+async def test_cannot_skip_personal_terms_consent(client: AsyncClient, buyer: dict, seller: dict, db):
+    """TRA-60 regression: without player consent, a deal cannot reach PAPERWORK —
+    previously a single /advance call took AGREEMENT straight to PAPERWORK."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+
+    r = await client.post(f"/deals/{deal['id']}/advance", headers=buy_h)
+    assert r.json()["stage"] == "PERSONAL_TERMS"
+
+    # No personal terms have been proposed yet — advancing again must fail.
+    r = await client.post(f"/deals/{deal['id']}/advance", headers=buy_h)
+    assert r.status_code == 400
+    assert "personal terms" in r.json()["detail"].lower()
 
 
 @pytest.mark.asyncio
 async def test_paperwork_stage_blocked_for_clubs(client: AsyncClient, buyer: dict, seller: dict, db):
     """Clubs cannot advance past PAPERWORK — only staff can."""
     deal = await _create_deal_via_offer(client, buyer, seller, db)
-
-    # Advance to PAPERWORK
-    await client.post(f"/deals/{deal['id']}/advance", headers=_auth_headers(buyer))
+    await _advance_through_personal_terms(client, deal["id"], buyer, db)
 
     # Try to advance again as club — should get 403
     resp = await client.post(f"/deals/{deal['id']}/advance", headers=_auth_headers(buyer))
@@ -156,18 +225,11 @@ async def test_full_stage_progression_via_staff(client: AsyncClient, buyer: dict
     deal = await _create_deal_via_offer(client, buyer, seller, db)
     deal_id = deal["id"]
 
-    # AGREEMENT → PAPERWORK (club can do)
-    r = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(buyer))
-    assert r.json()["stage"] == "PAPERWORK"
+    # AGREEMENT → PERSONAL_TERMS → PAPERWORK
+    await _advance_through_personal_terms(client, deal_id, buyer, db)
 
-    # Register an admin/superuser
-    from app.auth.models import User
-    from sqlalchemy import select
-
-    result = await db.execute(select(User))
-    for u in result.scalars():
-        u.is_superuser = True
-    await db.commit()
+    # Register an admin/superuser for the staff-only step below
+    await _make_superuser(db)
 
     # PAPERWORK → CONFIRMED (staff — use buyer who is now superuser)
     r = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(buyer))
@@ -177,6 +239,98 @@ async def test_full_stage_progression_via_staff(client: AsyncClient, buyer: dict
     r = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(buyer))
     assert r.json()["stage"] == "COMPLETED"
     assert r.json()["status"] == "COMPLETED"
+
+
+# ── Personal terms without an agent (TRA-60) ────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_buying_club_can_set_personal_terms(client: AsyncClient, buyer: dict, seller: dict, db):
+    """With no mandated agent, the buying club proposes personal terms directly."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+    await client.post(f"/deals/{deal['id']}/advance", headers=buy_h)
+
+    resp = await client.put(
+        f"/deals/{deal['id']}/personal-terms",
+        json={"wage_weekly": 60000, "signing_bonus": 250000, "length_years": 3},
+        headers=buy_h,
+    )
+    assert resp.status_code == 200, resp.text
+    assert Decimal(resp.json()["wage_weekly"]) == Decimal("60000")
+    assert resp.json()["player_consent"] == "PENDING"
+
+
+@pytest.mark.asyncio
+async def test_seller_cannot_set_personal_terms(client: AsyncClient, buyer: dict, seller: dict, db):
+    """Only the buying club (who is signing the player) can propose terms — not the seller."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    await client.post(f"/deals/{deal['id']}/advance", headers=_auth_headers(buyer))
+
+    resp = await client.put(
+        f"/deals/{deal['id']}/personal-terms",
+        json={"wage_weekly": 60000},
+        headers=_auth_headers(seller),
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_player_can_consent_to_personal_terms_without_agent(
+    client: AsyncClient, buyer: dict, seller: dict, db,
+):
+    """TRA-60 end-to-end: with no agent involved, the buying club proposes terms
+    and the actual player (their own account, not a staff override) consents."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+
+    r = await client.post(f"/deals/{deal['id']}/advance", headers=buy_h)
+    assert r.json()["stage"] == "PERSONAL_TERMS"
+
+    r = await client.put(
+        f"/deals/{deal['id']}/personal-terms",
+        json={"wage_weekly": 70000, "signing_bonus": 0, "length_years": 5},
+        headers=buy_h,
+    )
+    assert r.status_code == 200, r.text
+
+    player_tokens = await _register_player_account(client, "player_terms@test.com", deal["player_id"])
+    player_h = _auth_headers(player_tokens)
+
+    r = await client.post(
+        f"/deals/{deal['id']}/personal-terms/player-consent",
+        json={"agreement": "AGREED"},
+        headers=player_h,
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["player_consent"] == "AGREED"
+
+    r = await client.post(f"/deals/{deal['id']}/advance", headers=buy_h)
+    assert r.json()["stage"] == "PAPERWORK"
+
+
+@pytest.mark.asyncio
+async def test_player_decline_collapses_deal(client: AsyncClient, buyer: dict, seller: dict, db):
+    """A player declining personal terms collapses the deal, same as the agent path."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+    await client.post(f"/deals/{deal['id']}/advance", headers=buy_h)
+    await client.put(
+        f"/deals/{deal['id']}/personal-terms",
+        json={"wage_weekly": 70000},
+        headers=buy_h,
+    )
+
+    player_tokens = await _register_player_account(client, "player_decline@test.com", deal["player_id"])
+    resp = await client.post(
+        f"/deals/{deal['id']}/personal-terms/player-consent",
+        json={"agreement": "DECLINED"},
+        headers=_auth_headers(player_tokens),
+    )
+    assert resp.status_code == 200, resp.text
+
+    deal_check = await client.get(f"/deals/{deal['id']}", headers=buy_h)
+    assert deal_check.json()["status"] == "COLLAPSED"
 
 
 # ── Collapse deal ─────────────────────────────────────────────────────────────
