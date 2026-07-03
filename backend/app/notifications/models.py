@@ -28,6 +28,15 @@ class NotificationType(str, enum.Enum):
     DEAL_PERSONAL_TERMS_SENT = "DEAL_PERSONAL_TERMS_SENT"
     PLAYER_AVAILABLE = "PLAYER_AVAILABLE"
     SYSTEM_BROADCAST = "SYSTEM_BROADCAST"
+    VERIFICATION_APPROVED = "VERIFICATION_APPROVED"
+    VERIFICATION_REJECTED = "VERIFICATION_REJECTED"
+    REPRESENTATION_STARTED = "REPRESENTATION_STARTED"
+    REPRESENTATION_REVOKED = "REPRESENTATION_REVOKED"
+    PERSONAL_TERMS_DECISION = "PERSONAL_TERMS_DECISION"
+    INSTALMENT_DUE = "INSTALMENT_DUE"
+    DEAL_CLAUSE_TRIGGERED = "DEAL_CLAUSE_TRIGGERED"
+    NEGOTIATION_MESSAGE = "NEGOTIATION_MESSAGE"
+    CLIENT_ALERT = "CLIENT_ALERT"
 
 
 class Notification(Base):
@@ -62,8 +71,8 @@ class Notification(Base):
 
 
 class NotificationPreference(Base):
-    """A row here means the user has DISABLED that notification type.
-    Absence of a row means the type is enabled (default on).
+    """Per-user, per-type channel preferences.
+    Absence of a row means both channels are enabled (default on).
     """
 
     __tablename__ = "notification_preferences"
@@ -77,6 +86,9 @@ class NotificationPreference(Base):
         SAEnum(NotificationType, name="notificationtype"),
         primary_key=True,
     )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    # TRA-44: independent email opt-out — only meaningful while `enabled` is True.
+    email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
-from app.mandates.models import ClientStatus, MandateStatus
+from app.mandates.models import AlertSeverity, AlertType, ClientStatus, MandateStatus
 
 
 class CreateMandateRequest(BaseModel):
@@ -52,6 +52,12 @@ class MandateDetailResponse(BaseModel):
     player_age: int | None
     player_club_name: str | None
     contract_expiry: date | None
+    # TRA-134: alert preferences
+    alert_contract_expiry_enabled: bool
+    alert_contract_expiry_months: int
+    alert_valuation_change_enabled: bool
+    alert_valuation_change_pct: Decimal
+    alert_club_interest_enabled: bool
 
 
 class UpdateMandateRequest(BaseModel):
@@ -64,3 +70,25 @@ class UpdateMandateRequest(BaseModel):
     end_date: date | None = None
     territory: str | None = None
     exclusive: bool | None = None
+    # TRA-134: alert preferences
+    alert_contract_expiry_enabled: bool | None = None
+    alert_contract_expiry_months: int | None = None
+    alert_valuation_change_enabled: bool | None = None
+    alert_valuation_change_pct: Decimal | None = None
+    alert_club_interest_enabled: bool | None = None
+
+
+class ClientAlertResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    mandate_id: uuid.UUID
+    agent_id: uuid.UUID
+    player_id: uuid.UUID
+    alert_type: AlertType
+    severity: AlertSeverity
+    message: str
+    context: dict
+    is_read: bool
+    created_at: datetime
+    player_name: str | None = None

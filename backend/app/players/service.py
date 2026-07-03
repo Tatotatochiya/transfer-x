@@ -83,6 +83,15 @@ async def get_player_by_id(db: AsyncSession, player_id: uuid.UUID) -> Player | N
     return result.scalar_one_or_none()
 
 
+async def is_player_verified(db: AsyncSession, player_id: uuid.UUID) -> bool:
+    """TRA-89 — True if this player has a claimed, verified PlayerProfile."""
+    from app.auth.models import PlayerProfile
+    result = await db.execute(
+        select(PlayerProfile.verified).where(PlayerProfile.player_id == player_id)
+    )
+    return bool(result.scalar_one_or_none())
+
+
 async def update_player(db: AsyncSession, player: Player, **fields) -> Player:
     for key, value in fields.items():
         if value is not None:

@@ -172,3 +172,40 @@ class AgentCommission(Base):
     agent: Mapped["app.auth.models.AgentProfile"] = relationship(  # type: ignore[name-defined]
         "AgentProfile", foreign_keys=[agent_id]
     )
+
+
+class NegotiationThread(str, enum.Enum):
+    CLUB_SIDE = "CLUB_SIDE"
+    PLAYER_SIDE = "PLAYER_SIDE"
+
+
+class NegotiationMessage(Base):
+    """Scoped negotiation thread message (TRA-136).
+
+    Immutable (no edit/delete in v1) — the thread doubles as a negotiation
+    record. Visibility is enforced server-side in the service/router layer,
+    never by the frontend: the agent sees both threads, the club sees only
+    CLUB_SIDE, the player sees only PLAYER_SIDE.
+    """
+    __tablename__ = "negotiation_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    negotiation_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("agent_negotiations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    thread: Mapped[NegotiationThread] = mapped_column(
+        SAEnum(NegotiationThread, name="negotiationthread"), nullable=False, index=True
+    )
+    sender_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+
+    negotiation: Mapped["AgentNegotiation"] = relationship("AgentNegotiation", foreign_keys=[negotiation_id])
+    sender: Mapped["app.auth.models.User | None"] = relationship(  # type: ignore[name-defined]
+        "User", foreign_keys=[sender_user_id]
+    )

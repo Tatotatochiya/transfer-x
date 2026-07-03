@@ -3,6 +3,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
@@ -49,6 +50,24 @@ async def _db_notify_offer(
             link=f"/offers/{offer.id}",
             related_player_id=offer.player_id,
         )
+
+
+async def _notify_player_of_offer(db: AsyncSession, offer) -> None:
+    """TRA-76: if the player has their own login, let them know a club has made an offer."""
+    from app.auth.models import PlayerProfile
+
+    result = await db.execute(select(PlayerProfile).where(PlayerProfile.player_id == offer.player_id))
+    player_profile = result.scalar_one_or_none()
+    if player_profile is None:
+        return
+    await notif_service.create_notification(
+        db,
+        recipient_user_id=player_profile.user_id,
+        type=NotificationType.OFFER_RECEIVED,
+        message="A club has made an offer for your transfer",
+        link="/player/profile",
+        related_player_id=offer.player_id,
+    )
 
 
 async def _notify_offer_parties(db: AsyncSession, offer_id: uuid.UUID) -> None:
@@ -185,7 +204,7 @@ async def create_offer(
 ):
     club = await _get_club_or_403(db, current_user)
 
-    if not await window_service.is_transfer_allowed(db):
+    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Transfer window is closed. Offers cannot be made outside of a transfer window.",
@@ -228,6 +247,7 @@ async def create_offer(
             ntype=NotificationType.OFFER_RECEIVED,
             message="You have received a new offer",
         )
+        await _notify_player_of_offer(db, offer)
         await db.commit()
     except ValueError as exc:
         await db.rollback()

@@ -134,7 +134,7 @@ async def create_sale(
     if club is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile found")
 
-    if not await window_service.is_transfer_allowed(db):
+    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Transfer window is closed. Sales cannot be created outside of a transfer window.",

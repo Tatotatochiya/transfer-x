@@ -56,6 +56,7 @@ const AdminWorldImportPage      = lazy(() => import("./pages/admin/AdminWorldImp
 const AdminVendorPage           = lazy(() => import("./pages/admin/AdminVendorPage"));
 const AdminAnalyticsPage        = lazy(() => import("./pages/admin/AdminAnalyticsPage"));
 const AdminTransferWindowPage   = lazy(() => import("./pages/admin/AdminTransferWindowPage"));
+const AdminVerificationPage     = lazy(() => import("./pages/admin/AdminVerificationPage"));
 const AdminHealthPage           = lazy(() => import("./pages/admin/AdminHealthPage"));
 const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage"));
 const AgentDashboardPage        = lazy(() => import("./pages/agent/AgentDashboardPage"));
@@ -232,6 +233,7 @@ export default function App() {
             <Route path="vendor"         element={<AdminVendorPage />} />
             <Route path="analytics"      element={<AdminAnalyticsPage />} />
             <Route path="windows"        element={<AdminTransferWindowPage />} />
+            <Route path="verification"   element={<AdminVerificationPage />} />
             <Route path="health"         element={<AdminHealthPage />} />
             <Route path="ai"             element={<AdminAIPage />} />
           </Route>

@@ -26,6 +26,7 @@ class UnreadCountResponse(BaseModel):
 class NotificationPreferenceItem(BaseModel):
     type: NotificationType
     enabled: bool
+    email_enabled: bool
 
 
 class NotificationPreferencesResponse(BaseModel):
@@ -33,4 +34,5 @@ class NotificationPreferencesResponse(BaseModel):
 
 
 class NotificationPreferenceUpdateRequest(BaseModel):
-    enabled: bool
+    enabled: bool | None = None
+    email_enabled: bool | None = None

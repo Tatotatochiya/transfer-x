@@ -23,6 +23,8 @@ from app.agents.schemas import (
 from app.auth.models import AgentProfile
 from app.database import get_db
 from app.deps import get_current_agent_profile
+from app.mandates import alerts_service
+from app.mandates.schemas import ClientAlertResponse
 
 router = APIRouter(tags=["agents"])
 
@@ -95,7 +97,7 @@ async def get_pipeline(
     profile: AgentProfile = Depends(get_current_agent_profile),
     db: AsyncSession = Depends(get_db),
 ) -> AgentPipelineResponse:
-    return await service.get_agent_pipeline(db, profile.id)
+    return await service.get_agent_pipeline(db, profile.id, agent_user_id=profile.user_id)
 
 
 @router.get("/me/invitations", response_model=list[InvitationResponse])
@@ -158,3 +160,40 @@ async def update_commission_status(
         raise HTTPException(status_code=400, detail=str(exc))
     await db.commit()
     return AgentCommissionResponse.model_validate(commission)
+
+
+# ── TRA-134: client-roster alerts ─────────────────────────────────────────────
+
+@router.get("/me/alerts", response_model=list[ClientAlertResponse])
+async def list_my_alerts(
+    profile: AgentProfile = Depends(get_current_agent_profile),
+    db: AsyncSession = Depends(get_db),
+) -> list[ClientAlertResponse]:
+    from app.players.models import Player
+
+    alerts = await alerts_service.list_alerts_for_agent(db, profile.id)
+    player_ids = {a.player_id for a in alerts}
+    names: dict[uuid.UUID, str] = {}
+    if player_ids:
+        result = await db.execute(select(Player.id, Player.name).where(Player.id.in_(player_ids)))
+        names = {row[0]: row[1] for row in result.all()}
+
+    responses = []
+    for a in alerts:
+        resp = ClientAlertResponse.model_validate(a)
+        resp.player_name = names.get(a.player_id)
+        responses.append(resp)
+    return responses
+
+
+@router.post("/me/alerts/{alert_id}/read", response_model=ClientAlertResponse)
+async def mark_alert_read(
+    alert_id: uuid.UUID,
+    profile: AgentProfile = Depends(get_current_agent_profile),
+    db: AsyncSession = Depends(get_db),
+) -> ClientAlertResponse:
+    alert = await alerts_service.mark_alert_read(db, alert_id, profile.id)
+    if alert is None:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    await db.commit()
+    return ClientAlertResponse.model_validate(alert)

@@ -91,6 +91,7 @@ class PlayerProfile(Base):
         Uuid(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"),
         unique=True, nullable=False, index=True,
     )
+    verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

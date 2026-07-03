@@ -73,6 +73,18 @@ async def mark_all_read(
     return UnreadCountResponse(count=0)
 
 
+def _build_preferences_response(
+    disabled: set[NotificationType], email_disabled: set[NotificationType]
+) -> NotificationPreferencesResponse:
+    prefs = [
+        NotificationPreferenceItem(
+            type=t, enabled=(t not in disabled), email_enabled=(t not in email_disabled)
+        )
+        for t in NotificationType
+    ]
+    return NotificationPreferencesResponse(preferences=prefs)
+
+
 @router.get("/preferences", response_model=NotificationPreferencesResponse)
 async def get_preferences(
     db: AsyncSession = Depends(get_db),
@@ -80,11 +92,8 @@ async def get_preferences(
 ):
     """Return all notification types with their enabled/disabled status for this user."""
     disabled = await service.get_disabled_types(db, current_user.id)
-    prefs = [
-        NotificationPreferenceItem(type=t, enabled=(t not in disabled))
-        for t in NotificationType
-    ]
-    return NotificationPreferencesResponse(preferences=prefs)
+    email_disabled = await service.get_email_disabled_types(db, current_user.id)
+    return _build_preferences_response(disabled, email_disabled)
 
 
 @router.patch("/preferences/{type_name}", response_model=NotificationPreferencesResponse)
@@ -94,18 +103,18 @@ async def update_preference(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Enable or disable a specific notification type."""
+    """Enable or disable in-app and/or email delivery for a specific notification type."""
     try:
         ntype = NotificationType(type_name)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown notification type: {type_name}")
 
-    await service.set_preference(db, current_user.id, ntype, body.enabled)
+    if body.enabled is not None:
+        await service.set_preference(db, current_user.id, ntype, body.enabled)
+    if body.email_enabled is not None:
+        await service.set_email_preference(db, current_user.id, ntype, body.email_enabled)
     await db.commit()
 
     disabled = await service.get_disabled_types(db, current_user.id)
-    prefs = [
-        NotificationPreferenceItem(type=t, enabled=(t not in disabled))
-        for t in NotificationType
-    ]
-    return NotificationPreferencesResponse(preferences=prefs)
+    email_disabled = await service.get_email_disabled_types(db, current_user.id)
+    return _build_preferences_response(disabled, email_disabled)

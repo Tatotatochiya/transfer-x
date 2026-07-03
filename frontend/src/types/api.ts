@@ -105,6 +105,12 @@ export interface MandateDetailResponse extends MandateResponse {
   player_age: number | null;
   player_club_name: string | null;
   contract_expiry: string | null;
+  // TRA-134: alert preferences
+  alert_contract_expiry_enabled: boolean;
+  alert_contract_expiry_months: number;
+  alert_valuation_change_enabled: boolean;
+  alert_valuation_change_pct: number;
+  alert_club_interest_enabled: boolean;
 }
 
 export interface UpdateMandateRequest {
@@ -117,6 +123,30 @@ export interface UpdateMandateRequest {
   end_date?: string | null;
   territory?: string | null;
   exclusive?: boolean;
+  alert_contract_expiry_enabled?: boolean;
+  alert_contract_expiry_months?: number;
+  alert_valuation_change_enabled?: boolean;
+  alert_valuation_change_pct?: number;
+  alert_club_interest_enabled?: boolean;
+}
+
+// ── TRA-134: client-roster alerts ─────────────────────────────────────────────
+
+export type AlertType = "CONTRACT_EXPIRY" | "VALUATION_CHANGE" | "CLUB_INTEREST";
+export type AlertSeverity = "RED" | "AMBER" | "GREEN";
+
+export interface ClientAlert {
+  id: string;
+  mandate_id: string;
+  agent_id: string;
+  player_id: string;
+  alert_type: AlertType;
+  severity: AlertSeverity;
+  message: string;
+  context: Record<string, unknown>;
+  is_read: boolean;
+  created_at: string;
+  player_name: string | null;
 }
 
 // ── Roster import ─────────────────────────────────────────────────────────────
@@ -193,6 +223,7 @@ export interface Club {
   league_name: string | null;
   crest_url: string | null;
   role: ClubRole;
+  verified: boolean;
   created_at: string;
   finance: ClubFinance | null;
   my_role?: string; // OWNER | MANAGER | READONLY — only present on /clubs/me
@@ -206,6 +237,7 @@ export interface ClubPublic {
   league_name: string | null;
   crest_url: string | null;
   role: ClubRole;
+  verified: boolean;
   created_at: string;
 }
 
@@ -302,6 +334,7 @@ export interface ActiveDealStub {
 export interface PlayerDetail extends Player {
   active_contract: Contract | null;
   active_deal: ActiveDealStub | null;
+  is_verified_player: boolean;
 }
 
 // ── Sales ─────────────────────────────────────────────────────────────────────
@@ -458,6 +491,18 @@ export interface PersonalTerms {
   created_at: string;
 }
 
+export type NegotiationThread = "CLUB_SIDE" | "PLAYER_SIDE";
+
+export interface NegotiationMessage {
+  id: string;
+  negotiation_id: string;
+  thread: NegotiationThread;
+  sender_user_id: string | null;
+  sender_label: string | null;
+  body: string;
+  created_at: string;
+}
+
 export interface AgentNegotiation {
   id: string;
   deal_id: string;
@@ -474,6 +519,57 @@ export interface AgentNegotiation {
   player_agreement: AgreementStatus;
   created_at: string;
   agreed_at: string | null;
+}
+
+// ── TRA-81: deal room ──────────────────────────────────────────────────────────
+
+export interface DealTermsVersion {
+  id: string;
+  deal_id: string;
+  version_number: number;
+  terms_snapshot: Record<string, unknown>;
+  changed_by_user_id: string | null;
+  changed_by_label: string | null;
+  created_at: string;
+}
+
+export interface TermsDiffField {
+  field: string;
+  old_value: unknown;
+  new_value: unknown;
+}
+
+export interface TermsDiff {
+  from_version: number | null;
+  to_version: number | null;
+  changes: TermsDiffField[];
+}
+
+export interface DealComment {
+  id: string;
+  deal_id: string;
+  parent_id: string | null;
+  author_user_id: string | null;
+  author_label: string | null;
+  body: string;
+  mentioned_user_ids: string[];
+  created_at: string;
+}
+
+export interface DealParticipant {
+  user_id: string;
+  label: string;
+}
+
+export interface DealAttachment {
+  id: string;
+  deal_id: string;
+  uploaded_by_user_id: string | null;
+  uploaded_by_label: string | null;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
 }
 
 export interface Deal {
@@ -551,6 +647,7 @@ export interface PipelineDealItem {
   commission_pct: number | null;
   action_required: boolean;
   action_description: string | null;
+  has_unread_messages: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -925,6 +1022,7 @@ export interface UnreadCount {
 export interface NotificationPreferenceItem {
   type: string;
   enabled: boolean;
+  email_enabled: boolean;
 }
 
 export interface NotificationPreferencesResponse {
@@ -1149,6 +1247,26 @@ export interface CommissionSummary {
 export interface AgentCommissionsResponse {
   summary: CommissionSummary;
   commissions: AgentCommission[];
+}
+
+// TRA-89: Verification / trust badges
+export type VerificationEntityType = "CLUB" | "AGENT" | "PLAYER";
+export type VerificationStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface VerificationRequest {
+  id: string;
+  entity_type: VerificationEntityType;
+  entity_id: string;
+  requested_by_user_id: string | null;
+  status: VerificationStatus;
+  evidence_ref: string | null;
+  notes: string | null;
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  created_at: string;
+  entity_name: string | null;
+  requested_by_email: string | null;
 }
 
 // TRA-62: Audit log

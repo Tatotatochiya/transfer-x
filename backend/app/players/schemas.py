@@ -109,6 +109,7 @@ class PlayerDetailResponse(PlayerResponse):
     """Player detail — adds active contract and deal state."""
     active_contract: ContractResponse | None = None
     active_deal: ActiveDealStub | None = None
+    is_verified_player: bool = False
 
 
 class PlayerTransferResponse(BaseModel):

@@ -9,6 +9,7 @@ import type {
   SaleStatus,
   SaleType,
 } from "../types/enums";
+import type { AlertSeverity, AlertType } from "../types/api";
 
 export function positionVariant(_pos: PlayerPosition): BadgeVariant {
   // GK amber, DEF blue, MID emerald, FWD red
@@ -101,3 +102,23 @@ export function dealStageLabel(s: DealStage): string {
   };
   return map[s] ?? s;
 }
+
+// ── TRA-134/135: client-roster alerts ─────────────────────────────────────────
+
+export const ALERT_SEVERITY_COLORS: Record<AlertSeverity, string> = {
+  RED:   "bg-red-500/15 text-red-400 ring-red-500/30",
+  AMBER: "bg-amber-500/15 text-amber-400 ring-amber-500/30",
+  GREEN: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30",
+};
+
+export const ALERT_SEVERITY_DOT: Record<AlertSeverity, string> = {
+  RED:   "bg-red-400",
+  AMBER: "bg-amber-400",
+  GREEN: "bg-emerald-400",
+};
+
+export const ALERT_TYPE_LABELS: Record<AlertType, string> = {
+  CONTRACT_EXPIRY:  "Contract expiry",
+  VALUATION_CHANGE: "Valuation change",
+  CLUB_INTEREST:    "Club interest",
+};

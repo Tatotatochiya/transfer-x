@@ -14,7 +14,7 @@ from app.database import Base  # noqa: F401 — imports all models via metadata
 # Import all models here so Alembic can detect them.
 # Add new model imports as each milestone is built.
 from app.auth.models import AgentProfile, PlayerProfile, RefreshToken, User  # noqa: F401
-from app.mandates.models import Mandate  # noqa: F401
+from app.mandates.models import Mandate, ClientAlert  # noqa: F401
 from app.clubs.models import Club, ClubFinance  # noqa: F401
 from app.deals.models import Deal, DealNote  # noqa: F401
 from app.fixtures.models import Fixture  # noqa: F401
@@ -28,7 +28,9 @@ from app.world.models import WorldLeague, WorldTeam  # noqa: F401
 from app.analytics.models import AnalyticsEvent  # noqa: F401
 from app.transfer_window.models import TransferWindow  # noqa: F401
 from app.audit.models import AuditEvent  # noqa: F401
-from app.agents.models import AgentDealInvitation, AgentCommission  # noqa: F401
+from app.agents.models import AgentDealInvitation, AgentCommission, NegotiationMessage  # noqa: F401
+from app.verification.models import VerificationRequest  # noqa: F401
+from app.deals.room_models import DealTermsVersion, DealComment, DealAttachment  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url_sync)

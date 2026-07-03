@@ -6,6 +6,28 @@ import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import { getApiError } from "../../lib/utils";
 
+function MiniToggle({
+  value, disabled, onChange, label,
+}: { value: boolean; disabled: boolean; onChange: () => void; label: string }) {
+  return (
+    <button
+      disabled={disabled}
+      onClick={onChange}
+      aria-label={label}
+      title={label}
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50 ${
+        value ? "bg-emerald-500" : "bg-slate-600"
+      }`}
+    >
+      <span
+        className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow ring-0 transition-transform ${
+          value ? "translate-x-4" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
 const TYPE_LABELS: Record<string, string> = {
   OUTBID:               "Outbid on an auction",
   OFFER_RECEIVED:       "Offer received",
@@ -21,6 +43,15 @@ const TYPE_LABELS: Record<string, string> = {
   DEAL_COMPLETED:       "Deal completed",
   DEAL_COLLAPSED:       "Deal collapsed",
   PLAYER_AVAILABLE:     "Shortlisted player becomes available",
+  VERIFICATION_APPROVED: "Verification request approved",
+  VERIFICATION_REJECTED: "Verification request rejected",
+  REPRESENTATION_STARTED: "An agent starts representing you",
+  REPRESENTATION_REVOKED: "A player ends your representation mandate",
+  PERSONAL_TERMS_DECISION: "Player accepts/declines personal terms",
+  INSTALMENT_DUE: "Deal instalment due or overdue",
+  DEAL_CLAUSE_TRIGGERED: "Add-on/bonus clause triggered",
+  NEGOTIATION_MESSAGE: "New negotiation message or deal comment",
+  CLIENT_ALERT: "Client alert (contract expiry, valuation change, club interest)",
 };
 
 const TYPE_GROUPS: { label: string; types: string[] }[] = [
@@ -34,11 +65,23 @@ const TYPE_GROUPS: { label: string; types: string[] }[] = [
   },
   {
     label: "Deals",
-    types: ["DEAL_COMPLETED", "DEAL_COLLAPSED"],
+    types: ["DEAL_COMPLETED", "DEAL_COLLAPSED", "PERSONAL_TERMS_DECISION", "INSTALMENT_DUE", "DEAL_CLAUSE_TRIGGERED", "NEGOTIATION_MESSAGE"],
   },
   {
     label: "Scouting",
     types: ["PLAYER_AVAILABLE"],
+  },
+  {
+    label: "Representation",
+    types: ["REPRESENTATION_STARTED", "REPRESENTATION_REVOKED"],
+  },
+  {
+    label: "Client intelligence",
+    types: ["CLIENT_ALERT"],
+  },
+  {
+    label: "Verification",
+    types: ["VERIFICATION_APPROVED", "VERIFICATION_REJECTED"],
   },
 ];
 
@@ -53,9 +96,9 @@ export default function NotificationPreferencesPage() {
   });
 
   const mutation = useMutation({
-    mutationFn: ({ type, enabled }: { type: string; enabled: boolean }) =>
+    mutationFn: ({ type, channel, value }: { type: string; channel: "enabled" | "email_enabled"; value: boolean }) =>
       api
-        .patch<NotificationPreferencesResponse>(`/notifications/preferences/${type}`, { enabled })
+        .patch<NotificationPreferencesResponse>(`/notifications/preferences/${type}`, { [channel]: value })
         .then((r) => r.data),
     onSuccess: (newData) => {
       queryClient.setQueryData(["notifications", "preferences"], newData);
@@ -78,7 +121,7 @@ export default function NotificationPreferencesPage() {
     );
   }
 
-  const prefMap = Object.fromEntries(data.preferences.map((p) => [p.type, p.enabled]));
+  const prefMap = Object.fromEntries(data.preferences.map((p) => [p.type, p]));
 
   return (
     <div>
@@ -95,6 +138,11 @@ export default function NotificationPreferencesPage() {
       />
 
       <div className="space-y-6 max-w-xl">
+        <div className="flex items-center justify-end gap-8 px-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+          <span className="w-9 text-center">In-app</span>
+          <span className="w-9 text-center">Email</span>
+        </div>
+
         {TYPE_GROUPS.map((group) => (
           <div key={group.label} className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
             <div className="border-b border-white/[0.06] px-5 py-3">
@@ -104,27 +152,35 @@ export default function NotificationPreferencesPage() {
             </div>
             <div className="divide-y divide-white/[0.04]">
               {group.types.map((type) => {
-                const enabled = prefMap[type] ?? true;
-                const isPending = mutation.isPending && (mutation.variables as any)?.type === type;
+                const pref = prefMap[type];
+                const enabled = pref?.enabled ?? true;
+                const emailEnabled = pref?.email_enabled ?? true;
+                const vars = mutation.variables as { type: string; channel: string } | undefined;
+                const isPendingChannel = (channel: string) =>
+                  mutation.isPending && vars?.type === type && vars?.channel === channel;
                 return (
                   <div key={type} className="flex items-center justify-between px-5 py-3.5">
                     <span className="text-sm text-slate-200">
                       {TYPE_LABELS[type] ?? type}
                     </span>
-                    <button
-                      disabled={isPending}
-                      onClick={() => mutation.mutate({ type, enabled: !enabled })}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50 ${
-                        enabled ? "bg-emerald-500" : "bg-slate-600"
-                      }`}
-                      aria-label={enabled ? `Disable ${type}` : `Enable ${type}`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow ring-0 transition-transform ${
-                          enabled ? "translate-x-4" : "translate-x-0"
-                        }`}
-                      />
-                    </button>
+                    <div className="flex items-center gap-8">
+                      <div className="w-9 flex justify-center">
+                        <MiniToggle
+                          value={enabled}
+                          disabled={isPendingChannel("enabled")}
+                          onChange={() => mutation.mutate({ type, channel: "enabled", value: !enabled })}
+                          label={enabled ? `Disable in-app for ${type}` : `Enable in-app for ${type}`}
+                        />
+                      </div>
+                      <div className="w-9 flex justify-center">
+                        <MiniToggle
+                          value={emailEnabled}
+                          disabled={isPendingChannel("email_enabled")}
+                          onChange={() => mutation.mutate({ type, channel: "email_enabled", value: !emailEnabled })}
+                          label={emailEnabled ? `Disable email for ${type}` : `Enable email for ${type}`}
+                        />
+                      </div>
+                    </div>
                   </div>
                 );
               })}

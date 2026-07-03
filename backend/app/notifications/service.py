@@ -23,14 +23,14 @@ async def create_notification(
     related_player_id: uuid.UUID | None = None,
     related_club_id: uuid.UUID | None = None,
 ) -> Notification | None:
-    # Check if user has disabled this notification type
     pref = await db.execute(
         select(NotificationPreference).where(
             NotificationPreference.user_id == recipient_user_id,
             NotificationPreference.type == type,
         )
     )
-    if pref.scalar_one_or_none() is not None:
+    pref_row = pref.scalar_one_or_none()
+    if pref_row is not None and not pref_row.enabled:
         return None  # Suppressed by user preference
 
     n = Notification(
@@ -53,6 +53,14 @@ async def create_notification(
             {"type": "NOTIFICATION"},
         )
     )
+
+    # TRA-44: fire-and-forget email for the curated set of high-value notification types
+    email_enabled = pref_row.email_enabled if pref_row is not None else True
+    if email_enabled:
+        from app.notifications.email import maybe_send_notification_email
+        asyncio.create_task(
+            maybe_send_notification_email(recipient_user_id, type, message, link)
+        )
 
     return n
 
@@ -175,6 +183,59 @@ async def notify_upcoming_events(db: AsyncSession) -> None:
     # Auctions ending within 1h
     await _notify_ending_auctions(db, now)
 
+    # TRA-76: instalments due within 3 days (or overdue)
+    await _notify_instalments_due(db, now)
+
+
+async def _notify_instalments_due(db: AsyncSession, now: datetime) -> None:
+    from app.clubs.models import Club
+    from app.deals.models import Deal, DealInstalment
+
+    cutoff = (now + timedelta(days=3)).date()
+    result = await db.execute(
+        select(DealInstalment, Deal)
+        .join(Deal, Deal.id == DealInstalment.deal_id)
+        .where(DealInstalment.paid.is_(False), DealInstalment.due_date <= cutoff)
+    )
+    rows = list(result.all())
+    if not rows:
+        return
+
+    club_ids = {uuid.UUID(str(d.buyer_club_id)) for _, d in rows} | {
+        uuid.UUID(str(d.seller_club_id)) for _, d in rows if d.seller_club_id
+    }
+    clubs_result = await db.execute(select(Club).where(Club.id.in_(club_ids)))
+    clubs_by_id = {c.id: c for c in clubs_result.scalars()}
+
+    for inst, deal in rows:
+        overdue = inst.due_date < now.date()
+        amount_str = f"£{inst.amount:,.0f}"
+        buyer = clubs_by_id.get(uuid.UUID(str(deal.buyer_club_id)))
+        if buyer:
+            await create_notification(
+                db,
+                recipient_user_id=buyer.user_id,
+                type=NotificationType.INSTALMENT_DUE,
+                message=(
+                    f"Instalment of {amount_str} is {'overdue' if overdue else 'due soon'}"
+                ),
+                link=f"/deals/{deal.id}",
+                related_player_id=deal.player_id,
+            )
+        seller = clubs_by_id.get(uuid.UUID(str(deal.seller_club_id))) if deal.seller_club_id else None
+        if seller:
+            await create_notification(
+                db,
+                recipient_user_id=seller.user_id,
+                type=NotificationType.INSTALMENT_DUE,
+                message=(
+                    f"You are owed an instalment of {amount_str}, "
+                    f"{'now overdue' if overdue else 'due soon'}"
+                ),
+                link=f"/deals/{deal.id}",
+                related_player_id=deal.player_id,
+            )
+
 
 async def _notify_expiring_offers(db: AsyncSession, now: datetime) -> None:
     from app.offers.models import Offer, OfferStatus
@@ -278,32 +339,56 @@ async def _notify_ending_auctions(db: AsyncSession, now: datetime) -> None:
 # ── Notification preferences ──────────────────────────────────────────────────
 
 
-async def get_disabled_types(db: AsyncSession, user_id: uuid.UUID) -> set[NotificationType]:
-    """Return the set of notification types the user has disabled."""
+async def get_preference_map(db: AsyncSession, user_id: uuid.UUID) -> dict[NotificationType, NotificationPreference]:
+    """Return existing preference override rows keyed by type."""
     result = await db.execute(
         select(NotificationPreference).where(NotificationPreference.user_id == user_id)
     )
-    return {p.type for p in result.scalars()}
+    return {p.type: p for p in result.scalars()}
 
 
-async def set_preference(
-    db: AsyncSession, user_id: uuid.UUID, type: NotificationType, enabled: bool
-) -> None:
-    """Enable or disable a notification type for a user."""
-    existing = await db.execute(
+async def get_disabled_types(db: AsyncSession, user_id: uuid.UUID) -> set[NotificationType]:
+    """Return the set of notification types the user has disabled (in-app)."""
+    prefs = await get_preference_map(db, user_id)
+    return {t for t, p in prefs.items() if not p.enabled}
+
+
+async def get_email_disabled_types(db: AsyncSession, user_id: uuid.UUID) -> set[NotificationType]:
+    """Return the set of notification types the user has disabled email delivery for."""
+    prefs = await get_preference_map(db, user_id)
+    return {t for t, p in prefs.items() if not p.email_enabled}
+
+
+async def _get_or_create_preference(
+    db: AsyncSession, user_id: uuid.UUID, type: NotificationType
+) -> NotificationPreference:
+    result = await db.execute(
         select(NotificationPreference).where(
             NotificationPreference.user_id == user_id,
             NotificationPreference.type == type,
         )
     )
-    row = existing.scalar_one_or_none()
-    if enabled:
-        # Remove the disabled row if it exists
-        if row is not None:
-            await db.delete(row)
-            await db.flush()
-    else:
-        # Add a disabled row if it doesn't already exist
-        if row is None:
-            db.add(NotificationPreference(user_id=user_id, type=type))
-            await db.flush()
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = NotificationPreference(user_id=user_id, type=type)
+        db.add(row)
+        await db.flush()
+    return row
+
+
+async def set_preference(
+    db: AsyncSession, user_id: uuid.UUID, type: NotificationType, enabled: bool
+) -> None:
+    """Enable or disable in-app delivery of a notification type for a user."""
+    row = await _get_or_create_preference(db, user_id, type)
+    row.enabled = enabled
+    await db.flush()
+
+
+async def set_email_preference(
+    db: AsyncSession, user_id: uuid.UUID, type: NotificationType, email_enabled: bool
+) -> None:
+    """Enable or disable email delivery of a notification type for a user."""
+    row = await _get_or_create_preference(db, user_id, type)
+    row.email_enabled = email_enabled
+    await db.flush()

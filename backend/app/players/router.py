@@ -115,6 +115,8 @@ async def player_market_detail(
     if deal:
         data.active_deal = ActiveDealStub.model_validate(deal)
 
+    data.is_verified_player = await players_service.is_player_verified(db, player_id)
+
     return data
 
 
@@ -169,7 +171,9 @@ async def get_my_player_profile(
     player = await players_service.get_player_by_id(db, player_profile.player_id)
     if player is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
-    return PlayerDetailResponse.model_validate(player)
+    data = PlayerDetailResponse.model_validate(player)
+    data.is_verified_player = player_profile.verified
+    return data
 
 
 @router.patch("/me", response_model=PlayerDetailResponse)
@@ -436,12 +440,28 @@ async def player_revoke_representation(
     player_profile=Depends(get_current_player_profile),
     db: AsyncSession = Depends(get_db),
 ):
+    from sqlalchemy import select
+
+    from app.auth.models import AgentProfile
     from app.mandates.schemas import MandateResponse
     from app.mandates.service import revoke_mandate_as_player
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
     if player_profile.player_id != player_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your player record")
     try:
         mandate = await revoke_mandate_as_player(db, mandate_id=mandate_id, player_id=player_id)
+        agent_result = await db.execute(select(AgentProfile).where(AgentProfile.id == mandate.agent_id))
+        agent = agent_result.scalar_one_or_none()
+        if agent is not None:
+            await notif_service.create_notification(
+                db,
+                recipient_user_id=agent.user_id,
+                type=NotificationType.REPRESENTATION_REVOKED,
+                message="A player has ended your representation mandate",
+                link=f"/agent/clients/{mandate.id}",
+            )
     except ValueError as exc:
         detail = str(exc)
         if "not found" in detail.lower():

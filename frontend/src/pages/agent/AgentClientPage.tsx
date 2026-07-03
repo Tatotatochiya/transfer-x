@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { ClientStatus, MandateDetailResponse, UpdateMandateRequest } from "../../types/api";
+import type { ClientAlert, ClientStatus, MandateDetailResponse, UpdateMandateRequest } from "../../types/api";
 import Card from "../../components/ui/Card";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
+import { ALERT_SEVERITY_DOT, ALERT_TYPE_LABELS } from "../../lib/badges";
+import { formatDateTime } from "../../lib/utils";
 
 const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {
   ACTIVE:             "Active",
@@ -39,6 +41,12 @@ export default function AgentClientPage() {
     enabled: !!mandateId,
   });
 
+  const { data: alerts = [] } = useQuery<ClientAlert[]>({
+    queryKey: ["mandates", mandateId, "alerts"],
+    queryFn: () => api.get<ClientAlert[]>(`/mandates/${mandateId}/alerts`).then((r) => r.data),
+    enabled: !!mandateId,
+  });
+
   const [clientStatus, setClientStatus] = useState<ClientStatus>("ACTIVE");
   const [notes, setNotes] = useState("");
   const [destinations, setDestinations] = useState("");
@@ -47,6 +55,11 @@ export default function AgentClientPage() {
   const [mandateStart, setMandateStart] = useState("");
   const [mandateEnd, setMandateEnd] = useState("");
   const [territory, setTerritory] = useState("");
+  const [alertContractExpiryEnabled, setAlertContractExpiryEnabled] = useState(true);
+  const [alertContractExpiryMonths, setAlertContractExpiryMonths] = useState("12");
+  const [alertValuationChangeEnabled, setAlertValuationChangeEnabled] = useState(true);
+  const [alertValuationChangePct, setAlertValuationChangePct] = useState("10");
+  const [alertClubInterestEnabled, setAlertClubInterestEnabled] = useState(true);
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
@@ -59,6 +72,11 @@ export default function AgentClientPage() {
       setMandateStart(client.start_date ?? "");
       setMandateEnd(client.end_date ?? "");
       setTerritory(client.territory ?? "");
+      setAlertContractExpiryEnabled(client.alert_contract_expiry_enabled);
+      setAlertContractExpiryMonths(String(client.alert_contract_expiry_months));
+      setAlertValuationChangeEnabled(client.alert_valuation_change_enabled);
+      setAlertValuationChangePct(String(Math.round(client.alert_valuation_change_pct * 100)));
+      setAlertClubInterestEnabled(client.alert_club_interest_enabled);
       setDirty(false);
     }
   }, [client]);
@@ -83,6 +101,11 @@ export default function AgentClientPage() {
       start_date: mandateStart || null,
       end_date: mandateEnd || null,
       territory: territory.trim() || null,
+      alert_contract_expiry_enabled: alertContractExpiryEnabled,
+      alert_contract_expiry_months: parseInt(alertContractExpiryMonths, 10) || 12,
+      alert_valuation_change_enabled: alertValuationChangeEnabled,
+      alert_valuation_change_pct: (parseFloat(alertValuationChangePct) || 10) / 100,
+      alert_club_interest_enabled: alertClubInterestEnabled,
     };
     saveMutation.mutate(body);
   }
@@ -211,6 +234,33 @@ export default function AgentClientPage() {
               )}
             </div>
           </Card>
+
+          {/* Alert history (TRA-135) */}
+          <Card>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Recent Alerts
+            </p>
+            {alerts.length === 0 ? (
+              <p className="text-sm text-slate-500">No alerts for this client yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {alerts.slice(0, 10).map((alert) => (
+                  <div key={alert.id} className="flex items-start gap-2.5 rounded-lg bg-slate-800/60 px-3 py-2">
+                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${ALERT_SEVERITY_DOT[alert.severity]}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                          {ALERT_TYPE_LABELS[alert.alert_type]}
+                        </span>
+                        <span className="shrink-0 text-[10px] text-slate-600">{formatDateTime(alert.created_at)}</span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-slate-300">{alert.message}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
 
         {/* Right: private notes (agent-only) */}
@@ -326,6 +376,89 @@ export default function AgentClientPage() {
                     placeholder="e.g. Europe"
                     className={INPUT}
                   />
+                </div>
+              </div>
+
+              {/* Alert preferences (TRA-135) */}
+              <div className="border-t border-white/[0.06] pt-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Alert preferences
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-slate-300">Contract expiry</p>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className="text-[11px] text-slate-500">Alert within</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={36}
+                          value={alertContractExpiryMonths}
+                          disabled={!alertContractExpiryEnabled}
+                          onChange={(e) => { setAlertContractExpiryMonths(e.target.value); setDirty(true); }}
+                          className="w-14 rounded bg-slate-800 px-1.5 py-0.5 text-xs text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 disabled:opacity-50"
+                        />
+                        <span className="text-[11px] text-slate-500">months of expiry</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setAlertContractExpiryEnabled((v) => !v); setDirty(true); }}
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
+                        alertContractExpiryEnabled ? "bg-emerald-500" : "bg-slate-600"
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        alertContractExpiryEnabled ? "translate-x-4" : "translate-x-0"
+                      }`} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-slate-300">Valuation change</p>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className="text-[11px] text-slate-500">Alert on moves over</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={alertValuationChangePct}
+                          disabled={!alertValuationChangeEnabled}
+                          onChange={(e) => { setAlertValuationChangePct(e.target.value); setDirty(true); }}
+                          className="w-14 rounded bg-slate-800 px-1.5 py-0.5 text-xs text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 disabled:opacity-50"
+                        />
+                        <span className="text-[11px] text-slate-500">%</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setAlertValuationChangeEnabled((v) => !v); setDirty(true); }}
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
+                        alertValuationChangeEnabled ? "bg-emerald-500" : "bg-slate-600"
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        alertValuationChangeEnabled ? "translate-x-4" : "translate-x-0"
+                      }`} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-medium text-slate-300">Club interest</p>
+                    <button
+                      type="button"
+                      onClick={() => { setAlertClubInterestEnabled((v) => !v); setDirty(true); }}
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
+                        alertClubInterestEnabled ? "bg-emerald-500" : "bg-slate-600"
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        alertClubInterestEnabled ? "translate-x-4" : "translate-x-0"
+                      }`} />
+                    </button>
+                  </div>
                 </div>
               </div>
 

@@ -12,6 +12,8 @@ import Metric from "../../components/ui/Metric";
 import Panel from "../../components/ui/Panel";
 import Spinner from "../../components/ui/Spinner";
 import StageTracker from "../../components/deals/StageTracker";
+import NegotiationMessageThread from "../../components/deals/NegotiationMessageThread";
+import DealRoomPanel from "../../components/deals/DealRoomPanel";
 import { dealStatusVariant, dealStageLabel } from "../../lib/badges";
 import { formatCurrency, formatDate, formatWage, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
@@ -213,6 +215,9 @@ function AgentNegotiationWorkspace({
               <span className="text-xs text-slate-500">Awaiting club agreement</span>
             )}
           </div>
+          {negotiation && (
+            <NegotiationMessageThread negotiationId={negotiation.id} thread="CLUB_SIDE" accent="purple" />
+          )}
         </div>
 
         {/* Player-side panel */}
@@ -267,6 +272,9 @@ function AgentNegotiationWorkspace({
               <span className="text-xs text-slate-500">Awaiting player agreement</span>
             )}
           </div>
+          {negotiation && (
+            <NegotiationMessageThread negotiationId={negotiation.id} thread="PLAYER_SIDE" accent="amber" />
+          )}
         </div>
       </div>
 
@@ -399,6 +407,7 @@ function CommissionProposalView({
           {negotiation.club_agreement === "AGREED" ? "✓ You accepted this proposal" : "✗ You declined this proposal"}
         </p>
       )}
+      <NegotiationMessageThread negotiationId={negotiation.id} thread="CLUB_SIDE" accent="purple" />
     </div>
   );
 }
@@ -471,6 +480,7 @@ function PlayerTermsProposalView({
           {negotiation.player_agreement === "AGREED" ? "✓ You accepted these terms" : "✗ You declined these terms"}
         </p>
       )}
+      <NegotiationMessageThread negotiationId={negotiation.id} thread="PLAYER_SIDE" accent="amber" />
     </div>
   );
 }
@@ -1249,6 +1259,9 @@ export default function DealDetailPage() {
           </Panel>
         </div>
       </div>
+
+      {/* Deal room: comments, version history, attachments (TRA-81/82) */}
+      {(isParty || isAgent || isPlayer) && id && <DealRoomPanel dealId={id} />}
     </div>
   );
 }

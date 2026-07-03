@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from app.agents.models import CommissionStatus, InvitationStatus
+from app.agents.models import CommissionStatus, InvitationStatus, NegotiationThread
 from app.mandates.models import ClientStatus, MandateStatus
 
 
@@ -127,6 +127,7 @@ class PipelineDealItem(BaseModel):
     commission_pct: Decimal | None
     action_required: bool
     action_description: str | None
+    has_unread_messages: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -170,3 +171,22 @@ class AgentCommissionsResponse(BaseModel):
 
 class CommissionStatusUpdate(BaseModel):
     status: CommissionStatus
+
+
+# ── TRA-136: scoped negotiation messaging ─────────────────────────────────────
+
+class NegotiationMessageCreateRequest(BaseModel):
+    thread: NegotiationThread
+    body: str
+
+
+class NegotiationMessageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    negotiation_id: uuid.UUID
+    thread: NegotiationThread
+    sender_user_id: uuid.UUID | None
+    sender_label: str | None = None
+    body: str
+    created_at: datetime

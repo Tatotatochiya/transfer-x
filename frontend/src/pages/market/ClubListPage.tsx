@@ -7,6 +7,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import EmptyState from "../../components/ui/EmptyState";
+import Icon from "../../components/layout/Icon";
 
 const SORT_OPTIONS = [
   { value: "name|asc",         label: "Name (A–Z)" },
@@ -134,7 +135,12 @@ export default function ClubListPage() {
                     </span>
                   )}
                 </div>
-                <p className="font-semibold text-white truncate">{club.name}</p>
+                <p className="flex items-center gap-1 font-semibold text-white truncate">
+                  <span className="truncate">{club.name}</span>
+                  {club.verified && (
+                    <Icon name="check" className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+                  )}
+                </p>
                 <p className="mt-0.5 text-xs text-slate-400 truncate">
                   {[club.league_name, club.country].filter(Boolean).join(" · ") || "—"}
                 </p>

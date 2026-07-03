@@ -10,6 +10,7 @@ import Card from "../../components/ui/Card";
 import ClubLink from "../../components/ui/ClubLink";
 import Spinner from "../../components/ui/Spinner";
 import StatsPanel from "../../components/players/StatsPanel";
+import VerifiedBadge from "../../components/verification/VerifiedBadge";
 import {
   positionVariant,
   playerStatusLabel,
@@ -645,7 +646,10 @@ export default function PlayerMarketDetailPage() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h1 className="text-2xl font-bold text-white">{player.name}</h1>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-bold text-white">{player.name}</h1>
+                  {player.is_verified_player && <VerifiedBadge />}
+                </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   {player.position && (
                     <Badge variant={positionVariant(player.position)}>{player.position}</Badge>

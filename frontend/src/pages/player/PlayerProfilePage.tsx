@@ -7,6 +7,8 @@ import Card from "../../components/ui/Card";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import Badge from "../../components/ui/Badge";
+import VerifiedBadge from "../../components/verification/VerifiedBadge";
+import RequestVerificationPanel from "../../components/verification/RequestVerificationPanel";
 import { formatCurrency, formatWage } from "../../lib/utils";
 
 // ── Visibility selector ───────────────────────────────────────────────────────
@@ -181,7 +183,11 @@ export default function PlayerProfilePage() {
 
   return (
     <div className="max-w-xl">
-      <PageHeader title={player.name} subtitle={player.position ?? "Player"} />
+      <PageHeader
+        title={player.name}
+        subtitle={player.position ?? "Player"}
+        actions={player.is_verified_player ? <VerifiedBadge /> : undefined}
+      />
 
       {/* Visibility & open-to-offers controls */}
       <Card>
@@ -224,6 +230,8 @@ export default function PlayerProfilePage() {
               {saving ? "Saving…" : "Save changes"}
             </button>
           )}
+
+          <RequestVerificationPanel verified={player.is_verified_player} />
         </div>
       </Card>
 

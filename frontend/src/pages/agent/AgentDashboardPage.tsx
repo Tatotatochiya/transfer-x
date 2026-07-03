@@ -8,6 +8,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import Badge from "../../components/ui/Badge";
 import { formatCurrency, formatDate } from "../../lib/utils";
+import IntelligenceFeed from "../../components/agent/IntelligenceFeed";
 
 const CLIENT_STATUS_COLORS: Record<string, string> = {
   ACTIVE:             "text-emerald-400",
@@ -106,6 +107,9 @@ function PipelineRow({ item }: { item: PipelineDealItem }) {
               <p className="truncate text-sm font-semibold text-white">
                 {item.player_name}
               </p>
+              {item.has_unread_messages && (
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" title="New messages" />
+              )}
               {item.action_required && (
                 <span className="shrink-0 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-400">
                   Action needed
@@ -243,6 +247,11 @@ export default function AgentDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Client intelligence feed (TRA-135) */}
+      <div className="mt-6">
+        <IntelligenceFeed />
+      </div>
 
       {/* Pipeline (TRA-130) */}
       {pipeline && pipeline.items.length > 0 && (

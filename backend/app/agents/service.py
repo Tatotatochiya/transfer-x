@@ -94,7 +94,7 @@ async def list_represented_players(
 
 
 async def get_agent_pipeline(
-    db: AsyncSession, agent_profile_id: uuid.UUID
+    db: AsyncSession, agent_profile_id: uuid.UUID, agent_user_id: uuid.UUID | None = None
 ) -> dict:
     """TRA-130: aggregate pipeline view across all mandated clients."""
     from sqlalchemy.orm import selectinload
@@ -153,6 +153,20 @@ async def get_agent_pipeline(
         for neg in neg_result.scalars().all():
             negotiations[neg.deal_id] = neg
 
+    # TRA-136: which players have an unread NEGOTIATION_MESSAGE for this agent
+    unread_player_ids: set[uuid.UUID] = set()
+    if agent_user_id is not None and player_ids:
+        from app.notifications.models import Notification, NotificationType
+        unread_result = await db.execute(
+            select(Notification.related_player_id).where(
+                Notification.recipient_user_id == agent_user_id,
+                Notification.type == NotificationType.NEGOTIATION_MESSAGE,
+                Notification.is_read.is_(False),
+                Notification.related_player_id.in_(player_ids),
+            )
+        )
+        unread_player_ids = {row[0] for row in unread_result.all() if row[0] is not None}
+
     items: list[PipelineDealItem] = []
     for deal in deals:
         neg = negotiations.get(deal.id)
@@ -176,6 +190,7 @@ async def get_agent_pipeline(
                 commission_pct=deal.agent_commission_pct,
                 action_required=action_required,
                 action_description="Update negotiation terms and await agreement" if action_required else None,
+                has_unread_messages=deal.player_id in unread_player_ids,
                 created_at=deal.created_at,
                 updated_at=deal.updated_at,
             )

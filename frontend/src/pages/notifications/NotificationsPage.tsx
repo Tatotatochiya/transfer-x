@@ -31,6 +31,15 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   DEAL_AGENT_INVITED:         "Agent invited",
   DEAL_PERSONAL_TERMS_SENT:   "Personal terms sent",
   PLAYER_AVAILABLE:           "Player available",
+  VERIFICATION_APPROVED:      "Verification approved",
+  VERIFICATION_REJECTED:      "Verification rejected",
+  REPRESENTATION_STARTED:     "New representation",
+  REPRESENTATION_REVOKED:     "Representation ended",
+  PERSONAL_TERMS_DECISION:    "Personal terms decision",
+  INSTALMENT_DUE:             "Instalment due",
+  DEAL_CLAUSE_TRIGGERED:      "Clause triggered",
+  NEGOTIATION_MESSAGE:        "New negotiation message",
+  CLIENT_ALERT:               "Client alert",
 };
 
 const TYPE_COLOURS: Record<NotificationType, string> = {
@@ -51,6 +60,15 @@ const TYPE_COLOURS: Record<NotificationType, string> = {
   DEAL_AGENT_INVITED:       "text-purple-400",
   DEAL_PERSONAL_TERMS_SENT: "text-amber-400",
   PLAYER_AVAILABLE:         "text-slate-300",
+  VERIFICATION_APPROVED:    "text-sky-400",
+  VERIFICATION_REJECTED:    "text-red-400",
+  REPRESENTATION_STARTED:   "text-purple-400",
+  REPRESENTATION_REVOKED:   "text-red-400",
+  PERSONAL_TERMS_DECISION:  "text-amber-400",
+  INSTALMENT_DUE:           "text-amber-400",
+  DEAL_CLAUSE_TRIGGERED:    "text-amber-400",
+  NEGOTIATION_MESSAGE:      "text-violet-400",
+  CLIENT_ALERT:             "text-sky-400",
 };
 
 // ── Row component ─────────────────────────────────────────────────────────────

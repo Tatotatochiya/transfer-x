@@ -14,6 +14,8 @@ import FinanceSummaryPanel from "../../components/clubs/FinanceSummaryPanel";
 import TopPerformers from "../../components/clubs/TopPerformers";
 import SquadStatsPanel from "../../components/clubs/SquadStatsPanel";
 import FixturesPanel from "../../components/fixtures/FixturesPanel";
+import VerifiedBadge from "../../components/verification/VerifiedBadge";
+import RequestVerificationPanel from "../../components/verification/RequestVerificationPanel";
 import { getApiError } from "../../lib/utils";
 
 type Tab = "squad" | "stats" | "listings" | "fixtures";
@@ -201,6 +203,7 @@ export default function MyClubPage() {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold text-white">{club.name}</h1>
             <Badge variant="neutral">{club.role}</Badge>
+            {club.verified && <VerifiedBadge />}
             {isStaff && (
               <Badge variant={isReadOnly ? "neutral" : "info"}>{club.my_role}</Badge>
             )}
@@ -402,6 +405,7 @@ export default function MyClubPage() {
             openListings={null}
           />
           {club.finance && <FinanceSummaryPanel finance={club.finance} />}
+          {!isReadOnly && <RequestVerificationPanel verified={club.verified} />}
         </div>
       </div>
     </div>

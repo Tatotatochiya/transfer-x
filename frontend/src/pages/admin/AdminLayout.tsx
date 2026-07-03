@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { to: "/admin/vendor",     label: "Vendor Sync", icon: "🔄" },
   { to: "/admin/analytics",  label: "Analytics",   icon: "📊" },
   { to: "/admin/windows",    label: "TW Windows",  icon: "🗓" },
+  { to: "/admin/verification", label: "Verification", icon: "✅" },
   { to: "/admin/health",     label: "Health",      icon: "🩺" },
   { to: "/admin/ai",         label: "AI",          icon: "✦"  },
 ];

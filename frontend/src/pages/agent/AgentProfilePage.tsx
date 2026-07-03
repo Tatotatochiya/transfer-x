@@ -7,6 +7,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
+import RequestVerificationPanel from "../../components/verification/RequestVerificationPanel";
 
 const INPUT_CLS =
   "w-full rounded-lg bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors disabled:opacity-50";
@@ -153,6 +154,8 @@ export default function AgentProfilePage() {
             Member since {new Date(profile.created_at).toLocaleDateString()}
             {profile.verified && " · Verified agent"}
           </div>
+
+          <RequestVerificationPanel verified={profile.verified} />
         </div>
 
         {editing && (

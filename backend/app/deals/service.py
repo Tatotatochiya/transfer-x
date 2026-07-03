@@ -871,6 +871,7 @@ async def update_deal(
     actor_club_id: uuid.UUID,
     is_staff: bool = False,
     updates: dict,
+    actor_user_id: uuid.UUID | None = None,
 ) -> Deal:
     """Update loan/sell-on fields while deal is still in AGREEMENT stage."""
     if deal.status != DealStatus.IN_PROGRESS:
@@ -878,9 +879,17 @@ async def update_deal(
     if deal.stage != DealStage.AGREEMENT:
         raise ValueError("Deal terms can only be updated at AGREEMENT stage")
     _require_party(deal, actor_club_id, is_staff)
+
+    # TRA-81: capture a pre-edit baseline version the first time this deal's terms are touched.
+    from app.deals.room_service import create_terms_version, list_terms_versions
+    if not await list_terms_versions(db, deal.id):
+        await create_terms_version(db, deal, changed_by_user_id=None)
+
     for k, v in updates.items():
         setattr(deal, k, v)
     await db.flush()
+
+    await create_terms_version(db, deal, changed_by_user_id=actor_user_id)
     return deal
 
 

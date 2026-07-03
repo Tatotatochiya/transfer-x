@@ -11,6 +11,7 @@ import SquadStatsPanel from "../../components/clubs/SquadStatsPanel";
 import EmptyState from "../../components/ui/EmptyState";
 import Spinner from "../../components/ui/Spinner";
 import FixturesPanel from "../../components/fixtures/FixturesPanel";
+import VerifiedBadge from "../../components/verification/VerifiedBadge";
 
 type Tab = "squad" | "stats" | "listings" | "fixtures";
 
@@ -128,7 +129,10 @@ export default function ClubDetailPage() {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold text-white">{club.name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-white">{club.name}</h1>
+            {club.verified && <VerifiedBadge />}
+          </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-400">
             {club.league_name && <span>{club.league_name}</span>}
             {club.city && (

@@ -15,6 +15,7 @@ from app.clubs import router as clubs_router
 from app.config import settings
 from app.database import AsyncSessionLocal
 from app.deals import router as deals_router
+from app.deals import room_router as deal_room_router
 from app.notifications import router as notifications_router
 from app.offers import router as offers_router
 from app.players import router as players_router
@@ -28,7 +29,9 @@ from app.fixtures import router as fixtures_router
 from app.transfer_window import router as transfer_window_router
 from app.mandates import router as mandates_router
 from app.agents import router as agents_router
+from app.agents import negotiation_messages_router
 from app.audit import router as audit_router
+from app.verification import router as verification_router
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +87,20 @@ async def _enrichment_sync_job() -> None:
             logger.exception("Error in enrichment sync job")
 
 
+async def _client_alerts_job() -> None:
+    """TRA-134: scan agent rosters for contract-expiry, valuation-change, and club-interest alerts."""
+    from app.mandates.alerts_service import check_and_create_alerts
+
+    async with AsyncSessionLocal() as db:
+        try:
+            async with db.begin():
+                count = await check_and_create_alerts(db)
+            if count:
+                logger.info("Created %d client alerts", count)
+        except Exception:
+            logger.exception("Error in client alerts job")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -91,6 +108,7 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(_expire_stale_offers_job, "interval", minutes=5, id="expire_stale_offers")
     _scheduler.add_job(_notify_upcoming_events_job, "interval", hours=1, id="notify_upcoming_events")
     _scheduler.add_job(_enrichment_sync_job, "interval", hours=24, id="enrichment_sync")
+    _scheduler.add_job(_client_alerts_job, "interval", hours=6, id="client_alerts")
     _scheduler.start()
     logger.info("APScheduler started")
     yield
@@ -140,6 +158,7 @@ app.include_router(players_router.router, prefix="/players")
 app.include_router(sales_router.router, prefix="")
 app.include_router(offers_router.router, prefix="")
 app.include_router(deals_router.router, prefix="")
+app.include_router(deal_room_router.router, prefix="")
 app.include_router(scouting_router.router)
 app.include_router(notifications_router.router)
 app.include_router(stats_router.router)
@@ -153,4 +172,6 @@ app.include_router(ws_router.router)
 app.include_router(ai_router)
 app.include_router(mandates_router.router, prefix="/mandates")
 app.include_router(agents_router.router, prefix="/agents")
+app.include_router(negotiation_messages_router.router, prefix="")
 app.include_router(audit_router.router, prefix="")
+app.include_router(verification_router.router, prefix="")

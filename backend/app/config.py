@@ -98,5 +98,15 @@ class Settings(BaseSettings):
     transferx_sniping_extend_minutes: int = 2
     transferx_bid_rate: str = "10/m"
 
+    # TRA-44: Email (SMTP) — leave smtp_host unset to disable email sending (dev/test default)
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str = "noreply@transferx.local"
+    smtp_from_name: str = "TransferX"
+    smtp_use_tls: bool = True
+    frontend_base_url: str = "http://localhost:5173"
+
 
 settings = Settings()

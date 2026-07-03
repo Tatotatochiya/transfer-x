@@ -10,6 +10,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import { getApiError } from "../../lib/utils";
 import { useAuthStore } from "../../store/auth";
+import TransferWindowBanner from "../../components/transfers/TransferWindowBanner";
 
 export default function CreateOfferPage() {
   const navigate = useNavigate();
@@ -150,6 +151,8 @@ export default function CreateOfferPage() {
         title="Make an Offer"
         subtitle="Submit a formal offer to begin negotiations"
       />
+
+      <TransferWindowBanner />
 
       {/* Player info */}
       {player && (

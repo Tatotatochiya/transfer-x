@@ -55,7 +55,12 @@ function DealCard({ item, stageKey }: { item: PipelineDealItem; stageKey: StageK
         }`}
       >
         <div className="flex items-start justify-between gap-2 mb-1.5">
-          <p className="text-sm font-semibold text-white truncate">{item.player_name}</p>
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-white truncate">
+            <span className="truncate">{item.player_name}</span>
+            {item.has_unread_messages && (
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" title="New messages" />
+            )}
+          </p>
           {item.action_required && (
             <span className="shrink-0 rounded-full bg-red-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-400">
               Action needed
@@ -409,6 +414,9 @@ export default function AgentPipelinePage() {
                       <p className="truncate text-sm font-semibold text-white">
                         {item.player_name}
                       </p>
+                      {item.has_unread_messages && (
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" title="New messages" />
+                      )}
                       {item.action_required && (
                         <span className="shrink-0 rounded-full bg-red-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-400">
                           Action needed

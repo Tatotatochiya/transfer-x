@@ -35,6 +35,7 @@ class ClubResponse(BaseModel):
     league_name: str | None
     crest_url: str | None
     role: ClubRole
+    verified: bool
     created_at: datetime
     finance: ClubFinanceResponse | None = None
     my_role: str | None = None  # OWNER | MANAGER | READONLY — set by router, not DB
@@ -51,6 +52,7 @@ class ClubPublicResponse(BaseModel):
     league_name: str | None
     crest_url: str | None
     role: ClubRole
+    verified: bool
     created_at: datetime
 
 

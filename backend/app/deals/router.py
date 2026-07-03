@@ -11,7 +11,7 @@ from app.clubs import service as clubs_service
 from app.common.schemas import Paginated
 from app.database import get_db
 from app.deals import service
-from app.deals.models import DealStatus
+from app.deals.models import ClauseStatus, DealStatus
 from app.deals.schemas import (
     AgentNegotiationResponse,
     ClubTransferStat,
@@ -91,6 +91,36 @@ async def _db_notify_deal_parties(
                 message=message,
                 link=deal_link,
                 related_player_id=player_id,
+            )
+
+
+async def _notify_personal_terms_sent(db: AsyncSession, deal, pt) -> None:
+    """TRA-76: notify the player and mandated agent that personal terms are ready for review."""
+    from app.auth.models import AgentProfile, PlayerProfile
+
+    pp_result = await db.execute(select(PlayerProfile).where(PlayerProfile.player_id == deal.player_id))
+    player_profile = pp_result.scalar_one_or_none()
+    if player_profile is not None:
+        await notif_service.create_notification(
+            db,
+            recipient_user_id=player_profile.user_id,
+            type=NotificationType.DEAL_PERSONAL_TERMS_SENT,
+            message="Personal terms have been proposed for your transfer — review and respond",
+            link="/player/profile",
+            related_player_id=deal.player_id,
+        )
+
+    if pt.agent_id is not None:
+        agent_result = await db.execute(select(AgentProfile).where(AgentProfile.id == pt.agent_id))
+        agent = agent_result.scalar_one_or_none()
+        if agent is not None:
+            await notif_service.create_notification(
+                db,
+                recipient_user_id=agent.user_id,
+                type=NotificationType.DEAL_PERSONAL_TERMS_SENT,
+                message="Personal terms saved — awaiting player consent",
+                link=f"/deals/{deal.id}",
+                related_player_id=deal.player_id,
             )
 
 
@@ -416,6 +446,7 @@ async def update_deal(
             actor_club_id=club.id,
             is_staff=current_user.is_superuser,
             updates=updates,
+            actor_user_id=current_user.id,
         )
         await db.commit()
     except ValueError as exc:
@@ -493,6 +524,13 @@ async def update_clause_status(
             is_staff=current_user.is_superuser,
             new_status=body.status,
         )
+        if clause.status == ClauseStatus.TRIGGERED:
+            player_name = deal.player.name if deal.player else "the player"
+            await _db_notify_deal_parties(
+                db, deal,
+                ntype=NotificationType.DEAL_CLAUSE_TRIGGERED,
+                message=f"{clause.clause_type.value.title()} clause triggered on {player_name}'s transfer — £{clause.amount:,.0f} owed",
+            )
         await db.commit()
         await db.refresh(clause)
     except ValueError as exc:
@@ -635,6 +673,7 @@ async def set_personal_terms(
             signing_bonus=body.signing_bonus,
             length_years=body.length_years,
         )
+        await _notify_personal_terms_sent(db, deal, pt)
         await db.commit()
         await db.refresh(pt)
     except ValueError as exc:
@@ -674,6 +713,13 @@ async def player_consent_to_terms(
 
     try:
         pt = await service.player_consent_to_terms(db, deal, body.agreement)
+        player_name = deal.player.name if deal.player else "The player"
+        decision = "agreed to" if pt.player_consent == "AGREED" else "declined"
+        await _db_notify_deal_parties(
+            db, deal,
+            ntype=NotificationType.PERSONAL_TERMS_DECISION,
+            message=f"{player_name} has {decision} the proposed personal terms",
+        )
         await db.commit()
         await db.refresh(pt)
     except ValueError as exc:

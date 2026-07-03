@@ -9,6 +9,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import Card from "../../components/ui/Card";
 import CurrencyInput from "../../components/ui/CurrencyInput";
 import { getApiError } from "../../lib/utils";
+import TransferWindowBanner from "../../components/transfers/TransferWindowBanner";
 
 // Convert local datetime-input value to UTC ISO string
 function localDatetimeToISO(value: string): string {
@@ -89,6 +90,8 @@ export default function CreateSalePage() {
   return (
     <div className="max-w-2xl">
       <PageHeader title="New Listing" subtitle="List a player for sale or auction" />
+
+      <TransferWindowBanner />
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-5">
