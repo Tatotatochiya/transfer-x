@@ -1,0 +1,50 @@
+---
+title: "API Reference"
+last_updated: 2026-07-03
+status: Active
+owner: "TODO — assign a Technical Lead"
+---
+
+# API Reference
+
+## Purpose
+
+Points to where the authoritative API reference lives, and gives a navigational map of router prefixes. The API reference itself is **not duplicated here** — FastAPI generates it automatically from the code, which is the only way it can never go stale.
+
+## Scope
+
+In scope: where to find the live API reference, and a prefix-to-module map for navigation.
+Out of scope: a hand-maintained list of endpoints (this would immediately duplicate, and drift from, the auto-generated reference).
+
+## Table of Contents
+
+- [Live reference](#live-reference)
+- [Router prefix map](#router-prefix-map)
+- [Related documents](#related-documents)
+
+## Live reference
+
+Running locally, the interactive Swagger UI is available at `http://localhost:8001/docs` (see [`getting-started.md`](./getting-started.md)). This is always current, since FastAPI generates it directly from the route definitions.
+
+## Router prefix map
+
+| Prefix | Module |
+|---|---|
+| `/auth` | Authentication |
+| `/clubs` | Club profiles, staff, finance |
+| `/players` | Player records, contracts |
+| `/sales` | Listings, bids |
+| `/offers` | Direct offers |
+| `/deals` | Deal lifecycle, deal room |
+| `/agents` | Agent profiles, invitations, negotiation |
+| `/mandates` | Agent–player mandates |
+| `/notifications` | In-app/email notifications |
+| `/admin` | Superuser administration |
+| `/ws` | WebSocket real-time updates |
+
+> **TODO:** Complete this table against the current router mounts in `backend/app/main.py` — this is a starting point, not verified exhaustive as of this writing.
+
+## Related documents
+
+- [`../architecture/backend-architecture.md`](../architecture/backend-architecture.md) — what each module is responsible for
+- [`getting-started.md`](./getting-started.md) — how to run the backend locally to access the live reference
