@@ -51,15 +51,21 @@ def _normalize_row(raw: dict[str, str]) -> dict[str, str | None]:
 # ── Profile operations ────────────────────────────────────────────────────────
 
 async def list_invitations(db: AsyncSession, agent_profile_id: uuid.UUID) -> list:
+    """Pending invitations for deals that are still active — no accept/decline
+    flow exists yet (TRA-145), so an invitation's own status never leaves
+    PENDING on its own; excluding terminal deals here stops it from haunting
+    the agent's dashboard forever after the deal collapses or completes."""
     from sqlalchemy.orm import selectinload
     from app.agents.models import AgentDealInvitation, InvitationStatus
-    from app.deals.models import Deal
+    from app.deals.models import Deal, DealStatus
 
     result = await db.execute(
         select(AgentDealInvitation)
+        .join(Deal, Deal.id == AgentDealInvitation.deal_id)
         .where(
             AgentDealInvitation.agent_id == agent_profile_id,
             AgentDealInvitation.status == InvitationStatus.PENDING,
+            Deal.status.in_([DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION]),
         )
         .options(
             selectinload(AgentDealInvitation.deal).selectinload(Deal.buyer_club),

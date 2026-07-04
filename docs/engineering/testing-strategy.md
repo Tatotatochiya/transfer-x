@@ -1,6 +1,6 @@
 ---
 title: "Testing Strategy"
-last_updated: 2026-07-03
+last_updated: 2026-07-04
 status: Draft
 owner: "TODO — assign a Technical Lead"
 ---
@@ -37,7 +37,7 @@ Vitest + Testing Library + MSW (for API mocking). Test files live alongside comp
 
 ## Current coverage
 
-As a rough, point-in-time indicator (verify before relying on this): 19 backend test files, 6 frontend test files.
+As a rough, point-in-time indicator (verify before relying on this): 19 backend test files (274 tests passing), 8 frontend test files.
 
 > **TODO:** This is not a coverage percentage and shouldn't be read as one — replace with real coverage tooling output if/when that's set up.
 

@@ -1,6 +1,6 @@
 ---
 title: "Database Migrations"
-last_updated: 2026-07-03
+last_updated: 2026-07-04
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -29,7 +29,7 @@ Alembic, against SQLAlchemy async models. Migration files live in `backend/migra
 
 ## Current state
 
-As of this writing: 46+ migration files, latest being a client-alerts migration. This number changes frequently — treat it as a snapshot, not a live fact, and check `backend/migrations/versions/` directly if you need the current count.
+As of this writing: 47+ migration files, latest dropping the now-unused proposed-terms columns from `AgentNegotiation` (see [ADR 0002](../product/decisions/0002-single-capture-point-for-personal-terms.md)). This number changes frequently — treat it as a snapshot, not a live fact, and check `backend/migrations/versions/` directly if you need the current count.
 
 ## Workflow
 

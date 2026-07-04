@@ -11,7 +11,7 @@ from app.clubs import service as clubs_service
 from app.common.schemas import Paginated
 from app.database import get_db
 from app.deals import room_service, service
-from app.deals.models import ClauseStatus, DealStatus
+from app.deals.models import ClauseStatus, DealStage, DealStatus
 from app.deals.schemas import (
     AgentNegotiationResponse,
     ClubTransferStat,
@@ -39,6 +39,7 @@ from app.deals.schemas import (
 from app.deps import get_current_user
 from app.notifications import service as notif_service
 from app.notifications.models import NotificationType
+from app.players import service as players_service
 from app.ws.manager import manager as ws_manager
 
 router = APIRouter(tags=["deals"])
@@ -131,13 +132,16 @@ async def _get_deal_or_404(db: AsyncSession, deal_id: uuid.UUID):
     return deal
 
 
-def _build_deal_response(deal, *, caller_user_type: str | None = None) -> DealResponse:
+async def _build_deal_response(db: AsyncSession, deal, *, caller_user_type: str | None = None) -> DealResponse:
     """TRA-137: field-scoped like `_build_neg_response` — commission terms (what
     the club pays the agent) are hidden from the player. Everything else here is
     either already gated to real participants by the caller, or legitimately
     shared across all of them (e.g. personal terms, medical check).
     """
     is_player = caller_user_type == "PLAYER"
+    personal_terms = None
+    if deal.personal_terms is not None:
+        personal_terms = await _build_personal_terms_response(db, deal.personal_terms, deal.player_id)
     return DealResponse(
         id=deal.id,
         sale_id=deal.sale_id,
@@ -164,7 +168,7 @@ def _build_deal_response(deal, *, caller_user_type: str | None = None) -> DealRe
         agent_commission_amount=None if is_player else deal.agent_commission_amount,
         commission_payer=None if is_player else deal.commission_payer,
         commission_agent_id=None if is_player else deal.commission_agent_id,
-        personal_terms=deal.personal_terms,
+        personal_terms=personal_terms,
         medical_check=deal.medical_check,
         notes=deal.notes,
         completed_at=deal.completed_at,
@@ -262,7 +266,7 @@ async def list_deals(
         db, club_id=club.id, status=deal_status, page=page, page_size=page_size
     )
     return Paginated(
-        items=[_build_deal_response(d) for d in deals],
+        items=[await _build_deal_response(db, d) for d in deals],
         total=total, page=page, page_size=page_size,
     )
 
@@ -278,7 +282,7 @@ async def get_deal(
     deal = await _get_deal_or_404(db, deal_id)
     if not await room_service.is_deal_participant(db, deal, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
-    return _build_deal_response(deal, caller_user_type=current_user.user_type.value)
+    return await _build_deal_response(db, deal, caller_user_type=current_user.user_type.value)
 
 
 # ── Stage advancement ─────────────────────────────────────────────────────────
@@ -290,12 +294,31 @@ async def advance_deal(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    club = await _get_club_or_403(db, current_user)
+    from app.auth.models import AgentProfile, UserType
+
     deal = await _get_deal_or_404(db, deal_id)
+
+    actor_club_id: uuid.UUID | None = None
+    is_mandated_agent = False
+    if current_user.is_superuser:
+        pass  # staff needs no club — is_staff already bypasses the party check below
+    elif current_user.user_type == UserType.AGENT and deal.stage == DealStage.AGENT_NEGOTIATION:
+        neg = await service.get_agent_negotiation(db, deal.id)
+        if neg is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No negotiation found")
+        profile_r = await db.execute(select(AgentProfile).where(AgentProfile.user_id == current_user.id))
+        profile = profile_r.scalar_one_or_none()
+        if profile is None or profile.id != neg.agent_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not the mandated agent")
+        is_mandated_agent = True
+    else:
+        club = await _get_club_or_403(db, current_user)
+        actor_club_id = club.id
 
     try:
         await service.advance_deal(
-            db, deal, actor_club_id=club.id, is_staff=current_user.is_superuser
+            db, deal, actor_club_id=actor_club_id, is_staff=current_user.is_superuser,
+            is_mandated_agent=is_mandated_agent, actor_user_id=current_user.id,
         )
         if deal.status == DealStatus.COMPLETED:
             player_name = deal.player.name if deal.player else "the player"
@@ -314,7 +337,7 @@ async def advance_deal(
 
     deal = await service.get_deal_by_id(db, deal_id)
     await _notify_deal_parties(db, deal_id)
-    return _build_deal_response(deal)
+    return await _build_deal_response(db, deal)
 
 
 # ── Collapse ──────────────────────────────────────────────────────────────────
@@ -331,7 +354,8 @@ async def collapse_deal(
 
     try:
         await service.collapse_deal(
-            db, deal, actor_club_id=club.id, is_staff=current_user.is_superuser
+            db, deal, actor_club_id=club.id, is_staff=current_user.is_superuser,
+            actor_user_id=current_user.id,
         )
         player_name = deal.player.name if deal.player else "the player"
         await _db_notify_deal_parties(
@@ -346,7 +370,7 @@ async def collapse_deal(
 
     deal = await service.get_deal_by_id(db, deal_id)
     await _notify_deal_parties(db, deal_id)
-    return _build_deal_response(deal)
+    return await _build_deal_response(db, deal)
 
 
 # ── Notes ─────────────────────────────────────────────────────────────────────
@@ -387,7 +411,7 @@ async def staff_complete_deal(
     deal = await _get_deal_or_404(db, deal_id)
 
     try:
-        await service.staff_complete(db, deal)
+        await service.staff_complete(db, deal, actor_user_id=current_user.id)
         player_name = deal.player.name if deal.player else "the player"
         await _db_notify_deal_parties(
             db, deal,
@@ -401,7 +425,7 @@ async def staff_complete_deal(
 
     deal = await service.get_deal_by_id(db, deal_id)
     await _notify_deal_parties(db, deal_id)
-    return _build_deal_response(deal)
+    return await _build_deal_response(db, deal)
 
 
 @router.post("/deals/{deal_id}/staff/collapse", response_model=DealResponse)
@@ -415,7 +439,7 @@ async def staff_collapse_deal(
     deal = await _get_deal_or_404(db, deal_id)
 
     try:
-        await service.staff_collapse(db, deal)
+        await service.staff_collapse(db, deal, actor_user_id=current_user.id)
         player_name = deal.player.name if deal.player else "the player"
         await _db_notify_deal_parties(
             db, deal,
@@ -429,7 +453,7 @@ async def staff_collapse_deal(
 
     deal = await service.get_deal_by_id(db, deal_id)
     await _notify_deal_parties(db, deal_id)
-    return _build_deal_response(deal)
+    return await _build_deal_response(db, deal)
 
 
 # ── TRA-56: update deal terms (loan / sell-on) ────────────────────────────────
@@ -460,7 +484,7 @@ async def update_deal(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     deal = await service.get_deal_by_id(db, deal_id)
-    return _build_deal_response(deal)
+    return await _build_deal_response(db, deal)
 
 
 # ── TRA-57: deal clauses ──────────────────────────────────────────────────────
@@ -488,6 +512,7 @@ async def add_clause(
             trigger_description=body.trigger_description,
             amount=body.amount,
             cap=body.cap,
+            actor_user_id=current_user.id,
         )
         await db.commit()
         await db.refresh(clause)
@@ -529,6 +554,7 @@ async def update_clause_status(
             actor_club_id=club.id,
             is_staff=current_user.is_superuser,
             new_status=body.status,
+            actor_user_id=current_user.id,
         )
         if clause.status == ClauseStatus.TRIGGERED:
             player_name = deal.player.name if deal.player else "the player"
@@ -566,7 +592,7 @@ async def set_instalments(
     items = [{"due_date": i.due_date, "amount": i.amount} for i in body.instalments]
     try:
         instalments = await service.set_instalments(
-            db, deal, actor_club_id=club.id, items=items
+            db, deal, actor_club_id=club.id, items=items, actor_user_id=current_user.id,
         )
         await db.commit()
         for inst in instalments:
@@ -624,7 +650,7 @@ async def upsert_medical_check(
     deal = await _get_deal_or_404(db, deal_id)
     try:
         mc = await service.upsert_medical_check(
-            db, deal, status=body.status, notes=body.notes, is_staff=True
+            db, deal, status=body.status, notes=body.notes, is_staff=True, actor_user_id=current_user.id,
         )
         await db.commit()
         await db.refresh(mc)
@@ -636,6 +662,21 @@ async def upsert_medical_check(
 
 
 # ── TRA-60: personal terms ───────────────────────────────────────────────────
+
+
+async def _build_personal_terms_response(db: AsyncSession, pt, player_id: uuid.UUID) -> PersonalTermsResponse:
+    return PersonalTermsResponse(
+        id=pt.id,
+        deal_id=pt.deal_id,
+        agent_id=pt.agent_id,
+        wage_weekly=pt.wage_weekly,
+        signing_bonus=pt.signing_bonus,
+        length_years=pt.length_years,
+        player_consent=pt.player_consent,
+        player_has_account=await players_service.player_has_account(db, player_id),
+        agreed_at=pt.agreed_at,
+        created_at=pt.created_at,
+    )
 
 
 @router.get("/deals/{deal_id}/personal-terms", response_model=PersonalTermsResponse)
@@ -650,7 +691,7 @@ async def get_personal_terms(
     pt = await service.get_personal_terms(db, deal.id)
     if pt is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No personal terms found")
-    return pt
+    return await _build_personal_terms_response(db, pt, deal.player_id)
 
 
 @router.put("/deals/{deal_id}/personal-terms", response_model=PersonalTermsResponse)
@@ -671,6 +712,9 @@ async def set_personal_terms(
         profile = profile_r.scalar_one_or_none()
         if profile is None:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Agent profile not found")
+        neg = await service.get_agent_negotiation(db, deal.id)
+        if neg is None or neg.agent_id != profile.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not the mandated agent for this deal")
         agent_profile_id = profile.id
     elif current_user.user_type == UserType.CLUB:
         # TRA-60: without a mandated agent, the buying club is who proposes personal
@@ -691,6 +735,7 @@ async def set_personal_terms(
             wage_weekly=body.wage_weekly,
             signing_bonus=body.signing_bonus,
             length_years=body.length_years,
+            actor_user_id=current_user.id,
         )
         await _notify_personal_terms_sent(db, deal, pt)
         await db.commit()
@@ -699,7 +744,7 @@ async def set_personal_terms(
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
-    return pt
+    return await _build_personal_terms_response(db, pt, deal.player_id)
 
 
 @router.post("/deals/{deal_id}/personal-terms/player-consent", response_model=PersonalTermsResponse)
@@ -709,7 +754,9 @@ async def player_consent_to_terms(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Player (or mandated agent on player's behalf) consents to or declines personal terms."""
+    """Player consents to or declines personal terms. A mandated agent may act
+    as their proxy only when the player has no account of their own — the
+    same rule used for the club-side of AGENT_NEGOTIATION."""
     from app.auth.models import AgentProfile, PlayerProfile, UserType
 
     deal = await _get_deal_or_404(db, deal_id)
@@ -727,11 +774,16 @@ async def player_consent_to_terms(
         profile = profile_r.scalar_one_or_none()
         if profile is None or pt.agent_id != profile.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not the mandated agent")
+        if await players_service.player_has_account(db, deal.player_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Player has their own account and must respond themselves",
+            )
     elif not current_user.is_superuser:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Player or agent access required")
 
     try:
-        pt = await service.player_consent_to_terms(db, deal, body.agreement)
+        pt = await service.player_consent_to_terms(db, deal, body.agreement, actor_user_id=current_user.id)
         player_name = deal.player.name if deal.player else "The player"
         decision = "agreed to" if pt.player_consent == "AGREED" else "declined"
         await _db_notify_deal_parties(
@@ -745,7 +797,7 @@ async def player_consent_to_terms(
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
-    return pt
+    return await _build_personal_terms_response(db, pt, deal.player_id)
 
 
 # ── TRA-127: agent negotiation ────────────────────────────────────────────────
@@ -755,7 +807,6 @@ def _build_neg_response(neg, *, caller_user_type: str) -> AgentNegotiationRespon
     """Return a negotiation response, nulling out fields the caller should not see."""
     is_agent_or_staff = caller_user_type in ("AGENT", "STAFF", "ADMIN")
     is_club = caller_user_type == "CLUB"
-    is_player = caller_user_type == "PLAYER"
 
     return AgentNegotiationResponse(
         id=neg.id,
@@ -763,16 +814,12 @@ def _build_neg_response(neg, *, caller_user_type: str) -> AgentNegotiationRespon
         agent_id=neg.agent_id,
         status=neg.status,
         club_agreement=neg.club_agreement,
-        player_agreement=neg.player_agreement,
-        # Club-side: shown to agent/staff + clubs
+        # Shown to agent/staff + the buying club — personal terms live in
+        # PersonalTerms now, not here, so there's no player-side to gate.
         commission_pct=neg.commission_pct if (is_agent_or_staff or is_club) else None,
         commission_amount=neg.commission_amount if (is_agent_or_staff or is_club) else None,
         commission_payer=neg.commission_payer if (is_agent_or_staff or is_club) else None,
         additional_conditions=neg.additional_conditions if (is_agent_or_staff or is_club) else None,
-        # Player-side: shown to agent/staff + player
-        proposed_wage_weekly=neg.proposed_wage_weekly if (is_agent_or_staff or is_player) else None,
-        proposed_signing_bonus=neg.proposed_signing_bonus if (is_agent_or_staff or is_player) else None,
-        proposed_length_years=neg.proposed_length_years if (is_agent_or_staff or is_player) else None,
         created_at=neg.created_at,
         agreed_at=neg.agreed_at,
     )
@@ -813,7 +860,7 @@ async def update_negotiation_terms(
     updates = body.model_dump(exclude_unset=True)
 
     try:
-        neg = await service.upsert_negotiation_terms(db, deal, agent_profile.id, updates)
+        neg = await service.upsert_negotiation_terms(db, deal, agent_profile.id, updates, actor_user_id=current_user.id)
         await db.commit()
         await db.refresh(neg)
     except ValueError as exc:
@@ -834,7 +881,7 @@ async def club_respond_to_negotiation(
     deal = await _get_deal_or_404(db, deal_id)
 
     try:
-        neg = await service.club_respond_to_negotiation(db, deal, club.id, body.agreement)
+        neg = await service.club_respond_to_negotiation(db, deal, club.id, body.agreement, actor_user_id=current_user.id)
         await db.commit()
         await db.refresh(neg)
     except ValueError as exc:
@@ -842,45 +889,6 @@ async def club_respond_to_negotiation(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     return _build_neg_response(neg, caller_user_type="CLUB")
-
-
-@router.post("/deals/{deal_id}/agent-negotiation/player-respond", response_model=AgentNegotiationResponse)
-async def player_respond_to_negotiation(
-    deal_id: uuid.UUID,
-    body: NegotiationRespondRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    from app.auth.models import AgentProfile, PlayerProfile, UserType
-
-    deal = await _get_deal_or_404(db, deal_id)
-
-    # Allow: mandated agent OR the player linked to this deal
-    if current_user.user_type == UserType.AGENT:
-        neg = await service.get_agent_negotiation(db, deal.id)
-        if neg is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No negotiation found")
-        profile_r = await db.execute(select(AgentProfile).where(AgentProfile.user_id == current_user.id))
-        profile = profile_r.scalar_one_or_none()
-        if profile is None or profile.id != neg.agent_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not the mandated agent")
-    elif current_user.user_type == UserType.PLAYER:
-        pp_r = await db.execute(select(PlayerProfile).where(PlayerProfile.user_id == current_user.id))
-        pp = pp_r.scalar_one_or_none()
-        if pp is None or pp.player_id != deal.player_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not the player for this deal")
-    elif not current_user.is_superuser:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Agent or player access required")
-
-    try:
-        neg = await service.player_respond_to_negotiation(db, deal, body.agreement)
-        await db.commit()
-        await db.refresh(neg)
-    except ValueError as exc:
-        await db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-
-    return _build_neg_response(neg, caller_user_type=current_user.user_type.value)
 
 
 @router.patch("/deals/{deal_id}/instalments/{instalment_id}/paid", response_model=DealInstalmentResponse)
@@ -898,6 +906,7 @@ async def mark_instalment_paid(
             db, deal, instalment_id,
             actor_club_id=club.id,
             is_staff=current_user.is_superuser,
+            actor_user_id=current_user.id,
         )
         await db.commit()
         await db.refresh(inst)

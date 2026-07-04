@@ -18,6 +18,7 @@ In scope: product-level decisions (what to build, what not to build, scope trade
 ## Table of Contents
 
 - [0001 — Buying club proposes personal terms in non-mandated deals](./0001-buying-club-proposes-personal-terms.md)
+- [0002 — Personal terms are captured once, not duplicated across negotiation and consent](./0002-single-capture-point-for-personal-terms.md)
 
 > **TODO:** Add further decisions here as `NNNN-short-title.md`, following the short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
 

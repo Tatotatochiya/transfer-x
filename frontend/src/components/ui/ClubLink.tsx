@@ -6,6 +6,9 @@ interface ClubLinkProps {
   /** World-team ID → routes to /world/teams/{id} */
   worldTeamId?: string | null;
   name?: string | null;
+  /** Pass (even as null) to render a crest — or an initials fallback when
+   * unset — before the name. Omit entirely to keep the old text-only look. */
+  crestUrl?: string | null;
   fallback?: string;
   className?: string;
 }
@@ -21,23 +24,40 @@ export default function ClubLink({
   id,
   worldTeamId,
   name,
+  crestUrl,
   fallback = "—",
   className = "",
 }: ClubLinkProps) {
   if (!name) return <span className={className}>{fallback}</span>;
 
-  const base = `hover:text-emerald-400 transition-colors ${className}`;
+  const showCrestSlot = crestUrl !== undefined;
+  const base = `${showCrestSlot ? "inline-flex items-center gap-1.5 " : ""}hover:text-emerald-400 transition-colors ${className}`;
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
+  const content = showCrestSlot ? (
+    <>
+      {crestUrl ? (
+        <img src={crestUrl} alt="" loading="lazy" className="h-4 w-4 shrink-0 object-contain" />
+      ) : (
+        <span className="h-4 w-4 shrink-0 rounded-full bg-slate-700 flex items-center justify-center text-[9px] font-bold text-slate-500">
+          {name[0]?.toUpperCase()}
+        </span>
+      )}
+      <span className="truncate">{name}</span>
+    </>
+  ) : (
+    name
+  );
+
   if (id) {
-    return <Link to={`/clubs/${id}`} className={base} onClick={stop}>{name}</Link>;
+    return <Link to={`/clubs/${id}`} className={base} onClick={stop}>{content}</Link>;
   }
   if (worldTeamId) {
-    return <Link to={`/world/teams/${worldTeamId}`} className={base} onClick={stop}>{name}</Link>;
+    return <Link to={`/world/teams/${worldTeamId}`} className={base} onClick={stop}>{content}</Link>;
   }
   return (
     <Link to={`/clubs?search=${encodeURIComponent(name)}`} className={base} onClick={stop}>
-      {name}
+      {content}
     </Link>
   );
 }

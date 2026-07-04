@@ -1,7 +1,7 @@
 ---
 title: "Workflow: Deal Completion"
-last_updated: 2026-07-03
-status: Draft
+last_updated: 2026-07-04
+status: Active
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -26,19 +26,23 @@ Out of scope: earlier stages (see [`transfer-lifecycle.md`](./transfer-lifecycle
 
 ## Paperwork stage
 
-> **TODO:** Describe what happens during the paperwork stage, who is responsible for progressing it, and what a club/agent/player sees while a deal is here.
+**Verified 2026-07-04.** Advancing `PAPERWORK → CONFIRMED` is staff-only — any account with `is_superuser` set, whether or not it also happens to be a club (clubs and agents get a 403 if they try). Buyer and seller clubs see a passive "TransferX is handling the paperwork" banner with nothing actionable; there is currently no equivalent banner for the agent or player, who just see the deal's read-only state. Progressing this stage is a plain `POST /deals/{id}/advance`, the same endpoint used for every other stage transition — there is no dedicated "paperwork review" UI, only the [admin panel](../../architecture/frontend-architecture.md)'s generic Advance action.
 
 ## Medical check
 
-A deal can carry a medical check record (pass/fail), recorded by platform staff.
+A deal can carry one medical check record, written via `PUT /deals/{id}/medical-check` (staff only) with a status and free-text notes. Only a `FAILED` status blocks `PAPERWORK → CONFIRMED`; no medical check at all (the common case) does not block progression.
 
-> **TODO:** Describe the intended real-world process this represents, and current known limitations (e.g. whether an incomplete medical currently blocks completion) — see [`../../security-and-compliance/README.md`](../../security-and-compliance/README.md) if there are confidentiality considerations to flag here rather than duplicate.
+**Known gap:** there is no UI anywhere — including the admin panel — to actually set a medical check's status. It's fully functional backend-only.
 
 ## Completion
 
-On completion, the player's contract moves to the buying club and the transfer fee is settled between both clubs' finances.
+`CONFIRMED → COMPLETED` can be triggered by a club (any deal participant) or staff, via the same generic advance action — the buyer/seller banner at this stage reads "ready to execute" with an **Execute Transfer** button. On completion:
 
-> **TODO:** Describe what changes for each party the moment a deal completes (player, both clubs, agent commission).
+- The player's active contract moves to the buying club (a new `Contract` row; wage per the deal's agreed terms).
+- The buyer's committed transfer/wage budget converts to spent; the seller's finance is credited the agreed fee.
+- The player's `open_to_offers` flag is cleared (belongs to the seller's context — the new owner decides fresh).
+- Any `PENDING` `AgentCommission` for the deal moves to `CONFIRMED` (the agent's commission is due, but not yet invoiced or paid — see [`agent-representation.md`](./agent-representation.md)).
+- A `DEAL_COMPLETED` event is recorded in the deal's audit log (see [`../../architecture/data-model.md`](../../architecture/data-model.md) for the audit-log schema).
 
 ## Diagram
 

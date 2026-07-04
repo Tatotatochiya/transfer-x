@@ -318,6 +318,39 @@ async def test_full_stage_progression_via_staff(client: AsyncClient, buyer: dict
     assert r.json()["status"] == "COMPLETED"
 
 
+async def _login_pure_staff(client: AsyncClient, db, email: str, password: str = "password123") -> dict:
+    """Mirrors scripts/create_superuser.py: a bare User row with is_superuser
+    set directly, no Club at all — the real shape of an admin account, unlike
+    _make_superuser() which just flips the flag on an existing club-having
+    test user and so can't catch a bug that only bites a clubless account."""
+    from app.auth.models import User
+    from app.auth.service import hash_password
+
+    user = User(email=email, hashed_password=hash_password(password), is_active=True, is_superuser=True)
+    db.add(user)
+    await db.commit()
+
+    resp = await client.post("/auth/login", json={"email": email, "password": password})
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+@pytest.mark.asyncio
+async def test_staff_without_club_profile_can_advance_paperwork(client: AsyncClient, buyer: dict, seller: dict, db):
+    """Regression: advance_deal called _get_club_or_403 unconditionally before
+    checking is_staff, so a real admin account (no Club row at all) got
+    'No club profile' instead of being allowed through as staff."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    deal_id = deal["id"]
+
+    await _advance_through_personal_terms(client, deal_id, buyer, db)
+    staff_tokens = await _login_pure_staff(client, db, "pure-staff@transferx.com")
+
+    r = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(staff_tokens))
+    assert r.status_code == 200, r.text
+    assert r.json()["stage"] == "CONFIRMED"
+
+
 # ── Personal terms without an agent (TRA-60) ────────────────────────────────────
 
 
@@ -711,6 +744,28 @@ async def test_double_complete_is_rejected(
 
     r = await client.post(f"/deals/{deal['id']}/staff/complete", headers=buy_h)
     assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_clause_addition_is_audited(client: AsyncClient, buyer: dict, seller: dict, db):
+    """Representative check for the clause/instalment/medical-check family of
+    audit events added this session — same 3-line emit() pattern at every
+    call site, so one proves the mechanism rather than five near-duplicates."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+
+    resp = await client.post(
+        f"/deals/{deal['id']}/clauses",
+        json={"clause_type": "APPEARANCES", "trigger_description": "10+ appearances", "amount": 500000},
+        headers=buy_h,
+    )
+    assert resp.status_code == 201, resp.text
+
+    audit_resp = await client.get(f"/deals/{deal['id']}/audit-log", headers=buy_h)
+    assert audit_resp.status_code == 200
+    clause_event = next(e for e in audit_resp.json() if e["action"] == "CLAUSE_ADDED")
+    assert clause_event["actor_user_id"] is not None
+    assert clause_event["actor_label"] is not None
 
 
 # NOTE: Concurrent-completion overspend guard is NOT tested here.

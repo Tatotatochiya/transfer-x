@@ -1,6 +1,6 @@
 ---
 title: "Workflow: Agent Representation"
-last_updated: 2026-07-03
+last_updated: 2026-07-04
 status: Draft
 owner: "TODO — assign a Product Owner"
 ---
@@ -13,8 +13,8 @@ Describes how an agent's representation of a player (a mandate) affects and part
 
 ## Scope
 
-In scope: mandates, the three-way agent negotiation (agent ↔ buying club on commission, agent ↔ player on personal terms), and how these connect to the wider deal.
-Out of scope: the rest of the deal lifecycle outside the agent-negotiation stage (see [`transfer-lifecycle.md`](./transfer-lifecycle.md)).
+In scope: mandates, the agent's commission negotiation with the buying club, and how these connect to the wider deal.
+Out of scope: personal terms, which are captured once at `PERSONAL_TERMS` regardless of whether a mandate exists (see [`transfer-lifecycle.md`](./transfer-lifecycle.md) and [ADR 0002](../decisions/0002-single-capture-point-for-personal-terms.md)); the rest of the deal lifecycle outside the agent-negotiation stage (see [`transfer-lifecycle.md`](./transfer-lifecycle.md)).
 
 ## Table of Contents
 
@@ -31,14 +31,13 @@ A mandate is the formal relationship between an agent and a player — it establ
 
 ## Agent negotiation
 
-When a deal reaches the `AGENT_NEGOTIATION` stage (see [`transfer-lifecycle.md`](./transfer-lifecycle.md)), the mandated agent negotiates two things in parallel:
+When a deal reaches the `AGENT_NEGOTIATION` stage (see [`transfer-lifecycle.md`](./transfer-lifecycle.md)), the mandated agent negotiates **commission terms** with the buying club — percentage, flat amount (auto-derived from the percentage against the deal's agreed fee if only a percentage is given), and who pays it.
 
-- **Commission terms** with the buying club (percentage, flat amount, and who pays it).
-- **Personal terms** with the player (wage, signing bonus, contract length).
+As of [ADR 0002](../decisions/0002-single-capture-point-for-personal-terms.md), this stage no longer also negotiates personal terms — those are captured once, at `PERSONAL_TERMS`, whether or not an agent is involved. The agent still runs that step too when mandated (proposing terms via `set_personal_terms`), it's just a separate stage rather than a parallel track here.
 
-Both sides must agree before the deal can advance.
+The club must agree before the deal can advance; declining collapses the deal.
 
-> **TODO:** Describe the negotiation journey in more detail — what each party sees, how messages/counter-proposals work, and what happens if either side declines.
+> **TODO:** Describe the negotiation journey in more detail — what each party sees, how messages/counter-proposals work.
 
 ## Diagram
 

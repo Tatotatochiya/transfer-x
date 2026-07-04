@@ -54,7 +54,7 @@ async def is_deal_participant(db: AsyncSession, deal: Deal, current_user: User) 
         return club is not None and club.id in parties
 
     if current_user.user_type == UserType.AGENT:
-        from app.agents.models import AgentNegotiation
+        from app.agents.models import AgentDealInvitation, AgentNegotiation, InvitationStatus
         from app.auth.models import AgentProfile
         result = await db.execute(select(AgentProfile).where(AgentProfile.user_id == current_user.id))
         profile = result.scalar_one_or_none()
@@ -65,7 +65,19 @@ async def is_deal_participant(db: AsyncSession, deal: Deal, current_user: User) 
                 AgentNegotiation.deal_id == deal.id, AgentNegotiation.agent_id == profile.id
             )
         )
-        return neg_result.scalar_one_or_none() is not None
+        if neg_result.scalar_one_or_none() is not None:
+            return True
+        # An invited agent must be able to view the deal room before their first
+        # negotiation-terms write creates the AgentNegotiation row above —
+        # otherwise they can never reach the UI that makes that write.
+        inv_result = await db.execute(
+            select(AgentDealInvitation).where(
+                AgentDealInvitation.deal_id == deal.id,
+                AgentDealInvitation.agent_id == profile.id,
+                AgentDealInvitation.status != InvitationStatus.DECLINED,
+            )
+        )
+        return inv_result.scalar_one_or_none() is not None
 
     if current_user.user_type == UserType.PLAYER:
         from app.auth.models import PlayerProfile

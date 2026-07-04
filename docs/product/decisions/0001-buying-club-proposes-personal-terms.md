@@ -24,9 +24,10 @@ Implemented in `set_personal_terms` (`backend/app/deals/router.py`): the endpoin
 ## Consequences
 
 - Consistent mental model across both paths: a club-side actor (buying club or agent) proposes, the player consents. Future UI/permissions work can treat "who can call `set_personal_terms`" uniformly.
-- Known gap, not addressed by this decision: when a mandated deal advances `AGENT_NEGOTIATION → PERSONAL_TERMS`, the agent-negotiated `proposed_wage_weekly` / `proposed_signing_bonus` / `proposed_length_years` are not copied into the new `PersonalTerms` record, so the agent must re-enter the same figures a second time. Not yet ticketed.
+- ~~Known gap, not addressed by this decision: when a mandated deal advances `AGENT_NEGOTIATION → PERSONAL_TERMS`, the agent-negotiated `proposed_wage_weekly` / `proposed_signing_bonus` / `proposed_length_years` are not copied into the new `PersonalTerms` record, so the agent must re-enter the same figures a second time.~~ **Resolved by [ADR 0002](./0002-single-capture-point-for-personal-terms.md):** rather than copying the figures across, `AGENT_NEGOTIATION` no longer captures personal terms at all — there's only one place they're ever entered.
 
 ## Related documents
 
+- [`0002-single-capture-point-for-personal-terms.md`](./0002-single-capture-point-for-personal-terms.md) — resolves this ADR's noted gap
 - [`docs/product/workflows/transfer-lifecycle.md`](../workflows/transfer-lifecycle.md) — the workflow this decision affects
 - [`docs/CHANGELOG.md`](../../CHANGELOG.md) — the TRA-60 fix this decision was made as part of

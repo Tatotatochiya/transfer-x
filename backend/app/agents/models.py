@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text, Uuid, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -65,10 +65,11 @@ class AgentDealInvitation(Base):
 
 
 class AgentNegotiation(Base):
-    """Three-way negotiation record created when a deal enters AGENT_NEGOTIATION stage (TRA-127).
+    """Commission negotiation record created when a deal enters AGENT_NEGOTIATION stage (TRA-127).
 
-    The agent proposes club-side commission terms and player-side personal terms.
-    Both parties must reach AGREED before the deal can advance.
+    The agent negotiates commission with the buying club here; personal terms
+    (wage, signing bonus, contract length) are captured once, at the
+    PERSONAL_TERMS stage, via `deals.models.PersonalTerms` — not duplicated here.
     """
     __tablename__ = "agent_negotiations"
 
@@ -95,16 +96,6 @@ class AgentNegotiation(Base):
     )
     additional_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
     club_agreement: Mapped[AgreementStatus] = mapped_column(
-        SAEnum(AgreementStatus, name="agreementstatus"),
-        nullable=False,
-        default=AgreementStatus.PENDING,
-        server_default="PENDING",
-    )
-    # Player-side terms (personal terms proposed to player)
-    proposed_wage_weekly: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
-    proposed_signing_bonus: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
-    proposed_length_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    player_agreement: Mapped[AgreementStatus] = mapped_column(
         SAEnum(AgreementStatus, name="agreementstatus"),
         nullable=False,
         default=AgreementStatus.PENDING,

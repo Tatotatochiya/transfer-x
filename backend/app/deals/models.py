@@ -254,8 +254,12 @@ class MedicalCheck(Base):
 class PersonalTerms(Base):
     """Player personal terms proposed during PERSONAL_TERMS stage (TRA-60).
 
-    Player (or agent on their behalf) must set player_consent = AGREED before the deal
-    can advance to PAPERWORK. DECLINED collapses the deal.
+    The single point where wage/signing bonus/contract length are captured and
+    consented to — not duplicated at AGENT_NEGOTIATION. player_consent must
+    reach AGREED before the deal can advance to PAPERWORK; DECLINED collapses
+    the deal. The mandated agent may set it on the player's behalf only when
+    the player has no account of their own (mirrors the AGENT_NEGOTIATION
+    club-response proxy rule) — otherwise the player must consent themselves.
     """
     __tablename__ = "personal_terms"
 

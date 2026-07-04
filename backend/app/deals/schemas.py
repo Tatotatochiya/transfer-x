@@ -11,6 +11,7 @@ from app.deals.models import ClauseStatus, ClauseType, DealStage, DealStatus, De
 class ClubSummary(BaseModel):
     id: uuid.UUID
     name: str
+    crest_url: str | None = None
     model_config = {"from_attributes": True}
 
 
@@ -162,6 +163,7 @@ class PersonalTermsResponse(BaseModel):
     signing_bonus: Decimal | None = None
     length_years: int | None = None
     player_consent: AgreementStatus
+    player_has_account: bool
     agreed_at: datetime | None = None
     created_at: datetime
     model_config = {"from_attributes": True}
@@ -180,17 +182,13 @@ class AgentNegotiationResponse(BaseModel):
     deal_id: uuid.UUID
     agent_id: uuid.UUID
     status: NegotiationStatus
-    # Club-side (visible to agent, staff, and buyer club)
+    # Commission terms — the only thing negotiated at this stage (visible to
+    # agent, staff, and buyer club). Personal terms live in PersonalTerms.
     commission_pct: Decimal | None = None
     commission_amount: Decimal | None = None
     commission_payer: CommissionPayer | None = None
     additional_conditions: str | None = None
     club_agreement: AgreementStatus
-    # Player-side (visible to agent, staff, and player)
-    proposed_wage_weekly: Decimal | None = None
-    proposed_signing_bonus: Decimal | None = None
-    proposed_length_years: int | None = None
-    player_agreement: AgreementStatus
     created_at: datetime
     agreed_at: datetime | None = None
     model_config = {"from_attributes": True}
@@ -201,9 +199,6 @@ class UpdateNegotiationTermsRequest(BaseModel):
     commission_amount: Decimal | None = None
     commission_payer: CommissionPayer | None = None
     additional_conditions: str | None = None
-    proposed_wage_weekly: Decimal | None = None
-    proposed_signing_bonus: Decimal | None = None
-    proposed_length_years: int | None = None
 
 
 class NegotiationRespondRequest(BaseModel):

@@ -344,8 +344,10 @@ async def advance_deal(
     db: AsyncSession,
     deal: Deal,
     *,
-    actor_club_id: uuid.UUID,
+    actor_club_id: uuid.UUID | None = None,
     is_staff: bool = False,
+    is_mandated_agent: bool = False,
+    actor_user_id: uuid.UUID | None = None,
 ) -> Deal:
     """Advance deal to next stage.
 
@@ -354,7 +356,9 @@ async def advance_deal(
       passes through personal-terms consent; a mandated deal instead reaches
       PERSONAL_TERMS via the AGENT_NEGOTIATION branch below and never sits at
       AGREEMENT in the first place (see offers/service.py _maybe_invite_agent).
-    - AGENT_NEGOTIATION → PERSONAL_TERMS: clubs or staff, once both sides agreed
+    - AGENT_NEGOTIATION → PERSONAL_TERMS: the mandated agent, clubs, or staff,
+      once both sides agreed — the agent runs this stage end to end, so they
+      trigger its exit too, same as they can act as the player's proxy above.
     - PERSONAL_TERMS → PAPERWORK: clubs or staff, once the player has consented
     - PAPERWORK → CONFIRMED: staff only (clubs get 403 hint via ValueError)
     - CONFIRMED → COMPLETED: clubs or staff (triggers player transfer)
@@ -362,7 +366,7 @@ async def advance_deal(
     if deal.status != DealStatus.IN_PROGRESS:
         raise ValueError("Only IN_PROGRESS deals can be advanced")
 
-    _require_party(deal, actor_club_id, is_staff)
+    _require_party(deal, actor_club_id, is_staff, is_mandated_agent)
 
     stage = deal.stage
 
@@ -372,7 +376,8 @@ async def advance_deal(
         deal.stage = DealStage.PERSONAL_TERMS
 
     elif stage == DealStage.AGENT_NEGOTIATION:
-        # TRA-127: both sides must be AGREED before advancing.
+        # TRA-127: the club must be AGREED on commission before advancing.
+        # Personal terms are a separate proposal + consent, at PERSONAL_TERMS.
         from app.agents.models import AgentNegotiation, AgreementStatus, NegotiationStatus
 
         neg_result = await db.execute(
@@ -383,8 +388,6 @@ async def advance_deal(
             raise ValueError("No agent negotiation record found for this deal")
         if neg.club_agreement != AgreementStatus.AGREED:
             raise ValueError("Club has not yet agreed to the agent's commission terms")
-        if neg.player_agreement != AgreementStatus.AGREED:
-            raise ValueError("Player has not yet agreed to the proposed personal terms")
         neg.status = NegotiationStatus.TERMS_AGREED
         neg.agreed_at = datetime.now(timezone.utc)
         # TRA-59: copy agreed commission onto deal for quick reads
@@ -435,6 +438,7 @@ async def advance_deal(
             db,
             entity_type="DEAL", entity_id=deal.id,
             action="DEAL_COMPLETED",
+            actor_user_id=actor_user_id,
             description=f"Deal completed — player transferred",
         )
         return deal
@@ -446,6 +450,7 @@ async def advance_deal(
         db,
         entity_type="DEAL", entity_id=deal.id,
         action="STAGE_ADVANCED",
+        actor_user_id=actor_user_id,
         payload={"from_stage": stage.value, "to_stage": deal.stage.value},
         description=f"Deal advanced from {stage.value} to {deal.stage.value}",
     )
@@ -459,6 +464,7 @@ async def collapse_deal(
     *,
     actor_club_id: uuid.UUID,
     is_staff: bool = False,
+    actor_user_id: uuid.UUID | None = None,
 ) -> Deal:
     """Collapse a deal — releases buyer's committed budget."""
     if deal.status in (DealStatus.COMPLETED, DealStatus.COLLAPSED):
@@ -481,6 +487,7 @@ async def collapse_deal(
         db,
         entity_type="DEAL", entity_id=deal.id,
         action="DEAL_COLLAPSED",
+        actor_user_id=actor_user_id,
         description="Deal collapsed — committed budget released",
     )
     await db.flush()
@@ -501,7 +508,7 @@ async def add_note(
     return note
 
 
-async def staff_complete(db: AsyncSession, deal: Deal) -> Deal:
+async def staff_complete(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UUID | None = None) -> Deal:
     """Staff override: force deal to COMPLETED, creating contract."""
     if deal.status == DealStatus.COMPLETED:
         raise ValueError("Deal is already completed")
@@ -510,12 +517,21 @@ async def staff_complete(db: AsyncSession, deal: Deal) -> Deal:
 
     deal.stage = DealStage.COMPLETED
     await _complete_deal(db, deal)
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="DEAL_COMPLETED",
+        actor_user_id=actor_user_id,
+        description="Deal force-completed by staff",
+    )
     return deal
 
 
-async def staff_collapse(db: AsyncSession, deal: Deal) -> Deal:
+async def staff_collapse(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UUID | None = None) -> Deal:
     """Staff override: force deal to COLLAPSED."""
-    return await collapse_deal(db, deal, actor_club_id=deal.buyer_club_id, is_staff=True)
+    return await collapse_deal(
+        db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id,
+    )
 
 
 # ── Internal ──────────────────────────────────────────────────────────────────
@@ -682,6 +698,7 @@ async def upsert_medical_check(
     status: MedicalStatus,
     notes: str | None = None,
     is_staff: bool = False,
+    actor_user_id: uuid.UUID | None = None,
 ) -> MedicalCheck:
     """Staff creates or updates the medical check for a deal."""
     if not is_staff:
@@ -695,6 +712,14 @@ async def upsert_medical_check(
     mc.status = status
     mc.notes = notes
     await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="MEDICAL_CHECK_UPDATED",
+        actor_user_id=actor_user_id,
+        payload={"status": status.value},
+        description=f"Medical check recorded: {status.value}",
+    )
     return mc
 
 
@@ -716,6 +741,7 @@ async def set_personal_terms(
     wage_weekly: Decimal | None,
     signing_bonus: Decimal | None,
     length_years: int | None,
+    actor_user_id: uuid.UUID | None = None,
 ) -> PersonalTerms:
     """Create or replace the personal-terms record for a deal in PERSONAL_TERMS stage."""
     if deal.stage != DealStage.PERSONAL_TERMS:
@@ -734,6 +760,13 @@ async def set_personal_terms(
     pt.player_consent = "PENDING"  # type: ignore[assignment]
     pt.agreed_at = None
     await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="PERSONAL_TERMS_SET",
+        actor_user_id=actor_user_id,
+        description="Personal terms proposed to the player",
+    )
     return pt
 
 
@@ -741,6 +774,7 @@ async def player_consent_to_terms(
     db: AsyncSession,
     deal: Deal,
     agreement: "AgreementStatus",  # type: ignore[name-defined]
+    actor_user_id: uuid.UUID | None = None,
 ) -> PersonalTerms:
     """Player agrees or declines personal terms. Decline collapses the deal."""
     from app.agents.models import AgreementStatus
@@ -756,9 +790,19 @@ async def player_consent_to_terms(
     if agreement == AgreementStatus.AGREED:
         pt.agreed_at = datetime.now(timezone.utc)
     await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="PERSONAL_TERMS_CONSENT",
+        actor_user_id=actor_user_id,
+        payload={"agreement": agreement.value},
+        description=f"Player {agreement.value.lower()} the personal terms",
+    )
 
     if agreement == AgreementStatus.DECLINED:
-        await collapse_deal(db, deal, actor_club_id=deal.buyer_club_id, is_staff=True)
+        await collapse_deal(
+            db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id,
+        )
 
     return pt
 
@@ -779,8 +823,9 @@ async def upsert_negotiation_terms(
     deal: Deal,
     agent_profile_id: uuid.UUID,
     updates: dict,
+    actor_user_id: uuid.UUID | None = None,
 ) -> "AgentNegotiation":  # type: ignore[name-defined]
-    """Agent creates or updates club-side and player-side terms."""
+    """Agent creates or updates commission terms proposed to the buying club."""
     from app.agents.models import AgentDealInvitation, AgentNegotiation, NegotiationStatus
 
     if deal.stage != DealStage.AGENT_NEGOTIATION:
@@ -809,7 +854,24 @@ async def upsert_negotiation_terms(
     for k, v in updates.items():
         if v is not None:
             setattr(neg, k, v)
+
+    # Commission is naturally negotiated as a percentage ("2% of the fee") —
+    # derive the absolute amount from the deal's agreed fee whenever a
+    # percentage is set and no explicit amount exists yet, so downstream
+    # tracking (AgentCommission, deal.agent_commission_amount) isn't silently
+    # blank just because nobody hand-calculated and typed the euro figure.
+    if neg.commission_pct is not None and neg.commission_amount is None and deal.agreed_fee:
+        neg.commission_amount = (neg.commission_pct * deal.agreed_fee).quantize(Decimal("0.01"))
+
     await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="NEGOTIATION_TERMS_UPDATED",
+        actor_user_id=actor_user_id,
+        payload={k: str(v) for k, v in updates.items() if v is not None},
+        description="Agent updated commission terms",
+    )
     return neg
 
 
@@ -818,6 +880,7 @@ async def club_respond_to_negotiation(
     deal: Deal,
     club_id: uuid.UUID,
     agreement: "AgreementStatus",  # type: ignore[name-defined]
+    actor_user_id: uuid.UUID | None = None,
 ) -> "AgentNegotiation":  # type: ignore[name-defined]
     """Buying club agrees or declines commission terms. Decline collapses the deal."""
     from app.agents.models import AgentNegotiation, AgreementStatus, NegotiationStatus
@@ -834,43 +897,28 @@ async def club_respond_to_negotiation(
 
     neg.club_agreement = agreement
     await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="NEGOTIATION_CLUB_RESPONDED",
+        actor_user_id=actor_user_id,
+        payload={"agreement": agreement.value},
+        description=f"Buying club {agreement.value.lower()} the commission terms",
+    )
 
     if agreement == AgreementStatus.DECLINED:
         neg.status = NegotiationStatus.COLLAPSED
-        await collapse_deal(db, deal, actor_club_id=deal.buyer_club_id, is_staff=True)
+        await collapse_deal(
+            db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id,
+        )
 
     return neg
 
 
-async def player_respond_to_negotiation(
-    db: AsyncSession,
-    deal: Deal,
-    agreement: "AgreementStatus",  # type: ignore[name-defined]
-) -> "AgentNegotiation":  # type: ignore[name-defined]
-    """Player (or their agent acting on their behalf) agrees or declines personal terms."""
-    from app.agents.models import AgentNegotiation, AgreementStatus, NegotiationStatus
-
-    if deal.stage != DealStage.AGENT_NEGOTIATION:
-        raise ValueError("Deal is not in AGENT_NEGOTIATION stage")
-
-    neg = await get_agent_negotiation(db, deal.id)
-    if neg is None:
-        raise ValueError("No agent negotiation record found")
-    if neg.status != NegotiationStatus.IN_PROGRESS:
-        raise ValueError("Negotiation is no longer in progress")
-
-    neg.player_agreement = agreement
-    await db.flush()
-
-    if agreement == AgreementStatus.DECLINED:
-        neg.status = NegotiationStatus.COLLAPSED
-        await collapse_deal(db, deal, actor_club_id=deal.buyer_club_id, is_staff=True)
-
-    return neg
-
-
-def _require_party(deal: Deal, club_id: uuid.UUID, is_staff: bool = False) -> None:
-    if is_staff:
+def _require_party(
+    deal: Deal, club_id: uuid.UUID | None, is_staff: bool = False, is_mandated_agent: bool = False,
+) -> None:
+    if is_staff or is_mandated_agent:
         return
     parties = {deal.buyer_club_id}
     if deal.seller_club_id:
@@ -908,6 +956,14 @@ async def update_deal(
     await db.flush()
 
     await create_terms_version(db, deal, changed_by_user_id=actor_user_id)
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="DEAL_STRUCTURE_UPDATED",
+        actor_user_id=actor_user_id,
+        payload={k: str(v) for k, v in updates.items()},
+        description="Deal structure updated — see version history for the full diff",
+    )
     return deal
 
 
@@ -923,6 +979,7 @@ async def add_clause(
     trigger_description: str,
     amount: Decimal,
     cap: Decimal | None,
+    actor_user_id: uuid.UUID | None = None,
 ) -> DealClause:
     if deal.status != DealStatus.IN_PROGRESS:
         raise ValueError("Clauses can only be added to in-progress deals")
@@ -936,6 +993,14 @@ async def add_clause(
     )
     db.add(clause)
     await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="CLAUSE_ADDED",
+        actor_user_id=actor_user_id,
+        payload={"clause_type": clause_type.value, "amount": str(amount)},
+        description=f"{clause_type.value.title()} clause added ({amount:,.0f})",
+    )
     return clause
 
 
@@ -947,6 +1012,7 @@ async def update_clause_status(
     actor_club_id: uuid.UUID,
     is_staff: bool = False,
     new_status: ClauseStatus,
+    actor_user_id: uuid.UUID | None = None,
 ) -> DealClause:
     _require_party(deal, actor_club_id, is_staff)
     result = await db.execute(
@@ -957,6 +1023,14 @@ async def update_clause_status(
         raise ValueError("Clause not found")
     clause.status = new_status
     await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="CLAUSE_STATUS_UPDATED",
+        actor_user_id=actor_user_id,
+        payload={"clause_type": clause.clause_type.value, "new_status": new_status.value},
+        description=f"{clause.clause_type.value.title()} clause marked {new_status.value}",
+    )
     return clause
 
 
@@ -969,6 +1043,7 @@ async def set_instalments(
     *,
     actor_club_id: uuid.UUID,
     items: list[dict],
+    actor_user_id: uuid.UUID | None = None,
 ) -> list[DealInstalment]:
     """Replace the instalment schedule. Total must equal agreed_fee."""
     if deal.status != DealStatus.IN_PROGRESS:
@@ -1004,6 +1079,14 @@ async def set_instalments(
         new_instalments.append(inst)
 
     await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="INSTALMENTS_SET",
+        actor_user_id=actor_user_id,
+        payload={"count": len(new_instalments), "total": str(total)},
+        description=f"Payment schedule set — {len(new_instalments)} instalments totalling {total:,.0f}",
+    )
     return new_instalments
 
 
@@ -1014,6 +1097,7 @@ async def mark_instalment_paid(
     *,
     actor_club_id: uuid.UUID,
     is_staff: bool = False,
+    actor_user_id: uuid.UUID | None = None,
 ) -> DealInstalment:
     """Mark one instalment as paid; increments buyer's transfer_spent."""
     _require_party(deal, actor_club_id, is_staff)
@@ -1037,4 +1121,12 @@ async def mark_instalment_paid(
         buyer_fin.transfer_spent += inst.amount
 
     await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="INSTALMENT_PAID",
+        actor_user_id=actor_user_id,
+        payload={"amount": str(inst.amount), "due_date": inst.due_date.isoformat()},
+        description=f"Instalment of {inst.amount:,.0f} marked paid",
+    )
     return inst

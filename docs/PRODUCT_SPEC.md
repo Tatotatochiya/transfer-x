@@ -1,6 +1,6 @@
 ---
 title: "TransferX Product Specification"
-last_updated: 2026-07-03
+last_updated: 2026-07-04
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -45,7 +45,7 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 |---|---|---|
 | Backend | FastAPI (Python), SQLAlchemy async, PostgreSQL | [`architecture/backend-architecture.md`](./architecture/backend-architecture.md) |
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS v4 | [`architecture/frontend-architecture.md`](./architecture/frontend-architecture.md) |
-| Database migrations | 46+ (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
+| Database migrations | 47+ (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
 | User types | Club, Agent, Player, Staff, Admin | [`product/personas.md`](./product/personas.md) |
 | Deal stages | AGREEMENT → AGENT_NEGOTIATION → PERSONAL_TERMS → PAPERWORK → CONFIRMED → COMPLETED (or COLLAPSED) | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
 | Production deployment | Not yet configured | [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md) |

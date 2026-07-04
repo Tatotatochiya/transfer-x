@@ -35,9 +35,16 @@ async def deal_audit_log(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[AuditEventResponse]:
+    from app.deals import room_service
+
     await _get_deal_and_authorize(db, deal_id, current_user)
     events = await get_events_for_entity(db, "DEAL", deal_id)
-    return [AuditEventResponse.model_validate(e) for e in events]
+    responses = []
+    for e in events:
+        resp = AuditEventResponse.model_validate(e)
+        resp.actor_label = await room_service.label_for_user(db, e.actor_user_id)
+        responses.append(resp)
+    return responses
 
 
 @router.get("/deals/{deal_id}/audit-log/export.csv")

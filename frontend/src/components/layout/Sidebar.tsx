@@ -1,10 +1,26 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../hooks/useAuth";
+import { useIdentity, type IdentityRole } from "../../hooks/useIdentity";
 import api from "../../lib/api";
 import Icon from "./Icon";
 import type { IconName } from "./Icon";
 import type { UnreadCount, UserType } from "../../types/api";
+
+const ROLE_STYLE: Record<IdentityRole, { text: string; bg: string }> = {
+  CLUB:   { text: "text-indigo-400", bg: "bg-indigo-500/15" },
+  AGENT:  { text: "text-purple-400", bg: "bg-purple-500/15" },
+  PLAYER: { text: "text-amber-400",  bg: "bg-amber-500/15" },
+};
+const ROLE_LABEL: Record<IdentityRole, string> = { CLUB: "Club", AGENT: "Agent", PLAYER: "Player" };
+const STAFF_STYLE = { text: "text-rose-400", bg: "bg-rose-500/15" };
+
+// Real hex values (not Tailwind classes) — the collapsed-rail ring is a
+// composed box-shadow, which utility classes can't express as two colors.
+const ROLE_RING_COLOR: Record<IdentityRole, string> = {
+  CLUB: "#818cf8", AGENT: "#c084fc", PLAYER: "#fbbf24",
+};
+const STAFF_RING_COLOR = "#fb7185";
 
 interface NavItem {
   label: string;
@@ -225,6 +241,7 @@ function SidebarLink({ item, expanded }: { item: NavItem; expanded: boolean }) {
 
 export default function Sidebar({ mobileOpen, onMobileClose, expanded, onToggle }: SidebarProps) {
   const { user, isAuthenticated, logout, userType } = useAuth();
+  const identity = useIdentity();
   const navigate = useNavigate();
   const navGroups = getNavGroups(userType);
   // Show text labels when desktop sidebar is expanded OR mobile drawer is open
@@ -234,8 +251,6 @@ export default function Sidebar({ mobileOpen, onMobileClose, expanded, onToggle 
     await logout();
     navigate("/login");
   }
-
-  const initial = user?.email?.[0]?.toUpperCase() ?? "?";
 
   return (
     <>
@@ -318,15 +333,47 @@ export default function Sidebar({ mobileOpen, onMobileClose, expanded, onToggle 
           {/* User info + logout */}
           {isAuthenticated ? (
             <div className="group relative flex items-center gap-3 rounded-lg px-2 py-1.5">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-semibold text-emerald-400">
-                {initial}
+              <div
+                className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden text-xs font-semibold ${
+                  identity.role === "CLUB" ? "rounded-lg" : "rounded-full"
+                } ${identity.role ? `${ROLE_STYLE[identity.role].bg} ${ROLE_STYLE[identity.role].text}` : "bg-emerald-500/20 text-emerald-400"}`}
+                style={
+                  !showText && identity.role
+                    ? {
+                        boxShadow: identity.isSuperuser
+                          ? `0 0 0 2px ${ROLE_RING_COLOR[identity.role]}, 0 0 0 4px ${STAFF_RING_COLOR}`
+                          : `0 0 0 2px ${ROLE_RING_COLOR[identity.role]}`,
+                      }
+                    : undefined
+                }
+              >
+                {identity.crestUrl ? (
+                  <img src={identity.crestUrl} alt="" className="h-full w-full object-contain p-1" />
+                ) : (
+                  (identity.name ?? user?.email)?.[0]?.toUpperCase() ?? "?"
+                )}
               </div>
               {showText && (
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-white">{user?.email}</p>
+                  <p className="truncate text-xs font-medium text-white">{identity.name ?? user?.email}</p>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                    {identity.role && (
+                      <span className={`rounded px-1.5 py-px text-[9px] font-bold uppercase tracking-wider ${ROLE_STYLE[identity.role].bg} ${ROLE_STYLE[identity.role].text}`}>
+                        {ROLE_LABEL[identity.role]}
+                      </span>
+                    )}
+                    {identity.isSuperuser && (
+                      <span className={`rounded px-1.5 py-px text-[9px] font-bold uppercase tracking-wider ${STAFF_STYLE.bg} ${STAFF_STYLE.text}`}>
+                        Staff
+                      </span>
+                    )}
+                    {identity.subLabel && (
+                      <span className="truncate text-[10px] text-slate-500">{identity.subLabel}</span>
+                    )}
+                  </div>
                   <button
                     onClick={handleLogout}
-                    className="text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
+                    className="mt-0.5 text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
                   >
                     Logout
                   </button>
@@ -334,7 +381,14 @@ export default function Sidebar({ mobileOpen, onMobileClose, expanded, onToggle 
               )}
               {!showText && (
                 <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-xl ring-1 ring-white/10 transition-opacity duration-150 group-hover:opacity-100">
-                  {user?.email}
+                  <div>{identity.name ?? user?.email}</div>
+                  {(identity.role || identity.isSuperuser) && (
+                    <div className="mt-0.5 text-[10px] font-normal text-slate-400">
+                      {[identity.role ? ROLE_LABEL[identity.role] : null, identity.isSuperuser ? "Staff" : null]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </div>
+                  )}
                   <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-slate-800" />
                 </div>
               )}

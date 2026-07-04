@@ -8,6 +8,7 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import ClubLink from "../../components/ui/ClubLink";
+import FormattedNumberInput from "../../components/ui/FormattedNumberInput";
 import Metric from "../../components/ui/Metric";
 import Panel from "../../components/ui/Panel";
 import Spinner from "../../components/ui/Spinner";
@@ -99,16 +100,12 @@ function AgentNegotiationWorkspace({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<{
     commission_pct: string; commission_amount: string; commission_payer: string;
-    additional_conditions: string; proposed_wage_weekly: string;
-    proposed_signing_bonus: string; proposed_length_years: string;
+    additional_conditions: string;
   }>({
-    commission_pct:         negotiation?.commission_pct         != null ? String(negotiation.commission_pct)         : "",
-    commission_amount:      negotiation?.commission_amount      != null ? String(negotiation.commission_amount)      : "",
-    commission_payer:       negotiation?.commission_payer       ?? "BUYER",
-    additional_conditions:  negotiation?.additional_conditions  ?? "",
-    proposed_wage_weekly:   negotiation?.proposed_wage_weekly   != null ? String(negotiation.proposed_wage_weekly)   : "",
-    proposed_signing_bonus: negotiation?.proposed_signing_bonus != null ? String(negotiation.proposed_signing_bonus) : "",
-    proposed_length_years:  negotiation?.proposed_length_years  != null ? String(negotiation.proposed_length_years)  : "",
+    commission_pct:        negotiation?.commission_pct        != null ? String(negotiation.commission_pct)        : "",
+    commission_amount:     negotiation?.commission_amount     != null ? String(negotiation.commission_amount)     : "",
+    commission_payer:      negotiation?.commission_payer      ?? "BUYER",
+    additional_conditions: negotiation?.additional_conditions ?? "",
   });
 
   const saveMutation = useMutation({
@@ -124,18 +121,14 @@ function AgentNegotiationWorkspace({
 
   function handleSave() {
     const payload: Record<string, unknown> = {};
-    if (draft.commission_pct !== "")         payload.commission_pct         = Number(draft.commission_pct);
-    if (draft.commission_amount !== "")      payload.commission_amount      = Number(draft.commission_amount);
-    if (draft.commission_payer)              payload.commission_payer       = draft.commission_payer;
-    if (draft.additional_conditions !== "")  payload.additional_conditions  = draft.additional_conditions;
-    if (draft.proposed_wage_weekly !== "")   payload.proposed_wage_weekly   = Number(draft.proposed_wage_weekly);
-    if (draft.proposed_signing_bonus !== "") payload.proposed_signing_bonus = Number(draft.proposed_signing_bonus);
-    if (draft.proposed_length_years !== "")  payload.proposed_length_years  = Number(draft.proposed_length_years);
+    if (draft.commission_pct !== "")        payload.commission_pct        = Number(draft.commission_pct);
+    if (draft.commission_amount !== "")     payload.commission_amount     = Number(draft.commission_amount);
+    if (draft.commission_payer)             payload.commission_payer      = draft.commission_payer;
+    if (draft.additional_conditions !== "") payload.additional_conditions = draft.additional_conditions;
     saveMutation.mutate(payload);
   }
 
-  const clubAgreed   = negotiation?.club_agreement   === "AGREED";
-  const playerAgreed = negotiation?.player_agreement === "AGREED";
+  const clubAgreed = negotiation?.club_agreement === "AGREED";
 
   return (
     <div className="mb-6">
@@ -143,139 +136,75 @@ function AgentNegotiationWorkspace({
         <p className="text-xs font-semibold uppercase tracking-wider text-purple-400">
           Negotiation Workspace
         </p>
-        <div className="flex items-center gap-2">
-          <AgreementChip label="Club"   status={negotiation?.club_agreement   ?? "PENDING"} />
-          <AgreementChip label="Player" status={negotiation?.player_agreement ?? "PENDING"} />
-        </div>
+        <AgreementChip label="Club" status={negotiation?.club_agreement ?? "PENDING"} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Club-side panel */}
-        <div className="rounded-xl bg-purple-500/[0.05] px-5 py-4 ring-1 ring-purple-500/20">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-purple-400">
-            Club side — Commission
-          </p>
-          {editing ? (
-            <div className="space-y-2">
-              <label className="block text-xs text-slate-400">Commission % <span className="text-slate-600">(decimal, e.g. 0.05 = 5%)</span></label>
-              <input
-                type="number" step="0.001"
-                value={draft.commission_pct}
-                onChange={(e) => setDraft((d) => ({ ...d, commission_pct: e.target.value }))}
-                className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
-              />
-              <label className="block text-xs text-slate-400 pt-1">Commission amount (€)</label>
-              <input
-                type="number"
-                value={draft.commission_amount}
-                onChange={(e) => setDraft((d) => ({ ...d, commission_amount: e.target.value }))}
-                className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
-              />
-              <label className="block text-xs text-slate-400 pt-1">Paid by</label>
-              <select
-                value={draft.commission_payer}
-                onChange={(e) => setDraft((d) => ({ ...d, commission_payer: e.target.value }))}
-                className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
-              >
-                <option value="BUYER">Buying club</option>
-                <option value="SELLER">Selling club</option>
-                <option value="PLAYER">Player</option>
-              </select>
-              <label className="block text-xs text-slate-400 pt-1">Additional conditions</label>
-              <textarea
-                rows={2}
-                value={draft.additional_conditions}
-                onChange={(e) => setDraft((d) => ({ ...d, additional_conditions: e.target.value }))}
-                className="w-full resize-none rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
-              />
-            </div>
-          ) : (
-            <dl className="space-y-1.5 text-sm">
-              {negotiation?.commission_pct != null && (
-                <><dt className="text-slate-500">Commission</dt><dd className="text-white">{(negotiation.commission_pct * 100).toFixed(2)}%</dd></>
-              )}
-              {negotiation?.commission_amount != null && (
-                <><dt className="text-slate-500">Amount</dt><dd className="text-white">{formatCurrency(negotiation.commission_amount)}</dd></>
-              )}
-              {negotiation?.commission_payer && (
-                <><dt className="text-slate-500">Paid by</dt><dd className="text-white capitalize">{negotiation.commission_payer.toLowerCase()}</dd></>
-              )}
-              {negotiation?.additional_conditions && (
-                <><dt className="text-slate-500">Conditions</dt><dd className="text-white text-xs">{negotiation.additional_conditions}</dd></>
-              )}
-              {!negotiation?.commission_pct && !negotiation?.commission_amount && (
-                <p className="text-xs text-slate-600 italic">No commission terms set yet.</p>
-              )}
-            </dl>
-          )}
-          <div className="mt-3">
-            {clubAgreed ? (
-              <span className="text-xs font-semibold text-emerald-400">✓ Club has agreed</span>
-            ) : (
-              <span className="text-xs text-slate-500">Awaiting club agreement</span>
-            )}
+      <div className="rounded-xl bg-purple-500/[0.05] px-5 py-4 ring-1 ring-purple-500/20">
+        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-purple-400">
+          Club side — Commission
+        </p>
+        {editing ? (
+          <div className="space-y-2">
+            <label className="block text-xs text-slate-400">Commission % <span className="text-slate-600">(decimal, e.g. 0.05 = 5%)</span></label>
+            <input
+              type="number" step="0.001"
+              value={draft.commission_pct}
+              onChange={(e) => setDraft((d) => ({ ...d, commission_pct: e.target.value }))}
+              className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
+            />
+            <label className="block text-xs text-slate-400 pt-1">Commission amount (€)</label>
+            <FormattedNumberInput
+              value={draft.commission_amount}
+              onChange={(v) => setDraft((d) => ({ ...d, commission_amount: v }))}
+              className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
+            />
+            <label className="block text-xs text-slate-400 pt-1">Paid by</label>
+            <select
+              value={draft.commission_payer}
+              onChange={(e) => setDraft((d) => ({ ...d, commission_payer: e.target.value }))}
+              className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
+            >
+              <option value="BUYER">Buying club</option>
+              <option value="SELLER">Selling club</option>
+              <option value="PLAYER">Player</option>
+            </select>
+            <label className="block text-xs text-slate-400 pt-1">Additional conditions</label>
+            <textarea
+              rows={2}
+              value={draft.additional_conditions}
+              onChange={(e) => setDraft((d) => ({ ...d, additional_conditions: e.target.value }))}
+              className="w-full resize-none rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
+            />
           </div>
-          {negotiation && (
-            <NegotiationMessageThread negotiationId={negotiation.id} thread="CLUB_SIDE" accent="purple" />
+        ) : (
+          <dl className="space-y-1.5 text-sm">
+            {negotiation?.commission_pct != null && (
+              <><dt className="text-slate-500">Commission</dt><dd className="text-white">{(negotiation.commission_pct * 100).toFixed(2)}%</dd></>
+            )}
+            {negotiation?.commission_amount != null && (
+              <><dt className="text-slate-500">Amount</dt><dd className="text-white">{formatCurrency(negotiation.commission_amount)}</dd></>
+            )}
+            {negotiation?.commission_payer && (
+              <><dt className="text-slate-500">Paid by</dt><dd className="text-white capitalize">{negotiation.commission_payer.toLowerCase()}</dd></>
+            )}
+            {negotiation?.additional_conditions && (
+              <><dt className="text-slate-500">Conditions</dt><dd className="text-white text-xs">{negotiation.additional_conditions}</dd></>
+            )}
+            {!negotiation?.commission_pct && !negotiation?.commission_amount && (
+              <p className="text-xs text-slate-600 italic">No commission terms set yet.</p>
+            )}
+          </dl>
+        )}
+        <div className="mt-3">
+          {clubAgreed ? (
+            <span className="text-xs font-semibold text-emerald-400">✓ Club has agreed</span>
+          ) : (
+            <span className="text-xs text-slate-500">Awaiting club agreement</span>
           )}
         </div>
-
-        {/* Player-side panel */}
-        <div className="rounded-xl bg-amber-500/[0.05] px-5 py-4 ring-1 ring-amber-500/20">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-400">
-            Player side — Personal Terms
-          </p>
-          {editing ? (
-            <div className="space-y-2">
-              <label className="block text-xs text-slate-400">Weekly wage (€)</label>
-              <input
-                type="number"
-                value={draft.proposed_wage_weekly}
-                onChange={(e) => setDraft((d) => ({ ...d, proposed_wage_weekly: e.target.value }))}
-                className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
-              />
-              <label className="block text-xs text-slate-400 pt-1">Signing bonus (€)</label>
-              <input
-                type="number"
-                value={draft.proposed_signing_bonus}
-                onChange={(e) => setDraft((d) => ({ ...d, proposed_signing_bonus: e.target.value }))}
-                className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
-              />
-              <label className="block text-xs text-slate-400 pt-1">Contract length (years)</label>
-              <input
-                type="number" min={1} max={10}
-                value={draft.proposed_length_years}
-                onChange={(e) => setDraft((d) => ({ ...d, proposed_length_years: e.target.value }))}
-                className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
-              />
-            </div>
-          ) : (
-            <dl className="space-y-1.5 text-sm">
-              {negotiation?.proposed_wage_weekly != null && (
-                <><dt className="text-slate-500">Weekly wage</dt><dd className="text-white">{formatWage(negotiation.proposed_wage_weekly)}</dd></>
-              )}
-              {negotiation?.proposed_signing_bonus != null && (
-                <><dt className="text-slate-500">Signing bonus</dt><dd className="text-white">{formatCurrency(negotiation.proposed_signing_bonus)}</dd></>
-              )}
-              {negotiation?.proposed_length_years != null && (
-                <><dt className="text-slate-500">Contract length</dt><dd className="text-white">{negotiation.proposed_length_years} yr{negotiation.proposed_length_years !== 1 ? "s" : ""}</dd></>
-              )}
-              {!negotiation?.proposed_wage_weekly && !negotiation?.proposed_signing_bonus && !negotiation?.proposed_length_years && (
-                <p className="text-xs text-slate-600 italic">No personal terms proposed yet.</p>
-              )}
-            </dl>
-          )}
-          <div className="mt-3">
-            {playerAgreed ? (
-              <span className="text-xs font-semibold text-emerald-400">✓ Player has agreed</span>
-            ) : (
-              <span className="text-xs text-slate-500">Awaiting player agreement</span>
-            )}
-          </div>
-          {negotiation && (
-            <NegotiationMessageThread negotiationId={negotiation.id} thread="PLAYER_SIDE" accent="amber" />
-          )}
-        </div>
+        {negotiation && (
+          <NegotiationMessageThread negotiationId={negotiation.id} thread="CLUB_SIDE" accent="purple" />
+        )}
       </div>
 
       {/* Workspace footer: edit controls + advance */}
@@ -298,13 +227,10 @@ function AgentNegotiationWorkspace({
           ) : (
             <Button variant="secondary" size="sm" onClick={() => {
               setDraft({
-                commission_pct:         negotiation?.commission_pct        != null ? String(negotiation.commission_pct)        : "",
-                commission_amount:      negotiation?.commission_amount     != null ? String(negotiation.commission_amount)     : "",
-                commission_payer:       negotiation?.commission_payer      ?? "BUYER",
-                additional_conditions:  negotiation?.additional_conditions ?? "",
-                proposed_wage_weekly:   negotiation?.proposed_wage_weekly  != null ? String(negotiation.proposed_wage_weekly)  : "",
-                proposed_signing_bonus: negotiation?.proposed_signing_bonus != null ? String(negotiation.proposed_signing_bonus) : "",
-                proposed_length_years:  negotiation?.proposed_length_years != null ? String(negotiation.proposed_length_years) : "",
+                commission_pct:        negotiation?.commission_pct        != null ? String(negotiation.commission_pct)        : "",
+                commission_amount:     negotiation?.commission_amount     != null ? String(negotiation.commission_amount)     : "",
+                commission_payer:      negotiation?.commission_payer      ?? "BUYER",
+                additional_conditions: negotiation?.additional_conditions ?? "",
               });
               setEditing(true);
             }}>
@@ -315,11 +241,7 @@ function AgentNegotiationWorkspace({
 
         <div className="flex items-center gap-3">
           {!agentCanAdvance && (
-            <p className="text-xs text-slate-500">
-              {!clubAgreed && !playerAgreed ? "Both sides must agree before advancing." :
-               !clubAgreed  ? "Awaiting club agreement." :
-                              "Awaiting player agreement."}
-            </p>
+            <p className="text-xs text-slate-500">Awaiting club agreement on commission.</p>
           )}
           <Button
             variant="primary"
@@ -412,76 +334,69 @@ function CommissionProposalView({
   );
 }
 
-// ── Player: proposed terms view (TRA-129) ─────────────────────────────────────
+// ── Set personal terms (ADR 0001) ──────────────────────────────────────────────
 
-function PlayerTermsProposalView({
-  dealId,
-  negotiation,
-}: {
-  dealId: string;
-  negotiation: import("../../types/api").AgentNegotiation | null;
-}) {
+function SetPersonalTermsForm({ dealId }: { dealId: string }) {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
 
-  const respondMutation = useMutation({
-    mutationFn: (agreement: string) =>
-      api.post(`/deals/${dealId}/agent-negotiation/player-respond`, { agreement }).then((r) => r.data),
-    onSuccess: (_, agreement) => {
-      queryClient.invalidateQueries({ queryKey: ["deals", dealId, "agent-negotiation"] });
+  const [wageWeekly, setWageWeekly] = useState("");
+  const [signingBonus, setSigningBonus] = useState("");
+  const [lengthYears, setLengthYears] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      api.put(`/deals/${dealId}/personal-terms`, {
+        wage_weekly: wageWeekly !== "" ? Number(wageWeekly) : null,
+        signing_bonus: signingBonus !== "" ? Number(signingBonus) : null,
+        length_years: lengthYears !== "" ? Number(lengthYears) : null,
+      }).then((r) => r.data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
-      addToast(agreement === "AGREED" ? "Terms accepted." : "Terms declined.", agreement === "AGREED" ? "success" : "warning");
+      addToast("Personal terms sent to the player.", "success");
     },
-    onError: (err: unknown) => addToast(getApiError(err, "Failed to respond."), "error"),
+    onError: (err: unknown) => addToast(getApiError(err, "Failed to set personal terms."), "error"),
   });
 
-  if (!negotiation) return null;
-
-  const isPending = negotiation.player_agreement === "PENDING";
-
   return (
-    <div className="mb-6 rounded-xl bg-amber-500/[0.07] px-5 py-4 ring-1 ring-amber-500/20">
-      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-400">
-        Proposed Contract Terms
-      </p>
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-        {negotiation.proposed_wage_weekly != null && (
-          <><dt className="text-slate-400">Weekly wage</dt><dd className="font-semibold text-white">{formatWage(negotiation.proposed_wage_weekly)}</dd></>
-        )}
-        {negotiation.proposed_signing_bonus != null && (
-          <><dt className="text-slate-400">Signing bonus</dt><dd className="font-semibold text-white">{formatCurrency(negotiation.proposed_signing_bonus)}</dd></>
-        )}
-        {negotiation.proposed_length_years != null && (
-          <><dt className="text-slate-400">Contract length</dt><dd className="text-white">{negotiation.proposed_length_years} yr{negotiation.proposed_length_years !== 1 ? "s" : ""}</dd></>
-        )}
-      </dl>
-
-      {isPending ? (
-        <div className="mt-4 flex gap-2">
-          <Button
-            variant="primary"
-            size="sm"
-            loading={respondMutation.isPending}
-            onClick={() => respondMutation.mutate("AGREED")}
-          >
-            Accept terms
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            loading={respondMutation.isPending}
-            onClick={() => respondMutation.mutate("DECLINED")}
-          >
-            Decline
-          </Button>
+    <Panel title="Set Personal Terms">
+      <div className="space-y-2">
+        <div>
+          <label className="mb-1 block text-xs text-slate-400">Weekly wage (€)</label>
+          <FormattedNumberInput
+            value={wageWeekly}
+            onChange={setWageWeekly}
+            className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+          />
         </div>
-      ) : (
-        <p className={`mt-4 text-sm font-semibold ${negotiation.player_agreement === "AGREED" ? "text-emerald-400" : "text-red-400"}`}>
-          {negotiation.player_agreement === "AGREED" ? "✓ You accepted these terms" : "✗ You declined these terms"}
-        </p>
-      )}
-      <NegotiationMessageThread negotiationId={negotiation.id} thread="PLAYER_SIDE" accent="amber" />
-    </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-400">Signing bonus (€)</label>
+          <FormattedNumberInput
+            value={signingBonus}
+            onChange={setSigningBonus}
+            className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-400">Contract length (years)</label>
+          <input
+            type="number" min={1} max={10}
+            value={lengthYears}
+            onChange={(e) => setLengthYears(e.target.value)}
+            className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+          />
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          loading={mutation.isPending}
+          disabled={wageWeekly === "" || lengthYears === ""}
+          onClick={() => mutation.mutate()}
+        >
+          Send to player
+        </Button>
+      </div>
+    </Panel>
   );
 }
 
@@ -584,12 +499,29 @@ export default function DealDetailPage() {
     onError: (err: unknown) => addToast(getApiError(err, "Failed to save schedule."), "error"),
   });
 
-  // Load AgentNegotiation when deal is in that stage (TRA-128/129)
+  // Load AgentNegotiation when deal is in that stage (TRA-128/129) — commission
+  // only; personal terms live entirely in PersonalTerms from PERSONAL_TERMS on.
   const { data: negotiation } = useQuery<AgentNegotiation>({
     queryKey: ["deals", id, "agent-negotiation"],
     queryFn: () =>
       api.get<AgentNegotiation>(`/deals/${id}/agent-negotiation`).then((r) => r.data),
     enabled: !!id && !!deal && deal.stage === "AGENT_NEGOTIATION",
+    retry: false,
+  });
+
+  // Mandated agent responding on the player's behalf when they have no
+  // account (mirrors the club-side proxy rule already used at AGENT_NEGOTIATION).
+  const personalTermsConsentMutation = useMutation({
+    mutationFn: (agreement: string) =>
+      api.post(`/deals/${id}/personal-terms/player-consent`, { agreement }).then((r) => r.data),
+    onSuccess: (_, agreement) => {
+      queryClient.invalidateQueries({ queryKey: ["deals", id] });
+      addToast(
+        agreement === "AGREED" ? "Accepted on behalf of the player." : "Declined on behalf of the player.",
+        agreement === "AGREED" ? "success" : "warning"
+      );
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Failed to respond."), "error"),
   });
 
   if (isLoading) {
@@ -623,12 +555,19 @@ export default function DealDetailPage() {
   // At PAPERWORK stage, clubs cannot advance — only staff can
   const atPaperwork        = deal.stage === "PAPERWORK";
   const atConfirmed        = deal.stage === "CONFIRMED";
-  const clubCanAdvance     = isParty && !isAgent && isActive && !atPaperwork && !atAgentNegotiation && !atPersonalTerms && !deal.is_auction_deal;
-  // Agent can advance when both sides have AGREED (TRA-128)
+  const clubCanAdvance     = isParty && !isAgent && isActive && !atPaperwork && !atAgentNegotiation && !deal.is_auction_deal;
+  // Agent can advance once the club has agreed commission (TRA-128) — personal
+  // terms are a separate proposal + consent, at PERSONAL_TERMS.
   const agentCanAdvance    = isAgent && isActive && atAgentNegotiation &&
-    negotiation?.club_agreement === "AGREED" && negotiation?.player_agreement === "AGREED";
+    negotiation?.club_agreement === "AGREED";
   const clubCanCollapse       = isParty && isActive;
   const canEditDealStructure  = isParty && isActive && atAgreement;
+  // Set personal terms (ADR 0001): the mandated agent if this deal went through
+  // AGENT_NEGOTIATION, otherwise the buying club when there's no mandate at all.
+  const canSetPersonalTerms   = isActive && atPersonalTerms && !deal.personal_terms && (
+    (isAgent && deal.commission_agent_id != null) ||
+    (isBuyer && !isAgent && !isPlayer && deal.commission_agent_id == null)
+  );
 
   const advanceError =
     advanceMutation.isError ? getApiError(advanceMutation.error, "Failed.") : null;
@@ -675,12 +614,12 @@ export default function DealDetailPage() {
         </div>
       )}
 
-      {/* AGENT_NEGOTIATION banner — clubs only; agent and player get dedicated panels below */}
+      {/* AGENT_NEGOTIATION banner — clubs only; agent gets a dedicated panel below */}
       {atAgentNegotiation && isParty && !isAgent && !isPlayer && deal.status === "IN_PROGRESS" && (
         <div className="mb-6 rounded-xl bg-purple-500/10 px-5 py-4 text-sm text-purple-300 ring-1 ring-purple-500/20">
           <p className="font-semibold mb-1">Agent negotiation in progress</p>
           <p className="text-purple-400/80">
-            The mandated agent is negotiating commission terms with the buying club and personal terms with the player. You will be notified once both parties agree.
+            The mandated agent is negotiating commission terms with the buying club. Personal terms follow once this stage is agreed.
           </p>
         </div>
       )}
@@ -699,14 +638,6 @@ export default function DealDetailPage() {
       {/* Club: commission proposal from agent (TRA-129) */}
       {isParty && !isAgent && !isPlayer && atAgentNegotiation && deal.status === "IN_PROGRESS" && id && (
         <CommissionProposalView
-          dealId={id}
-          negotiation={negotiation ?? null}
-        />
-      )}
-
-      {/* Player: proposed personal terms from agent (TRA-129) */}
-      {isPlayer && atAgentNegotiation && deal.status === "IN_PROGRESS" && id && (
-        <PlayerTermsProposalView
           dealId={id}
           negotiation={negotiation ?? null}
         />
@@ -785,11 +716,23 @@ export default function DealDetailPage() {
               )}
               <Metric
                 label="Buyer"
-                valueNode={<ClubLink id={deal.buyer_club?.id} name={deal.buyer_club?.name} />}
+                valueNode={
+                  <ClubLink
+                    id={deal.buyer_club?.id}
+                    name={deal.buyer_club?.name}
+                    crestUrl={deal.buyer_club?.crest_url}
+                  />
+                }
               />
               <Metric
                 label="Seller"
-                valueNode={<ClubLink id={deal.seller_club?.id} name={deal.seller_club?.name} />}
+                valueNode={
+                  <ClubLink
+                    id={deal.seller_club?.id}
+                    name={deal.seller_club?.name}
+                    crestUrl={deal.seller_club?.crest_url}
+                  />
+                }
               />
               <Metric label="Type" value={deal.deal_type === "LOAN" ? "Loan" : "Permanent"} />
               <Metric label="Stage" value={dealStageLabel(deal.stage)} />
@@ -917,11 +860,11 @@ export default function DealDetailPage() {
                       </div>
                       <div>
                         <label className="mb-1 block text-xs text-slate-400">Loan fee (€)</label>
-                        <input type="number" min={0} value={dealDraft.loan_fee} onChange={(e) => setDealDraft((d) => ({ ...d, loan_fee: e.target.value }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                        <FormattedNumberInput value={dealDraft.loan_fee} onChange={(v) => setDealDraft((d) => ({ ...d, loan_fee: v }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
                       </div>
                       <div>
                         <label className="mb-1 block text-xs text-slate-400">Option to buy (€)</label>
-                        <input type="number" min={0} value={dealDraft.option_to_buy} onChange={(e) => setDealDraft((d) => ({ ...d, option_to_buy: e.target.value }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                        <FormattedNumberInput value={dealDraft.option_to_buy} onChange={(v) => setDealDraft((d) => ({ ...d, option_to_buy: v }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
                       </div>
                       <div className="col-span-2">
                         <label className="mb-1 block text-xs text-slate-400">Sell-on % (decimal, e.g. 0.05 = 5%)</label>
@@ -1051,10 +994,9 @@ export default function DealDetailPage() {
                     </div>
                     <div>
                       <label className="mb-1 block text-xs text-slate-400">Amount (€)</label>
-                      <input
-                        type="number" min={0}
+                      <FormattedNumberInput
                         value={clauseDraft.amount}
-                        onChange={(e) => setClauseDraft((d) => ({ ...d, amount: e.target.value }))}
+                        onChange={(v) => setClauseDraft((d) => ({ ...d, amount: v }))}
                         className="w-full rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
                       />
                     </div>
@@ -1071,10 +1013,9 @@ export default function DealDetailPage() {
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-slate-400">Cap (€, optional)</label>
-                    <input
-                      type="number" min={0}
+                    <FormattedNumberInput
                       value={clauseDraft.cap}
-                      onChange={(e) => setClauseDraft((d) => ({ ...d, cap: e.target.value }))}
+                      onChange={(v) => setClauseDraft((d) => ({ ...d, cap: v }))}
                       className="w-full rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
                     />
                   </div>
@@ -1141,12 +1082,10 @@ export default function DealDetailPage() {
                         onChange={(e) => setInstalmentRows((rows) => rows.map((r, j) => j === i ? { ...r, due_date: e.target.value } : r))}
                         className="flex-1 rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
                       />
-                      <input
-                        type="number"
-                        min={0}
+                      <FormattedNumberInput
                         placeholder="Amount (€)"
                         value={row.amount}
-                        onChange={(e) => setInstalmentRows((rows) => rows.map((r, j) => j === i ? { ...r, amount: e.target.value } : r))}
+                        onChange={(v) => setInstalmentRows((rows) => rows.map((r, j) => j === i ? { ...r, amount: v } : r))}
                         className="flex-1 rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
                       />
                       <button
@@ -1206,7 +1145,7 @@ export default function DealDetailPage() {
           ) : null}
 
           {/* Personal terms consent status (TRA-60) */}
-          {deal.personal_terms && (
+          {deal.personal_terms ? (
             <Panel title="Personal Terms">
               <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 {deal.personal_terms.wage_weekly != null && (
@@ -1225,8 +1164,35 @@ export default function DealDetailPage() {
                                                                         "text-amber-400"
                 }>{deal.personal_terms.player_consent}</dd>
               </dl>
+              {isAgent && deal.personal_terms.player_consent === "PENDING" && !deal.personal_terms.player_has_account && (
+                <div className="mt-3">
+                  <p className="mb-1.5 text-[11px] text-slate-500">
+                    Player has no account yet — you may respond on their behalf
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={personalTermsConsentMutation.isPending}
+                      onClick={() => personalTermsConsentMutation.mutate("AGREED")}
+                    >
+                      Accept for player
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      loading={personalTermsConsentMutation.isPending}
+                      onClick={() => personalTermsConsentMutation.mutate("DECLINED")}
+                    >
+                      Decline for player
+                    </Button>
+                  </div>
+                </div>
+              )}
             </Panel>
-          )}
+          ) : canSetPersonalTerms && id ? (
+            <SetPersonalTermsForm dealId={id} />
+          ) : null}
 
           <Panel title="Deal Notes">
             {deal.deal_notes.length === 0 ? (
@@ -1255,7 +1221,7 @@ export default function DealDetailPage() {
           </Panel>
 
           <Panel title="Activity Timeline">
-            <DealTimeline deal={deal} />
+            <DealTimeline dealId={deal.id} />
           </Panel>
         </div>
       </div>
@@ -1279,68 +1245,32 @@ function nextStage(stage: DealStage): DealStage {
   return idx >= 0 && idx < STAGE_SEQ.length - 1 ? STAGE_SEQ[idx + 1] : stage;
 }
 
-// ── Deal timeline ─────────────────────────────────────────────────────────────
+// ── Deal timeline (real audit log — visible to every deal participant) ────────
 
-interface TimelineEvent {
-  id: string;
-  ts: string;
-  label: string;
-  sublabel?: string;
-  dot: "emerald" | "sky" | "amber" | "red" | "slate";
-}
+const AUDIT_DOT: Record<string, "emerald" | "sky" | "red"> = {
+  DEAL_CREATED: "emerald",
+  DEAL_COMPLETED: "emerald",
+  DEAL_COLLAPSED: "red",
+};
 
-function DealTimeline({ deal }: { deal: Deal }) {
-  const events: TimelineEvent[] = [];
-
-  // Deal created
-  events.push({
-    id: "created",
-    ts: deal.created_at,
-    label: "Deal created",
-    sublabel: `Agreed fee: ${formatCurrency(deal.agreed_fee)}`,
-    dot: "emerald",
+function DealTimeline({ dealId }: { dealId: string }) {
+  const { data: events = [], isLoading } = useQuery<import("../../types/api").AuditEvent[]>({
+    queryKey: ["deals", dealId, "audit-log"],
+    queryFn: () => api.get(`/deals/${dealId}/audit-log`).then((r) => r.data),
   });
 
-  // Notes in chronological order
-  const sortedNotes = [...deal.deal_notes].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
-  for (const note of sortedNotes) {
-    events.push({
-      id: `note-${note.id}`,
-      ts: note.created_at,
-      label: note.author_club?.name ? `Note by ${note.author_club.name}` : "System note",
-      sublabel: note.body,
-      dot: "sky",
-    });
-  }
-
-  // Terminal states
-  if (deal.status === "COMPLETED" && deal.completed_at) {
-    events.push({
-      id: "completed",
-      ts: deal.completed_at,
-      label: "Transfer completed",
-      dot: "emerald",
-    });
-  } else if (deal.status === "COLLAPSED") {
-    events.push({
-      id: "collapsed",
-      ts: deal.updated_at,
-      label: "Deal collapsed",
-      dot: "red",
-    });
-  }
-
-  events.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
-
-  const dotClass: Record<TimelineEvent["dot"], string> = {
+  const dotClass: Record<"emerald" | "sky" | "red", string> = {
     emerald: "bg-emerald-500",
     sky:     "bg-sky-500",
-    amber:   "bg-amber-500",
     red:     "bg-red-500",
-    slate:   "bg-slate-600",
   };
+
+  if (isLoading) {
+    return <Spinner size="sm" />;
+  }
+  if (events.length === 0) {
+    return <p className="text-sm text-slate-500">No activity yet.</p>;
+  }
 
   return (
     <div className="relative pl-4">
@@ -1350,19 +1280,19 @@ function DealTimeline({ deal }: { deal: Deal }) {
       <div className="space-y-5">
         {events.map((ev) => (
           <div key={ev.id} className="relative flex gap-3">
-            <div className={`mt-1 h-3 w-3 shrink-0 rounded-full ring-2 ring-slate-900 ${dotClass[ev.dot]}`} />
+            <div className={`mt-1 h-3 w-3 shrink-0 rounded-full ring-2 ring-slate-900 ${dotClass[AUDIT_DOT[ev.action] ?? "sky"]}`} />
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
-                <span className="text-sm font-medium text-white">{ev.label}</span>
+                <span className="text-sm font-medium text-white">{ev.description ?? ev.action}</span>
                 <span className="text-[10px] text-slate-500 shrink-0">
-                  {new Date(ev.ts).toLocaleString("en-GB", {
+                  {new Date(ev.created_at).toLocaleString("en-GB", {
                     day: "numeric", month: "short", year: "numeric",
                     hour: "2-digit", minute: "2-digit",
                   })}
                 </span>
               </div>
-              {ev.sublabel && (
-                <p className="mt-0.5 text-xs text-slate-400 break-words">{ev.sublabel}</p>
+              {ev.actor_label && (
+                <p className="mt-0.5 text-xs text-slate-400">{ev.actor_label}</p>
               )}
             </div>
           </div>

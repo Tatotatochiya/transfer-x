@@ -405,6 +405,7 @@ export interface DealStub {
 export interface ClubSummary {
   id: string;
   name: string;
+  crest_url: string | null;
 }
 
 export interface OfferMessage {
@@ -459,6 +460,18 @@ export interface DealNote {
   author_club: ClubSummary | null;
 }
 
+export interface AuditEvent {
+  id: string;
+  actor_user_id: string | null;
+  actor_label: string | null;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  description: string | null;
+  payload_json: Record<string, unknown> | null;
+  created_at: string;
+}
+
 export interface DealClause {
   id: string;
   deal_id: string;
@@ -487,6 +500,7 @@ export interface PersonalTerms {
   signing_bonus: number | null;
   length_years: number | null;
   player_consent: AgreementStatus;
+  player_has_account: boolean;
   agreed_at: string | null;
   created_at: string;
 }
@@ -513,10 +527,6 @@ export interface AgentNegotiation {
   commission_payer: CommissionPayer | null;
   additional_conditions: string | null;
   club_agreement: AgreementStatus;
-  proposed_wage_weekly: number | null;
-  proposed_signing_bonus: number | null;
-  proposed_length_years: number | null;
-  player_agreement: AgreementStatus;
   created_at: string;
   agreed_at: string | null;
 }

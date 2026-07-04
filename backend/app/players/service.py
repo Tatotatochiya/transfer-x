@@ -109,6 +109,15 @@ async def is_player_verified(db: AsyncSession, player_id: uuid.UUID) -> bool:
     return bool(result.scalar_one_or_none())
 
 
+async def player_has_account(db: AsyncSession, player_id: uuid.UUID) -> bool:
+    """True if any PlayerProfile (claimed or not) exists for this player."""
+    from app.auth.models import PlayerProfile
+    result = await db.execute(
+        select(PlayerProfile.id).where(PlayerProfile.player_id == player_id)
+    )
+    return result.scalar_one_or_none() is not None
+
+
 async def update_player(db: AsyncSession, player: Player, **fields) -> Player:
     for key, value in fields.items():
         if value is not None:

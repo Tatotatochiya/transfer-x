@@ -93,9 +93,10 @@ async def test_nonexistent_deal_audit_log_404s(client: AsyncClient, db):
 @pytest.mark.asyncio
 async def test_audit_log_csv_resolves_actor_labels(client: AsyncClient, db):
     """CSV export must not leak raw actor UUIDs — TRA-141 resolves them via
-    room_service.label_for_user. No current write path populates actor_user_id
-    on a DEAL audit event, so this stamps one directly to exercise the
-    export's label-resolution code path in isolation."""
+    room_service.label_for_user. Real write paths do populate actor_user_id
+    now (see test_actor_user_id_populated_by_real_write_path below); this
+    stamps one directly anyway, to exercise the export's label-resolution
+    code path in isolation from any specific action."""
     from app.audit.models import AuditEvent
     from app.auth.models import User
 
@@ -125,3 +126,39 @@ async def test_audit_log_csv_resolves_actor_labels(client: AsyncClient, db):
 
     test_row = next(r for r in data_rows if r[1] == "TEST_EVENT")
     assert test_row[2] == "Audit Seller FC"
+
+
+@pytest.mark.asyncio
+async def test_actor_user_id_populated_by_real_write_path(client: AsyncClient, db):
+    """Regression: AuditEvent.actor_user_id used to be null on every real
+    event — nothing ever passed it. Every audit-emitting action now threads
+    the caller's own user id through, verified here via a real deal collapse
+    rather than the manual stamp the CSV test above uses for isolation."""
+    ctx = await _create_deal(client, db)
+    deal_id = ctx["deal"]["id"]
+
+    buyer_me = await client.get("/auth/me", headers=_auth_headers(ctx["buyer"]))
+    assert buyer_me.status_code == 200
+
+    resp = await client.post(f"/deals/{deal_id}/collapse", headers=_auth_headers(ctx["buyer"]))
+    assert resp.status_code == 200, resp.text
+
+    events_resp = await client.get(f"/deals/{deal_id}/audit-log", headers=_auth_headers(ctx["buyer"]))
+    collapse_event = next(e for e in events_resp.json() if e["action"] == "DEAL_COLLAPSED")
+    assert collapse_event["actor_user_id"] == buyer_me.json()["id"]
+
+
+@pytest.mark.asyncio
+async def test_json_audit_log_resolves_actor_labels(client: AsyncClient, db):
+    """The JSON GET endpoint must resolve actor_label the same way the CSV
+    export already did — it didn't, until this session added it, so a caller
+    had to separately look up who acted from a raw actor_user_id UUID."""
+    ctx = await _create_deal(client, db)
+    deal_id = ctx["deal"]["id"]
+
+    await client.post(f"/deals/{deal_id}/collapse", headers=_auth_headers(ctx["buyer"]))
+
+    resp = await client.get(f"/deals/{deal_id}/audit-log", headers=_auth_headers(ctx["buyer"]))
+    assert resp.status_code == 200
+    collapse_event = next(e for e in resp.json() if e["action"] == "DEAL_COLLAPSED")
+    assert collapse_event["actor_label"] == "Audit Buyer FC"
