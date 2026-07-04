@@ -249,6 +249,17 @@ async def accept_offer(
     _require_party(offer, actor_club_id)
     _require_turn(offer, actor_club_id)
 
+    # TRA-138: the club this offer names as seller must actually own the player
+    if offer.to_club_id is not None:
+        from app.players import service as players_service
+        from app.players.models import Player
+
+        player_result = await db.execute(select(Player).where(Player.id == offer.player_id))
+        player = player_result.scalar_one_or_none()
+        owning_club_id = await players_service.get_owning_club_id(db, player) if player else None
+        if player is None or owning_club_id != offer.to_club_id:
+            raise ValueError("Receiving club does not currently own this player")
+
     # Commit the reserved budget from buyer
     reserved = offer.reserved_transfer_amount
     if reserved > 0:

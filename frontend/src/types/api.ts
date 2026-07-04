@@ -365,8 +365,8 @@ export interface Sale {
   updated_at: string;
   player: PlayerSummary | null;
   seller_club: SellerClubSummary | null;
-  // auction summary fields
-  bid_count: number;
+  // auction summary fields (reserve_price/best_bid/bid_count are null for non-seller/staff viewers — TRA-139)
+  bid_count: number | null;
   best_bid: number | null;
   minimum_next_bid: number | null;
   reserve_met: boolean;

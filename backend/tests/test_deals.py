@@ -178,6 +178,83 @@ async def test_deal_list_for_club(client: AsyncClient, buyer: dict, seller: dict
     assert resp.json()["total"] >= 1
 
 
+# ── TRA-137: deal detail access for agent/player participants ────────────────
+
+
+@pytest.mark.asyncio
+async def test_deal_inaccessible_to_non_participant_club(client: AsyncClient, buyer: dict, seller: dict, db):
+    """A club with no stake in the deal gets 403, not a misleading 404."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    outsider = await _register(client, "outsider_deal@test.com", club_name="Outsider FC")
+
+    resp = await client.get(f"/deals/{deal['id']}", headers=_auth_headers(outsider))
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_deal_accessible_to_player_on_deal(client: AsyncClient, buyer: dict, seller: dict, db):
+    """The transferring player can load their own deal — previously "Deal not
+    found" since GET /deals/{id} assumed every caller had a club profile."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    player_tokens = await _register_player_account(
+        client, "player_deal_access@test.com", deal["player_id"]
+    )
+
+    resp = await client.get(f"/deals/{deal['id']}", headers=_auth_headers(player_tokens))
+    assert resp.status_code == 200
+    assert resp.json()["id"] == deal["id"]
+
+
+@pytest.mark.asyncio
+async def test_deal_response_hides_commission_from_player(client: AsyncClient, buyer: dict, seller: dict, db):
+    """Commission terms (what the buying club pays the agent) are club/agent
+    business, not the player's, mirroring _build_neg_response's masking."""
+    from sqlalchemy import select
+
+    from app.deals.models import Deal
+
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+
+    # Stamp agreed commission directly (bypasses the full negotiation flow,
+    # which is covered separately in test_agent_negotiation.py).
+    result = await db.execute(select(Deal).where(Deal.id == uuid.UUID(deal["id"])))
+    deal_obj = result.scalar_one()
+    deal_obj.agent_commission_pct = Decimal("0.10")
+    deal_obj.agent_commission_amount = Decimal("500000")
+    await db.commit()
+
+    player_tokens = await _register_player_account(
+        client, "player_commission@test.com", deal["player_id"]
+    )
+    player_view = (await client.get(f"/deals/{deal['id']}", headers=_auth_headers(player_tokens))).json()
+    assert player_view["agent_commission_pct"] is None
+    assert player_view["agent_commission_amount"] is None
+
+    buyer_view = (await client.get(f"/deals/{deal['id']}", headers=_auth_headers(buyer))).json()
+    assert float(buyer_view["agent_commission_pct"]) == 0.10
+
+
+# ── TRA-140: medical-check / personal-terms scoped to participants ───────────
+
+
+@pytest.mark.asyncio
+async def test_medical_check_hidden_from_non_participant(client: AsyncClient, buyer: dict, seller: dict, db):
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    outsider = await _register(client, "outsider_medical@test.com", club_name="Outsider Medical FC")
+
+    resp = await client.get(f"/deals/{deal['id']}/medical-check", headers=_auth_headers(outsider))
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_personal_terms_get_hidden_from_non_participant(client: AsyncClient, buyer: dict, seller: dict, db):
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    outsider = await _register(client, "outsider_terms@test.com", club_name="Outsider Terms FC")
+
+    resp = await client.get(f"/deals/{deal['id']}/personal-terms", headers=_auth_headers(outsider))
+    assert resp.status_code == 403
+
+
 # ── Stage advancement ─────────────────────────────────────────────────────────
 
 

@@ -74,7 +74,9 @@ export default function SaleCard({ sale }: SaleCardProps) {
       {/* Auction stats */}
       {sale.sale_type === "AUCTION" && (
         <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
-          <span>{sale.bid_count} bid{sale.bid_count !== 1 ? "s" : ""}</span>
+          {sale.bid_count != null && (
+            <span>{sale.bid_count} bid{sale.bid_count !== 1 ? "s" : ""}</span>
+          )}
           {!sale.reserve_met && sale.reserve_price && (
             <span className="text-amber-400/80">Reserve not met</span>
           )}

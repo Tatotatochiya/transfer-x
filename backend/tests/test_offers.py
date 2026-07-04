@@ -218,6 +218,26 @@ async def test_cannot_accept_already_accepted(client: AsyncClient, buyer: dict, 
     assert resp.status_code == 400
 
 
+@pytest.mark.asyncio
+async def test_cannot_accept_offer_for_player_not_owned_by_receiving_club(
+    client: AsyncClient, buyer: dict, seller: dict, third_club: dict, db
+):
+    """TRA-138: the club named as seller in an offer must actually own the player."""
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    third_headers = _auth_headers(third_club)
+
+    player = await _create_player(client, sel_headers)  # registered to `seller`, not `third_club`
+    third_club_id = await _get_seller_club_id(client, third_headers)
+
+    offer = await _make_offer(client, buy_headers, player["id"], third_club_id)
+
+    resp = await client.post(f"/offers/{offer['id']}/accept", headers=third_headers)
+    assert resp.status_code == 400
+    assert "own" in resp.json()["detail"].lower()
+
+
 # ── Reject offer ──────────────────────────────────────────────────────────────
 
 

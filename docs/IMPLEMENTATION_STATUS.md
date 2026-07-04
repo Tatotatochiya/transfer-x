@@ -1,6 +1,6 @@
 ---
 title: "Implementation Status"
-last_updated: 2026-07-03
+last_updated: 2026-07-04
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -29,7 +29,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 | Documentation system (`/docs`) | Built | 2026-07-03 | This structure and its conventions. |
 | Claude Code project skills (`.claude/skills/`) | Built | 2026-07-03 | Five skills — see [`docs/README.md`](./README.md). |
 | Marketplace Core — Phase 3 (player consent) | Fixed | 2026-07-03 | A non-mandated deal skipped `PERSONAL_TERMS` entirely (TRA-60 regression). Fixed; the buying club can now propose terms and the player consents directly. Covered by `backend/tests/test_deals.py`. |
-| Marketplace Core — Phase 4 (trust: agent-negotiation authorization) | Fixed | 2026-07-03 | Any agent could claim an unstarted negotiation for a deal they weren't invited to (TRA-127 regression). Fixed; now checked against `AgentDealInvitation`. Covered by `backend/tests/test_agent_negotiation.py`. Other Phase 4 items from the workflow audit (public reserve-price leak, medical/personal-terms exposure, seller-ownership validation, deal access for agent/player) are still open — see Linear TRA-137–140. |
+| Marketplace Core — Phase 4 (trust foundation) | Fixed | 2026-07-04 | TRA-127 (agent-negotiation hijack) and the five access-control gaps from the workflow audit — TRA-137 (deal access for agent/player), TRA-138 (seller-ownership validation), TRA-139 (public reserve-price/bid leak), TRA-140 (medical/personal-terms exposure), TRA-141 (audit-log scoping) — are all fixed and regression-tested. Verified boundary table: [`security-and-compliance/permissions-model.md`](./security-and-compliance/permissions-model.md). Remaining Phase 4 items: TRA-143 (player identity attestation), TRA-144 (mandate player-confirmation), TRA-146 (club-staff deal access) — see Linear. |
 | Marketplace Core — Phase 0–2 (finance, actors, deal structure) | TODO | — | Not independently re-verified this session; see [`product/roadmap.md`](./product/roadmap.md). |
 | Agent Experience | TODO | — | Linear shows all five milestones shipped; not independently re-verified here yet, aside from the Phase 4 negotiation-authorization fix above (which sits in this project in Linear). |
 | Differentiation & Demo Readiness | TODO | — | |

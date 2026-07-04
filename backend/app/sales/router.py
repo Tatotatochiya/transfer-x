@@ -28,14 +28,37 @@ from app.sales.schemas import (
 router = APIRouter(tags=["sales"])
 
 
-def _enrich_sale_response(sale: Sale) -> SaleResponse:
-    """Build SaleResponse, populating computed auction fields."""
+async def _resolve_viewer(
+    db: AsyncSession, current_user: User | None
+) -> tuple[uuid.UUID | None, bool]:
+    """Resolve (viewer_club_id, is_staff) for TRA-139 sale response scoping."""
+    if current_user is None:
+        return None, False
+    if current_user.is_superuser:
+        return None, True
+    club = await clubs_service.get_club_for_user(db, current_user.id)
+    return (club.id if club else None), False
+
+
+def _enrich_sale_response(
+    sale: Sale, *, viewer_club_id: uuid.UUID | None = None, is_staff: bool = False
+) -> SaleResponse:
+    """Build SaleResponse, populating computed auction fields.
+
+    TRA-139: reserve_price/best_bid/bid_count are only visible to the seller or
+    staff — everyone else gets the anonymised listing (asking price, deadline).
+    minimum_next_bid stays visible to all, since a prospective bidder needs it
+    to place a valid bid at all.
+    """
     from app.sales.service import get_best_bid_amount, get_minimum_next_bid, is_reserve_met
 
     active_bids = [b for b in (sale.bids or []) if b.status == BidStatus.ACTIVE]
     best = get_best_bid_amount(sale.bids or [])
     min_next = get_minimum_next_bid(sale) if sale.bids is not None else None
     reserve_ok = is_reserve_met(sale) if sale.bids is not None else False
+    is_seller_or_staff = is_staff or (
+        viewer_club_id is not None and viewer_club_id == sale.seller_club_id
+    )
 
     return SaleResponse(
         id=sale.id,
@@ -43,7 +66,7 @@ def _enrich_sale_response(sale: Sale) -> SaleResponse:
         seller_club_id=sale.seller_club_id,
         sale_type=sale.sale_type,
         asking_price=sale.asking_price,
-        reserve_price=sale.reserve_price,
+        reserve_price=sale.reserve_price if is_seller_or_staff else None,
         min_increment=sale.min_increment,
         deadline=sale.deadline,
         notes=sale.notes,
@@ -52,8 +75,8 @@ def _enrich_sale_response(sale: Sale) -> SaleResponse:
         updated_at=sale.updated_at,
         player=sale.player,
         seller_club=sale.seller_club,
-        bid_count=len(active_bids),
-        best_bid=best,
+        bid_count=len(active_bids) if is_seller_or_staff else None,
+        best_bid=best if is_seller_or_staff else None,
         minimum_next_bid=min_next,
         reserve_met=reserve_ok,
     )
@@ -70,8 +93,9 @@ async def list_sales(
     page: int = 1,
     page_size: int = 20,
     db: AsyncSession = Depends(get_db),
-    _current_user: User | None = Depends(get_optional_user),
+    current_user: User | None = Depends(get_optional_user),
 ):
+    viewer_club_id, is_staff = await _resolve_viewer(db, current_user)
     sales, total = await service.list_sales(
         db,
         status=status,
@@ -81,7 +105,10 @@ async def list_sales(
         page_size=page_size,
     )
     return Paginated(
-        items=[_enrich_sale_response(s) for s in sales],
+        items=[
+            _enrich_sale_response(s, viewer_club_id=viewer_club_id, is_staff=is_staff)
+            for s in sales
+        ],
         total=total,
         page=page,
         page_size=page_size,
@@ -92,12 +119,13 @@ async def list_sales(
 async def get_sale(
     sale_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _current_user: User | None = Depends(get_optional_user),
+    current_user: User | None = Depends(get_optional_user),
 ):
     sale = await service.get_sale_by_id(db, sale_id)
     if sale is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
-    return _enrich_sale_response(sale)
+    viewer_club_id, is_staff = await _resolve_viewer(db, current_user)
+    return _enrich_sale_response(sale, viewer_club_id=viewer_club_id, is_staff=is_staff)
 
 
 @router.get("/sales/{sale_id}/order-book", response_model=OrderBookResponse)
@@ -134,6 +162,16 @@ async def create_sale(
     if club is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile found")
 
+    # TRA-138: a club can only list a player who is actually registered to them
+    from app.players import service as players_service
+    player = await players_service.get_player_by_id(db, body.player_id)
+    owning_club_id = await players_service.get_owning_club_id(db, player) if player else None
+    if player is None or owning_club_id != club.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Player is not registered to your club",
+        )
+
     if not current_user.is_superuser and not await window_service.is_transfer_allowed(db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -168,7 +206,7 @@ async def create_sale(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     sale = await service.get_sale_by_id(db, sale.id)
-    return _enrich_sale_response(sale)
+    return _enrich_sale_response(sale, viewer_club_id=club.id, is_staff=current_user.is_superuser)
 
 
 # ── Withdraw ──────────────────────────────────────────────────────────────────

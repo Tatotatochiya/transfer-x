@@ -56,8 +56,8 @@ class SaleResponse(BaseModel):
     updated_at: datetime
     player: PlayerSummary | None = None
     seller_club: SellerClubSummary | None = None
-    # auction summary fields (populated for AUCTION type)
-    bid_count: int = 0
+    # auction summary fields (populated for AUCTION type; null for non-seller/staff viewers — TRA-139)
+    bid_count: int | None = 0
     best_bid: Decimal | None = None
     minimum_next_bid: Decimal | None = None
     reserve_met: bool = False

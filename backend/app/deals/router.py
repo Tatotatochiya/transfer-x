@@ -10,7 +10,7 @@ from app.auth.models import User
 from app.clubs import service as clubs_service
 from app.common.schemas import Paginated
 from app.database import get_db
-from app.deals import service
+from app.deals import room_service, service
 from app.deals.models import ClauseStatus, DealStatus
 from app.deals.schemas import (
     AgentNegotiationResponse,
@@ -131,7 +131,13 @@ async def _get_deal_or_404(db: AsyncSession, deal_id: uuid.UUID):
     return deal
 
 
-def _build_deal_response(deal) -> DealResponse:
+def _build_deal_response(deal, *, caller_user_type: str | None = None) -> DealResponse:
+    """TRA-137: field-scoped like `_build_neg_response` — commission terms (what
+    the club pays the agent) are hidden from the player. Everything else here is
+    either already gated to real participants by the caller, or legitimately
+    shared across all of them (e.g. personal terms, medical check).
+    """
+    is_player = caller_user_type == "PLAYER"
     return DealResponse(
         id=deal.id,
         sale_id=deal.sale_id,
@@ -154,10 +160,10 @@ def _build_deal_response(deal) -> DealResponse:
         sell_on_pct=deal.sell_on_pct,
         clauses=deal.clauses,
         instalments=deal.instalments,
-        agent_commission_pct=deal.agent_commission_pct,
-        agent_commission_amount=deal.agent_commission_amount,
-        commission_payer=deal.commission_payer,
-        commission_agent_id=deal.commission_agent_id,
+        agent_commission_pct=None if is_player else deal.agent_commission_pct,
+        agent_commission_amount=None if is_player else deal.agent_commission_amount,
+        commission_payer=None if is_player else deal.commission_payer,
+        commission_agent_id=None if is_player else deal.commission_agent_id,
         personal_terms=deal.personal_terms,
         medical_check=deal.medical_check,
         notes=deal.notes,
@@ -267,12 +273,12 @@ async def get_deal(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    club = await _get_club_or_403(db, current_user)
+    """TRA-137: any legitimate participant (buyer/seller club, mandated agent,
+    the player, staff) can load the deal — not just clubs."""
     deal = await _get_deal_or_404(db, deal_id)
-    parties = {deal.buyer_club_id, deal.seller_club_id}
-    if club.id not in parties and not current_user.is_superuser:
+    if not await room_service.is_deal_participant(db, deal, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
-    return _build_deal_response(deal)
+    return _build_deal_response(deal, caller_user_type=current_user.user_type.value)
 
 
 # ── Stage advancement ─────────────────────────────────────────────────────────
@@ -593,9 +599,11 @@ async def list_instalments(
 async def get_medical_check(
     deal_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     deal = await _get_deal_or_404(db, deal_id)
+    if not await room_service.is_deal_participant(db, deal, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
     mc = await service.get_medical_check(db, deal.id)
     if mc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No medical check found")
@@ -634,9 +642,11 @@ async def upsert_medical_check(
 async def get_personal_terms(
     deal_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     deal = await _get_deal_or_404(db, deal_id)
+    if not await room_service.is_deal_participant(db, deal, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
     pt = await service.get_personal_terms(db, deal.id)
     if pt is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No personal terms found")

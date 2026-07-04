@@ -365,7 +365,8 @@ async def test_sale_shows_bid_count_and_best(client: AsyncClient, seller: dict, 
         f"/sales/{sale['id']}/bids", json={"amount": 5_000_000}, headers=_auth_headers(buyer)
     )
 
-    resp = await client.get(f"/sales/{sale['id']}")
+    # TRA-139: bid_count/best_bid are only visible to the seller
+    resp = await client.get(f"/sales/{sale['id']}", headers=sel_headers)
     data = resp.json()
     assert data["bid_count"] == 1
     assert float(data["best_bid"]) == 5_000_000
@@ -493,3 +494,90 @@ async def test_withdraw_sale_releases_bid_reservations(
     await db.refresh(finances[1])
     for f in finances:
         assert f.transfer_reserved == Decimal("0")
+
+
+# ── TRA-139: reserve price / bid competition scoping ──────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_reserve_price_hidden_from_non_seller(client: AsyncClient, seller: dict, buyer: dict):
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    resp = await client.post(
+        "/sales",
+        json={
+            "player_id": player["id"],
+            "sale_type": "AUCTION",
+            "asking_price": 5_000_000,
+            "reserve_price": 7_000_000,
+            "min_increment": 500_000,
+        },
+        headers=sel_headers,
+    )
+    assert resp.status_code == 201
+    sale_id = resp.json()["id"]
+    assert float(resp.json()["reserve_price"]) == 7_000_000  # seller sees it on create
+
+    anon_data = (await client.get(f"/sales/{sale_id}")).json()
+    assert anon_data["reserve_price"] is None
+
+    buyer_data = (await client.get(f"/sales/{sale_id}", headers=_auth_headers(buyer))).json()
+    assert buyer_data["reserve_price"] is None
+
+    seller_data = (await client.get(f"/sales/{sale_id}", headers=sel_headers)).json()
+    assert float(seller_data["reserve_price"]) == 7_000_000
+
+
+@pytest.mark.asyncio
+async def test_bid_count_and_best_bid_hidden_from_non_seller(
+    client: AsyncClient, seller: dict, buyer: dict, buyer2: dict, db
+):
+    from decimal import Decimal
+
+    from app.clubs.models import ClubFinance
+    from sqlalchemy import select
+
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    sale = await _create_sale(client, sel_headers, player["id"], asking_price=5_000_000)
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.transfer_budget_total = Decimal("100000000")
+    await db.commit()
+
+    await client.post(
+        f"/sales/{sale['id']}/bids", json={"amount": 5_000_000}, headers=_auth_headers(buyer)
+    )
+
+    # A rival club sees neither bid_count nor best_bid...
+    rival_data = (await client.get(f"/sales/{sale['id']}", headers=_auth_headers(buyer2))).json()
+    assert rival_data["bid_count"] is None
+    assert rival_data["best_bid"] is None
+    # ...but still gets the minimum valid next bid, since they need it to bid at all
+    assert float(rival_data["minimum_next_bid"]) == 5_500_000
+
+    anon_data = (await client.get(f"/sales/{sale['id']}")).json()
+    assert anon_data["bid_count"] is None
+    assert anon_data["best_bid"] is None
+
+    seller_data = (await client.get(f"/sales/{sale['id']}", headers=sel_headers)).json()
+    assert seller_data["bid_count"] == 1
+    assert float(seller_data["best_bid"]) == 5_000_000
+
+
+# ── TRA-138: seller must own the player being listed ──────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_cannot_list_player_not_owned_by_club(client: AsyncClient, seller: dict, buyer: dict):
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)  # registered to `seller`
+
+    resp = await client.post(
+        "/sales",
+        json={"player_id": player["id"], "sale_type": "AUCTION", "asking_price": 5_000_000},
+        headers=_auth_headers(buyer),  # buyer tries to list seller's player
+    )
+    assert resp.status_code == 400
+    assert "not registered" in resp.json()["detail"].lower()

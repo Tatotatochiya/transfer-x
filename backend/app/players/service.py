@@ -83,6 +83,23 @@ async def get_player_by_id(db: AsyncSession, player_id: uuid.UUID) -> Player | N
     return result.scalar_one_or_none()
 
 
+async def get_owning_club_id(db: AsyncSession, player: Player) -> uuid.UUID | None:
+    """TRA-138: resolve which club may list/accept a transfer for this player.
+
+    `current_club_id` (derived from an active contract) is authoritative when
+    set. Otherwise fall back to whichever club created the player record — the
+    same fallback `update_my_club_player` already uses for a player with no
+    contract row yet.
+    """
+    if player.current_club_id is not None:
+        return player.current_club_id
+    if player.created_by_user_id is None:
+        return None
+    from app.clubs import service as clubs_service
+    club = await clubs_service.get_club_by_user_id(db, player.created_by_user_id)
+    return club.id if club else None
+
+
 async def is_player_verified(db: AsyncSession, player_id: uuid.UUID) -> bool:
     """TRA-89 — True if this player has a claimed, verified PlayerProfile."""
     from app.auth.models import PlayerProfile

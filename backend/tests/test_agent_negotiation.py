@@ -154,3 +154,27 @@ async def test_second_agent_cannot_hijack_existing_negotiation(client: AsyncClie
     )
     assert resp.status_code == 400
     assert "mandated" in resp.json()["detail"].lower()
+
+
+async def test_negotiating_agent_can_view_deal_detail(client: AsyncClient, db: AsyncSession):
+    """TRA-137: the agent workspace (TRA-128) reads the deal via GET /deals/{id}
+    — it must not 403 an agent legitimately negotiating this deal."""
+    ctx = await _setup_invited_deal(client, db)
+    await client.patch(
+        f"/deals/{ctx['deal_id']}/agent-negotiation/terms",
+        json={"commission_pct": 0.05},
+        headers=_headers(ctx["invited_agent"]),
+    )
+
+    resp = await client.get(f"/deals/{ctx['deal_id']}", headers=_headers(ctx["invited_agent"]))
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["id"] == ctx["deal_id"]
+
+
+async def test_uninvited_agent_cannot_view_deal_detail(client: AsyncClient, db: AsyncSession):
+    """TRA-137: a non-participant gets 403, not a misleading 404."""
+    ctx = await _setup_invited_deal(client, db)
+    rival_agent = await _register_agent(client, "rival-view@negterms.com")
+
+    resp = await client.get(f"/deals/{ctx['deal_id']}", headers=_headers(rival_agent))
+    assert resp.status_code == 403

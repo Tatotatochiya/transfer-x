@@ -57,10 +57,12 @@ export default function BidLadder({ sale, isSeller }: BidLadderProps) {
     <div>
       {/* Stats row */}
       <div className="mb-4 flex flex-wrap items-center gap-4 text-sm">
-        <span className="text-slate-400">
-          <span className="font-semibold text-white">{sale.bid_count}</span>{" "}
-          bid{sale.bid_count !== 1 ? "s" : ""}
-        </span>
+        {sale.bid_count != null && (
+          <span className="text-slate-400">
+            <span className="font-semibold text-white">{sale.bid_count}</span>{" "}
+            bid{sale.bid_count !== 1 ? "s" : ""}
+          </span>
+        )}
 
         {sale.best_bid != null && (
           <span className="text-slate-400">

@@ -1,6 +1,6 @@
 ---
 title: "Authentication & Permissions"
-last_updated: 2026-07-03
+last_updated: 2026-07-04
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -42,7 +42,12 @@ Within a club account, a staff member has a role (e.g. manager vs. read-only) di
 
 ## Authorization pattern
 
-> **TODO:** Document the dependency-injection pattern used to gate routes (e.g. role-gated dependencies), and the general approach to checking whether a caller is a legitimate party to a given resource (club, deal, offer, etc.).
+Two layers, applied together:
+
+1. **Route-level gates**, via FastAPI dependency injection — `get_current_user` (any authenticated user), role-specific variants (`get_seller_user`, `get_buyer_user`), and per-resource helpers that resolve "is this caller a legitimate party to resource X" before the handler body runs (e.g. `room_service.is_deal_participant(db, deal, current_user)` for a deal — true for the buyer/seller club, the mandated agent — resolved via an existing `AgentNegotiation` row, not just an invitation — the transferring player, or staff). A caller who fails this gets `403`, never a `404` that would misleadingly imply the resource doesn't exist.
+2. **Response-level field-scoping**, for resources where different legitimate participants shouldn't see every field — e.g. `AgentNegotiation`'s club-side terms are hidden from the player and vice versa; `Deal`'s commission fields are hidden from the player. Built by passing the caller's role into the response-builder function (`_build_neg_response`, `_build_deal_response`) rather than a separate serializer per role.
+
+A resource with a real ownership concept (e.g. a `Player`) is validated the same way on writes that create or transfer that ownership — see `players_service.get_owning_club_id`.
 
 ## Related documents
 
