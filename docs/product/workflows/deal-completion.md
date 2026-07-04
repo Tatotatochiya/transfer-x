@@ -1,6 +1,6 @@
 ---
 title: "Workflow: Deal Completion"
-last_updated: 2026-07-04
+last_updated: 2026-07-05
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -30,9 +30,7 @@ Out of scope: earlier stages (see [`transfer-lifecycle.md`](./transfer-lifecycle
 
 ## Medical check
 
-A deal can carry one medical check record, written via `PUT /deals/{id}/medical-check` (staff only) with a status and free-text notes. Only a `FAILED` status blocks `PAPERWORK → CONFIRMED`; no medical check at all (the common case) does not block progression.
-
-**Known gap:** there is no UI anywhere — including the admin panel — to actually set a medical check's status. It's fully functional backend-only.
+**Verified 2026-07-05.** A deal can carry one medical check record, written via `PUT /deals/{id}/medical-check` (staff only) with a status and free-text notes. Only a `FAILED` status blocks `PAPERWORK → CONFIRMED`; no medical check at all (the common case) does not block progression. `DealDetailPage` shows a Medical Check panel to every deal participant (status, notes, last-updated); staff additionally get an inline control to set or update it, with a note when a `FAILED` status is currently blocking progression.
 
 ## Completion
 

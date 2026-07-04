@@ -10,6 +10,7 @@ import type {
   DealType,
   InterestLevel,
   InterestStage,
+  MedicalStatus,
   NegotiationStatus,
   NotificationType,
   OfferEventType,
@@ -505,6 +506,15 @@ export interface PersonalTerms {
   created_at: string;
 }
 
+export interface MedicalCheck {
+  id: string;
+  deal_id: string;
+  status: MedicalStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type NegotiationThread = "CLUB_SIDE" | "PLAYER_SIDE";
 
 export interface NegotiationMessage {
@@ -614,6 +624,8 @@ export interface Deal {
   commission_agent_id: string | null;
   // TRA-60
   personal_terms: PersonalTerms | null;
+  // TRA-61
+  medical_check: MedicalCheck | null;
   notes: string | null;
   completed_at: string | null;
   created_at: string;

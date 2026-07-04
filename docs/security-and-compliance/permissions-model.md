@@ -1,6 +1,6 @@
 ---
 title: "Permissions Model — Risk Posture"
-last_updated: 2026-07-04
+last_updated: 2026-07-05
 status: Active
 owner: "TODO — assign a Security Owner"
 ---
@@ -44,11 +44,11 @@ Out of scope: implementation mechanism (see [`../architecture/authentication-and
 - **Player identity claims aren't attested** — a player self-registers a claim to a `Player` record with no verification step (Linear TRA-143).
 - **Agent mandates don't require player confirmation** — a mandate can take effect without the player confirming it (Linear TRA-144).
 - **Deal access is per club-owner-account only**, not extended to other staff at the same club (Linear TRA-146).
-- **No UI exists to set a deal's medical check** — the backend endpoint (staff-only) is fully functional but nothing in the admin panel calls it, so a `FAILED` medical (the only thing that blocks `PAPERWORK → CONFIRMED`) can currently only be recorded via direct API access. Not yet ticketed.
 
-## Resolved this session (2026-07-04)
+## Resolved gaps
 
-- **`AuditEvent.actor_user_id` used to be effectively always null** — no write path populated it. Every audit-emitting action now threads the caller's user id through; the JSON `GET /deals/{id}/audit-log` endpoint also gained the actor-label resolution the CSV export already had.
+- **2026-07-05 — No UI existed to set a deal's medical check.** The backend endpoint (staff-only) was always fully functional, but nothing called it, so a `FAILED` medical (the only thing that blocks `PAPERWORK → CONFIRMED`) could previously only be recorded via direct API access. `DealDetailPage` now shows a Medical Check panel — read-only status/notes for every deal participant, with a staff-only edit control.
+- **2026-07-04 — `AuditEvent.actor_user_id` used to be effectively always null** — no write path populated it. Every audit-emitting action now threads the caller's user id through; the JSON `GET /deals/{id}/audit-log` endpoint also gained the actor-label resolution the CSV export already had.
 
 ## Related documents
 

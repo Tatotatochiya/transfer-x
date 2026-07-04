@@ -400,6 +400,118 @@ function SetPersonalTermsForm({ dealId }: { dealId: string }) {
   );
 }
 
+// ── Medical check (TRA-61) ──────────────────────────────────────────────────
+
+const MEDICAL_STATUS_STYLE: Record<string, string> = {
+  PASSED:  "text-emerald-400",
+  FAILED:  "text-red-400",
+  PENDING: "text-amber-400",
+};
+
+function MedicalCheckPanel({
+  dealId,
+  medicalCheck,
+  isStaff,
+}: {
+  dealId: string;
+  medicalCheck: Deal["medical_check"];
+  isStaff: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const { addToast } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [statusDraft, setStatusDraft] = useState<"PENDING" | "PASSED" | "FAILED">(
+    medicalCheck?.status ?? "PENDING"
+  );
+  const [notesDraft, setNotesDraft] = useState(medicalCheck?.notes ?? "");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      api.put(`/deals/${dealId}/medical-check`, {
+        status: statusDraft,
+        notes: notesDraft.trim() || null,
+      }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
+      setEditing(false);
+      addToast("Medical check saved.", "success");
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Failed to save medical check."), "error"),
+  });
+
+  if (!isStaff && !medicalCheck) return null;
+
+  return (
+    <Panel title="Medical Check">
+      {!editing ? (
+        <>
+          {medicalCheck ? (
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              <dt className="text-slate-500">Status</dt>
+              <dd className={`font-semibold ${MEDICAL_STATUS_STYLE[medicalCheck.status] ?? "text-slate-300"}`}>
+                {medicalCheck.status}
+              </dd>
+              {medicalCheck.notes && (
+                <><dt className="text-slate-500">Notes</dt><dd className="text-white">{medicalCheck.notes}</dd></>
+              )}
+              <dt className="text-slate-500">Last updated</dt>
+              <dd className="text-slate-400">{formatDate(medicalCheck.updated_at)}</dd>
+            </dl>
+          ) : (
+            <p className="text-sm text-slate-500 pb-1">Not yet requested — doesn't block progression.</p>
+          )}
+          {medicalCheck?.status === "FAILED" && (
+            <p className="mt-2 text-xs text-red-400/80">Blocks Paperwork → Confirmed until changed.</p>
+          )}
+          {isStaff && (
+            <button
+              onClick={() => {
+                setStatusDraft(medicalCheck?.status ?? "PENDING");
+                setNotesDraft(medicalCheck?.notes ?? "");
+                setEditing(true);
+              }}
+              className="mt-2 text-xs text-slate-500 hover:text-emerald-400 transition-colors"
+            >
+              {medicalCheck ? "Update →" : "Record medical check"}
+            </button>
+          )}
+        </>
+      ) : (
+        <div className="space-y-2">
+          <div>
+            <label className="mb-1 block text-xs text-slate-400">Status</label>
+            <select
+              value={statusDraft}
+              onChange={(e) => setStatusDraft(e.target.value as "PENDING" | "PASSED" | "FAILED")}
+              className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+            >
+              <option value="PENDING">Pending</option>
+              <option value="PASSED">Passed</option>
+              <option value="FAILED">Failed</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-slate-400">Notes</label>
+            <textarea
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
+              rows={3}
+              placeholder="Optional notes…"
+              className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="primary" size="sm" loading={mutation.isPending} onClick={() => mutation.mutate()}>
+              Save
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function DealDetailPage() {
@@ -411,6 +523,7 @@ export default function DealDetailPage() {
   const isAuthenticated = !!accessToken;
   const isAgent  = user?.user_type === "AGENT";
   const isPlayer = user?.user_type === "PLAYER";
+  const isStaff  = user?.is_superuser ?? false;
   const [showCollapsePanel, setShowCollapsePanel] = useState(false);
   const [collapseReason, setCollapseReason] = useState("");
 
@@ -1193,6 +1306,9 @@ export default function DealDetailPage() {
           ) : canSetPersonalTerms && id ? (
             <SetPersonalTermsForm dealId={id} />
           ) : null}
+
+          {/* Medical check (TRA-61) — staff sets it; every participant can see it */}
+          {id && <MedicalCheckPanel dealId={id} medicalCheck={deal.medical_check} isStaff={isStaff} />}
 
           <Panel title="Deal Notes">
             {deal.deal_notes.length === 0 ? (

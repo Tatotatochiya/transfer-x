@@ -1,6 +1,6 @@
 ---
 title: "Changelog"
-last_updated: 2026-07-04
+last_updated: 2026-07-05
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -52,6 +52,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - `player_respond_to_negotiation` endpoint and service function — superseded by the single personal-terms capture point above; a non-mandated player never had a parallel negotiation-stage terms flow to respond to in the first place. (`backend/app/deals/router.py`, `backend/app/deals/service.py`)
 
 ### Added
+- Medical Check panel on the deal detail page (TRA-61) — every deal participant sees the current status/notes; staff get an inline control to set or update it, with a note when a `FAILED` status is blocking `PAPERWORK → CONFIRMED`. The backend endpoint (`PUT /deals/{id}/medical-check`) was already fully functional; this closes the previously-documented gap that nothing in the product actually called it. (`frontend/src/pages/deals/DealDetailPage.tsx`, `frontend/src/types/{api,enums}.ts`)
 - Migration `0047_agent_negotiation_commission_only`.
 - Regression tests: `test_staff_without_club_profile_can_advance_paperwork`, `test_clause_addition_is_audited` (`backend/tests/test_deals.py`); `test_invitation_disappears_once_deal_collapses`, `test_commission_amount_auto_derives_from_percentage`, `test_negotiation_and_consent_actions_are_audited` (`backend/tests/test_agent_negotiation.py`); `test_actor_user_id_populated_by_real_write_path`, `test_json_audit_log_resolves_actor_labels` (`backend/tests/test_audit.py`); `FormattedNumberInput.test.tsx` and `ClubLink.test.tsx` (frontend — 14 tests total across both).
 - [ADR 0002: single capture point for personal terms](./product/decisions/0002-single-capture-point-for-personal-terms.md).

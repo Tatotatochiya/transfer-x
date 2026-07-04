@@ -44,6 +44,7 @@ export type DealStage =
 export type DealType = "PERMANENT" | "LOAN";
 export type ClauseType = "APPEARANCES" | "GOALS" | "PROMOTION" | "RESALE" | "OTHER";
 export type ClauseStatus = "PENDING" | "TRIGGERED" | "PAID";
+export type MedicalStatus = "PENDING" | "PASSED" | "FAILED";
 export type AgreementStatus = "PENDING" | "AGREED" | "DECLINED";
 export type NegotiationStatus = "IN_PROGRESS" | "TERMS_AGREED" | "COLLAPSED";
 export type CommissionPayer = "BUYER" | "SELLER" | "PLAYER";
