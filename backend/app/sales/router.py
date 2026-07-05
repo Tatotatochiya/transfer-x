@@ -1,6 +1,7 @@
 """M3 — Sales + Bidding endpoints."""
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -90,8 +91,10 @@ async def list_sales(
     status: SaleStatus | None = None,
     sale_type: SaleType | None = None,
     seller_club_id: uuid.UUID | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ):
@@ -101,6 +104,8 @@ async def list_sales(
         status=status,
         sale_type=sale_type,
         seller_club_id=seller_club_id,
+        date_from=date_from,
+        date_to=date_to,
         page=page,
         page_size=page_size,
     )

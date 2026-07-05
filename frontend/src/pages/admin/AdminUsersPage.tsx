@@ -4,6 +4,7 @@ import api from "../../lib/api";
 import type { AdminUser, Paginated } from "../../types/api";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
+import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import { formatDate, getApiError } from "../../lib/utils";
@@ -165,18 +166,29 @@ export default function AdminUsersPage() {
   const { user: me } = useAuthStore();
   const confirm = useConfirm();
   const [search, setSearch] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page,   setPage]   = useState(1);
   const [showCreate, setShowCreate] = useState(false);
 
   const { data, isLoading } = useQuery<Paginated<AdminUser>>({
-    queryKey: ["admin", "users", { search, page }],
+    queryKey: ["admin", "users", { search, ...dateRange, page }],
     queryFn: () =>
       api
         .get<Paginated<AdminUser>>("/admin/users", {
-          params: { page, page_size: 20, ...(search && { search }) },
+          params: {
+            page, page_size: 30,
+            ...(search && { search }),
+            ...(dateRange.dateFrom && { date_from: dateRange.dateFrom }),
+            ...(dateRange.dateTo && { date_to: dateRange.dateTo }),
+          },
         })
         .then((r) => r.data),
   });
+
+  function handleDateRangeChange(range: DateRange) {
+    setDateRange(range);
+    setPage(1);
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (userId: string) => api.delete(`/admin/users/${userId}`),
@@ -218,6 +230,10 @@ export default function AdminUsersPage() {
             {showCreate ? "Hide" : "Create user"}
           </Button>
         </div>
+      </div>
+
+      <div className="mb-6">
+        <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} accent="amber" />
       </div>
 
       {showCreate && (

@@ -1,6 +1,7 @@
 """M5 — Notification endpoints."""
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,13 +25,15 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 @router.get("", response_model=Paginated[NotificationResponse])
 async def list_notifications(
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
     page_size: int = 30,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     notifications, total = await service.list_notifications(
-        db, current_user.id, page=page, page_size=page_size
+        db, current_user.id, date_from=date_from, date_to=date_to, page=page, page_size=page_size
     )
     return Paginated(
         items=[NotificationResponse.model_validate(n) for n in notifications],

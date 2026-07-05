@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { AdminDeal, Paginated } from "../../types/api";
 import Badge from "../../components/ui/Badge";
+import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
@@ -204,19 +205,30 @@ export default function AdminDealsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page, setPage] = useState(1);
   const [view, setView] = useState<"table" | "pipeline">("table");
 
   const { data, isLoading } = useQuery<Paginated<AdminDeal>>({
-    queryKey: ["admin", "deals", { status, page }],
+    queryKey: ["admin", "deals", { status, ...dateRange, page }],
     queryFn: () =>
       api
         .get<Paginated<AdminDeal>>("/admin/deals", {
-          params: { page, page_size: 20, ...(status && { status }) },
+          params: {
+            page, page_size: 30,
+            ...(status && { status }),
+            ...(dateRange.dateFrom && { date_from: dateRange.dateFrom }),
+            ...(dateRange.dateTo && { date_to: dateRange.dateTo }),
+          },
         })
         .then((r) => r.data),
     enabled: view === "table",
   });
+
+  function handleDateRangeChange(range: DateRange) {
+    setDateRange(range);
+    setPage(1);
+  }
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["admin", "deals"] });
@@ -267,6 +279,12 @@ export default function AdminDealsPage() {
           )}
         </div>
       </div>
+
+      {view === "table" && (
+        <div className="mb-6">
+          <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} accent="amber" />
+        </div>
+      )}
 
       {/* Error banners */}
       {(advanceMutation.isError || completeMutation.isError || collapseMutation.isError) && (

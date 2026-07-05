@@ -6,6 +6,7 @@ import type { Deal, Paginated } from "../../types/api";
 import type { DealStatus } from "../../types/enums";
 import Badge from "../../components/ui/Badge";
 import ClubLink from "../../components/ui/ClubLink";
+import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
 import Pagination from "../../components/ui/Pagination";
@@ -24,17 +25,20 @@ const TABS: { label: string; value: DealStatus | "" }[] = [
 export default function DealListPage() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<DealStatus | "">("");
+  const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery<Paginated<Deal>>({
-    queryKey: ["deals", { status: statusFilter, page }],
+    queryKey: ["deals", { status: statusFilter, ...dateRange, page }],
     queryFn: () =>
       api
         .get<Paginated<Deal>>("/deals", {
           params: {
             page,
-            page_size: 20,
+            page_size: 30,
             ...(statusFilter && { deal_status: statusFilter }),
+            ...(dateRange.dateFrom && { date_from: dateRange.dateFrom }),
+            ...(dateRange.dateTo && { date_to: dateRange.dateTo }),
           },
         })
         .then((r) => r.data),
@@ -45,12 +49,17 @@ export default function DealListPage() {
     setPage(1);
   }
 
+  function handleDateRangeChange(range: DateRange) {
+    setDateRange(range);
+    setPage(1);
+  }
+
   return (
     <div>
       <PageHeader title="My Deals" subtitle="Transfer deals you're involved in" />
 
       {/* Tabs */}
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {TABS.map((tab) => (
           <button
             key={tab.value}
@@ -64,6 +73,10 @@ export default function DealListPage() {
             {tab.label}
           </button>
         ))}
+      </div>
+
+      <div className="mb-6">
+        <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
       </div>
 
       {isLoading && <ListSkeleton count={6} />}

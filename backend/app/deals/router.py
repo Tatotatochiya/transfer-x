@@ -1,6 +1,7 @@
 """M4 — Deal lifecycle endpoints."""
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -256,14 +257,17 @@ async def list_transfers(
 @router.get("/deals", response_model=Paginated[DealResponse])
 async def list_deals(
     deal_status: DealStatus | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     club = await _get_club_or_403(db, current_user)
     deals, total = await service.list_deals(
-        db, club_id=club.id, status=deal_status, page=page, page_size=page_size
+        db, club_id=club.id, status=deal_status, date_from=date_from, date_to=date_to,
+        page=page, page_size=page_size,
     )
     return Paginated(
         items=[await _build_deal_response(db, d) for d in deals],

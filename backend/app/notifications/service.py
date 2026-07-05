@@ -2,11 +2,12 @@
 
 import asyncio
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.filters import apply_date_range
 from app.notifications.models import Notification, NotificationPreference, NotificationType
 
 
@@ -77,10 +78,13 @@ async def get_unread_count(db: AsyncSession, user_id: uuid.UUID) -> int:
 async def list_notifications(
     db: AsyncSession,
     user_id: uuid.UUID,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
     page_size: int = 30,
 ) -> tuple[list[Notification], int]:
     q = select(Notification).where(Notification.recipient_user_id == user_id)
+    q = apply_date_range(q, Notification.created_at, date_from, date_to)
     total_result = await db.execute(select(func.count()).select_from(q.subquery()))
     total = total_result.scalar_one()
     rows = await db.execute(

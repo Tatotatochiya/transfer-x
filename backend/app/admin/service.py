@@ -1,12 +1,14 @@
 """M7 — Admin service layer."""
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+from app.common.filters import apply_date_range
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
@@ -16,18 +18,21 @@ async def list_users(
     db: AsyncSession,
     *,
     search: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
 ):
     from app.auth.models import User
 
     q = select(User)
     if search:
         q = q.where(User.email.ilike(f"%{search}%"))
+    q = apply_date_range(q, User.created_at, date_from, date_to)
 
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()
     rows = await db.execute(
-        q.order_by(User.email).offset((page - 1) * page_size).limit(page_size)
+        q.order_by(User.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     )
     return list(rows.scalars()), total
 
@@ -67,18 +72,21 @@ async def list_clubs(
     db: AsyncSession,
     *,
     search: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
 ):
     from app.clubs.models import Club
 
     q = select(Club).options(selectinload(Club.finance))
     if search:
         q = q.where(Club.name.ilike(f"%{search}%"))
+    q = apply_date_range(q, Club.created_at, date_from, date_to)
 
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()
     rows = await db.execute(
-        q.order_by(Club.name).offset((page - 1) * page_size).limit(page_size)
+        q.order_by(Club.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     )
     return list(rows.scalars()), total
 
@@ -295,8 +303,10 @@ async def admin_list_deals(
     db: AsyncSession,
     *,
     status: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
 ):
     from app.deals.models import Deal, DealStatus
     from sqlalchemy.orm import selectinload
@@ -308,6 +318,7 @@ async def admin_list_deals(
     )
     if status:
         q = q.where(Deal.status == DealStatus(status))
+    q = apply_date_range(q, Deal.created_at, date_from, date_to)
 
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()
     rows = await db.execute(
@@ -427,8 +438,10 @@ async def admin_list_players(
     search: str | None = None,
     position: str | None = None,
     status: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
 ):
     from app.players.models import Player
 
@@ -442,10 +455,11 @@ async def admin_list_players(
         q = q.where(Player.position == position)
     if status:
         q = q.where(Player.status == status)
+    q = apply_date_range(q, Player.created_at, date_from, date_to)
 
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()
     rows = await db.execute(
-        q.order_by(Player.name).offset((page - 1) * page_size).limit(page_size)
+        q.order_by(Player.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     )
     return list(rows.scalars()), total
 
@@ -457,8 +471,10 @@ async def admin_list_sales(
     db: AsyncSession,
     *,
     status: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
 ):
     from app.sales.models import Sale
 
@@ -468,6 +484,7 @@ async def admin_list_sales(
     )
     if status:
         q = q.where(Sale.status == status)
+    q = apply_date_range(q, Sale.created_at, date_from, date_to)
 
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()
     rows = await db.execute(
@@ -530,8 +547,10 @@ async def admin_list_offers(
     db: AsyncSession,
     *,
     status: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
 ):
     from app.offers.models import Offer, OfferMessage, OfferEvent, OfferStatus
     from sqlalchemy.orm import selectinload
@@ -545,6 +564,7 @@ async def admin_list_offers(
     )
     if status:
         q = q.where(Offer.status == OfferStatus(status))
+    q = apply_date_range(q, Offer.last_action_at, date_from, date_to)
 
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()
     rows = await db.execute(

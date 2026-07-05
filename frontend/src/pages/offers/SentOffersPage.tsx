@@ -7,6 +7,7 @@ import type { OfferStatus } from "../../types/enums";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import ClubLink from "../../components/ui/ClubLink";
+import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
 import Pagination from "../../components/ui/Pagination";
@@ -25,17 +26,20 @@ const TABS: { label: string; value: OfferStatus | "" }[] = [
 export default function SentOffersPage() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<OfferStatus | "">("");
+  const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery<Paginated<Offer>>({
-    queryKey: ["offers", "sent", { status: statusFilter, page }],
+    queryKey: ["offers", "sent", { status: statusFilter, ...dateRange, page }],
     queryFn: () =>
       api
         .get<Paginated<Offer>>("/offers/sent", {
           params: {
             page,
-            page_size: 20,
+            page_size: 30,
             ...(statusFilter && { offer_status: statusFilter }),
+            ...(dateRange.dateFrom && { date_from: dateRange.dateFrom }),
+            ...(dateRange.dateTo && { date_to: dateRange.dateTo }),
           },
         })
         .then((r) => r.data),
@@ -43,6 +47,11 @@ export default function SentOffersPage() {
 
   function handleTabChange(val: OfferStatus | "") {
     setStatusFilter(val);
+    setPage(1);
+  }
+
+  function handleDateRangeChange(range: DateRange) {
+    setDateRange(range);
     setPage(1);
   }
 
@@ -59,7 +68,7 @@ export default function SentOffersPage() {
       />
 
       {/* Tabs */}
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {TABS.map((tab) => (
           <button
             key={tab.value}
@@ -73,6 +82,10 @@ export default function SentOffersPage() {
             {tab.label}
           </button>
         ))}
+      </div>
+
+      <div className="mb-6">
+        <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
       </div>
 
       {isLoading && <ListSkeleton count={6} />}

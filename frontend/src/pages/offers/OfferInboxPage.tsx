@@ -6,6 +6,7 @@ import type { Offer, Paginated } from "../../types/api";
 import type { OfferStatus } from "../../types/enums";
 import Badge from "../../components/ui/Badge";
 import ClubLink from "../../components/ui/ClubLink";
+import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
 import Pagination from "../../components/ui/Pagination";
@@ -185,17 +186,20 @@ function PlayerGroupCard({ group }: { group: PlayerGroup }) {
 
 export default function OfferInboxPage() {
   const [statusFilter, setStatusFilter] = useState<OfferStatus | "">("");
+  const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery<Paginated<Offer>>({
-    queryKey: ["offers", "received", { status: statusFilter, page }],
+    queryKey: ["offers", "received", { status: statusFilter, ...dateRange, page }],
     queryFn: () =>
       api
         .get<Paginated<Offer>>("/offers/received", {
           params: {
             page,
-            page_size: 50,
+            page_size: 30,
             ...(statusFilter && { offer_status: statusFilter }),
+            ...(dateRange.dateFrom && { date_from: dateRange.dateFrom }),
+            ...(dateRange.dateTo && { date_to: dateRange.dateTo }),
           },
         })
         .then((r) => r.data),
@@ -203,6 +207,11 @@ export default function OfferInboxPage() {
 
   function handleTabChange(val: OfferStatus | "") {
     setStatusFilter(val);
+    setPage(1);
+  }
+
+  function handleDateRangeChange(range: DateRange) {
+    setDateRange(range);
     setPage(1);
   }
 
@@ -221,7 +230,7 @@ export default function OfferInboxPage() {
       />
 
       {/* Tabs */}
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {TABS.map((tab) => (
           <button
             key={tab.value}
@@ -235,6 +244,10 @@ export default function OfferInboxPage() {
             {tab.label}
           </button>
         ))}
+      </div>
+
+      <div className="mb-6">
+        <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
       </div>
 
       {isLoading && <ListSkeleton count={4} />}

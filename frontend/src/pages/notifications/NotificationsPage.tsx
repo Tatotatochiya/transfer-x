@@ -5,6 +5,7 @@ import type { Notification, Paginated, UnreadCount } from "../../types/api";
 import type { NotificationType } from "../../types/enums";
 import { useState } from "react";
 import Button from "../../components/ui/Button";
+import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
 import Pagination from "../../components/ui/Pagination";
@@ -73,10 +74,12 @@ const TYPE_COLOURS: Record<NotificationType, string> = {
 
 // ── Row component ─────────────────────────────────────────────────────────────
 
-function NotificationRow({ notification, page }: { notification: Notification; page: number }) {
+function NotificationRow({
+  notification, dateRange, page,
+}: { notification: Notification; dateRange: DateRange; page: number }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const listKey = ["notifications", { page }] as const;
+  const listKey = ["notifications", { ...dateRange, page }] as const;
 
   const markReadMutation = useMutation({
     mutationFn: () =>
@@ -157,17 +160,28 @@ function NotificationRow({ notification, page }: { notification: Notification; p
 
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
+  const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery<Paginated<Notification>>({
-    queryKey: ["notifications", { page }],
+    queryKey: ["notifications", { ...dateRange, page }],
     queryFn: () =>
       api
         .get<Paginated<Notification>>("/notifications", {
-          params: { page, page_size: 30 },
+          params: {
+            page,
+            page_size: 30,
+            ...(dateRange.dateFrom && { date_from: dateRange.dateFrom }),
+            ...(dateRange.dateTo && { date_to: dateRange.dateTo }),
+          },
         })
         .then((r) => r.data),
   });
+
+  function handleDateRangeChange(range: DateRange) {
+    setDateRange(range);
+    setPage(1);
+  }
 
   const { data: unreadCount } = useQuery<UnreadCount>({
     queryKey: ["notifications", "unread-count"],
@@ -214,6 +228,10 @@ export default function NotificationsPage() {
         }
       />
 
+      <div className="mb-6">
+        <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
+      </div>
+
       {isLoading && (
         <div className="flex items-center justify-center py-20">
           <Spinner size="lg" />
@@ -228,7 +246,7 @@ export default function NotificationsPage() {
         <>
           <div className="rounded-xl ring-1 ring-white/[0.08] overflow-hidden divide-y divide-white/[0.04]">
             {data.items.map((n) => (
-              <NotificationRow key={n.id} notification={n} page={page} />
+              <NotificationRow key={n.id} notification={n} dateRange={dateRange} page={page} />
             ))}
           </div>
 

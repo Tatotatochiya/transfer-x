@@ -1,7 +1,7 @@
 """M4 — Deal lifecycle service layer."""
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
 
 from sqlalchemy import select, update, func, or_
@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app import clubs as clubs_module
 from app.audit import service as audit_service
+from app.common.filters import apply_date_range
 from app.deals.models import (
     ClauseStatus,
     ClauseType,
@@ -123,8 +124,10 @@ async def list_deals(
     *,
     club_id: uuid.UUID,
     status: DealStatus | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
 ) -> tuple[list[Deal], int]:
     from sqlalchemy import func, or_
 
@@ -133,6 +136,7 @@ async def list_deals(
     )
     if status:
         q = q.where(Deal.status == status)
+    q = apply_date_range(q, Deal.created_at, date_from, date_to)
 
     total_result = await db.execute(select(func.count()).select_from(q.subquery()))
     total = total_result.scalar_one()

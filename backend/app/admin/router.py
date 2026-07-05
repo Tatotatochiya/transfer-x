@@ -1,6 +1,7 @@
 """M7 — Admin endpoints (superuser only)."""
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,12 +50,16 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.get("/users", response_model=PaginatedUsers)
 async def list_users(
     search: str | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedUsers:
-    users, total = await admin_service.list_users(db, search=search, page=page, page_size=page_size)
+    users, total = await admin_service.list_users(
+        db, search=search, date_from=date_from, date_to=date_to, page=page, page_size=page_size
+    )
     return PaginatedUsers(
         items=[AdminUserResponse.model_validate(u) for u in users],
         total=total,
@@ -180,12 +185,16 @@ async def create_club(
 @router.get("/clubs", response_model=PaginatedClubs)
 async def list_clubs(
     search: str | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedClubs:
-    clubs, total = await admin_service.list_clubs(db, search=search, page=page, page_size=page_size)
+    clubs, total = await admin_service.list_clubs(
+        db, search=search, date_from=date_from, date_to=date_to, page=page, page_size=page_size
+    )
     return PaginatedClubs(
         items=[AdminClubResponse.model_validate(c) for c in clubs],
         total=total,
@@ -273,13 +282,16 @@ async def list_all_players(
     search: str | None = Query(None),
     position: str | None = Query(None),
     status: str | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     players, total = await admin_service.admin_list_players(
-        db, search=search, position=position, status=status, page=page, page_size=page_size
+        db, search=search, position=position, status=status,
+        date_from=date_from, date_to=date_to, page=page, page_size=page_size,
     )
     return {
         "items": [PlayerResponse.model_validate(p) for p in players],
@@ -339,13 +351,15 @@ async def update_player(
 @router.get("/sales")
 async def list_all_sales(
     status: str | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     sales, total = await admin_service.admin_list_sales(
-        db, status=status, page=page, page_size=page_size
+        db, status=status, date_from=date_from, date_to=date_to, page=page, page_size=page_size
     )
     return {
         "items": [SaleResponse.model_validate(s) for s in sales],
@@ -383,13 +397,15 @@ async def cancel_sale(
 @router.get("/deals")
 async def list_all_deals(
     status: str | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     deals, total = await admin_service.admin_list_deals(
-        db, status=status, page=page, page_size=page_size
+        db, status=status, date_from=date_from, date_to=date_to, page=page, page_size=page_size
     )
     return {
         "items": [AdminDealResponse.model_validate(d) for d in deals],
@@ -454,13 +470,15 @@ async def import_world_team_squad(
 @router.get("/offers")
 async def list_all_offers(
     status: str | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(30, ge=1, le=100),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     offers, total = await admin_service.admin_list_offers(
-        db, status=status, page=page, page_size=page_size
+        db, status=status, date_from=date_from, date_to=date_to, page=page, page_size=page_size
     )
     return {
         "items": [OfferResponse.model_validate(o) for o in offers],

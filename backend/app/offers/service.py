@@ -1,7 +1,7 @@
 """M4 — Offer negotiation service layer."""
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app import clubs as clubs_module
 from app.audit import service as audit_service
+from app.common.filters import apply_date_range
 from app.deals.models import Deal, DealStage, DealStatus
 from app.offers.models import Offer, OfferEvent, OfferEventType, OfferMessage, OfferStatus
 
@@ -63,8 +64,10 @@ async def list_offers(
     club_id: uuid.UUID,
     direction: str = "all",  # "sent" | "received" | "all"
     status: OfferStatus | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
 ) -> tuple[list[Offer], int]:
     from sqlalchemy import func, or_
 
@@ -77,6 +80,7 @@ async def list_offers(
         q = q.where(or_(Offer.from_club_id == club_id, Offer.to_club_id == club_id))
     if status:
         q = q.where(Offer.status == status)
+    q = apply_date_range(q, Offer.last_action_at, date_from, date_to)
 
     total_result = await db.execute(select(func.count()).select_from(q.subquery()))
     total = total_result.scalar_one()

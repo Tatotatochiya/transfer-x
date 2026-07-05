@@ -6,6 +6,7 @@ import type { Club, Paginated, Sale } from "../../types/api";
 import type { SaleStatus } from "../../types/enums";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
+import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import PageHeader from "../../components/ui/PageHeader";
 import Pagination from "../../components/ui/Pagination";
 import EmptyState from "../../components/ui/EmptyState";
@@ -41,6 +42,7 @@ export default function MySalesPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [statusFilter, setStatusFilter] = useState<SaleStatus | "">("");
+  const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page, setPage] = useState(1);
 
   // Need own club id to query sales
@@ -51,15 +53,17 @@ export default function MySalesPage() {
   });
 
   const { data, isLoading } = useQuery<Paginated<Sale>>({
-    queryKey: ["sales", "mine", { status: statusFilter, page }],
+    queryKey: ["sales", "mine", { status: statusFilter, ...dateRange, page }],
     queryFn: () =>
       api
         .get<Paginated<Sale>>("/sales", {
           params: {
             seller_club_id: myClub!.id,
             page,
-            page_size: 20,
+            page_size: 30,
             ...(statusFilter && { status: statusFilter }),
+            ...(dateRange.dateFrom && { date_from: dateRange.dateFrom }),
+            ...(dateRange.dateTo && { date_to: dateRange.dateTo }),
           },
         })
         .then((r) => r.data),
@@ -79,6 +83,11 @@ export default function MySalesPage() {
     setPage(1);
   }
 
+  function handleDateRangeChange(range: DateRange) {
+    setDateRange(range);
+    setPage(1);
+  }
+
   return (
     <div>
       <PageHeader
@@ -92,7 +101,7 @@ export default function MySalesPage() {
       />
 
       {/* Status tabs */}
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {STATUS_TABS.map((tab) => (
           <button
             key={tab.value}
@@ -106,6 +115,10 @@ export default function MySalesPage() {
             {tab.label}
           </button>
         ))}
+      </div>
+
+      <div className="mb-6">
+        <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
       </div>
 
       {isLoading && <ListSkeleton count={5} />}

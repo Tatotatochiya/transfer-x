@@ -1,6 +1,7 @@
 """M4 — Offer endpoints."""
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -128,14 +129,17 @@ async def get_offer_competition(
 @router.get("/offers/received", response_model=Paginated[OfferResponse])
 async def list_received_offers(
     offer_status: OfferStatus | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     club = await _get_club_or_403(db, current_user)
     offers, total = await service.list_offers(
-        db, club_id=club.id, direction="received", status=offer_status, page=page, page_size=page_size
+        db, club_id=club.id, direction="received", status=offer_status,
+        date_from=date_from, date_to=date_to, page=page, page_size=page_size,
     )
     return Paginated(
         items=[OfferResponse.model_validate(o) for o in offers],
@@ -146,14 +150,17 @@ async def list_received_offers(
 @router.get("/offers/sent", response_model=Paginated[OfferResponse])
 async def list_sent_offers(
     offer_status: OfferStatus | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     club = await _get_club_or_403(db, current_user)
     offers, total = await service.list_offers(
-        db, club_id=club.id, direction="sent", status=offer_status, page=page, page_size=page_size
+        db, club_id=club.id, direction="sent", status=offer_status,
+        date_from=date_from, date_to=date_to, page=page, page_size=page_size,
     )
     return Paginated(
         items=[OfferResponse.model_validate(o) for o in offers],

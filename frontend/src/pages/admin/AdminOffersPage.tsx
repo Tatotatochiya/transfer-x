@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Offer, Paginated } from "../../types/api";
 import Badge from "../../components/ui/Badge";
+import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
@@ -26,17 +27,28 @@ export default function AdminOffersPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page,   setPage]   = useState(1);
 
   const { data, isLoading } = useQuery<Paginated<Offer>>({
-    queryKey: ["admin", "offers", { status, page }],
+    queryKey: ["admin", "offers", { status, ...dateRange, page }],
     queryFn: () =>
       api
         .get<Paginated<Offer>>("/admin/offers", {
-          params: { page, page_size: 20, ...(status && { status }) },
+          params: {
+            page, page_size: 30,
+            ...(status && { status }),
+            ...(dateRange.dateFrom && { date_from: dateRange.dateFrom }),
+            ...(dateRange.dateTo && { date_to: dateRange.dateTo }),
+          },
         })
         .then((r) => r.data),
   });
+
+  function handleDateRangeChange(range: DateRange) {
+    setDateRange(range);
+    setPage(1);
+  }
 
   const withdrawMutation = useMutation({
     mutationFn: (offerId: string) =>
@@ -59,6 +71,10 @@ export default function AdminOffersPage() {
           <option value="">All statuses</option>
           {OFFER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
+      </div>
+
+      <div className="mb-4">
+        <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} accent="amber" />
       </div>
 
       {withdrawMutation.isError && (

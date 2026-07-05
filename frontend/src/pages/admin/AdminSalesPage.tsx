@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Paginated, Sale } from "../../types/api";
 import Badge from "../../components/ui/Badge";
+import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
@@ -21,17 +22,28 @@ export default function AdminSalesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page, setPage]     = useState(1);
 
   const { data, isLoading } = useQuery<Paginated<Sale>>({
-    queryKey: ["admin", "sales", { status, page }],
+    queryKey: ["admin", "sales", { status, ...dateRange, page }],
     queryFn: () =>
       api
         .get<Paginated<Sale>>("/admin/sales", {
-          params: { page, page_size: 20, ...(status && { status }) },
+          params: {
+            page, page_size: 30,
+            ...(status && { status }),
+            ...(dateRange.dateFrom && { date_from: dateRange.dateFrom }),
+            ...(dateRange.dateTo && { date_to: dateRange.dateTo }),
+          },
         })
         .then((r) => r.data),
   });
+
+  function handleDateRangeChange(range: DateRange) {
+    setDateRange(range);
+    setPage(1);
+  }
 
   const cancelMutation = useMutation({
     mutationFn: (saleId: string) =>
@@ -54,6 +66,10 @@ export default function AdminSalesPage() {
           <option value="">All statuses</option>
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
+      </div>
+
+      <div className="mb-4">
+        <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} accent="amber" />
       </div>
 
       {cancelMutation.isError && (

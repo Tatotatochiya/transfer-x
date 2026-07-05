@@ -1,7 +1,7 @@
 """M3 — Sales + Bidding service layer."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import select, update
@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app import clubs as clubs_module
 from app.clubs.models import ClubFinance
+from app.common.filters import apply_date_range
 from app.deals.models import Deal, DealStage, DealStatus
 from app.sales.models import Bid, BidStatus, Sale, SaleEvent, SaleEventType, SaleStatus, SaleType
 
@@ -72,8 +73,10 @@ async def list_sales(
     status: SaleStatus | None = None,
     sale_type: SaleType | None = None,
     seller_club_id: uuid.UUID | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 30,
 ) -> tuple[list[Sale], int]:
     from sqlalchemy import func
 
@@ -88,6 +91,7 @@ async def list_sales(
         q = q.where(Sale.sale_type == sale_type)
     if seller_club_id:
         q = q.where(Sale.seller_club_id == seller_club_id)
+    q = apply_date_range(q, Sale.created_at, date_from, date_to)
 
     total_result = await db.execute(select(func.count()).select_from(q.subquery()))
     total = total_result.scalar_one()
