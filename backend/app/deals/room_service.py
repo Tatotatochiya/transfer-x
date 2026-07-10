@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User, UserType
 from app.deals.models import Deal
-from app.deals.room_models import DealAttachment, DealComment, DealTermsVersion
+from app.deals.room_models import CommentAudience, DealAttachment, DealComment, DealTermsVersion
 
 _TERMS_FIELDS = [
     "agreed_fee", "agreed_wage_weekly", "deal_type",
@@ -88,6 +88,52 @@ async def is_deal_participant(db: AsyncSession, deal: Deal, current_user: User) 
         pp = result.scalar_one_or_none()
         return pp is not None and pp.player_id == deal.player_id
 
+    return False
+
+
+async def get_viewer_club_id(db: AsyncSession, deal: Deal, current_user: User) -> uuid.UUID | None:
+    """Item 8: which side (buyer/seller) the viewer's club is on, if any.
+
+    Agents and players never resolve to a club here — they have no private
+    channel of their own, only SHARED.
+    """
+    if current_user.user_type != UserType.CLUB:
+        return None
+    from app.clubs import service as clubs_service
+    club = await clubs_service.get_club_for_user(db, current_user.id)
+    if club is None:
+        return None
+    if club.id == deal.buyer_club_id:
+        return deal.buyer_club_id
+    if deal.seller_club_id is not None and club.id == deal.seller_club_id:
+        return deal.seller_club_id
+    return None
+
+
+def visible_audiences(
+    deal: Deal, viewer_club_id: uuid.UUID | None, is_superuser: bool
+) -> list[CommentAudience]:
+    """Item 8: which private channels (if any) this viewer can see, plus SHARED."""
+    if is_superuser:
+        return [CommentAudience.SHARED, CommentAudience.BUYER_ONLY, CommentAudience.SELLER_ONLY]
+    visible = [CommentAudience.SHARED]
+    if viewer_club_id is not None and viewer_club_id == deal.buyer_club_id:
+        visible.append(CommentAudience.BUYER_ONLY)
+    if viewer_club_id is not None and deal.seller_club_id is not None and viewer_club_id == deal.seller_club_id:
+        visible.append(CommentAudience.SELLER_ONLY)
+    return visible
+
+
+def can_post_to_audience(
+    deal: Deal, viewer_club_id: uuid.UUID | None, audience: CommentAudience, is_superuser: bool
+) -> bool:
+    """Item 8: can't post into a private channel that isn't your own club's."""
+    if is_superuser or audience == CommentAudience.SHARED:
+        return True
+    if audience == CommentAudience.BUYER_ONLY:
+        return viewer_club_id == deal.buyer_club_id
+    if audience == CommentAudience.SELLER_ONLY:
+        return viewer_club_id is not None and viewer_club_id == deal.seller_club_id
     return False
 
 
@@ -217,6 +263,7 @@ async def create_comment(
     body: str,
     parent_id: uuid.UUID | None,
     mentioned_user_ids: list[uuid.UUID],
+    audience: CommentAudience = CommentAudience.SHARED,
 ) -> DealComment:
     comment = DealComment(
         deal_id=deal_id,
@@ -224,16 +271,19 @@ async def create_comment(
         author_user_id=author_user_id,
         body=body,
         mentioned_user_ids=[str(u) for u in mentioned_user_ids],
+        audience=audience,
     )
     db.add(comment)
     await db.flush()
     return comment
 
 
-async def list_comments(db: AsyncSession, deal_id: uuid.UUID) -> list[DealComment]:
+async def list_comments(
+    db: AsyncSession, deal_id: uuid.UUID, *, visible: list[CommentAudience]
+) -> list[DealComment]:
     result = await db.execute(
         select(DealComment)
-        .where(DealComment.deal_id == deal_id)
+        .where(DealComment.deal_id == deal_id, DealComment.audience.in_(visible))
         .order_by(DealComment.created_at.asc())
     )
     return list(result.scalars())
@@ -286,6 +336,7 @@ async def create_attachment(
     content_type: str,
     size_bytes: int,
     storage_path: str,
+    audience: CommentAudience = CommentAudience.SHARED,
 ) -> DealAttachment:
     attachment = DealAttachment(
         deal_id=deal_id,
@@ -294,16 +345,19 @@ async def create_attachment(
         content_type=content_type,
         size_bytes=size_bytes,
         storage_path=storage_path,
+        audience=audience,
     )
     db.add(attachment)
     await db.flush()
     return attachment
 
 
-async def list_attachments(db: AsyncSession, deal_id: uuid.UUID) -> list[DealAttachment]:
+async def list_attachments(
+    db: AsyncSession, deal_id: uuid.UUID, *, visible: list[CommentAudience]
+) -> list[DealAttachment]:
     result = await db.execute(
         select(DealAttachment)
-        .where(DealAttachment.deal_id == deal_id)
+        .where(DealAttachment.deal_id == deal_id, DealAttachment.audience.in_(visible))
         .order_by(DealAttachment.created_at.asc())
     )
     return list(result.scalars())

@@ -28,6 +28,9 @@ from app.deals.models import (
 from app.players import service as players_service
 from app.players.models import Contract, Player
 
+# Item 5: window staff have to execute a fully-agreed deal before it's flagged overdue.
+_DEAL_SLA_DAYS = 14
+
 
 def _load_options():
     return [
@@ -364,11 +367,13 @@ async def advance_deal(
       once both sides agreed — the agent runs this stage end to end, so they
       trigger its exit too, same as they can act as the player's proxy above.
     - PERSONAL_TERMS → PAPERWORK: clubs or staff, once the player has consented
-    - PAPERWORK → CONFIRMED: staff only (clubs get 403 hint via ValueError)
+    - PAPERWORK → CONFIRMED: staff only (clubs get 403 hint via ValueError).
+      Item 5: this also flips status to PENDING_COMPLETION with an SLA
+      deadline — everything is agreed, only administrative execution is left.
     - CONFIRMED → COMPLETED: clubs or staff (triggers player transfer)
     """
-    if deal.status != DealStatus.IN_PROGRESS:
-        raise ValueError("Only IN_PROGRESS deals can be advanced")
+    if deal.status not in (DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION):
+        raise ValueError("Only IN_PROGRESS or PENDING_COMPLETION deals can be advanced")
 
     _require_party(deal, actor_club_id, is_staff, is_mandated_agent)
 
@@ -434,6 +439,10 @@ async def advance_deal(
         if mc is not None and mc.status == MedicalStatus.FAILED:
             raise ValueError("Cannot advance: medical check has failed")
         deal.stage = DealStage.CONFIRMED
+        # Item 5: everything is agreed — this is now purely administrative
+        # execution, with an SLA so it doesn't just sit here indefinitely.
+        deal.status = DealStatus.PENDING_COMPLETION
+        deal.sla_deadline = datetime.now(timezone.utc) + timedelta(days=_DEAL_SLA_DAYS)
 
     elif stage == DealStage.CONFIRMED:
         deal.stage = DealStage.COMPLETED
@@ -462,6 +471,49 @@ async def advance_deal(
     return deal
 
 
+async def check_deal_sla_breaches(db: AsyncSession) -> int:
+    """Flag PENDING_COMPLETION deals past their SLA deadline and notify both
+    clubs — the escalation the gap list found entirely missing (item 5)."""
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(Deal).where(
+            Deal.status == DealStatus.PENDING_COMPLETION,
+            Deal.sla_deadline < now,
+            Deal.sla_escalated_at.is_(None),
+        )
+    )
+    deals = list(result.scalars())
+
+    count = 0
+    for deal in deals:
+        deal.sla_escalated_at = now
+        await audit_service.emit(
+            db,
+            entity_type="DEAL", entity_id=deal.id,
+            action="DEAL_SLA_BREACHED",
+            description="Deal has been PENDING_COMPLETION past its SLA deadline",
+        )
+        for club_id in {deal.buyer_club_id, deal.seller_club_id}:
+            if club_id is None:
+                continue
+            await notif_service.notify_club(
+                db,
+                club_id,
+                type=NotificationType.DEAL_SLA_BREACHED,
+                message="A deal has been awaiting completion paperwork past its expected deadline",
+                link=f"/deals/{deal.id}",
+                related_player_id=deal.player_id,
+            )
+        count += 1
+
+    if count:
+        await db.flush()
+    return count
+
+
 async def collapse_deal(
     db: AsyncSession,
     deal: Deal,
@@ -470,7 +522,13 @@ async def collapse_deal(
     is_staff: bool = False,
     actor_user_id: uuid.UUID | None = None,
 ) -> Deal:
-    """Collapse a deal — releases buyer's committed budget."""
+    """Collapse a deal — releases buyer's committed budget.
+
+    Item 4: a collapsed deal used to leave the world exactly as it was at the
+    moment of acceptance — the originating sale stayed CLOSED forever and past
+    bidders were never told they could come back. Reopen the sale (if any) and
+    let every club that had bid on it know it's live again.
+    """
     if deal.status in (DealStatus.COMPLETED, DealStatus.COLLAPSED):
         raise ValueError(f"Deal is already {deal.status}")
 
@@ -494,8 +552,42 @@ async def collapse_deal(
         actor_user_id=actor_user_id,
         description="Deal collapsed — committed budget released",
     )
+
+    if deal.sale_id:
+        await _reopen_sale_after_collapse(db, deal)
+
     await db.flush()
     return deal
+
+
+async def _reopen_sale_after_collapse(db: AsyncSession, deal: Deal) -> None:
+    """Re-list the originating sale and tell past bidders it's live again."""
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+    from app.sales.models import Bid, Sale, SaleStatus
+
+    sale_result = await db.execute(
+        select(Sale).where(Sale.id == deal.sale_id).with_for_update()
+    )
+    sale = sale_result.scalar_one_or_none()
+    if sale is None or sale.status != SaleStatus.CLOSED:
+        return
+
+    sale.status = SaleStatus.OPEN
+
+    bids_result = await db.execute(select(Bid).where(Bid.sale_id == sale.id))
+    bidder_club_ids = {b.buyer_club_id for b in bids_result.scalars()}
+    bidder_club_ids.discard(deal.buyer_club_id)  # already notified via DEAL_COLLAPSED
+
+    for club_id in bidder_club_ids:
+        await notif_service.notify_club(
+            db,
+            club_id,
+            type=NotificationType.SALE_REOPENED,
+            message="A deal for a player you bid on has collapsed — the sale is open again",
+            link=f"/sales/{sale.id}",
+            related_player_id=sale.player_id,
+        )
 
 
 async def add_note(
@@ -602,8 +694,12 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
             buyer_fin.wage_reserved_weekly += new_wage
 
     # Seller: credit fee to budget; release the departing player's wage (clamped).
+    # Item 7: when an instalment schedule exists, the seller is credited
+    # per-instalment in mark_instalment_paid as each one actually gets paid —
+    # crediting the full fee here too would let the seller spend money before
+    # the buyer has actually paid it.
     if seller_fin:
-        if fee > 0:
+        if fee > 0 and not has_instalments:
             seller_fin.transfer_budget_total += fee
         if old_wage > 0:
             seller_fin.wage_reserved_weekly = max(
@@ -1063,9 +1159,6 @@ async def set_instalments(
         )
 
     # Remove existing schedule
-    await db.execute(
-        update(DealInstalment).where(DealInstalment.deal_id == deal.id).values()
-    )
     existing = await db.execute(
         select(DealInstalment).where(DealInstalment.deal_id == deal.id)
     )
@@ -1123,6 +1216,13 @@ async def mark_instalment_paid(
     buyer_fin = await clubs_module.service.get_finance_for_update(db, deal.buyer_club_id)
     if buyer_fin:
         buyer_fin.transfer_spent += inst.amount
+
+    # Item 7: seller is credited as each instalment actually lands, not the
+    # full fee up front at deal completion.
+    if deal.seller_club_id:
+        seller_fin = await clubs_module.service.get_finance_for_update(db, deal.seller_club_id)
+        if seller_fin:
+            seller_fin.transfer_budget_total += inst.amount
 
     await db.flush()
     await audit_service.emit(

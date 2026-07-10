@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,7 @@ from app.auth.models import User
 from app.database import get_db
 from app.deals import service as deals_service
 from app.deals import room_service as service
+from app.deals.room_models import CommentAudience
 from app.deals.room_schemas import (
     DealAttachmentResponse,
     DealCommentCreateRequest,
@@ -95,7 +96,9 @@ async def list_comments(
     deal = await _get_deal_or_404(db, deal_id)
     await _require_participant(db, deal, current_user)
 
-    comments = await service.list_comments(db, deal_id)
+    viewer_club_id = await service.get_viewer_club_id(db, deal, current_user)
+    visible = service.visible_audiences(deal, viewer_club_id, current_user.is_superuser)
+    comments = await service.list_comments(db, deal_id, visible=visible)
     responses = []
     for c in comments:
         resp = DealCommentResponse.model_validate(c)
@@ -120,6 +123,14 @@ async def post_comment(
     if not body.body.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Comment cannot be empty")
 
+    # Item 8: a club can only post into its own private channel, never the other side's.
+    viewer_club_id = await service.get_viewer_club_id(db, deal, current_user)
+    if not service.can_post_to_audience(deal, viewer_club_id, body.audience, current_user.is_superuser):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only post to your own club's private channel",
+        )
+
     parent = None
     if body.parent_id is not None:
         parent = await service.get_comment(db, body.parent_id)
@@ -132,6 +143,7 @@ async def post_comment(
         body=body.body.strip(),
         parent_id=body.parent_id,
         mentioned_user_ids=body.mentioned_user_ids,
+        audience=body.audience,
     )
 
     # Notify mentioned users + the parent comment's author (if replying), excluding the author themself.
@@ -170,7 +182,9 @@ async def list_attachments(
     deal = await _get_deal_or_404(db, deal_id)
     await _require_participant(db, deal, current_user)
 
-    attachments = await service.list_attachments(db, deal_id)
+    viewer_club_id = await service.get_viewer_club_id(db, deal, current_user)
+    visible = service.visible_audiences(deal, viewer_club_id, current_user.is_superuser)
+    attachments = await service.list_attachments(db, deal_id, visible=visible)
     responses = []
     for a in attachments:
         resp = DealAttachmentResponse.model_validate(a)
@@ -187,6 +201,7 @@ async def list_attachments(
 async def upload_attachment(
     deal_id: uuid.UUID,
     file: UploadFile,
+    audience: CommentAudience = Form(CommentAudience.SHARED),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -194,6 +209,14 @@ async def upload_attachment(
     await _require_participant(db, deal, current_user)
     # TRA-151: as with comments — club members need DEAL_WRITE to upload.
     await ensure_capability_if_club_member(db, current_user, Capability.DEAL_WRITE)
+
+    # Item 8: a club can only upload into its own private channel, never the other side's.
+    viewer_club_id = await service.get_viewer_club_id(db, deal, current_user)
+    if not service.can_post_to_audience(deal, viewer_club_id, audience, current_user.is_superuser):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only upload to your own club's private channel",
+        )
 
     content = await file.read()
     try:
@@ -209,6 +232,7 @@ async def upload_attachment(
         content_type=file.content_type or "application/octet-stream",
         size_bytes=len(content),
         storage_path=storage_path,
+        audience=audience,
     )
     await db.commit()
     await db.refresh(attachment)
@@ -228,6 +252,11 @@ async def download_attachment(
     await _require_participant(db, deal, current_user)
 
     attachment = await service.get_attachment(db, deal_id, attachment_id)
+    if attachment is not None:
+        viewer_club_id = await service.get_viewer_club_id(db, deal, current_user)
+        visible = service.visible_audiences(deal, viewer_club_id, current_user.is_superuser)
+        if attachment.audience not in visible:
+            attachment = None
     if attachment is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment not found")
 

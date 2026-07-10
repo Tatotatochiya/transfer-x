@@ -114,12 +114,14 @@ class DealStubResponse(BaseModel):
     sale_id: uuid.UUID | None
     bid_id: uuid.UUID | None
     buyer_club_id: uuid.UUID
-    seller_club_id: uuid.UUID
+    # Item 13: free-agent signings have no seller club at all.
+    seller_club_id: uuid.UUID | None
     player_id: uuid.UUID
     agreed_fee: Decimal
     agreed_wage_weekly: Decimal | None
     status: str
     stage: str
+    deal_type: str
     created_at: datetime
     updated_at: datetime
 

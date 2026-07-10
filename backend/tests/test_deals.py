@@ -23,6 +23,11 @@ async def seller(client: AsyncClient) -> dict:
     return await _register(client, "seller_deal@test.com", club_name="Deal Seller FC")
 
 
+@pytest_asyncio.fixture
+async def rival(client: AsyncClient) -> dict:
+    return await _register(client, "rival_deal@test.com", club_name="Deal Rival FC")
+
+
 async def _give_budget(db, amount: Decimal = Decimal("100000000")):
     from app.clubs.models import ClubFinance
     from sqlalchemy import select
@@ -318,6 +323,74 @@ async def test_full_stage_progression_via_staff(client: AsyncClient, buyer: dict
     assert r.json()["status"] == "COMPLETED"
 
 
+@pytest.mark.asyncio
+async def test_reaching_confirmed_sets_pending_completion_with_sla(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Item 5: PAPERWORK → CONFIRMED must flip status to PENDING_COMPLETION
+    and set an SLA deadline — previously nothing ever set this status."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    deal_id = deal["id"]
+
+    await _advance_through_personal_terms(client, deal_id, buyer, db)
+    await _make_superuser(db)
+
+    r = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(buyer))
+    assert r.json()["stage"] == "CONFIRMED"
+    assert r.json()["status"] == "PENDING_COMPLETION"
+    assert r.json()["sla_deadline"] is not None
+
+    # PENDING_COMPLETION deals must still be advanceable to COMPLETED.
+    r = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(buyer))
+    assert r.json()["status"] == "COMPLETED"
+
+
+@pytest.mark.asyncio
+async def test_deal_sla_breach_notifies_both_clubs_once(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Item 5: a deal stuck PENDING_COMPLETION past its deadline must notify
+    both clubs and get flagged so the job doesn't re-notify every run."""
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import select
+
+    from app.auth.models import User
+    from app.deals.models import Deal
+    from app.deals.service import check_deal_sla_breaches
+    from app.notifications.models import Notification, NotificationType
+
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    deal_id = deal["id"]
+    await _advance_through_personal_terms(client, deal_id, buyer, db)
+    await _make_superuser(db)
+    await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(buyer))  # → PENDING_COMPLETION
+
+    deal_row = await db.get(Deal, uuid.UUID(deal_id))
+    deal_row.sla_deadline = datetime.now(timezone.utc) - timedelta(days=1)
+    await db.commit()
+
+    count = await check_deal_sla_breaches(db)
+    await db.commit()
+    assert count == 1
+
+    # Idempotent: already-escalated deals aren't picked up again.
+    second_count = await check_deal_sla_breaches(db)
+    assert second_count == 0
+
+    await db.rollback()
+    buyer_user_id = (await db.execute(select(User).where(User.email == "buyer_deal@test.com"))).scalar_one().id
+    seller_user_id = (await db.execute(select(User).where(User.email == "seller_deal@test.com"))).scalar_one().id
+    for uid in (buyer_user_id, seller_user_id):
+        notif_result = await db.execute(
+            select(Notification).where(
+                Notification.recipient_user_id == uid,
+                Notification.type == NotificationType.DEAL_SLA_BREACHED,
+            )
+        )
+        assert notif_result.scalars().first() is not None
+
+
 async def _login_pure_staff(client: AsyncClient, db, email: str, password: str = "password123") -> dict:
     """Mirrors scripts/create_superuser.py: a bare User row with is_superuser
     set directly, no Club at all — the real shape of an admin account, unlike
@@ -420,6 +493,75 @@ async def test_player_can_consent_to_personal_terms_without_agent(
 
 
 @pytest.mark.asyncio
+async def test_personal_terms_response_shows_buyer_club(client: AsyncClient, buyer: dict, seller: dict, db):
+    """Item 9: the consent panel must be able to show which club the player is joining."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+    await client.post(f"/deals/{deal['id']}/advance", headers=buy_h)
+
+    resp = await client.put(
+        f"/deals/{deal['id']}/personal-terms",
+        json={"wage_weekly": 60000},
+        headers=buy_h,
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["buyer_club_id"] == await _get_club_id(client, buy_h)
+    assert resp.json()["buyer_club_name"] == "Deal Buyer FC"
+
+
+@pytest.mark.asyncio
+async def test_editing_agreed_personal_terms_notifies_reset(
+    client: AsyncClient, buyer: dict, seller: dict, db,
+):
+    """Item 9: editing terms after the player already agreed must say their
+    consent was reset, not send the generic first-proposal message."""
+    from sqlalchemy import select
+
+    from app.auth.models import User
+    from app.notifications.models import Notification, NotificationType
+
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+    await client.post(f"/deals/{deal['id']}/advance", headers=buy_h)
+
+    await client.put(
+        f"/deals/{deal['id']}/personal-terms",
+        json={"wage_weekly": 70000, "signing_bonus": 0, "length_years": 5},
+        headers=buy_h,
+    )
+    player_tokens = await _register_player_account(client, "player_reset@test.com", deal["player_id"])
+    player_h = _auth_headers(player_tokens)
+    r = await client.post(
+        f"/deals/{deal['id']}/personal-terms/player-consent",
+        json={"agreement": "AGREED"},
+        headers=player_h,
+    )
+    assert r.json()["player_consent"] == "AGREED"
+
+    # Buying club changes the wage — this must reset consent AND say so.
+    resp = await client.put(
+        f"/deals/{deal['id']}/personal-terms",
+        json={"wage_weekly": 90000, "signing_bonus": 0, "length_years": 5},
+        headers=buy_h,
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["player_consent"] == "PENDING"
+
+    await db.rollback()
+    user_result = await db.execute(select(User).where(User.email == "player_reset@test.com"))
+    player_user_id = user_result.scalar_one().id
+    notif_result = await db.execute(
+        select(Notification).where(
+            Notification.recipient_user_id == player_user_id,
+            Notification.type == NotificationType.DEAL_PERSONAL_TERMS_SENT,
+        ).order_by(Notification.created_at.desc())
+    )
+    latest = notif_result.scalars().first()
+    assert latest is not None
+    assert "reset" in latest.message.lower()
+
+
+@pytest.mark.asyncio
 async def test_player_decline_collapses_deal(client: AsyncClient, buyer: dict, seller: dict, db):
     """A player declining personal terms collapses the deal, same as the agent path."""
     deal = await _create_deal_via_offer(client, buyer, seller, db)
@@ -452,6 +594,64 @@ async def test_collapse_deal(client: AsyncClient, buyer: dict, seller: dict, db)
     resp = await client.post(f"/deals/{deal['id']}/collapse", headers=_auth_headers(buyer))
     assert resp.status_code == 200
     assert resp.json()["status"] == "COLLAPSED"
+
+
+@pytest.mark.asyncio
+async def test_collapse_reopens_originating_sale_and_notifies_rivals(
+    client: AsyncClient, buyer: dict, seller: dict, rival: dict, db,
+):
+    """Item 4: collapsing a deal must re-list the sale it came from and tell
+    the clubs who lost the auction that it's open again."""
+    from sqlalchemy import select
+
+    from app.auth.models import User
+    from app.notifications.models import Notification, NotificationType
+
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    rival_headers = _auth_headers(rival)
+    player = await _create_player_for_seller(client, sel_headers)
+
+    sale_resp = await client.post(
+        "/sales",
+        json={"player_id": player["id"], "sale_type": "AUCTION", "asking_price": 5_000_000},
+        headers=sel_headers,
+    )
+    sale_id = sale_resp.json()["id"]
+
+    rival_bid = await client.post(
+        f"/sales/{sale_id}/bids", json={"amount": 5_000_000}, headers=rival_headers
+    )
+    assert rival_bid.status_code == 201
+    winning_bid = await client.post(
+        f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=buy_headers
+    )
+    assert winning_bid.status_code == 201
+    bid_id = winning_bid.json()["id"]
+
+    accept_resp = await client.post(f"/sales/{sale_id}/bids/{bid_id}/accept", headers=sel_headers)
+    assert accept_resp.status_code == 200
+    deal_id = accept_resp.json()["id"]
+
+    sale_closed = await client.get(f"/sales/{sale_id}")
+    assert sale_closed.json()["status"] == "CLOSED"
+
+    collapse_resp = await client.post(f"/deals/{deal_id}/collapse", headers=buy_headers)
+    assert collapse_resp.status_code == 200
+
+    sale_after = await client.get(f"/sales/{sale_id}")
+    assert sale_after.json()["status"] == "OPEN"
+
+    await db.rollback()
+    rival_user_id = (await db.execute(select(User).where(User.email == "rival_deal@test.com"))).scalar_one().id
+    notif_result = await db.execute(
+        select(Notification).where(
+            Notification.recipient_user_id == rival_user_id,
+            Notification.type == NotificationType.SALE_REOPENED,
+        )
+    )
+    assert notif_result.scalars().first() is not None
 
 
 @pytest.mark.asyncio
@@ -620,6 +820,47 @@ async def test_completion_credits_seller_transfer_finance(
 
     fee = Decimal("5000000")
     assert Decimal(after["transfer_remaining"]) - Decimal(before["transfer_remaining"]) == fee
+
+
+@pytest.mark.asyncio
+async def test_completion_does_not_credit_seller_when_instalments_exist(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Item 7: with an instalment schedule, the seller must NOT get the full fee
+    up front at completion — only as each instalment is actually marked paid."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db, fee=5_000_000)
+    buy_h, sel_h = _auth_headers(buyer), _auth_headers(seller)
+
+    inst_resp = await client.post(
+        f"/deals/{deal['id']}/instalments",
+        json={"instalments": [
+            {"due_date": "2026-08-01", "amount": 2_000_000},
+            {"due_date": "2026-12-01", "amount": 3_000_000},
+        ]},
+        headers=buy_h,
+    )
+    assert inst_resp.status_code == 201, inst_resp.text
+    instalments = inst_resp.json()
+
+    seller_before = await _get_finance(client, sel_h)
+    await _make_superuser(db)
+    await _staff_complete(client, deal["id"], buy_h)
+    seller_after_completion = await _get_finance(client, sel_h)
+
+    # No instalment paid yet — seller must see zero credit at completion.
+    assert Decimal(seller_after_completion["transfer_remaining"]) == Decimal(seller_before["transfer_remaining"])
+
+    first_inst_id = instalments[0]["id"]
+    pay_resp = await client.patch(
+        f"/deals/{deal['id']}/instalments/{first_inst_id}/paid", headers=buy_h,
+    )
+    assert pay_resp.status_code == 200, pay_resp.text
+    seller_after_first = await _get_finance(client, sel_h)
+
+    assert (
+        Decimal(seller_after_first["transfer_remaining"]) - Decimal(seller_before["transfer_remaining"])
+        == Decimal("2000000")
+    )
 
 
 @pytest.mark.asyncio

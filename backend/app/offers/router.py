@@ -24,6 +24,7 @@ from app.offers.models import OfferStatus
 from app.offers.schemas import (
     OfferCounterRequest,
     OfferCreateRequest,
+    OfferImproveRequest,
     OfferMessageRequest,
     OfferMessageResponse,
     OfferResponse,
@@ -330,6 +331,43 @@ async def counter_offer(
             recipient_club_id=other_club_id,
             ntype=NotificationType.OFFER_COUNTERED,
             message="A counter offer has been submitted",
+        )
+        await db.commit()
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    offer = await service.get_offer_by_id(db, offer_id)
+    await _notify_offer_parties(db, offer_id)
+    return OfferResponse.model_validate(offer)
+
+
+@router.post("/offers/{offer_id}/improve", response_model=OfferResponse)
+async def improve_offer(
+    offer_id: uuid.UUID,
+    body: OfferImproveRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _write: User = Depends(_market_write),
+):
+    """Item 2: the buyer raises their own pending offer without waiting for a reply."""
+    club = await _get_club_or_403(db, current_user)
+    offer = await _get_offer_or_404(db, offer_id)
+
+    try:
+        await service.improve_own_offer(
+            db,
+            offer,
+            actor_club_id=club.id,
+            fee_amount=body.fee_amount,
+            wage_weekly=body.wage_weekly,
+            add_ons=body.add_ons,
+        )
+        await _db_notify_offer(
+            db, offer,
+            recipient_club_id=offer.to_club_id,
+            ntype=NotificationType.OFFER_COUNTERED,
+            message="The buyer has raised their offer",
         )
         await db.commit()
     except ValueError as exc:

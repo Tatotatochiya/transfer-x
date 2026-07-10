@@ -1376,7 +1376,11 @@ export default function DealDetailPage() {
 
       {/* Deal room: comments, version history, attachments (TRA-81/82) */}
       {(isParty || isAgent || isPlayer) && id && (
-        <DealRoomPanel dealId={id} canWrite={!isParty || canDealWrite} />
+        <DealRoomPanel
+          dealId={id}
+          canWrite={!isParty || canDealWrite}
+          viewerSide={isBuyer ? "buyer" : isSeller ? "seller" : null}
+        />
       )}
     </div>
   );

@@ -22,6 +22,24 @@ def _is_terminal(status: OfferStatus) -> bool:
     return status in _TERMINAL
 
 
+def _add_ons_total(add_ons: dict | None) -> Decimal:
+    """Sum the numeric entries of a freeform add_ons dict.
+
+    Item 3: add_ons has no fixed schema (clubs can put anything in it), so
+    only values that actually look like a monetary amount count toward
+    budget reservation — non-numeric entries (flags, notes) are ignored.
+    """
+    if not add_ons:
+        return Decimal("0")
+    total = Decimal("0")
+    for value in add_ons.values():
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, (int, float, Decimal)):
+            total += Decimal(str(value))
+    return total
+
+
 def _load_options():
     return [
         selectinload(Offer.player),
@@ -141,8 +159,8 @@ async def create_offer(
         last_actor_club_id=from_club_id,  # buyer sent it → seller's turn
     )
 
-    # Reserve budget immediately on send
-    reserve = fee_amount or Decimal("0")
+    # Reserve budget immediately on send — fee plus any monetary add-ons.
+    reserve = (fee_amount or Decimal("0")) + _add_ons_total(add_ons)
     if reserve > 0:
         await clubs_module.service.reserve_budget(
             db, club_id=from_club_id, transfer_amount=reserve
@@ -199,10 +217,14 @@ async def counter_offer(
     _require_party(offer, actor_club_id)
     _require_turn(offer, actor_club_id)
 
-    # If from_club counters (buyer raises their offer), adjust reservation
-    if actor_club_id == offer.from_club_id and fee_amount is not None:
+    # If from_club counters (buyer raises their offer), adjust reservation.
+    # Item 3: add_ons now counts toward the reservation too, so recompute
+    # whenever either the fee or the add_ons change, not just the fee.
+    if actor_club_id == offer.from_club_id and (fee_amount is not None or add_ons is not None):
         old_reserve = offer.reserved_transfer_amount
-        new_reserve = fee_amount
+        effective_fee = fee_amount if fee_amount is not None else (offer.fee_amount or Decimal("0"))
+        effective_add_ons = add_ons if add_ons is not None else offer.add_ons
+        new_reserve = effective_fee + _add_ons_total(effective_add_ons)
         delta = new_reserve - old_reserve
         if delta > 0:
             await clubs_module.service.reserve_budget(
@@ -235,6 +257,60 @@ async def counter_offer(
         event_type=OfferEventType.COUNTERED,
         actor_club_id=actor_club_id,
         payload={"fee_amount": str(fee_amount) if fee_amount else None},
+    ))
+    await db.flush()
+    return offer
+
+
+async def improve_own_offer(
+    db: AsyncSession,
+    offer: Offer,
+    *,
+    actor_club_id: uuid.UUID,
+    fee_amount: Decimal | None = None,
+    wage_weekly: Decimal | None = None,
+    add_ons: dict | None = None,
+) -> Offer:
+    """Let the buyer sweeten their own pending offer while waiting for a reply.
+
+    Item 2: turn-taking blocked a buyer from raising their own offer while it
+    was out for the seller's consideration (e.g. a deadline-day bump). This is
+    a narrow, one-directional exception: only the buyer, only upward, and it
+    does NOT hand the turn back — the seller still holds the decision either
+    way, so last_actor_club_id is left untouched.
+    """
+    _check_not_expired(offer)
+    if offer.status not in (OfferStatus.SENT, OfferStatus.COUNTERED):
+        raise ValueError(f"Cannot improve an offer with status {offer.status}")
+    if actor_club_id != offer.from_club_id:
+        raise ValueError("Only the buyer can improve their own offer")
+
+    new_fee = fee_amount if fee_amount is not None else (offer.fee_amount or Decimal("0"))
+    new_wage = wage_weekly if wage_weekly is not None else (offer.wage_weekly or Decimal("0"))
+    new_add_ons = dict(offer.add_ons or {})
+    if add_ons:
+        new_add_ons.update(add_ons)
+
+    old_reserve = offer.reserved_transfer_amount
+    new_reserve = new_fee + _add_ons_total(new_add_ons)
+    if new_reserve < old_reserve or new_wage < (offer.wage_weekly or Decimal("0")):
+        raise ValueError("Improving an offer can only raise its value, not lower it")
+
+    delta = new_reserve - old_reserve
+    if delta > 0:
+        await clubs_module.service.reserve_budget(
+            db, club_id=actor_club_id, transfer_amount=delta
+        )
+    offer.reserved_transfer_amount = new_reserve
+
+    offer.fee_amount = new_fee
+    offer.wage_weekly = new_wage
+    offer.add_ons = new_add_ons
+    db.add(OfferEvent(
+        offer_id=offer.id,
+        event_type=OfferEventType.IMPROVED,
+        actor_club_id=actor_club_id,
+        payload={"fee_amount": str(new_fee)},
     ))
     await db.flush()
     return offer
@@ -307,14 +383,67 @@ async def accept_offer(
         description="Deal created from accepted offer",
     )
 
+    # Item 1: the player now has an active deal in progress — every other
+    # pending offer for them is moot. Reject those, release their reservations,
+    # and tell the rival buyers, instead of leaving them locked up for days.
+    await reject_offers_for_player(db, offer.player_id, exclude_offer_id=offer.id)
+
     # TRA-125: if the player has an active mandate, pull the agent in immediately.
-    await _maybe_invite_agent(db, deal, offer)
+    await maybe_invite_agent_for_deal(db, deal)
 
     return deal
 
 
-async def _maybe_invite_agent(db: AsyncSession, deal: Deal, offer: "Offer") -> None:  # type: ignore[name-defined]
-    """Check for an active mandate and, if found, transition deal to AGENT_NEGOTIATION."""
+async def reject_offers_for_player(
+    db: AsyncSession, player_id: uuid.UUID, *, exclude_offer_id: uuid.UUID | None = None
+) -> None:
+    """Reject every open offer for this player (except one, if given), release
+    the rival buyers' reservations, and notify them.
+
+    Item 1: used whenever the player ends up with a deal via any pathway —
+    an accepted offer excludes itself; other deal-creation paths (e.g. item
+    14's release-clause trigger) pass no exclusion at all.
+    """
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
+    query = select(Offer).where(
+        Offer.player_id == player_id,
+        Offer.status.in_([OfferStatus.SENT, OfferStatus.COUNTERED]),
+    )
+    if exclude_offer_id is not None:
+        query = query.where(Offer.id != exclude_offer_id)
+    result = await db.execute(query)
+    siblings = list(result.scalars())
+
+    for sibling in siblings:
+        await _release_offer_budget(db, sibling)
+        sibling.status = OfferStatus.REJECTED
+        db.add(OfferEvent(
+            offer_id=sibling.id,
+            event_type=OfferEventType.REJECTED,
+            payload={"reason": "player_signed_elsewhere"},
+        ))
+        await notif_service.notify_club(
+            db,
+            sibling.from_club_id,
+            type=NotificationType.OFFER_REJECTED,
+            message="This player has signed elsewhere — your offer has been withdrawn",
+            link=f"/offers/{sibling.id}",
+            related_player_id=sibling.player_id,
+        )
+
+    if siblings:
+        await db.flush()
+
+
+async def maybe_invite_agent_for_deal(db: AsyncSession, deal: Deal) -> None:
+    """Check for an active mandate and, if found, transition deal to AGENT_NEGOTIATION.
+
+    Public (not offer-specific) so any deal-creation pathway — accepted offer,
+    item 14's release-clause trigger, item 13's free-agent signing — can invite
+    the player's agent the same way.
+    """
     from app.agents.models import AgentDealInvitation
     from app.auth.models import AgentProfile
     from app.mandates.models import Mandate, MandateStatus
@@ -325,7 +454,7 @@ async def _maybe_invite_agent(db: AsyncSession, deal: Deal, offer: "Offer") -> N
     mandate_result = await db.execute(
         select(Mandate)
         .where(
-            Mandate.player_id == offer.player_id,
+            Mandate.player_id == deal.player_id,
             Mandate.status == MandateStatus.ACTIVE,
         )
         .order_by(Mandate.exclusive.desc(), Mandate.created_at.desc())
@@ -349,11 +478,11 @@ async def _maybe_invite_agent(db: AsyncSession, deal: Deal, offer: "Offer") -> N
         return
 
     player_result = await db.execute(
-        select(Player).where(Player.id == offer.player_id)
+        select(Player).where(Player.id == deal.player_id)
     )
     player = player_result.scalar_one_or_none()
     player_name = player.name if player else "a player"
-    fee = offer.fee_amount or Decimal("0")
+    fee = deal.agreed_fee or Decimal("0")
 
     await notif_service.create_notification(
         db,
@@ -364,7 +493,7 @@ async def _maybe_invite_agent(db: AsyncSession, deal: Deal, offer: "Offer") -> N
             f"Agreed fee: £{fee:,.0f}"
         ),
         link=f"/deals/{deal.id}",
-        related_player_id=offer.player_id,
+        related_player_id=deal.player_id,
     )
 
 
@@ -399,9 +528,17 @@ async def withdraw_offer(
     *,
     actor_club_id: uuid.UUID,
 ) -> Offer:
-    """Withdraw an offer. Only the sender (from_club) can withdraw."""
-    if offer.from_club_id != actor_club_id:
-        raise ValueError("Only the sender can withdraw an offer")
+    """Withdraw an offer.
+
+    The original sender (from_club) can always withdraw. Item 2: whoever made
+    the most recent move — including a seller who just countered — can also
+    retract that outstanding proposal without waiting for the other party to
+    respond first. A party who is NOT the last actor still can't withdraw;
+    their move is reject_offer, which correctly requires the turn.
+    """
+    _require_party(offer, actor_club_id)
+    if actor_club_id != offer.from_club_id and actor_club_id != offer.last_actor_club_id:
+        raise ValueError("You can only retract your own most recent offer")
     if _is_terminal(offer.status):
         raise ValueError(f"Cannot withdraw an offer with status {offer.status}")
 

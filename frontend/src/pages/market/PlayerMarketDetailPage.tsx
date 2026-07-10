@@ -25,6 +25,7 @@ import InjuryHistoryPanel from "../../components/players/InjuryHistoryPanel";
 import { PlayerFitCard } from "../../components/ai/PlayerFitCard";
 import FairValueBadge from "../../components/players/FairValueBadge";
 import { Skeleton } from "../../components/ui/Skeleton";
+import { useConfirm } from "../../context/ConfirmContext";
 
 // ── Valuation card (TRA-73) ───────────────────────────────────────────────────
 
@@ -503,6 +504,7 @@ export default function PlayerMarketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const { accessToken, user } = useAuthStore();
   const { can } = useClubCapabilities();
   const isAuthenticated = !!accessToken;
@@ -564,6 +566,72 @@ export default function PlayerMarketDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["players", "market", id] });
     },
   });
+
+  // Item 14: buyer meets the release clause, bypassing seller consent entirely.
+  const releaseClauseMutation = useMutation({
+    mutationFn: () =>
+      api.post<{ id: string }>(`/players/${id}/trigger-release-clause`).then((r) => r.data),
+    onSuccess: (deal) => {
+      queryClient.invalidateQueries({ queryKey: ["players", "market", id] });
+      navigate(`/deals/${deal.id}`);
+    },
+  });
+
+  async function handleTriggerReleaseClause() {
+    const clause = player?.active_contract?.release_clause;
+    if (clause == null) return;
+    const ok = await confirm({
+      title: "Trigger release clause?",
+      message: `This commits ${formatCurrency(clause)} from your transfer budget immediately and creates a binding deal for this player — the selling club cannot block it.`,
+      confirmLabel: "Trigger clause",
+      variant: "danger",
+    });
+    if (ok) releaseClauseMutation.mutate();
+  }
+
+  // Item 13: direct free-agent signing and Bosman pre-contract deals.
+  const isFreeAgentPlayer =
+    !!player && player.status === "FREE_AGENT" && !player.current_club && !player.team_name;
+  const contractEndDate = player?.active_contract?.end_date ?? player?.contract_expiry ?? null;
+  const daysUntilContractEnd = contractEndDate
+    ? Math.ceil((new Date(contractEndDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+  const inPreContractWindow =
+    !isFreeAgentPlayer && daysUntilContractEnd != null && daysUntilContractEnd >= 0 && daysUntilContractEnd <= 180;
+
+  const signFreeAgentMutation = useMutation({
+    mutationFn: () => api.post<{ id: string }>(`/players/${id}/sign-free-agent`).then((r) => r.data),
+    onSuccess: (deal) => {
+      queryClient.invalidateQueries({ queryKey: ["players", "market", id] });
+      navigate(`/deals/${deal.id}`);
+    },
+  });
+
+  const preContractMutation = useMutation({
+    mutationFn: () => api.post<{ id: string }>(`/players/${id}/pre-contract`).then((r) => r.data),
+    onSuccess: (deal) => {
+      queryClient.invalidateQueries({ queryKey: ["players", "market", id] });
+      navigate(`/deals/${deal.id}`);
+    },
+  });
+
+  async function handleSignFreeAgent() {
+    const ok = await confirm({
+      title: "Sign free agent?",
+      message: `This creates a binding transfer deal for ${player?.name ?? "this player"} with no transfer fee.`,
+      confirmLabel: "Sign player",
+    });
+    if (ok) signFreeAgentMutation.mutate();
+  }
+
+  async function handlePreContract() {
+    const ok = await confirm({
+      title: "Offer a pre-contract?",
+      message: `${player?.name ?? "This player"} would join for free once their current contract expires. This creates a binding deal now.`,
+      confirmLabel: "Offer pre-contract",
+    });
+    if (ok) preContractMutation.mutate();
+  }
 
   // ── Valuation inline edit ──────────────────────────────────────────────────
   const [editingValuation, setEditingValuation] = useState(false);
@@ -749,7 +817,7 @@ export default function PlayerMarketDetailPage() {
                 {!isMyPlayer && (
                   <>
                     <AddToShortlistButton playerId={player.id} />
-                    {isAuthenticated && !isAgent && can("MARKET_WRITE") && (
+                    {isAuthenticated && !isAgent && can("MARKET_WRITE") && !isFreeAgentPlayer && (
                       <Button
                         variant="primary"
                         disabled={player.active_deal?.status === "IN_PROGRESS"}
@@ -757,6 +825,38 @@ export default function PlayerMarketDetailPage() {
                         onClick={() => navigate(`/offers/new?player_id=${player.id}`)}
                       >
                         Make Offer
+                      </Button>
+                    )}
+                    {isAuthenticated && !isAgent && can("MARKET_WRITE") && isFreeAgentPlayer && (
+                      <Button
+                        variant="primary"
+                        loading={signFreeAgentMutation.isPending}
+                        disabled={player.active_deal?.status === "IN_PROGRESS"}
+                        onClick={handleSignFreeAgent}
+                      >
+                        Sign Free Agent
+                      </Button>
+                    )}
+                    {isAuthenticated && !isAgent && can("MARKET_WRITE") && inPreContractWindow && (
+                      <Button
+                        variant="secondary"
+                        loading={preContractMutation.isPending}
+                        disabled={player.active_deal?.status === "IN_PROGRESS"}
+                        title="Contract expires within 6 months — a pre-contract (Bosman) signing is legal"
+                        onClick={handlePreContract}
+                      >
+                        Offer Pre-Contract
+                      </Button>
+                    )}
+                    {isAuthenticated && !isAgent && can("MARKET_WRITE") && player.active_contract?.release_clause != null && (
+                      <Button
+                        variant="danger"
+                        loading={releaseClauseMutation.isPending}
+                        disabled={player.active_deal?.status === "IN_PROGRESS"}
+                        title={player.active_deal?.status === "IN_PROGRESS" ? "A transfer deal is already in progress for this player" : undefined}
+                        onClick={handleTriggerReleaseClause}
+                      >
+                        Trigger release clause ({formatCurrency(player.active_contract.release_clause)})
                       </Button>
                     )}
                   </>

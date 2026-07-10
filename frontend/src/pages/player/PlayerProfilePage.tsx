@@ -244,7 +244,8 @@ export default function PlayerProfilePage() {
         <div className="mt-6 rounded-xl bg-amber-500/10 ring-1 ring-amber-500/25 px-5 py-5">
           <p className="text-sm font-semibold text-amber-300 mb-1">Personal terms require your consent</p>
           <p className="text-xs text-amber-400/80 mb-4">
-            Your agent has proposed the following contract terms. Review and respond.
+            Your agent has proposed the following contract terms to join{" "}
+            <span className="font-semibold text-amber-300">{personalTerms.buyer_club_name}</span>. Review and respond.
           </p>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mb-5">
             {personalTerms.wage_weekly != null && (
@@ -287,7 +288,7 @@ export default function PlayerProfilePage() {
             : "bg-red-500/10 text-red-300 ring-red-500/20"
         }`}>
           <p className="font-semibold">
-            Personal terms {personalTerms.player_consent === "AGREED" ? "accepted" : "declined"}
+            Personal terms {personalTerms.player_consent === "AGREED" ? "accepted" : "declined"} — {personalTerms.buyer_club_name}
           </p>
         </div>
       )}

@@ -100,6 +100,183 @@ async def get_owning_club_id(db: AsyncSession, player: Player) -> uuid.UUID | No
     return club.id if club else None
 
 
+async def get_active_release_clause(db: AsyncSession, player_id: uuid.UUID) -> Decimal | None:
+    """The buyout figure on the player's current contract, if any (item 14)."""
+    result = await db.execute(
+        select(Contract.release_clause).where(
+            Contract.player_id == player_id, Contract.is_active == True,  # noqa: E712
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def trigger_release_clause(db: AsyncSession, player: Player, *, buyer_club_id: uuid.UUID):
+    """Item 14: a buyer meeting the release clause bypasses seller consent
+    entirely — that's the clause's whole point, per real FIFA release-clause
+    rules. Reserves+commits the buyer's budget for the exact clause amount and
+    creates the Deal directly, skipping the offer/accept negotiation.
+
+    Scope note: this only tidies up rival OFFERS for the player (mirroring
+    item 1). A simultaneous open Sale/auction for the same player is left
+    untouched — that overlap is rare enough, and consequential enough
+    (compensating displaced bidders), that it deserves its own explicit
+    product decision rather than folding it in here.
+    """
+    from app.deals.models import Deal, DealStage, DealStatus
+    from app.offers.service import reject_offers_for_player
+
+    release_clause = await get_active_release_clause(db, player.id)
+    if release_clause is None or release_clause <= 0:
+        raise ValueError("This player has no active release clause")
+
+    owning_club_id = await get_owning_club_id(db, player)
+    if owning_club_id is None:
+        raise ValueError("This player has no owning club to buy from")
+    if owning_club_id == buyer_club_id:
+        raise ValueError("Cannot trigger a release clause against your own player")
+
+    from app import clubs as clubs_module
+    await clubs_module.service.reserve_budget(db, club_id=buyer_club_id, transfer_amount=release_clause)
+    await clubs_module.service.commit_budget(db, club_id=buyer_club_id, transfer_amount=release_clause)
+
+    deal = Deal(
+        buyer_club_id=buyer_club_id,
+        seller_club_id=owning_club_id,
+        player_id=player.id,
+        agreed_fee=release_clause,
+        status=DealStatus.IN_PROGRESS,
+        stage=DealStage.AGREEMENT,
+    )
+    db.add(deal)
+    await db.flush()
+
+    await reject_offers_for_player(db, player.id)
+
+    from app.audit import service as audit_service
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="RELEASE_CLAUSE_TRIGGERED",
+        description=f"Release clause of {release_clause:,.0f} triggered — deal {deal.id} created",
+    )
+
+    from app.clubs import service as clubs_service
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+    buyer_club = await clubs_service.get_club_by_id(db, buyer_club_id)
+    buyer_name = buyer_club.name if buyer_club else "A club"
+    await notif_service.notify_club(
+        db,
+        owning_club_id,
+        type=NotificationType.RELEASE_CLAUSE_TRIGGERED,
+        message=f"{buyer_name} has met {player.name}'s release clause — the transfer proceeds without your consent",
+        link=f"/deals/{deal.id}",
+        related_player_id=player.id,
+    )
+
+    return deal
+
+
+# Item 13: FIFA/Bosman — pre-contract agreements are only legal in the final
+# six months of a contract.
+_PRE_CONTRACT_WINDOW_DAYS = 180
+
+
+async def create_free_agent_deal(db: AsyncSession, player: Player, *, buyer_club_id: uuid.UUID):
+    """Item 13: sign a free agent directly — no seller, no fee, no offer/bid
+    negotiation pipeline. Downstream (personal terms, paperwork, completion)
+    is identical to any other deal."""
+    from app.deals.models import Deal, DealStage, DealStatus, DealType
+    from app.offers.service import maybe_invite_agent_for_deal, reject_offers_for_player
+
+    if player.status != PlayerStatus.FREE_AGENT:
+        raise ValueError("This player is not a free agent")
+
+    deal = Deal(
+        buyer_club_id=buyer_club_id,
+        seller_club_id=None,
+        player_id=player.id,
+        agreed_fee=Decimal("0"),
+        deal_type=DealType.FREE_TRANSFER,
+        status=DealStatus.IN_PROGRESS,
+        stage=DealStage.AGREEMENT,
+    )
+    db.add(deal)
+    await db.flush()
+
+    await reject_offers_for_player(db, player.id)
+    await maybe_invite_agent_for_deal(db, deal)
+
+    from app.audit import service as audit_service
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="FREE_AGENT_SIGNING_STARTED",
+        description=f"Free-agent signing started for {player.name} — deal {deal.id} created",
+    )
+    return deal
+
+
+async def create_pre_contract_deal(db: AsyncSession, player: Player, *, buyer_club_id: uuid.UUID):
+    """Item 13: a pre-contract (Bosman) agreement — sign now, join for free
+    once the current contract expires. Only legal in the contract's final six
+    months.
+
+    Scope note: the deal still runs through the normal AGREEMENT → ... →
+    COMPLETED pipeline; completion is not auto-deferred to the actual expiry
+    date (that needs its own scheduling mechanism — deliberately out of scope
+    here). Staff/clubs decide when to execute it, same as any other deal.
+    """
+    from app.deals.models import Deal, DealStage, DealStatus, DealType
+    from app.offers.service import maybe_invite_agent_for_deal, reject_offers_for_player
+
+    current_club_id = await get_owning_club_id(db, player)
+    if current_club_id is None:
+        raise ValueError("This player has no current club — use free-agent signing instead")
+    if current_club_id == buyer_club_id:
+        raise ValueError("Cannot pre-contract your own player")
+
+    result = await db.execute(
+        select(Contract.end_date).where(
+            Contract.player_id == player.id, Contract.is_active == True,  # noqa: E712
+        )
+    )
+    end_date = result.scalar_one_or_none()
+    if end_date is None:
+        raise ValueError("This player's contract has no end date on record")
+    if end_date < date.today():
+        raise ValueError("This player's contract has already expired — use free-agent signing instead")
+    if end_date - date.today() > timedelta(days=_PRE_CONTRACT_WINDOW_DAYS):
+        raise ValueError(
+            f"Pre-contract agreements are only permitted in the final "
+            f"{_PRE_CONTRACT_WINDOW_DAYS} days of a contract"
+        )
+
+    deal = Deal(
+        buyer_club_id=buyer_club_id,
+        seller_club_id=current_club_id,
+        player_id=player.id,
+        agreed_fee=Decimal("0"),
+        deal_type=DealType.PRE_CONTRACT,
+        status=DealStatus.IN_PROGRESS,
+        stage=DealStage.AGREEMENT,
+    )
+    db.add(deal)
+    await db.flush()
+
+    await reject_offers_for_player(db, player.id)
+    await maybe_invite_agent_for_deal(db, deal)
+
+    from app.audit import service as audit_service
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="PRE_CONTRACT_STARTED",
+        description=f"Pre-contract agreement started for {player.name} — deal {deal.id} created",
+    )
+    return deal
+
+
 async def is_player_verified(db: AsyncSession, player_id: uuid.UUID) -> bool:
     """TRA-89 — True if this player has a claimed, verified PlayerProfile."""
     from app.auth.models import PlayerProfile

@@ -64,6 +64,12 @@ async def _get_seller_club_id(client: AsyncClient, seller_headers: dict) -> str:
     return resp.json()["id"]
 
 
+async def _get_finance(client: AsyncClient, headers: dict) -> dict:
+    resp = await client.get("/clubs/me", headers=headers)
+    assert resp.status_code == 200
+    return resp.json()["finance"]
+
+
 # ── Create offer ──────────────────────────────────────────────────────────────
 
 
@@ -108,6 +114,56 @@ async def test_create_offer_success(client: AsyncClient, buyer: dict, seller: di
     assert float(data["fee_amount"]) == 5_000_000
     # Events should have CREATED + SENT
     assert len(data["events"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_add_ons_count_toward_reservation(client: AsyncClient, buyer: dict, seller: dict, db):
+    """Item 3: numeric add_ons must be reserved alongside fee_amount, not ignored."""
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    before = await _get_finance(client, buy_headers)
+    resp = await client.post(
+        "/offers",
+        json={
+            "player_id": player["id"],
+            "to_club_id": seller_club_id,
+            "fee_amount": 5_000_000,
+            "add_ons": {"appearance_bonus": 300_000, "champions_league_bonus": 200_000, "note": "review yearly"},
+        },
+        headers=buy_headers,
+    )
+    assert resp.status_code == 201, resp.text
+    after = await _get_finance(client, buy_headers)
+
+    # Only the two numeric entries (500,000 total) count — "note" is ignored.
+    assert Decimal(after["transfer_reserved"]) - Decimal(before["transfer_reserved"]) == Decimal("5500000")
+
+
+@pytest.mark.asyncio
+async def test_add_ons_can_push_offer_over_budget(client: AsyncClient, buyer: dict, seller: dict, db):
+    """Item 3: a fee that alone fits the budget must still be rejected once
+    add_ons push the true total over what's available."""
+    await _give_budget(db, amount=Decimal("5000000"))
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    resp = await client.post(
+        "/offers",
+        json={
+            "player_id": player["id"],
+            "to_club_id": seller_club_id,
+            "fee_amount": 5_000_000,
+            "add_ons": {"signing_bonus": 1_000_000},
+        },
+        headers=_auth_headers(buyer),
+    )
+    assert resp.status_code == 400
+    assert "budget" in resp.json()["detail"].lower()
 
 
 @pytest.mark.asyncio
@@ -205,6 +261,50 @@ async def test_accept_offer_creates_deal(client: AsyncClient, buyer: dict, selle
 
 
 @pytest.mark.asyncio
+async def test_accept_offer_rejects_sibling_offers(
+    client: AsyncClient, buyer: dict, seller: dict, third_club: dict, db
+):
+    """Item 1: accepting one offer must reject every other pending offer for
+    the same player, release the rival's budget, and notify them."""
+    from sqlalchemy import select
+
+    from app.auth.models import User
+    from app.notifications.models import Notification, NotificationType
+
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    rival_headers = _auth_headers(third_club)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    winning_offer = await _make_offer(client, buy_headers, player["id"], seller_club_id, fee=5_000_000)
+    rival_offer = await _make_offer(client, rival_headers, player["id"], seller_club_id, fee=4_500_000)
+
+    rival_finance_before = await _get_finance(client, rival_headers)
+
+    resp = await client.post(f"/offers/{winning_offer['id']}/accept", headers=sel_headers)
+    assert resp.status_code == 200
+
+    rival_after = await client.get(f"/offers/{rival_offer['id']}", headers=rival_headers)
+    assert rival_after.json()["status"] == "REJECTED"
+
+    rival_finance_after = await _get_finance(client, rival_headers)
+    assert Decimal(rival_finance_after["transfer_reserved"]) == Decimal("0")
+    assert rival_finance_before["transfer_reserved"] != rival_finance_after["transfer_reserved"]
+
+    await db.rollback()
+    rival_user_id = (await db.execute(select(User).where(User.email == "third_offer@test.com"))).scalar_one().id
+    notif_result = await db.execute(
+        select(Notification).where(
+            Notification.recipient_user_id == rival_user_id,
+            Notification.type == NotificationType.OFFER_REJECTED,
+        )
+    )
+    assert notif_result.scalars().first() is not None
+
+
+@pytest.mark.asyncio
 async def test_cannot_accept_already_accepted(client: AsyncClient, buyer: dict, seller: dict, db):
     await _give_budget(db)
     sel_headers = _auth_headers(seller)
@@ -284,6 +384,8 @@ async def test_withdraw_own_offer(client: AsyncClient, buyer: dict, seller: dict
 
 @pytest.mark.asyncio
 async def test_receiver_cannot_withdraw(client: AsyncClient, buyer: dict, seller: dict, db):
+    """The receiver hasn't made a move yet (isn't the sender or the last actor),
+    so they can't withdraw — their move at this point is reject_offer."""
     await _give_budget(db)
     sel_headers = _auth_headers(seller)
     player = await _create_player(client, sel_headers)
@@ -293,7 +395,142 @@ async def test_receiver_cannot_withdraw(client: AsyncClient, buyer: dict, seller
 
     resp = await client.post(f"/offers/{offer['id']}/withdraw", headers=sel_headers)
     assert resp.status_code == 400
-    assert "sender" in resp.json()["detail"].lower()
+    assert "retract" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_seller_can_withdraw_own_counter_without_waiting(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Item 2: a seller who just countered can walk away immediately — they
+    don't have to wait for the buyer to respond first."""
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_offer(client, buy_headers, player["id"], seller_club_id)
+    counter_resp = await client.post(
+        f"/offers/{offer['id']}/counter", json={"fee_amount": 8_000_000}, headers=sel_headers,
+    )
+    assert counter_resp.status_code == 200
+
+    # It's the buyer's turn now, but the seller (who just acted) can still retract.
+    resp = await client.post(f"/offers/{offer['id']}/withdraw", headers=sel_headers)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "WITHDRAWN"
+
+
+@pytest.mark.asyncio
+async def test_buyer_cannot_withdraw_sellers_outstanding_counter(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """The buyer can always withdraw their own offer (unchanged), but this
+    checks the seller's counter itself isn't retractable by the buyer."""
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_offer(client, buy_headers, player["id"], seller_club_id)
+    await client.post(f"/offers/{offer['id']}/counter", json={"fee_amount": 8_000_000}, headers=sel_headers)
+
+    # Buyer is from_club_id, so withdraw still succeeds (pre-existing behavior) —
+    # this documents that withdraw always empties the whole offer, not just undoes
+    # the seller's counter; the buyer's own-offer escape hatch is unconditional.
+    resp = await client.post(f"/offers/{offer['id']}/withdraw", headers=buy_headers)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "WITHDRAWN"
+
+
+# ── Improve own offer (item 2: self-raise turn exception) ────────────────────
+
+
+@pytest.mark.asyncio
+async def test_buyer_can_improve_own_offer_while_waiting(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Item 2: the buyer can raise their own pending offer even though it's
+    not their turn (they were the last actor — normal turn order would block
+    any further action from them until the seller responds)."""
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_offer(client, buy_headers, player["id"], seller_club_id, fee=5_000_000)
+    buyer_club_id = offer["from_club_id"]
+
+    # Prove the ordinary path is blocked first — this is exactly the gap.
+    blocked = await client.post(
+        f"/offers/{offer['id']}/counter", json={"fee_amount": 6_000_000}, headers=buy_headers,
+    )
+    assert blocked.status_code == 400
+    assert "turn" in blocked.json()["detail"].lower()
+
+    resp = await client.post(
+        f"/offers/{offer['id']}/improve", json={"fee_amount": 6_000_000}, headers=buy_headers,
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert float(data["fee_amount"]) == 6_000_000
+    # Status/turn untouched — still SENT, still awaiting the seller.
+    assert data["status"] == "SENT"
+    assert data["last_actor_club_id"] == buyer_club_id
+
+
+@pytest.mark.asyncio
+async def test_improve_cannot_lower_offer_value(client: AsyncClient, buyer: dict, seller: dict, db):
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_offer(client, buy_headers, player["id"], seller_club_id, fee=5_000_000)
+
+    resp = await client.post(
+        f"/offers/{offer['id']}/improve", json={"fee_amount": 4_000_000}, headers=buy_headers,
+    )
+    assert resp.status_code == 400
+    assert "lower" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_seller_cannot_improve_buyers_offer(client: AsyncClient, buyer: dict, seller: dict, db):
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_offer(client, buy_headers, player["id"], seller_club_id, fee=5_000_000)
+
+    resp = await client.post(
+        f"/offers/{offer['id']}/improve", json={"fee_amount": 6_000_000}, headers=sel_headers,
+    )
+    assert resp.status_code == 400
+    assert "buyer" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_improve_reserves_the_delta(client: AsyncClient, buyer: dict, seller: dict, db):
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_offer(client, buy_headers, player["id"], seller_club_id, fee=5_000_000)
+    before = await _get_finance(client, buy_headers)
+
+    await client.post(f"/offers/{offer['id']}/improve", json={"fee_amount": 6_500_000}, headers=buy_headers)
+    after = await _get_finance(client, buy_headers)
+
+    assert Decimal(after["transfer_reserved"]) - Decimal(before["transfer_reserved"]) == Decimal("1500000")
 
 
 # ── Messages ──────────────────────────────────────────────────────────────────

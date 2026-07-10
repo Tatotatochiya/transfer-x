@@ -9,6 +9,54 @@ from app.mandates.models import Mandate, MandateStatus
 from app.players.models import Contract, Player
 
 
+async def expire_mandates(db: AsyncSession) -> int:
+    """Batch-expire ACTIVE mandates whose end_date has passed.
+
+    Item 11: MandateStatus.EXPIRED existed but nothing ever assigned it, so a
+    lapsed mandate kept auto-entering the player's deals indefinitely.
+    """
+    from app.auth.models import AgentProfile
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
+    today = date.today()
+    result = await db.execute(
+        select(Mandate).where(
+            Mandate.status == MandateStatus.ACTIVE,
+            Mandate.end_date.is_not(None),
+            Mandate.end_date < today,
+        )
+    )
+    mandates = list(result.scalars())
+
+    count = 0
+    for mandate in mandates:
+        mandate.status = MandateStatus.EXPIRED
+        if mandate.exclusive:
+            await db.execute(
+                sa_update(Player)
+                .where(Player.id == mandate.player_id, Player.agent_id == mandate.agent_id)
+                .values(agent_id=None)
+            )
+        agent_result = await db.execute(
+            select(AgentProfile).where(AgentProfile.id == mandate.agent_id)
+        )
+        agent = agent_result.scalar_one_or_none()
+        if agent is not None:
+            await notif_service.create_notification(
+                db,
+                recipient_user_id=agent.user_id,
+                type=NotificationType.REPRESENTATION_EXPIRED,
+                message="A representation mandate has expired",
+                link=f"/agent/clients/{mandate.id}",
+            )
+        count += 1
+
+    if count:
+        await db.flush()
+    return count
+
+
 async def create_mandate(
     db: AsyncSession,
     agent_profile_id: uuid.UUID,

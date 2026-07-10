@@ -166,6 +166,9 @@ class PersonalTermsResponse(BaseModel):
     player_has_account: bool
     agreed_at: datetime | None = None
     created_at: datetime
+    # Item 9: the consent panel must show which club the player is being asked to join.
+    buyer_club_id: uuid.UUID
+    buyer_club_name: str
     model_config = {"from_attributes": True}
 
 
@@ -267,6 +270,9 @@ class DealResponse(BaseModel):
     is_auction_deal: bool = False
     buyer_club: ClubSummary | None = None
     seller_club: ClubSummary | None = None
+    # Item 5: completion SLA
+    sla_deadline: datetime | None = None
+    sla_escalated_at: datetime | None = None
     player: PlayerSummary | None = None
     deal_notes: list[DealNoteResponse] = []
     model_config = {"from_attributes": True}

@@ -113,6 +113,10 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
     if sale.status != SaleStatus.OPEN:
         raise ValueError("Only OPEN sales can be withdrawn")
 
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+    from app.offers.models import Offer, OfferEvent, OfferEventType, OfferStatus
+
     # Read active bids after acquiring the lock — no concurrent bids can be added now
     active_bids_result = await db.execute(
         select(Bid).where(Bid.sale_id == sale.id, Bid.status == BidStatus.ACTIVE)
@@ -126,6 +130,45 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
             club_id=bid.buyer_club_id,
             transfer_amount=bid.reserved_transfer_amount,
             wage_weekly=bid.reserved_wage_weekly,
+        )
+        # Item 1: bidders were never told the sale they bid on was pulled.
+        await notif_service.notify_club(
+            db,
+            bid.buyer_club_id,
+            type=NotificationType.OUTBID,
+            message="This sale has been withdrawn by the seller",
+            link=f"/sales/{sale.id}",
+            related_player_id=sale.player_id,
+        )
+
+    # Item 1: direct offers made against this listing (OPEN_TO_OFFERS sales)
+    # otherwise survive the withdrawal untouched and remain acceptable.
+    linked_offers_result = await db.execute(
+        select(Offer).where(
+            Offer.sale_id == sale.id,
+            Offer.status.in_([OfferStatus.SENT, OfferStatus.COUNTERED]),
+        )
+    )
+    for offer in linked_offers_result.scalars():
+        reserved = offer.reserved_transfer_amount
+        if reserved and reserved > 0:
+            await clubs_module.service.release_budget(
+                db, club_id=offer.from_club_id, transfer_amount=reserved
+            )
+            offer.reserved_transfer_amount = Decimal("0")
+        offer.status = OfferStatus.REJECTED
+        db.add(OfferEvent(
+            offer_id=offer.id,
+            event_type=OfferEventType.REJECTED,
+            payload={"reason": "sale_withdrawn"},
+        ))
+        await notif_service.notify_club(
+            db,
+            offer.from_club_id,
+            type=NotificationType.OFFER_REJECTED,
+            message="The sale you offered on has been withdrawn by the seller",
+            link=f"/offers/{offer.id}",
+            related_player_id=offer.player_id,
         )
 
     sale.status = SaleStatus.WITHDRAWN
@@ -328,6 +371,9 @@ async def accept_bid(
         raise ValueError("Bid not found or not active")
 
     # Release all OTHER active bids
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
     for bid in sale.bids:
         if bid.id != bid_id and bid.status == BidStatus.ACTIVE:
             bid.status = BidStatus.REJECTED
@@ -336,6 +382,15 @@ async def accept_bid(
                 club_id=bid.buyer_club_id,
                 transfer_amount=bid.reserved_transfer_amount,
                 wage_weekly=bid.reserved_wage_weekly,
+            )
+            # Item 1: losing bidders get their budget back but were never told why.
+            await notif_service.notify_club(
+                db,
+                bid.buyer_club_id,
+                type=NotificationType.OUTBID,
+                message="Your bid was not accepted — this sale has closed",
+                link=f"/sales/{sale_id}",
+                related_player_id=sale.player_id,
             )
 
     # Commit winning bid budget
@@ -405,6 +460,9 @@ async def close_expired_sales(db: AsyncSession) -> int:
     )
     expired_sales = list(result.scalars())
 
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
     count = 0
     for sale in expired_sales:
         for bid in sale.bids:
@@ -415,6 +473,15 @@ async def close_expired_sales(db: AsyncSession) -> int:
                     club_id=bid.buyer_club_id,
                     transfer_amount=bid.reserved_transfer_amount,
                     wage_weekly=bid.reserved_wage_weekly,
+                )
+                # Item 1: tell bidders the auction lapsed, not just release their funds silently.
+                await notif_service.notify_club(
+                    db,
+                    bid.buyer_club_id,
+                    type=NotificationType.OUTBID,
+                    message="This auction closed with no accepted bid — your reservation has been released",
+                    link=f"/sales/{sale.id}",
+                    related_player_id=sale.player_id,
                 )
         sale.status = SaleStatus.EXPIRED
         db.add(SaleEvent(sale_id=sale.id, event_type=SaleEventType.SALE_EXPIRED))

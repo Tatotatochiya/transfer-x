@@ -101,18 +101,31 @@ async def _db_notify_deal_parties(
         )
 
 
-async def _notify_personal_terms_sent(db: AsyncSession, deal, pt) -> None:
-    """TRA-76: notify the player and mandated agent that personal terms are ready for review."""
+async def _notify_personal_terms_sent(
+    db: AsyncSession, deal, pt, *, consent_was_reset: bool = False
+) -> None:
+    """TRA-76: notify the player and mandated agent that personal terms are ready for review.
+
+    Item 9: editing terms silently reset a player's prior AGREED consent back to
+    PENDING with no indication anything changed. When consent_was_reset is True,
+    say so explicitly instead of sending the generic first-proposal message.
+    """
     from app.auth.models import AgentProfile, PlayerProfile
 
     pp_result = await db.execute(select(PlayerProfile).where(PlayerProfile.player_id == deal.player_id))
     player_profile = pp_result.scalar_one_or_none()
     if player_profile is not None:
+        message = (
+            "The proposed terms have changed, which resets your previous agreement — "
+            "please review and respond again"
+            if consent_was_reset
+            else "Personal terms have been proposed for your transfer — review and respond"
+        )
         await notif_service.create_notification(
             db,
             recipient_user_id=player_profile.user_id,
             type=NotificationType.DEAL_PERSONAL_TERMS_SENT,
-            message="Personal terms have been proposed for your transfer — review and respond",
+            message=message,
             link="/player/profile",
             related_player_id=deal.player_id,
         )
@@ -147,7 +160,7 @@ async def _build_deal_response(db: AsyncSession, deal, *, caller_user_type: str 
     is_player = caller_user_type == "PLAYER"
     personal_terms = None
     if deal.personal_terms is not None:
-        personal_terms = await _build_personal_terms_response(db, deal.personal_terms, deal.player_id)
+        personal_terms = await _build_personal_terms_response(db, deal.personal_terms, deal)
     return DealResponse(
         id=deal.id,
         sale_id=deal.sale_id,
@@ -185,6 +198,8 @@ async def _build_deal_response(db: AsyncSession, deal, *, caller_user_type: str 
         seller_club=deal.seller_club,
         player=deal.player,
         deal_notes=deal.deal_notes,
+        sla_deadline=deal.sla_deadline,
+        sla_escalated_at=deal.sla_escalated_at,
     )
 
 
@@ -682,7 +697,7 @@ async def upsert_medical_check(
 # ── TRA-60: personal terms ───────────────────────────────────────────────────
 
 
-async def _build_personal_terms_response(db: AsyncSession, pt, player_id: uuid.UUID) -> PersonalTermsResponse:
+async def _build_personal_terms_response(db: AsyncSession, pt, deal) -> PersonalTermsResponse:
     return PersonalTermsResponse(
         id=pt.id,
         deal_id=pt.deal_id,
@@ -691,9 +706,11 @@ async def _build_personal_terms_response(db: AsyncSession, pt, player_id: uuid.U
         signing_bonus=pt.signing_bonus,
         length_years=pt.length_years,
         player_consent=pt.player_consent,
-        player_has_account=await players_service.player_has_account(db, player_id),
+        player_has_account=await players_service.player_has_account(db, deal.player_id),
         agreed_at=pt.agreed_at,
         created_at=pt.created_at,
+        buyer_club_id=deal.buyer_club_id,
+        buyer_club_name=deal.buyer_club.name if deal.buyer_club else "Unknown club",
     )
 
 
@@ -709,7 +726,7 @@ async def get_personal_terms(
     pt = await service.get_personal_terms(db, deal.id)
     if pt is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No personal terms found")
-    return await _build_personal_terms_response(db, pt, deal.player_id)
+    return await _build_personal_terms_response(db, pt, deal)
 
 
 @router.put("/deals/{deal_id}/personal-terms", response_model=PersonalTermsResponse)
@@ -749,6 +766,8 @@ async def set_personal_terms(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Buying club, agent, or admin access required")
 
     try:
+        existing_pt = await service.get_personal_terms(db, deal.id)
+        consent_was_reset = existing_pt is not None and existing_pt.player_consent == "AGREED"
         pt = await service.set_personal_terms(
             db, deal,
             agent_profile_id=agent_profile_id,
@@ -757,14 +776,14 @@ async def set_personal_terms(
             length_years=body.length_years,
             actor_user_id=current_user.id,
         )
-        await _notify_personal_terms_sent(db, deal, pt)
+        await _notify_personal_terms_sent(db, deal, pt, consent_was_reset=consent_was_reset)
         await db.commit()
         await db.refresh(pt)
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
-    return await _build_personal_terms_response(db, pt, deal.player_id)
+    return await _build_personal_terms_response(db, pt, deal)
 
 
 @router.post("/deals/{deal_id}/personal-terms/player-consent", response_model=PersonalTermsResponse)
@@ -817,7 +836,7 @@ async def player_consent_to_terms(
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
-    return await _build_personal_terms_response(db, pt, deal.player_id)
+    return await _build_personal_terms_response(db, pt, deal)
 
 
 # ── TRA-127: agent negotiation ────────────────────────────────────────────────

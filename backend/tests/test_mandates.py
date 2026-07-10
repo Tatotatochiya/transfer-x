@@ -1,12 +1,15 @@
 """TRA-53 — Mandate model + active-mandate enforcement."""
 
 import uuid
+from datetime import date, timedelta
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.mandates.models import Mandate, MandateStatus
+from app.mandates.service import expire_mandates
 from app.players.models import Player
 
 pytestmark = pytest.mark.asyncio
@@ -181,3 +184,65 @@ async def test_agent_cannot_revoke_other_agents_mandate(client: AsyncClient, db:
         f"/mandates/{mandate_id}/revoke", headers=_headers(agent2)
     )
     assert resp.status_code == 403
+
+
+# ── Item 11: mandate expiry ──────────────────────────────────────────────────
+
+
+async def test_expire_mandates_flips_status_and_clears_agent_id(
+    client: AsyncClient, db: AsyncSession
+):
+    tokens = await _register_agent(client, "lapsed@test.com")
+    player = await _make_player(db)
+
+    create_resp = await client.post("/mandates/", json={
+        "player_id": str(player.id), "exclusive": True,
+    }, headers=_headers(tokens))
+    mandate_id = uuid.UUID(create_resp.json()["id"])
+
+    mandate = await db.get(Mandate, mandate_id)
+    mandate.end_date = date.today() - timedelta(days=1)
+    await db.commit()
+
+    count = await expire_mandates(db)
+    await db.commit()
+    assert count == 1
+
+    refreshed_mandate = await db.get(Mandate, mandate_id)
+    assert refreshed_mandate.status == MandateStatus.EXPIRED
+
+    result = await db.execute(select(Player).where(Player.id == player.id))
+    refreshed_player = result.scalar_one()
+    assert refreshed_player.agent_id is None
+
+
+async def test_expire_mandates_ignores_future_end_date(client: AsyncClient, db: AsyncSession):
+    tokens = await _register_agent(client, "future@test.com")
+    player = await _make_player(db)
+
+    create_resp = await client.post("/mandates/", json={
+        "player_id": str(player.id), "exclusive": False,
+    }, headers=_headers(tokens))
+    mandate_id = uuid.UUID(create_resp.json()["id"])
+
+    mandate = await db.get(Mandate, mandate_id)
+    mandate.end_date = date.today() + timedelta(days=30)
+    await db.commit()
+
+    count = await expire_mandates(db)
+    assert count == 0
+
+    refreshed = await db.get(Mandate, mandate_id)
+    assert refreshed.status == MandateStatus.ACTIVE
+
+
+async def test_expire_mandates_ignores_no_end_date(client: AsyncClient, db: AsyncSession):
+    tokens = await _register_agent(client, "noend@test.com")
+    player = await _make_player(db)
+
+    await client.post("/mandates/", json={
+        "player_id": str(player.id), "exclusive": False,
+    }, headers=_headers(tokens))
+
+    count = await expire_mandates(db)
+    assert count == 0

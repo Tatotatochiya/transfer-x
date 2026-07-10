@@ -24,6 +24,7 @@ class OfferEventType(str, enum.Enum):
     CREATED = "CREATED"
     SENT = "SENT"
     COUNTERED = "COUNTERED"
+    IMPROVED = "IMPROVED"
     ACCEPTED = "ACCEPTED"
     REJECTED = "REJECTED"
     WITHDRAWN = "WITHDRAWN"

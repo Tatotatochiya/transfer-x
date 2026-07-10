@@ -119,6 +119,34 @@ async def _approval_expiry_job() -> None:
             logger.exception("Error in approval expiry job")
 
 
+async def _expire_mandates_job() -> None:
+    """Expire mandates past their end_date (item 11 gap fix)."""
+    from app.mandates.service import expire_mandates
+
+    async with AsyncSessionLocal() as db:
+        try:
+            async with db.begin():
+                count = await expire_mandates(db)
+            if count:
+                logger.info("Expired %d mandates", count)
+        except Exception:
+            logger.exception("Error in expire_mandates job")
+
+
+async def _deal_sla_job() -> None:
+    """Flag deals stuck PENDING_COMPLETION past their SLA deadline (item 5 gap fix)."""
+    from app.deals.service import check_deal_sla_breaches
+
+    async with AsyncSessionLocal() as db:
+        try:
+            async with db.begin():
+                count = await check_deal_sla_breaches(db)
+            if count:
+                logger.info("Flagged %d deal(s) as SLA-breached", count)
+        except Exception:
+            logger.exception("Error in deal SLA job")
+
+
 async def _client_alerts_job() -> None:
     """TRA-134: scan agent rosters for contract-expiry, valuation-change, and club-interest alerts."""
     from app.mandates.alerts_service import check_and_create_alerts
@@ -144,6 +172,8 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(_valuation_compute_job, "interval", hours=24, id="valuation_compute")
     _scheduler.add_job(_client_alerts_job, "interval", hours=6, id="client_alerts")
     _scheduler.add_job(_approval_expiry_job, "interval", hours=24, id="approval_expiry")
+    _scheduler.add_job(_expire_mandates_job, "interval", hours=24, id="expire_mandates")
+    _scheduler.add_job(_deal_sla_job, "interval", hours=24, id="deal_sla")
     _scheduler.start()
     logger.info("APScheduler started")
     yield

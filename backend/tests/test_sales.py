@@ -413,6 +413,54 @@ async def test_accept_bid_creates_deal(client: AsyncClient, seller: dict, buyer:
 
 
 @pytest.mark.asyncio
+async def test_accept_bid_notifies_losing_bidders(
+    client: AsyncClient, seller: dict, buyer: dict, buyer2: dict, db
+):
+    """Item 1: losing bidders get their budget released but were never told why."""
+    from decimal import Decimal
+
+    from sqlalchemy import select
+
+    from app.auth.models import User
+    from app.clubs.models import ClubFinance
+    from app.notifications.models import Notification, NotificationType
+
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    buy2_headers = _auth_headers(buyer2)
+    player = await _create_player(client, sel_headers)
+    sale = await _create_sale(client, sel_headers, player["id"], asking_price=5_000_000)
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.transfer_budget_total = Decimal("100000000")
+    await db.commit()
+
+    losing_bid = await client.post(
+        f"/sales/{sale['id']}/bids", json={"amount": 5_000_000}, headers=buy2_headers
+    )
+    assert losing_bid.status_code == 201
+    winning_bid = await client.post(
+        f"/sales/{sale['id']}/bids", json={"amount": 6_000_000}, headers=buy_headers
+    )
+    assert winning_bid.status_code == 201
+    bid_id = winning_bid.json()["id"]
+
+    resp = await client.post(f"/sales/{sale['id']}/bids/{bid_id}/accept", headers=sel_headers)
+    assert resp.status_code == 200
+
+    await db.rollback()
+    loser_user_id = (await db.execute(select(User).where(User.email == "buyer2@test.com"))).scalar_one().id
+    notif_result = await db.execute(
+        select(Notification).where(
+            Notification.recipient_user_id == loser_user_id,
+            Notification.type == NotificationType.OUTBID,
+        )
+    )
+    assert notif_result.scalars().first() is not None
+
+
+@pytest.mark.asyncio
 async def test_buyer_cannot_accept_bid(client: AsyncClient, seller: dict, buyer: dict, db):
     from decimal import Decimal
 
@@ -494,6 +542,125 @@ async def test_withdraw_sale_releases_bid_reservations(
     await db.refresh(finances[1])
     for f in finances:
         assert f.transfer_reserved == Decimal("0")
+
+
+@pytest.mark.asyncio
+async def test_withdraw_sale_notifies_bidders(client: AsyncClient, seller: dict, buyer: dict, db):
+    """Item 1: withdrawing a sale must tell active bidders, not just release funds."""
+    from decimal import Decimal
+
+    from app.auth.models import User
+    from app.clubs.models import ClubFinance
+    from app.notifications.models import Notification, NotificationType
+    from sqlalchemy import select
+
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    sale = await _create_sale(client, sel_headers, player["id"], asking_price=5_000_000)
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.transfer_budget_total = Decimal("10000000")
+    await db.commit()
+
+    await client.post(f"/sales/{sale['id']}/bids", json={"amount": 5_000_000}, headers=buy_headers)
+    await client.post(f"/sales/{sale['id']}/withdraw", headers=sel_headers)
+
+    await db.rollback()
+    buyer_user_id = (await db.execute(select(User).where(User.email == "buyer@test.com"))).scalar_one().id
+    notif_result = await db.execute(
+        select(Notification).where(
+            Notification.recipient_user_id == buyer_user_id,
+            Notification.type == NotificationType.OUTBID,
+        )
+    )
+    assert notif_result.scalars().first() is not None
+
+
+@pytest.mark.asyncio
+async def test_withdraw_sale_rejects_linked_offers(client: AsyncClient, seller: dict, buyer: dict, db):
+    """Item 1: direct offers against an OPEN_TO_OFFERS listing must not survive
+    the listing's withdrawal and remain acceptable."""
+    from decimal import Decimal
+
+    from app.clubs.models import ClubFinance
+    from sqlalchemy import select
+
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    sale = await _create_sale(client, sel_headers, player["id"], sale_type="OPEN_TO_OFFERS")
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.transfer_budget_total = Decimal("10000000")
+    await db.commit()
+
+    offer_resp = await client.post(
+        "/offers",
+        json={"player_id": player["id"], "sale_id": sale["id"], "fee_amount": 5_000_000},
+        headers=buy_headers,
+    )
+    assert offer_resp.status_code == 201, offer_resp.text
+    offer_id = offer_resp.json()["id"]
+
+    await client.post(f"/sales/{sale['id']}/withdraw", headers=sel_headers)
+
+    offer_after = await client.get(f"/offers/{offer_id}", headers=buy_headers)
+    assert offer_after.json()["status"] == "REJECTED"
+
+    finance_after = await client.get("/clubs/me", headers=buy_headers)
+    assert Decimal(finance_after.json()["finance"]["transfer_reserved"]) == Decimal("0")
+
+
+@pytest.mark.asyncio
+async def test_close_expired_sales_notifies_bidders(client: AsyncClient, seller: dict, buyer: dict, db):
+    """Item 1: an auction lapsing with no accepted bid must tell bidders, not
+    just silently release their reservation."""
+    import uuid
+    from datetime import datetime, timedelta, timezone
+    from decimal import Decimal
+
+    from app.auth.models import User
+    from app.clubs.models import ClubFinance
+    from app.notifications.models import Notification, NotificationType
+    from app.sales.models import Sale
+    from app.sales.service import close_expired_sales
+    from sqlalchemy import select
+
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    sale = await _create_sale(client, sel_headers, player["id"])
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.transfer_budget_total = Decimal("10000000")
+    await db.commit()
+
+    # No deadline until after the bid lands — SQLite round-trips DateTime as
+    # naive, so setting it before place_bid's own deadline check would trip
+    # a naive/aware comparison TypeError unrelated to what this test covers.
+    await client.post(f"/sales/{sale['id']}/bids", json={"amount": 5_000_000}, headers=buy_headers)
+
+    sale_row = await db.get(Sale, uuid.UUID(sale["id"]))
+    sale_row.deadline = datetime.now(timezone.utc) - timedelta(minutes=1)
+    await db.commit()
+
+    count = await close_expired_sales(db)
+    await db.commit()
+    assert count == 1
+
+    await db.rollback()
+    buyer_user_id = (await db.execute(select(User).where(User.email == "buyer@test.com"))).scalar_one().id
+    notif_result = await db.execute(
+        select(Notification).where(
+            Notification.recipient_user_id == buyer_user_id,
+            Notification.type == NotificationType.OUTBID,
+        )
+    )
+    assert notif_result.scalars().first() is not None
 
 
 # ── TRA-139: reserve price / bid competition scoping ──────────────────────────

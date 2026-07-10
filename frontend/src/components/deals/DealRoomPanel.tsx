@@ -1,12 +1,31 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { DealAttachment, DealComment, DealParticipant, DealTermsVersion, TermsDiff } from "../../types/api";
+import type { CommentAudience, DealAttachment, DealComment, DealParticipant, DealTermsVersion, TermsDiff } from "../../types/api";
 import Button from "../ui/Button";
 import Spinner from "../ui/Spinner";
 import { formatCurrency, formatDateTime, getApiError } from "../../lib/utils";
 import { useAuthStore } from "../../store/auth";
 import { useToast } from "../../context/ToastContext";
+
+type ViewerSide = "buyer" | "seller" | null;
+
+/** Item 8: only club members have a private channel — the audience they'd
+ * post into is whichever side of the deal their own club is on. */
+function privateAudienceFor(viewerSide: ViewerSide): CommentAudience | null {
+  if (viewerSide === "buyer") return "BUYER_ONLY";
+  if (viewerSide === "seller") return "SELLER_ONLY";
+  return null;
+}
+
+function PrivateBadge({ audience }: { audience: CommentAudience }) {
+  if (audience === "SHARED") return null;
+  return (
+    <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-400">
+      Private
+    </span>
+  );
+}
 
 const TERMS_FIELD_LABELS: Record<string, string> = {
   agreed_fee: "Agreed fee",
@@ -54,7 +73,10 @@ function CommentRow({
     <div className="mt-3">
       <div className={`rounded-lg px-3 py-2 text-sm ${isMine ? "bg-emerald-500/[0.06]" : "bg-slate-800/60"}`}>
         <div className="mb-0.5 flex items-center justify-between gap-2">
-          <span className="text-xs font-semibold text-slate-300">{comment.author_label ?? "Unknown"}</span>
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+            {comment.author_label ?? "Unknown"}
+            <PrivateBadge audience={comment.audience} />
+          </span>
           <span className="text-[11px] text-slate-600">{formatDateTime(comment.created_at)}</span>
         </div>
         <p className="whitespace-pre-wrap break-words text-slate-200">{comment.body}</p>
@@ -78,12 +100,20 @@ function CommentRow({
   );
 }
 
-function CommentThread({ dealId, canWrite }: { dealId: string; canWrite: boolean }) {
+function CommentThread({
+  dealId, canWrite, viewerSide,
+}: {
+  dealId: string;
+  canWrite: boolean;
+  viewerSide: ViewerSide;
+}) {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const [body, setBody] = useState("");
   const [replyTo, setReplyTo] = useState<DealComment | null>(null);
   const [mentions, setMentions] = useState<DealParticipant[]>([]);
+  const [audience, setAudience] = useState<CommentAudience>("SHARED");
+  const privateAudience = privateAudienceFor(viewerSide);
 
   const { data: comments = [], isLoading } = useQuery<DealComment[]>({
     queryKey: ["deals", dealId, "comments"],
@@ -102,6 +132,7 @@ function CommentThread({ dealId, canWrite }: { dealId: string; canWrite: boolean
         body,
         parent_id: replyTo?.id ?? null,
         mentioned_user_ids: mentions.map((m) => m.user_id),
+        audience,
       }).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deals", dealId, "comments"] });
@@ -179,7 +210,29 @@ function CommentThread({ dealId, canWrite }: { dealId: string; canWrite: boolean
             ))}
           </div>
         )}
-        <div className="mt-2 flex justify-end">
+        <div className="mt-2 flex items-center justify-between gap-2">
+          {privateAudience ? (
+            <div className="flex gap-1 rounded-lg bg-slate-800/60 p-0.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setAudience("SHARED")}
+                className={`rounded-md px-2 py-1 font-medium transition-colors ${
+                  audience === "SHARED" ? "bg-slate-700 text-white" : "text-slate-500 hover:text-white"
+                }`}
+              >
+                Shared
+              </button>
+              <button
+                type="button"
+                onClick={() => setAudience(privateAudience)}
+                className={`rounded-md px-2 py-1 font-medium transition-colors ${
+                  audience === privateAudience ? "bg-amber-500/20 text-amber-400" : "text-slate-500 hover:text-white"
+                }`}
+              >
+                My club only
+              </button>
+            </div>
+          ) : <span />}
           <Button type="submit" variant="primary" size="sm" loading={mutation.isPending} disabled={!body.trim()}>
             Post
           </Button>
@@ -250,10 +303,18 @@ function VersionHistory({ dealId }: { dealId: string }) {
 
 // ── Attachments tab ──────────────────────────────────────────────────────────────
 
-function AttachmentsTab({ dealId, canWrite }: { dealId: string; canWrite: boolean }) {
+function AttachmentsTab({
+  dealId, canWrite, viewerSide,
+}: {
+  dealId: string;
+  canWrite: boolean;
+  viewerSide: ViewerSide;
+}) {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const [uploading, setUploading] = useState(false);
+  const [audience, setAudience] = useState<CommentAudience>("SHARED");
+  const privateAudience = privateAudienceFor(viewerSide);
 
   const { data: attachments = [], isLoading } = useQuery<DealAttachment[]>({
     queryKey: ["deals", dealId, "attachments"],
@@ -265,6 +326,7 @@ function AttachmentsTab({ dealId, canWrite }: { dealId: string; canWrite: boolea
     try {
       const form = new FormData();
       form.append("file", file);
+      form.append("audience", audience);
       await api.post(`/deals/${dealId}/attachments`, form);
       queryClient.invalidateQueries({ queryKey: ["deals", dealId, "attachments"] });
       addToast("File uploaded.", "success");
@@ -300,7 +362,10 @@ function AttachmentsTab({ dealId, canWrite }: { dealId: string; canWrite: boolea
               className="flex w-full items-center justify-between rounded-lg bg-slate-800/60 px-3 py-2 text-left text-xs transition-colors hover:bg-slate-800"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-slate-200">{a.filename}</p>
+                <p className="flex items-center gap-1.5 truncate font-medium text-slate-200">
+                  {a.filename}
+                  <PrivateBadge audience={a.audience} />
+                </p>
                 <p className="text-slate-600">
                   {formatFileSize(a.size_bytes)} · {a.uploaded_by_label ?? "Unknown"} · {formatDateTime(a.created_at)}
                 </p>
@@ -312,16 +377,40 @@ function AttachmentsTab({ dealId, canWrite }: { dealId: string; canWrite: boolea
       )}
 
       {canWrite && (
-        <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-white/15 px-4 py-3 text-xs text-slate-400 transition-colors hover:border-white/25 hover:text-white">
-        {uploading ? "Uploading…" : "+ Upload file (PDF, DOC, JPG, PNG — max 10MB)"}
-        <input
-          type="file"
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          className="hidden"
-          disabled={uploading}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
-        />
-      </label>
+        <div className="mt-4">
+          {privateAudience && (
+            <div className="mb-2 flex gap-1 rounded-lg bg-slate-800/60 p-0.5 text-[11px] w-fit">
+              <button
+                type="button"
+                onClick={() => setAudience("SHARED")}
+                className={`rounded-md px-2 py-1 font-medium transition-colors ${
+                  audience === "SHARED" ? "bg-slate-700 text-white" : "text-slate-500 hover:text-white"
+                }`}
+              >
+                Shared
+              </button>
+              <button
+                type="button"
+                onClick={() => setAudience(privateAudience)}
+                className={`rounded-md px-2 py-1 font-medium transition-colors ${
+                  audience === privateAudience ? "bg-amber-500/20 text-amber-400" : "text-slate-500 hover:text-white"
+                }`}
+              >
+                My club only
+              </button>
+            </div>
+          )}
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-white/15 px-4 py-3 text-xs text-slate-400 transition-colors hover:border-white/25 hover:text-white">
+            {uploading ? "Uploading…" : "+ Upload file (PDF, DOC, JPG, PNG — max 10MB)"}
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              className="hidden"
+              disabled={uploading}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
+            />
+          </label>
+        </div>
         )}
     </div>
   );
@@ -332,11 +421,15 @@ function AttachmentsTab({ dealId, canWrite }: { dealId: string; canWrite: boolea
 export default function DealRoomPanel({
   dealId,
   canWrite = true,
+  viewerSide = null,
 }: {
   dealId: string;
   /** TRA-151: club members without DEAL_WRITE (scout/read-only) view the room
    * but the composer and upload controls are hidden. Agents/players pass true. */
   canWrite?: boolean;
+  /** Item 8: which side of the deal the viewer's own club is on, if any —
+   * agents/players and non-participants pass null and never see a private-channel option. */
+  viewerSide?: ViewerSide;
 }) {
   const [tab, setTab] = useState<"comments" | "history" | "attachments">("comments");
 
@@ -359,9 +452,9 @@ export default function DealRoomPanel({
         </div>
       </div>
       <div className="px-5 py-4">
-        {tab === "comments" && <CommentThread dealId={dealId} canWrite={canWrite} />}
+        {tab === "comments" && <CommentThread dealId={dealId} canWrite={canWrite} viewerSide={viewerSide} />}
         {tab === "history" && <VersionHistory dealId={dealId} />}
-        {tab === "attachments" && <AttachmentsTab dealId={dealId} canWrite={canWrite} />}
+        {tab === "attachments" && <AttachmentsTab dealId={dealId} canWrite={canWrite} viewerSide={viewerSide} />}
       </div>
     </div>
   );

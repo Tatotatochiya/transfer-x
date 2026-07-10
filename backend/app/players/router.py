@@ -23,6 +23,7 @@ from app.players.schemas import (
     PlayerInjuryResponse,
     PlayerUpdateRequest,
 )
+from app.sales.schemas import DealStubResponse
 
 router = APIRouter(tags=["players"])
 
@@ -122,6 +123,109 @@ async def player_market_detail(
     data.is_verified_player = await players_service.is_player_verified(db, player_id)
 
     return data
+
+
+# ── Direct-signing pathways (items 13 & 14) ───────────────────────────────────
+
+
+async def _resolve_direct_signing_context(db: AsyncSession, player_id: uuid.UUID, current_user: User):
+    """Shared preamble for direct-signing endpoints that bypass the normal
+    offer/bid pipeline: resolve the buyer's club, check the transfer window,
+    fetch the player, and block if a deal is already in progress."""
+    from app.clubs import service as clubs_service
+    from app.deals import service as deals_service
+    from app.transfer_window import service as window_service
+
+    club = await clubs_service.get_club_for_user(db, current_user.id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+
+    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Transfer window is closed. Transfers cannot be made outside of a transfer window.",
+        )
+
+    player = await players_service.get_player_by_id(db, player_id)
+    if player is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+
+    active_deal = await deals_service.get_active_deal_for_player(db, player_id)
+    if active_deal and active_deal.status == "IN_PROGRESS":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This player already has a transfer deal in progress.",
+        )
+
+    return club, player
+
+
+@router.post("/{player_id}/trigger-release-clause", response_model=DealStubResponse)
+async def trigger_release_clause(
+    player_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_buyer_user),
+    _write: User = Depends(_market_write),
+):
+    """Item 14: a buyer meeting the release clause bypasses the seller's
+    consent — that's the clause's whole point. No fee is taken from the
+    request body; the amount is always the contract's own release_clause
+    figure."""
+    club, player = await _resolve_direct_signing_context(db, player_id, current_user)
+
+    try:
+        deal = await players_service.trigger_release_clause(db, player, buyer_club_id=club.id)
+        await db.commit()
+        await db.refresh(deal)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return DealStubResponse.model_validate(deal)
+
+
+@router.post("/{player_id}/sign-free-agent", response_model=DealStubResponse)
+async def sign_free_agent(
+    player_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_buyer_user),
+    _write: User = Depends(_market_write),
+):
+    """Item 13: sign a FREE_AGENT player directly — no seller, no fee, no
+    offer/bid negotiation pipeline."""
+    club, player = await _resolve_direct_signing_context(db, player_id, current_user)
+
+    try:
+        deal = await players_service.create_free_agent_deal(db, player, buyer_club_id=club.id)
+        await db.commit()
+        await db.refresh(deal)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return DealStubResponse.model_validate(deal)
+
+
+@router.post("/{player_id}/pre-contract", response_model=DealStubResponse)
+async def sign_pre_contract(
+    player_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_buyer_user),
+    _write: User = Depends(_market_write),
+):
+    """Item 13: a Bosman pre-contract agreement — sign now, join for free once
+    the current contract expires. Only legal in the contract's final six months."""
+    club, player = await _resolve_direct_signing_context(db, player_id, current_user)
+
+    try:
+        deal = await players_service.create_pre_contract_deal(db, player, buyer_club_id=club.id)
+        await db.commit()
+        await db.refresh(deal)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    return DealStubResponse.model_validate(deal)
 
 
 # ── Seller's own players ──────────────────────────────────────────────────────

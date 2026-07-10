@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.deals.room_models import CommentAudience
+
 
 class DealTermsVersionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -32,6 +34,7 @@ class DealCommentCreateRequest(BaseModel):
     body: str
     parent_id: uuid.UUID | None = None
     mentioned_user_ids: list[uuid.UUID] = []
+    audience: CommentAudience = CommentAudience.SHARED
 
 
 class DealCommentResponse(BaseModel):
@@ -44,6 +47,7 @@ class DealCommentResponse(BaseModel):
     author_label: str | None = None
     body: str
     mentioned_user_ids: list[str]
+    audience: CommentAudience
     created_at: datetime
 
 
@@ -62,4 +66,5 @@ class DealAttachmentResponse(BaseModel):
     filename: str
     content_type: str
     size_bytes: int
+    audience: CommentAudience
     created_at: datetime

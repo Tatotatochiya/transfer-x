@@ -619,6 +619,8 @@ export interface PersonalTerms {
   player_has_account: boolean;
   agreed_at: string | null;
   created_at: string;
+  buyer_club_id: string;
+  buyer_club_name: string;
 }
 
 export interface MedicalCheck {
@@ -680,6 +682,8 @@ export interface TermsDiff {
   changes: TermsDiffField[];
 }
 
+export type CommentAudience = "SHARED" | "BUYER_ONLY" | "SELLER_ONLY";
+
 export interface DealComment {
   id: string;
   deal_id: string;
@@ -688,6 +692,7 @@ export interface DealComment {
   author_label: string | null;
   body: string;
   mentioned_user_ids: string[];
+  audience: CommentAudience;
   created_at: string;
 }
 
@@ -704,6 +709,7 @@ export interface DealAttachment {
   filename: string;
   content_type: string;
   size_bytes: number;
+  audience: CommentAudience;
   created_at: string;
 }
 

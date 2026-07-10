@@ -30,6 +30,8 @@ class DealStage(str, enum.Enum):
 class DealType(str, enum.Enum):
     PERMANENT = "PERMANENT"
     LOAN = "LOAN"
+    FREE_TRANSFER = "FREE_TRANSFER"
+    PRE_CONTRACT = "PRE_CONTRACT"
 
 
 class ClauseType(str, enum.Enum):
@@ -108,6 +110,10 @@ class Deal(Base):
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Item 5: set once the deal reaches CONFIRMED (status flips to
+    # PENDING_COMPLETION) — gives staff an SLA window to actually execute it.
+    sla_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sla_escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

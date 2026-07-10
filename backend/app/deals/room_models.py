@@ -1,12 +1,25 @@
 """TRA-81 — deal room: versioned terms, threaded comments, attachments."""
 
+import enum
 import uuid
 from datetime import datetime
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, Uuid, func
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+
+class CommentAudience(str, enum.Enum):
+    """Item 8: who can see a deal-room comment/attachment.
+
+    SHARED preserves the original single-thread behavior. BUYER_ONLY/SELLER_ONLY
+    give each club a private channel the counterparty, agent, and player can't see.
+    """
+    SHARED = "SHARED"
+    BUYER_ONLY = "BUYER_ONLY"
+    SELLER_ONLY = "SELLER_ONLY"
 
 
 class DealTermsVersion(Base):
@@ -48,6 +61,12 @@ class DealComment(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     # List of mentioned user_id strings — client resolves names to ids via the participant picker.
     mentioned_user_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    audience: Mapped[CommentAudience] = mapped_column(
+        SAEnum(CommentAudience, name="commentaudience"),
+        nullable=False,
+        default=CommentAudience.SHARED,
+        server_default="SHARED",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
@@ -72,6 +91,12 @@ class DealAttachment(Base):
     content_type: Mapped[str] = mapped_column(String(100), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     storage_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    audience: Mapped[CommentAudience] = mapped_column(
+        SAEnum(CommentAudience, name="commentaudience"),
+        nullable=False,
+        default=CommentAudience.SHARED,
+        server_default="SHARED",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )

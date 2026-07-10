@@ -51,6 +51,13 @@ class OfferCounterRequest(BaseModel):
     expires_at: datetime | None = None
 
 
+class OfferImproveRequest(BaseModel):
+    """Item 2: the buyer raising their own pending offer, bypassing turn order."""
+    fee_amount: Decimal | None = None
+    wage_weekly: Decimal | None = None
+    add_ons: dict | None = None
+
+
 class OfferMessageRequest(BaseModel):
     body: str
 
