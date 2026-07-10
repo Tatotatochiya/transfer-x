@@ -1,4 +1,5 @@
 import { useState } from "react";
+import OnboardingChecklist from "../../components/OnboardingChecklist";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
@@ -193,6 +194,9 @@ function CommissionsTab() {
 
   return (
     <div>
+      {/* First-run checklist (Phase 6) */}
+      <OnboardingChecklist />
+
       {/* Summary cards */}
       <div className="mb-6 grid grid-cols-3 gap-3">
         <div className="rounded-xl bg-slate-900 px-4 py-3 text-center ring-1 ring-white/[0.07]">

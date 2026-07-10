@@ -1,11 +1,23 @@
+import hashlib
+import hmac
+import secrets
 import uuid
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.clubs.models import Club, ClubFinance, ClubRole, ClubStaff, PlayerSearchView, StaffRole
+from app.clubs.models import (
+    Club,
+    ClubFinance,
+    ClubRole,
+    ClubStaff,
+    ClubStaffInvitation,
+    PlayerSearchView,
+    StaffRole,
+)
 
 
 async def create_club(
@@ -119,11 +131,43 @@ async def get_club_and_role_for_user(
     return None, "OWNER"
 
 
+async def get_club_membership_role(db: AsyncSession, user_id: uuid.UUID) -> str | None:
+    """Lean role-only resolution: 'OWNER' | StaffRole value | None (no membership).
+
+    The capability check runs on every gated request — this avoids loading the
+    club row (and its finance) when only the role is needed. Max two indexed
+    single-row lookups; one for owners.
+    """
+    result = await db.execute(select(Club.id).where(Club.user_id == user_id))
+    if result.first() is not None:
+        return "OWNER"
+    staff = await get_staff_by_user_id(db, user_id)
+    return staff.role.value if staff else None
+
+
 async def list_club_staff(db: AsyncSession, club_id: uuid.UUID) -> list[ClubStaff]:
     result = await db.execute(
-        select(ClubStaff).where(ClubStaff.club_id == club_id).order_by(ClubStaff.created_at)
+        select(ClubStaff)
+        .where(ClubStaff.club_id == club_id)
+        .options(selectinload(ClubStaff.user))
+        .order_by(ClubStaff.created_at)
     )
     return list(result.scalars())
+
+
+async def get_staff_with_user(
+    db: AsyncSession, staff_id: uuid.UUID, club_id: uuid.UUID
+) -> ClubStaff | None:
+    """A staff row scoped to a club (owner-facing team management), user loaded."""
+    result = await db.execute(
+        select(ClubStaff)
+        .where(
+            ClubStaff.id == uuid.UUID(str(staff_id)),
+            ClubStaff.club_id == uuid.UUID(str(club_id)),
+        )
+        .options(selectinload(ClubStaff.user))
+    )
+    return result.scalar_one_or_none()
 
 
 async def create_club_staff(
@@ -152,6 +196,174 @@ async def update_club_staff_role(db: AsyncSession, staff: ClubStaff, role: Staff
 
 async def delete_club_staff(db: AsyncSession, staff: ClubStaff) -> None:
     await db.delete(staff)
+    await db.flush()
+
+
+# ── Staff invitations (TRA-86, D6) ────────────────────────────────────────────
+
+INVITATION_TTL_DAYS = 7
+
+
+def _hash_invitation_token(raw_token: str) -> str:
+    return hashlib.sha256(raw_token.encode()).hexdigest()
+
+
+def invitation_is_live(inv: ClubStaffInvitation) -> bool:
+    """Live = not accepted, not revoked, not expired."""
+    if inv.accepted_at is not None or inv.revoked_at is not None:
+        return False
+    expires = inv.expires_at
+    if expires.tzinfo is None:  # SQLite drops tzinfo
+        expires = expires.replace(tzinfo=timezone.utc)
+    return expires > datetime.now(timezone.utc)
+
+
+async def create_staff_invitation(
+    db: AsyncSession,
+    *,
+    club_id: uuid.UUID,
+    email: str,
+    role: StaffRole,
+    invited_by_user_id: uuid.UUID,
+) -> tuple[ClubStaffInvitation, str]:
+    """Create an invitation; returns (row, raw_token). The raw token appears in
+    exactly one API response and is never stored or logged (gotcha #7).
+
+    Raises ValueError for: an email that already belongs to any User
+    (account-linking is out of scope), or a still-live invitation for the same
+    email at this club. Both comparisons are case-insensitive.
+    """
+    from app.auth.models import User
+
+    email_norm = email.strip().lower()
+
+    existing_user = await db.execute(select(User.id).where(func.lower(User.email) == email_norm))
+    if existing_user.first() is not None:
+        raise ValueError(
+            "This email already has a TransferX account. Linking existing accounts "
+            "to a club is not supported — the user must join with a new email."
+        )
+
+    pending = await db.execute(
+        select(ClubStaffInvitation).where(
+            ClubStaffInvitation.club_id == uuid.UUID(str(club_id)),
+            func.lower(ClubStaffInvitation.email) == email_norm,
+            ClubStaffInvitation.accepted_at.is_(None),
+            ClubStaffInvitation.revoked_at.is_(None),
+        )
+    )
+    for inv in pending.scalars():
+        if invitation_is_live(inv):
+            raise ValueError("A pending invitation for this email already exists — revoke it first.")
+
+    raw_token = secrets.token_urlsafe(32)
+    invitation = ClubStaffInvitation(
+        club_id=uuid.UUID(str(club_id)),
+        email=email_norm,
+        role=role,
+        token_hash=_hash_invitation_token(raw_token),
+        invited_by_user_id=invited_by_user_id,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=INVITATION_TTL_DAYS),
+    )
+    db.add(invitation)
+    await db.flush()
+    return invitation, raw_token
+
+
+async def get_live_invitation_by_token(
+    db: AsyncSession, raw_token: str
+) -> ClubStaffInvitation | None:
+    """Resolve a raw token to a live invitation, or None — with no oracle on
+    which failure (unknown/expired/revoked/accepted all look identical)."""
+    digest = _hash_invitation_token(raw_token)
+    result = await db.execute(
+        select(ClubStaffInvitation).where(ClubStaffInvitation.token_hash == digest)
+    )
+    inv = result.scalar_one_or_none()
+    if inv is None:
+        return None
+    # Belt-and-braces constant-time comparison on top of the indexed lookup.
+    if not hmac.compare_digest(inv.token_hash, digest):
+        return None
+    return inv if invitation_is_live(inv) else None
+
+
+async def list_pending_invitations(db: AsyncSession, club_id: uuid.UUID) -> list[ClubStaffInvitation]:
+    result = await db.execute(
+        select(ClubStaffInvitation)
+        .where(
+            ClubStaffInvitation.club_id == uuid.UUID(str(club_id)),
+            ClubStaffInvitation.accepted_at.is_(None),
+            ClubStaffInvitation.revoked_at.is_(None),
+        )
+        .order_by(ClubStaffInvitation.created_at)
+    )
+    return [inv for inv in result.scalars() if invitation_is_live(inv)]
+
+
+async def get_invitation_by_id(
+    db: AsyncSession, invitation_id: uuid.UUID, club_id: uuid.UUID
+) -> ClubStaffInvitation | None:
+    result = await db.execute(
+        select(ClubStaffInvitation).where(
+            ClubStaffInvitation.id == uuid.UUID(str(invitation_id)),
+            ClubStaffInvitation.club_id == uuid.UUID(str(club_id)),
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def revoke_invitation(db: AsyncSession, invitation: ClubStaffInvitation) -> None:
+    invitation.revoked_at = datetime.now(timezone.utc)
+    await db.flush()
+
+
+async def accept_staff_invitation(
+    db: AsyncSession, invitation: ClubStaffInvitation, password: str
+) -> tuple["User", ClubStaff]:  # type: ignore[name-defined]
+    """Create the staff User (explicit user_type=CLUB — D9) + ClubStaff row and
+    stamp the invitation accepted. Caller must have verified the token is live."""
+    from app.auth import service as auth_service
+    from app.auth.models import User, UserType
+
+    existing = await db.execute(
+        select(User.id).where(func.lower(User.email) == invitation.email.lower())
+    )
+    if existing.first() is not None:
+        raise ValueError("This email already has a TransferX account.")
+
+    user = User(
+        email=invitation.email,
+        hashed_password=auth_service.hash_password(password),
+        is_active=True,
+        is_superuser=False,
+        user_type=UserType.CLUB,
+    )
+    db.add(user)
+    await db.flush()
+
+    staff = await create_club_staff(
+        db,
+        club_id=uuid.UUID(str(invitation.club_id)),
+        user_id=user.id,
+        role=invitation.role,
+        created_by_user_id=invitation.invited_by_user_id,
+    )
+    invitation.accepted_at = datetime.now(timezone.utc)
+    await db.flush()
+    return user, staff
+
+
+async def remove_club_staff(db: AsyncSession, staff: ClubStaff) -> None:
+    """D10: staff removal deletes the membership row and deactivates the user —
+    a staff account has no purpose outside its club, and is_active is checked
+    on every authenticated request, so access dies immediately."""
+    from app.auth.models import User
+
+    user = await db.get(User, staff.user_id)
+    await db.delete(staff)
+    if user is not None:
+        user.is_active = False
     await db.flush()
 
 

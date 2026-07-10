@@ -8,6 +8,7 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import PageHeader from "../../components/ui/PageHeader";
+import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import Pagination from "../../components/ui/Pagination";
 import EmptyState from "../../components/ui/EmptyState";
 import { saleStatusVariant, saleTypeLabel, saleTypeVariant } from "../../lib/badges";
@@ -38,6 +39,7 @@ function DeadlineCell({ deadline }: { deadline: string | null }) {
 }
 
 export default function MySalesPage() {
+  const { can } = useClubCapabilities();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -94,9 +96,11 @@ export default function MySalesPage() {
         title="My Listings"
         subtitle="Sales and auctions you've created"
         actions={
-          <Button variant="primary" onClick={() => navigate("/sales/new")}>
-            + New listing
-          </Button>
+          can("MARKET_WRITE") && (
+            <Button variant="primary" onClick={() => navigate("/sales/new")}>
+              + New listing
+            </Button>
+          )
         }
       />
 

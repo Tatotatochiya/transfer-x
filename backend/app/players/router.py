@@ -9,6 +9,7 @@ from app.auth.models import User
 from app.common.schemas import Paginated
 from app.database import get_db
 from app.deps import get_buyer_user, get_current_user, get_current_player_profile, get_optional_user, get_seller_user
+from app.clubs.capabilities import Capability, require_club_capability
 from app.players import service as players_service
 from app.players.models import PlayerPosition, PlayerStatus, PlayerVisibility
 from app.players.schemas import (
@@ -24,6 +25,9 @@ from app.players.schemas import (
 )
 
 router = APIRouter(tags=["players"])
+
+# TRA-151: squad management (create/edit players, contracts) is a market action.
+_market_write = require_club_capability(Capability.MARKET_WRITE)
 
 
 # ── Player market (public / optional auth) ────────────────────────────────────
@@ -146,6 +150,7 @@ async def create_player(
     body: PlayerCreateRequest,
     current_user: User = Depends(get_seller_user),
     db: AsyncSession = Depends(get_db),
+    _write: User = Depends(_market_write),
 ) -> PlayerResponse:
     player = await players_service.create_player(
         db, created_by_user_id=current_user.id, **body.model_dump()
@@ -199,6 +204,7 @@ async def update_player(
     body: PlayerUpdateRequest,
     current_user: User = Depends(get_seller_user),
     db: AsyncSession = Depends(get_db),
+    _write: User = Depends(_market_write),
 ) -> PlayerResponse:
     player = await players_service.get_player_by_id(db, player_id)
     if player is None or player.created_by_user_id != current_user.id:
@@ -219,6 +225,7 @@ async def add_contract(
     body: ContractCreateRequest,
     current_user: User = Depends(get_seller_user),
     db: AsyncSession = Depends(get_db),
+    _write: User = Depends(_market_write),
 ) -> ContractResponse:
     player = await players_service.get_player_by_id(db, player_id)
     if player is None or player.created_by_user_id != current_user.id:
@@ -244,6 +251,7 @@ async def deactivate_contract(
     contract_id: uuid.UUID,
     current_user: User = Depends(get_seller_user),
     db: AsyncSession = Depends(get_db),
+    _write: User = Depends(_market_write),
 ) -> None:
     player = await players_service.get_player_by_id(db, player_id)
     if player is None or player.created_by_user_id != current_user.id:

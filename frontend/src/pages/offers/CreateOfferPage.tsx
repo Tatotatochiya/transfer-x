@@ -47,7 +47,14 @@ export default function CreateOfferPage() {
   const mutation = useMutation({
     mutationFn: (body: object) =>
       api.post<Offer>("/offers", body).then((r) => r.data),
-    onSuccess: (offer) => navigate(`/offers/${offer.id}`),
+    onSuccess: (offer) => {
+      // Phase 5 (D7): 202 means the offer was captured for approval, not sent.
+      if ("approval_id" in (offer as object)) {
+        navigate("/club/approvals");
+        return;
+      }
+      navigate(`/offers/${offer.id}`);
+    },
     onError: (err: unknown) => {
       // Backend 409: already has an active offer — redirect to it
       const detail = (err as any)?.response?.data?.detail;

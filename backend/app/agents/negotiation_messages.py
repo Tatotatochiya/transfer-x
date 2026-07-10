@@ -138,15 +138,13 @@ async def notify_counterparty(
 
     if sender.user_type == UserType.AGENT:
         if thread == NegotiationThread.CLUB_SIDE:
-            from app.clubs import service as clubs_service
+            # TRA-152: role-routed — deal-working staff see negotiation traffic.
             for club_id in {deal.buyer_club_id, deal.seller_club_id} - {None}:
-                club = await clubs_service.get_club_by_id(db, uuid.UUID(str(club_id)))
-                if club:
-                    await notif_service.create_notification(
-                        db, recipient_user_id=club.user_id,
-                        type=NotificationType.NEGOTIATION_MESSAGE, message=message, link=link,
-                        related_player_id=deal.player_id,
-                    )
+                await notif_service.notify_club(
+                    db, uuid.UUID(str(club_id)),
+                    type=NotificationType.NEGOTIATION_MESSAGE, message=message, link=link,
+                    related_player_id=deal.player_id,
+                )
         else:
             from app.auth.models import PlayerProfile
             result = await db.execute(select(PlayerProfile).where(PlayerProfile.player_id == deal.player_id))

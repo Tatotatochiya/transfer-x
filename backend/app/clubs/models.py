@@ -18,7 +18,11 @@ class ClubRole(str, enum.Enum):
 
 
 class StaffRole(str, enum.Enum):
-    MANAGER = "MANAGER"   # Full write access (bids, offers, etc.)
+    """Staff roles — capabilities per role live in app/clubs/capabilities.py.
+    The club OWNER is the club's primary User account, not a ClubStaff row."""
+    SPORTING_DIRECTOR = "SPORTING_DIRECTOR"  # Deal authority + club admin + approvals
+    MANAGER = "MANAGER"    # Market + deal writes (threshold-gated from Phase 5)
+    SCOUT = "SCOUT"        # Scouting writes only
     READONLY = "READONLY"  # View-only access
 
 
@@ -87,6 +91,9 @@ class ClubFinance(Base):
     wage_committed_weekly: Mapped[Decimal] = mapped_column(
         Numeric(15, 2), nullable=False, default=Decimal("0")
     )
+    # Phase 5 (D7): MANAGER-role money actions at or above this amount are
+    # captured as pending approvals instead of executing. Null = feature off.
+    approval_threshold: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
@@ -134,6 +141,33 @@ class ClubStaff(Base):
 
     club: Mapped["Club"] = relationship("Club", back_populates="staff_members", foreign_keys=[club_id])
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+
+
+class ClubStaffInvitation(Base):
+    """TRA-86 (D6): tokenised staff invitation. The raw token is returned exactly
+    once at creation and never stored — only its sha256 hash lives here."""
+    __tablename__ = "club_staff_invitations"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    club_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("clubs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    email: Mapped[str] = mapped_column(String(254), nullable=False, index=True)
+    role: Mapped[StaffRole] = mapped_column(
+        SAEnum(StaffRole, name="staffrole"), nullable=False, default=StaffRole.READONLY
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    invited_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    club: Mapped["Club"] = relationship("Club", foreign_keys=[club_id])
 
 
 class PlayerSearchView(Base):

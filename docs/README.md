@@ -1,6 +1,6 @@
 ---
 title: "Documentation Home"
-last_updated: 2026-07-03
+last_updated: 2026-07-05
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -38,6 +38,7 @@ Documentation is split into six areas, each with a single responsibility. Busine
 | [`engineering/`](./engineering/README.md) | How do I work in this codebase day to day? | Contributors (human and AI) |
 | [`operations/`](./operations/README.md) | How do we run this in production? | On-call, DevOps |
 | [`security-and-compliance/`](./security-and-compliance/README.md) | What's protected, what isn't, what's the legal exposure? | Security, legal, auditors |
+| [`feature_spec/`](./feature_spec/README.md) | What exactly should the next build deliver, in implementable detail? | Implementing engineers (human and AI) |
 
 Each area has its own `README.md` explaining its own scope in more detail. [`PRODUCT_SPEC.md`](./PRODUCT_SPEC.md) is the master index that links into all six.
 

@@ -47,7 +47,10 @@ async def is_deal_participant(db: AsyncSession, deal: Deal, current_user: User) 
 
     if current_user.user_type == UserType.CLUB:
         from app.clubs import service as clubs_service
-        club = await clubs_service.get_club_by_user_id(db, current_user.id)
+        # TRA-146: owner-or-staff — staff of the buyer/seller club are deal
+        # participants too. Writes stay gated by DEAL_WRITE (TRA-151/D4), so
+        # this visibility widening grants no write access to SCOUT/READONLY.
+        club = await clubs_service.get_club_for_user(db, current_user.id)
         parties = {deal.buyer_club_id}
         if deal.seller_club_id:
             parties.add(deal.seller_club_id)
@@ -129,7 +132,9 @@ async def label_for_user(db: AsyncSession, user_id: uuid.UUID | None) -> str | N
         return None
     if user.user_type == UserType.CLUB:
         from app.clubs import service as clubs_service
-        club = await clubs_service.get_club_by_user_id(db, user.id)
+        # Owner-or-staff: a staff member speaks for the club, so their
+        # comments/audit rows are labeled with the club's name (TRA-146).
+        club = await clubs_service.get_club_for_user(db, user.id)
         return club.name if club else "Club"
     if user.user_type == UserType.AGENT:
         from app.auth.models import AgentProfile

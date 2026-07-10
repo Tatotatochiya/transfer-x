@@ -78,7 +78,7 @@ function CommentRow({
   );
 }
 
-function CommentThread({ dealId }: { dealId: string }) {
+function CommentThread({ dealId, canWrite }: { dealId: string; canWrite: boolean }) {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const [body, setBody] = useState("");
@@ -145,6 +145,7 @@ function CommentThread({ dealId }: { dealId: string }) {
         </div>
       )}
 
+      {!canWrite ? null : (
       <form onSubmit={handleSubmit} className="mt-4 border-t border-white/[0.08] pt-3">
         {replyTo && (
           <div className="mb-2 flex items-center justify-between rounded-lg bg-slate-800/60 px-3 py-1.5 text-xs text-slate-400">
@@ -184,6 +185,7 @@ function CommentThread({ dealId }: { dealId: string }) {
           </Button>
         </div>
       </form>
+      )}
     </div>
   );
 }
@@ -248,7 +250,7 @@ function VersionHistory({ dealId }: { dealId: string }) {
 
 // ── Attachments tab ──────────────────────────────────────────────────────────────
 
-function AttachmentsTab({ dealId }: { dealId: string }) {
+function AttachmentsTab({ dealId, canWrite }: { dealId: string; canWrite: boolean }) {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const [uploading, setUploading] = useState(false);
@@ -309,7 +311,8 @@ function AttachmentsTab({ dealId }: { dealId: string }) {
         </div>
       )}
 
-      <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-white/15 px-4 py-3 text-xs text-slate-400 transition-colors hover:border-white/25 hover:text-white">
+      {canWrite && (
+        <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-white/15 px-4 py-3 text-xs text-slate-400 transition-colors hover:border-white/25 hover:text-white">
         {uploading ? "Uploading…" : "+ Upload file (PDF, DOC, JPG, PNG — max 10MB)"}
         <input
           type="file"
@@ -319,13 +322,22 @@ function AttachmentsTab({ dealId }: { dealId: string }) {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
         />
       </label>
+        )}
     </div>
   );
 }
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-export default function DealRoomPanel({ dealId }: { dealId: string }) {
+export default function DealRoomPanel({
+  dealId,
+  canWrite = true,
+}: {
+  dealId: string;
+  /** TRA-151: club members without DEAL_WRITE (scout/read-only) view the room
+   * but the composer and upload controls are hidden. Agents/players pass true. */
+  canWrite?: boolean;
+}) {
   const [tab, setTab] = useState<"comments" | "history" | "attachments">("comments");
 
   return (
@@ -347,9 +359,9 @@ export default function DealRoomPanel({ dealId }: { dealId: string }) {
         </div>
       </div>
       <div className="px-5 py-4">
-        {tab === "comments" && <CommentThread dealId={dealId} />}
+        {tab === "comments" && <CommentThread dealId={dealId} canWrite={canWrite} />}
         {tab === "history" && <VersionHistory dealId={dealId} />}
-        {tab === "attachments" && <AttachmentsTab dealId={dealId} />}
+        {tab === "attachments" && <AttachmentsTab dealId={dealId} canWrite={canWrite} />}
       </div>
     </div>
   );

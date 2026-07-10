@@ -13,6 +13,7 @@ from app.auth.schemas import (
     UserResponse,
 )
 from app.clubs import service as clubs_service
+from app.clubs.schemas import InvitationAcceptRequest, InvitationPreviewResponse
 from app.database import get_db
 
 router = APIRouter(tags=["auth"])
@@ -102,6 +103,77 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)) -> T
 async def logout(body: RefreshRequest, db: AsyncSession = Depends(get_db)) -> None:
     await auth_service.revoke_refresh_token(db, body.refresh_token)
     await db.commit()
+
+
+# ── Staff invitation acceptance (TRA-86, D6) ─────────────────────────────────
+# Public, but provisioning-via-emailed-link only — the login page stays
+# login-only; this is not open signup.
+
+
+@router.get("/invitations/{token}", response_model=InvitationPreviewResponse)
+async def preview_invitation(token: str, db: AsyncSession = Depends(get_db)) -> InvitationPreviewResponse:
+    """Preview a staff invitation. 404 for unknown/expired/revoked/accepted
+    tokens alike — no oracle on which failure it was."""
+    invitation = await clubs_service.get_live_invitation_by_token(db, token)
+    if invitation is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+    club = await clubs_service.get_club_by_id(db, invitation.club_id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+    return InvitationPreviewResponse(
+        club_name=club.name,
+        club_crest_url=club.crest_url,
+        role=invitation.role,
+        email=invitation.email,
+        expires_at=invitation.expires_at,
+    )
+
+
+@router.post("/invitations/{token}/accept", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def accept_invitation(
+    token: str,
+    body: InvitationAcceptRequest,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Accept a staff invitation: creates the User (explicit user_type=CLUB, D9)
+    + ClubStaff row, stamps the invitation, and logs the new member straight in."""
+    from app.audit import service as audit_service
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
+    invitation = await clubs_service.get_live_invitation_by_token(db, token)
+    if invitation is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+
+    try:
+        user, staff = await clubs_service.accept_staff_invitation(db, invitation, body.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+
+    club = await clubs_service.get_club_by_id(db, invitation.club_id)
+    await audit_service.emit(
+        db,
+        entity_type="CLUB",
+        entity_id=invitation.club_id,
+        action="STAFF_JOINED",
+        actor_user_id=user.id,
+        payload={"email": user.email, "role": staff.role.value},
+        description=f"{user.email} joined as {staff.role.value}",
+    )
+    # Account/administrative event → owner only (D5).
+    if club is not None:
+        await notif_service.create_notification(
+            db,
+            recipient_user_id=club.user_id,
+            type=NotificationType.STAFF_INVITATION,
+            message=f"{user.email} accepted your invitation and joined as {staff.role.value.replace('_', ' ').title()}",
+            link="/club/team",
+        )
+
+    access_token = auth_service.create_access_token(user.id, user.email)
+    refresh_token = await auth_service.create_refresh_token(db, user.id)
+    await db.commit()
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.get("/me", response_model=UserResponse)

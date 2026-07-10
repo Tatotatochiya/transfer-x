@@ -59,6 +59,9 @@ const AdminTransferWindowPage   = lazy(() => import("./pages/admin/AdminTransfer
 const AdminVerificationPage     = lazy(() => import("./pages/admin/AdminVerificationPage"));
 const AdminHealthPage           = lazy(() => import("./pages/admin/AdminHealthPage"));
 const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage"));
+const TeamPage                  = lazy(() => import("./pages/club/TeamPage"));
+const ApprovalsPage             = lazy(() => import("./pages/club/ApprovalsPage"));
+const AcceptInvitePage          = lazy(() => import("./pages/auth/AcceptInvitePage"));
 const AgentDashboardPage        = lazy(() => import("./pages/agent/AgentDashboardPage"));
 const AgentPipelinePage         = lazy(() => import("./pages/agent/AgentPipelinePage"));
 const AgentProfilePage          = lazy(() => import("./pages/agent/AgentProfilePage"));
@@ -164,6 +167,8 @@ export default function App() {
           {/* ── Auth (no shell) ── */}
           <Route path="/login"    element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          {/* Staff invitation acceptance — public tokenised link, not open signup (D6) */}
+          <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
           {/* ── Public market ── */}
           <Route path="/players/market"     element={<PublicRoute><PlayerMarketPage /></PublicRoute>} />
@@ -191,9 +196,11 @@ export default function App() {
           <Route path="/deals/:id" element={<ProtectedRoute><DealDetailPage /></ProtectedRoute>} />
 
           {/* ── Club (protected, club-only) ── */}
-          <Route path="/dashboard"    element={<ClubRoute><DashboardPage /></ClubRoute>} />
-          <Route path="/club"         element={<ClubRoute><MyClubPage /></ClubRoute>} />
-          <Route path="/club/finance" element={<ClubRoute><FinancePage /></ClubRoute>} />
+          <Route path="/dashboard"      element={<ClubRoute><DashboardPage /></ClubRoute>} />
+          <Route path="/club"           element={<ClubRoute><MyClubPage /></ClubRoute>} />
+          <Route path="/club/finance"   element={<ClubRoute><FinancePage /></ClubRoute>} />
+          <Route path="/club/team"      element={<ClubRoute><TeamPage /></ClubRoute>} />
+          <Route path="/club/approvals" element={<ClubRoute><ApprovalsPage /></ClubRoute>} />
 
           {/* ── Agent portal ── */}
           <Route path="/agent/pipeline"           element={<AgentRoute><AgentPipelinePage /></AgentRoute>} />

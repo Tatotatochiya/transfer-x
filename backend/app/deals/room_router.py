@@ -18,6 +18,7 @@ from app.deals.room_schemas import (
     DealTermsVersionResponse,
     TermsDiffResponse,
 )
+from app.clubs.capabilities import Capability, ensure_capability_if_club_member
 from app.deps import get_current_user
 
 router = APIRouter(tags=["deal-room"])
@@ -112,6 +113,9 @@ async def post_comment(
 ):
     deal = await _get_deal_or_404(db, deal_id)
     await _require_participant(db, deal, current_user)
+    # TRA-151: the room is shared with agents/players (participant-gated above);
+    # club members additionally need DEAL_WRITE — READONLY/SCOUT view only.
+    await ensure_capability_if_club_member(db, current_user, Capability.DEAL_WRITE)
 
     if not body.body.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Comment cannot be empty")
@@ -188,6 +192,8 @@ async def upload_attachment(
 ):
     deal = await _get_deal_or_404(db, deal_id)
     await _require_participant(db, deal, current_user)
+    # TRA-151: as with comments — club members need DEAL_WRITE to upload.
+    await ensure_capability_if_club_member(db, current_user, Capability.DEAL_WRITE)
 
     content = await file.read()
     try:

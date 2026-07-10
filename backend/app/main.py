@@ -32,6 +32,8 @@ from app.agents import router as agents_router
 from app.agents import negotiation_messages_router
 from app.audit import router as audit_router
 from app.verification import router as verification_router
+from app.valuation import router as valuation_router
+from app.approvals import router as approvals_router
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +89,36 @@ async def _enrichment_sync_job() -> None:
             logger.exception("Error in enrichment sync job")
 
 
+async def _valuation_compute_job() -> None:
+    """TRA-91: daily recompute of every player's fair-value model valuation."""
+    from app.valuation.service import compute_all_valuations
+
+    async with AsyncSessionLocal() as db:
+        try:
+            async with db.begin():
+                counts = await compute_all_valuations(db)
+            logger.info(
+                "Valuation compute complete: %d updated, %d skipped (ineligible), %d errors",
+                counts["updated"], counts["skipped_ineligible"], counts["errors"],
+            )
+        except Exception:
+            logger.exception("Error in valuation compute job")
+
+
+async def _approval_expiry_job() -> None:
+    """Phase 5 (club-team-roles): expire stale pending approvals and notify requesters."""
+    from app.approvals.service import expire_stale_approvals
+
+    async with AsyncSessionLocal() as db:
+        try:
+            async with db.begin():
+                count = await expire_stale_approvals(db)
+            if count:
+                logger.info("Expired %d stale approvals", count)
+        except Exception:
+            logger.exception("Error in approval expiry job")
+
+
 async def _client_alerts_job() -> None:
     """TRA-134: scan agent rosters for contract-expiry, valuation-change, and club-interest alerts."""
     from app.mandates.alerts_service import check_and_create_alerts
@@ -108,7 +140,10 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(_expire_stale_offers_job, "interval", minutes=5, id="expire_stale_offers")
     _scheduler.add_job(_notify_upcoming_events_job, "interval", hours=1, id="notify_upcoming_events")
     _scheduler.add_job(_enrichment_sync_job, "interval", hours=24, id="enrichment_sync")
+    # Registered after enrichment_sync so the daily recompute runs on fresher stats.
+    _scheduler.add_job(_valuation_compute_job, "interval", hours=24, id="valuation_compute")
     _scheduler.add_job(_client_alerts_job, "interval", hours=6, id="client_alerts")
+    _scheduler.add_job(_approval_expiry_job, "interval", hours=24, id="approval_expiry")
     _scheduler.start()
     logger.info("APScheduler started")
     yield
@@ -175,3 +210,5 @@ app.include_router(agents_router.router, prefix="/agents")
 app.include_router(negotiation_messages_router.router, prefix="")
 app.include_router(audit_router.router, prefix="")
 app.include_router(verification_router.router, prefix="")
+app.include_router(valuation_router.router, prefix="/valuation")
+app.include_router(approvals_router.router, prefix="")

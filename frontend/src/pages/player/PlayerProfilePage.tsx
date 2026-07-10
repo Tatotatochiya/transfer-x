@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import OnboardingChecklist from "../../components/OnboardingChecklist";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { MandateResponse, PersonalTerms, PlayerDetail } from "../../types/api";
@@ -188,6 +189,9 @@ export default function PlayerProfilePage() {
         subtitle={player.position ?? "Player"}
         actions={player.is_verified_player ? <VerifiedBadge /> : undefined}
       />
+
+      {/* First-run checklist (Phase 6) */}
+      <OnboardingChecklist />
 
       {/* Visibility & open-to-offers controls */}
       <Card>

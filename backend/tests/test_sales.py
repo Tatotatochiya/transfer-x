@@ -581,3 +581,123 @@ async def test_cannot_list_player_not_owned_by_club(client: AsyncClient, seller:
     )
     assert resp.status_code == 400
     assert "not registered" in resp.json()["detail"].lower()
+
+
+# ── TRA-91: fair-value signal embed on sale detail ─────────────────────────────
+
+
+async def _seed_valuation(client: AsyncClient, db, player_id: str) -> None:
+    """Insert Example-A stats and compute a valuation as staff."""
+    import uuid as uuid_mod
+    from sqlalchemy import select
+    from app.auth.models import User
+    from app.players.models import Player
+    from app.stats.models import PlayerStats
+
+    # test_sales' _create_player sets no age; Example A expects a 25-year-old
+    result = await db.execute(select(Player).where(Player.id == uuid_mod.UUID(player_id)))
+    result.scalar_one().age = 25
+
+    db.add(PlayerStats(
+        player_id=uuid_mod.UUID(player_id), vendor="api_sports_v3",
+        league_id="39", season="2025", minutes=2700, appearances=30,
+        goals=24, assists=9, shots_on_target=54, key_passes=45,
+        dribbles_success=60, avg_rating=7.6,
+    ))
+    await db.commit()
+
+    email = f"saleval-admin-{uuid_mod.uuid4().hex[:6]}@test.com"
+    admin_tokens = await _register(client, email)
+    result = await db.execute(select(User).where(User.email == email))
+    result.scalar_one().is_superuser = True
+    await db.commit()
+    resp = await client.post(
+        f"/valuation/players/{player_id}/recompute", headers=_auth_headers(admin_tokens)
+    )
+    assert resp.status_code == 200, resp.text
+
+
+@pytest.mark.asyncio
+async def test_fixed_price_sale_embeds_signal_with_divergence(
+    client: AsyncClient, seller: dict, buyer: dict, db
+):
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    await _seed_valuation(client, db, player["id"])
+    sale = await _create_sale(
+        client, sel_headers, player["id"], sale_type="FIXED_PRICE", asking_price=80_000_000
+    )
+
+    data = (await client.get(f"/sales/{sale['id']}", headers=_auth_headers(buyer))).json()
+    signal = data["fair_value_signal"]
+    assert signal is not None
+    assert abs(float(signal["fair_value"]) - 66_500_000) <= 100_000
+    assert signal["divergence"] is not None
+    assert float(signal["divergence"]["reference_price"]) == 80_000_000
+    assert signal["divergence"]["band"] == "ABOVE"
+
+
+@pytest.mark.asyncio
+async def test_auction_sale_embeds_signal_without_divergence(
+    client: AsyncClient, seller: dict, buyer: dict, db
+):
+    """D7: an auction's signal must never carry a divergence — a divergence
+    against the (hidden) reserve would leak it."""
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    await _seed_valuation(client, db, player["id"])
+
+    resp = await client.post(
+        "/sales",
+        json={
+            "player_id": player["id"], "sale_type": "AUCTION",
+            "asking_price": 5_000_000, "reserve_price": 7_000_000,
+        },
+        headers=sel_headers,
+    )
+    assert resp.status_code == 201, resp.text
+    sale_id = resp.json()["id"]
+
+    data = (await client.get(f"/sales/{sale_id}", headers=_auth_headers(buyer))).json()
+    signal = data["fair_value_signal"]
+    assert signal is not None
+    assert signal["divergence"] is None
+    # nothing derived from reserve_price appears anywhere in the signal
+    assert data["reserve_price"] is None  # TRA-139 scoping still holds
+    assert "7000000" not in str(signal)
+
+
+@pytest.mark.asyncio
+async def test_sale_embed_null_for_player_account_and_anonymous(
+    client: AsyncClient, seller: dict, db
+):
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    await _seed_valuation(client, db, player["id"])
+    sale = await _create_sale(
+        client, sel_headers, player["id"], sale_type="FIXED_PRICE", asking_price=80_000_000
+    )
+
+    resp = await client.post("/auth/register", json={
+        "email": "saleval-player@test.com", "password": "password123",
+        "user_type": "PLAYER", "player_id": player["id"],
+    })
+    assert resp.status_code == 201, resp.text
+    player_headers = _auth_headers(resp.json())
+
+    data = (await client.get(f"/sales/{sale['id']}", headers=player_headers)).json()
+    assert data["fair_value_signal"] is None
+
+    anon = (await client.get(f"/sales/{sale['id']}")).json()
+    assert anon["fair_value_signal"] is None
+
+
+@pytest.mark.asyncio
+async def test_sale_embed_null_for_ineligible_player(client: AsyncClient, seller: dict, buyer: dict):
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)  # no stats → no valuation
+    sale = await _create_sale(
+        client, sel_headers, player["id"], sale_type="FIXED_PRICE", asking_price=8_000_000
+    )
+    data = (await client.get(f"/sales/{sale['id']}", headers=_auth_headers(buyer))).json()
+    assert data["fair_value_signal"] is None

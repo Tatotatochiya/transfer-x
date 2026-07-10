@@ -1,6 +1,6 @@
 ---
 title: "Personas"
-last_updated: 2026-07-03
+last_updated: 2026-07-10
 status: Draft
 owner: "TODO — assign a Product Owner"
 ---
@@ -20,6 +20,7 @@ Out of scope: commercial segmentation and market sizing (see [`../business/targe
 
 - [Selling Club](#selling-club)
 - [Buying Club](#buying-club)
+- [Club Staff](#club-staff)
 - [Agent](#agent)
 - [Player](#player)
 - [Platform Admin](#platform-admin)
@@ -38,6 +39,12 @@ Each persona below is grounded in an account type that exists in the product tod
 **Who they are:** A club account browsing the market, placing bids/offers, and progressing agreed deals through to completion.
 
 > **TODO:** Goals, needs, and pain points.
+
+## Club Staff
+
+**Who they are:** People at a club who are not the club's primary account holder — invited by the owner with one of four roles, each mapping to what that person actually does: **Sporting Director** (deal authority, club admin, decides spending approvals), **Manager** (runs the market and deals day to day; large spends can require approval), **Scout** (shortlists and market views, no bidding), **Read-only** (board member/CEO oversight — sees everything, changes nothing). Distinct from [Platform Admin](#platform-admin): "club staff" work *for a club*; platform admins work *for TransferX*.
+
+> **TODO:** Goals, needs, and pain points per staff role.
 
 ## Agent
 

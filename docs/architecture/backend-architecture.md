@@ -1,6 +1,6 @@
 ---
 title: "Backend Architecture"
-last_updated: 2026-07-03
+last_updated: 2026-07-10
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -29,7 +29,8 @@ Each module under `backend/app/` follows a `models.py` / `schemas.py` / `service
 | Module | Responsibility |
 |---|---|
 | `auth` | Login/register, JWT issuance, `get_current_user` |
-| `clubs` | Club profiles, staff, finance |
+| `clubs` | Club profiles, staff + roles/capabilities (`capabilities.py` — the single capability matrix, TRA-151), staff invitations, finance |
+| `approvals` | Spending-authority approvals (Phase 5): threshold capture of MANAGER money actions, decision endpoints, re-validated execution, daily expiry |
 | `players` | Player records, contracts |
 | `sales` | Listings (auction / fixed price / open to offers), bids |
 | `offers` | Direct offer negotiation |
@@ -43,6 +44,7 @@ Each module under `backend/app/` follows a `models.py` / `schemas.py` / `service
 | `stats` | Player statistics and form |
 | `vendor` | External stats provider (API-Football) client and sync |
 | `enrichment` | Valuation/wage enrichment provider adapters |
+| `valuation` | Fair-value model (TRA-91): pure scoring engine + `FeatureProvider` seam, append-only `PlayerValuation` history, daily recompute job |
 | `fixtures` | Fixture cache |
 | `world` | Real-world team/league reference data |
 | `transfer_window` | Transfer window open/close administration and enforcement |
@@ -57,9 +59,17 @@ Each module under `backend/app/` follows a `models.py` / `schemas.py` / `service
 
 ## Background jobs
 
-Scheduled jobs run in-process via APScheduler (see `backend/app/main.py`).
+Scheduled jobs run in-process via APScheduler (see `backend/app/main.py`). Verified against the code 2026-07-07:
 
-> **TODO:** List the current scheduled jobs and their intervals here — this list changes as the product grows and should be kept current rather than copied once and left stale.
+| Job id | Interval | What it does |
+|---|---|---|
+| `close_expired_sales` | 1 min | Closes sales past their deadline |
+| `expire_stale_offers` | 5 min | Expires offers past their validity window |
+| `notify_upcoming_events` | 1 h | Reminder notifications for upcoming events |
+| `client_alerts` | 6 h | Agent client-roster alerts (contract expiry, valuation change, interest) |
+| `enrichment_sync` | 24 h | External valuation/wage enrichment (no-op while all sources are MANUAL) |
+| `valuation_compute` | 24 h | Recomputes every player's fair-value model valuation (TRA-91); registered after `enrichment_sync` so it runs on fresher stats |
+| `approval_expiry` | 24 h | Expires pending spending approvals past their 24-hour window and notifies requesters |
 
 ## Related documents
 

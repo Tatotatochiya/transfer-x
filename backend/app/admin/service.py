@@ -368,7 +368,7 @@ async def create_staff_user(
     created_by_user_id: uuid.UUID,
 ):
     """Create a new User + ClubStaff record."""
-    from app.auth.models import User
+    from app.auth.models import User, UserType
     from app.clubs.models import ClubStaff, StaffRole
     from app.auth import service as auth_service
 
@@ -380,7 +380,12 @@ async def create_staff_user(
     staff_role = StaffRole(role)
 
     hashed = auth_service.hash_password(password)
-    user = User(email=email, hashed_password=hashed, is_active=True, is_superuser=False)
+    # D9: staff users are explicitly CLUB — every club-side branch switches on
+    # user_type == CLUB. UserType.STAFF is reserved and deliberately unassigned.
+    user = User(
+        email=email, hashed_password=hashed, is_active=True, is_superuser=False,
+        user_type=UserType.CLUB,
+    )
     db.add(user)
     await db.flush()
 

@@ -4,13 +4,17 @@ import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.approvals import service as approvals_service
+from app.approvals.models import ApprovalActionType
 from app.auth.models import User
 from app.clubs import service as clubs_service
 from app.common.schemas import Paginated
 from app.database import get_db
-from app.deps import get_buyer_user, get_current_user, get_optional_user, get_seller_user, require_club_write_access
+from app.clubs.capabilities import Capability, require_club_capability
+from app.deps import get_buyer_user, get_current_user, get_optional_user, get_seller_user
 from app.notifications import service as notif_service
 from app.notifications.models import NotificationType
 from app.sales import service
@@ -27,6 +31,9 @@ from app.sales.schemas import (
 )
 
 router = APIRouter(tags=["sales"])
+
+# TRA-151: sales/bids are market actions — MANAGER and above; SCOUT/READONLY get 403.
+_market_write = require_club_capability(Capability.MARKET_WRITE)
 
 
 async def _resolve_viewer(
@@ -130,7 +137,24 @@ async def get_sale(
     if sale is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
     viewer_club_id, is_staff = await _resolve_viewer(db, current_user)
-    return _enrich_sale_response(sale, viewer_club_id=viewer_club_id, is_staff=is_staff)
+    resp = _enrich_sale_response(sale, viewer_club_id=viewer_club_id, is_staff=is_staff)
+
+    # TRA-91: fair-value signal embed. Null for player-account and anonymous
+    # viewers (D6 — the /valuation endpoints require the same). Divergence only
+    # vs asking_price on FIXED_PRICE; never vs reserve/bids on auctions (D7).
+    from app.auth.models import UserType
+    from app.valuation import service as valuation_service
+
+    if current_user is not None and current_user.user_type != UserType.PLAYER:
+        valuation_row = await valuation_service.get_latest_valuation(db, sale.player_id)
+        if valuation_row is not None:
+            reference = (
+                sale.asking_price if sale.sale_type == SaleType.FIXED_PRICE else None
+            )
+            resp.fair_value_signal = valuation_service.build_valuation_response(
+                valuation_row, reference_price=reference
+            )
+    return resp
 
 
 @router.get("/sales/{sale_id}/order-book", response_model=OrderBookResponse)
@@ -161,7 +185,7 @@ async def create_sale(
     body: SaleCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_seller_user),
-    _write: User = Depends(require_club_write_access),
+    _write: User = Depends(_market_write),
 ):
     club = await clubs_service.get_club_for_user(db, current_user.id)
     if club is None:
@@ -222,7 +246,7 @@ async def withdraw_sale(
     sale_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _write: User = Depends(require_club_write_access),
+    _write: User = Depends(_market_write),
 ):
     club = await clubs_service.get_club_for_user(db, current_user.id)
     if club is None:
@@ -261,11 +285,39 @@ async def place_bid(
     body: BidCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_buyer_user),
-    _write: User = Depends(require_club_write_access),
+    _write: User = Depends(_market_write),
 ):
     club = await clubs_service.get_club_for_user(db, current_user.id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+
+    # Phase 5 (D7): a MANAGER's bid at/above the club threshold is captured as
+    # a pending approval — nothing reserved, nothing executed.
+    _sale_for_summary = await service.get_sale_by_id(db, sale_id)
+    _player_name = (
+        _sale_for_summary.player.name
+        if _sale_for_summary and _sale_for_summary.player else "a player"
+    )
+    approval = await approvals_service.maybe_capture(
+        db,
+        current_user=current_user,
+        club=club,
+        action_type=ApprovalActionType.PLACE_BID,
+        amount=body.amount,
+        payload={
+            "sale_id": str(sale_id),
+            "amount": str(body.amount),
+            "wage_offer_weekly": str(body.wage_offer_weekly) if body.wage_offer_weekly else None,
+            "notes": body.notes,
+        },
+        summary=f"Bid £{body.amount:,.0f} on {_player_name}",
+    )
+    if approval is not None:
+        await db.commit()
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content={"status": "PENDING_APPROVAL", "approval_id": str(approval.id)},
+        )
 
     # Capture current best bidder before placing (for OUTBID detection)
     from sqlalchemy import select as sa_select
@@ -287,33 +339,28 @@ async def place_bid(
             notes=body.notes,
         )
 
-        # Notify seller of new/upgraded bid
+        # Notify seller of new/upgraded bid — role-routed per club (TRA-152)
         _sale = await service.get_sale_by_id(db, sale_id)
         if _sale:
-            seller_club = await clubs_service.get_club_by_id(db, uuid.UUID(str(_sale.seller_club_id)))
-            if seller_club:
-                player_name = _sale.player.name if _sale.player else "a player"
-                await notif_service.create_notification(
+            player_name = _sale.player.name if _sale.player else "a player"
+            await notif_service.notify_club(
+                db,
+                uuid.UUID(str(_sale.seller_club_id)),
+                type=NotificationType.AUCTION_BID_RECEIVED,
+                message=f"New bid received on {player_name}",
+                link=f"/sales/{sale_id}",
+                related_player_id=_sale.player_id,
+            )
+            # OUTBID: notify the previously-best competing bidder if new bid beats them
+            if prev_best_bid and bid.amount > prev_best_bid.amount:
+                await notif_service.notify_club(
                     db,
-                    recipient_user_id=seller_club.user_id,
-                    type=NotificationType.AUCTION_BID_RECEIVED,
-                    message=f"New bid received on {player_name}",
+                    uuid.UUID(str(prev_best_bid.buyer_club_id)),
+                    type=NotificationType.OUTBID,
+                    message=f"You have been outbid on {player_name}",
                     link=f"/sales/{sale_id}",
                     related_player_id=_sale.player_id,
                 )
-            # OUTBID: notify the previously-best competing bidder if new bid beats them
-            if prev_best_bid and bid.amount > prev_best_bid.amount:
-                outbid_club = await clubs_service.get_club_by_id(db, uuid.UUID(str(prev_best_bid.buyer_club_id)))
-                if outbid_club:
-                    player_name = _sale.player.name if _sale.player else "a player"
-                    await notif_service.create_notification(
-                        db,
-                        recipient_user_id=outbid_club.user_id,
-                        type=NotificationType.OUTBID,
-                        message=f"You have been outbid on {player_name}",
-                        link=f"/sales/{sale_id}",
-                        related_player_id=_sale.player_id,
-                    )
 
         await db.commit()
         await db.refresh(bid)
@@ -321,15 +368,16 @@ async def place_bid(
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
-    # WS push to seller
+    # WS push to every member of the selling club
     _sale_ws = await service.get_sale_by_id(db, sale_id)
     if _sale_ws:
-        seller_club = await clubs_service.get_club_by_id(db, uuid.UUID(str(_sale_ws.seller_club_id)))
-        if seller_club:
-            await ws_manager.send_to_user(
-                seller_club.user_id,
-                {"type": "BID_PLACED", "sale_id": str(sale_id)},
-            )
+        member_ids = await notif_service.club_member_user_ids(
+            db, uuid.UUID(str(_sale_ws.seller_club_id))
+        )
+        await ws_manager.broadcast_to_users(
+            member_ids,
+            {"type": "BID_PLACED", "sale_id": str(sale_id)},
+        )
 
     return BidResponse.model_validate(bid)
 
@@ -376,11 +424,35 @@ async def accept_bid(
     bid_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_seller_user),
-    _write: User = Depends(require_club_write_access),
+    _write: User = Depends(_market_write),
 ):
     club = await clubs_service.get_club_for_user(db, current_user.id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+
+    # Phase 5 (D7): a MANAGER accepting a bid at/above the club threshold is
+    # captured as a pending approval instead of executing.
+    from sqlalchemy import select as _sa_select
+    _bid_row = await db.execute(_sa_select(Bid).where(Bid.id == bid_id, Bid.sale_id == sale_id))
+    _bid = _bid_row.scalar_one_or_none()
+    if _bid is not None:
+        _sale_row = await service.get_sale_by_id(db, sale_id)
+        _pname = _sale_row.player.name if _sale_row and _sale_row.player else "a player"
+        approval = await approvals_service.maybe_capture(
+            db,
+            current_user=current_user,
+            club=club,
+            action_type=ApprovalActionType.ACCEPT_BID,
+            amount=_bid.amount,
+            payload={"sale_id": str(sale_id), "bid_id": str(bid_id)},
+            summary=f"Accept £{_bid.amount:,.0f} bid on {_pname}",
+        )
+        if approval is not None:
+            await db.commit()
+            return JSONResponse(
+                status_code=status.HTTP_202_ACCEPTED,
+                content={"status": "PENDING_APPROVAL", "approval_id": str(approval.id)},
+            )
 
     try:
         deal = await service.accept_bid(
@@ -389,19 +461,17 @@ async def accept_bid(
             bid_id=bid_id,
             actor_club_id=club.id,
         )
-        # Notify winning buyer
-        buyer_club_notif = await clubs_service.get_club_by_id(db, uuid.UUID(str(deal.buyer_club_id)))
-        if buyer_club_notif:
-            _sale_notif = await service.get_sale_by_id(db, sale_id)
-            player_name = _sale_notif.player.name if _sale_notif and _sale_notif.player else "a player"
-            await notif_service.create_notification(
-                db,
-                recipient_user_id=buyer_club_notif.user_id,
-                type=NotificationType.AUCTION_BID_ACCEPTED,
-                message=f"Your bid on {player_name} has been accepted",
-                link=f"/deals/{deal.id}",
-                related_player_id=deal.player_id,
-            )
+        # Notify winning buyer — role-routed per club (TRA-152)
+        _sale_notif = await service.get_sale_by_id(db, sale_id)
+        player_name = _sale_notif.player.name if _sale_notif and _sale_notif.player else "a player"
+        await notif_service.notify_club(
+            db,
+            uuid.UUID(str(deal.buyer_club_id)),
+            type=NotificationType.AUCTION_BID_ACCEPTED,
+            message=f"Your bid on {player_name} has been accepted",
+            link=f"/deals/{deal.id}",
+            related_player_id=deal.player_id,
+        )
         await db.commit()
         await db.refresh(deal)
     except ValueError as exc:
@@ -409,11 +479,8 @@ async def accept_bid(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     # Notify buyer + seller that sale is closed and a deal was created
-    buyer_club = await clubs_service.get_club_by_id(db, deal.buyer_club_id)
-    user_ids = [uid for uid in [
-        club.user_id,
-        buyer_club.user_id if buyer_club else None,
-    ] if uid is not None]
+    user_ids = await notif_service.club_member_user_ids(db, club.id)
+    user_ids += await notif_service.club_member_user_ids(db, uuid.UUID(str(deal.buyer_club_id)))
     await ws_manager.broadcast_to_users(
         list(set(user_ids)),
         {"type": "SALE_UPDATED", "id": str(sale_id)},

@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { Player, PlayerDetail } from "../../types/api";
+import type { FairValueSignal, Player, PlayerDetail } from "../../types/api";
 import Badge from "../ui/Badge";
 import ClubLink from "../ui/ClubLink";
 import FormBadge from "./FormBadge";
+import FairValueBadge from "./FairValueBadge";
 import { positionVariant, playerStatusVariant, playerStatusLabel } from "../../lib/badges";
 import AddToShortlistButton from "../scouting/AddToShortlistButton";
 import { useCompare } from "../../context/CompareContext";
@@ -13,6 +14,7 @@ interface PlayerCardProps {
   player: Player;
   formScore?: number | null;
   formTrend?: number | null;
+  fairValueSignal?: FairValueSignal | null;
 }
 
 const positionBg: Record<string, string> = {
@@ -22,7 +24,7 @@ const positionBg: Record<string, string> = {
   FWD: "bg-red-500/20 text-red-400",
 };
 
-export default function PlayerCard({ player, formScore, formTrend }: PlayerCardProps) {
+export default function PlayerCard({ player, formScore, formTrend, fairValueSignal }: PlayerCardProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toggle, has } = useCompare();
@@ -117,6 +119,9 @@ export default function PlayerCard({ player, formScore, formTrend }: PlayerCardP
               }).format(player.market_value)}
             </span>
           )}
+
+          {/* Fair-value model badge (TRA-92) */}
+          {fairValueSignal && <FairValueBadge signal={fairValueSignal} compact />}
 
           {/* Open to offers */}
           {player.open_to_offers && (

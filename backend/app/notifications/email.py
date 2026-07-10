@@ -93,6 +93,25 @@ def _send_sync(to_email: str, subject: str, html_body: str) -> None:
         server.send_message(msg)
 
 
+async def send_staff_invitation_email(
+    to_email: str, club_name: str, role: str, accept_url: str
+) -> None:
+    """TRA-86: fire-and-forget invitation email. No-ops without SMTP_HOST —
+    the create response returns the accept URL once so the owner can share it
+    manually in dev (D6). Never logs the URL (it embeds the raw token)."""
+    try:
+        message = (
+            f"{club_name} has invited you to join their TransferX team as "
+            f"{role.replace('_', ' ').title()}. The link expires in 7 days."
+        )
+        html = _render_html(message, accept_url)
+        await asyncio.to_thread(
+            _send_sync, to_email, f"TransferX — {club_name} team invitation", html
+        )
+    except Exception:
+        logger.exception("Failed to send staff invitation email")
+
+
 async def maybe_send_notification_email(
     recipient_user_id: uuid.UUID,
     type_: NotificationType,

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { Bid, Club, Sale } from "../../types/api";
+import type { Bid, Club, PendingApprovalCaptured, Sale } from "../../types/api";
 import Button from "../ui/Button";
 import CurrencyInput from "../ui/CurrencyInput";
 import Metric from "../ui/Metric";
@@ -33,15 +33,24 @@ export default function BidForm({ sale, existingBid }: BidFormProps) {
 
   const minBid = sale.minimum_next_bid ?? sale.min_increment;
 
+  const [pendingApproval, setPendingApproval] = useState(false);
+
   const mutation = useMutation({
     mutationFn: (body: { amount: number; notes?: string }) =>
       api
-        .post<Bid>(`/sales/${sale.id}/bids`, {
+        .post<Bid | PendingApprovalCaptured>(`/sales/${sale.id}/bids`, {
           amount: body.amount,
           ...(body.notes && { notes: body.notes }),
         })
         .then((r) => r.data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Phase 5 (D7): a 202 means the bid was captured for approval, not placed.
+      if ("approval_id" in data) {
+        setPendingApproval(true);
+        addToast("Bid sent for approval — an approver at your club must sign it off.", "info");
+        queryClient.invalidateQueries({ queryKey: ["clubs", "me", "approvals"] });
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["sales", sale.id] });
       queryClient.invalidateQueries({ queryKey: ["sales", sale.id, "bids"] });
       addToast(existingBid ? "Bid updated." : "Bid placed successfully.", "success");
@@ -139,11 +148,18 @@ export default function BidForm({ sale, existingBid }: BidFormProps) {
         <p className="text-sm text-red-400">{fieldError ?? serverError}</p>
       )}
 
-      {/* Success */}
-      {mutation.isSuccess && (
-        <p className="text-sm text-emerald-400">
-          {existingBid ? "Bid updated successfully." : "Bid placed successfully."}
+      {/* Success / pending approval */}
+      {pendingApproval ? (
+        <p className="text-sm text-amber-400">
+          Pending approval — this bid is waiting for sign-off from your club's owner
+          or sporting director. Track it on the Approvals page.
         </p>
+      ) : (
+        mutation.isSuccess && (
+          <p className="text-sm text-emerald-400">
+            {existingBid ? "Bid updated successfully." : "Bid placed successfully."}
+          </p>
+        )
       )}
 
       <Button

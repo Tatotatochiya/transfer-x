@@ -45,10 +45,17 @@ export function useIdentity(): Identity {
   });
 
   if (isClub) {
+    // TRA-151: staff members see their role in the identity footer —
+    // "Staff: Sporting Director" — the owner keeps a clean club label.
+    const myRole = clubQuery.data?.my_role;
+    const staffLabel =
+      myRole && myRole !== "OWNER"
+        ? `Staff: ${myRole.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}`
+        : null;
     return {
       role: "CLUB",
       name: clubQuery.data?.name ?? null,
-      subLabel: null,
+      subLabel: staffLabel,
       crestUrl: clubQuery.data?.crest_url ?? null,
       isSuperuser,
       isLoading: clubQuery.isLoading,

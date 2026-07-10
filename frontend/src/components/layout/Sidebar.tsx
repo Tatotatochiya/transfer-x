@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../hooks/useAuth";
+import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useIdentity, type IdentityRole } from "../../hooks/useIdentity";
 import api from "../../lib/api";
 import Icon from "./Icon";
@@ -29,6 +30,8 @@ interface NavItem {
   iconColor: string;  // e.g. "text-sky-400"
   iconBg: string;     // e.g. "bg-sky-500/15"
   end?: boolean;      // exact match for active state (React Router NavLink `end`)
+  // TRA-151: capability-gated items (server matrix via useClubCapabilities)
+  gate?: "TEAM_MANAGE" | "APPROVALS";
 }
 
 interface NavGroup {
@@ -114,9 +117,11 @@ function getNavGroups(userType: UserType | null): NavGroup[] {
       title: "Club",
       authRequired: true,
       items: [
-        { label: "War Room", to: "/dashboard",    icon: "layout-dashboard", iconColor: "text-blue-400",   iconBg: "bg-blue-500/15" },
-        { label: "My Club",  to: "/club",         icon: "shield",           iconColor: "text-indigo-400", iconBg: "bg-indigo-500/15", end: true },
-        { label: "Finance",  to: "/club/finance", icon: "wallet",           iconColor: "text-green-400",  iconBg: "bg-green-500/15" },
+        { label: "War Room",  to: "/dashboard",      icon: "layout-dashboard", iconColor: "text-blue-400",   iconBg: "bg-blue-500/15" },
+        { label: "My Club",   to: "/club",           icon: "shield",           iconColor: "text-indigo-400", iconBg: "bg-indigo-500/15", end: true },
+        { label: "Finance",   to: "/club/finance",   icon: "wallet",           iconColor: "text-green-400",  iconBg: "bg-green-500/15" },
+        { label: "Team",      to: "/club/team",      icon: "users",            iconColor: "text-rose-400",   iconBg: "bg-rose-500/15", gate: "TEAM_MANAGE" },
+        { label: "Approvals", to: "/club/approvals", icon: "check",            iconColor: "text-amber-400",  iconBg: "bg-amber-500/15", gate: "APPROVALS" },
       ],
     },
     {
@@ -242,8 +247,20 @@ function SidebarLink({ item, expanded }: { item: NavItem; expanded: boolean }) {
 export default function Sidebar({ mobileOpen, onMobileClose, expanded, onToggle }: SidebarProps) {
   const { user, isAuthenticated, logout, userType } = useAuth();
   const identity = useIdentity();
+  const { can, role } = useClubCapabilities();
   const navigate = useNavigate();
-  const navGroups = getNavGroups(userType);
+
+  // TRA-151: capability-gated items are hidden, not disabled (D3).
+  // Approvals shows for deciders (owner/SD) and for MANAGERs, whose own
+  // requests land there; scouts and read-only members never see it.
+  const itemVisible = (item: NavItem) => {
+    if (!item.gate) return true;
+    if (item.gate === "TEAM_MANAGE") return can("TEAM_MANAGE");
+    return can("APPROVE_ACTIONS") || role === "MANAGER";
+  };
+  const navGroups = getNavGroups(userType)
+    .map((g) => ({ ...g, items: g.items.filter(itemVisible) }))
+    .filter((g) => g.items.length > 0);
   // Show text labels when desktop sidebar is expanded OR mobile drawer is open
   const showText = expanded || mobileOpen;
 

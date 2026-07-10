@@ -1,4 +1,5 @@
 import { useNavigate, Link } from "react-router-dom";
+import OnboardingChecklist from "../../components/OnboardingChecklist";
 import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type {
@@ -695,6 +696,9 @@ export default function DashboardPage() {
 
       {/* Transfer window banner */}
       <TransferWindowBanner />
+
+      {/* First-run checklist (Phase 6) */}
+      <OnboardingChecklist />
 
       {/* Urgent actions */}
       {myClub && <UrgentActionsPanel />}

@@ -22,7 +22,8 @@ async def _resolve_actor_entity(db: AsyncSession, user: User) -> tuple[Verificat
     """Map the calling user to the entity_type/entity_id/display_name they can request verification for."""
     if user.user_type == UserType.CLUB:
         from app.clubs import service as clubs_service
-        club = await clubs_service.get_club_by_user_id(db, user.id)
+        # Owner-or-staff: staff can view their club's verification state (TRA-151).
+        club = await clubs_service.get_club_for_user(db, user.id)
         if club is None:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
         return VerificationEntityType.CLUB, club.id, club.name
@@ -89,6 +90,11 @@ async def request_verification(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # TRA-151: mixed-caller endpoint — requesting verification for a club is a
+    # CLUB_ADMIN action; agents/players request for themselves, no club role.
+    if current_user.user_type == UserType.CLUB:
+        from app.clubs.capabilities import Capability, ensure_club_capability
+        await ensure_club_capability(db, current_user, Capability.CLUB_ADMIN)
     entity_type, entity_id, _ = await _resolve_actor_entity(db, current_user)
     try:
         req = await service.create_request(

@@ -41,6 +41,9 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   DEAL_CLAUSE_TRIGGERED:      "Clause triggered",
   NEGOTIATION_MESSAGE:        "New negotiation message",
   CLIENT_ALERT:               "Client alert",
+  STAFF_INVITATION:           "Team member joined",
+  APPROVAL_REQUESTED:         "Approval requested",
+  APPROVAL_DECIDED:           "Approval decided",
 };
 
 const TYPE_COLOURS: Record<NotificationType, string> = {
@@ -70,6 +73,9 @@ const TYPE_COLOURS: Record<NotificationType, string> = {
   DEAL_CLAUSE_TRIGGERED:    "text-amber-400",
   NEGOTIATION_MESSAGE:      "text-violet-400",
   CLIENT_ALERT:             "text-sky-400",
+  STAFF_INVITATION:         "text-indigo-400",
+  APPROVAL_REQUESTED:       "text-amber-400",
+  APPROVAL_DECIDED:         "text-emerald-400",
 };
 
 // ── Row component ─────────────────────────────────────────────────────────────

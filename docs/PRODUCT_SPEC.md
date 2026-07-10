@@ -1,6 +1,6 @@
 ---
 title: "TransferX Product Specification"
-last_updated: 2026-07-04
+last_updated: 2026-07-10
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -29,6 +29,7 @@ Out of scope: implementation detail (see `architecture/` and `engineering/`), da
   - [Engineering](#engineering)
   - [Operations](#operations)
   - [Security & Compliance](#security--compliance)
+  - [Feature specs](#feature-specs)
   - [Tracking documents](#tracking-documents)
 - [System diagram](#system-diagram)
 - [Related documents](#related-documents)
@@ -45,8 +46,8 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 |---|---|---|
 | Backend | FastAPI (Python), SQLAlchemy async, PostgreSQL | [`architecture/backend-architecture.md`](./architecture/backend-architecture.md) |
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS v4 | [`architecture/frontend-architecture.md`](./architecture/frontend-architecture.md) |
-| Database migrations | 47+ (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
-| User types | Club, Agent, Player, Staff, Admin | [`product/personas.md`](./product/personas.md) |
+| Database migrations | 51 (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
+| User types | Club (owner + 4 staff roles), Agent, Player, Admin | [`product/personas.md`](./product/personas.md) |
 | Deal stages | AGREEMENT → AGENT_NEGOTIATION → PERSONAL_TERMS → PAPERWORK → CONFIRMED → COMPLETED (or COLLAPSED) | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
 | Production deployment | Not yet configured | [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md) |
 
@@ -111,6 +112,14 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 - [`security-and-compliance/README.md`](./security-and-compliance/README.md) — area overview
 - [`security-and-compliance/permissions-model.md`](./security-and-compliance/permissions-model.md) — confidentiality and access posture
 - [`security-and-compliance/data-privacy-and-legal.md`](./security-and-compliance/data-privacy-and-legal.md) — privacy and legal surface
+
+### Feature specs
+*Implementation-ready build specifications for upcoming features — point-in-time documents, superseded by the product/architecture docs once shipped.*
+
+- [`feature_spec/README.md`](./feature_spec/README.md) — area overview and spec lifecycle
+- [`feature_spec/fair-value-vs-asking-signal.md`](./feature_spec/fair-value-vs-asking-signal.md) — fair-value-vs-asking valuation signal (TRA-91/TRA-92) — **implemented 2026-07-07**
+- [`feature_spec/injury-availability-risk-profile.md`](./feature_spec/injury-availability-risk-profile.md) — injury-availability risk profile (no ticket yet)
+- [`feature_spec/club-team-roles-and-onboarding.md`](./feature_spec/club-team-roles-and-onboarding.md) — club team accounts, roles & onboarding (TRA-151/146/152/86 + two proposed) — **implemented 2026-07-10**
 
 ### Tracking documents
 *Root-level documents that track ongoing state rather than belonging to one area — see [`README.md#tracking-documents`](./README.md#tracking-documents) for the full explanation.*

@@ -1,6 +1,6 @@
 ---
 title: "Data Model"
-last_updated: 2026-07-03
+last_updated: 2026-07-10
 status: Draft
 owner: "TODO — assign a Technical Lead"
 ---
@@ -27,7 +27,9 @@ Out of scope: full column-level schema (the migrations under `backend/migrations
 | Entity | Owned by module | Notes |
 |---|---|---|
 | `User` | `auth` | Base account; typed as Club / Agent / Player / Staff / Admin |
-| `Club`, `ClubFinance`, `ClubStaff` | `clubs` | Club profile and budget tracking (reserved/committed/spent) |
+| `Club`, `ClubFinance`, `ClubStaff` | `clubs` | Club profile and budget tracking (reserved/committed/spent); `ClubFinance.approval_threshold` (null = approvals off); `ClubStaff.role` is one of four staff roles (TRA-151) |
+| `ClubStaffInvitation` | `clubs` | Tokenised staff invitation (TRA-86): sha256 `token_hash` only — the raw token is never stored; expires/revoked/accepted timestamps make it single-use |
+| `PendingApproval` | `approvals` | A captured money action awaiting sign-off (Phase 5): validated `payload_json` replayed at execution, requester + decider both recorded, one-way status machine |
 | `Player`, `Contract` | `players` | Player record and contract history |
 | `Sale`, `Bid` | `sales` | Listings and auction bids |
 | `Offer` | `offers` | Direct offers and counters |
@@ -35,6 +37,7 @@ Out of scope: full column-level schema (the migrations under `backend/migrations
 | `AgentProfile`, `Mandate`, `AgentNegotiation` | `agents` / `mandates` | Agent representation and negotiation |
 | `Notification` | `notifications` | In-app/email notifications |
 | `AuditEvent` | `audit` | Append-only audit trail |
+| `PlayerValuation` | `valuation` | Append-only fair-value model history (TRA-91); latest = max `computed_at` per player; `inputs_json` snapshots every input so any historical number is explainable |
 
 > **TODO:** This table is a starting point, not exhaustive. Expand it as entities are added, and correct it if any entry above is inaccurate — verify against `backend/app/*/models.py` rather than assuming.
 

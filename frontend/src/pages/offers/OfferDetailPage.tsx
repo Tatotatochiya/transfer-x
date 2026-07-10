@@ -17,6 +17,7 @@ import BuyerOrderBook from "../../components/sales/BuyerOrderBook";
 import { offerStatusVariant } from "../../lib/badges";
 import { formatCurrency, formatDate, formatWage, getApiError } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
+import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useToast } from "../../context/ToastContext";
 
 // ── Counter form ─────────────────────────────────────────────────────────────
@@ -103,6 +104,7 @@ export default function OfferDetailPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { addToast } = useToast();
+  const { can } = useClubCapabilities();
   const [showCounter, setShowCounter] = useState(false);
 
   const { data: offer, isLoading, isError } = useQuery<Offer>({
@@ -124,6 +126,12 @@ export default function OfferDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       queryClient.invalidateQueries({ queryKey: ["offers", "competition", offer?.player_id] });
       if (offer?.sale_id) queryClient.invalidateQueries({ queryKey: ["sales", offer.sale_id, "order-book"] });
+      // Phase 5 (D7): 202 means the acceptance was captured for approval.
+      if ("approval_id" in (deal as object)) {
+        addToast("Acceptance sent for approval — an approver at your club must sign it off.", "info");
+        queryClient.invalidateQueries({ queryKey: ["clubs", "me", "approvals"] });
+        return;
+      }
       addToast("Offer accepted — deal created!", "success");
       navigate(`/deals/${deal.id}`);
     },
@@ -179,9 +187,10 @@ export default function OfferDetailPage() {
     ? offer.last_actor_club_id !== myClubId
     : offer.status === "SENT" ? isSeller : false;
 
-  const canAct      = isParty && isActive && isMyTurn;
-  const canWithdraw = isBuyer && isActive;  // buyer can always pull out regardless of turn
-  const canMessage  = isParty && isActive;
+  const canMarketWrite = can("MARKET_WRITE");
+  const canAct      = isParty && isActive && isMyTurn && canMarketWrite;
+  const canWithdraw = isBuyer && isActive && canMarketWrite;  // buyer can always pull out regardless of turn
+  const canMessage  = isParty && isActive && canMarketWrite;
 
   const waitingFor = !isMyTurn && isActive && isParty
     ? (isBuyer ? offer.to_club?.name : offer.from_club?.name) ?? "other party"

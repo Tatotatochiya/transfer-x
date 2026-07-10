@@ -1,8 +1,12 @@
 import type {
   AgreementStatus,
+  ApprovalActionType,
+  ApprovalStatus,
   BidStatus,
   ClauseStatus,
   ClauseType,
+  ClubCapability,
+  ClubMemberRole,
   ClubRole,
   CommissionPayer,
   DealStage,
@@ -20,6 +24,9 @@ import type {
   PlayerVisibility,
   SaleStatus,
   SaleType,
+  StaffRole,
+  ValuationBand,
+  ValuationConfidence,
   ValuationSource,
   WageSource,
 } from "./enums";
@@ -213,6 +220,7 @@ export interface ClubFinance {
   wage_committed_weekly: number;
   transfer_remaining: number;
   wage_remaining_weekly: number;
+  approval_threshold: number | null;
   updated_at: string;
 }
 
@@ -240,6 +248,76 @@ export interface ClubPublic {
   role: ClubRole;
   verified: boolean;
   created_at: string;
+}
+
+// ── Club membership & team management (TRA-151 / TRA-86) ────────────────────
+
+export interface ClubMembership {
+  club: ClubPublic;
+  role: ClubMemberRole;
+  capabilities: ClubCapability[];
+}
+
+export interface ClubStaffMember {
+  id: string;
+  user_id: string;
+  email: string;
+  role: StaffRole;
+  created_at: string;
+}
+
+export interface ClubStaffInvitation {
+  id: string;
+  email: string;
+  role: StaffRole;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface TeamResponse {
+  staff: ClubStaffMember[];
+  invitations: ClubStaffInvitation[];
+}
+
+export interface StaffInviteResponse {
+  invitation: ClubStaffInvitation;
+  accept_url: string;
+}
+
+export interface InvitationPreview {
+  club_name: string;
+  club_crest_url: string | null;
+  role: StaffRole;
+  email: string;
+  expires_at: string;
+}
+
+// ── Spending-authority approvals (Phase 5) ───────────────────────────────────
+
+export interface PendingApproval {
+  id: string;
+  club_id: string;
+  action_type: ApprovalActionType;
+  amount: number;
+  requested_by_user_id: string;
+  requested_by_email: string | null;
+  status: ApprovalStatus;
+  decided_by_user_id: string | null;
+  decided_at: string | null;
+  failure_reason: string | null;
+  created_at: string;
+  expires_at: string;
+  summary: string | null;
+}
+
+export interface ApprovalPolicy {
+  approval_threshold: number | null;
+}
+
+/** The 202 body returned when a money action was captured for approval. */
+export interface PendingApprovalCaptured {
+  status: "PENDING_APPROVAL";
+  approval_id: string;
 }
 
 // ── World teams ───────────────────────────────────────────────────────────────
@@ -371,6 +449,43 @@ export interface Sale {
   best_bid: number | null;
   minimum_next_bid: number | null;
   reserve_met: boolean;
+  // TRA-91 fair-value signal — null for player-account/anonymous viewers and
+  // ineligible players; divergence only present on FIXED_PRICE listings
+  fair_value_signal?: FairValueSignal | null;
+}
+
+// ── Fair-value signal (TRA-91/92) ─────────────────────────────────────────────
+
+export interface ValuationBreakdownEntry {
+  label: string;
+  value: string;
+  norm: number;
+  weight: number;
+  contribution: number;
+}
+
+export interface ValuationDivergence {
+  reference_price: number;
+  pct: number;
+  band: ValuationBand;
+}
+
+export interface FairValueSignal {
+  player_id: string;
+  fair_value: number;
+  fair_value_low: number;
+  fair_value_high: number;
+  currency: string;
+  performance_score: number;
+  confidence: ValuationConfidence;
+  model_version: string;
+  league_tier: number;
+  age_factor: number;
+  age: number | null;
+  minutes: number | null;
+  as_of: string;
+  breakdown: ValuationBreakdownEntry[];
+  divergence: ValuationDivergence | null;
 }
 
 export interface Bid {

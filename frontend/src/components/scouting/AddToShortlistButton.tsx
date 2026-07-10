@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { ShortlistSummary } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
+import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 
 interface Props {
   playerId: string;
@@ -13,6 +14,7 @@ interface Props {
 
 export default function AddToShortlistButton({ playerId, size = "default" }: Props) {
   const { accessToken } = useAuthStore();
+  const { membership, can } = useClubCapabilities();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [added, setAdded] = useState<string | null>(null); // shortlist id just added to
@@ -49,7 +51,9 @@ export default function AddToShortlistButton({ playerId, size = "default" }: Pro
     },
   });
 
-  if (!accessToken) return null;
+  // TRA-151: shortlisting is a club scouting write — hidden for read-only
+  // staff and for non-club identities (agents/players have no shortlists).
+  if (!accessToken || !membership || !can("SCOUTING_WRITE")) return null;
 
   const isCompact = size === "compact";
 

@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { ActiveDealStub, Club, MandateResponse, OrderBook, Player, PlayerDetail, PlayerForm, PlayerStats } from "../../types/api";
+import type { ActiveDealStub, Club, FairValueSignal, MandateResponse, OrderBook, Player, PlayerDetail, PlayerForm, PlayerStats } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
+import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
@@ -22,6 +23,8 @@ import { useCompare } from "../../context/CompareContext";
 import CareerHistoryPanel from "../../components/players/CareerHistoryPanel";
 import InjuryHistoryPanel from "../../components/players/InjuryHistoryPanel";
 import { PlayerFitCard } from "../../components/ai/PlayerFitCard";
+import FairValueBadge from "../../components/players/FairValueBadge";
+import { Skeleton } from "../../components/ui/Skeleton";
 
 // ── Valuation card (TRA-73) ───────────────────────────────────────────────────
 
@@ -501,8 +504,10 @@ export default function PlayerMarketDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { accessToken, user } = useAuthStore();
+  const { can } = useClubCapabilities();
   const isAuthenticated = !!accessToken;
   const isAgent = user?.user_type === "AGENT";
+  const isPlayerAccount = user?.user_type === "PLAYER";
   const { toggle, has } = useCompare();
   const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
 
@@ -531,6 +536,15 @@ export default function PlayerMarketDetailPage() {
     queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
     enabled: isAuthenticated,
     staleTime: 60_000,
+  });
+
+  // TRA-92: fair-value model signal — never requested for a player identity (D6)
+  const { data: fairValue = null, isLoading: fairValueLoading } = useQuery<FairValueSignal | null>({
+    queryKey: ["valuation", id],
+    queryFn: () =>
+      api.get<FairValueSignal>(`/valuation/players/${id}`).then((r) => r.data).catch(() => null),
+    enabled: !!id && isAuthenticated && !isPlayerAccount,
+    staleTime: 300_000,
   });
 
   const isMyPlayer = !!(player && myClub && player.current_club?.id === myClub.id);
@@ -716,7 +730,7 @@ export default function PlayerMarketDetailPage() {
                   Compare
                 </button>
 
-                {isMyPlayer && (
+                {isMyPlayer && can("MARKET_WRITE") && (
                   <button
                     disabled={toggleOTOMutation.isPending || player.active_deal?.status === "IN_PROGRESS"}
                     title={player.active_deal?.status === "IN_PROGRESS" ? "Cannot change while a transfer deal is in progress" : undefined}
@@ -735,7 +749,7 @@ export default function PlayerMarketDetailPage() {
                 {!isMyPlayer && (
                   <>
                     <AddToShortlistButton playerId={player.id} />
-                    {isAuthenticated && !isAgent && (
+                    {isAuthenticated && !isAgent && can("MARKET_WRITE") && (
                       <Button
                         variant="primary"
                         disabled={player.active_deal?.status === "IN_PROGRESS"}
@@ -812,6 +826,24 @@ export default function PlayerMarketDetailPage() {
 
         {/* ── Right: sidebar ──────────────────────────────────────────────── */}
         <div className="space-y-3">
+          {/* Fair-value model signal (TRA-92) — value + range only; a profile
+              has no reference price */}
+          {isAuthenticated && !isPlayerAccount && (
+            <Card>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Model Valuation
+              </p>
+              {fairValueLoading ? (
+                <Skeleton className="h-5 w-48" />
+              ) : fairValue ? (
+                <FairValueBadge signal={fairValue} />
+              ) : (
+                <p className="text-xs text-slate-600">
+                  No model valuation — insufficient recent data.
+                </p>
+              )}
+            </Card>
+          )}
           {/* Market valuation (TRA-73) */}
           {player.market_value != null && (
             <ValuationCard player={player} isAuthenticated={isAuthenticated} />

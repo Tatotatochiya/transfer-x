@@ -1,6 +1,6 @@
 ---
 title: "Authentication & Permissions"
-last_updated: 2026-07-04
+last_updated: 2026-07-10
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -36,9 +36,25 @@ Every `User` has a type: **Club**, **Agent**, **Player**, **Staff**, or **Admin*
 
 ## Club roles
 
-Within a club account, a staff member has a role (e.g. manager vs. read-only) distinct from the club's primary owner login.
+A club is a team, not a login. The club's primary account is the **OWNER** (a `User`, not a `ClubStaff` row); staff members are separate `User` accounts (always `user_type = CLUB` — `UserType.STAFF` is a reserved, deliberately unassigned value) linked via a `ClubStaff` row carrying one of four roles. Capabilities are enumerated in a single static matrix in `app/clubs/capabilities.py` — the only source of truth; the frontend consumes it via `GET /clubs/me/membership` and never re-derives it.
 
-> **TODO:** Document the current club-staff role model and its capability boundaries.
+| Capability | OWNER | SPORTING_DIRECTOR | MANAGER | SCOUT | READONLY |
+|---|---|---|---|---|---|
+| View club data (squad, finance, listings, offers, deals) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `SCOUTING_WRITE` — shortlists, player interest | ✓ | ✓ | ✓ | ✓ | ✗ |
+| `MARKET_WRITE` — sales, bids, offers (incl. negotiation messages), squad edits | ✓ | ✓ | ✓ † | ✗ | ✗ |
+| `DEAL_WRITE` — deal lifecycle, terms, clauses, instalments, deal-room writes | ✓ | ✓ | ✓ † | ✗ | ✗ |
+| `CLUB_ADMIN` — club profile edit, verification request | ✓ | ✓ | ✗ | ✗ | ✗ |
+| `TEAM_MANAGE` — invite/remove staff, change roles, approval policy | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `APPROVE_ACTIONS` — decide pending spending approvals | ✓ | ✓ | ✗ | ✗ | ✗ |
+
+† MANAGER money-committing market actions (place bid, create/accept offer, accept bid) at or above the club's optional `approval_threshold` are captured as pending approvals instead of executing — see the approvals flow below.
+
+Viewing is not a capability — club data visibility comes with membership itself. Enforcement is `require_club_capability(cap)` (a FastAPI dependency) on club-only endpoints, or an inline `ensure_club_capability` call inside the club branch of mixed-caller endpoints (e.g. deal advance, personal terms). Shared surfaces like the deal room use `ensure_capability_if_club_member`, which no-ops for agents/players (they're authorized by the participant check instead). Check order everywhere: superuser bypass first, then owner → all capabilities, then staff → matrix, else 403.
+
+**Staff onboarding** is invitation-based provisioning, never open signup: the owner invites by email + role; a single-use token (sha256-hashed at rest, 7-day expiry) is emailed and returned exactly once in the create response; the invitee sets their own password at `POST /auth/invitations/{token}/accept` and is logged straight in. Removal deletes the `ClubStaff` row **and** deactivates the `User` (`is_active=False`, checked on every request) — access dies immediately, live JWT or not.
+
+**Spending approvals** (per-club, single-amount policy on `ClubFinance.approval_threshold`, null = off): a captured action stores its validated payload in `pending_approvals` — nothing reserved, nothing executed. OWNER/SPORTING_DIRECTOR approve (re-executing with everything re-validated fresh; domain failures land `APPROVED_FAILED` with reason) or reject; the requester may cancel; a daily job expires stale requests after 24h. The approval row records both requester and decider.
 
 ## Authorization pattern
 

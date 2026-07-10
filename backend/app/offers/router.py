@@ -4,14 +4,18 @@ import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.approvals import service as approvals_service
+from app.approvals.models import ApprovalActionType
 from app.auth.models import User
 from app.clubs import service as clubs_service
 from app.common.schemas import Paginated
 from app.database import get_db
-from app.deps import get_buyer_user, get_current_user, get_optional_user, require_club_write_access
+from app.clubs.capabilities import Capability, require_club_capability
+from app.deps import get_buyer_user, get_current_user, get_optional_user
 from app.notifications import service as notif_service
 from app.transfer_window import service as window_service
 from app.notifications.models import NotificationType
@@ -29,6 +33,9 @@ from app.ws.manager import manager as ws_manager
 
 router = APIRouter(tags=["offers"])
 
+# TRA-151: offers are market actions — MANAGER and above; SCOUT/READONLY get 403.
+_market_write = require_club_capability(Capability.MARKET_WRITE)
+
 
 async def _db_notify_offer(
     db: AsyncSession,
@@ -38,19 +45,18 @@ async def _db_notify_offer(
     ntype: NotificationType,
     message: str,
 ) -> None:
-    """Create a DB notification for an offer event. Must be called before commit."""
+    """Create DB notifications for an offer event, role-routed per club
+    (TRA-152). Must be called before commit."""
     if recipient_club_id is None:
         return
-    club = await clubs_service.get_club_by_id(db, uuid.UUID(str(recipient_club_id)))
-    if club:
-        await notif_service.create_notification(
-            db,
-            recipient_user_id=club.user_id,
-            type=ntype,
-            message=message,
-            link=f"/offers/{offer.id}",
-            related_player_id=offer.player_id,
-        )
+    await notif_service.notify_club(
+        db,
+        uuid.UUID(str(recipient_club_id)),
+        type=ntype,
+        message=message,
+        link=f"/offers/{offer.id}",
+        related_player_id=offer.player_id,
+    )
 
 
 async def _notify_player_of_offer(db: AsyncSession, offer) -> None:
@@ -72,19 +78,15 @@ async def _notify_player_of_offer(db: AsyncSession, offer) -> None:
 
 
 async def _notify_offer_parties(db: AsyncSession, offer_id: uuid.UUID) -> None:
-    """Push OFFER_UPDATED to both parties of an offer."""
-    from app.clubs import service as clubs_service  # avoid circular at module level
-
+    """Push OFFER_UPDATED to every member of both parties of an offer."""
     offer = await service.get_offer_by_id(db, offer_id)
     if offer is None:
         return
-    user_ids = []
+    user_ids: list[uuid.UUID] = []
     for club_id in [offer.from_club_id, offer.to_club_id]:
         if club_id is None:
             continue
-        club = await clubs_service.get_club_by_id(db, uuid.UUID(str(club_id)))
-        if club:
-            user_ids.append(club.user_id)
+        user_ids += await notif_service.club_member_user_ids(db, uuid.UUID(str(club_id)))
     await ws_manager.broadcast_to_users(
         list(set(user_ids)),
         {"type": "OFFER_UPDATED", "id": str(offer_id)},
@@ -207,7 +209,7 @@ async def create_offer(
     body: OfferCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_buyer_user),
-    _write: User = Depends(require_club_write_access),
+    _write: User = Depends(_market_write),
 ):
     club = await _get_club_or_403(db, current_user)
 
@@ -232,6 +234,37 @@ async def create_offer(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="This player already has a transfer deal in progress. New offers cannot be made at this time.",
+        )
+
+    # Phase 5 (D7): a MANAGER's offer at/above the club threshold is captured
+    # as a pending approval after the guards above — nothing executed yet.
+    from app.players import service as players_service
+    _player = await players_service.get_player_by_id(db, body.player_id)
+    _pname = _player.name if _player else "a player"
+    approval = await approvals_service.maybe_capture(
+        db,
+        current_user=current_user,
+        club=club,
+        action_type=ApprovalActionType.CREATE_OFFER,
+        amount=body.fee_amount,
+        payload={
+            "player_id": str(body.player_id),
+            "to_club_id": str(body.to_club_id) if body.to_club_id else None,
+            "sale_id": str(body.sale_id) if body.sale_id else None,
+            "fee_amount": str(body.fee_amount),
+            "wage_weekly": str(body.wage_weekly) if body.wage_weekly else None,
+            "contract_years": body.contract_years,
+            "contract_end_date": body.contract_end_date.isoformat() if body.contract_end_date else None,
+            "add_ons": body.add_ons,
+            "expires_at": body.expires_at.isoformat() if body.expires_at else None,
+        },
+        summary=f"Offer £{body.fee_amount:,.0f} for {_pname}",
+    )
+    if approval is not None:
+        await db.commit()
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content={"status": "PENDING_APPROVAL", "approval_id": str(approval.id)},
         )
 
     try:
@@ -274,7 +307,7 @@ async def counter_offer(
     body: OfferCounterRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _write: User = Depends(require_club_write_access),
+    _write: User = Depends(_market_write),
 ):
     club = await _get_club_or_403(db, current_user)
     offer = await _get_offer_or_404(db, offer_id)
@@ -316,10 +349,31 @@ async def accept_offer(
     offer_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _write: User = Depends(require_club_write_access),
+    _write: User = Depends(_market_write),
 ):
     club = await _get_club_or_403(db, current_user)
     offer = await _get_offer_or_404(db, offer_id)
+
+    # Phase 5 (D7): a MANAGER accepting an offer at/above the club threshold is
+    # captured as a pending approval instead of executing.
+    from app.players import service as players_service
+    _player = await players_service.get_player_by_id(db, offer.player_id)
+    _pname = _player.name if _player else "a player"
+    approval = await approvals_service.maybe_capture(
+        db,
+        current_user=current_user,
+        club=club,
+        action_type=ApprovalActionType.ACCEPT_OFFER,
+        amount=offer.fee_amount,
+        payload={"offer_id": str(offer_id)},
+        summary=f"Accept £{offer.fee_amount:,.0f} offer for {_pname}",
+    )
+    if approval is not None:
+        await db.commit()
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content={"status": "PENDING_APPROVAL", "approval_id": str(approval.id)},
+        )
 
     try:
         deal = await service.accept_offer(db, offer, actor_club_id=club.id)
@@ -347,7 +401,7 @@ async def reject_offer(
     offer_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _write: User = Depends(require_club_write_access),
+    _write: User = Depends(_market_write),
 ):
     club = await _get_club_or_403(db, current_user)
     offer = await _get_offer_or_404(db, offer_id)
@@ -378,7 +432,7 @@ async def withdraw_offer(
     offer_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _write: User = Depends(require_club_write_access),
+    _write: User = Depends(_market_write),
 ):
     club = await _get_club_or_403(db, current_user)
     offer = await _get_offer_or_404(db, offer_id)
@@ -411,6 +465,8 @@ async def add_message(
     body: OfferMessageRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    # TRA-151: negotiation messages speak for the club — previously ungated.
+    _write: User = Depends(_market_write),
 ):
     club = await _get_club_or_403(db, current_user)
     offer = await _get_offer_or_404(db, offer_id)

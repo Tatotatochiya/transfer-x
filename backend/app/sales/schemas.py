@@ -5,6 +5,7 @@ from decimal import Decimal
 from pydantic import BaseModel, field_validator
 
 from app.sales.models import BidStatus, SaleStatus, SaleType
+from app.valuation.schemas import ValuationResponse
 
 
 # ── Sale schemas ──────────────────────────────────────────────────────────────
@@ -61,6 +62,10 @@ class SaleResponse(BaseModel):
     best_bid: Decimal | None = None
     minimum_next_bid: Decimal | None = None
     reserve_met: bool = False
+    # TRA-91 fair-value signal — populated on the detail endpoint only; null for
+    # player-account/anonymous viewers and ineligible players (D6). Divergence
+    # only for FIXED_PRICE (D7 — never against reserve_price or any bid figure).
+    fair_value_signal: ValuationResponse | None = None
 
     model_config = {"from_attributes": True}
 

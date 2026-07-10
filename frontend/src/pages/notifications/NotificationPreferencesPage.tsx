@@ -52,6 +52,9 @@ const TYPE_LABELS: Record<string, string> = {
   DEAL_CLAUSE_TRIGGERED: "Add-on/bonus clause triggered",
   NEGOTIATION_MESSAGE: "New negotiation message or deal comment",
   CLIENT_ALERT: "Client alert (contract expiry, valuation change, club interest)",
+  STAFF_INVITATION: "A team member accepts your invitation",
+  APPROVAL_REQUESTED: "A spending approval needs your decision",
+  APPROVAL_DECIDED: "Your spending request is decided",
 };
 
 const TYPE_GROUPS: { label: string; types: string[] }[] = [
@@ -82,6 +85,10 @@ const TYPE_GROUPS: { label: string; types: string[] }[] = [
   {
     label: "Verification",
     types: ["VERIFICATION_APPROVED", "VERIFICATION_REJECTED"],
+  },
+  {
+    label: "Team & approvals",
+    types: ["STAFF_INVITATION", "APPROVAL_REQUESTED", "APPROVAL_DECIDED"],
   },
 ];
 

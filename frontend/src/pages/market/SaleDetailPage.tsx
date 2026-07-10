@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Bid, Club, Sale } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
+import FairValueBadge from "../../components/players/FairValueBadge";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Spinner from "../../components/ui/Spinner";
@@ -18,6 +19,8 @@ import {
 } from "../../lib/badges";
 import { formatCurrency, getApiError } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
+import { useToast } from "../../context/ToastContext";
+import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 
 const BID_STATUS_STYLES: Record<string, string> = {
   ACTIVE:    "bg-emerald-500/20 text-emerald-400",
@@ -32,8 +35,11 @@ export default function SaleDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const { accessToken } = useAuthStore();
+  const { addToast } = useToast();
+  const { can } = useClubCapabilities();
+  const { accessToken, user } = useAuthStore();
   const isAuthenticated = !!accessToken;
+  const isPlayerAccount = user?.user_type === "PLAYER";
 
   // For auction seller: which bid is selected in the order book
   const [selectedBidId, setSelectedBidId] = useState<string | undefined>();
@@ -79,9 +85,15 @@ export default function SaleDetailPage() {
   const acceptBidMutation = useMutation({
     mutationFn: (bidId: string) =>
       api.post(`/sales/${id}/bids/${bidId}/accept`).then((r) => r.data),
-    onSuccess: (deal: { id: string }) => {
+    onSuccess: (data: { id: string } | { status: string; approval_id: string }) => {
       queryClient.invalidateQueries({ queryKey: ["sales", id] });
-      navigate(`/deals/${deal.id}`);
+      // Phase 5 (D7): 202 means the acceptance was captured for approval.
+      if ("approval_id" in data) {
+        addToast("Acceptance sent for approval — an approver at your club must sign it off.", "info");
+        queryClient.invalidateQueries({ queryKey: ["clubs", "me", "approvals"] });
+        return;
+      }
+      navigate(`/deals/${data.id}`);
     },
   });
 
@@ -102,6 +114,7 @@ export default function SaleDetailPage() {
     );
   }
 
+  const canMarketWrite = can("MARKET_WRITE");
   const isSeller = !!myClub && myClub.id === sale.seller_club_id;
   const isBuyer  = !!myClub && myClub.id !== sale.seller_club_id;
   const isOpen   = sale.status === "OPEN";
@@ -198,12 +211,26 @@ export default function SaleDetailPage() {
             )}
           </div>
 
+          {/* Fair-value signal (TRA-92) — embedded server-side; divergence only
+              on FIXED_PRICE (D7), null for player accounts (D6) */}
+          {isAuthenticated && !isPlayerAccount && (
+            sale.fair_value_signal ? (
+              <div className="rounded-lg bg-slate-800/60 px-3 py-2">
+                <FairValueBadge signal={sale.fair_value_signal} />
+              </div>
+            ) : (
+              <p className="text-xs text-slate-600">
+                No model valuation — insufficient recent data.
+              </p>
+            )
+          )}
+
           {sale.notes && (
             <p className="text-xs text-slate-400 border-t border-white/[0.06] pt-3">{sale.notes}</p>
           )}
 
           {/* ── Seller actions ── */}
-          {isSeller && isOpen && (
+          {isSeller && isOpen && canMarketWrite && (
             <div className="border-t border-white/[0.06] pt-3">
               <Button
                 variant="danger"
@@ -241,7 +268,7 @@ export default function SaleDetailPage() {
                 {selectedBid.notes && (
                   <p className="text-xs text-slate-400 border-t border-white/[0.06] pt-2">{selectedBid.notes}</p>
                 )}
-                {isOpen && selectedBid.status === "ACTIVE" && (
+                {isOpen && selectedBid.status === "ACTIVE" && canMarketWrite && (
                   <Button
                     variant="primary"
                     size="sm"
@@ -261,7 +288,7 @@ export default function SaleDetailPage() {
           )}
 
           {/* ── AUCTION: bid form (buyer) ── */}
-          {sale.sale_type === "AUCTION" && isBuyer && isOpen && (
+          {sale.sale_type === "AUCTION" && isBuyer && isOpen && canMarketWrite && (
             <div className="border-t border-white/[0.06] pt-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
                 {myActiveBid ? "Your Bid" : "Place a Bid"}
@@ -278,7 +305,7 @@ export default function SaleDetailPage() {
           )}
 
           {/* ── OPEN_TO_OFFERS: Make offer (buyer) ── */}
-          {sale.sale_type === "OPEN_TO_OFFERS" && isBuyer && (
+          {sale.sale_type === "OPEN_TO_OFFERS" && isBuyer && canMarketWrite && (
             <div className="border-t border-white/[0.06] pt-3">
               <Button
                 variant="primary"
@@ -304,14 +331,14 @@ export default function SaleDetailPage() {
               {sale.asking_price != null && (
                 <p className="text-2xl font-bold text-white mb-3 tabular-nums">{formatCurrency(sale.asking_price)}</p>
               )}
-              {isAuthenticated ? (
+              {isAuthenticated && canMarketWrite ? (
                 <Button
                   variant="primary"
                   onClick={() => navigate(`/offers/new?player_id=${sale.player_id}&sale_id=${sale.id}`)}
                 >
                   Make Offer
                 </Button>
-              ) : (
+              ) : isAuthenticated ? null : (
                 <Button variant="secondary" onClick={() => navigate("/login")}>
                   Sign in to make offer
                 </Button>

@@ -118,15 +118,87 @@ async def mark_all_read(db: AsyncSession, user_id: uuid.UUID) -> int:
     return result.rowcount
 
 
+# ── Club recipient routing (TRA-152, D5) ─────────────────────────────────────
+
+# Scouting/market events additionally reach SCOUT staff; everything else that
+# is club-routed (deal, offer, bid, negotiation, instalment/clause events)
+# reaches OWNER + SPORTING_DIRECTOR + MANAGER. Account/administrative events
+# (verification, staff invitations) are owner-directed at their call sites and
+# never routed through here.
+_SCOUT_INCLUSIVE_TYPES: set[NotificationType] = {
+    NotificationType.PLAYER_AVAILABLE,
+}
+
+
+async def club_recipient_user_ids(
+    db: AsyncSession, club_id: uuid.UUID, notification_type: NotificationType
+) -> list[uuid.UUID]:
+    """Resolve a club-directed notification to every member who should get it —
+    the owner plus staff filtered by the D5 role mapping. Per-user preference
+    opt-outs still apply downstream in create_notification."""
+    from app.clubs.models import Club, ClubStaff, StaffRole
+
+    club_id = uuid.UUID(str(club_id))
+    club_result = await db.execute(select(Club).where(Club.id == club_id))
+    club = club_result.scalar_one_or_none()
+    if club is None:
+        return []
+
+    roles = {StaffRole.SPORTING_DIRECTOR, StaffRole.MANAGER}
+    if notification_type in _SCOUT_INCLUSIVE_TYPES:
+        roles.add(StaffRole.SCOUT)
+
+    staff_result = await db.execute(
+        select(ClubStaff.user_id).where(ClubStaff.club_id == club_id, ClubStaff.role.in_(roles))
+    )
+    return [club.user_id] + [uuid.UUID(str(uid)) for uid in staff_result.scalars()]
+
+
+async def notify_club(
+    db: AsyncSession,
+    club_id: uuid.UUID,
+    *,
+    type: NotificationType,
+    message: str,
+    link: str | None = None,
+    related_player_id: uuid.UUID | None = None,
+    related_club_id: uuid.UUID | None = None,
+) -> None:
+    """Create one notification per role-mapped club member (TRA-152)."""
+    for user_id in await club_recipient_user_ids(db, club_id, type):
+        await create_notification(
+            db,
+            recipient_user_id=user_id,
+            type=type,
+            message=message,
+            link=link,
+            related_player_id=related_player_id,
+            related_club_id=related_club_id,
+        )
+
+
+async def club_member_user_ids(db: AsyncSession, club_id: uuid.UUID) -> list[uuid.UUID]:
+    """Every member of a club (owner + all staff, any role) — for WS pushes,
+    which are just 'refresh this view' signals, not role-scoped content."""
+    from app.clubs.models import Club, ClubStaff
+
+    club_id = uuid.UUID(str(club_id))
+    club_result = await db.execute(select(Club).where(Club.id == club_id))
+    club = club_result.scalar_one_or_none()
+    if club is None:
+        return []
+    staff_result = await db.execute(
+        select(ClubStaff.user_id).where(ClubStaff.club_id == club_id)
+    )
+    return [club.user_id] + [uuid.UUID(str(uid)) for uid in staff_result.scalars()]
+
+
 # ── Domain-specific notification helpers ─────────────────────────────────────
 
 
 async def notify_player_available(db: AsyncSession, player_id: uuid.UUID) -> None:
-    """Fan out PLAYER_AVAILABLE notifications to all clubs with the player shortlisted or interested.
-
-    Fetches the club's owner user_id to address the notification.
-    """
-    from app.clubs.models import Club
+    """Fan out PLAYER_AVAILABLE to all clubs with the player shortlisted or
+    interested — role-routed per club via notify_club (TRA-152)."""
     from app.players.models import Player
     from app.scouting.models import PlayerInterest, Shortlist, ShortlistItem
 
@@ -158,22 +230,18 @@ async def notify_player_available(db: AsyncSession, player_id: uuid.UUID) -> Non
     if not club_ids:
         return
 
-    # Get owner user_ids for those clubs
-    clubs_result = await db.execute(
-        select(Club).where(Club.id.in_([c if isinstance(c, uuid.UUID) else uuid.UUID(str(c)) for c in club_ids]))
-    )
-    clubs = list(clubs_result.scalars())
-
-    for club in clubs:
+    for club_id in club_ids:
+        cid = club_id if isinstance(club_id, uuid.UUID) else uuid.UUID(str(club_id))
         pid = player_id if isinstance(player_id, uuid.UUID) else uuid.UUID(str(player_id))
-        await create_notification(
+        # TRA-152: market events reach scouts too (D5 role mapping).
+        await notify_club(
             db,
-            recipient_user_id=club.user_id,
+            cid,
             type=NotificationType.PLAYER_AVAILABLE,
             message=f"{player.name} is now available",
             link=f"/players/market/{pid}",
             related_player_id=pid,
-            related_club_id=club.id,
+            related_club_id=cid,
         )
 
 
@@ -192,7 +260,6 @@ async def notify_upcoming_events(db: AsyncSession) -> None:
 
 
 async def _notify_instalments_due(db: AsyncSession, now: datetime) -> None:
-    from app.clubs.models import Club
     from app.deals.models import Deal, DealInstalment
 
     cutoff = (now + timedelta(days=3)).date()
@@ -205,32 +272,23 @@ async def _notify_instalments_due(db: AsyncSession, now: datetime) -> None:
     if not rows:
         return
 
-    club_ids = {uuid.UUID(str(d.buyer_club_id)) for _, d in rows} | {
-        uuid.UUID(str(d.seller_club_id)) for _, d in rows if d.seller_club_id
-    }
-    clubs_result = await db.execute(select(Club).where(Club.id.in_(club_ids)))
-    clubs_by_id = {c.id: c for c in clubs_result.scalars()}
-
     for inst, deal in rows:
         overdue = inst.due_date < now.date()
         amount_str = f"£{inst.amount:,.0f}"
-        buyer = clubs_by_id.get(uuid.UUID(str(deal.buyer_club_id)))
-        if buyer:
-            await create_notification(
+        await notify_club(
+            db,
+            uuid.UUID(str(deal.buyer_club_id)),
+            type=NotificationType.INSTALMENT_DUE,
+            message=(
+                f"Instalment of {amount_str} is {'overdue' if overdue else 'due soon'}"
+            ),
+            link=f"/deals/{deal.id}",
+            related_player_id=deal.player_id,
+        )
+        if deal.seller_club_id:
+            await notify_club(
                 db,
-                recipient_user_id=buyer.user_id,
-                type=NotificationType.INSTALMENT_DUE,
-                message=(
-                    f"Instalment of {amount_str} is {'overdue' if overdue else 'due soon'}"
-                ),
-                link=f"/deals/{deal.id}",
-                related_player_id=deal.player_id,
-            )
-        seller = clubs_by_id.get(uuid.UUID(str(deal.seller_club_id))) if deal.seller_club_id else None
-        if seller:
-            await create_notification(
-                db,
-                recipient_user_id=seller.user_id,
+                uuid.UUID(str(deal.seller_club_id)),
                 type=NotificationType.INSTALMENT_DUE,
                 message=(
                     f"You are owed an instalment of {amount_str}, "
@@ -243,7 +301,6 @@ async def _notify_instalments_due(db: AsyncSession, now: datetime) -> None:
 
 async def _notify_expiring_offers(db: AsyncSession, now: datetime) -> None:
     from app.offers.models import Offer, OfferStatus
-    from app.clubs.models import Club
 
     cutoff = now + timedelta(hours=24)
     result = await db.execute(
@@ -258,17 +315,11 @@ async def _notify_expiring_offers(db: AsyncSession, now: datetime) -> None:
     if not offers:
         return
 
-    # Batch-load all clubs needed in one query
-    club_ids = list({uuid.UUID(str(o.from_club_id)) for o in offers if o.from_club_id})
-    clubs_result = await db.execute(select(Club).where(Club.id.in_(club_ids)))
-    clubs_by_id = {c.id: c for c in clubs_result.scalars()}
-
     for offer in offers:
-        from_club = clubs_by_id.get(uuid.UUID(str(offer.from_club_id))) if offer.from_club_id else None
-        if from_club:
-            await create_notification(
+        if offer.from_club_id:
+            await notify_club(
                 db,
-                recipient_user_id=from_club.user_id,
+                uuid.UUID(str(offer.from_club_id)),
                 type=NotificationType.OFFER_EXPIRING,
                 message="Your offer is expiring soon",
                 link=f"/offers/{offer.id}",
@@ -277,7 +328,6 @@ async def _notify_expiring_offers(db: AsyncSession, now: datetime) -> None:
 
 
 async def _notify_ending_auctions(db: AsyncSession, now: datetime) -> None:
-    from app.clubs.models import Club
     from app.sales.models import Bid, BidStatus, Sale, SaleStatus, SaleType
 
     cutoff = now + timedelta(hours=1)
@@ -305,21 +355,12 @@ async def _notify_ending_auctions(db: AsyncSession, now: datetime) -> None:
     for bid in all_bids:
         bids_by_sale.setdefault(uuid.UUID(str(bid.sale_id)), []).append(bid)
 
-    # Batch-load all clubs (sellers + buyers) in one query
-    club_ids = list(
-        {uuid.UUID(str(s.seller_club_id)) for s in sales if s.seller_club_id}
-        | {uuid.UUID(str(b.buyer_club_id)) for b in all_bids if b.buyer_club_id}
-    )
-    clubs_result = await db.execute(select(Club).where(Club.id.in_(club_ids)))
-    clubs_by_id = {c.id: c for c in clubs_result.scalars()}
-
     for sale in sales:
         # Notify seller
-        seller = clubs_by_id.get(uuid.UUID(str(sale.seller_club_id))) if sale.seller_club_id else None
-        if seller:
-            await create_notification(
+        if sale.seller_club_id:
+            await notify_club(
                 db,
-                recipient_user_id=seller.user_id,
+                uuid.UUID(str(sale.seller_club_id)),
                 type=NotificationType.AUCTION_ENDING,
                 message="Auction ending soon",
                 link=f"/sales/{sale.id}",
@@ -328,11 +369,10 @@ async def _notify_ending_auctions(db: AsyncSession, now: datetime) -> None:
 
         # Notify all active bidders
         for bid in bids_by_sale.get(uuid.UUID(str(sale.id)), []):
-            buyer = clubs_by_id.get(uuid.UUID(str(bid.buyer_club_id))) if bid.buyer_club_id else None
-            if buyer:
-                await create_notification(
+            if bid.buyer_club_id:
+                await notify_club(
                     db,
-                    recipient_user_id=buyer.user_id,
+                    uuid.UUID(str(bid.buyer_club_id)),
                     type=NotificationType.AUCTION_ENDING,
                     message="Auction you're bidding on is ending soon",
                     link=f"/sales/{sale.id}",

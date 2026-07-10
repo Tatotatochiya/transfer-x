@@ -20,7 +20,6 @@ __all__ = [
     "get_optional_user",
     "get_seller_user",
     "get_buyer_user",
-    "require_club_write_access",
 ]
 
 # ── Optional auth ─────────────────────────────────────────────────────────────
@@ -71,22 +70,6 @@ async def get_buyer_user(
     club = await clubs_service.get_club_for_user(db, current_user.id)
     if club is None or not clubs_service.can_buy(club.role):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Buyer access required")
-    return current_user
-
-
-async def require_club_write_access(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    """Raises 403 if the current user is a read-only staff member."""
-    from app.clubs.models import StaffRole
-    from app.clubs import service as clubs_service
-    staff = await clubs_service.get_staff_by_user_id(db, current_user.id)
-    if staff and staff.role == StaffRole.READONLY:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Read-only staff cannot perform this action",
-        )
     return current_user
 
 

@@ -75,10 +75,39 @@ export type NotificationType =
   | "INSTALMENT_DUE"
   | "DEAL_CLAUSE_TRIGGERED"
   | "NEGOTIATION_MESSAGE"
-  | "CLIENT_ALERT";
+  | "CLIENT_ALERT"
+  | "STAFF_INVITATION"
+  | "APPROVAL_REQUESTED"
+  | "APPROVAL_DECIDED";
+
+// TRA-151 — club roles & capabilities (server matrix is the only truth; the
+// UI only ever consumes the capability list from GET /clubs/me/membership)
+export type StaffRole = "SPORTING_DIRECTOR" | "MANAGER" | "SCOUT" | "READONLY";
+export type ClubMemberRole = "OWNER" | StaffRole;
+export type ClubCapability =
+  | "SCOUTING_WRITE"
+  | "MARKET_WRITE"
+  | "DEAL_WRITE"
+  | "CLUB_ADMIN"
+  | "TEAM_MANAGE"
+  | "APPROVE_ACTIONS";
+
+// Phase 5 — spending-authority approvals
+export type ApprovalActionType = "PLACE_BID" | "CREATE_OFFER" | "ACCEPT_OFFER" | "ACCEPT_BID";
+export type ApprovalStatus =
+  | "PENDING"
+  | "APPROVED_EXECUTED"
+  | "APPROVED_FAILED"
+  | "REJECTED"
+  | "EXPIRED"
+  | "CANCELLED";
 
 export type ValuationSource = "ETV" | "TRANSFERMARKT" | "MANUAL";
 export type WageSource = "CAPOLOGY" | "ESTIMATED" | "MANUAL";
+
+// TRA-91/92 — fair-value model signal
+export type ValuationConfidence = "HIGH" | "MEDIUM" | "LOW";
+export type ValuationBand = "WELL_BELOW" | "BELOW" | "IN_LINE" | "ABOVE" | "WELL_ABOVE";
 
 export type InterestLevel = "WATCHING" | "INTERESTED" | "PRIORITY";
 export type InterestStage = "SCOUTED" | "CONTACTED" | "NEGOTIATING" | "DROPPED";

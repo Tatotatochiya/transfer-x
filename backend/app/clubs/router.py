@@ -11,13 +11,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.clubs import service as clubs_service
+from app.clubs.capabilities import (
+    Capability,
+    capabilities_for_role,
+    ensure_club_capability,
+    require_club_capability,
+)
 from app.clubs.schemas import (
+    ClubMembershipResponse,
     ClubPublicResponse,
     ClubResponse,
+    ClubStaffInvitationResponse,
+    ClubStaffMemberResponse,
     ClubUpdateRequest,
     PlayerSearchViewCreateRequest,
     PlayerSearchViewResponse,
     PlayerSearchViewUpdateRequest,
+    StaffInviteRequest,
+    StaffInviteResponse,
+    StaffRoleUpdateRequest,
+    TeamResponse,
 )
 from app.common.schemas import Paginated
 from app.database import get_db
@@ -40,6 +53,24 @@ async def get_my_club(
     return ClubResponse.model_validate(club).model_copy(update={"my_role": my_role})
 
 
+@router.get("/me/membership", response_model=ClubMembershipResponse)
+async def get_my_membership(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ClubMembershipResponse:
+    """TRA-151 (D3): role + capability list for the caller's club membership.
+    The frontend gates every club action button on this — capability logic is
+    never duplicated client-side."""
+    club, role = await clubs_service.get_club_and_role_for_user(db, current_user.id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No club membership")
+    return ClubMembershipResponse(
+        club=ClubPublicResponse.model_validate(club),
+        role=role,
+        capabilities=[c.value for c in capabilities_for_role(role)],
+    )
+
+
 @router.patch("/me", response_model=ClubResponse)
 async def update_my_club(
     body: ClubUpdateRequest,
@@ -49,8 +80,8 @@ async def update_my_club(
     club, my_role = await clubs_service.get_club_and_role_for_user(db, current_user.id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
-    if my_role != "OWNER":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the club owner can edit club details")
+    # TRA-151: CLUB_ADMIN — owner and sporting director may edit club details.
+    await ensure_club_capability(db, current_user, Capability.CLUB_ADMIN)
     await clubs_service.update_club(db, club, **body.model_dump(exclude_none=True))
     await db.commit()
     await db.refresh(club)
@@ -105,6 +136,8 @@ async def update_my_club_player(
     body: _PlayerFlagsBody,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    # TRA-151: squad-posture edits (open_to_offers, valuation) are market actions.
+    _write: User = Depends(require_club_capability(Capability.MARKET_WRITE)),
 ) -> PlayerDetailResponse:
     """Update player flags or internal valuation for a player in the current user's club."""
     club, _ = await clubs_service.get_club_and_role_for_user(db, current_user.id)
@@ -197,6 +230,179 @@ async def claim_world_team_as_club(
     await db.commit()
     await db.refresh(club)
     return ClubResponse.model_validate(club).model_copy(update={"my_role": "OWNER"})
+
+
+# ── Team management (TRA-86, all TEAM_MANAGE) ────────────────────────────────
+
+_team_manage = require_club_capability(Capability.TEAM_MANAGE)
+
+
+async def _get_my_club_or_403(db: AsyncSession, user: User):
+    club = await clubs_service.get_club_for_user(db, user.id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+    return club
+
+
+def _staff_member_response(staff) -> ClubStaffMemberResponse:
+    return ClubStaffMemberResponse(
+        id=staff.id,
+        user_id=staff.user_id,
+        email=staff.user.email if staff.user else "",
+        role=staff.role,
+        created_at=staff.created_at,
+    )
+
+
+@router.get("/me/staff", response_model=TeamResponse)
+async def get_my_team(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    _manage: User = Depends(_team_manage),
+) -> TeamResponse:
+    """Active staff + live pending invitations, in one payload."""
+    club = await _get_my_club_or_403(db, current_user)
+    staff = await clubs_service.list_club_staff(db, club.id)
+    invitations = await clubs_service.list_pending_invitations(db, club.id)
+    return TeamResponse(
+        staff=[_staff_member_response(s) for s in staff],
+        invitations=[ClubStaffInvitationResponse.model_validate(i) for i in invitations],
+    )
+
+
+@router.post("/me/staff/invitations", response_model=StaffInviteResponse, status_code=status.HTTP_201_CREATED)
+async def invite_staff(
+    body: StaffInviteRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    _manage: User = Depends(_team_manage),
+) -> StaffInviteResponse:
+    """Invite a staff member by email + role. The accept URL is returned exactly
+    once here (and emailed, when SMTP is configured) — the token is never stored."""
+    import asyncio
+
+    from app.audit import service as audit_service
+    from app.config import settings
+    from app.notifications.email import send_staff_invitation_email
+
+    club = await _get_my_club_or_403(db, current_user)
+    try:
+        invitation, raw_token = await clubs_service.create_staff_invitation(
+            db,
+            club_id=club.id,
+            email=body.email,
+            role=body.role,
+            invited_by_user_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+
+    accept_url = f"{settings.frontend_base_url}/accept-invite?token={raw_token}"
+    await audit_service.emit(
+        db,
+        entity_type="CLUB",
+        entity_id=club.id,
+        action="STAFF_INVITED",
+        actor_user_id=current_user.id,
+        payload={"email": invitation.email, "role": invitation.role.value},
+        description=f"Invited {invitation.email} as {invitation.role.value}",
+    )
+    await db.commit()
+    await db.refresh(invitation)
+
+    asyncio.create_task(
+        send_staff_invitation_email(invitation.email, club.name, invitation.role.value, accept_url)
+    )
+    return StaffInviteResponse(
+        invitation=ClubStaffInvitationResponse.model_validate(invitation),
+        accept_url=accept_url,
+    )
+
+
+@router.delete("/me/staff/invitations/{invitation_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_staff_invitation(
+    invitation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    _manage: User = Depends(_team_manage),
+) -> None:
+    from app.audit import service as audit_service
+
+    club = await _get_my_club_or_403(db, current_user)
+    invitation = await clubs_service.get_invitation_by_id(db, invitation_id, club.id)
+    if invitation is None or invitation.accepted_at is not None or invitation.revoked_at is not None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+    await clubs_service.revoke_invitation(db, invitation)
+    await audit_service.emit(
+        db,
+        entity_type="CLUB",
+        entity_id=club.id,
+        action="STAFF_INVITATION_REVOKED",
+        actor_user_id=current_user.id,
+        payload={"email": invitation.email},
+        description=f"Revoked invitation for {invitation.email}",
+    )
+    await db.commit()
+
+
+@router.patch("/me/staff/{staff_id}", response_model=ClubStaffMemberResponse)
+async def change_staff_role(
+    staff_id: uuid.UUID,
+    body: StaffRoleUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    _manage: User = Depends(_team_manage),
+) -> ClubStaffMemberResponse:
+    from app.audit import service as audit_service
+
+    club = await _get_my_club_or_403(db, current_user)
+    staff = await clubs_service.get_staff_with_user(db, staff_id, club.id)
+    if staff is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff member not found")
+    old_role = staff.role.value
+    await clubs_service.update_club_staff_role(db, staff, body.role)
+    await audit_service.emit(
+        db,
+        entity_type="CLUB",
+        entity_id=club.id,
+        action="STAFF_ROLE_CHANGED",
+        actor_user_id=current_user.id,
+        payload={"staff_user_id": str(staff.user_id), "from": old_role, "to": body.role.value},
+        description=f"Changed {staff.user.email if staff.user else staff.user_id} from {old_role} to {body.role.value}",
+    )
+    await db.commit()
+    await db.refresh(staff)
+    return _staff_member_response(staff)
+
+
+@router.delete("/me/staff/{staff_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_staff_member(
+    staff_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    _manage: User = Depends(_team_manage),
+) -> None:
+    """D10: removal deletes the membership row and deactivates the user account —
+    their very next request 401s, live token or not."""
+    from app.audit import service as audit_service
+
+    club = await _get_my_club_or_403(db, current_user)
+    staff = await clubs_service.get_staff_with_user(db, staff_id, club.id)
+    if staff is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff member not found")
+    staff_email = staff.user.email if staff.user else str(staff.user_id)
+    staff_user_id = staff.user_id
+    await clubs_service.remove_club_staff(db, staff)
+    await audit_service.emit(
+        db,
+        entity_type="CLUB",
+        entity_id=club.id,
+        action="STAFF_REMOVED",
+        actor_user_id=current_user.id,
+        payload={"staff_user_id": str(staff_user_id), "email": staff_email},
+        description=f"Removed {staff_email} from the team",
+    )
+    await db.commit()
 
 
 # ── Player search views ───────────────────────────────────────────────────────
@@ -326,7 +532,8 @@ async def get_expiring_contracts(
     """Squad players whose active contracts expire within `within_days` days."""
     from app.players.models import Contract, Player
 
-    club = await clubs_service.get_club_by_user_id(db, current_user.id)
+    # Owner-or-staff: club data reads come with membership (TRA-151).
+    club = await clubs_service.get_club_for_user(db, current_user.id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
 

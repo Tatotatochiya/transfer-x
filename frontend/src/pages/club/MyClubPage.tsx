@@ -17,12 +17,14 @@ import FixturesPanel from "../../components/fixtures/FixturesPanel";
 import VerifiedBadge from "../../components/verification/VerifiedBadge";
 import RequestVerificationPanel from "../../components/verification/RequestVerificationPanel";
 import { getApiError } from "../../lib/utils";
+import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 
 type Tab = "squad" | "stats" | "listings" | "fixtures";
 
 export default function MyClubPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { can } = useClubCapabilities();
   const [tab, setTab] = useState<Tab>("squad");
   const [editing, setEditing] = useState(false);
 
@@ -167,9 +169,10 @@ export default function MyClubPage() {
   }
   if (!club) return null;
 
-  const isReadOnly = club.my_role === "READONLY";
-  const isStaff    = club.my_role === "MANAGER" || club.my_role === "READONLY";
-  const players    = squadData?.items ?? [];
+  const canClubAdmin   = can("CLUB_ADMIN");
+  const canMarketWrite = can("MARKET_WRITE");
+  const isStaff        = !!club.my_role && club.my_role !== "OWNER";
+  const players        = squadData?.items ?? [];
 
   // Derive vendor team ID from the squad's world_team links
   const vendorTeamId: number | null = (() => {
@@ -205,7 +208,9 @@ export default function MyClubPage() {
             <Badge variant="neutral">{club.role}</Badge>
             {club.verified && <VerifiedBadge />}
             {isStaff && (
-              <Badge variant={isReadOnly ? "neutral" : "info"}>{club.my_role}</Badge>
+              <Badge variant={club.my_role === "READONLY" ? "neutral" : "info"}>
+                {club.my_role?.replace(/_/g, " ")}
+              </Badge>
             )}
           </div>
           <p className="mt-1 text-sm text-slate-400">
@@ -217,15 +222,18 @@ export default function MyClubPage() {
             </p>
           )}
         </div>
-        {!isReadOnly && (
-          <div className="flex shrink-0 gap-2">
-            {!editing && (
-              <Button variant="secondary" size="sm" onClick={openEdit}>
-                Edit profile
-              </Button>
-            )}
-          </div>
-        )}
+        <div className="flex shrink-0 gap-2">
+          {can("TEAM_MANAGE") && (
+            <Button variant="secondary" size="sm" onClick={() => navigate("/club/team")}>
+              Team
+            </Button>
+          )}
+          {canClubAdmin && !editing && (
+            <Button variant="secondary" size="sm" onClick={openEdit}>
+              Edit profile
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── Inline edit form ── */}
@@ -319,8 +327,8 @@ export default function MyClubPage() {
                     players={players}
                     showContractDetails
                     formScores={formScores}
-                    onToggleOpenToOffers={isReadOnly ? undefined : toggleOpenToOffers}
-                    onSetValuation={isReadOnly ? undefined : setValuation}
+                    onToggleOpenToOffers={canMarketWrite ? toggleOpenToOffers : undefined}
+                    onSetValuation={canMarketWrite ? setValuation : undefined}
                   />
                 </>
               )}
@@ -362,7 +370,7 @@ export default function MyClubPage() {
                   title="No active listings"
                   body="You have no players currently listed for sale or auction."
                   action={
-                    !isReadOnly ? (
+                    canMarketWrite ? (
                       <Button variant="primary" onClick={() => navigate("/sales/new")}>
                         Create listing
                       </Button>
@@ -379,7 +387,7 @@ export default function MyClubPage() {
                       <Button variant="secondary" size="sm" onClick={() => navigate("/sales/mine")}>
                         View all
                       </Button>
-                      {!isReadOnly && (
+                      {canMarketWrite && (
                         <Button variant="primary" size="sm" onClick={() => navigate("/sales/new")}>
                           + New listing
                         </Button>
@@ -405,7 +413,7 @@ export default function MyClubPage() {
             openListings={null}
           />
           {club.finance && <FinanceSummaryPanel finance={club.finance} />}
-          {!isReadOnly && <RequestVerificationPanel verified={club.verified} />}
+          {canClubAdmin && <RequestVerificationPanel verified={club.verified} />}
         </div>
       </div>
     </div>

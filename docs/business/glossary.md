@@ -32,7 +32,8 @@ Out of scope: pure engineering jargon (framework names, library names) — those
 | **Club** | An organization account that can buy and/or sell players. Has a role: buyer, seller, or both. |
 | **Agent** | Represents one or more players under a mandate; can negotiate commission and personal terms on a player's behalf. |
 | **Player** | The individual being transferred. May optionally hold their own account to manage visibility and consent directly. |
-| **Staff** | A user attached to a club account with scoped permissions, distinct from the club's primary owner login. |
+| **Club staff role** | The scoped role a non-owner club member holds: Sporting Director (deal authority + approvals), Manager (day-to-day market/deals), Scout (shortlists only), or Read-only (oversight). Each maps to a fixed capability set — see [`../architecture/authentication-and-permissions.md`](../architecture/authentication-and-permissions.md#club-roles). Distinct from platform (TransferX) staff. |
+| **Invitation** | The owner-issued, emailed single-use link through which a new staff member joins a club and sets their own password. Expires after 7 days; can be revoked; the link is shown exactly once. |
 | **Mandate** | The formal representation relationship between an agent and a player; can be exclusive or non-exclusive, and has a validity period. |
 
 ## Listings & bidding
@@ -43,6 +44,8 @@ Out of scope: pure engineering jargon (framework names, library names) — those
 | **Bid** | An amount placed by a buying club against an auction-type Sale. |
 | **Reserve price** | The minimum amount a seller will accept in an auction; visible only to the seller. |
 | **Order book** | The ranked view of active bids/offers on a Sale. |
+| **Fair value (model)** | TransferX's own performance-based estimate of a player's transfer value, with a confidence range. A deterministic formula over season box-score stats (`boxscore-v1`) — an estimate, never an official valuation. Not shown to player accounts. |
+| **Divergence** | How far a reference price (asking price or agreed fee) sits from the model fair value, as a percentage with a band from "Well below model" to "Well above model". Never computed against a hidden reserve price. |
 
 ## Negotiation
 
@@ -68,6 +71,7 @@ Out of scope: pure engineering jargon (framework names, library names) — those
 | Term | Definition |
 |---|---|
 | **Transfer budget** | A club's total available funds for transfer fees. |
+| **Approval threshold** | An optional per-club amount at or above which a Manager's money action (bid, offer, acceptance) waits as a pending approval for the owner or a Sporting Director to sign off, instead of executing. Nothing is reserved while pending; execution re-checks everything fresh. |
 | **Reserved** | Funds provisionally held against an active bid/offer. |
 | **Committed** | Funds locked in once a deal is agreed but not yet completed. |
 | **Spent** | Funds actually paid out on a completed deal. |

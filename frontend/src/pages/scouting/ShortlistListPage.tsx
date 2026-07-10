@@ -7,6 +7,7 @@ import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
+import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { formatDate, getApiError } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
 import { ListSkeleton } from "../../components/ui/Skeleton";
@@ -92,6 +93,8 @@ export default function ShortlistListPage() {
       api.get<ShortlistSummary[]>("/scouting/shortlists").then((r) => r.data),
   });
 
+  const { can } = useClubCapabilities();
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>
       api.delete(`/scouting/shortlists/${id}`).then((r) => r.data),
@@ -106,7 +109,7 @@ export default function ShortlistListPage() {
         title="Shortlists"
         subtitle="Curated lists of scouting targets"
         actions={
-          !creating && (
+          !creating && can("SCOUTING_WRITE") && (
             <Button variant="primary" onClick={() => setCreating(true)}>
               + New shortlist
             </Button>
@@ -126,7 +129,7 @@ export default function ShortlistListPage() {
         <EmptyState
           title="No shortlists"
           body="Create a shortlist to start tracking targets."
-          action={{ label: "New shortlist", onClick: () => setCreating(true) }}
+          action={can("SCOUTING_WRITE") ? { label: "New shortlist", onClick: () => setCreating(true) } : undefined}
         />
       )}
 

@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { AgentNegotiation, Club, Deal } from "../../types/api";
+import type { AgentNegotiation, Club, Deal, FairValueSignal } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
+import FairValueBadge from "../../components/players/FairValueBadge";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
@@ -18,6 +19,7 @@ import DealRoomPanel from "../../components/deals/DealRoomPanel";
 import { dealStatusVariant, dealStageLabel } from "../../lib/badges";
 import { formatCurrency, formatDate, formatWage, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
+import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 
 // ── Note form ─────────────────────────────────────────────────────────────────
 
@@ -263,9 +265,11 @@ function AgentNegotiationWorkspace({
 function CommissionProposalView({
   dealId,
   negotiation,
+  canRespond = true,
 }: {
   dealId: string;
   negotiation: import("../../types/api").AgentNegotiation | null;
+  canRespond?: boolean;
 }) {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
@@ -305,7 +309,9 @@ function CommissionProposalView({
         )}
       </dl>
 
-      {isPending ? (
+      {isPending && !canRespond ? (
+        <p className="mt-4 text-sm text-slate-400">Awaiting a decision from your club.</p>
+      ) : isPending ? (
         <div className="mt-4 flex gap-2">
           <Button
             variant="primary"
@@ -519,6 +525,7 @@ export default function DealDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const { can } = useClubCapabilities();
   const { accessToken, user } = useAuthStore();
   const isAuthenticated = !!accessToken;
   const isAgent  = user?.user_type === "AGENT";
@@ -552,6 +559,21 @@ export default function DealDetailPage() {
     queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
     enabled: isAuthenticated,
     staleTime: 60_000,
+  });
+
+  // TRA-92: fair value vs the agreed fee, for club/agent/staff identities only —
+  // a player identity must never fire the call (the server 403s it anyway, D6)
+  const { data: fairValue = null } = useQuery<FairValueSignal | null>({
+    queryKey: ["valuation", deal?.player_id, { reference: deal?.agreed_fee }],
+    queryFn: () =>
+      api
+        .get<FairValueSignal>(`/valuation/players/${deal!.player_id}`, {
+          params: deal!.agreed_fee != null ? { reference_price: deal!.agreed_fee } : {},
+        })
+        .then((r) => r.data)
+        .catch(() => null),
+    enabled: !!deal?.player_id && isAuthenticated && !isPlayer,
+    staleTime: 300_000,
   });
 
   const advanceMutation = useMutation({
@@ -668,18 +690,21 @@ export default function DealDetailPage() {
   // At PAPERWORK stage, clubs cannot advance — only staff can
   const atPaperwork        = deal.stage === "PAPERWORK";
   const atConfirmed        = deal.stage === "CONFIRMED";
-  const clubCanAdvance     = isParty && !isAgent && isActive && !atPaperwork && !atAgentNegotiation && !deal.is_auction_deal;
+  // TRA-151 (D4): club-side deal writes need DEAL_WRITE — SCOUT/READONLY staff
+  // keep full visibility but every mutating control below disappears for them.
+  const canDealWrite       = can("DEAL_WRITE");
+  const clubCanAdvance     = isParty && !isAgent && isActive && !atPaperwork && !atAgentNegotiation && !deal.is_auction_deal && canDealWrite;
   // Agent can advance once the club has agreed commission (TRA-128) — personal
   // terms are a separate proposal + consent, at PERSONAL_TERMS.
   const agentCanAdvance    = isAgent && isActive && atAgentNegotiation &&
     negotiation?.club_agreement === "AGREED";
-  const clubCanCollapse       = isParty && isActive;
-  const canEditDealStructure  = isParty && isActive && atAgreement;
+  const clubCanCollapse       = isParty && isActive && canDealWrite;
+  const canEditDealStructure  = isParty && isActive && atAgreement && canDealWrite;
   // Set personal terms (ADR 0001): the mandated agent if this deal went through
   // AGENT_NEGOTIATION, otherwise the buying club when there's no mandate at all.
   const canSetPersonalTerms   = isActive && atPersonalTerms && !deal.personal_terms && (
     (isAgent && deal.commission_agent_id != null) ||
-    (isBuyer && !isAgent && !isPlayer && deal.commission_agent_id == null)
+    (isBuyer && !isAgent && !isPlayer && deal.commission_agent_id == null && canDealWrite)
   );
 
   const advanceError =
@@ -753,6 +778,7 @@ export default function DealDetailPage() {
         <CommissionProposalView
           dealId={id}
           negotiation={negotiation ?? null}
+          canRespond={canDealWrite}
         />
       )}
 
@@ -824,6 +850,12 @@ export default function DealDetailPage() {
             </p>
             <div className="space-y-2">
               <Metric label="Transfer fee" value={formatCurrency(deal.agreed_fee)} />
+              {/* Fair-value signal vs agreed fee (TRA-92) — never for a player identity */}
+              {!isPlayer && fairValue && (
+                <div className="border-b border-white/[0.06] pb-2">
+                  <FairValueBadge signal={fairValue} referenceLabel="Agreed fee" />
+                </div>
+              )}
               {deal.agreed_wage_weekly != null && (
                 <Metric label="Wage" value={formatWage(deal.agreed_wage_weekly)} />
               )}
@@ -1333,7 +1365,7 @@ export default function DealDetailPage() {
                 ))}
               </div>
             )}
-            {isParty && isActive && <NoteForm dealId={deal.id} />}
+            {isParty && isActive && canDealWrite && <NoteForm dealId={deal.id} />}
           </Panel>
 
           <Panel title="Activity Timeline">
@@ -1343,7 +1375,9 @@ export default function DealDetailPage() {
       </div>
 
       {/* Deal room: comments, version history, attachments (TRA-81/82) */}
-      {(isParty || isAgent || isPlayer) && id && <DealRoomPanel dealId={id} />}
+      {(isParty || isAgent || isPlayer) && id && (
+        <DealRoomPanel dealId={id} canWrite={!isParty || canDealWrite} />
+      )}
     </div>
   );
 }

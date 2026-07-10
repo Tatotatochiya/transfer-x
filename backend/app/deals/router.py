@@ -37,6 +37,7 @@ from app.deals.schemas import (
     UpdateNegotiationTermsRequest,
     UpsertMedicalCheckRequest,
 )
+from app.clubs.capabilities import Capability, ensure_club_capability, require_club_capability
 from app.deps import get_current_user
 from app.notifications import service as notif_service
 from app.notifications.models import NotificationType
@@ -45,26 +46,31 @@ from app.ws.manager import manager as ws_manager
 
 router = APIRouter(tags=["deals"])
 
+# TRA-151: deal lifecycle writes — MANAGER and above; SCOUT/READONLY get 403.
+# Mixed-caller endpoints (advance, personal terms) check inside their club branch.
+_deal_write = require_club_capability(Capability.DEAL_WRITE)
+
 
 async def _get_club_or_403(db: AsyncSession, user: User):
-    club = await clubs_service.get_club_by_user_id(db, user.id)
+    # TRA-146: owner-or-staff — staff act for their club here; write endpoints
+    # are role-gated by DEAL_WRITE, so this resolver widening grants no writes
+    # to SCOUT/READONLY (the D4 sequencing invariant).
+    club = await clubs_service.get_club_for_user(db, user.id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
     return club
 
 
 async def _notify_deal_parties(db: AsyncSession, deal_id: uuid.UUID) -> None:
-    """Push DEAL_UPDATED to both clubs involved in a deal."""
+    """Push DEAL_UPDATED to every member of both clubs involved in a deal."""
     deal = await service.get_deal_by_id(db, deal_id)
     if deal is None:
         return
-    user_ids = []
+    user_ids: list[uuid.UUID] = []
     for club_id in [deal.buyer_club_id, deal.seller_club_id]:
         if club_id is None:
             continue
-        club = await clubs_service.get_club_by_id(db, uuid.UUID(str(club_id)))
-        if club:
-            user_ids.append(club.user_id)
+        user_ids += await notif_service.club_member_user_ids(db, uuid.UUID(str(club_id)))
     await ws_manager.broadcast_to_users(
         list(set(user_ids)),
         {"type": "DEAL_UPDATED", "id": str(deal_id)},
@@ -78,22 +84,21 @@ async def _db_notify_deal_parties(
     ntype: NotificationType,
     message: str,
 ) -> None:
-    """Create DB notifications for both parties of a deal. Must be called before commit."""
+    """Create DB notifications for both parties of a deal, role-routed per club
+    (TRA-152). Must be called before commit."""
     player_id = deal.player_id
     deal_link = f"/deals/{deal.id}"
     for club_id in [deal.buyer_club_id, deal.seller_club_id]:
         if club_id is None:
             continue
-        club = await clubs_service.get_club_by_id(db, uuid.UUID(str(club_id)))
-        if club:
-            await notif_service.create_notification(
-                db,
-                recipient_user_id=club.user_id,
-                type=ntype,
-                message=message,
-                link=deal_link,
-                related_player_id=player_id,
-            )
+        await notif_service.notify_club(
+            db,
+            uuid.UUID(str(club_id)),
+            type=ntype,
+            message=message,
+            link=deal_link,
+            related_player_id=player_id,
+        )
 
 
 async def _notify_personal_terms_sent(db: AsyncSession, deal, pt) -> None:
@@ -317,6 +322,9 @@ async def advance_deal(
         is_mandated_agent = True
     else:
         club = await _get_club_or_403(db, current_user)
+        # TRA-151: mixed-caller endpoint — capability checked in the club branch
+        # only (agents are authorized by the mandate check above).
+        await ensure_club_capability(db, current_user, Capability.DEAL_WRITE)
         actor_club_id = club.id
 
     try:
@@ -352,6 +360,7 @@ async def collapse_deal(
     deal_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
 ):
     club = await _get_club_or_403(db, current_user)
     deal = await _get_deal_or_404(db, deal_id)
@@ -386,6 +395,7 @@ async def add_note(
     body: DealNoteRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
 ):
     club = await _get_club_or_403(db, current_user)
     deal = await _get_deal_or_404(db, deal_id)
@@ -469,6 +479,7 @@ async def update_deal(
     body: UpdateDealRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
 ):
     club = await _get_club_or_403(db, current_user)
     deal = await _get_deal_or_404(db, deal_id)
@@ -504,6 +515,7 @@ async def add_clause(
     body: CreateClauseRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
 ):
     club = await _get_club_or_403(db, current_user)
     deal = await _get_deal_or_404(db, deal_id)
@@ -548,6 +560,7 @@ async def update_clause_status(
     body: UpdateClauseStatusRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
 ):
     club = await _get_club_or_403(db, current_user)
     deal = await _get_deal_or_404(db, deal_id)
@@ -589,6 +602,7 @@ async def set_instalments(
     body: CreateInstalmentsRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
 ):
     club = await _get_club_or_403(db, current_user)
     deal = await _get_deal_or_404(db, deal_id)
@@ -729,6 +743,8 @@ async def set_personal_terms(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the buying club can propose personal terms",
             )
+        # TRA-151: mixed-caller endpoint — capability checked in the club branch only.
+        await ensure_club_capability(db, current_user, Capability.DEAL_WRITE)
     elif not current_user.is_superuser:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Buying club, agent, or admin access required")
 
@@ -880,6 +896,7 @@ async def club_respond_to_negotiation(
     body: NegotiationRespondRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
 ):
     club = await _get_club_or_403(db, current_user)
     deal = await _get_deal_or_404(db, deal_id)
@@ -901,6 +918,7 @@ async def mark_instalment_paid(
     instalment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
 ):
     club = await _get_club_or_403(db, current_user)
     deal = await _get_deal_or_404(db, deal_id)

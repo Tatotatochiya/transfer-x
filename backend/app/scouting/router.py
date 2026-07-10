@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.auth.models import User
 from app.clubs import service as clubs_service
 from app.database import get_db
+from app.clubs.capabilities import Capability, require_club_capability
 from app.deps import get_current_user
 from app.scouting import service
 from app.scouting.schemas import (
@@ -30,9 +31,14 @@ from app.scouting.schemas import (
 
 router = APIRouter(prefix="/scouting", tags=["scouting"])
 
+# TRA-151: shortlists/interest are scouting writes — every role except READONLY.
+_scouting_write = require_club_capability(Capability.SCOUTING_WRITE)
+
 
 async def _get_club_or_403(db: AsyncSession, user: User):
-    club = await clubs_service.get_club_by_user_id(db, user.id)
+    # Owner-or-staff: viewing club scouting data comes with membership itself;
+    # writes are additionally gated by SCOUTING_WRITE.
+    club = await clubs_service.get_club_for_user(db, user.id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
     return club
@@ -76,6 +82,7 @@ async def create_shortlist(
     body: ShortlistCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_scouting_write),
 ):
     club = await _get_club_or_403(db, current_user)
     try:
@@ -106,6 +113,7 @@ async def update_shortlist(
     body: ShortlistUpdateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_scouting_write),
 ):
     club = await _get_club_or_403(db, current_user)
     sl = await _get_shortlist_or_404(db, shortlist_id, club.id)
@@ -124,6 +132,7 @@ async def delete_shortlist(
     shortlist_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_scouting_write),
 ):
     club = await _get_club_or_403(db, current_user)
     sl = await _get_shortlist_or_404(db, shortlist_id, club.id)
@@ -144,6 +153,7 @@ async def add_to_shortlist(
     body: ShortlistItemRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_scouting_write),
 ):
     club = await _get_club_or_403(db, current_user)
     sl = await _get_shortlist_or_404(db, shortlist_id, club.id)
@@ -170,6 +180,7 @@ async def update_shortlist_item(
     body: ShortlistItemUpdateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_scouting_write),
 ):
     club = await _get_club_or_403(db, current_user)
     await _get_shortlist_or_404(db, shortlist_id, club.id)
@@ -195,6 +206,7 @@ async def remove_from_shortlist(
     player_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_scouting_write),
 ):
     club = await _get_club_or_403(db, current_user)
     await _get_shortlist_or_404(db, shortlist_id, club.id)
@@ -224,6 +236,7 @@ async def set_interest(
     body: InterestUpsertRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_scouting_write),
 ):
     club = await _get_club_or_403(db, current_user)
     interest = await service.set_interest(
@@ -244,6 +257,7 @@ async def clear_interest(
     player_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_scouting_write),
 ):
     club = await _get_club_or_403(db, current_user)
     interest = await service.get_interest(db, club.id, player_id)

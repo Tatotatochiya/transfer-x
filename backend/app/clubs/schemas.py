@@ -2,9 +2,9 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 
-from app.clubs.models import ClubRole
+from app.clubs.models import ClubRole, StaffRole
 
 
 
@@ -21,6 +21,7 @@ class ClubFinanceResponse(BaseModel):
     wage_committed_weekly: Decimal
     transfer_remaining: Decimal
     wage_remaining_weekly: Decimal
+    approval_threshold: Decimal | None = None
     updated_at: datetime
 
 
@@ -56,12 +57,75 @@ class ClubPublicResponse(BaseModel):
     created_at: datetime
 
 
+class ClubMembershipResponse(BaseModel):
+    """TRA-151 (D3): the caller's club, role, and server-derived capability list."""
+    club: ClubPublicResponse
+    role: str  # OWNER | SPORTING_DIRECTOR | MANAGER | SCOUT | READONLY
+    capabilities: list[str]
+
+
 class ClubUpdateRequest(BaseModel):
     name: str | None = None
     country: str | None = None
     city: str | None = None
     league_name: str | None = None
     crest_url: str | None = None
+
+
+# ── Team management (TRA-86) ─────────────────────────────────────────────────
+
+class ClubStaffMemberResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    email: str  # set by router from the joined user
+    role: StaffRole
+    created_at: datetime
+
+
+class ClubStaffInvitationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    role: StaffRole
+    created_at: datetime
+    expires_at: datetime
+
+
+class TeamResponse(BaseModel):
+    """Active staff + live pending invitations, in one payload."""
+    staff: list[ClubStaffMemberResponse]
+    invitations: list[ClubStaffInvitationResponse]
+
+
+class StaffInviteRequest(BaseModel):
+    email: EmailStr
+    role: StaffRole
+
+
+class StaffInviteResponse(BaseModel):
+    invitation: ClubStaffInvitationResponse
+    # Returned exactly once, at creation — the raw token is never stored (D6).
+    accept_url: str
+
+
+class StaffRoleUpdateRequest(BaseModel):
+    role: StaffRole
+
+
+class InvitationPreviewResponse(BaseModel):
+    """Public preview for the accept page — no ids, nothing sensitive."""
+    club_name: str
+    club_crest_url: str | None
+    role: StaffRole
+    email: str
+    expires_at: datetime
+
+
+class InvitationAcceptRequest(BaseModel):
+    password: str
 
 
 # ── Player search views ───────────────────────────────────────────────────────

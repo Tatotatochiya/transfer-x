@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useAuthStore } from "../../store/auth";
 import { usePreferencesStore } from "../../store/preferences";
-import type { Paginated, Player, PlayerForm, PlayerSearchView, PlayerStats } from "../../types/api";
+import type { FairValueSignal, Paginated, Player, PlayerForm, PlayerSearchView, PlayerStats } from "../../types/api";
 import PlayerCard from "../../components/players/PlayerCard";
 import PlayerListRow from "../../components/players/PlayerListRow";
 import PlayerFilters, {
@@ -72,8 +72,9 @@ function getInitialView(): ViewMode {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PlayerMarketPage() {
-  const { accessToken } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
   const isAuthenticated = !!accessToken;
+  const isPlayerAccount = user?.user_type === "PLAYER";
   const queryClient = useQueryClient();
 
   const [filters, setFilters] = useState<PlayerFilterState>(DEFAULT_PLAYER_FILTERS);
@@ -236,6 +237,23 @@ export default function PlayerMarketPage() {
     },
   });
 
+  // TRA-92: one batch valuation call per page of cards, never per card.
+  // D6: a player-account identity must not fire the call at all.
+  const { data: fairValues = {} } = useQuery<Record<string, FairValueSignal>>({
+    queryKey: ["valuation", "batch", playerIds],
+    enabled: isAuthenticated && !isPlayerAccount && players.length > 0,
+    staleTime: 300_000,
+    queryFn: async () => {
+      // The signal is an enhancement — a failure must never break the grid.
+      const resp = await api
+        .get<{ valuations: Record<string, FairValueSignal> }>("/valuation/players", {
+          params: { ids: playerIds },
+        })
+        .catch(() => ({ data: { valuations: {} as Record<string, FairValueSignal> } }));
+      return resp.data.valuations;
+    },
+  });
+
   const { data: statsMap = {} } = useQuery<Record<string, PlayerStats | null>>({
     queryKey: ["players", "stats-batch", playerIds],
     enabled: view === "list" && players.length > 0,
@@ -317,6 +335,7 @@ export default function PlayerMarketPage() {
                   player={player}
                   formScore={formScores[player.id]?.score}
                   formTrend={formScores[player.id]?.trend}
+                  fairValueSignal={fairValues[player.id]}
                 />
               ))}
             </div>

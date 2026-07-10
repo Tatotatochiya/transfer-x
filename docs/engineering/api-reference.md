@@ -1,6 +1,6 @@
 ---
 title: "API Reference"
-last_updated: 2026-07-03
+last_updated: 2026-07-10
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -41,6 +41,10 @@ Running locally, the interactive Swagger UI is available at `http://localhost:80
 | `/notifications` | In-app/email notifications |
 | `/admin` | Superuser administration |
 | `/ws` | WebSocket real-time updates |
+| `/valuation` | Fair-value model valuations (TRA-91) — single/batch reads, staff recompute |
+| `/clubs/me/membership`, `/clubs/me/staff` | Club role/capability membership (TRA-151) + owner team management & invitations (TRA-86) |
+| `/auth/invitations/{token}` | Public staff-invitation preview + accept (single-use tokenised link) |
+| `/clubs/me/approvals`, `/clubs/me/approval-policy` | Spending-authority approvals: queue, decisions, threshold policy |
 
 > **TODO:** Complete this table against the current router mounts in `backend/app/main.py` — this is a starting point, not verified exhaustive as of this writing.
 
