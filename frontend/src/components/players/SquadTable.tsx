@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import type { ActiveDealStub, Player, PlayerDetail } from "../../types/api";
+import type { ActiveDealStub, FairValueSignal, Player, PlayerDetail } from "../../types/api";
 import Badge from "../ui/Badge";
+import FairValueBadge from "./FairValueBadge";
 import FormBadge from "./FormBadge";
 import { formatCurrency } from "../../lib/utils";
 
@@ -20,6 +21,9 @@ interface Props {
   showContractDetails?: boolean;
   /** Map of player_id → form_score for displaying form badges */
   formScores?: Record<string, { score: number; trend: number | null }>;
+  /** Map of player_id → fair-value signal (TRA-92). Market-facing, same as the
+   * public player profile — never gated behind showContractDetails. */
+  fairValues?: Record<string, FairValueSignal>;
   /** When provided, shows an interactive toggle for each player's open_to_offers flag */
   onToggleOpenToOffers?: (playerId: string, next: boolean) => void;
   /** Set of player IDs currently being toggled (shows loading state) */
@@ -52,7 +56,7 @@ function PositionBreakdown({ players }: { players: PlayerDetail[] }) {
   );
 }
 
-export default function SquadTable({ players, showContractDetails = false, formScores, onToggleOpenToOffers, togglingIds, onSetValuation }: Props) {
+export default function SquadTable({ players, showContractDetails = false, formScores, fairValues, onToggleOpenToOffers, togglingIds, onSetValuation }: Props) {
   const [editingValuationId, setEditingValuationId] = useState<string | null>(null);
   const [valuationDraft, setValuationDraft] = useState("");
 
@@ -99,6 +103,7 @@ export default function SquadTable({ players, showContractDetails = false, formS
               <th className="px-4 py-3 text-left">Nationality</th>
               <th className="px-4 py-3 text-left">Status</th>
               {formScores && <th className="px-4 py-3 text-center">Form</th>}
+              {fairValues && <th className="px-4 py-3 text-left">Fair Value</th>}
               {onToggleOpenToOffers && (
                 <th className="px-4 py-3 text-center">Open to offers</th>
               )}
@@ -201,6 +206,17 @@ export default function SquadTable({ players, showContractDetails = false, formS
                           score={formScores[player.id].score}
                           trend={formScores[player.id].trend}
                         />
+                      ) : (
+                        <span className="text-xs text-slate-600">—</span>
+                      )}
+                    </td>
+                  )}
+
+                  {/* Fair value (TRA-92) — market-facing model estimate */}
+                  {fairValues && (
+                    <td className="px-4 py-3">
+                      {fairValues[player.id] ? (
+                        <FairValueBadge signal={fairValues[player.id]} compact />
                       ) : (
                         <span className="text-xs text-slate-600">—</span>
                       )}

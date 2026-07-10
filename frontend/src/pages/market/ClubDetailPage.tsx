@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { ClubPublic, Paginated, PlayerDetail, PlayerForm, Sale } from "../../types/api";
+import type { ClubPublic, FairValueSignal, Paginated, PlayerDetail, PlayerForm, Sale } from "../../types/api";
+import { useAuthStore } from "../../store/auth";
 import SaleCard from "../../components/sales/SaleCard";
 import SquadTable from "../../components/players/SquadTable";
 import ClubInfoPanel from "../../components/clubs/ClubInfoPanel";
@@ -19,6 +20,9 @@ export default function ClubDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("squad");
+  const { accessToken, user } = useAuthStore();
+  const isAuthenticated = !!accessToken;
+  const isPlayerAccount = user?.user_type === "PLAYER";
 
   // ── Club data ─────────────────────────────────────────────────────────────
 
@@ -55,6 +59,21 @@ export default function ClubDetailPage() {
     },
     enabled: !!squadData && squadData.items.length > 0,
     staleTime: 60_000,
+  });
+
+  // TRA-92: one batch valuation call per squad load, never per row.
+  // D6: a player-account or anonymous viewer must not fire the call at all.
+  const { data: fairValues = {} } = useQuery<Record<string, FairValueSignal>>({
+    queryKey: ["valuation", "batch", "squad", id],
+    enabled: isAuthenticated && !isPlayerAccount && !!squadData && squadData.items.length > 0,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const ids = (squadData?.items ?? []).map((p) => p.id).join(",");
+      const resp = await api
+        .get<{ valuations: Record<string, FairValueSignal> }>("/valuation/players", { params: { ids } })
+        .catch(() => ({ data: { valuations: {} as Record<string, FairValueSignal> } }));
+      return resp.data.valuations;
+    },
   });
 
   // ── Listings ──────────────────────────────────────────────────────────────
@@ -197,7 +216,7 @@ export default function ClubDetailPage() {
                   {Object.keys(formScores).length > 0 && (
                     <TopPerformers players={players} formScores={formScores} />
                   )}
-                  <SquadTable players={players} formScores={formScores} />
+                  <SquadTable players={players} formScores={formScores} fairValues={fairValues} />
                 </>
               )}
             </>

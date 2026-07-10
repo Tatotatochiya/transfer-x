@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { Club, Paginated, Player, PlayerForm, PlayerStats, WorldTeam } from "../../types/api";
+import type { Club, FairValueSignal, Paginated, Player, PlayerForm, PlayerStats, WorldTeam } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
 import SquadTable from "../../components/players/SquadTable";
 import FormBadge from "../../components/players/FormBadge";
@@ -188,8 +188,9 @@ export default function WorldTeamDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { accessToken } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
   const isAuthenticated = !!accessToken;
+  const isPlayerAccount = user?.user_type === "PLAYER";
 
   const [claimError, setClaimError] = useState<string | null>(null);
 
@@ -252,6 +253,20 @@ export default function WorldTeamDetailPage() {
         };
       }
       return map;
+    },
+  });
+
+  // TRA-92: one batch valuation call per squad page, never per row.
+  // D6: a player-account or anonymous viewer must not fire the call at all.
+  const { data: fairValues = {} } = useQuery<Record<string, FairValueSignal>>({
+    queryKey: ["valuation", "batch", "world-team-squad", id, page],
+    enabled: isAuthenticated && !isPlayerAccount && players.length > 0,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const resp = await api
+        .get<{ valuations: Record<string, FairValueSignal> }>("/valuation/players", { params: { ids: playerIds } })
+        .catch(() => ({ data: { valuations: {} as Record<string, FairValueSignal> } }));
+      return resp.data.valuations;
     },
   });
 
@@ -392,7 +407,7 @@ export default function WorldTeamDetailPage() {
           )}
 
           {!squadLoading && players.length > 0 && (
-            <SquadTable players={players} formScores={formScores} />
+            <SquadTable players={players} formScores={formScores} fairValues={fairValues} />
           )}
 
           {/* Pagination */}

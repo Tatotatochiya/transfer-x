@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { Club, Paginated, PlayerDetail, PlayerForm, Sale } from "../../types/api";
+import type { Club, FairValueSignal, Paginated, PlayerDetail, PlayerForm, Sale } from "../../types/api";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import EmptyState from "../../components/ui/EmptyState";
@@ -63,6 +63,21 @@ export default function MyClubPage() {
     },
     enabled: !!squadData && squadData.items.length > 0,
     staleTime: 60_000,
+  });
+
+  // TRA-92: one batch valuation call per squad load, never per row. This page
+  // is club-only (ClubRoute) so no D6 player-account check is needed here.
+  const { data: fairValues = {} } = useQuery<Record<string, FairValueSignal>>({
+    queryKey: ["valuation", "batch", "squad", club?.id],
+    enabled: !!squadData && squadData.items.length > 0,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const ids = (squadData?.items ?? []).map((p) => p.id).join(",");
+      const resp = await api
+        .get<{ valuations: Record<string, FairValueSignal> }>("/valuation/players", { params: { ids } })
+        .catch(() => ({ data: { valuations: {} as Record<string, FairValueSignal> } }));
+      return resp.data.valuations;
+    },
   });
 
   // ── Listings ──────────────────────────────────────────────────────────────
@@ -327,6 +342,7 @@ export default function MyClubPage() {
                     players={players}
                     showContractDetails
                     formScores={formScores}
+                    fairValues={fairValues}
                     onToggleOpenToOffers={canMarketWrite ? toggleOpenToOffers : undefined}
                     onSetValuation={canMarketWrite ? setValuation : undefined}
                   />
