@@ -488,6 +488,144 @@ async def test_buyer_cannot_accept_bid(client: AsyncClient, seller: dict, buyer:
     assert resp.status_code == 400
 
 
+# ── M5: bid withdrawal ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_buyer_can_withdraw_own_bid(client: AsyncClient, seller: dict, buyer: dict, db):
+    """A buyer can DELETE their own active bid; budget reservation is released."""
+    from decimal import Decimal
+
+    from sqlalchemy import select
+
+    from app.clubs.models import ClubFinance
+    from app.sales.models import Bid, BidStatus
+
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.transfer_budget_total = Decimal("10_000_000")
+    await db.commit()
+
+    player = await _create_player(client, sel_headers)
+    sale = await _create_sale(client, sel_headers, player["id"], asking_price=5_000_000)
+
+    bid_resp = await client.post(
+        f"/sales/{sale['id']}/bids", json={"amount": 5_000_000}, headers=buy_headers
+    )
+    assert bid_resp.status_code == 201
+    bid_id = bid_resp.json()["id"]
+
+    # Budget is reserved now
+    me_before = await client.get("/clubs/me", headers=buy_headers)
+    assert Decimal(me_before.json()["finance"]["transfer_reserved"]) == Decimal("5000000")
+
+    # Withdraw the bid
+    resp = await client.delete(f"/sales/{sale['id']}/bids/{bid_id}", headers=buy_headers)
+    assert resp.status_code == 204
+
+    # Budget must be fully released
+    me_after = await client.get("/clubs/me", headers=buy_headers)
+    assert Decimal(me_after.json()["finance"]["transfer_reserved"]) == Decimal("0")
+
+    # Bid must be WITHDRAWN in DB
+    import uuid as _uuid
+    await db.rollback()
+    bid_row = (await db.execute(select(Bid).where(Bid.id == _uuid.UUID(bid_id)))).scalar_one()
+    assert bid_row.status == BidStatus.WITHDRAWN
+
+
+@pytest.mark.asyncio
+async def test_outbid_bid_marked_correctly(
+    client: AsyncClient, seller: dict, buyer: dict, buyer2: dict, db
+):
+    """When a higher bid from club B beats club A, club A's bid transitions to OUTBID
+    (budget stays reserved, club A can still improve or withdraw)."""
+    from decimal import Decimal
+
+    from sqlalchemy import select
+
+    from app.clubs.models import ClubFinance
+    from app.sales.models import Bid, BidStatus
+
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    buy2_headers = _auth_headers(buyer2)
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.transfer_budget_total = Decimal("100_000_000")
+    await db.commit()
+
+    player = await _create_player(client, sel_headers)
+    sale = await _create_sale(
+        client, sel_headers, player["id"], asking_price=5_000_000, min_increment=500_000
+    )
+
+    bid1 = await client.post(
+        f"/sales/{sale['id']}/bids", json={"amount": 5_000_000}, headers=buy_headers
+    )
+    bid1_id = bid1.json()["id"]
+
+    # buyer2 places a higher bid — buyer1 should transition to OUTBID
+    await client.post(
+        f"/sales/{sale['id']}/bids", json={"amount": 5_500_000}, headers=buy2_headers
+    )
+
+    import uuid as _uuid
+    await db.rollback()
+    bid_row = (await db.execute(select(Bid).where(Bid.id == _uuid.UUID(bid1_id)))).scalar_one()
+    assert bid_row.status == BidStatus.OUTBID
+
+
+@pytest.mark.asyncio
+async def test_outbid_club_can_improve_and_regain_lead(
+    client: AsyncClient, seller: dict, buyer: dict, buyer2: dict, db
+):
+    """An OUTBID club can re-enter by improving their bid, which restores ACTIVE status."""
+    from decimal import Decimal
+
+    from sqlalchemy import select
+
+    from app.clubs.models import ClubFinance
+    from app.sales.models import Bid, BidStatus
+
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    buy2_headers = _auth_headers(buyer2)
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.transfer_budget_total = Decimal("100_000_000")
+    await db.commit()
+
+    player = await _create_player(client, sel_headers)
+    sale = await _create_sale(
+        client, sel_headers, player["id"], asking_price=5_000_000, min_increment=500_000
+    )
+
+    await client.post(
+        f"/sales/{sale['id']}/bids", json={"amount": 5_000_000}, headers=buy_headers
+    )
+    bid1_resp = (await client.post(
+        f"/sales/{sale['id']}/bids", json={"amount": 5_500_000}, headers=buy2_headers
+    )).json()
+
+    # buyer improves above buyer2 — buyer should be ACTIVE, buyer2 OUTBID
+    await client.post(
+        f"/sales/{sale['id']}/bids", json={"amount": 6_000_000}, headers=buy_headers
+    )
+
+    import uuid as _uuid
+    await db.rollback()
+    bid2_row = (
+        await db.execute(select(Bid).where(Bid.id == _uuid.UUID(bid1_resp["id"])))
+    ).scalar_one()
+    assert bid2_row.status == BidStatus.OUTBID
+
+
 # ── Budget reservation checks ─────────────────────────────────────────────────
 
 

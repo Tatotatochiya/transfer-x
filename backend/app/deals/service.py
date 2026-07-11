@@ -521,6 +521,7 @@ async def collapse_deal(
     actor_club_id: uuid.UUID,
     is_staff: bool = False,
     actor_user_id: uuid.UUID | None = None,
+    reason: str | None = None,
 ) -> Deal:
     """Collapse a deal — releases buyer's committed budget.
 
@@ -528,11 +529,22 @@ async def collapse_deal(
     moment of acceptance — the originating sale stayed CLOSED forever and past
     bidders were never told they could come back. Reopen the sale (if any) and
     let every club that had bid on it know it's live again.
+
+    reason is stored in the audit trail and forwarded to the counterparty
+    notification.  For CONFIRMED/PENDING_COMPLETION deals a reason is required
+    — walking away after paperwork is signed needs an explanation on record.
     """
     if deal.status in (DealStatus.COMPLETED, DealStatus.COLLAPSED):
         raise ValueError(f"Deal is already {deal.status}")
 
     _require_party(deal, actor_club_id, is_staff)
+
+    if not is_staff and deal.stage in (DealStage.CONFIRMED, DealStage.COMPLETED):
+        if not reason or not reason.strip():
+            raise ValueError(
+                "A reason is required to collapse a deal that has reached the CONFIRMED stage — "
+                "the counterparty and audit trail must record why."
+            )
 
     # Release committed budget back to available for buyer
     if deal.agreed_fee and deal.agreed_fee > 0:
@@ -545,12 +557,16 @@ async def collapse_deal(
                 )
 
     deal.status = DealStatus.COLLAPSED
+    audit_description = "Deal collapsed — committed budget released"
+    if reason and reason.strip():
+        audit_description += f". Reason: {reason.strip()}"
     await audit_service.emit(
         db,
         entity_type="DEAL", entity_id=deal.id,
         action="DEAL_COLLAPSED",
         actor_user_id=actor_user_id,
-        description="Deal collapsed — committed budget released",
+        payload={"reason": reason.strip() if reason else None},
+        description=audit_description,
     )
 
     if deal.sale_id:
@@ -623,10 +639,12 @@ async def staff_complete(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UU
     return deal
 
 
-async def staff_collapse(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UUID | None = None) -> Deal:
+async def staff_collapse(
+    db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UUID | None = None, reason: str | None = None,
+) -> Deal:
     """Staff override: force deal to COLLAPSED."""
     return await collapse_deal(
-        db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id,
+        db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id, reason=reason,
     )
 
 

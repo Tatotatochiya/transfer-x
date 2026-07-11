@@ -587,8 +587,8 @@ export default function DealDetailPage() {
   });
 
   const collapseMutation = useMutation({
-    mutationFn: () =>
-      api.post<Deal>(`/deals/${id}/collapse`).then((r) => r.data),
+    mutationFn: (reason: string) =>
+      api.post<Deal>(`/deals/${id}/collapse`, { reason: reason || null }).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deals", id] });
       queryClient.invalidateQueries({ queryKey: ["deals"] });
@@ -934,7 +934,9 @@ export default function DealDetailPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs text-slate-400">Reason (optional)</label>
+                    <label className="mb-1.5 block text-xs text-slate-400">
+                      Reason{(deal.stage === "CONFIRMED" || deal.stage === "COMPLETED") ? " (required at this stage)" : " (optional)"}
+                    </label>
                     <textarea
                       rows={2}
                       value={collapseReason}
@@ -948,7 +950,8 @@ export default function DealDetailPage() {
                       variant="danger"
                       size="sm"
                       loading={collapseMutation.isPending}
-                      onClick={() => collapseMutation.mutate()}
+                      disabled={(deal.stage === "CONFIRMED" || deal.stage === "COMPLETED") && !collapseReason.trim()}
+                      onClick={() => collapseMutation.mutate(collapseReason)}
                     >
                       Confirm collapse
                     </Button>

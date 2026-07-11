@@ -16,6 +16,7 @@ from app.deals.models import ClauseStatus, DealStage, DealStatus
 from app.deals.schemas import (
     AgentNegotiationResponse,
     ClubTransferStat,
+    CollapseRequest,
     CompletedStats,
     CreateClauseRequest,
     CreateInstalmentsRequest,
@@ -373,6 +374,7 @@ async def advance_deal(
 @router.post("/deals/{deal_id}/collapse", response_model=DealResponse)
 async def collapse_deal(
     deal_id: uuid.UUID,
+    body: CollapseRequest = CollapseRequest(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     _write: User = Depends(_deal_write),
@@ -383,13 +385,14 @@ async def collapse_deal(
     try:
         await service.collapse_deal(
             db, deal, actor_club_id=club.id, is_staff=current_user.is_superuser,
-            actor_user_id=current_user.id,
+            actor_user_id=current_user.id, reason=body.reason,
         )
         player_name = deal.player.name if deal.player else "the player"
+        reason_suffix = f": {body.reason.strip()}" if body.reason and body.reason.strip() else ""
         await _db_notify_deal_parties(
             db, deal,
             ntype=NotificationType.DEAL_COLLAPSED,
-            message=f"Deal for {player_name} has collapsed",
+            message=f"Deal for {player_name} has collapsed{reason_suffix}",
         )
         await db.commit()
     except ValueError as exc:
@@ -460,6 +463,7 @@ async def staff_complete_deal(
 @router.post("/deals/{deal_id}/staff/collapse", response_model=DealResponse)
 async def staff_collapse_deal(
     deal_id: uuid.UUID,
+    body: CollapseRequest = CollapseRequest(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -468,12 +472,13 @@ async def staff_collapse_deal(
     deal = await _get_deal_or_404(db, deal_id)
 
     try:
-        await service.staff_collapse(db, deal, actor_user_id=current_user.id)
+        await service.staff_collapse(db, deal, actor_user_id=current_user.id, reason=body.reason)
         player_name = deal.player.name if deal.player else "the player"
+        reason_suffix = f": {body.reason.strip()}" if body.reason and body.reason.strip() else ""
         await _db_notify_deal_parties(
             db, deal,
             ntype=NotificationType.DEAL_COLLAPSED,
-            message=f"Deal for {player_name} has collapsed",
+            message=f"Deal for {player_name} has collapsed{reason_suffix}",
         )
         await db.commit()
     except ValueError as exc:

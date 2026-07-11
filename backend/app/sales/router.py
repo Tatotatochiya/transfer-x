@@ -60,7 +60,8 @@ def _enrich_sale_response(
     """
     from app.sales.service import get_best_bid_amount, get_minimum_next_bid, is_reserve_met
 
-    active_bids = [b for b in (sale.bids or []) if b.status == BidStatus.ACTIVE]
+    from app.sales.service import _live_bids
+    live_bids = _live_bids(sale.bids or [])
     best = get_best_bid_amount(sale.bids or [])
     min_next = get_minimum_next_bid(sale) if sale.bids is not None else None
     reserve_ok = is_reserve_met(sale) if sale.bids is not None else False
@@ -83,7 +84,7 @@ def _enrich_sale_response(
         updated_at=sale.updated_at,
         player=sale.player,
         seller_club=sale.seller_club,
-        bid_count=len(active_bids) if is_seller_or_staff else None,
+        bid_count=len(live_bids) if is_seller_or_staff else None,
         best_bid=best if is_seller_or_staff else None,
         minimum_next_bid=min_next,
         reserve_met=reserve_ok,
@@ -413,6 +414,32 @@ async def list_bids(
 
     bids.sort(key=lambda b: b.created_at, reverse=True)
     return [BidResponse.model_validate(b) for b in bids]
+
+
+# ── Withdraw bid ─────────────────────────────────────────────────────────────
+
+
+@router.delete("/sales/{sale_id}/bids/{bid_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def withdraw_bid(
+    sale_id: uuid.UUID,
+    bid_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_buyer_user),
+    _write: User = Depends(_market_write),
+):
+    """Buyer withdraws their own active bid, releasing their budget reservation."""
+    club = await clubs_service.get_club_for_user(db, current_user.id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+
+    try:
+        await service.withdraw_bid(
+            db, sale_id=sale_id, bid_id=bid_id, buyer_club_id=club.id
+        )
+        await db.commit()
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 # ── Accept bid ────────────────────────────────────────────────────────────────

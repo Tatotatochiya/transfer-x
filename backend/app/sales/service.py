@@ -119,7 +119,10 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
 
     # Read active bids after acquiring the lock — no concurrent bids can be added now
     active_bids_result = await db.execute(
-        select(Bid).where(Bid.sale_id == sale.id, Bid.status == BidStatus.ACTIVE)
+        select(Bid).where(
+            Bid.sale_id == sale.id,
+            Bid.status.in_([BidStatus.ACTIVE, BidStatus.OUTBID]),
+        )
     )
     active_bids = list(active_bids_result.scalars())
 
@@ -186,11 +189,16 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
 # ── Auction helpers ───────────────────────────────────────────────────────────
 
 
+def _live_bids(bids: list[Bid]) -> list[Bid]:
+    """ACTIVE + OUTBID bids are both 'live' — budget reserved, can be improved or withdrawn."""
+    return [b for b in bids if b.status in (BidStatus.ACTIVE, BidStatus.OUTBID)]
+
+
 def get_best_bid_amount(bids: list[Bid]) -> Decimal | None:
-    active = [b for b in bids if b.status == BidStatus.ACTIVE]
-    if not active:
+    live = _live_bids(bids)
+    if not live:
         return None
-    return max(b.amount for b in active)
+    return max(b.amount for b in live)
 
 
 def get_minimum_next_bid(sale: Sale) -> Decimal:
@@ -256,12 +264,12 @@ async def place_bid(
     if amount < min_bid:
         raise ValueError(f"Bid must be at least {min_bid}")
 
-    # Check if this club already has an active bid
+    # Check if this club already has a live bid (ACTIVE or OUTBID — both can be upgraded)
     existing_result = await db.execute(
         select(Bid).where(
             Bid.sale_id == sale_id,
             Bid.buyer_club_id == buyer_club_id,
-            Bid.status == BidStatus.ACTIVE,
+            Bid.status.in_([BidStatus.ACTIVE, BidStatus.OUTBID]),
         )
     )
     existing_bid = existing_result.scalar_one_or_none()
@@ -295,6 +303,7 @@ async def place_bid(
         existing_bid.reserved_transfer_amount = amount
         existing_bid.reserved_wage_weekly = wage_weekly
         existing_bid.notes = notes
+        existing_bid.status = BidStatus.ACTIVE  # re-enter the competition as leader
         bid = existing_bid
         event_type = SaleEventType.BID_REPLACED
     else:
@@ -329,6 +338,22 @@ async def place_bid(
             amount=amount,
         )
     )
+    await db.flush()
+
+    # Mark every other club's live bid as OUTBID when the new bid beats them.
+    # Their budget reservation stays intact — they can still improve or withdraw.
+    # OUTBID is informational: "you're no longer leading; act or walk away."
+    outbid_result = await db.execute(
+        select(Bid).where(
+            Bid.sale_id == sale_id,
+            Bid.buyer_club_id != buyer_club_id,
+            Bid.status == BidStatus.ACTIVE,
+            Bid.amount < amount,
+        )
+    )
+    for outbid_bid in outbid_result.scalars():
+        outbid_bid.status = BidStatus.OUTBID
+
     await db.flush()
     return bid
 
@@ -375,7 +400,7 @@ async def accept_bid(
     from app.notifications.models import NotificationType
 
     for bid in sale.bids:
-        if bid.id != bid_id and bid.status == BidStatus.ACTIVE:
+        if bid.id != bid_id and bid.status in (BidStatus.ACTIVE, BidStatus.OUTBID):
             bid.status = BidStatus.REJECTED
             await clubs_module.service.release_budget(
                 db,
@@ -446,6 +471,68 @@ async def accept_bid(
     return deal
 
 
+# ── Bid withdrawal ───────────────────────────────────────────────────────────
+
+
+async def withdraw_bid(
+    db: AsyncSession,
+    *,
+    sale_id: uuid.UUID,
+    bid_id: uuid.UUID,
+    buyer_club_id: uuid.UUID,
+) -> Bid:
+    """Buyer withdraws their own live bid, releasing the budget reservation.
+
+    ACTIVE or OUTBID bids can be withdrawn.  Accepted/rejected/already-withdrawn
+    bids cannot.  A sale row lock is held for the duration so concurrent bid
+    acceptance cannot race with the withdrawal.
+    """
+    result = await db.execute(
+        select(Sale)
+        .where(Sale.id == sale_id)
+        .with_for_update()
+        .options(selectinload(Sale.bids))
+    )
+    sale = result.scalar_one_or_none()
+    if sale is None:
+        raise ValueError("Sale not found")
+    if sale.status != SaleStatus.OPEN:
+        raise ValueError("Cannot withdraw a bid on a sale that is no longer open")
+
+    bid_result = await db.execute(
+        select(Bid).where(
+            Bid.id == bid_id,
+            Bid.sale_id == sale_id,
+            Bid.buyer_club_id == buyer_club_id,
+        )
+    )
+    bid = bid_result.scalar_one_or_none()
+    if bid is None:
+        raise ValueError("Bid not found")
+    if bid.status not in (BidStatus.ACTIVE, BidStatus.OUTBID):
+        raise ValueError(f"Bid cannot be withdrawn — current status is {bid.status}")
+
+    await clubs_module.service.release_budget(
+        db,
+        club_id=buyer_club_id,
+        transfer_amount=bid.reserved_transfer_amount,
+        wage_weekly=bid.reserved_wage_weekly,
+    )
+    bid.status = BidStatus.WITHDRAWN
+
+    db.add(
+        SaleEvent(
+            sale_id=sale_id,
+            event_type=SaleEventType.BID_WITHDRAWN,
+            actor_club_id=buyer_club_id,
+            bid_id=bid.id,
+            amount=bid.amount,
+        )
+    )
+    await db.flush()
+    return bid
+
+
 # ── Background job: close expired sales ──────────────────────────────────────
 
 
@@ -475,7 +562,7 @@ async def close_expired_sales(db: AsyncSession) -> int:
     count = 0
     for sale in expired_sales:
         for bid in sale.bids:
-            if bid.status == BidStatus.ACTIVE:
+            if bid.status in (BidStatus.ACTIVE, BidStatus.OUTBID):
                 bid.status = BidStatus.REJECTED
                 await clubs_module.service.release_budget(
                     db,
@@ -569,19 +656,19 @@ async def get_order_book(
             .order_by(Bid.amount.desc())
         )
         all_bids = list(result.scalars())
-        active_bids = [b for b in all_bids if b.status == BidStatus.ACTIVE]
-        active_count = len(active_bids)
+        live_bids = _live_bids(all_bids)
+        active_count = len(live_bids)
 
-        # Build entries: active first (ranked), then inactive (rank=0)
+        # Build entries: live bids (ACTIVE/OUTBID) ranked first, then terminal bids
         def bid_sort_key(b: Bid):
-            return (b.status != BidStatus.ACTIVE, -float(b.amount or 0))
+            return (b.status not in (BidStatus.ACTIVE, BidStatus.OUTBID), -float(b.amount or 0))
 
         entries: list[OrderBookEntry] = []
         rank = 1
         for bid in sorted(all_bids, key=bid_sort_key):
-            is_active = bid.status == BidStatus.ACTIVE
+            is_live = bid.status in (BidStatus.ACTIVE, BidStatus.OUTBID)
             entry = OrderBookEntry(
-                rank=rank if is_active else 0,
+                rank=rank if is_live else 0,
                 kind="bid",
                 id=bid.id,
                 club=OrderBookClubSummary(
@@ -593,15 +680,15 @@ async def get_order_book(
                 wage_weekly=bid.wage_offer_weekly,
                 status=bid.status.value,
                 is_countered=False,
-                is_active=is_active,
+                is_active=is_live,
                 last_action_at=bid.updated_at,
             )
             entries.append(entry)
-            if is_active:
+            if is_live:
                 rank += 1
 
         if is_seller:
-            best = max((b.amount for b in active_bids if b.amount), default=None)
+            best = max((b.amount for b in live_bids if b.amount), default=None)
             reserve_met = (
                 sale.reserve_price is not None
                 and best is not None

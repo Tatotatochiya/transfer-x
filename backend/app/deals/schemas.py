@@ -36,6 +36,10 @@ class DealNoteRequest(BaseModel):
     body: str
 
 
+class CollapseRequest(BaseModel):
+    reason: str | None = None
+
+
 class TransferActivityItem(BaseModel):
     id: uuid.UUID
     player: PlayerSummary | None = None

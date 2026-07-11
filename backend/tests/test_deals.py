@@ -670,6 +670,61 @@ async def test_collapse_deal(client: AsyncClient, buyer: dict, seller: dict, db)
 
 
 @pytest.mark.asyncio
+async def test_collapse_reason_stored_in_audit(client: AsyncClient, buyer: dict, seller: dict, db):
+    """Collapse reason must appear in the audit log, not be silently discarded."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+
+    resp = await client.post(
+        f"/deals/{deal['id']}/collapse",
+        json={"reason": "Clubs could not agree on wage structure"},
+        headers=buy_h,
+    )
+    assert resp.status_code == 200, resp.text
+
+    log_resp = await client.get(f"/deals/{deal['id']}/audit-log", headers=buy_h)
+    assert log_resp.status_code == 200
+    events = log_resp.json()
+    collapse_events = [e for e in events if e["action"] == "DEAL_COLLAPSED"]
+    assert any(
+        "Clubs could not agree on wage structure" in (e.get("description") or "")
+        for e in collapse_events
+    ), f"Reason not found in audit events: {collapse_events}"
+
+
+@pytest.mark.asyncio
+async def test_collapse_confirmed_deal_requires_reason(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Collapsing a CONFIRMED deal without a reason must be refused — the audit
+    trail for a late-stage abandonment must record why."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    deal_id = deal["id"]
+    await _advance_through_personal_terms(client, deal_id, buyer, db)
+    # Elevate to superuser only for the staff-required CONFIRMED advance,
+    # then immediately revoke so the buyer is treated as a regular club user.
+    await _make_superuser(db)
+    buy_h = _auth_headers(buyer)
+    r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
+    assert r.json()["stage"] == "CONFIRMED"
+    await _revoke_superuser(db)
+
+    # No reason — must be rejected
+    resp = await client.post(f"/deals/{deal_id}/collapse", headers=buy_h)
+    assert resp.status_code == 400
+    assert "reason" in resp.json()["detail"].lower()
+
+    # With a reason — must succeed
+    resp = await client.post(
+        f"/deals/{deal_id}/collapse",
+        json={"reason": "Player failed medical"},
+        headers=buy_h,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "COLLAPSED"
+
+
+@pytest.mark.asyncio
 async def test_collapse_reopens_originating_sale_and_notifies_rivals(
     client: AsyncClient, buyer: dict, seller: dict, rival: dict, db,
 ):
@@ -849,6 +904,16 @@ async def _make_superuser(db) -> None:
     result = await db.execute(select(User))
     for u in result.scalars():
         u.is_superuser = True
+    await db.commit()
+
+
+async def _revoke_superuser(db) -> None:
+    from app.auth.models import User
+    from sqlalchemy import select
+
+    result = await db.execute(select(User))
+    for u in result.scalars():
+        u.is_superuser = False
     await db.commit()
 
 
