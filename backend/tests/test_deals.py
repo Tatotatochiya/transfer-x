@@ -324,6 +324,53 @@ async def test_full_stage_progression_via_staff(client: AsyncClient, buyer: dict
 
 
 @pytest.mark.asyncio
+async def test_completed_contract_uses_personal_terms_wage(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """The executed contract must reflect the wage the player consented to via
+    PersonalTerms, not the wage estimate from the original club-to-club bid/offer.
+    _complete_deal previously used deal.agreed_wage_weekly (the bid figure) and
+    ignored PersonalTerms.wage_weekly entirely."""
+    from decimal import Decimal
+
+    from sqlalchemy import select
+
+    from app.players.models import Contract
+
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    deal_id = deal["id"]
+
+    # _advance_through_personal_terms sets wage_weekly=50000, length_years=4
+    await _advance_through_personal_terms(client, deal_id, buyer, db)
+    await _make_superuser(db)
+
+    buy_h = _auth_headers(buyer)
+    r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
+    assert r.json()["stage"] == "CONFIRMED"
+    r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
+    assert r.json()["status"] == "COMPLETED"
+
+    await db.rollback()
+    player_id = uuid.UUID(deal["player_id"])
+    contract = (
+        await db.execute(
+            select(Contract).where(
+                Contract.player_id == player_id,
+                Contract.is_active == True,  # noqa: E712
+            )
+        )
+    ).scalar_one()
+
+    # Wage must come from PersonalTerms (50000), not the offer (which had no wage set)
+    assert contract.wage_weekly == Decimal("50000")
+    # End date must be roughly 4 years from now (length_years=4)
+    assert contract.end_date is not None
+    from datetime import date
+    years_ahead = (contract.end_date - date.today()).days / 365
+    assert 3.9 <= years_ahead <= 4.1
+
+
+@pytest.mark.asyncio
 async def test_reaching_confirmed_sets_pending_completion_with_sla(
     client: AsyncClient, buyer: dict, seller: dict, db
 ):
@@ -562,8 +609,17 @@ async def test_editing_agreed_personal_terms_notifies_reset(
 
 
 @pytest.mark.asyncio
-async def test_player_decline_collapses_deal(client: AsyncClient, buyer: dict, seller: dict, db):
-    """A player declining personal terms collapses the deal, same as the agent path."""
+async def test_player_decline_keeps_deal_open_and_notifies_buyer(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Declining personal terms does NOT collapse the deal — it resets consent to PENDING
+    and notifies the buying club to revise their proposal.  Either party can still call
+    /collapse explicitly if they want to walk away entirely."""
+    from sqlalchemy import select
+
+    from app.auth.models import User
+    from app.notifications.models import Notification, NotificationType
+
     deal = await _create_deal_via_offer(client, buyer, seller, db)
     buy_h = _auth_headers(buyer)
     await client.post(f"/deals/{deal['id']}/advance", headers=buy_h)
@@ -581,8 +637,25 @@ async def test_player_decline_collapses_deal(client: AsyncClient, buyer: dict, s
     )
     assert resp.status_code == 200, resp.text
 
+    # Deal must remain IN_PROGRESS so terms can be revised and re-proposed.
     deal_check = await client.get(f"/deals/{deal['id']}", headers=buy_h)
-    assert deal_check.json()["status"] == "COLLAPSED"
+    assert deal_check.json()["status"] == "IN_PROGRESS"
+    assert deal_check.json()["stage"] == "PERSONAL_TERMS"
+
+    # Buying club must be notified to revise their proposal.
+    await db.rollback()
+    buyer_user = (
+        await db.execute(select(User).where(User.email == "buyer_deal@test.com"))
+    ).scalar_one()
+    notif = (
+        await db.execute(
+            select(Notification).where(
+                Notification.recipient_user_id == buyer_user.id,
+                Notification.type == NotificationType.PERSONAL_TERMS_DECISION,
+            )
+        )
+    ).scalars().first()
+    assert notif is not None
 
 
 # ── Collapse deal ─────────────────────────────────────────────────────────────

@@ -733,6 +733,63 @@ async def test_bid_count_and_best_bid_hidden_from_non_seller(
     assert float(seller_data["best_bid"]) == 5_000_000
 
 
+# ── M1: accept_bid must reject rival offers and invite the agent ──────────────
+
+
+@pytest.mark.asyncio
+async def test_accept_bid_rejects_rival_offers(
+    client: AsyncClient, seller: dict, buyer: dict, buyer2: dict, db
+):
+    """Accepting a bid must reject any other open offers for the same player so two
+    deals for the same player cannot both be IN_PROGRESS simultaneously."""
+    from decimal import Decimal
+
+    from sqlalchemy import select
+
+    from app.clubs.models import ClubFinance
+    from app.offers.models import Offer, OfferStatus
+
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    buy2_headers = _auth_headers(buyer2)
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.transfer_budget_total = Decimal("100000000")
+    await db.commit()
+
+    player = await _create_player(client, sel_headers)
+
+    # buyer2 sends a direct offer for the same player
+    offer_resp = await client.post(
+        "/offers",
+        json={"player_id": player["id"], "fee_amount": 4_000_000},
+        headers=buy2_headers,
+    )
+    assert offer_resp.status_code == 201, offer_resp.text
+    offer_id = offer_resp.json()["id"]
+
+    # auction runs concurrently; buyer wins it
+    sale = await _create_sale(client, sel_headers, player["id"], asking_price=5_000_000)
+    bid_resp = await client.post(
+        f"/sales/{sale['id']}/bids", json={"amount": 5_000_000}, headers=buy_headers
+    )
+    bid_id = bid_resp.json()["id"]
+
+    accept_resp = await client.post(
+        f"/sales/{sale['id']}/bids/{bid_id}/accept", headers=sel_headers
+    )
+    assert accept_resp.status_code == 200
+
+    # The rival offer must now be REJECTED, not still SENT
+    import uuid as _uuid
+    await db.rollback()
+    offer_row = (
+        await db.execute(select(Offer).where(Offer.id == _uuid.UUID(offer_id)))
+    ).scalar_one()
+    assert offer_row.status == OfferStatus.REJECTED
+
+
 # ── TRA-138: seller must own the player being listed ──────────────────────────
 
 

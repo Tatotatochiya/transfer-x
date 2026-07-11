@@ -434,6 +434,15 @@ async def accept_bid(
     )
     db.add(deal)
     await db.flush()
+
+    # Mirror what accept_offer does: reject every other pending offer for this player
+    # (rival offers remain live and re-acceptable otherwise — two competing deals for
+    # the same player would both be IN_PROGRESS) and invite the agent if one is mandated.
+    from app.offers.service import maybe_invite_agent_for_deal, reject_offers_for_player
+
+    await reject_offers_for_player(db, sale.player_id)
+    await maybe_invite_agent_for_deal(db, deal)
+
     return deal
 
 

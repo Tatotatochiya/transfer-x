@@ -650,7 +650,26 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
         if deal.deal_type == DealType.LOAN and deal.loan_fee is not None
         else deal.agreed_fee
     ) or Decimal("0")
-    new_wage = deal.agreed_wage_weekly or Decimal("0")
+
+    # Use the wage the player actually consented to (PersonalTerms), not the
+    # club-to-club figure from the original bid/offer.  The two can diverge when
+    # the bid carried a wage estimate that was later revised during PERSONAL_TERMS.
+    pt = await get_personal_terms(db, deal.id)
+    new_wage = (
+        pt.wage_weekly
+        if pt is not None and pt.wage_weekly is not None
+        else deal.agreed_wage_weekly
+    ) or Decimal("0")
+
+    # Derive a contract end-date from the length the player agreed to.
+    contract_end_date: date | None = None
+    if pt is not None and pt.length_years is not None:
+        today = date.today()
+        try:
+            contract_end_date = today.replace(year=today.year + pt.length_years)
+        except ValueError:
+            # Feb 29 → Feb 28 in non-leap target year
+            contract_end_date = today.replace(year=today.year + pt.length_years, day=28)
 
     # TRA-58: if an instalment schedule exists, transfer_spent is driven by mark-paid, not here.
     inst_count_result = await db.execute(
@@ -760,12 +779,15 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
     # Clear open_to_offers — the flag belongs to the seller's context; new owner decides fresh
     player.open_to_offers = False
 
-    # Create new contract with buyer (also normalizes player status internally)
+    # Create new contract with buyer (also normalizes player status internally).
+    # wage_weekly and end_date come from PersonalTerms — the terms the player
+    # actually consented to — not the original club-to-club bid figure.
     await players_service.create_contract(
         db,
         player=player,
         club_id=deal.buyer_club_id,
-        wage_weekly=deal.agreed_wage_weekly,
+        wage_weekly=new_wage if new_wage > 0 else None,
+        end_date=contract_end_date,
     )
 
     # TRA-132: confirm any pending commission for this deal
@@ -876,8 +898,17 @@ async def player_consent_to_terms(
     agreement: "AgreementStatus",  # type: ignore[name-defined]
     actor_user_id: uuid.UUID | None = None,
 ) -> PersonalTerms:
-    """Player agrees or declines personal terms. Decline collapses the deal."""
+    """Player agrees or declines personal terms.
+
+    AGREED advances normally.  DECLINED rejects the current proposal and
+    returns the deal to PERSONAL_TERMS so the buying club can revise and
+    re-propose — a single "no" in real football is the start of negotiation,
+    not the death of a transfer worth tens of millions.  Either party can call
+    collapse_deal explicitly if they decide to walk away entirely.
+    """
     from app.agents.models import AgreementStatus
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
 
     if deal.stage != DealStage.PERSONAL_TERMS:
         raise ValueError("Deal is not in PERSONAL_TERMS stage")
@@ -886,22 +917,38 @@ async def player_consent_to_terms(
     if pt is None:
         raise ValueError("No personal terms have been set")
 
-    pt.player_consent = agreement
     if agreement == AgreementStatus.AGREED:
+        pt.player_consent = agreement
         pt.agreed_at = datetime.now(timezone.utc)
-    await db.flush()
-    await audit_service.emit(
-        db,
-        entity_type="DEAL", entity_id=deal.id,
-        action="PERSONAL_TERMS_CONSENT",
-        actor_user_id=actor_user_id,
-        payload={"agreement": agreement.value},
-        description=f"Player {agreement.value.lower()} the personal terms",
-    )
-
-    if agreement == AgreementStatus.DECLINED:
-        await collapse_deal(
-            db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id,
+        await db.flush()
+        await audit_service.emit(
+            db,
+            entity_type="DEAL", entity_id=deal.id,
+            action="PERSONAL_TERMS_CONSENT",
+            actor_user_id=actor_user_id,
+            payload={"agreement": agreement.value},
+            description="Player agreed the personal terms",
+        )
+    else:
+        # Reset to PENDING so the proposer can submit revised terms.
+        pt.player_consent = AgreementStatus.PENDING
+        pt.agreed_at = None
+        await db.flush()
+        await audit_service.emit(
+            db,
+            entity_type="DEAL", entity_id=deal.id,
+            action="PERSONAL_TERMS_CONSENT",
+            actor_user_id=actor_user_id,
+            payload={"agreement": "DECLINED"},
+            description="Player declined the personal terms — awaiting revised proposal",
+        )
+        await notif_service.notify_club(
+            db,
+            deal.buyer_club_id,
+            type=NotificationType.PERSONAL_TERMS_DECISION,
+            message="The player has declined your personal terms proposal. Revise and re-submit to continue the deal.",
+            link=f"/deals/{deal.id}",
+            related_player_id=deal.player_id,
         )
 
     return pt
@@ -963,6 +1010,12 @@ async def upsert_negotiation_terms(
     if neg.commission_pct is not None and neg.commission_amount is None and deal.agreed_fee:
         neg.commission_amount = (neg.commission_pct * deal.agreed_fee).quantize(Decimal("0.01"))
 
+    # Reset the club's response whenever the agent submits revised terms — the
+    # club must explicitly agree or decline again against the new proposal.
+    from app.agents.models import AgreementStatus as _AS
+    if neg.club_agreement == _AS.DECLINED:
+        neg.club_agreement = _AS.PENDING
+
     await db.flush()
     await audit_service.emit(
         db,
@@ -982,8 +1035,18 @@ async def club_respond_to_negotiation(
     agreement: "AgreementStatus",  # type: ignore[name-defined]
     actor_user_id: uuid.UUID | None = None,
 ) -> "AgentNegotiation":  # type: ignore[name-defined]
-    """Buying club agrees or declines commission terms. Decline collapses the deal."""
+    """Buying club agrees or declines commission terms.
+
+    AGREED marks the negotiation TERMS_AGREED and the deal advances normally.
+    DECLINED rejects the current commission proposal and notifies the agent to
+    revise — it does NOT collapse the deal.  Real football commission negotiations
+    involve multiple rounds; one "no" is routine, not a deal-breaker.  Either
+    party can call collapse_deal explicitly if talks genuinely break down.
+    """
     from app.agents.models import AgentNegotiation, AgreementStatus, NegotiationStatus
+    from app.auth.models import AgentProfile
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
 
     _require_party(deal, club_id)
     if deal.stage != DealStage.AGENT_NEGOTIATION:
@@ -1007,10 +1070,20 @@ async def club_respond_to_negotiation(
     )
 
     if agreement == AgreementStatus.DECLINED:
-        neg.status = NegotiationStatus.COLLAPSED
-        await collapse_deal(
-            db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id,
+        # Notify the agent so they can revise their proposal.
+        agent_result = await db.execute(
+            select(AgentProfile).where(AgentProfile.id == neg.agent_id)
         )
+        agent = agent_result.scalar_one_or_none()
+        if agent is not None:
+            await notif_service.create_notification(
+                db,
+                recipient_user_id=agent.user_id,
+                type=NotificationType.NEGOTIATION_MESSAGE,
+                message="The buying club has declined your commission proposal. Revise your terms to continue the deal.",
+                link=f"/deals/{deal.id}",
+                related_player_id=deal.player_id,
+            )
 
     return neg
 
