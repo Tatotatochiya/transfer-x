@@ -121,6 +121,11 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 - [`feature_spec/injury-availability-risk-profile.md`](./feature_spec/injury-availability-risk-profile.md) — injury-availability risk profile (no ticket yet)
 - [`feature_spec/club-team-roles-and-onboarding.md`](./feature_spec/club-team-roles-and-onboarding.md) — club team accounts, roles & onboarding (TRA-151/146/152/86 + two proposed) — **implemented 2026-07-10**
 
+### Audits
+*Point-in-time independent assessments of the product — records of what was found on a given date, not living documents.*
+
+- [`audits/2026-07-11-transfer-workflow-audit.md`](./audits/2026-07-11-transfer-workflow-audit.md) — full transfer-workflow audit (realism, permissions, edge cases), traced against the code
+
 ### Tracking documents
 *Root-level documents that track ongoing state rather than belonging to one area — see [`README.md#tracking-documents`](./README.md#tracking-documents) for the full explanation.*
 
