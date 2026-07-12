@@ -727,17 +727,26 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
     buyer_fin = finances.get(deal.buyer_club_id)
     seller_fin = finances.get(deal.seller_club_id) if deal.seller_club_id else None
 
+    # For loan deals with a seller wage contribution, buyer only bears the net difference.
+    net_buyer_wage = new_wage
+    if (
+        deal.deal_type == DealType.LOAN
+        and deal.seller_wage_contribution_weekly is not None
+        and deal.seller_wage_contribution_weekly > 0
+    ):
+        net_buyer_wage = max(Decimal("0"), new_wage - deal.seller_wage_contribution_weekly)
+
     # Buyer: fee committed → spent (skipped when instalments drive spending); wage committed → reserved.
     if buyer_fin:
         if fee > 0:
             buyer_fin.transfer_committed = max(Decimal("0"), buyer_fin.transfer_committed - fee)
             if not has_instalments:
                 buyer_fin.transfer_spent += fee
-        if new_wage > 0:
+        if net_buyer_wage > 0:
             buyer_fin.wage_committed_weekly = max(
-                Decimal("0"), buyer_fin.wage_committed_weekly - new_wage
+                Decimal("0"), buyer_fin.wage_committed_weekly - net_buyer_wage
             )
-            buyer_fin.wage_reserved_weekly += new_wage
+            buyer_fin.wage_reserved_weekly += net_buyer_wage
 
     # Seller: credit fee to budget; release the departing player's wage (clamped).
     # Item 7: when an instalment schedule exists, the seller is credited
@@ -791,9 +800,22 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
             if original_seller:
                 pct = float(prior_deal.sell_on_pct) * 100
                 obligation = fee * prior_deal.sell_on_pct
-                await notif_service.create_notification(
+                # M9: create a financial record on the new deal so the obligation is tracked
+                sell_on_record = DealClause(
+                    deal_id=deal.id,
+                    clause_type=ClauseType.RESALE,
+                    trigger_description=(
+                        f"Sell-on clause from {original_seller.name} original sale: "
+                        f"{pct:.1f}% of resale fee"
+                    ),
+                    amount=obligation,
+                    status=ClauseStatus.TRIGGERED,
+                )
+                db.add(sell_on_record)
+                # M9: route to club (all relevant roles), not just the bare owner user
+                await notif_service.notify_club(
                     db,
-                    recipient_user_id=original_seller.user_id,
+                    original_seller.id,
                     type=NotificationType.DEAL_SELL_ON,
                     message=(
                         f"Sell-on clause triggered: {player.name} has been resold. "
@@ -896,6 +918,11 @@ async def set_personal_terms(
     """Create or replace the personal-terms record for a deal in PERSONAL_TERMS stage."""
     if deal.stage != DealStage.PERSONAL_TERMS:
         raise ValueError("Deal is not in PERSONAL_TERMS stage")
+    # M9: blank personal terms are legally meaningless — both core financial terms required
+    if wage_weekly is None or wage_weekly <= 0:
+        raise ValueError("wage_weekly must be provided and positive")
+    if length_years is None or length_years <= 0:
+        raise ValueError("length_years must be provided and a positive integer")
 
     pt = await get_personal_terms(db, deal.id)
     if pt is None:
@@ -1116,6 +1143,120 @@ async def club_respond_to_negotiation(
     return neg
 
 
+async def check_loan_expirations(db: AsyncSession) -> int:
+    """Notify both clubs when a completed loan's loan_end date has passed.
+
+    Uses the audit log for deduplication — emitting a LOAN_EXPIRED event acts as
+    both the notification flag and the timestamp for when this was first detected.
+    """
+    from datetime import date as _date
+    from app.audit.models import AuditEvent
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
+    today = _date.today()
+    result = await db.execute(
+        select(Deal).where(
+            Deal.deal_type == DealType.LOAN,
+            Deal.status == DealStatus.COMPLETED,
+            Deal.loan_end.is_not(None),
+            Deal.loan_end < today,
+        ).options(selectinload(Deal.player))
+    )
+    deals = list(result.scalars())
+    count = 0
+    for deal in deals:
+        already = await db.execute(
+            select(AuditEvent).where(
+                AuditEvent.entity_type == "DEAL",
+                AuditEvent.entity_id == deal.id,
+                AuditEvent.action == "LOAN_EXPIRED",
+            ).limit(1)
+        )
+        if already.scalar_one_or_none() is not None:
+            continue
+        player_name = deal.player.name if deal.player else "a player"
+        await audit_service.emit(
+            db,
+            entity_type="DEAL", entity_id=deal.id,
+            action="LOAN_EXPIRED",
+            description=f"Loan period ended {deal.loan_end} — no return action recorded",
+        )
+        for club_id in {deal.buyer_club_id, deal.seller_club_id}:
+            if club_id is None:
+                continue
+            await notif_service.notify_club(
+                db,
+                club_id,
+                type=NotificationType.DEAL_SLA_BREACHED,
+                message=f"Loan period for {player_name} has ended — return the player or exercise the purchase option",
+                link=f"/deals/{deal.id}",
+                related_player_id=deal.player_id,
+            )
+        count += 1
+
+    if count:
+        await db.flush()
+    return count
+
+
+async def exercise_option(
+    db: AsyncSession,
+    deal: Deal,
+    *,
+    actor_club_id: uuid.UUID | None = None,
+    is_staff: bool = False,
+    actor_user_id: uuid.UUID | None = None,
+) -> Deal:
+    """Create a new permanent deal from a completed loan's option to buy.
+
+    The new deal starts at AGREEMENT stage so the player can go through the normal
+    consent flow for their permanent contract terms. The purchase fee is reserved
+    against the loaning club's transfer budget immediately.
+    """
+    if deal.deal_type != DealType.LOAN:
+        raise ValueError("Only loan deals have an option to buy")
+    if deal.status != DealStatus.COMPLETED:
+        raise ValueError("Option to buy can only be exercised on completed loan deals")
+    if deal.option_to_buy is None:
+        raise ValueError("This loan deal has no option to buy price set")
+    if not is_staff and actor_club_id != deal.buyer_club_id:
+        raise ValueError("Only the loaning club may exercise the purchase option")
+
+    purchase_fee = deal.option_to_buy
+    buyer_fin = await clubs_module.service.get_finance_for_update(db, deal.buyer_club_id)
+    if buyer_fin:
+        available = buyer_fin.transfer_budget_total - buyer_fin.transfer_committed - buyer_fin.transfer_spent
+        if available < purchase_fee:
+            raise ValueError(
+                f"Insufficient transfer budget to exercise option: "
+                f"need £{purchase_fee:,.0f}, available £{available:,.0f}"
+            )
+        buyer_fin.transfer_committed += purchase_fee
+
+    new_deal = Deal(
+        buyer_club_id=deal.buyer_club_id,
+        seller_club_id=deal.seller_club_id,
+        player_id=deal.player_id,
+        agreed_fee=purchase_fee,
+        deal_type=DealType.PERMANENT,
+        status=DealStatus.IN_PROGRESS,
+        stage=DealStage.AGREEMENT,
+    )
+    db.add(new_deal)
+    await db.flush()
+
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=new_deal.id,
+        action="OPTION_EXERCISED",
+        actor_user_id=actor_user_id,
+        payload={"source_loan_deal_id": str(deal.id), "fee": str(purchase_fee)},
+        description=f"Purchase option exercised from loan deal {deal.id} at £{purchase_fee:,.0f}",
+    )
+    return new_deal
+
+
 def _require_party(
     deal: Deal, club_id: uuid.UUID | None, is_staff: bool = False, is_mandated_agent: bool = False,
 ) -> None:
@@ -1140,31 +1281,55 @@ async def update_deal(
     updates: dict,
     actor_user_id: uuid.UUID | None = None,
 ) -> Deal:
-    """Update loan/sell-on fields while deal is still in AGREEMENT stage."""
-    if deal.status != DealStatus.IN_PROGRESS:
-        raise ValueError("Only IN_PROGRESS deals can be updated")
-    if deal.stage != DealStage.AGREEMENT:
-        raise ValueError("Deal terms can only be updated at AGREEMENT stage")
+    """Update loan/sell-on fields and fee disclosure.
+
+    fee_disclosed is a disclosure preference and may be changed by deal parties
+    at any stage — even after completion. All other structural terms (loan dates,
+    fees, sell-on %) are restricted to AGREEMENT stage on IN_PROGRESS deals.
+    """
     _require_party(deal, actor_club_id, is_staff)
 
-    # TRA-81: capture a pre-edit baseline version the first time this deal's terms are touched.
-    from app.deals.room_service import create_terms_version, list_terms_versions
-    if not await list_terms_versions(db, deal.id):
-        await create_terms_version(db, deal, changed_by_user_id=None)
+    # M9: fee_disclosed can be toggled independently of deal stage
+    fee_disclosed = updates.pop("fee_disclosed", None)
+    if fee_disclosed is not None:
+        deal.fee_disclosed = fee_disclosed
 
-    for k, v in updates.items():
-        setattr(deal, k, v)
-    await db.flush()
+    if updates:
+        if deal.status != DealStatus.IN_PROGRESS:
+            raise ValueError("Only IN_PROGRESS deals can be updated")
+        if deal.stage != DealStage.AGREEMENT:
+            raise ValueError("Deal terms can only be updated at AGREEMENT stage")
 
-    await create_terms_version(db, deal, changed_by_user_id=actor_user_id)
-    await audit_service.emit(
-        db,
-        entity_type="DEAL", entity_id=deal.id,
-        action="DEAL_STRUCTURE_UPDATED",
-        actor_user_id=actor_user_id,
-        payload={k: str(v) for k, v in updates.items()},
-        description="Deal structure updated — see version history for the full diff",
-    )
+        # TRA-81: capture a pre-edit baseline version the first time this deal's terms are touched.
+        from app.deals.room_service import create_terms_version, list_terms_versions
+        if not await list_terms_versions(db, deal.id):
+            await create_terms_version(db, deal, changed_by_user_id=None)
+
+        for k, v in updates.items():
+            setattr(deal, k, v)
+        await db.flush()
+
+        await create_terms_version(db, deal, changed_by_user_id=actor_user_id)
+        await audit_service.emit(
+            db,
+            entity_type="DEAL", entity_id=deal.id,
+            action="DEAL_STRUCTURE_UPDATED",
+            actor_user_id=actor_user_id,
+            payload={k: str(v) for k, v in updates.items()},
+            description="Deal structure updated — see version history for the full diff",
+        )
+    else:
+        await db.flush()
+        if fee_disclosed is not None:
+            await audit_service.emit(
+                db,
+                entity_type="DEAL", entity_id=deal.id,
+                action="DEAL_DISCLOSURE_UPDATED",
+                actor_user_id=actor_user_id,
+                payload={"fee_disclosed": fee_disclosed},
+                description=f"Fee disclosure set to {'disclosed' if fee_disclosed else 'undisclosed'}",
+            )
+
     return deal
 
 

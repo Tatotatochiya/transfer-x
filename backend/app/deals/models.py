@@ -99,6 +99,10 @@ class Deal(Base):
     obligation_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
     # TRA-57: sell-on percentage (0.0–1.0), recorded on the selling club's side
     sell_on_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
+    # M9: clubs may choose not to disclose the exact agreed fee publicly
+    fee_disclosed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    # M9: for loan deals — seller's weekly contribution to player's wage during the loan
+    seller_wage_contribution_weekly: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
     # TRA-59: agent commission (set during AGENT_NEGOTIATION; mirrors AgentNegotiation fields for quick read)
     agent_commission_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
     agent_commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)

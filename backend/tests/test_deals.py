@@ -548,7 +548,7 @@ async def test_personal_terms_response_shows_buyer_club(client: AsyncClient, buy
 
     resp = await client.put(
         f"/deals/{deal['id']}/personal-terms",
-        json={"wage_weekly": 60000},
+        json={"wage_weekly": 60000, "length_years": 3},
         headers=buy_h,
     )
     assert resp.status_code == 200, resp.text
@@ -625,7 +625,7 @@ async def test_player_decline_keeps_deal_open_and_notifies_buyer(
     await client.post(f"/deals/{deal['id']}/advance", headers=buy_h)
     await client.put(
         f"/deals/{deal['id']}/personal-terms",
-        json={"wage_weekly": 70000},
+        json={"wage_weekly": 70000, "length_years": 3},
         headers=buy_h,
     )
 

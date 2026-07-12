@@ -147,6 +147,20 @@ async def _deal_sla_job() -> None:
             logger.exception("Error in deal SLA job")
 
 
+async def _loan_expiry_job() -> None:
+    """M9: notify clubs when a completed loan's loan_end date has passed."""
+    from app.deals.service import check_loan_expirations
+
+    async with AsyncSessionLocal() as db:
+        try:
+            async with db.begin():
+                count = await check_loan_expirations(db)
+            if count:
+                logger.info("Notified %d expired loan(s)", count)
+        except Exception:
+            logger.exception("Error in loan expiry job")
+
+
 async def _client_alerts_job() -> None:
     """TRA-134: scan agent rosters for contract-expiry, valuation-change, and club-interest alerts."""
     from app.mandates.alerts_service import check_and_create_alerts
@@ -174,6 +188,7 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(_approval_expiry_job, "interval", hours=24, id="approval_expiry")
     _scheduler.add_job(_expire_mandates_job, "interval", hours=24, id="expire_mandates")
     _scheduler.add_job(_deal_sla_job, "interval", hours=24, id="deal_sla")
+    _scheduler.add_job(_loan_expiry_job, "interval", hours=24, id="loan_expiry")
     _scheduler.start()
     logger.info("APScheduler started")
     yield

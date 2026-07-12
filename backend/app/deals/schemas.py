@@ -45,7 +45,7 @@ class TransferActivityItem(BaseModel):
     player: PlayerSummary | None = None
     buyer_club: ClubSummary | None = None
     seller_club: ClubSummary | None = None
-    agreed_fee: Decimal
+    agreed_fee: Decimal | None = None  # None when clubs chose not to disclose
     is_auction_deal: bool = False
     completed_at: datetime | None
     created_at: datetime
@@ -223,6 +223,9 @@ class UpdateDealRequest(BaseModel):
     obligation_to_buy: bool | None = None
     obligation_conditions: str | None = None
     sell_on_pct: Decimal | None = None
+    seller_wage_contribution_weekly: Decimal | None = None
+    # M9: can be toggled by deal parties at any stage (even after completion)
+    fee_disclosed: bool | None = None
 
     @model_validator(mode="after")
     def _validate_sell_on(self) -> "UpdateDealRequest":
@@ -253,8 +256,11 @@ class DealResponse(BaseModel):
     option_to_buy: Decimal | None = None
     obligation_to_buy: bool = False
     obligation_conditions: str | None = None
+    seller_wage_contribution_weekly: Decimal | None = None
     # TRA-57
     sell_on_pct: Decimal | None = None
+    # M9: fee disclosure flag
+    fee_disclosed: bool = True
     clauses: list[DealClauseResponse] = []
     # TRA-58
     instalments: list[DealInstalmentResponse] = []

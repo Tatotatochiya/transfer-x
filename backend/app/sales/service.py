@@ -102,6 +102,14 @@ async def list_sales(
     return list(rows.scalars()), total
 
 
+async def get_open_sale_for_player(db: AsyncSession, player_id: uuid.UUID) -> Sale | None:
+    """Return any OPEN sale for this player, regardless of type (auction or fixed-price)."""
+    result = await db.execute(
+        select(Sale).where(Sale.player_id == player_id, Sale.status == SaleStatus.OPEN).limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
 async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) -> Sale:
     """Withdraw an OPEN sale. Releases all active bid reservations."""
     # Lock the sale row so concurrent bid placements are blocked until we finish

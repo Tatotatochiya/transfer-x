@@ -86,7 +86,7 @@ def _enrich_sale_response(
         seller_club=sale.seller_club,
         bid_count=len(live_bids) if is_seller_or_staff else None,
         best_bid=best if is_seller_or_staff else None,
-        minimum_next_bid=min_next,
+        minimum_next_bid=min_next if is_seller_or_staff else None,
         reserve_met=reserve_ok,
     )
 
@@ -215,6 +215,14 @@ async def create_sale(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="This player already has a transfer deal in progress and cannot be listed for sale.",
+        )
+
+    # M9: prevent two simultaneous OPEN listings for the same player (e.g. auction + fixed-price)
+    existing_sale = await service.get_open_sale_for_player(db, body.player_id)
+    if existing_sale:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This player is already listed for sale. Withdraw the existing listing before creating a new one.",
         )
 
     try:

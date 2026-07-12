@@ -216,17 +216,27 @@ async def _build_deal_response(
 # ── Public transfer feed ──────────────────────────────────────────────────────
 
 
+def _to_transfer_item(deal) -> TransferActivityItem:
+    """Build a public TransferActivityItem, respecting the club's fee disclosure choice."""
+    from app.deals.schemas import ClubSummary, PlayerSummary
+    return TransferActivityItem(
+        id=deal.id,
+        player=PlayerSummary.model_validate(deal.player) if deal.player else None,
+        buyer_club=ClubSummary.model_validate(deal.buyer_club) if deal.buyer_club else None,
+        seller_club=ClubSummary.model_validate(deal.seller_club) if deal.seller_club else None,
+        agreed_fee=deal.agreed_fee if deal.fee_disclosed else None,
+        is_auction_deal=deal.is_auction_deal,
+        completed_at=deal.completed_at,
+        created_at=deal.created_at,
+    )
+
+
 @router.get("/transfers/analytics", response_model=TransferAnalytics)
 async def get_transfer_analytics(
     db: AsyncSession = Depends(get_db),
 ):
     """Market-wide transfer analytics — no auth required."""
     data = await service.get_transfer_analytics(db)
-
-    def _to_item(deal) -> TransferActivityItem | None:
-        if deal is None:
-            return None
-        return TransferActivityItem.model_validate(deal)
 
     def _to_club_stat(raw) -> ClubTransferStat | None:
         if raw is None:
@@ -245,8 +255,8 @@ async def get_transfer_analytics(
             total_count=c["total_count"],
             total_spend=c["total_spend"],
             avg_fee=c["avg_fee"],
-            highest_fee_deal=_to_item(c["highest_fee_deal"]),
-            top_transfers=[TransferActivityItem.model_validate(d) for d in c["top_transfers"]],
+            highest_fee_deal=_to_transfer_item(c["highest_fee_deal"]) if c["highest_fee_deal"] else None,
+            top_transfers=[_to_transfer_item(d) for d in c["top_transfers"]],
             most_active_buyer=_to_club_stat(c["most_active_buyer"]),
             most_active_seller=_to_club_stat(c["most_active_seller"]),
             by_position=[PositionBreakdown(**p) for p in c["by_position"]],
@@ -277,7 +287,7 @@ async def list_transfers(
         db, page=page, page_size=page_size,
         position=position, is_auction=is_auction, club_id=club_id,
     )
-    items = [TransferActivityItem.model_validate(d) for d in deals]
+    items = [_to_transfer_item(d) for d in deals]
     return Paginated(items=items, total=total, page=page, page_size=page_size)
 
 
@@ -534,6 +544,45 @@ async def update_deal(
 
     deal = await service.get_deal_by_id(db, deal_id)
     return await _build_deal_response(db, deal)
+
+
+# ── M9: exercise loan option to buy ──────────────────────────────────────────
+
+
+@router.post("/deals/{deal_id}/exercise-option", response_model=DealResponse, status_code=status.HTTP_201_CREATED)
+async def exercise_option(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
+):
+    """Loaning club exercises the option to buy, creating a new permanent deal at the agreed option price."""
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+
+    try:
+        new_deal = await service.exercise_option(
+            db, deal,
+            actor_club_id=club.id,
+            is_staff=current_user.is_superuser,
+            actor_user_id=current_user.id,
+        )
+        player_name = deal.player.name if deal.player else "the player"
+        await _db_notify_deal_parties(
+            db, new_deal,
+            ntype=NotificationType.DEAL_COMPLETED,
+            message=f"Option to buy exercised for {player_name} — new permanent deal created",
+        )
+        await db.commit()
+    except (ValueError, PermissionError) as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST if isinstance(exc, ValueError) else status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        )
+
+    new_deal = await service.get_deal_by_id(db, new_deal.id)
+    return await _build_deal_response(db, new_deal)
 
 
 # ── TRA-57: deal clauses ──────────────────────────────────────────────────────

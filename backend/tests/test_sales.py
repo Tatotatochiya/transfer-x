@@ -855,20 +855,22 @@ async def test_bid_count_and_best_bid_hidden_from_non_seller(
         f"/sales/{sale['id']}/bids", json={"amount": 5_000_000}, headers=_auth_headers(buyer)
     )
 
-    # A rival club sees neither bid_count nor best_bid...
+    # A rival club sees neither bid_count, best_bid, nor minimum_next_bid
+    # (minimum_next_bid = best_bid + increment, so showing it leaks best_bid by arithmetic)
     rival_data = (await client.get(f"/sales/{sale['id']}", headers=_auth_headers(buyer2))).json()
     assert rival_data["bid_count"] is None
     assert rival_data["best_bid"] is None
-    # ...but still gets the minimum valid next bid, since they need it to bid at all
-    assert float(rival_data["minimum_next_bid"]) == 5_500_000
+    assert rival_data["minimum_next_bid"] is None
 
     anon_data = (await client.get(f"/sales/{sale['id']}")).json()
     assert anon_data["bid_count"] is None
     assert anon_data["best_bid"] is None
+    assert anon_data["minimum_next_bid"] is None
 
     seller_data = (await client.get(f"/sales/{sale['id']}", headers=sel_headers)).json()
     assert seller_data["bid_count"] == 1
     assert float(seller_data["best_bid"]) == 5_000_000
+    assert float(seller_data["minimum_next_bid"]) == 5_500_000
 
 
 # ── M1: accept_bid must reject rival offers and invite the agent ──────────────
