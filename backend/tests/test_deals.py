@@ -312,6 +312,7 @@ async def test_full_stage_progression_via_staff(client: AsyncClient, buyer: dict
 
     # Register an admin/superuser for the staff-only step below
     await _make_superuser(db)
+    await _pass_medical(client, deal_id, _auth_headers(buyer))
 
     # PAPERWORK → CONFIRMED (staff — use buyer who is now superuser)
     r = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(buyer))
@@ -345,6 +346,7 @@ async def test_completed_contract_uses_personal_terms_wage(
     await _make_superuser(db)
 
     buy_h = _auth_headers(buyer)
+    await _pass_medical(client, deal_id, buy_h)
     r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
     assert r.json()["stage"] == "CONFIRMED"
     r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
@@ -381,6 +383,7 @@ async def test_reaching_confirmed_sets_pending_completion_with_sla(
 
     await _advance_through_personal_terms(client, deal_id, buyer, db)
     await _make_superuser(db)
+    await _pass_medical(client, deal_id, _auth_headers(buyer))
 
     r = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(buyer))
     assert r.json()["stage"] == "CONFIRMED"
@@ -411,6 +414,7 @@ async def test_deal_sla_breach_notifies_both_clubs_once(
     deal_id = deal["id"]
     await _advance_through_personal_terms(client, deal_id, buyer, db)
     await _make_superuser(db)
+    await _pass_medical(client, deal_id, _auth_headers(buyer))
     await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(buyer))  # → PENDING_COMPLETION
 
     deal_row = await db.get(Deal, uuid.UUID(deal_id))
@@ -465,6 +469,7 @@ async def test_staff_without_club_profile_can_advance_paperwork(client: AsyncCli
 
     await _advance_through_personal_terms(client, deal_id, buyer, db)
     staff_tokens = await _login_pure_staff(client, db, "pure-staff@transferx.com")
+    await _pass_medical(client, deal_id, _auth_headers(buyer))
 
     r = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(staff_tokens))
     assert r.status_code == 200, r.text
@@ -701,10 +706,11 @@ async def test_collapse_confirmed_deal_requires_reason(
     deal = await _create_deal_via_offer(client, buyer, seller, db)
     deal_id = deal["id"]
     await _advance_through_personal_terms(client, deal_id, buyer, db)
+    buy_h = _auth_headers(buyer)
+    await _pass_medical(client, deal_id, buy_h)
     # Elevate to superuser only for the staff-required CONFIRMED advance,
     # then immediately revoke so the buyer is treated as a regular club user.
     await _make_superuser(db)
-    buy_h = _auth_headers(buyer)
     r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
     assert r.json()["stage"] == "CONFIRMED"
     await _revoke_superuser(db)
@@ -915,6 +921,18 @@ async def _revoke_superuser(db) -> None:
     for u in result.scalars():
         u.is_superuser = False
     await db.commit()
+
+
+async def _pass_medical(client: AsyncClient, deal_id: str, headers: dict) -> None:
+    """Re-audit (M4): PAPERWORK → CONFIRMED now requires a recorded (PASSED or
+    WAIVED) medical — call this before advancing past PAPERWORK in tests that
+    don't care about the medical itself."""
+    r = await client.put(
+        f"/deals/{deal_id}/medical-check",
+        json={"status": "PASSED"},
+        headers=headers,
+    )
+    assert r.status_code == 200, r.text
 
 
 async def _staff_complete(client: AsyncClient, deal_id: str, headers: dict) -> dict:
@@ -1242,12 +1260,13 @@ async def test_failed_medical_blocks_confirmed_to_completed(
     deal = await _create_deal_via_offer(client, buyer, seller, db)
     deal_id = deal["id"]
     await _advance_through_personal_terms(client, deal_id, buyer, db)
-    await _make_superuser(db)
     buy_h = _auth_headers(buyer)
+    await _pass_medical(client, deal_id, buy_h)
+    await _make_superuser(db)
     r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
     assert r.json()["stage"] == "CONFIRMED"
 
-    # Record FAILED medical (buyer's club can do this even as superuser)
+    # Record FAILED medical (buyer's club can do this even as superuser) — overwrites the PASSED above
     await client.put(
         f"/deals/{deal_id}/medical-check",
         json={"status": "FAILED", "notes": "Unacceptable risk"},
@@ -1280,3 +1299,215 @@ async def test_staff_complete_blocked_by_failed_medical(
     r = await client.post(f"/deals/{deal_id}/staff/complete", headers=buy_h)
     assert r.status_code == 400
     assert "medical" in r.json()["detail"].lower()
+
+
+# ── Re-audit (2026-07-12): M4 missing medical, Medium 1 concurrent race, ──────
+# ── M7 exercise-option re-entrancy, Medium 2/3 deadline-day grace ─────────────
+
+
+@pytest.mark.asyncio
+async def test_missing_medical_blocks_paperwork_to_confirmed(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """M4: a transfer used to be able to complete with no medical ever recorded —
+    only FAILED blocked. A missing/PENDING record must now block too."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    deal_id = deal["id"]
+    await _advance_through_personal_terms(client, deal_id, buyer, db)
+    await _make_superuser(db)
+
+    r = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(buyer))
+    assert r.status_code == 400, r.text
+    assert "medical" in r.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_waived_medical_allows_paperwork_to_confirmed(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """M4: an explicit buyer WAIVED status satisfies the medical requirement,
+    the same as PASSED (e.g. a deadline-day loan with no time for a medical)."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    deal_id = deal["id"]
+    await _advance_through_personal_terms(client, deal_id, buyer, db)
+    buy_h = _auth_headers(buyer)
+
+    r = await client.put(
+        f"/deals/{deal_id}/medical-check",
+        json={"status": "WAIVED", "notes": "Deadline-day loan — waived by buying club"},
+        headers=buy_h,
+    )
+    assert r.status_code == 200, r.text
+
+    await _make_superuser(db)
+    r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
+    assert r.status_code == 200, r.text
+    assert r.json()["stage"] == "CONFIRMED"
+
+
+@pytest.mark.asyncio
+async def test_accept_bid_blocked_after_offer_already_created_deal(
+    client: AsyncClient, buyer: dict, seller: dict, rival: dict, db
+):
+    """Medium 1: accepting an offer creates a deal but never touched a separately
+    open auction sale for the same player — nothing previously stopped the seller
+    from then also accepting a bid on that sale, creating a second IN_PROGRESS
+    deal. accept_bid must now refuse once the player already has an active deal."""
+    await _give_budget(db)
+    sel_h = _auth_headers(seller)
+    buy_h = _auth_headers(buyer)
+    rival_h = _auth_headers(rival)
+
+    player = await _create_player_for_seller(client, sel_h)
+    seller_club_id = await _get_club_id(client, sel_h)
+
+    sale_resp = await client.post(
+        "/sales",
+        json={"player_id": player["id"], "sale_type": "AUCTION", "asking_price": 5_000_000},
+        headers=sel_h,
+    )
+    sale_id = sale_resp.json()["id"]
+    bid_resp = await client.post(
+        f"/sales/{sale_id}/bids", json={"amount": 5_000_000}, headers=rival_h
+    )
+    assert bid_resp.status_code == 201, bid_resp.text
+    bid_id = bid_resp.json()["id"]
+
+    offer_resp = await client.post(
+        "/offers",
+        json={"player_id": player["id"], "to_club_id": seller_club_id, "fee_amount": 4_000_000},
+        headers=buy_h,
+    )
+    assert offer_resp.status_code == 201, offer_resp.text
+    offer_id = offer_resp.json()["id"]
+
+    accept_offer_resp = await client.post(f"/offers/{offer_id}/accept", headers=sel_h)
+    assert accept_offer_resp.status_code == 200, accept_offer_resp.text
+
+    accept_bid_resp = await client.post(
+        f"/sales/{sale_id}/bids/{bid_id}/accept", headers=sel_h
+    )
+    assert accept_bid_resp.status_code == 400, accept_bid_resp.text
+    assert "already has a transfer deal in progress" in accept_bid_resp.json()["detail"].lower()
+
+
+async def _complete_loan_deal_with_option(
+    client: AsyncClient, buyer: dict, seller: dict, db, option_price: float = 6_000_000,
+) -> str:
+    """Create and fully complete a LOAN deal with an option_to_buy price set."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    deal_id = deal["id"]
+    buy_h = _auth_headers(buyer)
+
+    patch_resp = await client.patch(
+        f"/deals/{deal_id}",
+        json={"deal_type": "LOAN", "option_to_buy": option_price},
+        headers=buy_h,
+    )
+    assert patch_resp.status_code == 200, patch_resp.text
+
+    await _advance_through_personal_terms(client, deal_id, buyer, db)
+    await _pass_medical(client, deal_id, buy_h)
+    await _make_superuser(db)
+    r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
+    assert r.json()["stage"] == "CONFIRMED", r.text
+    r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
+    assert r.json()["status"] == "COMPLETED", r.text
+    await _revoke_superuser(db)
+    return deal_id
+
+
+@pytest.mark.asyncio
+async def test_exercise_option_is_one_shot(client: AsyncClient, buyer: dict, seller: dict, db):
+    """M7: exercising a loan's purchase option must not be re-entrant — a second
+    call used to create a duplicate IN_PROGRESS permanent deal for the player,
+    each committing the fee against the buyer's budget."""
+    deal_id = await _complete_loan_deal_with_option(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+
+    r1 = await client.post(f"/deals/{deal_id}/exercise-option", headers=buy_h)
+    assert r1.status_code == 201, r1.text
+    assert r1.json()["deal_type"] == "PERMANENT"
+
+    r2 = await client.post(f"/deals/{deal_id}/exercise-option", headers=buy_h)
+    assert r2.status_code == 400, r2.text
+    assert "already" in r2.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_exercise_option_blocked_when_player_has_active_deal(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """M7: exercising the option must also refuse if the player somehow already
+    has a separate active deal in progress (defense in depth alongside the
+    one-shot flag)."""
+    from sqlalchemy import select
+    from app.deals.models import Deal, DealStage, DealStatus
+
+    deal_id = await _complete_loan_deal_with_option(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+
+    deal_row = (
+        await db.execute(select(Deal).where(Deal.id == uuid.UUID(deal_id)))
+    ).scalar_one()
+    rival_deal = Deal(
+        buyer_club_id=deal_row.buyer_club_id,
+        seller_club_id=deal_row.seller_club_id,
+        player_id=deal_row.player_id,
+        agreed_fee=Decimal("1000000"),
+        status=DealStatus.IN_PROGRESS,
+        stage=DealStage.AGREEMENT,
+    )
+    db.add(rival_deal)
+    await db.commit()
+
+    r = await client.post(f"/deals/{deal_id}/exercise-option", headers=buy_h)
+    assert r.status_code == 400, r.text
+    assert "already has a transfer deal in progress" in r.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_can_complete_deal_deadline_day_grace(db):
+    """Medium 2/3: a deal confirmed ('deal sheet filed') while its window was
+    still open may still complete within that window's grace period after it
+    closes; without a confirmed_at, or once the grace period has elapsed,
+    completion must be refused."""
+    from datetime import datetime, timedelta, timezone
+    from app.transfer_window import service as window_service
+
+    now = datetime.now(timezone.utc)
+
+    window = await window_service.create_window(
+        db, name="Closed grace window",
+        opens_at=now - timedelta(days=10),
+        closes_at=now - timedelta(hours=2),
+        association="England",
+        grace_period_hours=6,
+    )
+    await db.commit()
+
+    confirmed_within_window = now - timedelta(days=5)
+
+    # Confirmed while the window was open, now within the grace period → allowed.
+    assert await window_service.can_complete_deal(
+        db, association="England", confirmed_at=confirmed_within_window
+    ) is True
+
+    # Never confirmed → no grace to claim.
+    assert await window_service.can_complete_deal(
+        db, association="England", confirmed_at=None
+    ) is False
+
+    # Grace period elapsed (window's grace was only 6h, closed 2h ago — still
+    # within grace above; now simulate a window with no grace at all).
+    window.grace_period_hours = 0
+    await db.commit()
+    assert await window_service.can_complete_deal(
+        db, association="England", confirmed_at=confirmed_within_window
+    ) is False
+
+    # A different association entirely (no applicable window) is unaffected —
+    # falls through to the open-market default.
+    assert await window_service.can_complete_deal(
+        db, association="Germany", confirmed_at=None
+    ) is True

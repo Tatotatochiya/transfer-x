@@ -431,24 +431,45 @@ async def advance_deal(
     elif stage == DealStage.PAPERWORK:
         if not is_staff:
             raise PermissionError("TransferX is handling the paperwork — staff only action")
-        # TRA-61: block if medical check exists and is FAILED (missing = not yet done, allowed)
+        # Re-audit (M4): a transfer used to be able to complete with no medical
+        # ever recorded — FAILED blocked, but a missing/PENDING record did not.
+        # A recorded PASSED or an explicit buyer WAIVED is now required.
         mc_result = await db.execute(
             select(MedicalCheck).where(MedicalCheck.deal_id == deal.id)
         )
         mc = mc_result.scalar_one_or_none()
         if mc is not None and mc.status == MedicalStatus.FAILED:
             raise ValueError("Cannot advance: medical check has failed")
+        if mc is None or mc.status == MedicalStatus.PENDING:
+            raise ValueError(
+                "Cannot advance: a medical check must be recorded (passed) or "
+                "explicitly waived by the buying club before paperwork can be confirmed"
+            )
         deal.stage = DealStage.CONFIRMED
         # Item 5: everything is agreed — this is now purely administrative
         # execution, with an SLA so it doesn't just sit here indefinitely.
         deal.status = DealStatus.PENDING_COMPLETION
         deal.sla_deadline = datetime.now(timezone.utc) + timedelta(days=_DEAL_SLA_DAYS)
+        # Re-audit: the "deal sheet was filed" timestamp — grants a deadline-day
+        # grace period to complete even if the window closes before COMPLETED.
+        deal.confirmed_at = datetime.now(timezone.utc)
 
     elif stage == DealStage.CONFIRMED:
         mc_result = await db.execute(select(MedicalCheck).where(MedicalCheck.deal_id == deal.id))
         mc = mc_result.scalar_one_or_none()
         if mc is not None and mc.status == MedicalStatus.FAILED:
             raise ValueError("Cannot complete: medical check has failed")
+
+        from app.transfer_window import service as window_service
+        completion_association = deal.buyer_club.country if deal.buyer_club else None
+        if not await window_service.can_complete_deal(
+            db, association=completion_association, confirmed_at=deal.confirmed_at
+        ):
+            raise ValueError(
+                "Cannot complete: the transfer window has closed and the grace "
+                "period for completing this deal has expired"
+            )
+
         deal.stage = DealStage.COMPLETED
         await _complete_deal(db, deal)
         await audit_service.emit(
@@ -625,7 +646,14 @@ async def add_note(
 
 
 async def staff_complete(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UUID | None = None) -> Deal:
-    """Staff override: force deal to COMPLETED, creating contract."""
+    """Staff override: force deal to COMPLETED, creating contract.
+
+    Deliberately a full bypass of ordinary progression — it can force-complete
+    from any non-terminal stage, skipping PAPERWORK's staff gate and PERSONAL_TERMS
+    consent too. Consistent with that role, it does not require a medical to have
+    been recorded (only a FAILED one still blocks) and does not check the transfer
+    window. The strict gates live in advance_deal; this is the emergency override.
+    """
     if deal.status == DealStatus.COMPLETED:
         raise ValueError("Deal is already completed")
     if deal.status == DealStatus.COLLAPSED:
@@ -1213,6 +1241,14 @@ async def exercise_option(
     The new deal starts at AGREEMENT stage so the player can go through the normal
     consent flow for their permanent contract terms. The purchase fee is reserved
     against the loaning club's transfer budget immediately.
+
+    Re-audit (M7): this used to be re-entrant — calling it twice created two
+    IN_PROGRESS permanent deals for the same player, each committing the fee.
+    It also skipped the transfer window entirely, making the option a window
+    bypass. Both are closed here: the source deal is locked and its
+    option_exercised flag makes this one-shot; an existing active deal for the
+    player blocks a second exercise; and the window is checked like any other
+    deal-creating action (staff bypass, same as elsewhere).
     """
     if deal.deal_type != DealType.LOAN:
         raise ValueError("Only loan deals have an option to buy")
@@ -1222,6 +1258,28 @@ async def exercise_option(
         raise ValueError("This loan deal has no option to buy price set")
     if not is_staff and actor_club_id != deal.buyer_club_id:
         raise ValueError("Only the loaning club may exercise the purchase option")
+
+    # Lock the source deal so two concurrent exercise calls serialize on it.
+    locked_result = await db.execute(select(Deal).where(Deal.id == deal.id).with_for_update())
+    deal = locked_result.scalar_one()
+    if deal.option_exercised:
+        raise ValueError("The purchase option for this loan has already been exercised")
+
+    existing_deal = await get_active_deal_for_player(db, deal.player_id)
+    if existing_deal is not None and existing_deal.status == DealStatus.IN_PROGRESS:
+        raise ValueError("This player already has a transfer deal in progress")
+
+    if not is_staff:
+        from app.clubs import service as clubs_service
+        from app.transfer_window import service as window_service
+
+        buyer_club = await clubs_service.get_club_by_id(db, deal.buyer_club_id)
+        buyer_association = buyer_club.country if buyer_club else None
+        if not await window_service.is_transfer_allowed(db, association=buyer_association):
+            raise ValueError(
+                "Transfer window is closed. The purchase option cannot be exercised "
+                "outside of a transfer window."
+            )
 
     purchase_fee = deal.option_to_buy
     buyer_fin = await clubs_module.service.get_finance_for_update(db, deal.buyer_club_id)
@@ -1244,6 +1302,7 @@ async def exercise_option(
         stage=DealStage.AGREEMENT,
     )
     db.add(new_deal)
+    deal.option_exercised = True
     await db.flush()
 
     await audit_service.emit(

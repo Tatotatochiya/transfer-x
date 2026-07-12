@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     transferx_sniping_window_minutes: int = 2
     transferx_sniping_extend_minutes: int = 2
     transferx_bid_rate: str = "10/m"
+    # Re-audit: when no transfer windows are configured for an association, the
+    # dev-safe default is to allow all transfers (fail-open). Set this true in
+    # production so an unconfigured window calendar fails closed instead.
+    transferx_windows_fail_closed: bool = False
 
     # TRA-44: Email (SMTP) — leave smtp_host unset to disable email sending (dev/test default)
     smtp_host: str | None = None

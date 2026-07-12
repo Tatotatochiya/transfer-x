@@ -190,7 +190,10 @@ async def _build_deal_response(
         option_to_buy=deal.option_to_buy,
         obligation_to_buy=deal.obligation_to_buy,
         obligation_conditions=deal.obligation_conditions,
+        option_exercised=deal.option_exercised,
+        seller_wage_contribution_weekly=deal.seller_wage_contribution_weekly,
         sell_on_pct=deal.sell_on_pct,
+        fee_disclosed=deal.fee_disclosed,
         clauses=deal.clauses,
         instalments=deal.instalments,
         agent_commission_pct=None if is_player else deal.agent_commission_pct,
@@ -210,6 +213,7 @@ async def _build_deal_response(
         deal_notes=deal.deal_notes,
         sla_deadline=deal.sla_deadline,
         sla_escalated_at=deal.sla_escalated_at,
+        confirmed_at=deal.confirmed_at,
     )
 
 

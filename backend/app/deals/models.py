@@ -97,6 +97,9 @@ class Deal(Base):
     option_to_buy: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
     obligation_to_buy: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     obligation_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Re-audit: one-shot guard so a completed loan's purchase option can only be
+    # exercised once — previously nothing stopped calling exercise-option twice.
+    option_exercised: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     # TRA-57: sell-on percentage (0.0–1.0), recorded on the selling club's side
     sell_on_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
     # M9: clubs may choose not to disclose the exact agreed fee publicly
@@ -118,6 +121,10 @@ class Deal(Base):
     # PENDING_COMPLETION) — gives staff an SLA window to actually execute it.
     sla_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sla_escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Re-audit: timestamp of PAPERWORK → CONFIRMED — the "deal sheet was filed"
+    # moment, used to grant a deadline-day grace period to complete even after
+    # the transfer window has since closed (see transfer_window/service.py).
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -231,11 +238,16 @@ class MedicalStatus(str, enum.Enum):
     PENDING = "PENDING"
     PASSED  = "PASSED"
     FAILED  = "FAILED"
+    # Re-audit: buying club explicitly waives the medical (e.g. deadline-day loan) —
+    # counts the same as PASSED for stage-gating purposes.
+    WAIVED  = "WAIVED"
 
 
 class MedicalCheck(Base):
-    """Medical check stub (TRA-61). A missing record is treated as not-yet-requested,
-    which does NOT block PAPERWORK → CONFIRMED. A FAILED record does block it.
+    """Medical check (TRA-61). Re-audit (M4): a deal can no longer reach CONFIRMED
+    with no medical outcome recorded at all — PAPERWORK → CONFIRMED requires a
+    PASSED or WAIVED record. FAILED always blocks. staff_complete remains a full
+    emergency override and does not require a recorded medical.
     """
     __tablename__ = "medical_checks"
 

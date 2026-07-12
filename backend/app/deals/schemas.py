@@ -256,6 +256,7 @@ class DealResponse(BaseModel):
     option_to_buy: Decimal | None = None
     obligation_to_buy: bool = False
     obligation_conditions: str | None = None
+    option_exercised: bool = False
     seller_wage_contribution_weekly: Decimal | None = None
     # TRA-57
     sell_on_pct: Decimal | None = None
@@ -283,6 +284,7 @@ class DealResponse(BaseModel):
     # Item 5: completion SLA
     sla_deadline: datetime | None = None
     sla_escalated_at: datetime | None = None
+    confirmed_at: datetime | None = None
     player: PlayerSummary | None = None
     deal_notes: list[DealNoteResponse] = []
     model_config = {"from_attributes": True}

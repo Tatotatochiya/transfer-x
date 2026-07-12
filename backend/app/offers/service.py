@@ -329,6 +329,17 @@ async def accept_offer(
     _require_party(offer, actor_club_id)
     _require_turn(offer, actor_club_id)
 
+    # Re-audit (Medium 1): lock the player row so a concurrent accept_bid for the
+    # same player serializes against this transaction, then re-check no deal has
+    # already been created for them — closes the two-accepted-deals race.
+    from app.players.models import Player
+    from app.deals import service as deals_service
+
+    await db.execute(select(Player.id).where(Player.id == offer.player_id).with_for_update())
+    existing_deal = await deals_service.get_active_deal_for_player(db, offer.player_id)
+    if existing_deal is not None and existing_deal.status == DealStatus.IN_PROGRESS:
+        raise ValueError("This player already has a transfer deal in progress")
+
     # TRA-138: the club this offer names as seller must actually own the player
     if offer.to_club_id is not None:
         from app.players import service as players_service

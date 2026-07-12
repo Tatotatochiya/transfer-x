@@ -1,9 +1,10 @@
 """Transfer window service — window lookup and enforcement check."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.transfer_window.models import TransferWindow
 
 
@@ -62,20 +63,48 @@ async def is_transfer_allowed(db: AsyncSession, *, association: str | None = Non
     association=None matches only global windows (no association set).
     association="England" matches global windows plus England-specific ones.
 
-    If no windows that apply to this association exist at all, returns True —
-    the club is not subject to any window regime, so the market is open for them.
-    (This is the correct real-world behaviour: an association-specific window
-    calendar only regulates clubs in that association.)
-
-    NOTE: the "no applicable windows → open" fallback is also a safe development
-    default. Production deployments must configure windows to enforce the calendar.
+    If no windows that apply to this association exist at all, the result depends
+    on settings.transferx_windows_fail_closed: False (default, dev-safe) treats an
+    unconfigured calendar as an open market; True (recommended for production)
+    fails closed instead, so a forgotten window calendar can't silently allow
+    every transfer.
     """
     applicable_count_result = await db.execute(
         select(func.count()).select_from(TransferWindow).where(_association_filter(association))
     )
     if (applicable_count_result.scalar_one() or 0) == 0:
-        return True  # No applicable windows — open market
+        return not settings.transferx_windows_fail_closed
     return await get_current_window(db, association=association) is not None
+
+
+async def can_complete_deal(
+    db: AsyncSession, *, association: str | None, confirmed_at: datetime | None
+) -> bool:
+    """Deadline-day 'deal sheet' grace for completing an already-confirmed deal.
+
+    If the window is currently open (or none applies), completion is always
+    allowed. Otherwise, a deal that was confirmed (PAPERWORK → CONFIRMED) while
+    a matching window was still open may still complete for that window's
+    grace_period_hours after it closed — mirroring the real-world practice of
+    filing a deal sheet before the deadline and finishing paperwork shortly after.
+    """
+    if await is_transfer_allowed(db, association=association):
+        return True
+    if confirmed_at is None:
+        return False
+
+    confirmed = confirmed_at if confirmed_at.tzinfo else confirmed_at.replace(tzinfo=timezone.utc)
+    now = _now()
+    result = await db.execute(
+        select(TransferWindow).where(_association_filter(association))
+    )
+    for w in result.scalars():
+        opens = w.opens_at if w.opens_at.tzinfo else w.opens_at.replace(tzinfo=timezone.utc)
+        closes = w.closes_at if w.closes_at.tzinfo else w.closes_at.replace(tzinfo=timezone.utc)
+        grace_end = closes + timedelta(hours=w.grace_period_hours or 0)
+        if opens <= confirmed <= closes and now <= grace_end:
+            return True
+    return False
 
 
 async def list_windows(db: AsyncSession) -> list[TransferWindow]:
@@ -89,8 +118,12 @@ async def create_window(
     opens_at: datetime,
     closes_at: datetime,
     association: str | None = None,
+    grace_period_hours: int = 24,
 ) -> TransferWindow:
-    w = TransferWindow(name=name, opens_at=opens_at, closes_at=closes_at, association=association)
+    w = TransferWindow(
+        name=name, opens_at=opens_at, closes_at=closes_at,
+        association=association, grace_period_hours=grace_period_hours,
+    )
     db.add(w)
     await db.flush()
     return w

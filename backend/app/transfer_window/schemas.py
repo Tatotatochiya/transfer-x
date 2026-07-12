@@ -9,6 +9,7 @@ class TransferWindowCreate(BaseModel):
     association: str | None = None
     opens_at: datetime
     closes_at: datetime
+    grace_period_hours: int = 24
 
     @model_validator(mode="after")
     def check_dates(self):
@@ -23,6 +24,7 @@ class TransferWindowResponse(BaseModel):
     association: str | None = None
     opens_at: datetime
     closes_at: datetime
+    grace_period_hours: int
     is_open: bool
     created_at: datetime
 

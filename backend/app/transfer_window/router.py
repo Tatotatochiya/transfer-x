@@ -19,6 +19,7 @@ def _to_response(w) -> TransferWindowResponse:
         association=w.association,
         opens_at=w.opens_at,
         closes_at=w.closes_at,
+        grace_period_hours=w.grace_period_hours,
         is_open=service._window_is_open(w),
         created_at=w.created_at,
     )
@@ -53,7 +54,10 @@ async def create_window(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_superuser),
 ):
-    w = await service.create_window(db, name=body.name, opens_at=body.opens_at, closes_at=body.closes_at, association=body.association)
+    w = await service.create_window(
+        db, name=body.name, opens_at=body.opens_at, closes_at=body.closes_at,
+        association=body.association, grace_period_hours=body.grace_period_hours,
+    )
     await db.commit()
     await db.refresh(w)
     return _to_response(w)

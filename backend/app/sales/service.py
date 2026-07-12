@@ -403,6 +403,18 @@ async def accept_bid(
     if winning_bid is None:
         raise ValueError("Bid not found or not active")
 
+    # Re-audit (Medium 1): lock the player row so a concurrent accept_offer for the
+    # same player serializes against this transaction, then re-check no deal has
+    # already been created for them (e.g. via an offer accepted moments earlier) —
+    # closes the two-accepted-deals race the sale/bid locks above don't cover.
+    from app.players.models import Player
+    from app.deals import service as deals_service
+
+    await db.execute(select(Player.id).where(Player.id == sale.player_id).with_for_update())
+    existing_deal = await deals_service.get_active_deal_for_player(db, sale.player_id)
+    if existing_deal is not None and existing_deal.status == DealStatus.IN_PROGRESS:
+        raise ValueError("This player already has a transfer deal in progress")
+
     # Release all OTHER active bids
     from app.notifications import service as notif_service
     from app.notifications.models import NotificationType
