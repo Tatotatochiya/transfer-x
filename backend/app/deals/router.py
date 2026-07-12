@@ -152,13 +152,22 @@ async def _get_deal_or_404(db: AsyncSession, deal_id: uuid.UUID):
     return deal
 
 
-async def _build_deal_response(db: AsyncSession, deal, *, caller_user_type: str | None = None) -> DealResponse:
-    """TRA-137: field-scoped like `_build_neg_response` — commission terms (what
-    the club pays the agent) are hidden from the player. Everything else here is
-    either already gated to real participants by the caller, or legitimately
-    shared across all of them (e.g. personal terms, medical check).
+async def _build_deal_response(
+    db: AsyncSession,
+    deal,
+    *,
+    caller_user_type: str | None = None,
+    caller_club_id: uuid.UUID | None = None,
+) -> DealResponse:
+    """TRA-137: field-scoped — commission terms hidden from players; medical
+    data hidden from the selling club (GDPR: special-category personal data).
     """
     is_player = caller_user_type == "PLAYER"
+    is_seller = (
+        caller_club_id is not None
+        and caller_club_id == deal.seller_club_id
+        and not is_player
+    )
     personal_terms = None
     if deal.personal_terms is not None:
         personal_terms = await _build_personal_terms_response(db, deal.personal_terms, deal)
@@ -189,7 +198,7 @@ async def _build_deal_response(db: AsyncSession, deal, *, caller_user_type: str 
         commission_payer=None if is_player else deal.commission_payer,
         commission_agent_id=None if is_player else deal.commission_agent_id,
         personal_terms=personal_terms,
-        medical_check=deal.medical_check,
+        medical_check=None if is_seller else deal.medical_check,
         notes=deal.notes,
         completed_at=deal.completed_at,
         created_at=deal.created_at,
@@ -307,7 +316,12 @@ async def get_deal(
     deal = await _get_deal_or_404(db, deal_id)
     if not await room_service.is_deal_participant(db, deal, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
-    return await _build_deal_response(db, deal, caller_user_type=current_user.user_type.value)
+    club = await clubs_service.get_club_for_user(db, current_user.id)
+    return await _build_deal_response(
+        db, deal,
+        caller_user_type=current_user.user_type.value,
+        caller_club_id=club.id if club else None,
+    )
 
 
 # ── Stage advancement ─────────────────────────────────────────────────────────
@@ -665,9 +679,16 @@ async def get_medical_check(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """Medical data is special-category personal data (GDPR). Only the buying
+    club and platform staff may read it — the selling club cannot."""
     deal = await _get_deal_or_404(db, deal_id)
-    if not await room_service.is_deal_participant(db, deal, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
+    if not current_user.is_superuser:
+        club = await clubs_service.get_club_for_user(db, current_user.id)
+        if club is None or club.id != deal.buyer_club_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Medical records are only accessible to the buying club and platform staff",
+            )
     mc = await service.get_medical_check(db, deal.id)
     if mc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No medical check found")
@@ -681,18 +702,29 @@ async def upsert_medical_check(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Staff only: create or update the medical check for a deal."""
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff only")
-
+    """The buying club's medical team records the outcome. Staff may also update it."""
     deal = await _get_deal_or_404(db, deal_id)
+
+    if current_user.is_superuser:
+        actor_club_id = None
+    else:
+        club = await clubs_service.get_club_for_user(db, current_user.id)
+        if club is None or club.id != deal.buyer_club_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the buying club or platform staff may record a medical check",
+            )
+        actor_club_id = club.id
+
     try:
         mc = await service.upsert_medical_check(
-            db, deal, status=body.status, notes=body.notes, is_staff=True, actor_user_id=current_user.id,
+            db, deal, status=body.status, notes=body.notes,
+            is_staff=current_user.is_superuser, actor_club_id=actor_club_id,
+            actor_user_id=current_user.id,
         )
         await db.commit()
         await db.refresh(mc)
-    except ValueError as exc:
+    except (ValueError, PermissionError) as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 

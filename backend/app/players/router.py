@@ -140,7 +140,7 @@ async def _resolve_direct_signing_context(db: AsyncSession, player_id: uuid.UUID
     if club is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
 
-    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db):
+    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db, association=club.country):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Transfer window is closed. Transfers cannot be made outside of a transfer window.",

@@ -214,7 +214,7 @@ async def create_offer(
 ):
     club = await _get_club_or_403(db, current_user)
 
-    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db):
+    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db, association=club.country):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Transfer window is closed. Offers cannot be made outside of a transfer window.",
@@ -391,6 +391,15 @@ async def accept_offer(
 ):
     club = await _get_club_or_403(db, current_user)
     offer = await _get_offer_or_404(db, offer_id)
+
+    if not current_user.is_superuser:
+        buyer_club = await clubs_service.get_club_by_id(db, offer.from_club_id)
+        buyer_association = buyer_club.country if buyer_club else None
+        if not await window_service.is_transfer_allowed(db, association=buyer_association):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Transfer window is closed. Offers cannot be accepted outside of a transfer window.",
+            )
 
     # Phase 5 (D7): a MANAGER accepting an offer at/above the club threshold is
     # captured as a pending approval instead of executing.

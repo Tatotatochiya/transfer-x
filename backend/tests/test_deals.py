@@ -1150,3 +1150,133 @@ async def test_clause_addition_is_audited(client: AsyncClient, buyer: dict, sell
 # NOTE: Concurrent-completion overspend guard is NOT tested here.
 # It requires two parallel DB sessions against a real Postgres instance;
 # SQLite ignores SELECT FOR UPDATE so the test would be a false pass.
+
+
+# ── M7: medical check model ───────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_buyer_can_record_medical_check(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """M7: the buying club's medical team records the outcome — not staff-only."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+
+    r = await client.put(
+        f"/deals/{deal['id']}/medical-check",
+        json={"status": "PASSED", "notes": "All clear"},
+        headers=buy_h,
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "PASSED"
+
+
+@pytest.mark.asyncio
+async def test_seller_cannot_record_medical_check(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """M7: seller is not the buying club — medical recording must be refused."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    sel_h = _auth_headers(seller)
+
+    r = await client.put(
+        f"/deals/{deal['id']}/medical-check",
+        json={"status": "PASSED"},
+        headers=sel_h,
+    )
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_seller_cannot_read_medical_check(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """M7: medical data is GDPR special-category — seller must not see it."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+    sel_h = _auth_headers(seller)
+
+    r = await client.put(
+        f"/deals/{deal['id']}/medical-check",
+        json={"status": "PASSED", "notes": "Confidential findings"},
+        headers=buy_h,
+    )
+    assert r.status_code == 200
+
+    # Seller fetching the dedicated endpoint must be refused
+    r_get = await client.get(f"/deals/{deal['id']}/medical-check", headers=sel_h)
+    assert r_get.status_code == 403
+
+    # Seller fetching the deal itself must receive medical_check=null
+    r_deal = await client.get(f"/deals/{deal['id']}", headers=sel_h)
+    assert r_deal.status_code == 200
+    assert r_deal.json()["medical_check"] is None
+
+
+@pytest.mark.asyncio
+async def test_buyer_can_read_own_medical_check(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """M7: buyer can both write and read the medical."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h = _auth_headers(buyer)
+
+    await client.put(
+        f"/deals/{deal['id']}/medical-check",
+        json={"status": "FAILED", "notes": "Knee concern"},
+        headers=buy_h,
+    )
+
+    r = await client.get(f"/deals/{deal['id']}/medical-check", headers=buy_h)
+    assert r.status_code == 200
+    assert r.json()["status"] == "FAILED"
+    assert r.json()["notes"] == "Knee concern"
+
+
+@pytest.mark.asyncio
+async def test_failed_medical_blocks_confirmed_to_completed(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """M7: a FAILED medical recorded after CONFIRMED must block CONFIRMED → COMPLETED."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    deal_id = deal["id"]
+    await _advance_through_personal_terms(client, deal_id, buyer, db)
+    await _make_superuser(db)
+    buy_h = _auth_headers(buyer)
+    r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
+    assert r.json()["stage"] == "CONFIRMED"
+
+    # Record FAILED medical (buyer's club can do this even as superuser)
+    await client.put(
+        f"/deals/{deal_id}/medical-check",
+        json={"status": "FAILED", "notes": "Unacceptable risk"},
+        headers=buy_h,
+    )
+
+    # CONFIRMED → COMPLETED must be refused
+    r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
+    assert r.status_code == 400
+    assert "medical" in r.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_staff_complete_blocked_by_failed_medical(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """M7: staff_complete must also respect a FAILED medical check."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    deal_id = deal["id"]
+    await _make_superuser(db)
+    buy_h = _auth_headers(buyer)
+
+    # Record FAILED medical via buyer
+    await client.put(
+        f"/deals/{deal_id}/medical-check",
+        json={"status": "FAILED"},
+        headers=buy_h,
+    )
+
+    r = await client.post(f"/deals/{deal_id}/staff/complete", headers=buy_h)
+    assert r.status_code == 400
+    assert "medical" in r.json()["detail"].lower()

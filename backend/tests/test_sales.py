@@ -1063,3 +1063,141 @@ async def test_sale_embed_null_for_ineligible_player(client: AsyncClient, seller
     )
     data = (await client.get(f"/sales/{sale['id']}", headers=_auth_headers(buyer))).json()
     assert data["fair_value_signal"] is None
+
+
+# ── M8: transfer window enforcement gaps ──────────────────────────────────────
+
+
+async def _create_window(
+    client: AsyncClient, headers: dict, *, association: str | None = None,
+    offset_hours: int = -1, duration_hours: int = 48,
+) -> dict:
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    opens = (now + timedelta(hours=offset_hours)).isoformat()
+    closes = (now + timedelta(hours=offset_hours + duration_hours)).isoformat()
+    body = {"name": "Test Window", "opens_at": opens, "closes_at": closes}
+    if association:
+        body["association"] = association
+    r = await client.post("/transfers/window", json=body, headers=headers)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+async def _make_staff(client: AsyncClient, db, email: str) -> dict:
+    from app.auth.models import User
+    from sqlalchemy import select as sa_select
+    result = await db.execute(sa_select(User).where(User.email == email))
+    u = result.scalars().first()
+    if u:
+        u.is_superuser = True
+        await db.commit()
+    r = await client.post("/auth/login", json={"email": email, "password": "password123"})
+    assert r.status_code == 200
+    return r.json()
+
+
+@pytest.mark.asyncio
+async def test_place_bid_blocked_outside_window(
+    client: AsyncClient, seller: dict, buyer: dict, db
+):
+    """M8: placing a bid must be refused when the transfer window is closed."""
+    from datetime import datetime, timezone, timedelta
+    from app.auth.models import User
+    from sqlalchemy import select as sa_select
+
+    # Make a staff user to create the window
+    result = await db.execute(sa_select(User))
+    for u in result.scalars():
+        u.is_superuser = True
+    await db.commit()
+
+    sel_h = _auth_headers(seller)
+    buy_h = _auth_headers(buyer)
+
+    player = await _create_player(client, sel_h)
+    sale = await _create_sale(client, sel_h, player["id"])
+
+    # Create a window that is already closed (opened and closed in the past)
+    now = datetime.now(timezone.utc)
+    r = await client.post("/transfers/window", json={
+        "name": "Past Window",
+        "opens_at": (now - timedelta(hours=48)).isoformat(),
+        "closes_at": (now - timedelta(hours=1)).isoformat(),
+    }, headers=sel_h)
+    assert r.status_code == 201
+
+    # Revoke superuser so buyer is a regular club
+    result = await db.execute(sa_select(User))
+    for u in result.scalars():
+        u.is_superuser = False
+    await db.commit()
+
+    r = await client.post(
+        f"/sales/{sale['id']}/bids",
+        json={"amount": 1_000_000},
+        headers=buy_h,
+    )
+    assert r.status_code == 403
+    assert "window" in r.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_association_window_only_blocks_matching_club(
+    client: AsyncClient, seller: dict, buyer: dict, buyer2: dict, db
+):
+    """M8: an association-specific window blocks clubs in that association
+    when it's closed, but a global window keeps other clubs open."""
+    from datetime import datetime, timezone, timedelta
+    from app.auth.models import User
+    from app.clubs.models import Club
+    from sqlalchemy import select as sa_select, update as sa_update
+
+    result = await db.execute(sa_select(User))
+    for u in result.scalars():
+        u.is_superuser = True
+    await db.commit()
+
+    sel_h = _auth_headers(seller)
+    buy_h = _auth_headers(buyer)
+    buy2_h = _auth_headers(buyer2)
+
+    # Set buyer's club country to "England", buyer2 gets no country
+    import uuid as _uuid
+    r = await client.get("/clubs/me", headers=buy_h)
+    buyer_club_id = _uuid.UUID(r.json()["id"])
+    await db.execute(sa_update(Club).where(Club.id == buyer_club_id).values(country="England"))
+    await db.commit()
+
+    player = await _create_player(client, sel_h)
+    sale = await _create_sale(client, sel_h, player["id"])
+
+    # Create a closed England-specific window (no global window)
+    now = datetime.now(timezone.utc)
+    r = await client.post("/transfers/window", json={
+        "name": "England Window",
+        "association": "England",
+        "opens_at": (now - timedelta(hours=48)).isoformat(),
+        "closes_at": (now - timedelta(hours=1)).isoformat(),
+    }, headers=sel_h)
+    assert r.status_code == 201, r.text
+
+    # Revoke superuser for both buyers
+    result = await db.execute(sa_select(User))
+    for u in result.scalars():
+        u.is_superuser = False
+    await db.commit()
+
+    # English buyer is blocked
+    r_eng = await client.post(
+        f"/sales/{sale['id']}/bids", json={"amount": 1_000_000}, headers=buy_h,
+    )
+    assert r_eng.status_code == 403
+
+    # buyer2 (no country, no matching window) — no windows apply → allowed past the
+    # window check.  The bid may still fail for other reasons (budget etc.) but
+    # must NOT be rejected with 403 "window closed".
+    r_other = await client.post(
+        f"/sales/{sale['id']}/bids", json={"amount": 900_000}, headers=buy2_h,
+    )
+    assert r_other.status_code != 403, r_other.json()

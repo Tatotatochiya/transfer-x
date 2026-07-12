@@ -445,6 +445,10 @@ async def advance_deal(
         deal.sla_deadline = datetime.now(timezone.utc) + timedelta(days=_DEAL_SLA_DAYS)
 
     elif stage == DealStage.CONFIRMED:
+        mc_result = await db.execute(select(MedicalCheck).where(MedicalCheck.deal_id == deal.id))
+        mc = mc_result.scalar_one_or_none()
+        if mc is not None and mc.status == MedicalStatus.FAILED:
+            raise ValueError("Cannot complete: medical check has failed")
         deal.stage = DealStage.COMPLETED
         await _complete_deal(db, deal)
         await audit_service.emit(
@@ -626,6 +630,11 @@ async def staff_complete(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UU
         raise ValueError("Deal is already completed")
     if deal.status == DealStatus.COLLAPSED:
         raise ValueError("Cannot complete a collapsed deal")
+
+    mc_result = await db.execute(select(MedicalCheck).where(MedicalCheck.deal_id == deal.id))
+    mc = mc_result.scalar_one_or_none()
+    if mc is not None and mc.status == MedicalStatus.FAILED:
+        raise ValueError("Cannot complete: medical check has failed")
 
     deal.stage = DealStage.COMPLETED
     await _complete_deal(db, deal)
@@ -838,11 +847,12 @@ async def upsert_medical_check(
     status: MedicalStatus,
     notes: str | None = None,
     is_staff: bool = False,
+    actor_club_id: uuid.UUID | None = None,
     actor_user_id: uuid.UUID | None = None,
 ) -> MedicalCheck:
-    """Staff creates or updates the medical check for a deal."""
-    if not is_staff:
-        raise PermissionError("Staff only")
+    """Buying club or staff records or updates the medical check for a deal."""
+    if not is_staff and actor_club_id != deal.buyer_club_id:
+        raise PermissionError("Only the buying club or staff may record a medical check")
 
     mc = await get_medical_check(db, deal.id)
     if mc is None:

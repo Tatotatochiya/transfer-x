@@ -202,7 +202,7 @@ async def create_sale(
             detail="Player is not registered to your club",
         )
 
-    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db):
+    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db, association=club.country):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Transfer window is closed. Sales cannot be created outside of a transfer window.",
@@ -291,6 +291,12 @@ async def place_bid(
     club = await clubs_service.get_club_for_user(db, current_user.id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+
+    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db, association=club.country):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Transfer window is closed. Bids cannot be placed outside of a transfer window.",
+        )
 
     # Phase 5 (D7): a MANAGER's bid at/above the club threshold is captured as
     # a pending approval — nothing reserved, nothing executed.
@@ -456,6 +462,12 @@ async def accept_bid(
     club = await clubs_service.get_club_for_user(db, current_user.id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+
+    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db, association=club.country):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Transfer window is closed. Bids cannot be accepted outside of a transfer window.",
+        )
 
     # Phase 5 (D7): a MANAGER accepting a bid at/above the club threshold is
     # captured as a pending approval instead of executing.

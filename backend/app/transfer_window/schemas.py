@@ -6,6 +6,7 @@ from pydantic import BaseModel, model_validator
 
 class TransferWindowCreate(BaseModel):
     name: str
+    association: str | None = None
     opens_at: datetime
     closes_at: datetime
 
@@ -19,6 +20,7 @@ class TransferWindowCreate(BaseModel):
 class TransferWindowResponse(BaseModel):
     id: uuid.UUID
     name: str
+    association: str | None = None
     opens_at: datetime
     closes_at: datetime
     is_open: bool
