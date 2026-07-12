@@ -10,6 +10,7 @@ from app.admin import service as admin_service
 from app.admin.schemas import (
     ActivityItem,
     AdminClubDetailResponse,
+    AdminReasonRequest,
     AdminClubFinanceResponse,
     AdminClubResponse,
     AdminClubUpdateRequest,
@@ -372,6 +373,7 @@ async def list_all_sales(
 @router.post("/sales/{sale_id}/cancel", response_model=SaleResponse)
 async def cancel_sale(
     sale_id: uuid.UUID,
+    body: AdminReasonRequest,
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> SaleResponse:
@@ -382,7 +384,7 @@ async def cancel_sale(
     if sale is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
     try:
-        await admin_service.admin_cancel_sale(db, sale)
+        await admin_service.admin_cancel_sale(db, sale, reason=body.reason)
         await db.commit()
     except ValueError as exc:
         await db.rollback()
@@ -491,6 +493,7 @@ async def list_all_offers(
 @router.post("/offers/{offer_id}/force-withdraw", response_model=OfferResponse)
 async def force_withdraw_offer(
     offer_id: uuid.UUID,
+    body: AdminReasonRequest,
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> OfferResponse:
@@ -500,7 +503,9 @@ async def force_withdraw_offer(
     if offer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offer not found")
     try:
-        await admin_service.admin_force_withdraw_offer(db, offer)
+        await admin_service.admin_force_withdraw_offer(
+            db, offer, reason=body.reason, actor_user_id=current_user.id,
+        )
         await db.commit()
     except ValueError as exc:
         await db.rollback()
@@ -585,6 +590,7 @@ async def update_club_staff(
 async def delete_club_staff(
     club_id: uuid.UUID,
     staff_id: uuid.UUID,
+    reason: str = Query(..., description="Required — recorded in the audit trail."),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> None:
@@ -592,7 +598,11 @@ async def delete_club_staff(
     if staff is None or staff.club_id != uuid.UUID(str(club_id)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
 
-    await admin_service.delete_staff(db, staff)
+    try:
+        await admin_service.delete_staff(db, staff, reason=reason, actor_user_id=current_user.id)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     await db.commit()
 
 

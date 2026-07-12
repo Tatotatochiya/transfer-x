@@ -5,6 +5,16 @@ from decimal import Decimal
 from pydantic import BaseModel
 
 
+# ── Shared ────────────────────────────────────────────────────────────────────
+
+
+class AdminReasonRequest(BaseModel):
+    """Reason required for a destructive/overriding admin action — recorded in
+    the audit trail so the intervention is explainable later, not just logged
+    as "an admin did something"."""
+    reason: str
+
+
 # ── User schemas ──────────────────────────────────────────────────────────────
 
 
@@ -113,11 +123,11 @@ class ClubStaffResponse(BaseModel):
 class CreateStaffRequest(BaseModel):
     email: str
     password: str
-    role: str = "READONLY"  # MANAGER or READONLY
+    role: str = "READONLY"  # SPORTING_DIRECTOR, MANAGER, SCOUT, or READONLY
 
 
 class UpdateStaffRoleRequest(BaseModel):
-    role: str  # MANAGER or READONLY
+    role: str  # SPORTING_DIRECTOR, MANAGER, SCOUT, or READONLY
 
 
 # ── Player admin schemas ──────────────────────────────────────────────────────
@@ -162,6 +172,7 @@ class AdminDealResponse(BaseModel):
     status: str
     stage: str
     created_at: datetime
+    updated_at: datetime
     completed_at: datetime | None = None
 
 
@@ -175,7 +186,7 @@ class AdminStatsResponse(BaseModel):
     active_sales: int      # Sale.status == OPEN
     open_offers: int       # Offer.status in [SENT, COUNTERED]
     active_deals: int      # Deal.status == IN_PROGRESS
-    deals_by_stage: dict[str, int]  # AGREEMENT/PAPERWORK/CONFIRMED counts (active only)
+    deals_by_stage: dict[str, int]  # AGREEMENT/AGENT_NEGOTIATION/PERSONAL_TERMS/PAPERWORK/CONFIRMED counts (active only)
 
 
 # ── Activity feed ──────────────────────────────────────────────────────────────

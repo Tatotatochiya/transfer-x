@@ -1,6 +1,6 @@
 ---
 title: "Data Model"
-last_updated: 2026-07-10
+last_updated: 2026-07-12
 status: Draft
 owner: "TODO — assign a Technical Lead"
 ---
@@ -33,8 +33,9 @@ Out of scope: full column-level schema (the migrations under `backend/migrations
 | `Player`, `Contract` | `players` | Player record and contract history |
 | `Sale`, `Bid` | `sales` | Listings and auction bids |
 | `Offer` | `offers` | Direct offers and counters |
-| `Deal`, `DealClause`, `DealInstalment`, `PersonalTerms`, `MedicalCheck` | `deals` | Deal lifecycle and its sub-records |
+| `Deal`, `DealClause`, `DealInstalment`, `PersonalTerms`, `MedicalCheck` | `deals` | Deal lifecycle and its sub-records. `Deal` gained `fee_disclosed` (public-feed opt-out), `confirmed_at` (set on `PAPERWORK → CONFIRMED`, drives the transfer-window deadline-day grace period), `option_exercised` (one-shot guard for a loan's purchase option), and `seller_wage_contribution_weekly` (loans) in the 2026-07-11/12 audit remediation. `MedicalCheck.status` gained `WAIVED` (buying club explicitly proceeds with no medical) alongside `PENDING`/`PASSED`/`FAILED`. |
 | `AgentProfile`, `Mandate`, `AgentNegotiation` | `agents` / `mandates` | Agent representation and negotiation |
+| `TransferWindow` | `transfer_window` | An open/close date range clubs may transact within, scoped by `association` (null = global, applies to all clubs; set = that association's clubs plus global windows) with a per-window `grace_period_hours` for completing an already-`CONFIRMED` deal after the window closes |
 | `Notification` | `notifications` | In-app/email notifications |
 | `AuditEvent` | `audit` | Append-only audit trail |
 | `PlayerValuation` | `valuation` | Append-only fair-value model history (TRA-91); latest = max `computed_at` per player; `inputs_json` snapshots every input so any historical number is explainable |

@@ -7,7 +7,15 @@ import Badge from "../../components/ui/Badge";
 import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
+import { useConfirmWithReason } from "../../context/ConfirmContext";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
+import {
+  ACTIVE_DEAL_STAGES,
+  DEAL_STAGE_COLOR,
+  DEAL_STAGE_STALE_DAYS,
+  dealStageLabel,
+  type ActiveDealStage,
+} from "../../lib/badges";
 
 const DEAL_STATUSES = ["IN_PROGRESS", "PENDING_COMPLETION", "COMPLETED", "COLLAPSED"];
 
@@ -19,10 +27,12 @@ const STATUS_VARIANT: Record<string, "success" | "info" | "warning" | "neutral" 
 };
 
 const STAGE_VARIANT: Record<string, "success" | "info" | "warning" | "neutral"> = {
-  AGREEMENT:  "warning",
-  PAPERWORK:  "info",
-  CONFIRMED:  "info",
-  COMPLETED:  "success",
+  AGREEMENT:          "warning",
+  AGENT_NEGOTIATION:  "neutral",
+  PERSONAL_TERMS:     "neutral",
+  PAPERWORK:          "info",
+  CONFIRMED:          "info",
+  COMPLETED:          "success",
 };
 
 // ── Action buttons (shared between views) ─────────────────────────────────────
@@ -89,7 +99,8 @@ function PipelineCard({
 }) {
   const now = Date.now();
   const ageDays = Math.floor((now - new Date(deal.updated_at ?? deal.created_at).getTime()) / 86_400_000);
-  const isStale = ageDays > (deal.stage === "AGREEMENT" ? 3 : 7);
+  const staleThreshold = DEAL_STAGE_STALE_DAYS[deal.stage as ActiveDealStage] ?? 7;
+  const isStale = ageDays > staleThreshold;
 
   return (
     <Link
@@ -137,12 +148,8 @@ function PipelineCard({
 }
 
 // ── Pipeline view ─────────────────────────────────────────────────────────────
-
-const PIPELINE_STAGES = [
-  { key: "AGREEMENT", label: "Agreement",          color: "text-amber-400",   border: "border-amber-500/30"  },
-  { key: "PAPERWORK", label: "Paperwork",          color: "text-sky-400",     border: "border-sky-500/30"    },
-  { key: "CONFIRMED", label: "Ready to Execute",   color: "text-emerald-400", border: "border-emerald-500/30" },
-];
+// H2 (admin audit): all five active stages, not just AGREEMENT/PAPERWORK/CONFIRMED —
+// a deal sitting in AGENT_NEGOTIATION or PERSONAL_TERMS used to be invisible here.
 
 function PipelineView({
   onAdvance, onComplete, onCollapse, isPending,
@@ -162,39 +169,44 @@ function PipelineView({
 
   if (isLoading) return <div className="flex justify-center py-12"><Spinner size="lg" /></div>;
 
-  const byStage: Record<string, AdminDeal[]> = { AGREEMENT: [], PAPERWORK: [], CONFIRMED: [] };
+  const byStage: Record<ActiveDealStage, AdminDeal[]> = {
+    AGREEMENT: [], AGENT_NEGOTIATION: [], PERSONAL_TERMS: [], PAPERWORK: [], CONFIRMED: [],
+  };
   for (const d of data?.items ?? []) {
-    if (d.stage in byStage) byStage[d.stage].push(d);
+    if (d.stage in byStage) byStage[d.stage as ActiveDealStage].push(d);
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      {PIPELINE_STAGES.map(({ key, label, color, border }) => (
-        <div key={key} className={`rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden`}>
-          <div className={`border-b ${border} px-4 py-3 flex items-center justify-between`}>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${color}`}>{label}</p>
-            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs font-bold text-white">
-              {byStage[key].length}
-            </span>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      {ACTIVE_DEAL_STAGES.map((key) => {
+        const { text, border } = DEAL_STAGE_COLOR[key];
+        return (
+          <div key={key} className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
+            <div className={`border-b ${border} px-4 py-3 flex items-center justify-between`}>
+              <p className={`text-xs font-semibold uppercase tracking-wider ${text}`}>{dealStageLabel(key)}</p>
+              <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs font-bold text-white">
+                {byStage[key].length}
+              </span>
+            </div>
+            <div className="p-3 space-y-3 min-h-[200px]">
+              {byStage[key].length === 0 ? (
+                <p className="py-8 text-center text-xs text-slate-600">No deals in this stage</p>
+              ) : (
+                byStage[key].map((d) => (
+                  <PipelineCard
+                    key={d.id}
+                    deal={d}
+                    onAdvance={onAdvance}
+                    onComplete={onComplete}
+                    onCollapse={onCollapse}
+                    isPending={isPending}
+                  />
+                ))
+              )}
+            </div>
           </div>
-          <div className="p-3 space-y-3 min-h-[200px]">
-            {byStage[key].length === 0 ? (
-              <p className="py-8 text-center text-xs text-slate-600">No deals in this stage</p>
-            ) : (
-              byStage[key].map((d) => (
-                <PipelineCard
-                  key={d.id}
-                  deal={d}
-                  onAdvance={onAdvance}
-                  onComplete={onComplete}
-                  onCollapse={onCollapse}
-                  isPending={isPending}
-                />
-              ))
-            )}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -204,6 +216,7 @@ function PipelineView({
 export default function AdminDealsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const confirmWithReason = useConfirmWithReason();
   const [status, setStatus] = useState("");
   const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page, setPage] = useState(1);
@@ -235,11 +248,39 @@ export default function AdminDealsPage() {
     queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
   };
 
-  const advanceMutation  = useMutation({ mutationFn: (id: string) => api.post(`/deals/${id}/advance`),          onSuccess: invalidate });
-  const completeMutation = useMutation({ mutationFn: (id: string) => api.post(`/deals/${id}/staff/complete`),   onSuccess: invalidate });
-  const collapseMutation = useMutation({ mutationFn: (id: string) => api.post(`/deals/${id}/staff/collapse`),   onSuccess: invalidate });
+  const advanceMutation  = useMutation({ mutationFn: (id: string) => api.post(`/deals/${id}/advance`), onSuccess: invalidate });
+  const completeMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api.post(`/deals/${id}/staff/complete`, { reason }),
+    onSuccess: invalidate,
+  });
+  const collapseMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      api.post(`/deals/${id}/staff/collapse`, { reason }),
+    onSuccess: invalidate,
+  });
 
   const isPending = advanceMutation.isPending || completeMutation.isPending || collapseMutation.isPending;
+
+  async function handleComplete(id: string) {
+    const { confirmed, reason } = await confirmWithReason({
+      title: "Force-complete deal",
+      message: "This bypasses medical, transfer-window, and consent gates and immediately creates a binding completed transfer. Only use this when the ordinary completion path genuinely can't handle the case.",
+      confirmLabel: "Force complete",
+      reasonLabel: "Reason (required — lands in the audit trail)",
+    });
+    if (confirmed) completeMutation.mutate({ id, reason });
+  }
+
+  async function handleCollapse(id: string) {
+    const { confirmed, reason } = await confirmWithReason({
+      title: "Force-collapse deal",
+      message: "This immediately collapses the deal and releases the buyer's committed budget. This cannot be undone from here.",
+      confirmLabel: "Force collapse",
+      reasonLabel: "Reason (required — lands in the audit trail and, for CONFIRMED-stage deals, is enforced server-side)",
+    });
+    if (confirmed) collapseMutation.mutate({ id, reason });
+  }
 
   return (
     <div>
@@ -297,8 +338,8 @@ export default function AdminDealsPage() {
       {view === "pipeline" && (
         <PipelineView
           onAdvance={(id) => advanceMutation.mutate(id)}
-          onComplete={(id) => completeMutation.mutate(id)}
-          onCollapse={(id) => collapseMutation.mutate(id)}
+          onComplete={handleComplete}
+          onCollapse={handleCollapse}
           isPending={isPending}
         />
       )}
@@ -345,15 +386,15 @@ export default function AdminDealsPage() {
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant={STAGE_VARIANT[d.stage] ?? "neutral"}>{d.stage}</Badge>
+                          <Badge variant={STAGE_VARIANT[d.stage] ?? "neutral"}>{dealStageLabel(d.stage)}</Badge>
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-500">{formatDate(d.created_at)}</td>
                         <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <DealActions
                             deal={d}
                             onAdvance={(id) => advanceMutation.mutate(id)}
-                            onComplete={(id) => completeMutation.mutate(id)}
-                            onCollapse={(id) => collapseMutation.mutate(id)}
+                            onComplete={handleComplete}
+                            onCollapse={handleCollapse}
                             isPending={isPending}
                           />
                         </td>

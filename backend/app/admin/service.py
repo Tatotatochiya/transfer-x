@@ -330,14 +330,15 @@ async def admin_list_deals(
 # ── Sale management (admin cancel) ────────────────────────────────────────────
 
 
-async def admin_cancel_sale(db: AsyncSession, sale):
-    from app.sales.models import SaleStatus
+async def admin_cancel_sale(db: AsyncSession, sale, *, reason: str):
+    """Delegate to the real withdraw_sale cleanup path — releases every
+    bidder's reserved budget, rejects and releases linked offers, and notifies
+    everyone affected, instead of just flipping a status field."""
+    from app.sales import service as sales_service
 
-    if sale.status not in (SaleStatus.OPEN,):
-        raise ValueError(f"Sale is already {sale.status.value} — cannot cancel")
-    sale.status = SaleStatus.CANCELLED
-    await db.flush()
-    return sale
+    return await sales_service.withdraw_sale(
+        db, sale, actor_club_id=None, is_staff=True, reason=reason,
+    )
 
 
 # ── Staff management ──────────────────────────────────────────────────────────
@@ -421,11 +422,28 @@ async def update_staff_role(db: AsyncSession, staff, role: str):
     return staff
 
 
-async def delete_staff(db: AsyncSession, staff) -> None:
-    """Delete both the staff record and the linked user account."""
+async def delete_staff(db: AsyncSession, staff, *, reason: str, actor_user_id: uuid.UUID | None = None) -> None:
+    """Delete both the staff record and the linked user account.
+
+    This is a hard, irreversible delete of someone's login — a reason is
+    required for the audit trail, same bar as the other staff-only overrides.
+    """
     from app.auth.models import User
+    from app.audit import service as audit_service
+
+    if not reason or not reason.strip():
+        raise ValueError("A reason is required to remove a staff account — it lands in the audit trail.")
+    reason = reason.strip()
 
     user_id = staff.user_id
+    await audit_service.emit(
+        db,
+        entity_type="CLUB_STAFF", entity_id=staff.id,
+        action="STAFF_REMOVED",
+        actor_user_id=actor_user_id,
+        payload={"reason": reason, "club_id": str(staff.club_id), "user_id": str(user_id)},
+        description=f"Staff account removed by admin. Reason: {reason}",
+    )
     await db.delete(staff)
     await db.flush()
     user = await db.get(User, user_id)
@@ -663,7 +681,13 @@ async def import_world_team_squad(
 
 
 async def get_deals_by_stage(db: AsyncSession) -> dict:
-    """Return count of active deals grouped by stage."""
+    """Return count of active deals grouped by stage.
+
+    H2 (admin audit): all five stages a deal can sit in while IN_PROGRESS —
+    AGENT_NEGOTIATION and PERSONAL_TERMS used to be dropped from this zero-init,
+    so a deal parked there was invisible to every admin monitoring surface that
+    reads this dict (dashboard pipeline bar, deals kanban board).
+    """
     from app.deals.models import Deal, DealStage, DealStatus
 
     rows = await db.execute(
@@ -671,7 +695,16 @@ async def get_deals_by_stage(db: AsyncSession) -> dict:
         .where(Deal.status == DealStatus.IN_PROGRESS)
         .group_by(Deal.stage)
     )
-    result = {stage.value: 0 for stage in (DealStage.AGREEMENT, DealStage.PAPERWORK, DealStage.CONFIRMED)}
+    result = {
+        stage.value: 0
+        for stage in (
+            DealStage.AGREEMENT,
+            DealStage.AGENT_NEGOTIATION,
+            DealStage.PERSONAL_TERMS,
+            DealStage.PAPERWORK,
+            DealStage.CONFIRMED,
+        )
+    }
     for stage, cnt in rows:
         result[stage.value] = cnt
     return result
@@ -786,14 +819,17 @@ async def get_health_report(db: AsyncSession) -> dict:
     now = datetime.now(timezone.utc)
     issues = []
 
-    # 1. Deals stuck in AGREEMENT for >3 days
+    # 1. Deals stuck in early negotiation (AGREEMENT, AGENT_NEGOTIATION, PERSONAL_TERMS)
+    # for >3 days. H2 (admin audit): AGENT_NEGOTIATION/PERSONAL_TERMS used to be
+    # excluded here entirely, so a deal stalled with an agent or on personal
+    # terms never surfaced as a health issue at all.
     stale_agreement_cutoff = now - timedelta(days=3)
     stale_agreement = (await db.execute(
         select(Deal)
         .options(selectinload(Deal.player), selectinload(Deal.buyer_club), selectinload(Deal.seller_club))
         .where(
             Deal.status == DealStatus.IN_PROGRESS,
-            Deal.stage == DealStage.AGREEMENT,
+            Deal.stage.in_([DealStage.AGREEMENT, DealStage.AGENT_NEGOTIATION, DealStage.PERSONAL_TERMS]),
             Deal.updated_at < stale_agreement_cutoff,
         )
     )).scalars().all()
@@ -801,12 +837,12 @@ async def get_health_report(db: AsyncSession) -> dict:
         issues.append({
             "severity": "warning",
             "category": "deals",
-            "message": f"{len(stale_agreement)} deal(s) stuck in Agreement for >3 days",
+            "message": f"{len(stale_agreement)} deal(s) stuck in early negotiation for >3 days",
             "count": len(stale_agreement),
             "details": [
                 {
                     "id": str(d.id),
-                    "label": f"{d.player.name if d.player else '?'} — {d.buyer_club.name if d.buyer_club else '?'} vs {d.seller_club.name if d.seller_club else '?'}",
+                    "label": f"{d.player.name if d.player else '?'} — {d.stage.value} — {d.buyer_club.name if d.buyer_club else '?'} vs {d.seller_club.name if d.seller_club else '?'}",
                 }
                 for d in stale_agreement
             ],
@@ -915,18 +951,33 @@ async def get_health_report(db: AsyncSession) -> dict:
     }
 
 
-async def admin_force_withdraw_offer(db: AsyncSession, offer) -> None:
+async def admin_force_withdraw_offer(
+    db: AsyncSession, offer, *, reason: str, actor_user_id: uuid.UUID | None = None,
+) -> None:
     from app.offers.models import OfferEvent, OfferEventType, OfferStatus
+    from app.audit import service as audit_service
+
+    if not reason or not reason.strip():
+        raise ValueError("A reason is required to force-withdraw an offer — it lands in the audit trail.")
 
     _terminal = {OfferStatus.ACCEPTED, OfferStatus.REJECTED, OfferStatus.WITHDRAWN, OfferStatus.EXPIRED}
     if offer.status in _terminal:
         raise ValueError(f"Offer is already in terminal state: {offer.status.value}")
 
     offer.status = OfferStatus.WITHDRAWN
+    reason = reason.strip()
     db.add(OfferEvent(
         offer_id=offer.id,
         event_type=OfferEventType.WITHDRAWN,
         actor_club_id=None,
-        payload={"admin_action": True},
+        payload={"admin_action": True, "reason": reason},
     ))
+    await audit_service.emit(
+        db,
+        entity_type="OFFER", entity_id=offer.id,
+        action="OFFER_FORCE_WITHDRAWN",
+        actor_user_id=actor_user_id,
+        payload={"reason": reason},
+        description=f"Offer force-withdrawn by staff. Reason: {reason}",
+    )
     await db.flush()

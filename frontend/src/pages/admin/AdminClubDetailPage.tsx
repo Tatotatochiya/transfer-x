@@ -3,13 +3,15 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { AdminClubDetail, AdminClubFinance, ClubStaff } from "../../types/api";
+import type { StaffRole } from "../../types/enums";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Metric from "../../components/ui/Metric";
 import Spinner from "../../components/ui/Spinner";
+import { STAFF_ROLE_INFO, STAFF_ROLE_ORDER } from "../../lib/badges";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
-import { useConfirm } from "../../context/ConfirmContext";
+import { useConfirm, useConfirmWithReason } from "../../context/ConfirmContext";
 
 const ROLES = ["BUYER", "SELLER", "BOTH", "ADMIN"];
 
@@ -277,10 +279,11 @@ export default function AdminClubDetailPage() {
 
 function StaffPanel({ clubId }: { clubId: string }) {
   const queryClient = useQueryClient();
+  const confirmWithReason = useConfirmWithReason();
   const [showForm, setShowForm] = useState(false);
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
-  const [role,     setRole]     = useState<"MANAGER" | "READONLY">("READONLY");
+  const [role,     setRole]     = useState<StaffRole>("READONLY");
 
   const { data: staff, isLoading } = useQuery<ClubStaff[]>({
     queryKey: ["admin", "clubs", clubId, "staff"],
@@ -308,12 +311,21 @@ function StaffPanel({ clubId }: { clubId: string }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (staffId: string) =>
-      api.delete(`/admin/clubs/${clubId}/staff/${staffId}`),
+    mutationFn: ({ staffId, reason }: { staffId: string; reason: string }) =>
+      api.delete(`/admin/clubs/${clubId}/staff/${staffId}`, { params: { reason } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "clubs", clubId, "staff"] });
     },
   });
+
+  async function handleRemoveStaff(staffId: string, email: string) {
+    const { confirmed, reason } = await confirmWithReason({
+      title: "Remove staff account",
+      message: `This permanently deletes "${email}"'s login — not just their club access. This cannot be undone.`,
+      confirmLabel: "Remove account",
+    });
+    if (confirmed) deleteMutation.mutate({ staffId, reason });
+  }
 
   return (
     <Card>
@@ -321,7 +333,7 @@ function StaffPanel({ clubId }: { clubId: string }) {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Staff Accounts</p>
           <p className="mt-0.5 text-xs text-slate-500">
-            Staff can log in with their own credentials. Managers can bid/offer; Read-only can only view.
+            Staff can log in with their own credentials — see the role description below for what each can do.
           </p>
         </div>
         {!showForm && (
@@ -367,12 +379,14 @@ function StaffPanel({ clubId }: { clubId: string }) {
             <label className="mb-1 block text-xs text-slate-400">Role</label>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as "MANAGER" | "READONLY")}
+              onChange={(e) => setRole(e.target.value as StaffRole)}
               className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
             >
-              <option value="MANAGER">Manager — can bid, offer &amp; cancel</option>
-              <option value="READONLY">Read-only — view only</option>
+              {STAFF_ROLE_ORDER.map((r) => (
+                <option key={r} value={r}>{STAFF_ROLE_INFO[r].label}</option>
+              ))}
             </select>
+            <p className="mt-1 text-xs text-slate-500">{STAFF_ROLE_INFO[role].description}</p>
           </div>
           {createMutation.isError && (
             <p className="text-xs text-red-400">{getApiError(createMutation.error, "Create failed.")}</p>
@@ -419,8 +433,9 @@ function StaffPanel({ clubId }: { clubId: string }) {
                       }
                       className="rounded bg-slate-700 px-2 py-1 text-xs text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500 disabled:opacity-50"
                     >
-                      <option value="MANAGER">Manager</option>
-                      <option value="READONLY">Read-only</option>
+                      {STAFF_ROLE_ORDER.map((r) => (
+                        <option key={r} value={r}>{STAFF_ROLE_INFO[r].label}</option>
+                      ))}
                     </select>
                   </td>
                   <td className="px-3 py-2">
@@ -430,7 +445,7 @@ function StaffPanel({ clubId }: { clubId: string }) {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button
-                      onClick={() => deleteMutation.mutate(s.id)}
+                      onClick={() => handleRemoveStaff(s.id, s.user?.email ?? "this account")}
                       disabled={deleteMutation.isPending}
                       className="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-40"
                     >

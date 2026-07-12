@@ -52,8 +52,11 @@ async def get_next_window(db: AsyncSession, *, association: str | None = None) -
     return result.scalar_one_or_none()
 
 
-async def any_window_exists(db: AsyncSession) -> bool:
-    result = await db.execute(select(func.count()).select_from(TransferWindow))
+async def has_applicable_windows(db: AsyncSession, *, association: str | None = None) -> bool:
+    """True if any window applies to this association (global windows always count)."""
+    result = await db.execute(
+        select(func.count()).select_from(TransferWindow).where(_association_filter(association))
+    )
     return (result.scalar_one() or 0) > 0
 
 
@@ -129,11 +132,49 @@ async def create_window(
     return w
 
 
-async def delete_window(db: AsyncSession, window_id) -> bool:
+async def get_window_by_id(db: AsyncSession, window_id) -> TransferWindow | None:
+    result = await db.execute(select(TransferWindow).where(TransferWindow.id == window_id))
+    return result.scalar_one_or_none()
+
+
+async def update_window(db: AsyncSession, window_id, updates: dict) -> TransferWindow | None:
+    """Admin override of an existing window's name/association/dates/grace period."""
+    w = await get_window_by_id(db, window_id)
+    if w is None:
+        return None
+
+    for k, v in updates.items():
+        setattr(w, k, v)
+
+    opens = w.opens_at if w.opens_at.tzinfo else w.opens_at.replace(tzinfo=timezone.utc)
+    closes = w.closes_at if w.closes_at.tzinfo else w.closes_at.replace(tzinfo=timezone.utc)
+    if closes <= opens:
+        raise ValueError("closes_at must be after opens_at")
+
+    await db.flush()
+    return w
+
+
+async def delete_window(db: AsyncSession, window_id, *, reason: str, actor_user_id=None) -> bool:
+    from app.audit import service as audit_service
+
+    if not reason or not reason.strip():
+        raise ValueError("A reason is required to delete a transfer window — it lands in the audit trail.")
+
     result = await db.execute(select(TransferWindow).where(TransferWindow.id == window_id))
     w = result.scalar_one_or_none()
     if w is None:
         return False
+
+    reason = reason.strip()
+    await audit_service.emit(
+        db,
+        entity_type="TRANSFER_WINDOW", entity_id=w.id,
+        action="TRANSFER_WINDOW_DELETED",
+        actor_user_id=actor_user_id,
+        payload={"reason": reason, "name": w.name, "association": w.association},
+        description=f"Transfer window '{w.name}' deleted by staff. Reason: {reason}",
+    )
     await db.delete(w)
     await db.flush()
     return True

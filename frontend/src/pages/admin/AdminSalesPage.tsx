@@ -7,20 +7,24 @@ import Badge from "../../components/ui/Badge";
 import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
+import { useConfirmWithReason } from "../../context/ConfirmContext";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
 
-const STATUSES = ["OPEN", "CLOSED", "CANCELLED", "SOLD"];
+// Matches the real SaleStatus enum (OPEN/CLOSED/WITHDRAWN/EXPIRED) — admin
+// cancel produces WITHDRAWN, same as a seller-initiated withdrawal.
+const STATUSES = ["OPEN", "CLOSED", "WITHDRAWN", "EXPIRED"];
 
 const STATUS_VARIANT: Record<string, "success" | "info" | "warning" | "neutral" | "error"> = {
   OPEN:      "success",
   CLOSED:    "neutral",
-  CANCELLED: "error",
-  SOLD:      "info",
+  WITHDRAWN: "error",
+  EXPIRED:   "neutral",
 };
 
 export default function AdminSalesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const confirmWithReason = useConfirmWithReason();
   const [status, setStatus] = useState("");
   const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page, setPage]     = useState(1);
@@ -46,10 +50,19 @@ export default function AdminSalesPage() {
   }
 
   const cancelMutation = useMutation({
-    mutationFn: (saleId: string) =>
-      api.post(`/admin/sales/${saleId}/cancel`).then((r) => r.data),
+    mutationFn: ({ saleId, reason }: { saleId: string; reason: string }) =>
+      api.post(`/admin/sales/${saleId}/cancel`, { reason }).then((r) => r.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "sales"] }),
   });
+
+  async function handleCancel(saleId: string) {
+    const { confirmed, reason } = await confirmWithReason({
+      title: "Cancel sale",
+      message: "This withdraws the listing, releases every bidder's reserved budget, and rejects any linked offers. Everyone affected is notified.",
+      confirmLabel: "Cancel sale",
+    });
+    if (confirmed) cancelMutation.mutate({ saleId, reason });
+  }
 
   return (
     <div>
@@ -122,7 +135,7 @@ export default function AdminSalesPage() {
                       {s.status === "OPEN" && (
                         <button
                           disabled={cancelMutation.isPending}
-                          onClick={() => cancelMutation.mutate(s.id)}
+                          onClick={() => handleCancel(s.id)}
                           className="rounded bg-red-500/10 px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40"
                         >
                           Cancel

@@ -1203,3 +1203,141 @@ async def test_association_window_only_blocks_matching_club(
         f"/sales/{sale['id']}/bids", json={"amount": 900_000}, headers=buy2_h,
     )
     assert r_other.status_code != 403, r_other.json()
+
+
+# ── Countdown widget: admin override + association-scoped status ─────────────
+
+
+@pytest.mark.asyncio
+async def test_admin_can_update_window_dates(client: AsyncClient, seller: dict, db):
+    """Admin override: an existing window's dates/name/association/grace period
+    can be edited in place, without deleting and recreating it."""
+    staff = await _make_staff(client, db, "seller@test.com")
+    staff_h = _auth_headers(staff)
+
+    w = await _create_window(client, staff_h, offset_hours=-1, duration_hours=48)
+
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    new_opens = (now - timedelta(hours=2)).isoformat()
+    new_closes = (now + timedelta(hours=100)).isoformat()
+
+    r = await client.patch(
+        f"/transfers/window/{w['id']}",
+        json={
+            "name": "Renamed Window",
+            "association": "England",
+            "opens_at": new_opens,
+            "closes_at": new_closes,
+            "grace_period_hours": 6,
+        },
+        headers=staff_h,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["name"] == "Renamed Window"
+    assert body["association"] == "England"
+    assert body["grace_period_hours"] == 6
+    assert body["is_open"] is True
+
+    # Partial update — only touching one field leaves the rest intact.
+    r2 = await client.patch(
+        f"/transfers/window/{w['id']}", json={"grace_period_hours": 48}, headers=staff_h,
+    )
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["name"] == "Renamed Window"
+    assert r2.json()["grace_period_hours"] == 48
+
+
+@pytest.mark.asyncio
+async def test_admin_update_window_rejects_invalid_date_range(
+    client: AsyncClient, seller: dict, db
+):
+    """Admin override: closes_at must stay after opens_at even for a partial update."""
+    staff = await _make_staff(client, db, "seller@test.com")
+    staff_h = _auth_headers(staff)
+    w = await _create_window(client, staff_h, offset_hours=-1, duration_hours=48)
+
+    from datetime import datetime, timezone, timedelta
+    earlier_than_opens = (datetime.now(timezone.utc) - timedelta(hours=100)).isoformat()
+
+    r = await client.patch(
+        f"/transfers/window/{w['id']}", json={"closes_at": earlier_than_opens}, headers=staff_h,
+    )
+    assert r.status_code == 400, r.text
+    assert "closes_at" in r.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_update_window_requires_staff(client: AsyncClient, seller: dict, buyer: dict, db):
+    staff = await _make_staff(client, db, "seller@test.com")
+    w = await _create_window(client, _auth_headers(staff), offset_hours=-1, duration_hours=48)
+
+    r = await client.patch(
+        f"/transfers/window/{w['id']}", json={"name": "Hijacked"}, headers=_auth_headers(buyer),
+    )
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_update_nonexistent_window_404s(client: AsyncClient, seller: dict, db):
+    import uuid as _uuid
+    staff = await _make_staff(client, db, "seller@test.com")
+    r = await client.patch(
+        f"/transfers/window/{_uuid.uuid4()}", json={"name": "Ghost"}, headers=_auth_headers(staff),
+    )
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_window_requires_reason(client: AsyncClient, seller: dict, db):
+    """H1 admin audit: deleting a window has no confirmation/reason capture in
+    the UI — the backend must at least require and record one."""
+    staff = await _make_staff(client, db, "seller@test.com")
+    staff_h = _auth_headers(staff)
+    w = await _create_window(client, staff_h, offset_hours=-1, duration_hours=48)
+
+    # No reason at all — must be refused
+    r = await client.delete(f"/transfers/window/{w['id']}", headers=staff_h)
+    assert r.status_code == 422  # missing required query param
+
+    # Blank reason — must be refused
+    r = await client.delete(f"/transfers/window/{w['id']}?reason=", headers=staff_h)
+    assert r.status_code == 400
+    assert "reason" in r.json()["detail"].lower()
+
+    # With a reason — must succeed
+    r = await client.delete(
+        f"/transfers/window/{w['id']}?reason=Duplicate+window+created+in+error", headers=staff_h,
+    )
+    assert r.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_window_status_is_association_scoped(
+    client: AsyncClient, seller: dict, buyer: dict, db
+):
+    """The countdown status endpoint resolves per-association: an England-only
+    window shows open for ?association=England, but not for a different
+    association or no association at all."""
+    staff = await _make_staff(client, db, "seller@test.com")
+    await _create_window(
+        client, _auth_headers(staff), association="England", offset_hours=-1, duration_hours=48,
+    )
+
+    r_eng = await client.get("/transfers/window/status?association=England")
+    assert r_eng.status_code == 200
+    body_eng = r_eng.json()
+    assert body_eng["enforced"] is True
+    assert body_eng["is_open"] is True
+    assert body_eng["current_window"]["association"] == "England"
+
+    r_other = await client.get("/transfers/window/status?association=Germany")
+    body_other = r_other.json()
+    assert body_other["enforced"] is False
+    assert body_other["is_open"] is False
+
+    r_none = await client.get("/transfers/window/status")
+    body_none = r_none.json()
+    assert body_none["enforced"] is False
+    assert body_none["is_open"] is False

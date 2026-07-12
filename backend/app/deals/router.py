@@ -16,7 +16,6 @@ from app.deals.models import ClauseStatus, DealStage, DealStatus
 from app.deals.schemas import (
     AgentNegotiationResponse,
     ClubTransferStat,
-    CollapseRequest,
     CompletedStats,
     CreateClauseRequest,
     CreateInstalmentsRequest,
@@ -31,6 +30,7 @@ from app.deals.schemas import (
     PersonalTermsResponse,
     PositionBreakdown,
     SetPersonalTermsRequest,
+    StaffReasonRequest,
     TransferActivityItem,
     TransferAnalytics,
     UpdateClauseStatusRequest,
@@ -402,7 +402,7 @@ async def advance_deal(
 @router.post("/deals/{deal_id}/collapse", response_model=DealResponse)
 async def collapse_deal(
     deal_id: uuid.UUID,
-    body: CollapseRequest = CollapseRequest(),
+    body: StaffReasonRequest = StaffReasonRequest(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     _write: User = Depends(_deal_write),
@@ -463,6 +463,7 @@ async def add_note(
 @router.post("/deals/{deal_id}/staff/complete", response_model=DealResponse)
 async def staff_complete_deal(
     deal_id: uuid.UUID,
+    body: StaffReasonRequest = StaffReasonRequest(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -471,7 +472,7 @@ async def staff_complete_deal(
     deal = await _get_deal_or_404(db, deal_id)
 
     try:
-        await service.staff_complete(db, deal, actor_user_id=current_user.id)
+        await service.staff_complete(db, deal, actor_user_id=current_user.id, reason=body.reason)
         player_name = deal.player.name if deal.player else "the player"
         await _db_notify_deal_parties(
             db, deal,
@@ -491,7 +492,7 @@ async def staff_complete_deal(
 @router.post("/deals/{deal_id}/staff/collapse", response_model=DealResponse)
 async def staff_collapse_deal(
     deal_id: uuid.UUID,
-    body: CollapseRequest = CollapseRequest(),
+    body: StaffReasonRequest = StaffReasonRequest(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

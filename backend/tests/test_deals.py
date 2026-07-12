@@ -731,6 +731,36 @@ async def test_collapse_confirmed_deal_requires_reason(
 
 
 @pytest.mark.asyncio
+async def test_staff_collapse_confirmed_deal_also_requires_reason(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """H1 admin audit: the CONFIRMED-stage reason requirement must not be
+    silently waived for staff — the actor with the most bypass power is
+    exactly who shouldn't be exempt from the audit trail."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    deal_id = deal["id"]
+    await _advance_through_personal_terms(client, deal_id, buyer, db)
+    buy_h = _auth_headers(buyer)
+    await _pass_medical(client, deal_id, buy_h)
+    await _make_superuser(db)
+    r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
+    assert r.json()["stage"] == "CONFIRMED"
+
+    # Still superuser — no reason must still be rejected
+    resp = await client.post(f"/deals/{deal_id}/staff/collapse", headers=buy_h)
+    assert resp.status_code == 400
+    assert "reason" in resp.json()["detail"].lower()
+
+    resp = await client.post(
+        f"/deals/{deal_id}/staff/collapse",
+        json={"reason": "Regulatory block discovered post-confirmation"},
+        headers=buy_h,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "COLLAPSED"
+
+
+@pytest.mark.asyncio
 async def test_collapse_reopens_originating_sale_and_notifies_rivals(
     client: AsyncClient, buyer: dict, seller: dict, rival: dict, db,
 ):
@@ -801,7 +831,9 @@ async def test_cannot_collapse_completed_deal(client: AsyncClient, buyer: dict, 
         u.is_superuser = True
     await db.commit()
 
-    await client.post(f"/deals/{deal['id']}/staff/complete", headers=_auth_headers(buyer))
+    await client.post(
+        f"/deals/{deal['id']}/staff/complete", json={"reason": "test cleanup"}, headers=_auth_headers(buyer)
+    )
     resp = await client.post(f"/deals/{deal['id']}/collapse", headers=_auth_headers(buyer))
     assert resp.status_code == 400
 
@@ -853,11 +885,37 @@ async def test_staff_complete_deal(client: AsyncClient, buyer: dict, seller: dic
         u.is_superuser = True
     await db.commit()
 
-    resp = await client.post(f"/deals/{deal['id']}/staff/complete", headers=_auth_headers(buyer))
+    resp = await client.post(
+        f"/deals/{deal['id']}/staff/complete", json={"reason": "test"}, headers=_auth_headers(buyer)
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "COMPLETED"
     assert data["stage"] == "COMPLETED"
+
+
+@pytest.mark.asyncio
+async def test_staff_complete_requires_reason(client: AsyncClient, buyer: dict, seller: dict, db):
+    """H1 admin audit: force-complete is the most consequential admin action —
+    a reason must be captured for the audit trail, same as staff collapse."""
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+
+    from app.auth.models import User
+    from sqlalchemy import select
+
+    result = await db.execute(select(User))
+    for u in result.scalars():
+        u.is_superuser = True
+    await db.commit()
+
+    resp = await client.post(f"/deals/{deal['id']}/staff/complete", headers=_auth_headers(buyer))
+    assert resp.status_code == 400
+    assert "reason" in resp.json()["detail"].lower()
+
+    resp = await client.post(
+        f"/deals/{deal['id']}/staff/complete", json={"reason": "   "}, headers=_auth_headers(buyer)
+    )
+    assert resp.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -936,7 +994,7 @@ async def _pass_medical(client: AsyncClient, deal_id: str, headers: dict) -> Non
 
 
 async def _staff_complete(client: AsyncClient, deal_id: str, headers: dict) -> dict:
-    r = await client.post(f"/deals/{deal_id}/staff/complete", headers=headers)
+    r = await client.post(f"/deals/{deal_id}/staff/complete", json={"reason": "test"}, headers=headers)
     assert r.status_code == 200, r.text
     return r.json()
 

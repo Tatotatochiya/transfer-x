@@ -564,7 +564,10 @@ async def collapse_deal(
 
     _require_party(deal, actor_club_id, is_staff)
 
-    if not is_staff and deal.stage in (DealStage.CONFIRMED, DealStage.COMPLETED):
+    # Applies to staff too — the reason requirement for a CONFIRMED+ deal exists
+    # for the audit trail and the counterparty, not just as a check on clubs;
+    # the actor with the most bypass power is exactly who shouldn't be exempt.
+    if deal.stage in (DealStage.CONFIRMED, DealStage.COMPLETED):
         if not reason or not reason.strip():
             raise ValueError(
                 "A reason is required to collapse a deal that has reached the CONFIRMED stage — "
@@ -645,7 +648,9 @@ async def add_note(
     return note
 
 
-async def staff_complete(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UUID | None = None) -> Deal:
+async def staff_complete(
+    db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UUID | None = None, reason: str | None = None,
+) -> Deal:
     """Staff override: force deal to COMPLETED, creating contract.
 
     Deliberately a full bypass of ordinary progression — it can force-complete
@@ -653,6 +658,10 @@ async def staff_complete(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UU
     consent too. Consistent with that role, it does not require a medical to have
     been recorded (only a FAILED one still blocks) and does not check the transfer
     window. The strict gates live in advance_deal; this is the emergency override.
+
+    Unlike those bypassed gates, the reason requirement is not one of them — this
+    is the single most consequential admin action in the system, so a reason is
+    always required for the audit trail, regardless of stage.
     """
     if deal.status == DealStatus.COMPLETED:
         raise ValueError("Deal is already completed")
@@ -664,6 +673,9 @@ async def staff_complete(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UU
     if mc is not None and mc.status == MedicalStatus.FAILED:
         raise ValueError("Cannot complete: medical check has failed")
 
+    if not reason or not reason.strip():
+        raise ValueError("A reason is required to force-complete a deal — it lands in the audit trail.")
+
     deal.stage = DealStage.COMPLETED
     await _complete_deal(db, deal)
     await audit_service.emit(
@@ -671,7 +683,8 @@ async def staff_complete(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UU
         entity_type="DEAL", entity_id=deal.id,
         action="DEAL_COMPLETED",
         actor_user_id=actor_user_id,
-        description="Deal force-completed by staff",
+        payload={"reason": reason.strip()},
+        description=f"Deal force-completed by staff. Reason: {reason.strip()}",
     )
     return deal
 

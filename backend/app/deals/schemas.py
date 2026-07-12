@@ -36,7 +36,9 @@ class DealNoteRequest(BaseModel):
     body: str
 
 
-class CollapseRequest(BaseModel):
+class StaffReasonRequest(BaseModel):
+    """Optional reason, required server-side wherever the action demands one
+    (collapse of a CONFIRMED+ deal, any staff force-complete)."""
     reason: str | None = None
 
 

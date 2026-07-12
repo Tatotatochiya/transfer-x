@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Icon from "./Icon";
 import GlobalSearch from "./GlobalSearch";
+import TransferWindowCountdown from "../transfers/TransferWindowCountdown";
 
 const STORAGE_KEY = "transferx-sidebar-expanded";
 
@@ -45,10 +46,12 @@ export default function AppShell({ children }: AppShellProps) {
         <div className="flex-1">
           <GlobalSearch />
         </div>
+        <TransferWindowCountdown />
       </header>
 
-      {/* Desktop search bar — top-right */}
-      <div className="hidden md:flex fixed top-3 right-6 z-40 transition-all duration-200">
+      {/* Desktop search bar + window countdown — top-right */}
+      <div className="hidden md:flex items-center gap-3 fixed top-3 right-6 z-40 transition-all duration-200">
+        <TransferWindowCountdown />
         <GlobalSearch />
       </div>
 

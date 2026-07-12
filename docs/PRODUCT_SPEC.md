@@ -1,6 +1,6 @@
 ---
 title: "TransferX Product Specification"
-last_updated: 2026-07-10
+last_updated: 2026-07-12
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -46,7 +46,7 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 |---|---|---|
 | Backend | FastAPI (Python), SQLAlchemy async, PostgreSQL | [`architecture/backend-architecture.md`](./architecture/backend-architecture.md) |
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS v4 | [`architecture/frontend-architecture.md`](./architecture/frontend-architecture.md) |
-| Database migrations | 51 (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
+| Database migrations | 61 numbered + 2 unnumbered merge/fix revisions (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
 | User types | Club (owner + 4 staff roles), Agent, Player, Admin | [`product/personas.md`](./product/personas.md) |
 | Deal stages | AGREEMENT → AGENT_NEGOTIATION → PERSONAL_TERMS → PAPERWORK → CONFIRMED → COMPLETED (or COLLAPSED) | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
 | Production deployment | Not yet configured | [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md) |
@@ -124,6 +124,8 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 ### Audits
 *Point-in-time independent assessments of the product — records of what was found on a given date, not living documents.*
 
+- [`audits/2026-07-12-admin-platform-audit.md`](./audits/2026-07-12-admin-platform-audit.md) — administrator-experience product audit across all 16 admin sections; three critical bugs (sale-cancel crash, stranded budget reservations on admin cancel/force-withdraw), no admin audit logging, enterprise-readiness assessment and top-20 recommendations
+- [`audits/2026-07-12-transfer-workflow-audit.md`](./audits/2026-07-12-transfer-workflow-audit.md) — re-audit verifying the 2026-07-11 audit's findings against the code after remediation; nine of ten Major Gaps and six of eleven Medium Gaps confirmed fixed, three new gaps found (one closed same-day), rest carried forward
 - [`audits/2026-07-11-transfer-workflow-audit.md`](./audits/2026-07-11-transfer-workflow-audit.md) — full transfer-workflow audit (realism, permissions, edge cases), traced against the code
 
 ### Tracking documents

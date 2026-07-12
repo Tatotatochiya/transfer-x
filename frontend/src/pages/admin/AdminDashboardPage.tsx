@@ -5,6 +5,7 @@ import api from "../../lib/api";
 import type { ActivityItem, AdminStats } from "../../types/api";
 import Spinner from "../../components/ui/Spinner";
 import Button from "../../components/ui/Button";
+import { ACTIVE_DEAL_STAGES, DEAL_STAGE_COLOR, DEAL_STAGE_STALE_DAYS, dealStageLabel, type ActiveDealStage } from "../../lib/badges";
 import { formatDateTime, getApiError } from "../../lib/utils";
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
@@ -31,12 +32,9 @@ function StatCard({
 // ── Pipeline mini-bar ─────────────────────────────────────────────────────────
 
 function PipelineBar({ byStage }: { byStage: Record<string, number> }) {
-  const stages = [
-    { key: "AGREEMENT",  label: "Agreement",  color: "bg-amber-500" },
-    { key: "PAPERWORK",  label: "Paperwork",  color: "bg-sky-500"   },
-    { key: "CONFIRMED",  label: "Confirmed",  color: "bg-emerald-500" },
-  ];
-  const total = stages.reduce((s, st) => s + (byStage[st.key] ?? 0), 0);
+  // H2 (admin audit): all five active stages, not just AGREEMENT/PAPERWORK/CONFIRMED —
+  // a deal parked in AGENT_NEGOTIATION or PERSONAL_TERMS used to be invisible here.
+  const total = ACTIVE_DEAL_STAGES.reduce((s, key) => s + (byStage[key] ?? 0), 0);
 
   return (
     <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] px-6 py-5">
@@ -44,18 +42,18 @@ function PipelineBar({ byStage }: { byStage: Record<string, number> }) {
         Active Deals by Stage
       </p>
       <div className="flex gap-4">
-        {stages.map(({ key, label, color }) => {
+        {ACTIVE_DEAL_STAGES.map((key) => {
           const count = byStage[key] ?? 0;
           const pct = total > 0 ? (count / total) * 100 : 0;
           return (
             <div key={key} className="flex-1">
               <div className="mb-1.5 flex items-end justify-between">
-                <span className="text-xs text-slate-400">{label}</span>
+                <span className="text-xs text-slate-400">{dealStageLabel(key)}</span>
                 <span className="text-lg font-bold text-white">{count}</span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-slate-800">
                 <div
-                  className={`h-1.5 rounded-full ${color} transition-all`}
+                  className={`h-1.5 rounded-full ${DEAL_STAGE_COLOR[key].bg} transition-all`}
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -82,11 +80,10 @@ function NeedsAttentionPanel({ byStage }: { byStage: Record<string, number> }) {
         .then((r) => r.data),
   });
 
-  const STALE_DAYS = { AGREEMENT: 3, PAPERWORK: 7, CONFIRMED: 7 };
   const now = Date.now();
 
   const stalled = (stalledDeals?.items ?? []).filter((d) => {
-    const threshold = STALE_DAYS[d.stage as keyof typeof STALE_DAYS];
+    const threshold = DEAL_STAGE_STALE_DAYS[d.stage as ActiveDealStage];
     if (!threshold) return false;
     const ageDays = (now - new Date(d.updated_at).getTime()) / 86_400_000;
     return ageDays > threshold;
@@ -131,7 +128,7 @@ function NeedsAttentionPanel({ byStage }: { byStage: Record<string, number> }) {
               <div>
                 <p className="text-sm text-white">
                   {d.player?.name ?? "Unknown"} — stuck in{" "}
-                  <span className="text-amber-400">{d.stage}</span>
+                  <span className="text-amber-400">{dealStageLabel(d.stage as ActiveDealStage)}</span>
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
                   {d.buyer_club?.name ?? "?"} ↔ {d.seller_club?.name ?? "?"} · {ageDays}d without update

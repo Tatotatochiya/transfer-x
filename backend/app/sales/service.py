@@ -110,8 +110,24 @@ async def get_open_sale_for_player(db: AsyncSession, player_id: uuid.UUID) -> Sa
     return result.scalar_one_or_none()
 
 
-async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) -> Sale:
-    """Withdraw an OPEN sale. Releases all active bid reservations."""
+async def withdraw_sale(
+    db: AsyncSession,
+    sale: Sale,
+    actor_club_id: uuid.UUID | None,
+    *,
+    is_staff: bool = False,
+    reason: str | None = None,
+) -> Sale:
+    """Withdraw an OPEN sale. Releases all active bid reservations.
+
+    is_staff distinguishes an admin-forced cancellation from a seller-initiated
+    withdrawal — the two need different notification copy so a club isn't told
+    "the seller withdrew" when it was actually a platform intervention. actor_club_id
+    is only optional when is_staff=True (an admin action has no club of its own).
+    """
+    if is_staff and (not reason or not reason.strip()):
+        raise ValueError("A reason is required to cancel a sale as staff — it lands in the audit trail.")
+
     # Lock the sale row so concurrent bid placements are blocked until we finish
     locked_result = await db.execute(
         select(Sale).where(Sale.id == sale.id).with_for_update()
@@ -124,6 +140,11 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
     from app.notifications import service as notif_service
     from app.notifications.models import NotificationType
     from app.offers.models import Offer, OfferEvent, OfferEventType, OfferStatus
+
+    reason = reason.strip() if reason else None
+    reason_suffix = f": {reason}" if reason else ""
+    withdrawn_by = "TransferX staff" if is_staff else "the seller"
+    verb = "cancelled" if is_staff else "withdrawn"
 
     # Read active bids after acquiring the lock — no concurrent bids can be added now
     active_bids_result = await db.execute(
@@ -147,7 +168,7 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
             db,
             bid.buyer_club_id,
             type=NotificationType.OUTBID,
-            message="This sale has been withdrawn by the seller",
+            message=f"This sale has been {verb} by {withdrawn_by}{reason_suffix}",
             link=f"/sales/{sale.id}",
             related_player_id=sale.player_id,
         )
@@ -171,13 +192,13 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
         db.add(OfferEvent(
             offer_id=offer.id,
             event_type=OfferEventType.REJECTED,
-            payload={"reason": "sale_withdrawn"},
+            payload={"reason": "sale_withdrawn" if not is_staff else "sale_cancelled_by_staff"},
         ))
         await notif_service.notify_club(
             db,
             offer.from_club_id,
             type=NotificationType.OFFER_REJECTED,
-            message="The sale you offered on has been withdrawn by the seller",
+            message=f"The sale you offered on has been {verb} by {withdrawn_by}{reason_suffix}",
             link=f"/offers/{offer.id}",
             related_player_id=offer.player_id,
         )
@@ -188,6 +209,7 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
             sale_id=sale.id,
             event_type=SaleEventType.SALE_WITHDRAWN,
             actor_club_id=actor_club_id,
+            notes=reason,
         )
     )
     await db.flush()

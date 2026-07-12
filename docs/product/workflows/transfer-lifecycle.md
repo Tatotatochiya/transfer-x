@@ -1,6 +1,6 @@
 ---
 title: "Workflow: Transfer Lifecycle"
-last_updated: 2026-07-04
+last_updated: 2026-07-12
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -29,6 +29,8 @@ A transfer begins with a selling club listing a player (see [`negotiation-and-of
 
 > **Verified 2026-07-04:** this description matches the implementation. The non-mandated path previously had a regression where it skipped personal-terms consent entirely — see [`docs/CHANGELOG.md`](../../CHANGELOG.md) — fixed and covered by regression tests in `backend/tests/test_deals.py`. As of [ADR 0002](../decisions/0002-single-capture-point-for-personal-terms.md), personal terms are captured exactly once regardless of path — `AGENT_NEGOTIATION` no longer duplicates them.
 
+> **Verified 2026-07-12:** until the 2026-07-11 audit remediation, this convergence only held for the *offer* path — a player sold at auction (`accept_bid`) never routed through `AGENT_NEGOTIATION` at all, and a rival direct offer for the same player could still be accepted afterward, creating two `IN_PROGRESS` deals. `accept_bid` now runs the same post-acceptance pipeline as `accept_offer` (reject rival offers for the player, invite the mandated agent if one exists), so the description above now genuinely holds for both listing types. See [`negotiation-and-offers.md`](./negotiation-and-offers.md) for the listing-type detail.
+
 ## Deal stages
 
 | Stage | Description |
@@ -36,10 +38,10 @@ A transfer begins with a selling club listing a player (see [`negotiation-and-of
 | `AGREEMENT` | Initial stage after a bid/offer is accepted. Deal terms (fee, loan structure, clauses, instalments) can still be adjusted here. |
 | `AGENT_NEGOTIATION` | Entered only when the player has an active agent mandate. The agent negotiates commission with the buying club only — see [`agent-representation.md`](./agent-representation.md). |
 | `PERSONAL_TERMS` | The player reviews and consents (or declines) the proposed wage, signing bonus, and contract length — proposed by the mandated agent, or the buying club when there's no mandate. The player consents themselves if they have an account; the mandated agent may act as their proxy only if they don't. |
-| `PAPERWORK` | Staff-managed documentation stage. |
-| `CONFIRMED` | Documentation verified; ready for the transfer to be executed. |
-| `COMPLETED` | The transfer is finalized — the player's contract moves to the buying club. |
-| `COLLAPSED` | Terminal state reachable from most stages if either party withdraws or a required consent is declined. |
+| `PAPERWORK` | Staff-managed documentation stage. Requires a recorded medical outcome (passed or explicitly waived by the buying club) to advance — see [`deal-completion.md`](./deal-completion.md). |
+| `CONFIRMED` | Documentation verified; ready for the transfer to be executed. Completion also requires the transfer window to be open (or a deadline-day grace period to still apply) — see [`deal-completion.md`](./deal-completion.md). |
+| `COMPLETED` | The transfer is finalized — the player's contract moves to the buying club, built from the terms the player actually consented to (see [`deal-completion.md`](./deal-completion.md)). |
+| `COLLAPSED` | Terminal state — reached only by an explicit `POST /deals/{id}/collapse`, never automatically from a declined personal-terms or commission proposal (a decline resets that proposal for revision instead — see [`agent-representation.md`](./agent-representation.md)). Collapsing a deal at `CONFIRMED` or later requires a recorded reason from non-staff actors. |
 
 > **TODO:** Keep this table in sync with the actual stage machine as it evolves — see [`../../architecture/data-model.md`](../../architecture/data-model.md) for the authoritative technical definition.
 

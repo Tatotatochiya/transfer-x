@@ -820,13 +820,16 @@ export interface TransferActivity {
 export interface TransferWindowResponse {
   id: string;
   name: string;
+  association: string | null;
   opens_at: string;
   closes_at: string;
+  grace_period_hours: number;
   is_open: boolean;
   created_at: string;
 }
 
 export interface TransferWindowStatus {
+  association: string | null;
   enforced: boolean;
   is_open: boolean;
   current_window: TransferWindowResponse | null;
@@ -1008,6 +1011,7 @@ export interface AdminDeal {
   status: DealStatus;
   stage: DealStage;
   created_at: string;
+  updated_at: string;
   completed_at: string | null;
 }
 

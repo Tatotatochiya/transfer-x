@@ -18,6 +18,17 @@ class TransferWindowCreate(BaseModel):
         return self
 
 
+class TransferWindowUpdate(BaseModel):
+    """Admin override of an existing window. All fields optional — only supplied
+    fields are changed. closes_at > opens_at is validated against the resulting
+    window (using whichever of the two wasn't supplied), not this payload alone."""
+    name: str | None = None
+    association: str | None = None
+    opens_at: datetime | None = None
+    closes_at: datetime | None = None
+    grace_period_hours: int | None = None
+
+
 class TransferWindowResponse(BaseModel):
     id: uuid.UUID
     name: str
@@ -32,8 +43,9 @@ class TransferWindowResponse(BaseModel):
 
 
 class TransferWindowStatus(BaseModel):
-    """Lightweight status returned to all clients."""
-    enforced: bool           # True if the window system is active (any window exists)
+    """Lightweight status returned to all clients, scoped to the requested association."""
+    association: str | None = None  # the association this status was resolved for
+    enforced: bool           # True if any window applies to this association
     is_open: bool            # True if currently within a window
     current_window: TransferWindowResponse | None
     next_window: TransferWindowResponse | None

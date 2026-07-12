@@ -1,6 +1,6 @@
 ---
 title: "Backend Architecture"
-last_updated: 2026-07-10
+last_updated: 2026-07-12
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -59,7 +59,7 @@ Each module under `backend/app/` follows a `models.py` / `schemas.py` / `service
 
 ## Background jobs
 
-Scheduled jobs run in-process via APScheduler (see `backend/app/main.py`). Verified against the code 2026-07-07:
+Scheduled jobs run in-process via APScheduler (see `backend/app/main.py`). Verified against the code 2026-07-12:
 
 | Job id | Interval | What it does |
 |---|---|---|
@@ -70,6 +70,9 @@ Scheduled jobs run in-process via APScheduler (see `backend/app/main.py`). Verif
 | `enrichment_sync` | 24 h | External valuation/wage enrichment (no-op while all sources are MANUAL) |
 | `valuation_compute` | 24 h | Recomputes every player's fair-value model valuation (TRA-91); registered after `enrichment_sync` so it runs on fresher stats |
 | `approval_expiry` | 24 h | Expires pending spending approvals past their 24-hour window and notifies requesters |
+| `expire_mandates` | 24 h | Expires agent mandates past their `end_date` |
+| `deal_sla` | 24 h | Flags deals stuck `PENDING_COMPLETION` past their SLA deadline and notifies both clubs |
+| `loan_expiry` | 24 h | Notifies both clubs once a completed loan's `loan_end` has passed (does not itself return the player — see [`../product/workflows/deal-completion.md`](../product/workflows/deal-completion.md)) |
 
 ## Related documents
 

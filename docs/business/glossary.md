@@ -1,6 +1,6 @@
 ---
 title: "Glossary"
-last_updated: 2026-07-03
+last_updated: 2026-07-12
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -44,6 +44,7 @@ Out of scope: pure engineering jargon (framework names, library names) — those
 | **Bid** | An amount placed by a buying club against an auction-type Sale. |
 | **Reserve price** | The minimum amount a seller will accept in an auction; visible only to the seller. |
 | **Order book** | The ranked view of active bids/offers on a Sale. |
+| **Transfer window** | An open/close date range within which clubs may transact, scoped to an **association** (a league/country/federation) or global. A club not covered by any configured window regime for its association is unregulated (open market). |
 | **Fair value (model)** | TransferX's own performance-based estimate of a player's transfer value, with a confidence range. A deterministic formula over season box-score stats (`boxscore-v1`) — an estimate, never an official valuation. Not shown to player accounts. |
 | **Divergence** | How far a reference price (asking price or agreed fee) sits from the model fair value, as a percentage with a band from "Well below model" to "Well above model". Never computed against a hidden reserve price. |
 
@@ -62,9 +63,10 @@ Out of scope: pure engineering jargon (framework names, library names) — those
 | **Deal stage** | Where a Deal currently sits in its lifecycle. See [`../product/workflows/transfer-lifecycle.md`](../product/workflows/transfer-lifecycle.md) for the full stage list. |
 | **Agent negotiation** | The stage where a mandated agent negotiates commission (with the buying club) and personal terms (with the player) in parallel. |
 | **Personal terms** | The wage, signing bonus, and contract length proposed to the player; requires the player's consent to proceed. |
-| **Medical check** | A staff-recorded pass/fail check on the player, tracked against the deal. |
-| **Sell-on clause** | A percentage of a future resale fee owed back to a previous selling club. |
+| **Medical check** | A pass/fail/waived check on the player, recorded by the **buying club** (or platform staff) against the deal. A failed medical blocks completion; the selling club cannot see the result — special-category personal data. |
+| **Sell-on clause** | A percentage of a future resale fee owed back to a previous selling club. Triggering one creates a `RESALE`-type deal clause recording the obligation. |
 | **Instalment** | A scheduled partial payment of the agreed transfer fee. |
+| **Fee disclosure** | A per-deal choice (`fee_disclosed`) controlling whether the exact agreed fee appears on the public transfer feed, or is withheld. |
 
 ## Finance
 

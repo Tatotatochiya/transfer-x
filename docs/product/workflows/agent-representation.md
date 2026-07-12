@@ -1,6 +1,6 @@
 ---
 title: "Workflow: Agent Representation"
-last_updated: 2026-07-04
+last_updated: 2026-07-12
 status: Draft
 owner: "TODO — assign a Product Owner"
 ---
@@ -35,7 +35,9 @@ When a deal reaches the `AGENT_NEGOTIATION` stage (see [`transfer-lifecycle.md`]
 
 As of [ADR 0002](../decisions/0002-single-capture-point-for-personal-terms.md), this stage no longer also negotiates personal terms — those are captured once, at `PERSONAL_TERMS`, whether or not an agent is involved. The agent still runs that step too when mandated (proposing terms via `set_personal_terms`), it's just a separate stage rather than a parallel track here.
 
-The club must agree before the deal can advance; declining collapses the deal.
+The club must agree (`club_agreement == AGREED`) before the deal can advance to `PERSONAL_TERMS`.
+
+**Verified 2026-07-12.** The club declining the agent's commission proposal no longer collapses the deal — a real commission negotiation is rounds, not a single yes/no. Declining resets `club_agreement` and notifies the agent to revise their terms; the negotiation stays `IN_PROGRESS` and the agent can submit a new proposal (which itself resets the club's response to pending if it had previously declined). The deal only collapses on an explicit `POST /deals/{id}/collapse` by either party. The same principle applies on the player side at `PERSONAL_TERMS` — see [`deal-completion.md`](./deal-completion.md).
 
 > **TODO:** Describe the negotiation journey in more detail — what each party sees, how messages/counter-proposals work.
 

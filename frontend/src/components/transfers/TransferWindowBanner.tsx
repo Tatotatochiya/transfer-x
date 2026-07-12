@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { TransferWindowStatus } from "../../types/api";
+import { useAuth } from "../../hooks/useAuth";
+import type { Club, TransferWindowStatus } from "../../types/api";
 import { formatDate } from "../../lib/utils";
 import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 
@@ -12,9 +13,24 @@ function WindowCountdown({ closesAt }: { closesAt: string }) {
 }
 
 export default function TransferWindowBanner() {
+  const { isAuthenticated, isClub } = useAuth();
+
+  // Same association resolution as the top-bar countdown, so the two never
+  // disagree about whether the window is open for this club.
+  const { data: club } = useQuery<Club>({
+    queryKey: ["clubs", "me"],
+    queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
+    enabled: isAuthenticated && isClub,
+    staleTime: 60_000,
+  });
+  const association = club?.country ?? null;
+
   const { data: windowStatus } = useQuery<TransferWindowStatus>({
-    queryKey: ["transfer-window", "status"],
-    queryFn: () => api.get<TransferWindowStatus>("/transfers/window/status").then((r) => r.data),
+    queryKey: ["transfer-window", "status", association],
+    queryFn: () =>
+      api
+        .get<TransferWindowStatus>("/transfers/window/status", { params: { association: association ?? undefined } })
+        .then((r) => r.data),
     staleTime: 60_000,
     refetchInterval: 60_000,
   });

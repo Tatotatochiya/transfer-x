@@ -12,34 +12,8 @@ import Spinner from "../../components/ui/Spinner";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
+import { STAFF_ROLE_INFO as ROLE_INFO, STAFF_ROLE_ORDER as ROLE_ORDER } from "../../lib/badges";
 import { getApiError, formatDateTime } from "../../lib/utils";
-
-// Plain-language capability descriptions, straight from the D1 matrix — shown
-// beside the role picker so an owner knows exactly what they're granting.
-const ROLE_INFO: Record<StaffRole, { label: string; description: string; badge: "info" | "success" | "warning" | "neutral" }> = {
-  SPORTING_DIRECTOR: {
-    label: "Sporting Director",
-    description: "Full deal authority: market, deals, club profile, and deciding spending approvals. Cannot manage the team itself.",
-    badge: "success",
-  },
-  MANAGER: {
-    label: "Manager",
-    description: "Runs the market and deals day to day: listings, bids, offers, deal-room actions. Large spends can require approval.",
-    badge: "info",
-  },
-  SCOUT: {
-    label: "Scout",
-    description: "Scouting only: shortlists, player interest, and market views. Cannot bid, offer, or touch deals.",
-    badge: "warning",
-  },
-  READONLY: {
-    label: "Read-only",
-    description: "Sees everything the club sees — squad, finance, listings, deals — and can change nothing.",
-    badge: "neutral",
-  },
-};
-
-const ROLE_ORDER: StaffRole[] = ["SPORTING_DIRECTOR", "MANAGER", "SCOUT", "READONLY"];
 
 export default function TeamPage() {
   const navigate = useNavigate();

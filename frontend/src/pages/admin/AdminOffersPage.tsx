@@ -7,6 +7,7 @@ import Badge from "../../components/ui/Badge";
 import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
+import { useConfirmWithReason } from "../../context/ConfirmContext";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
 import type { OfferStatus } from "../../types/enums";
 
@@ -26,6 +27,7 @@ const TERMINAL = new Set(["ACCEPTED", "REJECTED", "WITHDRAWN", "EXPIRED"]);
 export default function AdminOffersPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const confirmWithReason = useConfirmWithReason();
   const [status, setStatus] = useState("");
   const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page,   setPage]   = useState(1);
@@ -51,10 +53,19 @@ export default function AdminOffersPage() {
   }
 
   const withdrawMutation = useMutation({
-    mutationFn: (offerId: string) =>
-      api.post(`/admin/offers/${offerId}/force-withdraw`).then((r) => r.data),
+    mutationFn: ({ offerId, reason }: { offerId: string; reason: string }) =>
+      api.post(`/admin/offers/${offerId}/force-withdraw`, { reason }).then((r) => r.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "offers"] }),
   });
+
+  async function handleForceWithdraw(offerId: string) {
+    const { confirmed, reason } = await confirmWithReason({
+      title: "Force-withdraw offer",
+      message: "This withdraws the offer immediately. The offer's own budget reservation is not automatically released — check the buying club's finances afterward if that matters here.",
+      confirmLabel: "Force withdraw",
+    });
+    if (confirmed) withdrawMutation.mutate({ offerId, reason });
+  }
 
   return (
     <div>
@@ -123,7 +134,7 @@ export default function AdminOffersPage() {
                       {!TERMINAL.has(o.status) && (
                         <button
                           disabled={withdrawMutation.isPending}
-                          onClick={() => withdrawMutation.mutate(o.id)}
+                          onClick={() => handleForceWithdraw(o.id)}
                           className="rounded bg-red-500/10 px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40"
                         >
                           Force withdraw
