@@ -19,9 +19,14 @@ function wsUrl(token: string): string {
   if (BASE_URL) {
     return `${BASE_URL}/ws?token=${token}`;
   }
-  // Derive from current page host (works with the Vite dev proxy too)
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${proto}://${window.location.host}/api/ws?token=${token}`;
+  if (import.meta.env.DEV) {
+    // Vite dev server proxies /api/* (incl. websockets) to the backend.
+    return `${proto}://${window.location.host}/api/ws?token=${token}`;
+  }
+  // Built bundle (Docker's `serve -s dist`) has no proxy — hit the backend
+  // directly on whatever host served this page, same as lib/api.ts.
+  return `${proto}://${window.location.hostname}:8001/ws?token=${token}`;
 }
 
 type WsEvent =

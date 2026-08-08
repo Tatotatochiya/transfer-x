@@ -66,6 +66,21 @@ class Settings(BaseSettings):
     # CORS — accepts JSON array or comma-separated string; empty value uses dev defaults.
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
+    # Also allow the dev frontend when loaded from any private-LAN address
+    # (phone/tablet on the same WiFi hitting the host's IP on :5173), since
+    # that address isn't known ahead of time and can change between sessions.
+    # Set to "" to disable.
+    cors_origin_regex: str | None = (
+        r"^http://(192\.168|10\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1]))\.\d{1,3}\.\d{1,3}:5173$"
+    )
+
+    @field_validator("cors_origin_regex", mode="before")
+    @classmethod
+    def empty_regex_is_none(cls, v: object) -> object:
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: object) -> list[str]:

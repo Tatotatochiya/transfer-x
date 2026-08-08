@@ -2,7 +2,17 @@ import axios from "axios";
 import type { AxiosRequestConfig } from "axios";
 import { useAuthStore } from "../store/auth";
 
-const _baseURL = import.meta.env.VITE_API_BASE_URL ?? "/api";
+// Explicit VITE_API_BASE_URL wins (Railway prod build). Otherwise: the Vite
+// dev server proxies /api/* to the backend (vite.config.ts), but a built
+// production bundle (Docker's `serve -s dist`) has no proxy, so it must hit
+// the backend directly on whatever host served this page — not a baked-in
+// "localhost", which breaks as soon as the page is loaded from another device.
+export const API_BASE_URL: string =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV
+    ? "/api"
+    : `${window.location.protocol}//${window.location.hostname}:8001`);
+const _baseURL = API_BASE_URL;
 console.log("[api] baseURL =", _baseURL);
 
 // No default Content-Type: axios sets application/json for object bodies
@@ -55,7 +65,7 @@ api.interceptors.response.use(
           const { data } = await axios.post<{
             access_token: string;
             refresh_token: string;
-          }>(`${import.meta.env.VITE_API_BASE_URL ?? "/api"}/auth/refresh`, { refresh_token: refreshToken });
+          }>(`${_baseURL}/auth/refresh`, { refresh_token: refreshToken });
 
           useAuthStore
             .getState()

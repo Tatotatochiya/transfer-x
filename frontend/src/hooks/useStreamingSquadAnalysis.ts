@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
+import { API_BASE_URL } from "../lib/api";
 import { useAuthStore } from "../store/auth";
 import type { SquadAnalysisResponse } from "../types/api";
 
@@ -41,8 +42,7 @@ export function useStreamingSquadAnalysis(): UseStreamingSquadAnalysisReturn {
       setResult(null);
       setError(null);
 
-      const base = import.meta.env.VITE_API_BASE_URL ?? "/api";
-      const url = `${base}/ai/squad-analysis/stream${forceRefresh ? "?force_refresh=true" : ""}`;
+      const url = `${API_BASE_URL}/ai/squad-analysis/stream${forceRefresh ? "?force_refresh=true" : ""}`;
 
       try {
         const response = await fetch(url, {

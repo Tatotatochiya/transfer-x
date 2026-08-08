@@ -38,9 +38,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: http://localhost:8001
-        VITE_WS_URL: ws://localhost:8001
+      # No VITE_API_BASE_URL/VITE_WS_URL here: leaving them unset lets the
+      # built bundle derive the backend host from whichever address the
+      # browser used to load the page (see frontend/src/lib/api.ts), so it
+      # works from other devices on the LAN, not just this machine.
     ports:
       - "5173:3000"
     depends_on:

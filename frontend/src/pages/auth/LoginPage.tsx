@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { useAuth } from "../../hooks/useAuth";
 import Button from "../../components/ui/Button";
 import Icon from "../../components/layout/Icon";
@@ -25,7 +26,11 @@ export default function LoginPage() {
       navigate(dest, { replace: true });
     } catch (err) {
       console.error("Login error:", err);
-      setError("Invalid email or password.");
+      if (axios.isAxiosError(err) && !err.response) {
+        setError("Can't reach the server. Check your connection and try again.");
+      } else {
+        setError("Invalid email or password.");
+      }
     } finally {
       setLoading(false);
     }
