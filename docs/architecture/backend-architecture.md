@@ -1,6 +1,6 @@
 ---
 title: "Backend Architecture"
-last_updated: 2026-07-10
+last_updated: 2026-08-08
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -41,8 +41,8 @@ Each module under `backend/app/` follows a `models.py` / `schemas.py` / `service
 | `notifications` | In-app + email notifications, preferences |
 | `audit` | Append-only audit log |
 | `scouting` | Shortlists, player interest |
-| `stats` | Player statistics and form |
-| `vendor` | External stats provider (API-Football) client and sync |
+| `stats` | Player statistics and form; also owns `VendorSyncState`/`VendorSyncRun` (current state + full per-run history of every vendor sync operation) |
+| `vendor` | External stats provider (API-Football) client and sync — manual/admin-triggered only via `/admin/vendor` (`sync_league`/`sync_team`/`sync_player`/`compute_form`); no scheduled job runs it |
 | `enrichment` | Valuation/wage enrichment provider adapters |
 | `valuation` | Fair-value model (TRA-91): pure scoring engine + `FeatureProvider` seam, append-only `PlayerValuation` history, daily recompute job |
 | `fixtures` | Fixture cache |
@@ -59,7 +59,7 @@ Each module under `backend/app/` follows a `models.py` / `schemas.py` / `service
 
 ## Background jobs
 
-Scheduled jobs run in-process via APScheduler (see `backend/app/main.py`). Verified against the code 2026-07-07:
+Scheduled jobs run in-process via APScheduler (see `backend/app/main.py`). Verified against the code 2026-08-08 — two jobs (`expire_mandates`, `deal_sla`) were missing from this table despite being registered; re-grepped the full `add_job` list directly rather than trusting the previous version of this table:
 
 | Job id | Interval | What it does |
 |---|---|---|
@@ -67,9 +67,13 @@ Scheduled jobs run in-process via APScheduler (see `backend/app/main.py`). Verif
 | `expire_stale_offers` | 5 min | Expires offers past their validity window |
 | `notify_upcoming_events` | 1 h | Reminder notifications for upcoming events |
 | `client_alerts` | 6 h | Agent client-roster alerts (contract expiry, valuation change, interest) |
-| `enrichment_sync` | 24 h | External valuation/wage enrichment (no-op while all sources are MANUAL) |
+| `enrichment_sync` | 24 h | External valuation/wage enrichment (no-op while all sources are MANUAL) — distinct from the `vendor` module's player-stats sync, which has no scheduled job at all |
 | `valuation_compute` | 24 h | Recomputes every player's fair-value model valuation (TRA-91); registered after `enrichment_sync` so it runs on fresher stats |
 | `approval_expiry` | 24 h | Expires pending spending approvals past their 24-hour window and notifies requesters |
+| `expire_mandates` | 24 h | Expires agent mandates past their validity period |
+| `deal_sla` | 24 h | Enforces each deal's `sla_deadline` |
+
+> **TODO:** The last two rows' exact behaviour (e.g. whether `deal_sla` collapses the deal outright or just flags/notifies) hasn't been independently verified against the code — confirm before relying on the specifics.
 
 ## Related documents
 

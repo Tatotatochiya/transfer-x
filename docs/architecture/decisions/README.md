@@ -1,6 +1,6 @@
 ---
 title: "Architecture Decision Records"
-last_updated: 2026-07-03
+last_updated: 2026-08-08
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -17,11 +17,11 @@ In scope: system-design decisions (e.g. choice of database, a module boundary, a
 
 ## Table of Contents
 
-No ADRs have been recorded yet.
+- [0001 — Vendor-sourced data never overrides an active TransferX contract](./0001-vendor-data-never-overrides-transferx-contract.md)
 
-> **TODO:** When the first significant architectural decision is made (or retroactively, for a past one worth capturing), add it here as `NNNN-short-title.md` using a short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
+> **TODO:** Add further decisions here as `NNNN-short-title.md`, following the short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
 >
-> Good candidates for a first retroactive ADR: the deal-stage machine design (why `AGENT_NEGOTIATION` sits where it does), or the choice to model club finance as reserved/committed/spent rather than a simpler balance.
+> Other good candidates for a retroactive ADR: the deal-stage machine design (why `AGENT_NEGOTIATION` sits where it does), or the choice to model club finance as reserved/committed/spent rather than a simpler balance.
 
 ## Related Documents
 

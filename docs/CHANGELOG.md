@@ -1,6 +1,6 @@
 ---
 title: "Changelog"
-last_updated: 2026-07-10
+last_updated: 2026-08-08
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -24,7 +24,14 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 
 ## [Unreleased]
 
+### Fixed
+- Vendor player-stats sync (API-Football) was completely broken — every sync attempt, success or failure, crashed on a naive/aware datetime mismatch writing `vendor_sync_states` (`DateTime` columns vs. a timezone-aware `datetime.now(timezone.utc)`), so nothing had ever synced successfully. Stripped to naive UTC before assignment, matching the existing convention in `vendor/sync.py`. (`backend/app/stats/service.py`)
+- Vendor sync could silently overwrite `team_name` for a player currently under an active TransferX contract, even though `current_club_id`/`Contract` — not `team_name` — is what's actually authoritative and what every view already displays. The stale vendor value would only resurface once the contract lapsed. See [ADR 0001](./architecture/decisions/0001-vendor-data-never-overrides-transferx-contract.md). (`backend/app/vendor/sync.py`)
+- A built (Docker `serve -s dist`) frontend bundle silently sent every API request to its own origin instead of the backend — `VITE_API_BASE_URL` resolves to `""` (not `undefined`) when no Docker build-arg is passed, and `??` doesn't treat an empty string as unset. Login looked like it succeeded (`200` from the SPA's own not-found fallback serving `index.html`) but did nothing. Now uses `||`. (`frontend/src/lib/api.ts`)
+
 ### Added
+- **LAN access** — the built frontend now derives its backend API/WebSocket host from the page's own origin instead of a baked-in `localhost`, so it works from other devices on the same network when no `VITE_API_BASE_URL`/`VITE_WS_URL` is set. Backend CORS accepts any private-LAN origin via a regex (`cors_origin_regex`). Login page distinguishes a network failure ("Can't reach the server") from actual bad credentials. (`backend/app/config.py`, `backend/app/main.py`, `frontend/src/lib/api.ts`, `frontend/src/hooks/useWebSocket.ts`, `frontend/src/hooks/useStreamingSquadAnalysis.ts`, `frontend/src/pages/auth/LoginPage.tsx`)
+- **Per-run vendor sync history** — new `vendor_sync_runs` table (migration `0059`) records every `sync_league`/`sync_team`/`sync_player`/`compute_form` invocation individually (params, result counts, success/error, who triggered it, timing), instead of only ever showing the latest current-state row. `compute_form` previously had no error handling or tracking at all — an unhandled failure just 500'd silently. New `GET /vendor/runs`; `AdminVendorPage` gained a Recent Syncs list with a per-run expandable breakdown. (`backend/app/stats/models.py`, `backend/app/stats/schemas.py`, `backend/app/stats/service.py`, `backend/app/vendor/router.py`, `frontend/src/pages/admin/AdminVendorPage.tsx`)
 - **Club team accounts, roles & onboarding** (TRA-151/TRA-146/TRA-152/TRA-86 + approval thresholds + first-run checklists) — a club is now a team, not a login. Per [`feature_spec/club-team-roles-and-onboarding.md`](./feature_spec/club-team-roles-and-onboarding.md), all six phases:
   - **Roles & capabilities (TRA-151):** four staff roles (`SPORTING_DIRECTOR` and `SCOUT` join `MANAGER`/`READONLY`, migration `0049`) with one static capability matrix in `app/clubs/capabilities.py`; every club write route now carries a capability gate (the old two-router `require_club_write_access` is deleted); previously-ungated writes (offer negotiation messages, squad player edits, player/contract creation) found by the implementation-time re-grep are gated too. New `GET /clubs/me/membership` feeds the frontend's `useClubCapabilities` hook — buttons hide (never disable) by capability, and the sidebar identity shows "Staff: Sporting Director" etc.
   - **Staff deal access (TRA-146):** `is_deal_participant` resolves owner-or-staff, so staff of a participant club see their club's deals, deal room, audit log, medical check, and personal terms — shipped deliberately *after* capability gating (D4), pinned by a regression test asserting READONLY staff get 403 on every deal write.

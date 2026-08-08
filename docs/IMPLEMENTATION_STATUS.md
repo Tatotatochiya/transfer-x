@@ -1,6 +1,6 @@
 ---
 title: "Implementation Status"
-last_updated: 2026-07-10
+last_updated: 2026-08-08
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -39,6 +39,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 | Agent Experience — Milestone 3 (manage deals end to end) | Fixed | 2026-07-04 | Several real bugs found by manually driving the flow, not caught by Linear's "shipped" status: an invited agent couldn't open the deal room before their first negotiation write (deadlock); the agent couldn't trigger `AGENT_NEGOTIATION → PERSONAL_TERMS` (club-only bug); a club couldn't advance `PERSONAL_TERMS → PAPERWORK` either (frontend gating bug); `set_personal_terms` accepted any agent, not just the mandated one; agent invitations kept showing for already-collapsed/completed deals. All fixed and regression-tested. |
 | Agent Experience — Milestones 1, 2, 4, 5 | TODO | — | Not independently re-verified this session. |
 | Differentiation & Demo Readiness | TODO | — | |
+| Production & Business Readiness — Vendor sync reliability | Fixed | 2026-08-08 | Vendor player-stats sync (API-Football) was silently broken end-to-end — a naive/aware datetime bug crashed the bookkeeping write on every attempt, so nothing had ever synced successfully. Fixed, plus added per-run history (`vendor_sync_runs`) with full params/result/error breakdown on `/admin/vendor`, and closed a latent bug where sync could overwrite `team_name` for a player under an active TransferX contract (ownership itself — `current_club_id`/`Contract` — was never at risk; see [ADR 0001](./architecture/decisions/0001-vendor-data-never-overrides-transferx-contract.md)). Verified live: all 11 platform-tracked leagues (`world_leagues`) synced for season 2025 — 595 API requests, ~149 new players, ~12k stat snapshots, 0 errors. |
 | Production & Business Readiness | TODO | — | Known accurate as of the last check: no production environment is configured yet (see [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md)). |
 
 > **TODO:** This table is intentionally sparse on first creation rather than guessed at wholesale. Fill in a row properly (with a real verification date) the next time a session does substantive work in that area — don't backfill the rest from memory in one sitting, since that reintroduces the exact "unverified claim" problem this document exists to avoid.

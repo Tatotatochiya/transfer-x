@@ -1,6 +1,6 @@
 ---
 title: "Data Model"
-last_updated: 2026-07-10
+last_updated: 2026-08-08
 status: Draft
 owner: "TODO — assign a Technical Lead"
 ---
@@ -38,6 +38,8 @@ Out of scope: full column-level schema (the migrations under `backend/migrations
 | `Notification` | `notifications` | In-app/email notifications |
 | `AuditEvent` | `audit` | Append-only audit trail |
 | `PlayerValuation` | `valuation` | Append-only fair-value model history (TRA-91); latest = max `computed_at` per player; `inputs_json` snapshots every input so any historical number is explainable |
+| `PlayerStats`, `PlayerStatsSnapshot`, `PlayerForm` | `stats` | Per-league/season stats, raw vendor payload snapshots, and computed form score — all vendor-sourced (API-Football) |
+| `VendorSyncState`, `VendorSyncRun` | `stats` | `VendorSyncState` is one row per vendor holding only the latest sync outcome; `VendorSyncRun` (added 2026-08-08) is the append-only per-invocation history — params, result counts, success/error, who triggered it, timing — for every `sync_league`/`sync_team`/`sync_player`/`compute_form` call |
 
 > **TODO:** This table is a starting point, not exhaustive. Expand it as entities are added, and correct it if any entry above is inaccurate — verify against `backend/app/*/models.py` rather than assuming.
 
