@@ -215,8 +215,9 @@ async def sync_player_stats(
         if fields["position"] and not player.position:
             player.position = fields["position"]
 
-        # Backfill team_name from stats if not yet set
-        if fields.get("team_name") and not player.team_name:
+        # Same rule as the league/team sync path: never overwrite team_name for
+        # a player currently under a TransferX contract.
+        if fields.get("team_name") and player.current_club_id is None:
             player.team_name = fields["team_name"]
 
     await db.flush()
@@ -310,12 +311,17 @@ async def _upsert_player_from_api_data(
         if birth.get("country") and not player.birth_country:
             player.birth_country = birth["country"]
 
-    # Set denormalized team_name from first stat entry that has one
-    for stat_entry in statistics:
-        team = stat_entry.get("team") or {}
-        if team.get("name"):
-            player.team_name = team["name"]
-            break
+    # Set denormalized team_name from first stat entry that has one — but never
+    # for a player currently under a TransferX contract. current_club_id (set
+    # only via an active Contract, see players/service.normalize_player_status)
+    # is authoritative then; overwriting team_name would leave stale vendor
+    # data to silently resurface once the contract lapses.
+    if player.current_club_id is None:
+        for stat_entry in statistics:
+            team = stat_entry.get("team") or {}
+            if team.get("name"):
+                player.team_name = team["name"]
+                break
 
     player_uuid = uuid.UUID(str(player.id))
     snapshots_created = 0
