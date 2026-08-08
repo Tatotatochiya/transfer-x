@@ -63,7 +63,7 @@ async def upsert_player_stats(
         existing.appearances = appearances
         existing.avg_rating = avg_rating
         existing.form_score = form_score
-        existing.updated_at = datetime.now(timezone.utc)
+        existing.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         await db.flush()
         return existing
     else:
@@ -133,7 +133,7 @@ async def upsert_player_form(
         existing.form_score = form_score
         existing.games_considered = games_considered
         existing.key_metrics = key_metrics
-        existing.last_updated = datetime.now(timezone.utc)
+        existing.last_updated = datetime.now(timezone.utc).replace(tzinfo=None)
         await db.flush()
         return existing
     else:
@@ -195,7 +195,7 @@ async def upsert_vendor_sync_state(
 ) -> VendorSyncState:
     result = await db.execute(select(VendorSyncState).where(VendorSyncState.vendor == vendor))
     existing = result.scalar_one_or_none()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)  # naive UTC — matches vendor_sync_states columns
 
     if existing:
         existing.last_sync_at = now
