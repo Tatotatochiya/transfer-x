@@ -7,7 +7,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.stats.models import PlayerForm, PlayerStats, PlayerStatsSnapshot, VendorSyncState
+from app.stats.models import PlayerForm, PlayerStats, PlayerStatsSnapshot, VendorSyncRun, VendorSyncState
 
 
 async def get_player_stats(
@@ -219,3 +219,52 @@ async def upsert_vendor_sync_state(
         db.add(state)
         await db.flush()
         return state
+
+
+async def create_vendor_sync_run(
+    db: AsyncSession,
+    *,
+    vendor: str,
+    operation: str,
+    params: dict | None,
+    success: bool,
+    result: dict | None,
+    error: str | None,
+    triggered_by_user_id: uuid.UUID | None,
+    started_at: datetime,
+    finished_at: datetime,
+) -> VendorSyncRun:
+    run = VendorSyncRun(
+        vendor=vendor,
+        operation=operation,
+        params=params,
+        success=success,
+        result=result,
+        error=error,
+        triggered_by_user_id=triggered_by_user_id,
+        started_at=started_at,
+        finished_at=finished_at,
+        duration_ms=int((finished_at - started_at).total_seconds() * 1000),
+    )
+    db.add(run)
+    await db.flush()
+    return run
+
+
+async def list_vendor_sync_runs(
+    db: AsyncSession, *, vendor: str | None = None, limit: int = 50
+) -> list[VendorSyncRun]:
+    q = select(VendorSyncRun).order_by(VendorSyncRun.started_at.desc()).limit(limit)
+    if vendor:
+        q = q.where(VendorSyncRun.vendor == vendor)
+    result = await db.execute(q)
+    return list(result.scalars())
+
+
+async def resolve_user_emails(db: AsyncSession, user_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """Bulk-resolve user ids to emails, for labeling who triggered a sync run."""
+    if not user_ids:
+        return {}
+    from app.auth.models import User
+    result = await db.execute(select(User.id, User.email).where(User.id.in_(user_ids)))
+    return {row.id: row.email for row in result}

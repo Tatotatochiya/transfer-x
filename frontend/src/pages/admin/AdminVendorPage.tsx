@@ -22,6 +22,21 @@ interface ComputeFormResult {
   players_updated: number;
 }
 
+interface VendorSyncRun {
+  id: string;
+  vendor: string;
+  operation: string;
+  params: Record<string, unknown> | null;
+  success: boolean;
+  result: Record<string, unknown> | null;
+  error: string | null;
+  triggered_by_user_id: string | null;
+  triggered_by_email: string | null;
+  started_at: string;
+  finished_at: string;
+  duration_ms: number;
+}
+
 function ResultBox({ data }: { data: unknown }) {
   return (
     <pre className="mt-3 rounded-lg bg-slate-950 px-4 py-3 text-xs text-emerald-400 overflow-x-auto ring-1 ring-white/[0.06]">
@@ -30,12 +45,65 @@ function ResultBox({ data }: { data: unknown }) {
   );
 }
 
+const OPERATION_LABELS: Record<string, string> = {
+  sync_league: "Sync League",
+  sync_team: "Sync Team",
+  sync_player: "Sync Player",
+  compute_form: "Compute Form",
+};
+
+function formatOperation(op: string): string {
+  return OPERATION_LABELS[op] ?? op;
+}
+
+function formatParams(op: string, params: Record<string, unknown> | null): string {
+  if (!params) return "—";
+  switch (op) {
+    case "sync_league":
+      return `league ${params.league_id}, season ${params.season}`;
+    case "sync_team":
+      return `team ${params.team_id}, season ${params.season}`;
+    case "sync_player":
+      return `player ${String(params.player_id).slice(0, 8)}…, season ${params.season}`;
+    case "compute_form":
+      return params.season ? `season ${params.season}` : "all seasons";
+    default:
+      return "—";
+  }
+}
+
+function formatResult(op: string, result: Record<string, unknown> | null): string {
+  if (!result) return "—";
+  switch (op) {
+    case "sync_league":
+    case "sync_team":
+      return `${result.players_created ?? 0} created, ${result.players_updated ?? 0} updated, ${result.snapshots_created ?? 0} snapshots`;
+    case "sync_player":
+      return `${result.snapshots_created ?? 0} snapshots`;
+    case "compute_form":
+      return `${result.players_updated ?? 0} players updated`;
+    default:
+      return "—";
+  }
+}
+
+function formatDuration(ms: number): string {
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
 export default function AdminVendorPage() {
   // Sync status
   const { data: states, isLoading: statesLoading, refetch: refetchStates } = useQuery<VendorSyncState[]>({
     queryKey: ["vendor", "status"],
     queryFn: () => api.get<VendorSyncState[]>("/vendor/status").then((r) => r.data),
   });
+
+  // Recent sync runs (per-run breakdown)
+  const { data: runs, isLoading: runsLoading, refetch: refetchRuns } = useQuery<VendorSyncRun[]>({
+    queryKey: ["vendor", "runs"],
+    queryFn: () => api.get<VendorSyncRun[]>("/vendor/runs?limit=50").then((r) => r.data),
+  });
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
   // Sync league form
   const [leagueId, setLeagueId]   = useState("39");
@@ -50,6 +118,7 @@ export default function AdminVendorPage() {
       setLeagueResult(data);
       refetchStates();
     },
+    onSettled: () => refetchRuns(),
   });
 
   // Sync team form
@@ -64,6 +133,7 @@ export default function AdminVendorPage() {
       setTeamResult(data);
       refetchStates();
     },
+    onSettled: () => refetchRuns(),
   });
 
   // Compute form
@@ -77,6 +147,7 @@ export default function AdminVendorPage() {
     onSuccess: (data) => {
       setFormResult(data);
     },
+    onSettled: () => refetchRuns(),
   });
 
   return (
@@ -123,6 +194,74 @@ export default function AdminVendorPage() {
                     </p>
                   )}
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Recent sync runs — per-run breakdown */}
+      <Card className="mb-6">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Recent Syncs</p>
+          <button
+            onClick={() => refetchRuns()}
+            className="text-xs text-slate-500 hover:text-white transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
+        {runsLoading ? (
+          <div className="flex justify-center py-4"><Spinner size="sm" /></div>
+        ) : !runs?.length ? (
+          <p className="text-sm text-slate-500">No sync runs yet.</p>
+        ) : (
+          <div className="space-y-1">
+            {runs.map((run) => (
+              <div key={run.id}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedRunId(expandedRunId === run.id ? null : run.id)}
+                  className="w-full flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-800/60 px-3 py-2 text-left hover:bg-slate-800 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`text-xs font-medium ${run.success ? "text-emerald-400" : "text-red-400"}`}>
+                      {run.success ? "OK" : "FAILED"}
+                    </span>
+                    <span className="text-sm font-medium text-white shrink-0">{formatOperation(run.operation)}</span>
+                    <span className="text-xs text-slate-500 truncate">{formatParams(run.operation, run.params)}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 text-right">
+                    <span className="text-xs text-slate-500">{formatResult(run.operation, run.result)}</span>
+                    <span className="text-xs text-slate-600">{formatDuration(run.duration_ms)}</span>
+                    <span className="text-xs text-slate-500">{formatDate(run.started_at)}</span>
+                  </div>
+                </button>
+                {expandedRunId === run.id && (
+                  <div className="ml-3 mt-1 mb-2 rounded-lg bg-slate-950/40 px-4 py-3 ring-1 ring-white/[0.06]">
+                    <p className="text-xs text-slate-500">
+                      Triggered by {run.triggered_by_email ?? "unknown"} · started {formatDate(run.started_at)} · took {formatDuration(run.duration_ms)}
+                    </p>
+                    {run.params && (
+                      <>
+                        <p className="mb-1 mt-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Params</p>
+                        <ResultBox data={run.params} />
+                      </>
+                    )}
+                    {run.result && (
+                      <>
+                        <p className="mb-1 mt-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Result</p>
+                        <ResultBox data={run.result} />
+                      </>
+                    )}
+                    {run.error && (
+                      <>
+                        <p className="mb-1 mt-3 text-xs font-semibold uppercase tracking-wider text-red-400">Error</p>
+                        <p className="whitespace-pre-wrap break-words text-xs text-red-400">{run.error}</p>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

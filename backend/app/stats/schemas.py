@@ -113,3 +113,20 @@ class VendorSyncStateResponse(BaseModel):
     error_count: int
 
     model_config = {"from_attributes": True}
+
+
+class VendorSyncRunResponse(BaseModel):
+    id: uuid.UUID
+    vendor: str
+    operation: str
+    params: dict | None
+    success: bool
+    result: dict | None
+    error: str | None
+    triggered_by_user_id: uuid.UUID | None
+    triggered_by_email: str | None = None
+    started_at: datetime
+    finished_at: datetime
+    duration_ms: int
+
+    model_config = {"from_attributes": True}

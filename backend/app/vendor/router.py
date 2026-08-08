@@ -59,6 +59,29 @@ async def vendor_status(
     return [VendorSyncStateResponse.model_validate(s) for s in states]
 
 
+@router.get("/runs")
+async def list_vendor_runs(
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List recent vendor sync runs (most recent first) — the per-run breakdown behind the summary in /status."""
+    from app.stats import service as stats_service
+    from app.stats.schemas import VendorSyncRunResponse
+
+    runs = await stats_service.list_vendor_sync_runs(db, limit=min(limit, 200))
+    user_ids = {r.triggered_by_user_id for r in runs if r.triggered_by_user_id}
+    email_by_id = await stats_service.resolve_user_emails(db, user_ids)
+
+    responses = []
+    for r in runs:
+        resp = VendorSyncRunResponse.model_validate(r)
+        if r.triggered_by_user_id:
+            resp.triggered_by_email = email_by_id.get(r.triggered_by_user_id)
+        responses.append(resp)
+    return responses
+
+
 @router.post("/sync/league")
 async def sync_league(
     body: SyncLeagueRequest,
@@ -67,6 +90,9 @@ async def sync_league(
 ):
     """Sync all players for a league. Superuser only."""
     client = _get_client()
+    from app.stats import service as stats_service
+    started_at = datetime.now(timezone.utc)
+    params = body.model_dump()
     try:
         result = await sync_service.sync_league(
             db, body.league_id, body.season, client, body.sleep_ms,
@@ -74,16 +100,26 @@ async def sync_league(
         )
         await db.commit()
         # Record success
-        from app.stats import service as stats_service
         async with db.begin_nested():
             await stats_service.upsert_vendor_sync_state(db, VENDOR, success=True)
+            await stats_service.create_vendor_sync_run(
+                db, vendor=VENDOR, operation="sync_league", params=params,
+                success=True, result=result, error=None,
+                triggered_by_user_id=current_user.id,
+                started_at=started_at, finished_at=datetime.now(timezone.utc),
+            )
         await db.commit()
         return result
     except Exception as exc:
         await db.rollback()
-        from app.stats import service as stats_service
         async with db.begin():
             await stats_service.upsert_vendor_sync_state(db, VENDOR, success=False, error=str(exc))
+            await stats_service.create_vendor_sync_run(
+                db, vendor=VENDOR, operation="sync_league", params=params,
+                success=False, result=None, error=str(exc),
+                triggered_by_user_id=current_user.id,
+                started_at=started_at, finished_at=datetime.now(timezone.utc),
+            )
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
 
 
@@ -95,22 +131,35 @@ async def sync_team(
 ):
     """Sync all players for a specific team. Superuser only."""
     client = _get_client()
+    from app.stats import service as stats_service
+    started_at = datetime.now(timezone.utc)
+    params = body.model_dump()
     try:
         result = await sync_service.sync_team(
             db, body.team_id, body.season, client, body.sleep_ms,
             created_by_user_id=current_user.id,
         )
         await db.commit()
-        from app.stats import service as stats_service
         async with db.begin_nested():
             await stats_service.upsert_vendor_sync_state(db, VENDOR, success=True)
+            await stats_service.create_vendor_sync_run(
+                db, vendor=VENDOR, operation="sync_team", params=params,
+                success=True, result=result, error=None,
+                triggered_by_user_id=current_user.id,
+                started_at=started_at, finished_at=datetime.now(timezone.utc),
+            )
         await db.commit()
         return result
     except Exception as exc:
         await db.rollback()
-        from app.stats import service as stats_service
         async with db.begin():
             await stats_service.upsert_vendor_sync_state(db, VENDOR, success=False, error=str(exc))
+            await stats_service.create_vendor_sync_run(
+                db, vendor=VENDOR, operation="sync_team", params=params,
+                success=False, result=None, error=str(exc),
+                triggered_by_user_id=current_user.id,
+                started_at=started_at, finished_at=datetime.now(timezone.utc),
+            )
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
 
 
@@ -123,14 +172,32 @@ async def sync_player(
 ):
     """Sync stats for one player. Requires player to have vendor_id set."""
     client = _get_client()
+    from app.stats import service as stats_service
+    started_at = datetime.now(timezone.utc)
+    params = {"player_id": str(player_id), **body.model_dump()}
     try:
         result = await sync_service.sync_player_stats(db, player_id, body.season, body.league_id, client)
+        await db.commit()
+        async with db.begin_nested():
+            await stats_service.create_vendor_sync_run(
+                db, vendor=VENDOR, operation="sync_player", params=params,
+                success=True, result=result, error=None,
+                triggered_by_user_id=current_user.id,
+                started_at=started_at, finished_at=datetime.now(timezone.utc),
+            )
         await db.commit()
         return result
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception as exc:
         await db.rollback()
+        async with db.begin():
+            await stats_service.create_vendor_sync_run(
+                db, vendor=VENDOR, operation="sync_player", params=params,
+                success=False, result=None, error=str(exc),
+                triggered_by_user_id=current_user.id,
+                started_at=started_at, finished_at=datetime.now(timezone.utc),
+            )
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
 
 
@@ -140,9 +207,32 @@ async def compute_form(
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ):
-    """Compute PlayerForm from existing snapshots. Superuser only."""
-    count = await sync_service.compute_all_form(
-        db, season=body.season, window_games=body.window_games
-    )
-    await db.commit()
-    return {"players_updated": count}
+    """Compute PlayerForm from existing snapshots. Superuser only. No external API calls made."""
+    from app.stats import service as stats_service
+    started_at = datetime.now(timezone.utc)
+    params = body.model_dump()
+    try:
+        count = await sync_service.compute_all_form(
+            db, season=body.season, window_games=body.window_games
+        )
+        result = {"players_updated": count}
+        await db.commit()
+        async with db.begin_nested():
+            await stats_service.create_vendor_sync_run(
+                db, vendor=VENDOR, operation="compute_form", params=params,
+                success=True, result=result, error=None,
+                triggered_by_user_id=current_user.id,
+                started_at=started_at, finished_at=datetime.now(timezone.utc),
+            )
+        await db.commit()
+        return result
+    except Exception as exc:
+        await db.rollback()
+        async with db.begin():
+            await stats_service.create_vendor_sync_run(
+                db, vendor=VENDOR, operation="compute_form", params=params,
+                success=False, result=None, error=str(exc),
+                triggered_by_user_id=current_user.id,
+                started_at=started_at, finished_at=datetime.now(timezone.utc),
+            )
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))

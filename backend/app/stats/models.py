@@ -98,3 +98,21 @@ class VendorSyncState(Base):
     last_success_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     error_count: Mapped[int] = mapped_column(default=0)
+
+
+class VendorSyncRun(Base):
+    """One row per sync operation invocation — the history VendorSyncState (current-state-only) can't show."""
+    __tablename__ = "vendor_sync_runs"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    vendor: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    operation: Mapped[str] = mapped_column(String(50), nullable=False)  # sync_league | sync_team | sync_player | compute_form
+    params: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    success: Mapped[bool] = mapped_column(nullable=False)
+    result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    error: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    triggered_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    duration_ms: Mapped[int] = mapped_column(nullable=False)
