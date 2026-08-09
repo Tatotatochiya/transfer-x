@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; }
+  * { box-sizing: border-box; }
+  a { color: oklch(50% 0.16 259); }
+  a:hover { color: oklch(42% 0.16 259); }
+</style>
+</helmet>
+
+<div style="display:flex;min-height:100vh;background:#f7f8fa;color:#14171f;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:14px;">
+
+  <aside style="width:232px;flex-shrink:0;display:flex;flex-direction:column;background:#ffffff;border-right:1px solid #e4e7ec;position:sticky;top:0;height:100vh;">
+    <div style="height:60px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid #e4e7ec;">
+      <div style="width:28px;height:28px;border-radius:7px;background:oklch(50% 0.16 259);display:flex;align-items:center;justify-content:center;">
+        <svg style="width:16px;height:16px;color:#fff;" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+      </div>
+      <span style="font-size:15px;font-weight:700;">TransferX</span>
+    </div>
+    <nav style="flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:20px;">
+      <sc-for list="{{ navGroups }}" as="group" hint-placeholder-count="4">
+        <div>
+          <p style="margin:0 0 6px;padding:0 10px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#667085;">{{ group.title }}</p>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <sc-for list="{{ group.items }}" as="item" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:8px;padding:8px 10px;background:{{ item.bg }};color:{{ item.color }};font-weight:{{ item.weight }};cursor:pointer;">
+                <span>{{ item.label }}</span>
+                <span style="font-size:11px;font-weight:700;color:{{ item.countColor }};background:{{ item.countBg }};border-radius:9px;padding:{{ item.countPad }};">{{ item.count }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </nav>
+    <div style="padding:12px;border-top:1px solid #e4e7ec;display:flex;align-items:center;gap:10px;">
+      <div style="height:30px;width:30px;border-radius:8px;background:oklch(93% 0.03 259);color:oklch(42% 0.16 259);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">RM</div>
+      <div><p style="margin:0;font-size:13px;font-weight:600;">Meridian FC</p><p style="margin:0;font-size:11px;color:#667085;">Sporting Director</p></div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0;">
+    <div style="max-width:1280px;margin:0 auto;padding:28px 32px 64px;">
+
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
+        <div>
+          <h1 style="margin:0;font-size:24px;font-weight:700;">Dashboard</h1>
+          <p style="margin:3px 0 0;font-size:13px;color:#667085;">Meridian FC · Premier Division · Summer window closes in 18d 06h</p>
+        </div>
+        <span style="font-size:13px;color:#667085;">Updated 2 minutes ago</span>
+      </div>
+
+      <!-- Tier 1: the one loud thing on the board -->
+      <div style="border-radius:12px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,0.06),0 0 0 1px oklch(88% 0.05 25);overflow:hidden;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:9px;padding:12px 20px;background:oklch(97% 0.03 25);border-bottom:1px solid oklch(92% 0.04 25);">
+          <span style="height:8px;width:8px;border-radius:50%;background:oklch(55% 0.18 25);"></span>
+          <p style="margin:0;font-size:13px;font-weight:700;color:oklch(43% 0.17 25);">Waiting on you — {{ waiting.length }}</p>
+          <span style="margin-left:auto;font-size:12px;color:#667085;">Sorted by deadline</span>
+        </div>
+        <sc-for list="{{ waiting }}" as="w" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid #f0f1f3;flex-wrap:wrap;">
+            <div style="flex:1 1 300px;min-width:0;">
+              <p style="margin:0;font-size:15px;font-weight:600;">{{ w.label }}</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#667085;">{{ w.sub }}</p>
+            </div>
+            <div style="flex:0 1 130px;">
+              <p style="margin:0;font-size:11px;color:#667085;">{{ w.amountLabel }}</p>
+              <p style="margin:2px 0 0;font-size:16px;font-weight:700;">{{ w.amount }}</p>
+            </div>
+            <div style="flex:0 1 130px;">
+              <p style="margin:0;font-size:11px;color:#667085;">Deadline</p>
+              <p style="margin:2px 0 0;font-size:14px;font-weight:700;color:{{ w.timeColor }};">{{ w.time }}</p>
+            </div>
+            <button style="border:none;cursor:pointer;white-space:nowrap;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;background:oklch(50% 0.16 259);color:#fff;">{{ w.action }}</button>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Tier 2: the standing figures -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px;">
+        <sc-for list="{{ figures }}" as="f" hint-placeholder-count="4">
+          <div style="border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;padding:16px 20px;">
+            <p style="margin:0;font-size:12px;font-weight:600;color:#667085;">{{ f.label }}</p>
+            <p style="margin:6px 0 0;font-size:28px;font-weight:700;letter-spacing:-0.01em;color:{{ f.color }};">{{ f.value }}</p>
+            <p style="margin:3px 0 0;font-size:12px;color:#667085;">{{ f.note }}</p>
+            <sc-if value="{{ f.pct }}" hint-placeholder-val="{{ 0 }}">
+              <div style="margin-top:10px;height:6px;border-radius:3px;background:#eaecf0;overflow:hidden;">
+                <div style="height:100%;background:{{ f.barColor }};width:{{ f.pct }}%;"></div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Tier 3: the working panels, each row saying whose move it is -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:18px;">
+        <sc-for list="{{ mainPanels }}" as="p" hint-placeholder-count="3">
+          <div style="border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;display:flex;flex-direction:column;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 18px;border-bottom:1px solid #f0f1f3;">
+              <p style="margin:0;font-size:14px;font-weight:700;">{{ p.title }}</p>
+              <span style="font-size:12px;color:oklch(50% 0.16 259);font-weight:600;white-space:nowrap;">View all →</span>
+            </div>
+            <div style="flex:1;padding:6px 18px 14px;">
+              <sc-for list="{{ p.rows }}" as="r" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #f5f6f7;flex-wrap:wrap;">
+                  <div style="flex:1 1 130px;min-width:0;">
+                    <p style="margin:0;font-size:14px;font-weight:600;">{{ r.player }}</p>
+                    <p style="margin:2px 0 0;font-size:12px;color:#667085;">{{ r.sub }}</p>
+                  </div>
+                  <div style="text-align:right;">
+                    <p style="margin:0;font-size:14px;font-weight:700;">{{ r.value }}</p>
+                    <p style="margin:2px 0 0;font-size:12px;font-weight:600;color:{{ r.stateColor }};white-space:nowrap;">{{ r.state }}</p>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Tier 4: reference, deliberately quiet -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:18px;">
+        <sc-for list="{{ quietPanels }}" as="p" hint-placeholder-count="3">
+          <div style="border-radius:12px;background:#fbfbfc;box-shadow:0 0 0 1px #eaecf0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 18px;border-bottom:1px solid #f0f1f3;">
+              <p style="margin:0;font-size:13px;font-weight:600;color:#475467;">{{ p.title }}</p>
+              <span style="font-size:12px;color:#667085;white-space:nowrap;">{{ p.link }}</span>
+            </div>
+            <div style="padding:6px 18px 12px;">
+              <sc-for list="{{ p.rows }}" as="r" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #f5f6f7;">
+                  <div style="min-width:0;">
+                    <p style="margin:0;font-size:13px;color:#344054;">{{ r.left }}</p>
+                    <p style="margin:2px 0 0;font-size:11px;color:#667085;">{{ r.sub }}</p>
+                  </div>
+                  <span style="font-size:13px;font-weight:600;color:{{ r.color }};white-space:nowrap;">{{ r.right }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 18px;border-bottom:1px solid #f0f1f3;">
+          <p style="margin:0;font-size:14px;font-weight:700;">Completed transfers</p>
+          <span style="font-size:12px;color:oklch(50% 0.16 259);font-weight:600;white-space:nowrap;">View all →</span>
+        </div>
+        <div style="padding:8px 18px 14px;overflow-x:auto;">
+          <table style="width:100%;min-width:600px;border-collapse:collapse;font-size:14px;">
+            <thead>
+              <tr style="text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#667085;border-bottom:1px solid #eaecf0;">
+                <th style="padding:10px 0;font-weight:600;">Player</th>
+                <th style="padding:10px 0;font-weight:600;">From</th>
+                <th style="padding:10px 0;font-weight:600;">To</th>
+                <th style="padding:10px 0;font-weight:600;text-align:right;">Fee</th>
+                <th style="padding:10px 0;font-weight:600;text-align:right;">Completed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ completed }}" as="row" hint-placeholder-count="3">
+                <tr style="border-bottom:1px solid #f5f6f7;">
+                  <td style="padding:12px 0;font-weight:600;">{{ row.player }} <span style="font-size:11px;font-weight:500;color:#667085;margin-left:6px;">{{ row.pos }}</span></td>
+                  <td style="padding:12px 0;color:#667085;font-size:13px;">{{ row.from }}</td>
+                  <td style="padding:12px 0;color:#667085;font-size:13px;">{{ row.to }}</td>
+                  <td style="padding:12px 0;text-align:right;font-weight:700;">{{ row.fee }}</td>
+                  <td style="padding:12px 0;text-align:right;color:#667085;font-size:13px;">{{ row.date }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const NAV = [
+  { title: "Market", items: [
+    { label: "Browse Players", count: "" },
+    { label: "Listings", count: "" },
+    { label: "Transfers", count: "" },
+  ]},
+  { title: "My Deals", items: [
+    { label: "Auctions", count: "5" },
+    { label: "Inbox", count: "2", alert: true },
+    { label: "Sent Offers", count: "2" },
+    { label: "Deals", count: "2" },
+  ]},
+  { title: "Club", items: [
+    { label: "Dashboard", count: "", active: true },
+    { label: "My Club", count: "" },
+    { label: "Finance", count: "" },
+    { label: "Approvals", count: "1", alert: true },
+  ]},
+  { title: "Scouting", items: [
+    { label: "Shortlists", count: "2" },
+  ]},
+];
+
+const WAITING = [
+  {
+    label: "Counter-offer — Marcus Webb", sub: "Ashfield United countered your £5.0M ask. Your valuation is £4.8M.",
+    amountLabel: "Their offer", amount: "£4.2M", time: "6 hours", timeColor: "oklch(48% 0.18 25)", action: "Respond",
+  },
+  {
+    label: "Ready to execute — Yannick Sorel", sub: "Medical passed, commission settled. Only your signature remains.",
+    amountLabel: "Agreed fee", amount: "£6.5M", time: "Waiting 2 days", timeColor: "oklch(45% 0.14 150)", action: "Sign",
+  },
+  {
+    label: "Offer received — Dario Kastanos", sub: "Northgate Rovers, below your £2.4M asking price.",
+    amountLabel: "Their offer", amount: "£1.8M", time: "72 hours", timeColor: "#475467", action: "Review",
+  },
+];
+
+const FIGURES = [
+  { label: "Transfer budget free", value: "£12.4M", note: "£8.4M committed of £40M", color: "#14171f", barColor: "oklch(50% 0.16 150)", pct: 31 },
+  { label: "Wage room / week", value: "£95K", note: "15% of £620K ceiling", color: "#14171f", barColor: "oklch(50% 0.16 259)", pct: 15 },
+  { label: "Window closes in", value: "18d 06h", note: "27 Aug, 23:00", color: "#14171f", pct: 0 },
+  { label: "Squad", value: "23", note: "3 gaps · 2 contracts expiring", color: "#14171f", pct: 0 },
+];
+
+const MAIN_PANELS = [
+  {
+    title: "My open listings",
+    rows: [
+      { player: "Yannick Sorel", sub: "Auction · 4 bids · reserve met", value: "£5.6M", state: "Your move", stateColor: "oklch(48% 0.18 25)" },
+      { player: "Theo Marsh", sub: "Fixed price · no bids", value: "£3.2M", state: "9 days listed", stateColor: "#667085" },
+      { player: "Owen Castillo", sub: "Open to offers · 42 days of contract", value: "£1.8M", state: "No interest yet", stateColor: "#667085" },
+    ],
+  },
+  {
+    title: "Active offers",
+    rows: [
+      { player: "Marcus Webb", sub: "Ashfield United countered", value: "£4.2M", state: "Your move", stateColor: "oklch(48% 0.18 25)" },
+      { player: "Dario Kastanos", sub: "Northgate Rovers offered", value: "£1.8M", state: "Your move", stateColor: "oklch(48% 0.18 25)" },
+      { player: "Elian Vos", sub: "You offered Castlebrook", value: "£4.9M", state: "Their move", stateColor: "#475467" },
+    ],
+  },
+  {
+    title: "Active deals",
+    rows: [
+      { player: "Yannick Sorel", sub: "Confirmed — signature stage", value: "£6.5M", state: "Your move", stateColor: "oklch(48% 0.18 25)" },
+      { player: "Adrian Kofi", sub: "Agent negotiation — 4 days idle", value: "£8.1M", state: "Their move", stateColor: "#475467" },
+      { player: "Bram Wouters", sub: "Paperwork — documents due Thu", value: "£5.4M", state: "Their move", stateColor: "#475467" },
+    ],
+  },
+];
+
+const QUIET_PANELS = [
+  {
+    title: "Squad needs", link: "Browse market",
+    rows: [
+      { left: "Forwards", sub: "1 of 3 minimum", right: "Need 2", color: "oklch(45% 0.16 25)" },
+      { left: "Goalkeepers", sub: "1 of 2 minimum", right: "Need 1", color: "oklch(45% 0.13 80)" },
+    ],
+  },
+  {
+    title: "Shortlist on market", link: "View shortlists",
+    rows: [
+      { left: "Elian Vos", sub: "Wingers 2026 · listed", right: "£4.9M", color: "#475467" },
+      { left: "Rasmus Ege", sub: "Backup GK · auction", right: "£2.1M", color: "#475467" },
+    ],
+  },
+  {
+    title: "Expiring contracts", link: "View squad",
+    rows: [
+      { left: "Owen Castillo", sub: "DEF · ends 20 Sep 2026", right: "42 days", color: "oklch(45% 0.16 25)" },
+      { left: "Nils Bergstrom", sub: "MID · ends 5 Nov 2026", right: "98 days", color: "oklch(45% 0.13 80)" },
+    ],
+  },
+];
+
+const COMPLETED = [
+  { player: "Ismael Toure", pos: "FWD", from: "Meridian FC", to: "Castlebrook", fee: "£11.2M", date: "3 Aug 2026" },
+  { player: "Petar Ilic", pos: "MID", from: "Northgate Rovers", to: "Meridian FC", fee: "£4.6M", date: "28 Jul 2026" },
+  { player: "Sam Farrow", pos: "DEF", from: "Meridian FC", to: "Ashfield United", fee: "£2.9M", date: "15 Jul 2026" },
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      navGroups: NAV.map((g) => ({
+        title: g.title,
+        items: g.items.map((i) => ({
+          label: i.label,
+          count: i.count,
+          bg: i.active ? "oklch(96% 0.02 259)" : "transparent",
+          color: i.active ? "oklch(45% 0.16 259)" : "#475467",
+          weight: i.active ? "600" : "500",
+          countBg: !i.count ? "transparent" : i.alert ? "oklch(94% 0.06 25)" : "#f0f1f3",
+          countColor: i.alert ? "oklch(45% 0.17 25)" : "#667085",
+          countPad: i.count ? "1px 7px" : "0",
+        })),
+      })),
+      waiting: WAITING,
+      figures: FIGURES,
+      mainPanels: MAIN_PANELS,
+      quietPanels: QUIET_PANELS,
+      completed: COMPLETED,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

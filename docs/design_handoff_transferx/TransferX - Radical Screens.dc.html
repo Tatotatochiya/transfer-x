@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #eceef2; }
+  * { box-sizing: border-box; }
+  a { color: oklch(50% 0.16 259); }
+  a:hover { color: oklch(42% 0.16 259); }
+</style>
+</helmet>
+
+<div style="min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#14171f;font-size:14px;">
+
+  <div style="position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;padding:12px 28px;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-bottom:1px solid #e0e3e9;">
+    <span style="font-size:13px;font-weight:700;">Radical direction</span>
+    <div style="display:flex;gap:4px;background:#e9ebef;border-radius:10px;padding:3px;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+        <button onClick="{{ t.select }}" style="border:none;cursor:pointer;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;background:{{ t.bg }};color:{{ t.color }};">{{ t.label }}</button>
+      </sc-for>
+    </div>
+    <span style="font-size:12px;color:#667085;">{{ caption }}</span>
+  </div>
+
+  <!-- ── PHONE ─────────────────────────────────────────────────────────── -->
+  <sc-if value="{{ isPhone }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;justify-content:center;gap:40px;padding:40px 28px 64px;flex-wrap:wrap;">
+
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="393px,852px">
+        <div style="height:100%;overflow-y:auto;background:#f4f5f7;">
+          <div style="background:#14171f;color:#fff;padding:66px 18px 16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <p style="margin:0;font-size:15px;font-weight:700;">Meridian FC</p>
+                <p style="margin:1px 0 0;font-size:12px;color:#8b93a5;">Sporting Director</p>
+              </div>
+              <div style="text-align:right;">
+                <p style="margin:0;font-size:11px;color:#8b93a5;">Window closes</p>
+                <p style="margin:1px 0 0;font-size:17px;font-weight:700;">18d 06h</p>
+              </div>
+            </div>
+            <div style="margin-top:14px;display:flex;gap:10px;">
+              <div style="flex:1;background:rgba(255,255,255,0.07);border-radius:10px;padding:10px 12px;">
+                <p style="margin:0;font-size:11px;color:#8b93a5;">Budget free</p>
+                <p style="margin:3px 0 0;font-size:19px;font-weight:700;color:oklch(80% 0.13 150);">£12.4M</p>
+              </div>
+              <div style="flex:1;background:rgba(255,255,255,0.07);border-radius:10px;padding:10px 12px;">
+                <p style="margin:0;font-size:11px;color:#8b93a5;">Wage room</p>
+                <p style="margin:3px 0 0;font-size:19px;font-weight:700;">£95K</p>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:18px 16px 90px;">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;">
+              <h1 style="margin:0;font-size:19px;font-weight:700;">Your decisions</h1>
+              <span style="font-size:12px;color:#667085;">3 open</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <sc-for list="{{ phoneDecisions }}" as="d" hint-placeholder-count="3">
+                <div style="background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,0.06),0 0 0 1px #e4e7ec;overflow:hidden;">
+                  <div style="height:4px;background:{{ d.accent }};"></div>
+                  <div style="padding:14px 16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:{{ d.accent }};">{{ d.kind }}</span>
+                      <span style="font-size:12px;font-weight:600;color:{{ d.timeColor }};">{{ d.time }}</span>
+                    </div>
+                    <p style="margin:0;font-size:17px;font-weight:700;line-height:1.3;">{{ d.headline }}</p>
+                    <div style="margin:12px 0;display:flex;gap:16px;padding:10px 0;border-top:1px solid #f0f1f3;border-bottom:1px solid #f0f1f3;">
+                      <sc-for list="{{ d.facts }}" as="f" hint-placeholder-count="3">
+                        <div>
+                          <p style="margin:0;font-size:11px;color:#98a2b3;">{{ f.label }}</p>
+                          <p style="margin:2px 0 0;font-size:15px;font-weight:700;color:{{ f.color }};">{{ f.value }}</p>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                      <button style="border:none;cursor:pointer;width:100%;min-height:46px;border-radius:10px;font-size:15px;font-weight:600;background:{{ d.accent }};color:#fff;">{{ d.primary }}</button>
+                      <button style="cursor:pointer;width:100%;min-height:46px;border-radius:10px;font-size:15px;font-weight:600;background:#fff;color:#344054;border:1px solid #d0d5dd;">{{ d.secondary }}</button>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <h2 style="margin:26px 0 10px;font-size:16px;font-weight:700;">Everything in motion</h2>
+            <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;overflow:hidden;">
+              <sc-for list="{{ phoneActivity }}" as="a" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;border-bottom:1px solid #f5f6f7;">
+                  <div style="min-width:0;">
+                    <p style="margin:0;font-size:14px;font-weight:600;">{{ a.player }}</p>
+                    <p style="margin:2px 0 0;font-size:12px;color:#667085;">{{ a.type }} · {{ a.counterparty }}</p>
+                  </div>
+                  <div style="text-align:right;flex-shrink:0;">
+                    <p style="margin:0;font-size:14px;font-weight:700;">{{ a.value }}</p>
+                    <p style="margin:2px 0 0;font-size:11px;color:{{ a.nextColor }};">{{ a.next }}</p>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="position:sticky;bottom:0;display:flex;background:rgba(255,255,255,0.94);backdrop-filter:blur(10px);border-top:1px solid #e0e3e9;padding:8px 6px 4px;">
+            <sc-for list="{{ phoneTabs }}" as="t" hint-placeholder-count="5">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;min-height:48px;">
+                <svg style="width:20px;height:20px;color:{{ t.color }};" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ t.iconPath }}"></path></svg>
+                <span style="font-size:10px;font-weight:600;color:{{ t.color }};">{{ t.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </x-import>
+
+      <div style="max-width:300px;padding-top:20px;">
+        <p style="margin:0 0 10px;font-size:15px;font-weight:700;">What changes on a phone</p>
+        <p style="margin:0 0 12px;font-size:13px;line-height:1.55;color:#475467;">The queue is the whole screen. Everything in the desktop right rail — squad gaps, expiring contracts, shortlist hits — drops off the home screen entirely; it is reference material, not something a director acts on from a car park.</p>
+        <p style="margin:0 0 12px;font-size:13px;line-height:1.55;color:#475467;">Each decision keeps two numbers, not four, and the actions become full-width 46px buttons. The status band shrinks to the two figures that gate every decision: money free and time left.</p>
+        <p style="margin:0;font-size:13px;line-height:1.55;color:#475467;">The current app has no mobile view beyond a hamburger menu over the same nine panels, which on a phone becomes a very long scroll of small cards.</p>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ── SQUAD ─────────────────────────────────────────────────────────── -->
+  <sc-if value="{{ isSquad }}" hint-placeholder-val="{{ false }}">
+    <div style="background:#f4f5f7;min-height:100vh;">
+      <div style="background:#14171f;color:#fff;padding:0 36px;">
+        <div style="max-width:1300px;margin:0 auto;display:flex;align-items:center;gap:28px;padding:24px 0;">
+          <div style="width:64px;height:64px;border-radius:14px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;">M</div>
+          <div style="flex:1;min-width:0;">
+            <h1 style="margin:0;font-size:24px;font-weight:700;letter-spacing:-0.01em;">Meridian FC</h1>
+            <p style="margin:3px 0 0;font-size:13px;color:#8b93a5;">Premier Division · 23 players · wage bill £525K/wk</p>
+          </div>
+          <div style="display:flex;gap:0;">
+            <sc-for list="{{ squadHeadline }}" as="s" hint-placeholder-count="4">
+              <div style="padding:0 24px;border-left:1px solid rgba(255,255,255,0.1);">
+                <p style="margin:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#8b93a5;">{{ s.label }}</p>
+                <p style="margin:5px 0 0;font-size:24px;font-weight:700;color:{{ s.color }};">{{ s.value }}</p>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="max-width:1300px;margin:0 auto;padding:24px 36px 64px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,300px);gap:24px;align-items:start;">
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:12px;">
+            <div style="display:flex;gap:8px;">
+              <sc-for list="{{ squadFilters }}" as="f" hint-placeholder-count="5">
+                <button style="cursor:pointer;white-space:nowrap;border-radius:20px;padding:7px 15px;font-size:13px;font-weight:600;background:{{ f.bg }};color:{{ f.color }};border:1px solid {{ f.border }};">{{ f.label }}</button>
+              </sc-for>
+            </div>
+            <span style="font-size:13px;color:#667085;">Sorted by contract risk</span>
+          </div>
+
+          <sc-for list="{{ squadGroups }}" as="grp" hint-placeholder-count="3">
+            <div style="margin-bottom:22px;">
+              <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;">
+                <h2 style="margin:0;font-size:15px;font-weight:700;">{{ grp.label }}</h2>
+                <span style="font-size:13px;color:{{ grp.statusColor }};font-weight:600;">{{ grp.status }}</span>
+              </div>
+              <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;overflow:hidden;">
+                <sc-for list="{{ grp.players }}" as="p" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:18px;padding:14px 20px;border-bottom:1px solid #f5f6f7;flex-wrap:wrap;">
+                    <div style="width:38px;height:38px;border-radius:50%;background:{{ p.avatarBg }};color:{{ p.avatarColor }};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;">{{ p.initials }}</div>
+                    <div style="flex:1 1 170px;min-width:0;">
+                      <p style="margin:0;font-size:15px;font-weight:600;">{{ p.name }}</p>
+                      <p style="margin:2px 0 0;font-size:12px;color:#667085;">{{ p.age }} · {{ p.nationality }}</p>
+                    </div>
+                    <div style="flex:0 1 120px;">
+                      <p style="margin:0;font-size:11px;color:#98a2b3;">Contract ends</p>
+                      <p style="margin:2px 0 0;font-size:14px;font-weight:600;color:{{ p.contractColor }};">{{ p.contractEnd }}</p>
+                    </div>
+                    <div style="flex:0 1 90px;">
+                      <p style="margin:0;font-size:11px;color:#98a2b3;">Wage / wk</p>
+                      <p style="margin:2px 0 0;font-size:14px;font-weight:600;">{{ p.wage }}</p>
+                    </div>
+                    <div style="flex:1 1 190px;min-width:150px;">
+                      <div style="display:flex;align-items:baseline;justify-content:space-between;">
+                        <span style="font-size:11px;color:#98a2b3;">Market vs your valuation</span>
+                        <span style="font-size:12px;font-weight:700;color:{{ p.gapColor }};">{{ p.gap }}</span>
+                      </div>
+                      <div style="margin-top:6px;height:6px;border-radius:3px;background:#eaecf0;overflow:hidden;display:flex;">
+                        <div style="height:100%;background:#14171f;width:{{ p.marketPct }}%;"></div>
+                        <div style="height:100%;background:{{ p.gapColor }};width:{{ p.gapPct }}%;"></div>
+                      </div>
+                      <p style="margin:5px 0 0;font-size:12px;color:#667085;">{{ p.market }} market · {{ p.valuation }} yours</p>
+                    </div>
+                    <div style="flex:0 1 110px;text-align:right;">
+                      <span style="font-size:12px;font-weight:600;color:{{ p.flagColor }};white-space:nowrap;">{{ p.flag }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px;position:sticky;top:24px;">
+          <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:18px 20px;">
+            <p style="margin:0 0 4px;font-size:13px;font-weight:700;">Contract cliff</p>
+            <p style="margin:0 0 14px;font-size:12px;color:#98a2b3;">Value you lose if you do nothing</p>
+            <sc-for list="{{ contractCliff }}" as="c" hint-placeholder-count="3">
+              <div style="padding:10px 0;border-top:1px solid #f5f6f7;display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                  <p style="margin:0;font-size:14px;">{{ c.window }}</p>
+                  <p style="margin:2px 0 0;font-size:11px;color:#98a2b3;">{{ c.players }}</p>
+                </div>
+                <span style="font-size:15px;font-weight:700;color:{{ c.color }};">{{ c.value }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:18px 20px;">
+            <p style="margin:0 0 14px;font-size:13px;font-weight:700;">Wage bill by position</p>
+            <sc-for list="{{ wageSplit }}" as="w" hint-placeholder-count="4">
+              <div style="margin-bottom:12px;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;font-size:13px;margin-bottom:5px;">
+                  <span style="color:#344054;">{{ w.label }}</span>
+                  <span style="font-weight:600;">{{ w.value }}</span>
+                </div>
+                <div style="height:6px;border-radius:3px;background:#eaecf0;overflow:hidden;">
+                  <div style="height:100%;background:#14171f;width:{{ w.pct }}%;"></div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:18px 20px;">
+            <p style="margin:0 0 14px;font-size:13px;font-weight:700;">Age profile</p>
+            <sc-for list="{{ ageProfile }}" as="a" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">
+                <span style="width:56px;font-size:12px;color:#667085;">{{ a.band }}</span>
+                <div style="flex:1;height:16px;border-radius:4px;background:#f0f1f3;overflow:hidden;">
+                  <div style="height:100%;background:{{ a.color }};width:{{ a.pct }}%;"></div>
+                </div>
+                <span style="width:20px;text-align:right;font-size:13px;font-weight:600;">{{ a.count }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ── BROWSE PLAYERS ────────────────────────────────────────────────── -->
+  <sc-if value="{{ isBrowse }}" hint-placeholder-val="{{ false }}">
+    <div style="background:#f4f5f7;min-height:100vh;">
+      <div style="background:#14171f;color:#fff;padding:0 36px;">
+        <div style="max-width:1400px;margin:0 auto;padding:22px 0;display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:280px;">
+            <h1 style="margin:0;font-size:22px;font-weight:700;">Find a forward under £5M</h1>
+            <p style="margin:4px 0 0;font-size:13px;color:#8b93a5;">Search view: <span style="color:#fff;font-weight:600;">Summer targets — FWD</span> · 34 matches · budget allows 2 signings</p>
+          </div>
+          <div style="display:flex;gap:0;">
+            <sc-for list="{{ browseHeadline }}" as="b" hint-placeholder-count="3">
+              <div style="padding:0 22px;border-left:1px solid rgba(255,255,255,0.1);">
+                <p style="margin:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#8b93a5;">{{ b.label }}</p>
+                <p style="margin:5px 0 0;font-size:22px;font-weight:700;color:{{ b.color }};">{{ b.value }}</p>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="max-width:1400px;margin:0 auto;padding:24px 36px 100px;display:grid;grid-template-columns:minmax(0,250px) minmax(0,1fr);gap:24px;align-items:start;">
+
+        <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:18px 20px;position:sticky;top:24px;">
+          <p style="margin:0 0 14px;font-size:13px;font-weight:700;">Filters</p>
+          <sc-for list="{{ filterFields }}" as="f" hint-placeholder-count="5">
+            <div style="margin-bottom:14px;">
+              <p style="margin:0 0 5px;font-size:12px;font-weight:600;color:#475467;">{{ f.label }}</p>
+              <div style="border:1px solid #d0d5dd;border-radius:8px;padding:9px 11px;font-size:14px;color:{{ f.valueColor }};display:flex;align-items:center;justify-content:space-between;">
+                <span>{{ f.value }}</span>
+                <span style="color:#98a2b3;font-size:11px;">{{ f.hint }}</span>
+              </div>
+            </div>
+          </sc-for>
+          <div style="border-top:1px solid #f0f1f3;padding-top:14px;margin-top:4px;">
+            <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#475467;">Saved views</p>
+            <sc-for list="{{ savedViews }}" as="v" hint-placeholder-count="3">
+              <div style="padding:7px 0;font-size:13px;color:{{ v.color }};font-weight:{{ v.weight }};">{{ v.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+            <div style="display:flex;gap:8px;">
+              <sc-for list="{{ sortChips }}" as="s" hint-placeholder-count="4">
+                <button style="cursor:pointer;white-space:nowrap;border-radius:20px;padding:7px 15px;font-size:13px;font-weight:600;background:{{ s.bg }};color:{{ s.color }};border:1px solid {{ s.border }};">{{ s.label }}</button>
+              </sc-for>
+            </div>
+            <span style="font-size:13px;color:#667085;">34 players · 3 selected to compare</span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ marketPlayers }}" as="p" hint-placeholder-count="5">
+              <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px {{ p.ring }};padding:16px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                <div style="width:44px;height:44px;border-radius:50%;background:{{ p.avatarBg }};color:{{ p.avatarColor }};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;">{{ p.initials }}</div>
+
+                <div style="width:200px;flex-shrink:0;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <p style="margin:0;font-size:16px;font-weight:600;">{{ p.name }}</p>
+                    <span style="font-size:11px;font-weight:700;color:{{ p.posColor }};">{{ p.position }}</span>
+                  </div>
+                  <p style="margin:3px 0 0;font-size:13px;color:#667085;">{{ p.club }} · {{ p.age }} · {{ p.nationality }}</p>
+                </div>
+
+                <div style="flex:1;min-width:200px;">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-size:11px;color:#98a2b3;">Asking vs fair value</span>
+                    <span style="font-size:12px;font-weight:700;color:{{ p.signalColor }};">{{ p.signal }}</span>
+                  </div>
+                  <div style="height:8px;border-radius:4px;background:#eaecf0;position:relative;overflow:hidden;">
+                    <div style="height:100%;background:{{ p.signalColor }};width:{{ p.barPct }}%;"></div>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:12px;color:#667085;">
+                    <span>Asking {{ p.asking }}</span>
+                    <span>Fair {{ p.fair }}</span>
+                  </div>
+                </div>
+
+                <div style="width:96px;flex-shrink:0;">
+                  <p style="margin:0;font-size:11px;color:#98a2b3;">Form</p>
+                  <p style="margin:2px 0 0;font-size:16px;font-weight:700;color:{{ p.formColor }};">{{ p.form }}</p>
+                </div>
+
+                <div style="width:110px;flex-shrink:0;">
+                  <p style="margin:0;font-size:11px;color:#98a2b3;">Wage / wk</p>
+                  <p style="margin:2px 0 0;font-size:15px;font-weight:600;">{{ p.wage }}</p>
+                  <p style="margin:2px 0 0;font-size:11px;color:{{ p.wageFitColor }};">{{ p.wageFit }}</p>
+                </div>
+
+                <div style="display:flex;gap:8px;flex-shrink:0;">
+                  <button style="border:none;cursor:pointer;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;background:oklch(50% 0.16 259);color:#fff;">Make offer</button>
+                  <button style="cursor:pointer;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;background:#fff;color:#344054;border:1px solid #d0d5dd;">Shortlist</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="position:fixed;bottom:0;left:0;right:0;background:#14171f;color:#fff;padding:14px 36px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+        <span style="font-size:13px;color:#8b93a5;">Comparing</span>
+        <sc-for list="{{ compareTray }}" as="c" hint-placeholder-count="3">
+          <span style="background:rgba(255,255,255,0.1);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;">{{ c.name }} · {{ c.asking }}</span>
+        </sc-for>
+        <button style="margin-left:auto;border:none;cursor:pointer;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;background:#fff;color:#14171f;">Compare 3 players</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const PHONE_DECISIONS = [
+  {
+    kind: "Counter-offer", time: "6h left", timeColor: "oklch(50% 0.18 25)", accent: "oklch(55% 0.16 80)",
+    headline: "Ashfield countered at £4.2M for Marcus Webb",
+    facts: [
+      { label: "Their offer", value: "£4.2M", color: "#14171f" },
+      { label: "Your valuation", value: "£4.8M", color: "#14171f" },
+      { label: "Gap", value: "−£600K", color: "oklch(50% 0.18 25)" },
+    ],
+    primary: "Counter at £4.6M", secondary: "Accept £4.2M",
+  },
+  {
+    kind: "Offer received", time: "6h ago", timeColor: "oklch(50% 0.16 259)", accent: "oklch(50% 0.16 259)",
+    headline: "Northgate bid £1.8M for Dario Kastanos",
+    facts: [
+      { label: "Their offer", value: "£1.8M", color: "#14171f" },
+      { label: "Asking", value: "£2.4M", color: "#14171f" },
+      { label: "Wage saved", value: "£22K", color: "oklch(45% 0.14 150)" },
+    ],
+    primary: "Counter at £2.2M", secondary: "Accept £1.8M",
+  },
+  {
+    kind: "Ready to execute", time: "2 days", timeColor: "oklch(45% 0.14 150)", accent: "oklch(50% 0.16 150)",
+    headline: "Yannick Sorel is cleared for signature",
+    facts: [
+      { label: "Agreed fee", value: "£6.5M", color: "#14171f" },
+      { label: "Net to club", value: "£6.18M", color: "oklch(45% 0.14 150)" },
+    ],
+    primary: "Sign and complete", secondary: "Review paperwork",
+  },
+];
+
+const PHONE_ACTIVITY = [
+  { player: "Adrian Kofi", type: "Deal", counterparty: "Riverton City", value: "£8.1M", next: "Agent replies Mon", nextColor: "#667085" },
+  { player: "Bram Wouters", type: "Deal", counterparty: "Ashfield United", value: "£5.4M", next: "Docs due Thu", nextColor: "#667085" },
+  { player: "Theo Marsh", type: "Listing", counterparty: "Open market", value: "£3.2M", next: "9d on market", nextColor: "#667085" },
+];
+
+const ICONS = {
+  today: "M4 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10-3a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1v-7z",
+  offers: "M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4",
+  market: "M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z",
+  squad: "M17 20H7m10 0a3 3 0 003-3v-1a5 5 0 00-5-5H9a5 5 0 00-5 5v1a3 3 0 003 3m10 0v-2a7 7 0 00-7-7m0 0a3 3 0 10-6 0 3 3 0 006 0z",
+  more: "M4 6h16M4 12h16M4 18h16",
+};
+
+const PHONE_TABS = [
+  { label: "Today", iconPath: ICONS.today, active: true },
+  { label: "Offers", iconPath: ICONS.offers },
+  { label: "Market", iconPath: ICONS.market },
+  { label: "Squad", iconPath: ICONS.squad },
+  { label: "More", iconPath: ICONS.more },
+];
+
+const SQUAD_HEADLINE = [
+  { label: "Contracts < 12m", value: "4", color: "oklch(70% 0.16 25)" },
+  { label: "Listed", value: "2", color: "#fff" },
+  { label: "Avg age", value: "26.4", color: "#fff" },
+  { label: "Wage room", value: "£95K", color: "oklch(80% 0.13 150)" },
+];
+
+const SQUAD_FILTERS = [
+  { label: "All 23", on: true },
+  { label: "Contract risk 4" },
+  { label: "Listed 2" },
+  { label: "Open to offers 5" },
+  { label: "Injured 1" },
+];
+
+const AV = {
+  GK: { bg: "oklch(93% 0.06 80)", color: "oklch(40% 0.13 80)" },
+  DEF: { bg: "oklch(93% 0.05 259)", color: "oklch(42% 0.14 259)" },
+  MID: { bg: "oklch(93% 0.05 150)", color: "oklch(38% 0.13 150)" },
+  FWD: { bg: "oklch(93% 0.07 25)", color: "oklch(45% 0.16 25)" },
+};
+
+function player(o) { return o; }
+
+const SQUAD_GROUPS = [
+  {
+    label: "Goalkeepers", status: "1 of 2 minimum — short", statusColor: "oklch(50% 0.18 25)",
+    players: [
+      player({ initials: "BW", name: "Bram Wouters", age: "31", nationality: "Netherlands", contractEnd: "Jun 2028", contractColor: "#14171f", wage: "£38K", market: "£5.6M", valuation: "£5.4M", gap: "−4%", gapColor: "oklch(55% 0.16 80)", marketPct: 78, gapPct: 6, flag: "First choice", flagColor: "#667085", avatarBg: AV.GK.bg, avatarColor: AV.GK.color }),
+    ],
+  },
+  {
+    label: "Defenders", status: "4 of 4 — covered", statusColor: "oklch(45% 0.14 150)",
+    players: [
+      player({ initials: "OC", name: "Owen Castillo", age: "29", nationality: "England", contractEnd: "Sep 2026", contractColor: "oklch(50% 0.18 25)", wage: "£41K", market: "£3.1M", valuation: "£4.0M", gap: "+29%", gapColor: "oklch(50% 0.18 25)", marketPct: 62, gapPct: 18, flag: "42 days left", flagColor: "oklch(50% 0.18 25)", avatarBg: AV.DEF.bg, avatarColor: AV.DEF.color }),
+      player({ initials: "JS", name: "Jonas Silva", age: "24", nationality: "Portugal", contractEnd: "Jun 2029", contractColor: "#14171f", wage: "£29K", market: "£7.2M", valuation: "£6.8M", gap: "−6%", gapColor: "oklch(45% 0.14 150)", marketPct: 88, gapPct: 5, flag: "Rising value", flagColor: "oklch(45% 0.14 150)", avatarBg: AV.DEF.bg, avatarColor: AV.DEF.color }),
+      player({ initials: "TA", name: "Tom Ardley", age: "33", nationality: "England", contractEnd: "Jun 2027", contractColor: "#14171f", wage: "£34K", market: "£1.4M", valuation: "£1.8M", gap: "+29%", gapColor: "oklch(55% 0.16 80)", marketPct: 40, gapPct: 12, flag: "Open to offers", flagColor: "oklch(45% 0.16 259)", avatarBg: AV.DEF.bg, avatarColor: AV.DEF.color }),
+    ],
+  },
+  {
+    label: "Midfielders", status: "4 of 4 — covered, 1 under offer", statusColor: "oklch(45% 0.14 150)",
+    players: [
+      player({ initials: "MW", name: "Marcus Webb", age: "26", nationality: "England", contractEnd: "Feb 2028", contractColor: "#14171f", wage: "£31K", market: "£4.6M", valuation: "£4.8M", gap: "+4%", gapColor: "oklch(55% 0.16 80)", marketPct: 74, gapPct: 4, flag: "Offer £4.2M", flagColor: "oklch(45% 0.13 80)", avatarBg: AV.MID.bg, avatarColor: AV.MID.color }),
+      player({ initials: "NB", name: "Nils Bergstrom", age: "28", nationality: "Sweden", contractEnd: "Nov 2026", contractColor: "oklch(48% 0.14 80)", wage: "£27K", market: "£2.8M", valuation: "£3.2M", gap: "+14%", gapColor: "oklch(55% 0.16 80)", marketPct: 56, gapPct: 10, flag: "98 days left", flagColor: "oklch(48% 0.14 80)", avatarBg: AV.MID.bg, avatarColor: AV.MID.color }),
+    ],
+  },
+  {
+    label: "Forwards", status: "1 of 3 minimum — priority gap", statusColor: "oklch(50% 0.18 25)",
+    players: [
+      player({ initials: "DK", name: "Dario Kastanos", age: "23", nationality: "Greece", contractEnd: "Jun 2028", contractColor: "#14171f", wage: "£22K", market: "£2.2M", valuation: "£2.4M", gap: "+9%", gapColor: "oklch(45% 0.14 150)", marketPct: 50, gapPct: 6, flag: "Offer £1.8M", flagColor: "oklch(45% 0.16 259)", avatarBg: AV.FWD.bg, avatarColor: AV.FWD.color }),
+    ],
+  },
+];
+
+const CONTRACT_CLIFF = [
+  { window: "Under 6 months", players: "Owen Castillo", value: "£4.0M", color: "oklch(50% 0.18 25)" },
+  { window: "6–12 months", players: "Bergstrom, Ardley", value: "£5.0M", color: "oklch(48% 0.14 80)" },
+  { window: "12–24 months", players: "4 players", value: "£11.6M", color: "#14171f" },
+];
+
+const WAGE_SPLIT = [
+  { label: "Defence", value: "£182K", pct: 100 },
+  { label: "Midfield", value: "£166K", pct: 91 },
+  { label: "Attack", value: "£139K", pct: 76 },
+  { label: "Goalkeepers", value: "£38K", pct: 21 },
+];
+
+const AGE_PROFILE = [
+  { band: "Under 23", count: 4, pct: 40, color: "oklch(60% 0.14 150)" },
+  { band: "23–27", count: 9, pct: 90, color: "oklch(55% 0.16 259)" },
+  { band: "28–31", count: 7, pct: 70, color: "oklch(60% 0.14 80)" },
+  { band: "32+", count: 3, pct: 30, color: "oklch(58% 0.16 25)" },
+];
+
+const BROWSE_HEADLINE = [
+  { label: "Budget free", value: "£12.4M", color: "oklch(80% 0.13 150)" },
+  { label: "Wage room", value: "£95K", color: "#fff" },
+  { label: "Under fair value", value: "9", color: "oklch(82% 0.12 150)" },
+];
+
+const FILTER_FIELDS = [
+  { label: "Position", value: "Forward", hint: "1", valueColor: "#14171f" },
+  { label: "Asking price", value: "Up to £5.0M", hint: "budget", valueColor: "#14171f" },
+  { label: "Wage / week", value: "Up to £45K", hint: "room", valueColor: "#14171f" },
+  { label: "Age", value: "21 – 28", hint: "", valueColor: "#14171f" },
+  { label: "Contract ends within", value: "Any", hint: "", valueColor: "#98a2b3" },
+  { label: "Form score", value: "6.5 and above", hint: "", valueColor: "#14171f" },
+];
+
+const SAVED_VIEWS = [
+  { label: "Summer targets — FWD", active: true },
+  { label: "Wingers 2026" },
+  { label: "Backup GK" },
+  { label: "Free agents under 25" },
+];
+
+const SORT_CHIPS = [
+  { label: "Best value first", on: true },
+  { label: "Form" },
+  { label: "Cheapest" },
+  { label: "Youngest" },
+];
+
+const MARKET_PLAYERS = [
+  { initials: "EV", name: "Elian Vos", position: "FWD", club: "Castlebrook", age: "24", nationality: "Belgium", asking: "£4.9M", fair: "£5.8M", signal: "15% under fair value", signalColor: "oklch(50% 0.16 150)", barPct: 84, form: "7.8", formColor: "oklch(45% 0.14 150)", wage: "£34K", wageFit: "Fits wage room", wageFitColor: "oklch(45% 0.14 150)", avatarBg: AV.FWD.bg, avatarColor: AV.FWD.color, posColor: "oklch(45% 0.16 25)", ring: "oklch(85% 0.06 150)" },
+  { initials: "AM", name: "Andre Mbeki", position: "FWD", club: "Riverton City", age: "22", nationality: "France", asking: "£3.4M", fair: "£3.6M", signal: "6% under fair value", signalColor: "oklch(50% 0.16 150)", barPct: 94, form: "7.1", formColor: "oklch(45% 0.14 150)", wage: "£26K", wageFit: "Fits wage room", wageFitColor: "oklch(45% 0.14 150)", avatarBg: AV.FWD.bg, avatarColor: AV.FWD.color, posColor: "oklch(45% 0.16 25)", ring: "#e4e7ec" },
+  { initials: "RS", name: "Rui Santos", position: "FWD", club: "Northgate Rovers", age: "27", nationality: "Portugal", asking: "£4.2M", fair: "£3.5M", signal: "20% over fair value", signalColor: "oklch(55% 0.16 80)", barPct: 120, form: "6.9", formColor: "#14171f", wage: "£39K", wageFit: "Fits wage room", wageFitColor: "oklch(45% 0.14 150)", avatarBg: AV.FWD.bg, avatarColor: AV.FWD.color, posColor: "oklch(45% 0.16 25)", ring: "#e4e7ec" },
+  { initials: "LK", name: "Lukas Brandt", position: "FWD", club: "Ashfield United", age: "26", nationality: "Germany", asking: "£4.7M", fair: "£4.4M", signal: "7% over fair value", signalColor: "oklch(55% 0.16 80)", barPct: 107, form: "6.6", formColor: "#14171f", wage: "£48K", wageFit: "£3K over wage room", wageFitColor: "oklch(50% 0.18 25)", avatarBg: AV.FWD.bg, avatarColor: AV.FWD.color, posColor: "oklch(45% 0.16 25)", ring: "#e4e7ec" },
+  { initials: "PT", name: "Pavel Toth", position: "FWD", club: "Free agent", age: "25", nationality: "Czechia", asking: "Free", fair: "£2.9M", signal: "Free transfer", signalColor: "oklch(50% 0.16 259)", barPct: 100, form: "7.3", formColor: "oklch(45% 0.14 150)", wage: "£31K", wageFit: "Fits wage room", wageFitColor: "oklch(45% 0.14 150)", avatarBg: AV.FWD.bg, avatarColor: AV.FWD.color, posColor: "oklch(45% 0.16 25)", ring: "oklch(88% 0.05 259)" },
+];
+
+const COMPARE_TRAY = [
+  { name: "Elian Vos", asking: "£4.9M" },
+  { name: "Andre Mbeki", asking: "£3.4M" },
+  { name: "Pavel Toth", asking: "Free" },
+];
+
+const TABS = [
+  { id: "phone", label: "Phone", caption: "The decision queue on iPhone" },
+  { id: "squad", label: "Squad", caption: "My Club → Squad, rebuilt around contract and value risk" },
+  { id: "browse", label: "Browse players", caption: "Player Market as a search workbench" },
+];
+
+class Component extends DCLogic {
+  state = { tab: "phone" };
+
+  renderVals() {
+    const tab = this.state.tab;
+    const chip = (label, on) => ({
+      label,
+      bg: on ? "#14171f" : "#fff",
+      color: on ? "#fff" : "#475467",
+      border: on ? "#14171f" : "#d0d5dd",
+    });
+    return {
+      tabs: TABS.map((t) => ({
+        label: t.label,
+        bg: tab === t.id ? "#fff" : "transparent",
+        color: tab === t.id ? "#14171f" : "#667085",
+        select: () => this.setState({ tab: t.id }),
+      })),
+      caption: (TABS.find((t) => t.id === tab) || TABS[0]).caption,
+      isPhone: tab === "phone",
+      isSquad: tab === "squad",
+      isBrowse: tab === "browse",
+
+      phoneDecisions: PHONE_DECISIONS,
+      phoneActivity: PHONE_ACTIVITY,
+      phoneTabs: PHONE_TABS.map((t) => ({
+        label: t.label,
+        iconPath: t.iconPath,
+        color: t.active ? "#14171f" : "#98a2b3",
+      })),
+
+      squadHeadline: SQUAD_HEADLINE,
+      squadFilters: SQUAD_FILTERS.map((f) => chip(f.label, !!f.on)),
+      squadGroups: SQUAD_GROUPS,
+      contractCliff: CONTRACT_CLIFF,
+      wageSplit: WAGE_SPLIT,
+      ageProfile: AGE_PROFILE,
+
+      browseHeadline: BROWSE_HEADLINE,
+      filterFields: FILTER_FIELDS,
+      savedViews: SAVED_VIEWS.map((v) => ({
+        label: v.label,
+        color: v.active ? "#14171f" : "#667085",
+        weight: v.active ? "600" : "500",
+      })),
+      sortChips: SORT_CHIPS.map((s) => chip(s.label, !!s.on)),
+      marketPlayers: MARKET_PLAYERS,
+      compareTray: COMPARE_TRAY,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

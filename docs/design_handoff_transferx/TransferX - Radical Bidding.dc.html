@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #f4f5f7; }
+  * { box-sizing: border-box; }
+  a { color: oklch(50% 0.16 259); }
+  a:hover { color: oklch(42% 0.16 259); }
+</style>
+</helmet>
+
+<div style="min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#14171f;font-size:14px;">
+
+  <div style="position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;padding:12px 28px;background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);border-bottom:1px solid #e0e3e9;flex-wrap:wrap;">
+    <span style="font-size:13px;font-weight:700;">Radical direction</span>
+    <div style="display:flex;gap:4px;background:#e9ebef;border-radius:10px;padding:3px;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2">
+        <button onClick="{{ t.select }}" style="border:none;cursor:pointer;white-space:nowrap;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;background:{{ t.bg }};color:{{ t.color }};">{{ t.label }}</button>
+      </sc-for>
+    </div>
+    <sc-if value="{{ isBidding }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;gap:4px;background:#e9ebef;border-radius:10px;padding:3px;">
+        <sc-for list="{{ sides }}" as="s" hint-placeholder-count="2">
+          <button onClick="{{ s.select }}" style="border:none;cursor:pointer;white-space:nowrap;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;background:{{ s.bg }};color:{{ s.color }};">{{ s.label }}</button>
+        </sc-for>
+      </div>
+    </sc-if>
+    <span style="font-size:12px;color:#667085;">{{ caption }}</span>
+  </div>
+
+  <!-- ══ BIDDING ══════════════════════════════════════════════════════════ -->
+  <sc-if value="{{ isBidding }}" hint-placeholder-val="{{ true }}">
+    <div>
+      <div style="background:#14171f;color:#fff;padding:0 36px;">
+        <div style="max-width:1300px;margin:0 auto;padding:22px 0;display:flex;align-items:center;gap:26px;flex-wrap:wrap;">
+          <div style="width:56px;height:56px;border-radius:50%;background:oklch(93% 0.07 25);color:oklch(45% 0.16 25);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;">YS</div>
+          <div style="flex:1 1 240px;min-width:0;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <h1 style="margin:0;font-size:23px;font-weight:700;letter-spacing:-0.01em;">Yannick Sorel</h1>
+              <span style="background:rgba(255,255,255,0.12);border-radius:20px;padding:3px 11px;font-size:12px;font-weight:600;">Auction</span>
+            </div>
+            <p style="margin:4px 0 0;font-size:13px;color:#8b93a5;">Forward · 25 · your listing · asking £5.0M · reserve £5.2M</p>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;">
+            <sc-for list="{{ auctionHeadline }}" as="h" hint-placeholder-count="4">
+              <div style="padding:0 22px;border-left:1px solid rgba(255,255,255,0.1);">
+                <p style="margin:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#8b93a5;">{{ h.label }}</p>
+                <p style="margin:5px 0 0;font-size:26px;font-weight:700;letter-spacing:-0.01em;color:{{ h.color }};">{{ h.value }}</p>
+                <p style="margin:2px 0 0;font-size:12px;color:#8b93a5;">{{ h.note }}</p>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="max-width:1300px;margin:0 auto;padding:24px 36px 64px;display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,340px);gap:24px;align-items:start;">
+
+        <div>
+          <!-- The ladder, drawn to scale against reserve and valuation -->
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <h2 style="margin:0;font-size:18px;font-weight:700;">{{ ladderTitle }}</h2>
+            <span style="font-size:13px;color:#667085;">{{ ladderSub }}</span>
+          </div>
+
+          <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:20px 22px;margin-bottom:20px;">
+            <div style="display:flex;gap:22px;font-size:12px;color:#667085;margin-bottom:16px;flex-wrap:wrap;">
+              <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:3px;background:#14171f;display:inline-block;"></span>Bid</span>
+              <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:3px;background:oklch(55% 0.18 25);display:inline-block;"></span>Reserve £5.2M</span>
+              <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:3px;background:oklch(50% 0.16 259);display:inline-block;"></span>Your valuation £5.8M</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <sc-for list="{{ bids }}" as="b" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                  <div style="width:26px;flex-shrink:0;font-size:13px;font-weight:700;color:#98a2b3;">{{ b.rank }}</div>
+                  <div style="flex:0 1 190px;min-width:150px;">
+                    <p style="margin:0;font-size:15px;font-weight:600;">{{ b.club }}</p>
+                    <p style="margin:2px 0 0;font-size:12px;color:#667085;">{{ b.placed }} · wage offer {{ b.wage }}</p>
+                  </div>
+                  <div style="flex:1 1 260px;min-width:200px;position:relative;padding:6px 0;">
+                    <div style="position:absolute;left:0;right:0;top:0;bottom:0;">
+                      <div style="position:absolute;left:87%;top:0;bottom:0;width:2px;background:oklch(55% 0.18 25);opacity:0.55;"></div>
+                      <div style="position:absolute;left:97%;top:0;bottom:0;width:2px;background:oklch(50% 0.16 259);opacity:0.55;"></div>
+                    </div>
+                    <div style="position:relative;height:26px;border-radius:6px;background:#f2f3f5;overflow:hidden;">
+                      <div style="height:100%;background:{{ b.barColor }};width:{{ b.pct }}%;"></div>
+                    </div>
+                  </div>
+                  <div style="flex:0 1 120px;text-align:right;">
+                    <p style="margin:0;font-size:17px;font-weight:700;">{{ b.amount }}</p>
+                    <p style="margin:2px 0 0;font-size:12px;font-weight:600;color:{{ b.statusColor }};">{{ b.status }}</p>
+                  </div>
+                  <sc-if value="{{ isSeller }}" hint-placeholder-val="{{ true }}">
+                    <button style="flex-shrink:0;border:none;cursor:pointer;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;background:{{ b.actionBg }};color:{{ b.actionColor }};border:1px solid {{ b.actionBorder }};">{{ b.action }}</button>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- Consequence card: what accepting actually means -->
+          <sc-if value="{{ isSeller }}" hint-placeholder-val="{{ true }}">
+            <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;overflow:hidden;margin-bottom:20px;">
+              <div style="padding:16px 22px;border-bottom:1px solid #f0f1f3;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <p style="margin:0;font-size:15px;font-weight:700;">If you accept Castlebrook's £5.6M now</p>
+                <span style="font-size:13px;color:#667085;">Reserve met · 2 days early</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
+                <sc-for list="{{ acceptEffects }}" as="e" hint-placeholder-count="4">
+                  <div style="padding:18px 22px;border-right:1px solid #f5f6f7;">
+                    <p style="margin:0;font-size:11px;color:#98a2b3;">{{ e.label }}</p>
+                    <p style="margin:4px 0 0;font-size:20px;font-weight:700;color:{{ e.color }};">{{ e.value }}</p>
+                    <p style="margin:2px 0 0;font-size:12px;color:#667085;">{{ e.note }}</p>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="padding:18px 22px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                <button style="border:none;cursor:pointer;white-space:nowrap;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;background:oklch(50% 0.16 150);color:#fff;">Accept £5.6M and open deal</button>
+                <button style="cursor:pointer;white-space:nowrap;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;background:#fff;color:#344054;border:1px solid #d0d5dd;">Hold until deadline</button>
+                <span style="flex-basis:100%;font-size:12px;color:#98a2b3;">Accepting closes the auction to the other 3 bidders and creates a deal at the Agreement stage.</span>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- Buyer composer -->
+          <sc-if value="{{ isBuyer }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;overflow:hidden;margin-bottom:20px;">
+              <div style="padding:16px 22px;border-bottom:1px solid #f0f1f3;">
+                <p style="margin:0;font-size:15px;font-weight:700;">Your bid</p>
+                <p style="margin:3px 0 0;font-size:13px;color:#667085;">You are second at £5.4M. Minimum next bid is £5.7M.</p>
+              </div>
+
+              <div style="padding:20px 22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:26px;align-items:start;">
+                <div>
+                  <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#475467;">Bid amount</p>
+                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <div style="border:2px solid oklch(50% 0.16 259);border-radius:10px;padding:12px 16px;font-size:26px;font-weight:700;min-width:220px;white-space:nowrap;">£5,700,000</div>
+                    <sc-for list="{{ bidSteps }}" as="s" hint-placeholder-count="3">
+                      <button style="cursor:pointer;white-space:nowrap;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;background:#fff;color:#344054;border:1px solid #d0d5dd;">{{ s.label }}</button>
+                    </sc-for>
+                  </div>
+
+                  <div style="margin-top:20px;">
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+                      <span style="font-weight:600;color:#344054;">Transfer budget after this bid</span>
+                      <span style="color:#667085;"><span style="font-weight:700;color:oklch(45% 0.14 150);">£6.7M</span> would remain of £12.4M</span>
+                    </div>
+                    <div style="height:10px;border-radius:5px;background:#eaecf0;overflow:hidden;display:flex;">
+                      <div style="height:100%;background:#14171f;width:46%;"></div>
+                      <div style="height:100%;background:oklch(60% 0.16 259);width:20%;"></div>
+                    </div>
+                    <p style="margin:7px 0 0;font-size:12px;color:#667085;">Committed elsewhere £8.4M · this bid £5.7M · free after £6.7M</p>
+                  </div>
+
+                  <div style="margin-top:18px;">
+                    <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:#475467;">Message to seller (optional)</p>
+                    <div style="border:1px solid #d0d5dd;border-radius:8px;padding:11px 13px;font-size:14px;color:#98a2b3;">Happy to move quickly — medical can be booked this week.</div>
+                  </div>
+                </div>
+
+                <div style="background:oklch(97% 0.03 80);border-radius:12px;padding:16px 18px;">
+                  <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:oklch(40% 0.13 80);">This bid needs approval before it is placed</p>
+                  <p style="margin:0 0 14px;font-size:13px;line-height:1.5;color:#475467;">Bids above £5M require sign-off from your Sporting Director. It will be held, not submitted, until they approve.</p>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:30px;height:30px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#475467;">RM</div>
+                    <div>
+                      <p style="margin:0;font-size:13px;font-weight:600;">Rachel Moss</p>
+                      <p style="margin:0;font-size:12px;color:#667085;">Usually responds within 2h</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="padding:0 22px 20px;display:flex;gap:10px;flex-wrap:wrap;">
+                <button style="border:none;cursor:pointer;white-space:nowrap;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;background:oklch(50% 0.16 259);color:#fff;">Send £5.7M for approval</button>
+                <button style="cursor:pointer;white-space:nowrap;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;background:#fff;color:#344054;border:1px solid #d0d5dd;">Withdraw current bid</button>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px;position:sticky;top:24px;">
+          <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:18px 20px;">
+            <p style="margin:0 0 4px;font-size:13px;font-weight:700;">Accept now or wait</p>
+            <p style="margin:0 0 14px;font-size:12px;color:#98a2b3;">Based on the last three auctions you ran</p>
+            <sc-for list="{{ waitScenarios }}" as="w" hint-placeholder-count="2">
+              <div style="padding:12px 0;border-top:1px solid #f5f6f7;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;">
+                  <span style="font-size:14px;font-weight:600;">{{ w.label }}</span>
+                  <span style="font-size:15px;font-weight:700;color:{{ w.color }};">{{ w.value }}</span>
+                </div>
+                <p style="margin:4px 0 0;font-size:12px;color:#667085;line-height:1.5;">{{ w.note }}</p>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:18px 20px;">
+            <p style="margin:0 0 14px;font-size:13px;font-weight:700;">Bidder history with you</p>
+            <sc-for list="{{ bidderHistory }}" as="h" hint-placeholder-count="3">
+              <div style="padding:10px 0;border-top:1px solid #f5f6f7;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                <div style="min-width:0;">
+                  <p style="margin:0;font-size:14px;">{{ h.club }}</p>
+                  <p style="margin:2px 0 0;font-size:11px;color:#98a2b3;">{{ h.note }}</p>
+                </div>
+                <span style="font-size:13px;font-weight:600;color:{{ h.color }};white-space:nowrap;">{{ h.record }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:18px 20px;">
+            <p style="margin:0 0 12px;font-size:13px;font-weight:700;">Listing terms</p>
+            <sc-for list="{{ listingTerms }}" as="t" hint-placeholder-count="5">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;padding:8px 0;border-top:1px solid #f5f6f7;">
+                <span style="font-size:13px;color:#667085;">{{ t.label }}</span>
+                <span style="font-size:13px;font-weight:600;">{{ t.value }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ══ NEGOTIATION ══════════════════════════════════════════════════════ -->
+  <sc-if value="{{ isNegotiation }}" hint-placeholder-val="{{ false }}">
+    <div>
+      <div style="background:#14171f;color:#fff;padding:0 36px;">
+        <div style="max-width:1300px;margin:0 auto;padding:22px 0;">
+          <div style="display:flex;align-items:center;gap:26px;flex-wrap:wrap;">
+            <div style="flex:1 1 260px;min-width:0;">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <h1 style="margin:0;font-size:23px;font-weight:700;letter-spacing:-0.01em;">Adrian Kofi — Meridian FC to Riverton City</h1>
+              </div>
+              <p style="margin:4px 0 0;font-size:13px;color:#8b93a5;">Deal opened 11 days ago · agreed fee £8.1M · defender, 27</p>
+            </div>
+            <div style="text-align:right;">
+              <p style="margin:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#8b93a5;">Blocked on</p>
+              <p style="margin:5px 0 0;font-size:22px;font-weight:700;color:oklch(78% 0.14 80);">Agent commission</p>
+              <p style="margin:2px 0 0;font-size:12px;color:#8b93a5;">4 days without movement</p>
+            </div>
+          </div>
+
+          <div style="margin-top:22px;display:flex;align-items:center;gap:0;flex-wrap:wrap;">
+            <sc-for list="{{ stages }}" as="s" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;">
+                <div style="display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:20px;background:{{ s.bg }};color:{{ s.color }};font-size:13px;font-weight:600;white-space:nowrap;">
+                  <span style="width:7px;height:7px;border-radius:50%;background:{{ s.dot }};"></span>{{ s.label }}
+                </div>
+                <span style="width:16px;height:1px;background:rgba(255,255,255,0.15);"></span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="max-width:1300px;margin:0 auto;padding:24px 36px 64px;display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,360px);gap:24px;align-items:start;">
+        <div>
+          <!-- Three lanes: who is negotiating what, in parallel -->
+          <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;">Three negotiations running in parallel</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:26px;">
+            <sc-for list="{{ lanes }}" as="l" hint-placeholder-count="3">
+              <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px {{ l.ring }};overflow:hidden;">
+                <div style="height:4px;background:{{ l.accent }};"></div>
+                <div style="padding:16px 18px;">
+                  <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:{{ l.accent }};">{{ l.status }}</p>
+                  <p style="margin:6px 0 0;font-size:15px;font-weight:700;">{{ l.title }}</p>
+                  <p style="margin:4px 0 0;font-size:13px;color:#667085;line-height:1.5;">{{ l.detail }}</p>
+                  <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f0f1f3;display:flex;align-items:baseline;justify-content:space-between;">
+                    <span style="font-size:12px;color:#98a2b3;">{{ l.metricLabel }}</span>
+                    <span style="font-size:15px;font-weight:700;color:{{ l.metricColor }};">{{ l.metric }}</span>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- Terms diff: their proposal against what is agreed -->
+          <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;overflow:hidden;margin-bottom:22px;">
+            <div style="padding:16px 22px;border-bottom:1px solid #f0f1f3;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <div>
+                <p style="margin:0;font-size:15px;font-weight:700;">Terms — version 4 proposed by Riverton City</p>
+                <p style="margin:3px 0 0;font-size:13px;color:#667085;">3 of 8 terms changed · sent 2 days ago</p>
+              </div>
+              <span style="font-size:13px;font-weight:600;color:oklch(45% 0.13 80);white-space:nowrap;">Awaiting your response</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%;min-width:620px;border-collapse:collapse;font-size:14px;">
+                <thead>
+                  <tr style="text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#98a2b3;background:#fafbfc;">
+                    <th style="padding:10px 22px;font-weight:600;">Term</th>
+                    <th style="padding:10px 12px;font-weight:600;">Agreed (v3)</th>
+                    <th style="padding:10px 12px;font-weight:600;">Proposed (v4)</th>
+                    <th style="padding:10px 22px;font-weight:600;text-align:right;">Effect on you</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ terms }}" as="t" hint-placeholder-count="6">
+                    <tr style="border-top:1px solid #f0f1f3;background:{{ t.rowBg }};">
+                      <td style="padding:13px 22px;color:#475467;">{{ t.label }}</td>
+                      <td style="padding:13px 12px;color:#98a2b3;text-decoration:{{ t.strike }};">{{ t.old }}</td>
+                      <td style="padding:13px 12px;font-weight:{{ t.weight }};color:#14171f;">{{ t.new }}</td>
+                      <td style="padding:13px 22px;text-align:right;font-weight:600;color:{{ t.effectColor }};">{{ t.effect }}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+            <div style="padding:18px 22px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-top:1px solid #f0f1f3;">
+              <button style="border:none;cursor:pointer;white-space:nowrap;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;background:oklch(50% 0.16 150);color:#fff;">Accept version 4</button>
+              <button style="cursor:pointer;white-space:nowrap;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;background:#fff;color:#344054;border:1px solid #d0d5dd;">Counter with version 5</button>
+              <button style="cursor:pointer;white-space:nowrap;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;background:#fff;color:oklch(45% 0.16 25);border:1px solid #f0d3d3;">Collapse deal</button>
+              <span style="flex-basis:100%;font-size:12px;color:#98a2b3;">Net change against version 3: <strong style="color:oklch(45% 0.16 25);">−£340K to Meridian FC</strong> over the life of the deal.</span>
+            </div>
+          </div>
+
+          <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:20px 22px;">
+            <p style="margin:0 0 14px;font-size:15px;font-weight:700;">How we got here</p>
+            <sc-for list="{{ history }}" as="h" hint-placeholder-count="4">
+              <div style="display:flex;gap:18px;padding:12px 0;border-top:1px solid #f5f6f7;flex-wrap:wrap;">
+                <span style="width:86px;flex-shrink:0;font-size:12px;color:#98a2b3;">{{ h.when }}</span>
+                <span style="flex:1 1 220px;font-size:14px;color:#344054;">{{ h.text }}</span>
+                <span style="font-size:14px;font-weight:600;color:{{ h.color }};white-space:nowrap;">{{ h.value }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- Channel rail: shared vs private is explicit -->
+        <div style="display:flex;flex-direction:column;gap:16px;position:sticky;top:24px;">
+          <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;overflow:hidden;">
+            <div style="padding:14px 18px;border-bottom:1px solid #f0f1f3;display:flex;gap:6px;">
+              <sc-for list="{{ channels }}" as="c" hint-placeholder-count="3">
+                <button style="flex:1;cursor:pointer;border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:600;background:{{ c.bg }};color:{{ c.color }};white-space:nowrap;">{{ c.label }}</button>
+              </sc-for>
+            </div>
+            <div style="padding:8px 18px 0;">
+              <p style="margin:10px 0;font-size:12px;color:oklch(45% 0.13 80);background:oklch(97% 0.03 80);border-radius:8px;padding:9px 12px;">Private to Meridian FC — Riverton City and the agent cannot see this channel.</p>
+            </div>
+            <div style="padding:0 18px 14px;max-height:320px;overflow-y:auto;">
+              <sc-for list="{{ messages }}" as="m" hint-placeholder-count="4">
+                <div style="margin-bottom:10px;background:{{ m.bg }};border-radius:10px;padding:11px 13px;">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;">
+                    <span style="font-size:12px;font-weight:700;color:#344054;">{{ m.author }}</span>
+                    <span style="font-size:11px;color:#98a2b3;white-space:nowrap;">{{ m.when }}</span>
+                  </div>
+                  <p style="margin:0;font-size:13px;line-height:1.5;color:#344054;">{{ m.body }}</p>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:14px 18px;border-top:1px solid #f0f1f3;">
+              <div style="border:1px solid #d0d5dd;border-radius:8px;padding:10px 12px;font-size:13px;color:#98a2b3;">Write to your club only…</div>
+              <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <button style="border:none;cursor:pointer;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;background:#14171f;color:#fff;">Send</button>
+                <span style="font-size:12px;color:#98a2b3;">Mention: @Rachel @Tomas</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:18px 20px;">
+            <p style="margin:0 0 12px;font-size:13px;font-weight:700;">Documents</p>
+            <sc-for list="{{ documents }}" as="d" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid #f5f6f7;">
+                <div style="min-width:0;">
+                  <p style="margin:0;font-size:13px;font-weight:500;">{{ d.name }}</p>
+                  <p style="margin:2px 0 0;font-size:11px;color:#98a2b3;">{{ d.meta }}</p>
+                </div>
+                <span style="font-size:12px;font-weight:600;color:{{ d.color }};white-space:nowrap;">{{ d.status }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const AUCTION_HEADLINE = [
+  { label: "Closes in", value: "2d 04h", note: "27 Aug, 23:00", color: "#fff" },
+  { label: "Best bid", value: "£5.6M", note: "Castlebrook · 4 bids", color: "oklch(80% 0.13 150)" },
+  { label: "Reserve", value: "Met", note: "£5.2M reserve cleared", color: "oklch(80% 0.13 150)" },
+  { label: "Min next bid", value: "£5.9M", note: "£300K increment", color: "#fff" },
+];
+
+const BIDS_SELLER = [
+  { rank: "1", club: "Castlebrook", placed: "6h ago", wage: "£44K/wk", amount: "£5.6M", pct: 94, status: "Leading", statusColor: "oklch(45% 0.14 150)", barColor: "#14171f", action: "Accept", actionBg: "oklch(50% 0.16 150)", actionColor: "#fff", actionBorder: "oklch(50% 0.16 150)" },
+  { rank: "2", club: "Riverton City", placed: "1d ago", wage: "£41K/wk", amount: "£5.4M", pct: 90, status: "Outbid", statusColor: "#98a2b3", barColor: "#98a2b3", action: "Accept", actionBg: "#fff", actionColor: "#344054", actionBorder: "#d0d5dd" },
+  { rank: "3", club: "Ashfield United", placed: "2d ago", wage: "£38K/wk", amount: "£5.1M", pct: 85, status: "Below reserve", statusColor: "oklch(50% 0.18 25)", barColor: "#c4c9d2", action: "Accept", actionBg: "#fff", actionColor: "#344054", actionBorder: "#d0d5dd" },
+  { rank: "4", club: "Northgate Rovers", placed: "3d ago", wage: "£33K/wk", amount: "£4.6M", pct: 77, status: "Below reserve", statusColor: "oklch(50% 0.18 25)", barColor: "#c4c9d2", action: "Accept", actionBg: "#fff", actionColor: "#344054", actionBorder: "#d0d5dd" },
+];
+
+const BIDS_BUYER = [
+  { rank: "1", club: "Castlebrook", placed: "6h ago", wage: "hidden to buyers", amount: "£5.6M", pct: 94, status: "Leading", statusColor: "oklch(45% 0.14 150)", barColor: "#14171f", action: "", actionBg: "#fff", actionColor: "#344054", actionBorder: "#d0d5dd" },
+  { rank: "2", club: "Meridian FC (you)", placed: "1d ago", wage: "£41K/wk offered", amount: "£5.4M", pct: 90, status: "Outbid", statusColor: "oklch(50% 0.18 25)", barColor: "oklch(60% 0.16 259)", action: "", actionBg: "#fff", actionColor: "#344054", actionBorder: "#d0d5dd" },
+  { rank: "3", club: "Ashfield United", placed: "2d ago", wage: "hidden to buyers", amount: "£5.1M", pct: 85, status: "Outbid", statusColor: "#98a2b3", barColor: "#c4c9d2", action: "", actionBg: "#fff", actionColor: "#344054", actionBorder: "#d0d5dd" },
+  { rank: "4", club: "Northgate Rovers", placed: "3d ago", wage: "hidden to buyers", amount: "£4.6M", pct: 77, status: "Outbid", statusColor: "#98a2b3", barColor: "#c4c9d2", action: "", actionBg: "#fff", actionColor: "#344054", actionBorder: "#d0d5dd" },
+];
+
+const ACCEPT_EFFECTS = [
+  { label: "Fee received", value: "£5.6M", note: "vs £5.8M valuation", color: "#14171f" },
+  { label: "Budget after", value: "£18.0M", note: "free to spend", color: "oklch(45% 0.14 150)" },
+  { label: "Wage freed", value: "£29K/wk", note: "Sorel's current deal", color: "oklch(45% 0.14 150)" },
+  { label: "Squad effect", value: "1 of 3 FWD", note: "leaves you 2 short", color: "oklch(50% 0.18 25)" },
+];
+
+const WAIT_SCENARIOS = [
+  { label: "Accept now", value: "£5.6M", color: "#14171f", note: "Certain. Closes the auction to three other bidders, two of whom have raised twice." },
+  { label: "Hold to deadline", value: "£5.9M – £6.4M", color: "oklch(45% 0.14 150)", note: "Your last three auctions gained 6–14% in the final 48 hours. Risk: Castlebrook has withdrawn late once before." },
+];
+
+const BIDDER_HISTORY = [
+  { club: "Castlebrook", note: "3 deals with you · all completed", record: "Reliable", color: "oklch(45% 0.14 150)" },
+  { club: "Riverton City", note: "2 deals · 1 collapsed at paperwork", record: "Mixed", color: "oklch(48% 0.14 80)" },
+  { club: "Ashfield United", note: "5 deals · all completed", record: "Reliable", color: "oklch(45% 0.14 150)" },
+];
+
+const LISTING_TERMS = [
+  { label: "Type", value: "Auction" },
+  { label: "Asking price", value: "£5.0M" },
+  { label: "Reserve", value: "£5.2M" },
+  { label: "Min increment", value: "£300K" },
+  { label: "Sell-on clause", value: "15%" },
+  { label: "Listed", value: "9 days ago" },
+];
+
+const STAGES = [
+  { label: "Agreement", state: "done" },
+  { label: "Agent negotiation", state: "current" },
+  { label: "Personal terms", state: "future" },
+  { label: "Paperwork", state: "future" },
+  { label: "Confirmed", state: "future" },
+  { label: "Completed", state: "future" },
+];
+
+const LANES = [
+  {
+    title: "Club to club", status: "Agreed", accent: "oklch(55% 0.16 150)", ring: "oklch(87% 0.06 150)",
+    detail: "Fee and payment schedule settled at version 3. Riverton City has since proposed changes.",
+    metricLabel: "Agreed fee", metric: "£8.1M", metricColor: "#14171f",
+  },
+  {
+    title: "Agent commission", status: "Blocking · 4 days", accent: "oklch(55% 0.16 80)", ring: "oklch(87% 0.06 80)",
+    detail: "Kofi's agent is asking 8%. Riverton City is offering 5%. Neither side has moved since Tuesday.",
+    metricLabel: "Gap", metric: "£243K", metricColor: "oklch(45% 0.13 80)",
+  },
+  {
+    title: "Personal terms", status: "Not started", accent: "#98a2b3", ring: "#e4e7ec",
+    detail: "Opens automatically once commission is agreed. Player has signalled he is open to the move.",
+    metricLabel: "Wage proposed", metric: "£62K/wk", metricColor: "#667085",
+  },
+];
+
+const TERMS = [
+  { label: "Agreed fee", old: "£8.1M", new: "£8.1M", strike: "none", weight: "500", effect: "No change", effectColor: "#98a2b3", rowBg: "#fff" },
+  { label: "Payment schedule", old: "Paid in full", new: "3 instalments over 24 months", strike: "line-through", weight: "700", effect: "−£210K present value", effectColor: "oklch(45% 0.16 25)", rowBg: "oklch(98% 0.02 25)" },
+  { label: "Sell-on clause", old: "15%", new: "10%", strike: "line-through", weight: "700", effect: "−£130K expected", effectColor: "oklch(45% 0.16 25)", rowBg: "oklch(98% 0.02 25)" },
+  { label: "Weekly wage", old: "£60K", new: "£62K", strike: "line-through", weight: "700", effect: "Their cost, not yours", effectColor: "#98a2b3", rowBg: "oklch(98% 0.02 25)" },
+  { label: "Deal type", old: "Permanent", new: "Permanent", strike: "none", weight: "500", effect: "No change", effectColor: "#98a2b3", rowBg: "#fff" },
+  { label: "Buy-back option", old: "None", new: "None", strike: "none", weight: "500", effect: "No change", effectColor: "#98a2b3", rowBg: "#fff" },
+];
+
+const HISTORY = [
+  { when: "2 days ago", text: "Riverton City proposed version 4 — instalments and reduced sell-on", value: "−£340K", color: "oklch(45% 0.16 25)" },
+  { when: "5 days ago", text: "Agent opened commission negotiation at 8%", value: "£648K", color: "oklch(45% 0.13 80)" },
+  { when: "8 days ago", text: "Both clubs accepted version 3 — fee agreed", value: "£8.1M", color: "oklch(45% 0.14 150)" },
+  { when: "11 days ago", text: "You accepted Riverton City's offer, deal opened", value: "£7.8M", color: "#667085" },
+];
+
+const CHANNELS = [
+  { label: "Shared", active: false },
+  { label: "Meridian only", active: true },
+  { label: "Agent thread", active: false },
+];
+
+const MESSAGES = [
+  { author: "Rachel Moss · Sporting Director", when: "1h ago", body: "The instalments I can live with. Losing 5% of the sell-on is the part I don't like — Kofi is 27, that clause was the upside.", bg: "#f7f8fa" },
+  { author: "You", when: "40m ago", body: "Agreed. Proposal: accept the instalments, hold sell-on at 15%. That nets us back most of the £340K.", bg: "oklch(97% 0.02 259)" },
+  { author: "Tomas Reid · Finance", when: "22m ago", body: "Instalments over 24 months cost us £210K in present value at current rates. Worth trading against the sell-on if they'll move.", bg: "#f7f8fa" },
+];
+
+const DOCUMENTS = [
+  { name: "Transfer agreement v3.pdf", meta: "Signed by both clubs · 240 KB", status: "Signed", color: "oklch(45% 0.14 150)" },
+  { name: "Medical report — Kofi.pdf", meta: "Uploaded by Riverton City · 1.8 MB", status: "Passed", color: "oklch(45% 0.14 150)" },
+  { name: "Agent mandate.pdf", meta: "Uploaded by agent · 96 KB", status: "Verified", color: "oklch(45% 0.14 150)" },
+  { name: "Transfer agreement v4.pdf", meta: "Awaiting your signature", status: "Pending", color: "oklch(48% 0.14 80)" },
+];
+
+const TABS = [
+  { id: "bidding", label: "Bidding on a listing", caption: "Sale detail — bid ladder, drawn against reserve and valuation" },
+  { id: "negotiation", label: "Contract negotiation", caption: "Deal room — parallel negotiations and a terms diff" },
+];
+
+class Component extends DCLogic {
+  state = { tab: "bidding", side: "seller" };
+
+  renderVals() {
+    const { tab, side } = this.state;
+    const isSeller = side === "seller";
+    return {
+      tabs: TABS.map((t) => ({
+        label: t.label,
+        bg: tab === t.id ? "#fff" : "transparent",
+        color: tab === t.id ? "#14171f" : "#667085",
+        select: () => this.setState({ tab: t.id }),
+      })),
+      sides: [
+        { id: "seller", label: "Seller view" },
+        { id: "buyer", label: "Buyer view" },
+      ].map((s) => ({
+        label: s.label,
+        bg: side === s.id ? "#fff" : "transparent",
+        color: side === s.id ? "#14171f" : "#667085",
+        select: () => this.setState({ side: s.id }),
+      })),
+      caption: (TABS.find((t) => t.id === tab) || TABS[0]).caption,
+      isBidding: tab === "bidding",
+      isNegotiation: tab === "negotiation",
+      isSeller: tab === "bidding" && isSeller,
+      isBuyer: tab === "bidding" && !isSeller,
+
+      auctionHeadline: AUCTION_HEADLINE,
+      ladderTitle: isSeller ? "Four clubs are bidding" : "Where your bid sits",
+      ladderSub: isSeller ? "Accept any bid at any time — it closes the auction" : "Wage offers are visible to the seller only",
+      bids: isSeller ? BIDS_SELLER : BIDS_BUYER,
+      acceptEffects: ACCEPT_EFFECTS,
+      bidSteps: [
+        { label: "Min £5.9M" },
+        { label: "+£300K" },
+        { label: "Match valuation £5.8M" },
+      ],
+      waitScenarios: WAIT_SCENARIOS,
+      bidderHistory: BIDDER_HISTORY,
+      listingTerms: LISTING_TERMS,
+
+      stages: STAGES.map((s) => ({
+        label: s.label,
+        bg: s.state === "current" ? "rgba(255,255,255,0.14)" : "transparent",
+        color: s.state === "future" ? "#5c6373" : "#fff",
+        dot: s.state === "done" ? "oklch(70% 0.15 150)" : s.state === "current" ? "oklch(75% 0.15 80)" : "#3a4050",
+      })),
+      lanes: LANES,
+      terms: TERMS,
+      history: HISTORY,
+      channels: CHANNELS.map((c) => ({
+        label: c.label,
+        bg: c.active ? "#14171f" : "#f2f3f5",
+        color: c.active ? "#fff" : "#475467",
+      })),
+      messages: MESSAGES,
+      documents: DOCUMENTS,
+    };
+  }
+}
+
+</script>
+</body>
+</html>
