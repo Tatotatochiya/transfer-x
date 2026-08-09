@@ -31,6 +31,7 @@ A spec is a **point-in-time build document, not living state**. To keep it from 
 | [Fair-Value-vs-Asking Signal](./fair-value-vs-asking-signal.md) | TRA-91 (backend), TRA-92 (UI) | Implemented 2026-07-07 — see the spec's "Deviations from spec" section |
 | [Injury-Availability Risk Profile](./injury-availability-risk-profile.md) | No ticket yet — proposed 2026-07-05 (see spec's reconciliation section) | Active — ready to implement |
 | [Club Team Accounts, Roles & Onboarding](./club-team-roles-and-onboarding.md) | TRA-151, TRA-146, TRA-152, TRA-86 (phases 1–4) + two proposed tickets (phases 5–6) | Implemented 2026-07-10 (all six phases) — see the spec's "Deviations from spec" section |
+| [Demo Scenario Generator](./demo-scenario-generator.md) | No ticket yet — proposed 2026-08-08 (closes [audit](../DEMO_READINESS_AUDIT.md) C1/C2) | Phase 1 implemented 2026-08-08 — phases 2–3 open; see the spec's "Deviations from spec" section |
 
 ## Related documents
 
