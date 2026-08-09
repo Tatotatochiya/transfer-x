@@ -1,6 +1,6 @@
 ---
 title: "Changelog"
-last_updated: 2026-08-08
+last_updated: 2026-08-09
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -23,6 +23,14 @@ Follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/): most recent ch
 Maintained by the [`documentation-standards`](../.claude/skills/documentation-standards/SKILL.md) skill — update it as part of any session that ships a real change, not in a batch after the fact.
 
 ## [Unreleased]
+
+### Added
+- **Demo scenario generator (`scripts/seed_demo.py`)** — a re-runnable script that builds deal scenarios covering every lifecycle stage (`AGREEMENT`, `AGENT_NEGOTIATION`, `PERSONAL_TERMS`, `PAPERWORK`, `CONFIRMED`, `COLLAPSED`) from the existing clubs, players, and mandates. Combined with the three pre-existing `COMPLETED` deals, all seven stages are now demonstrable. Every scenario is built through the real service layer, not inserted — so each deal has a populated, actor-attributed audit timeline, real budget movement, and commission records. `--reset` restores the exact pre-run state, including fully reversing a transfer that was executed mid-demo (contract swap, budget settlement, player club). Deterministic by seed; player selection is documented in [`feature_spec/demo-scenario-generator.md`](./feature_spec/demo-scenario-generator.md). Closes [audit](./DEMO_READINESS_AUDIT.md) C1 and C2. (`backend/scripts/seed_demo.py`)
+- **Reference database snapshot** — a `pg_dump` custom-format snapshot of the development database (7,914 players, 11 leagues, 99 world teams with crests, 2,229 valuations), committed so the dataset survives `docker compose down -v` and can be restored without internet or an API key. 7.2 MB, 85 tables, round-trip verified. (`backend/seeds/transferx_reference_20260808.dump`)
+- **Demo-readiness audit** — a merged, independently-verified assessment of what would break or embarrass during an investor or client-club demo, separating demo blockers from pilot blockers. 22 verified findings (4 critical, 7 high, 11 medium) plus 10 low. C1–C4 are now resolved; the prioritised remaining items are in the audit's recommendation table. ([`docs/DEMO_READINESS_AUDIT.md`](./DEMO_READINESS_AUDIT.md))
+
+### Fixed
+- **Scheduled jobs never fired at the intended cadence** — APScheduler interval jobs with no explicit `next_run_time` schedule their first execution at `now + interval`, so 24h jobs (`valuation_compute`, `enrichment_sync`, `approval_expiry`, `expire_mandates`, `deal_sla`) and the 6h `client_alerts` job effectively never ran unless the process stayed up for the full interval without a restart. In development the API restarts constantly; in production any deploy or crash resets the clock. Evidence: the latest valuation sat at 2026-07-06 for over a month despite a "daily" recompute. Now every job fires a few seconds after startup via `next_run_time`, and the valuation model immediately improved — HIGH-confidence rows went from 0 to 948 (40.2% of covered players) as the ~12k vendor-sync stat snapshots from the previous session finally reached the model. (`backend/app/main.py`)
 
 ### Fixed
 - Vendor player-stats sync (API-Football) was completely broken — every sync attempt, success or failure, crashed on a naive/aware datetime mismatch writing `vendor_sync_states` (`DateTime` columns vs. a timezone-aware `datetime.now(timezone.utc)`), so nothing had ever synced successfully. Stripped to naive UTC before assignment, matching the existing convention in `vendor/sync.py`. (`backend/app/stats/service.py`)
