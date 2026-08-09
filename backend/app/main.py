@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request, status
@@ -163,17 +164,48 @@ async def _client_alerts_job() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    _scheduler.add_job(_close_expired_sales_job, "interval", minutes=1, id="close_expired_sales")
-    _scheduler.add_job(_expire_stale_offers_job, "interval", minutes=5, id="expire_stale_offers")
-    _scheduler.add_job(_notify_upcoming_events_job, "interval", hours=1, id="notify_upcoming_events")
-    _scheduler.add_job(_enrichment_sync_job, "interval", hours=24, id="enrichment_sync")
+    # Startup. Each interval job gets an explicit next_run_time so the first
+    # execution fires promptly after startup rather than at now + interval.
+    # Without this a 24h job never runs unless the process survives 24 unbroken
+    # hours, which effectively means never in development (constant restarts)
+    # and unreliably in production (any deploy or crash resets the clock).
+    _scheduler.add_job(
+        _close_expired_sales_job, "interval", minutes=1, id="close_expired_sales",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=3),
+    )
+    _scheduler.add_job(
+        _expire_stale_offers_job, "interval", minutes=5, id="expire_stale_offers",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=3),
+    )
+    _scheduler.add_job(
+        _notify_upcoming_events_job, "interval", hours=1, id="notify_upcoming_events",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=5),
+    )
+    _scheduler.add_job(
+        _enrichment_sync_job, "interval", hours=24, id="enrichment_sync",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+    )
     # Registered after enrichment_sync so the daily recompute runs on fresher stats.
-    _scheduler.add_job(_valuation_compute_job, "interval", hours=24, id="valuation_compute")
-    _scheduler.add_job(_client_alerts_job, "interval", hours=6, id="client_alerts")
-    _scheduler.add_job(_approval_expiry_job, "interval", hours=24, id="approval_expiry")
-    _scheduler.add_job(_expire_mandates_job, "interval", hours=24, id="expire_mandates")
-    _scheduler.add_job(_deal_sla_job, "interval", hours=24, id="deal_sla")
+    _scheduler.add_job(
+        _valuation_compute_job, "interval", hours=24, id="valuation_compute",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=15),
+    )
+    _scheduler.add_job(
+        _client_alerts_job, "interval", hours=6, id="client_alerts",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+    )
+    _scheduler.add_job(
+        _approval_expiry_job, "interval", hours=24, id="approval_expiry",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+    )
+    _scheduler.add_job(
+        _expire_mandates_job, "interval", hours=24, id="expire_mandates",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+    )
+    _scheduler.add_job(
+        _deal_sla_job, "interval", hours=24, id="deal_sla",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+    )
     _scheduler.start()
     logger.info("APScheduler started")
     yield
