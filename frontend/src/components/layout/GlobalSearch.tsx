@@ -73,7 +73,8 @@ export default function GlobalSearch() {
       {/* Trigger button in header */}
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-lg bg-surface px-3 py-1.5 text-sm text-text-muted ring-1 ring-input-border hover:ring-accent hover:text-text transition-colors"
+        aria-label="Search"
+        className="flex min-h-11 lg:min-h-0 items-center justify-center gap-2 rounded-lg bg-surface px-3 py-1.5 text-sm text-text-muted ring-1 ring-input-border hover:ring-accent hover:text-text transition-colors"
       >
         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />

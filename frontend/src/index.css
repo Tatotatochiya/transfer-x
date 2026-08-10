@@ -36,6 +36,11 @@
   --color-accent-bg-strong: var(--accent-bg-strong);
   --color-accent-avatar: var(--accent-avatar);
 
+  --color-role-club-text: var(--role-club-text);
+  --color-role-club-bg: var(--role-club-bg);
+  --color-role-agent-text: var(--role-agent-text);
+  --color-role-agent-bg: var(--role-agent-bg);
+
   --color-danger: var(--danger);
   --color-danger-text: var(--danger-text);
   --color-danger-text-alt: var(--danger-text-alt);
@@ -94,6 +99,16 @@
   --accent-bg: #eaf2ff;
   --accent-bg-strong: #dbecff;
   --accent-avatar: #dce9fd;
+
+  /* Account-type badges — Club/Agent identity colour. Not part of
+     TOKENS.md (the handoff package doesn't cover the account-switcher
+     avatar), added per CLAUDE.md's rule 1: derived from the app's existing
+     shipped indigo/purple, adjusted for light-background legibility.
+     Player reuses warning; Staff reuses danger — see Avatar.tsx. */
+  --role-club-text: #4338ca;
+  --role-club-bg: #e0e7ff;
+  --role-agent-text: #7e22ce;
+  --role-agent-bg: #f3e8ff;
 
   /* Danger — red */
   --danger: #c53637;
@@ -160,6 +175,11 @@
   --accent-bg: #0a2e22;
   --accent-bg-strong: #0d3b28;
   --accent-avatar: #113b2c;
+
+  --role-club-text: #818cf8;
+  --role-club-bg: #312e8140;
+  --role-agent-text: #c084fc;
+  --role-agent-bg: #581c8740;
 
   --danger: #ef4444;
   --danger-text: #f87171;

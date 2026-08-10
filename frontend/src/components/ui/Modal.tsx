@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 export type ModalSize = "sm" | "md" | "lg" | "xl";
 
@@ -21,31 +21,12 @@ interface ModalProps {
 
 /**
  * Canonical modal primitive — backdrop + centered panel, portalled to
- * <body> so it can't be clipped by an ancestor's overflow/z-index.
- * Escape closes; the backdrop closes on click; content clicks don't
- * propagate to the backdrop.
+ * <body> so it can't be clipped by an ancestor's overflow/z-index. Escape,
+ * Tab-trapping, body-scroll-lock and return-focus-on-close all come from
+ * useFocusTrap, shared with the mobile nav drawer.
  */
 export default function Modal({ open, onClose, title, size = "md", children, className = "" }: ModalProps) {
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    panelRef.current?.focus();
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open, onClose]);
+  const panelRef = useFocusTrap(open, onClose);
 
   if (!open) return null;
 
@@ -53,7 +34,7 @@ export default function Modal({ open, onClose, title, size = "md", children, cla
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-ink/60 backdrop-blur-sm" />
       <div
-        ref={panelRef}
+        ref={panelRef as React.RefObject<HTMLDivElement>}
         role="dialog"
         aria-modal="true"
         aria-label={title}
