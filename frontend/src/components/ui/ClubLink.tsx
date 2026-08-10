@@ -31,7 +31,7 @@ export default function ClubLink({
   if (!name) return <span className={className}>{fallback}</span>;
 
   const showCrestSlot = crestUrl !== undefined;
-  const base = `${showCrestSlot ? "inline-flex items-center gap-1.5 " : ""}hover:text-emerald-400 transition-colors ${className}`;
+  const base = `${showCrestSlot ? "inline-flex items-center gap-1.5 " : ""}hover:text-accent transition-colors ${className}`;
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
   const content = showCrestSlot ? (
@@ -39,7 +39,7 @@ export default function ClubLink({
       {crestUrl ? (
         <img src={crestUrl} alt="" loading="lazy" className="h-4 w-4 shrink-0 object-contain" />
       ) : (
-        <span className="h-4 w-4 shrink-0 rounded-full bg-slate-700 flex items-center justify-center text-[9px] font-bold text-slate-500">
+        <span className="h-4 w-4 shrink-0 rounded-full bg-surface-inset flex items-center justify-center text-[9px] font-bold text-text-muted">
           {name[0]?.toUpperCase()}
         </span>
       )}

@@ -5,7 +5,9 @@ import type { AdminUser, Paginated } from "../../types/api";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
+import Input from "../../components/ui/Input";
 import Pagination from "../../components/ui/Pagination";
+import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import Spinner from "../../components/ui/Spinner";
 import { formatDate, getApiError } from "../../lib/utils";
 import { useAuthStore } from "../../store/auth";
@@ -19,7 +21,7 @@ function ToggleSwitch({
       disabled={disabled}
       onClick={() => onChange(!value)}
       className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-40 ${
-        value ? "bg-emerald-500" : "bg-slate-600"
+        value ? "bg-accent" : "bg-input-border"
       }`}
     >
       <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-0"}`} />
@@ -41,8 +43,7 @@ function CopyUuid({ id }: { id: string }) {
     <button
       onClick={copy}
       title={id}
-      className="font-mono text-xs transition-colors"
-      style={{ color: copied ? "#34d399" : "#4b5563" }}
+      className={`font-mono text-xs transition-colors ${copied ? "text-success-text" : "text-text-muted"}`}
     >
       {copied ? "Copied!" : `${id.slice(0, 8)}…`}
     </button>
@@ -65,7 +66,7 @@ function ResetPasswordRow({ userId }: { userId: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-xs text-slate-500 hover:text-amber-400 transition-colors"
+        className="text-xs text-text-muted hover:text-warning-text transition-colors"
       >
         Reset pw
       </button>
@@ -85,24 +86,24 @@ function ResetPasswordRow({ userId }: { userId: string }) {
         placeholder="new password"
         required
         autoFocus
-        className="w-28 rounded bg-slate-800 px-2 py-1 text-xs text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+        className="w-28 rounded bg-surface px-2 py-1 text-xs text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
       />
       <button
         type="submit"
         disabled={mutation.isPending || !pw}
-        className="text-xs text-emerald-400 hover:text-emerald-300 disabled:opacity-40"
+        className="text-xs text-accent hover:text-accent-hover disabled:opacity-40"
       >
         Set
       </button>
       <button
         type="button"
         onClick={() => { setOpen(false); setPw(""); }}
-        className="text-xs text-slate-500 hover:text-white"
+        className="text-xs text-text-muted hover:text-text"
       >
         ✕
       </button>
       {mutation.isError && (
-        <span className="text-xs text-red-400">{getApiError(mutation.error, "Failed")}</span>
+        <span className="text-xs text-danger-text">{getApiError(mutation.error, "Failed")}</span>
       )}
     </form>
   );
@@ -125,35 +126,31 @@ function CreateUserPanel({ onCreated }: { onCreated: () => void }) {
       onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
       className="flex flex-wrap items-end gap-3"
     >
-      <div>
-        <label className="mb-1 block text-xs text-slate-400">Email</label>
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="user@example.com"
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500 w-56"
-        />
-      </div>
-      <div>
-        <label className="mb-1 block text-xs text-slate-400">Password</label>
-        <input
-          type="password"
-          required
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500 w-40"
-        />
-      </div>
+      <Input
+        label="Email"
+        type="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="user@example.com"
+        wrapperClassName="w-56"
+      />
+      <Input
+        label="Password"
+        type="password"
+        required
+        value={pw}
+        onChange={(e) => setPw(e.target.value)}
+        wrapperClassName="w-40"
+      />
       <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}>
         Create user
       </Button>
       {mutation.isError && (
-        <p className="w-full text-xs text-red-400">{getApiError(mutation.error, "Create failed.")}</p>
+        <p className="w-full text-xs text-danger-text">{getApiError(mutation.error, "Create failed.")}</p>
       )}
       {mutation.isSuccess && (
-        <p className="w-full text-xs text-emerald-400">User created.</p>
+        <p className="w-full text-xs text-success-text">User created.</p>
       )}
     </form>
   );
@@ -211,20 +208,77 @@ export default function AdminUsersPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 
+  const columns: ResponsiveColumn<AdminUser>[] = [
+    {
+      key: "email", header: "Email", priority: 1,
+      render: (u) => (
+        <span className="font-medium text-text">
+          {u.email}
+          {u.id === me?.id && <Badge variant="warning" className="ml-2">You</Badge>}
+        </span>
+      ),
+    },
+    {
+      key: "active", header: "Active", priority: 2, className: "text-center",
+      render: (u) => (
+        <ToggleSwitch
+          value={u.is_active}
+          disabled={u.id === me?.id || toggleMutation.isPending}
+          onChange={(next) => toggleMutation.mutate({ userId: u.id, patch: { is_active: next } })}
+        />
+      ),
+    },
+    {
+      key: "superuser", header: "Superuser", priority: 3, className: "text-center",
+      render: (u) => (
+        <ToggleSwitch
+          value={u.is_superuser}
+          disabled={u.id === me?.id || toggleMutation.isPending}
+          onChange={(next) => toggleMutation.mutate({ userId: u.id, patch: { is_superuser: next } })}
+        />
+      ),
+    },
+    {
+      key: "joined", header: "Joined", priority: 4,
+      render: (u) => <span className="text-text-muted text-xs">{formatDate(u.created_at)}</span>,
+    },
+    {
+      key: "password", header: "Password",
+      render: (u) => (u.id === me?.id ? null : <ResetPasswordRow userId={u.id} />),
+    },
+    {
+      key: "uuid", header: "",
+      render: (u) => <CopyUuid id={u.id} />,
+    },
+    {
+      key: "delete", header: "",
+      render: (u) =>
+        u.id === me?.id ? null : (
+          <button
+            onClick={() => handleDeleteUser(u.id, u.email)}
+            disabled={deleteMutation.isPending}
+            className="rounded bg-danger-bg px-2 py-1 text-xs text-danger-text hover:bg-danger-bg-badge transition-colors disabled:opacity-40"
+          >
+            Delete
+          </button>
+        ),
+    },
+  ];
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Users</h1>
-          <p className="mt-1 text-sm text-slate-400">{data ? `${data.total} total` : ""}</p>
+          <h1 className="text-2xl font-bold text-text">Users</h1>
+          <p className="mt-1 text-sm text-text-muted">{data ? `${data.total} total` : ""}</p>
         </div>
         <div className="flex items-center gap-3">
-          <input
+          <Input
             type="text"
             placeholder="Search email…"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-amber-500 transition-colors w-56"
+            wrapperClassName="w-56"
           />
           <Button variant="primary" size="sm" onClick={() => setShowCreate((v) => !v)}>
             {showCreate ? "Hide" : "Create user"}
@@ -237,8 +291,8 @@ export default function AdminUsersPage() {
       </div>
 
       {showCreate && (
-        <div className="mb-6 rounded-xl bg-slate-900 ring-1 ring-white/[0.08] px-5 py-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">New user account</p>
+        <div className="mb-6 rounded-xl bg-surface ring-1 ring-border px-5 py-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">New user account</p>
           <CreateUserPanel onCreated={() => {
             queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
           }} />
@@ -249,74 +303,62 @@ export default function AdminUsersPage() {
 
       {data && (
         <>
-          <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.08]">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/[0.08] text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3 text-center">Active</th>
-                  <th className="px-4 py-3 text-center">Superuser</th>
-                  <th className="px-4 py-3">Joined</th>
-                  <th className="px-4 py-3">Password</th>
-                  <th className="px-4 py-3 w-8" />
-                  <th className="px-4 py-3 w-8" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04]">
-                {data.items.map((u) => {
-                  const isMe = u.id === me?.id;
-                  return (
-                    <tr key={u.id} className="bg-slate-900 hover:bg-slate-800/40 transition-colors">
-                      <td className="px-4 py-3 font-medium text-white">
-                        {u.email}
-                        {isMe && (
-                          <span className="ml-2 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-400">You</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <ToggleSwitch
-                          value={u.is_active}
-                          disabled={isMe || toggleMutation.isPending}
-                          onChange={(next) => toggleMutation.mutate({ userId: u.id, patch: { is_active: next } })}
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <ToggleSwitch
-                          value={u.is_superuser}
-                          disabled={isMe || toggleMutation.isPending}
-                          onChange={(next) => toggleMutation.mutate({ userId: u.id, patch: { is_superuser: next } })}
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{formatDate(u.created_at)}</td>
-                      <td className="px-4 py-3">
-                        {!isMe && <ResetPasswordRow userId={u.id} />}
-                      </td>
-                      <td className="px-4 py-3">
-                        <CopyUuid id={u.id} />
-                      </td>
-                      <td className="px-4 py-3">
-                        {!isMe && (
-                          <button
-                            onClick={() => handleDeleteUser(u.id, u.email)}
-                            disabled={deleteMutation.isPending}
-                            className="rounded bg-red-500/10 px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveTable
+            columns={columns}
+            rows={data.items}
+            rowKey={(u) => u.id}
+            emptyTitle="No users found"
+            renderCard={(u) => (
+              <div className="px-4 py-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-text">
+                    {u.email}
+                    {u.id === me?.id && <Badge variant="warning" className="ml-2">You</Badge>}
+                  </span>
+                  <span className="text-xs text-text-muted">{formatDate(u.created_at)}</span>
+                </div>
+                <div className="flex items-center gap-4 text-xs text-text-muted">
+                  <label className="flex items-center gap-1.5">
+                    Active
+                    <ToggleSwitch
+                      value={u.is_active}
+                      disabled={u.id === me?.id || toggleMutation.isPending}
+                      onChange={(next) => toggleMutation.mutate({ userId: u.id, patch: { is_active: next } })}
+                    />
+                  </label>
+                  <label className="flex items-center gap-1.5">
+                    Superuser
+                    <ToggleSwitch
+                      value={u.is_superuser}
+                      disabled={u.id === me?.id || toggleMutation.isPending}
+                      onChange={(next) => toggleMutation.mutate({ userId: u.id, patch: { is_superuser: next } })}
+                    />
+                  </label>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {u.id !== me?.id && <ResetPasswordRow userId={u.id} />}
+                    <CopyUuid id={u.id} />
+                  </div>
+                  {u.id !== me?.id && (
+                    <button
+                      onClick={() => handleDeleteUser(u.id, u.email)}
+                      disabled={deleteMutation.isPending}
+                      className="rounded bg-danger-bg px-2 py-1 text-xs text-danger-text disabled:opacity-40"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          />
 
           {toggleMutation.isError && (
-            <p className="mt-3 text-xs text-red-400">{getApiError(toggleMutation.error, "Update failed.")}</p>
+            <p className="mt-3 text-xs text-danger-text">{getApiError(toggleMutation.error, "Update failed.")}</p>
           )}
           {deleteMutation.isError && (
-            <p className="mt-3 text-xs text-red-400">{getApiError(deleteMutation.error, "Delete failed.")}</p>
+            <p className="mt-3 text-xs text-danger-text">{getApiError(deleteMutation.error, "Delete failed.")}</p>
           )}
 
           <Pagination page={data.page} total={data.total} pageSize={data.page_size} onChange={setPage} />

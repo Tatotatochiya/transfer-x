@@ -1,12 +1,21 @@
-export type BadgeVariant = "success" | "warning" | "danger" | "neutral" | "info";
+export type BadgeVariant =
+  | "success" | "warning" | "danger" | "neutral" | "info"
+  | "move-your" | "move-their" | "move-neither";
 
 const variantClasses: Record<BadgeVariant, string> = {
-  success: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30",
-  warning: "bg-amber-400/15 text-amber-400 ring-amber-400/30",
-  danger:  "bg-red-500/15 text-red-400 ring-red-500/30",
-  info:    "bg-sky-500/15 text-sky-400 ring-sky-500/30",
-  neutral: "bg-slate-500/15 text-slate-400 ring-slate-500/30",
+  success: "bg-success/15 text-success-text ring-success/30",
+  warning: "bg-warning-fill/15 text-warning-text ring-warning-fill/30",
+  danger:  "bg-danger/15 text-danger-text ring-danger/30",
+  info:    "bg-accent/15 text-accent ring-accent/30",
+  neutral: "bg-text-muted/15 text-text-muted ring-text-muted/30",
+  // "Whose move" states (docs/design_handoff_transferx/README.md) — plain
+  // coloured text, no pill background/ring, per SCREENS.md's row treatment.
+  "move-your":     "text-danger-text font-semibold",
+  "move-their":    "text-text-secondary font-semibold",
+  "move-neither":  "text-text-muted font-semibold",
 };
+
+const PILL_VARIANTS = new Set<BadgeVariant>(["success", "warning", "danger", "info", "neutral"]);
 
 interface BadgeProps {
   variant?: BadgeVariant;
@@ -15,9 +24,12 @@ interface BadgeProps {
 }
 
 export default function Badge({ variant = "neutral", children, className = "" }: BadgeProps) {
+  const pill = PILL_VARIANTS.has(variant);
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${variantClasses[variant]} ${className}`}
+      className={`inline-flex items-center text-xs ${
+        pill ? "rounded-full px-2.5 py-0.5 font-semibold ring-1" : ""
+      } ${variantClasses[variant]} ${className}`}
     >
       {children}
     </span>

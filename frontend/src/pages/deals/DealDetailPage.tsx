@@ -9,7 +9,7 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import ClubLink from "../../components/ui/ClubLink";
-import FormattedNumberInput from "../../components/ui/FormattedNumberInput";
+import CurrencyInput from "../../components/ui/CurrencyInput";
 import Metric from "../../components/ui/Metric";
 import Panel from "../../components/ui/Panel";
 import Spinner from "../../components/ui/Spinner";
@@ -155,7 +155,7 @@ function AgentNegotiationWorkspace({
               className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
             />
             <label className="block text-xs text-slate-400 pt-1">Commission amount (€)</label>
-            <FormattedNumberInput
+            <CurrencyInput
               value={draft.commission_amount}
               onChange={(v) => setDraft((d) => ({ ...d, commission_amount: v }))}
               className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
@@ -369,7 +369,7 @@ function SetPersonalTermsForm({ dealId }: { dealId: string }) {
       <div className="space-y-2">
         <div>
           <label className="mb-1 block text-xs text-slate-400">Weekly wage (€)</label>
-          <FormattedNumberInput
+          <CurrencyInput
             value={wageWeekly}
             onChange={setWageWeekly}
             className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
@@ -377,7 +377,7 @@ function SetPersonalTermsForm({ dealId }: { dealId: string }) {
         </div>
         <div>
           <label className="mb-1 block text-xs text-slate-400">Signing bonus (€)</label>
-          <FormattedNumberInput
+          <CurrencyInput
             value={signingBonus}
             onChange={setSigningBonus}
             className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
@@ -1005,11 +1005,11 @@ export default function DealDetailPage() {
                       </div>
                       <div>
                         <label className="mb-1 block text-xs text-slate-400">Loan fee (€)</label>
-                        <FormattedNumberInput value={dealDraft.loan_fee} onChange={(v) => setDealDraft((d) => ({ ...d, loan_fee: v }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                        <CurrencyInput value={dealDraft.loan_fee} onChange={(v) => setDealDraft((d) => ({ ...d, loan_fee: v }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
                       </div>
                       <div>
                         <label className="mb-1 block text-xs text-slate-400">Option to buy (€)</label>
-                        <FormattedNumberInput value={dealDraft.option_to_buy} onChange={(v) => setDealDraft((d) => ({ ...d, option_to_buy: v }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                        <CurrencyInput value={dealDraft.option_to_buy} onChange={(v) => setDealDraft((d) => ({ ...d, option_to_buy: v }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
                       </div>
                       <div className="col-span-2">
                         <label className="mb-1 block text-xs text-slate-400">Sell-on % (decimal, e.g. 0.05 = 5%)</label>
@@ -1139,7 +1139,7 @@ export default function DealDetailPage() {
                     </div>
                     <div>
                       <label className="mb-1 block text-xs text-slate-400">Amount (€)</label>
-                      <FormattedNumberInput
+                      <CurrencyInput
                         value={clauseDraft.amount}
                         onChange={(v) => setClauseDraft((d) => ({ ...d, amount: v }))}
                         className="w-full rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
@@ -1158,7 +1158,7 @@ export default function DealDetailPage() {
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-slate-400">Cap (€, optional)</label>
-                    <FormattedNumberInput
+                    <CurrencyInput
                       value={clauseDraft.cap}
                       onChange={(v) => setClauseDraft((d) => ({ ...d, cap: v }))}
                       className="w-full rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
@@ -1227,7 +1227,7 @@ export default function DealDetailPage() {
                         onChange={(e) => setInstalmentRows((rows) => rows.map((r, j) => j === i ? { ...r, due_date: e.target.value } : r))}
                         className="flex-1 rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
                       />
-                      <FormattedNumberInput
+                      <CurrencyInput
                         placeholder="Amount (€)"
                         value={row.amount}
                         onChange={(v) => setInstalmentRows((rows) => rows.map((r, j) => j === i ? { ...r, amount: v } : r))}

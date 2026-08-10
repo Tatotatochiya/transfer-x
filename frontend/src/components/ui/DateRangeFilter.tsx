@@ -20,14 +20,16 @@ function yearRange(year: number): DateRange {
   return { dateFrom: `${year}-01-01`, dateTo: `${year}-12-31` };
 }
 
+// "emerald"/"amber" names are historical (pre-redesign); they now map to the
+// accent and warning token families respectively rather than literal colours.
 const ACCENT = {
   emerald: {
-    active: "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30",
-    ring: "focus:ring-emerald-500",
+    active: "bg-accent-bg text-accent ring-1 ring-accent/30",
+    ring: "focus:ring-accent",
   },
   amber: {
-    active: "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30",
-    ring: "focus:ring-amber-500",
+    active: "bg-warning-fill/15 text-warning-text ring-1 ring-warning-fill/30",
+    ring: "focus:ring-warning-fill",
   },
 };
 
@@ -46,7 +48,7 @@ export default function DateRangeFilter({ value, onChange, accent = "emerald" }:
 
   function pill(active: boolean) {
     return `rounded-lg px-3 py-1.5 text-sm transition-colors ${
-      active ? colors.active : "bg-slate-800 text-slate-400 hover:text-white"
+      active ? colors.active : "bg-surface-inset text-text-muted hover:text-text"
     }`;
   }
 
@@ -82,14 +84,14 @@ export default function DateRangeFilter({ value, onChange, accent = "emerald" }:
             type="date"
             value={value.dateFrom}
             onChange={(e) => onChange({ ...value, dateFrom: e.target.value })}
-            className={`rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs text-white ring-1 ring-white/10 focus:outline-none ${colors.ring}`}
+            className={`rounded-lg bg-surface px-2.5 py-1.5 text-xs text-text ring-1 ring-input-border focus:outline-none ${colors.ring}`}
           />
-          <span className="text-xs text-slate-500">to</span>
+          <span className="text-xs text-text-muted">to</span>
           <input
             type="date"
             value={value.dateTo}
             onChange={(e) => onChange({ ...value, dateTo: e.target.value })}
-            className={`rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs text-white ring-1 ring-white/10 focus:outline-none ${colors.ring}`}
+            className={`rounded-lg bg-surface px-2.5 py-1.5 text-xs text-text ring-1 ring-input-border focus:outline-none ${colors.ring}`}
           />
         </div>
       )}

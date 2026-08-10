@@ -1,11 +1,14 @@
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import Button from "../components/ui/Button";
+import Modal from "../components/ui/Modal";
 
 interface ConfirmOptions {
   title?: string;
   message: string;
   confirmLabel?: string;
   variant?: "danger" | "primary";
+  /** Equivalent to variant: "danger" — some call sites use this instead. */
+  danger?: boolean;
 }
 
 interface ConfirmContextValue {
@@ -35,30 +38,26 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     setPending(null);
   };
 
+  const isDanger = pending?.options.danger || pending?.options.variant === "danger";
+
   return (
     <ConfirmContext.Provider value={{ confirm }}>
       {children}
-      {pending && (
-        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-            onClick={() => handleChoice(false)}
-          />
-          {/* Modal */}
-          <div className="relative w-full max-w-sm rounded-2xl bg-slate-900 p-6 shadow-2xl ring-1 ring-white/[0.08]">
+      <Modal open={pending !== null} onClose={() => handleChoice(false)} size="sm">
+        {pending && (
+          <div className="p-6">
             {pending.options.title && (
-              <h3 className="mb-2 text-base font-semibold text-white">
+              <h3 className="mb-2 text-base font-bold text-text">
                 {pending.options.title}
               </h3>
             )}
-            <p className="text-sm text-slate-300">{pending.options.message}</p>
+            <p className="text-sm text-text-secondary">{pending.options.message}</p>
             <div className="mt-5 flex justify-end gap-3">
               <Button variant="ghost" size="sm" onClick={() => handleChoice(false)}>
                 Cancel
               </Button>
               <Button
-                variant={pending.options.variant === "danger" ? "danger" : "primary"}
+                variant={isDanger ? "danger" : "primary"}
                 size="sm"
                 onClick={() => handleChoice(true)}
               >
@@ -66,8 +65,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </ConfirmContext.Provider>
   );
 }
