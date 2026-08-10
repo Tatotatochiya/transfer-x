@@ -1,17 +1,214 @@
 @import "tailwindcss";
 
-/* Design tokens — matches the Django legacy dark theme */
+/*
+ * Design tokens — light theme (default) per docs/design_handoff_transferx/TOKENS.md,
+ * dark theme derived from this app's existing shipped palette (slate + emerald),
+ * not from the handoff package, which only specifies light.
+ *
+ * @theme inline maps each semantic name to a plain custom property rather than a
+ * literal value, so Tailwind-generated utilities (bg-page, text-text-secondary, ...)
+ * stay reactive to the [data-theme] attribute at runtime instead of being baked in
+ * at build time. Components should only ever reference these utility classes —
+ * never a literal hex value.
+ */
+@theme inline {
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-quiet: var(--surface-quiet);
+  --color-surface-header: var(--surface-header);
+  --color-surface-inset: var(--surface-inset);
+
+  --color-border: var(--border);
+  --color-border-quiet: var(--border-quiet);
+  --color-rule: var(--rule);
+  --color-rule-faint: var(--rule-faint);
+  --color-input-border: var(--input-border);
+
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-bg: var(--accent-bg);
+  --color-accent-bg-strong: var(--accent-bg-strong);
+  --color-accent-avatar: var(--accent-avatar);
+
+  --color-danger: var(--danger);
+  --color-danger-text: var(--danger-text);
+  --color-danger-text-alt: var(--danger-text-alt);
+  --color-danger-heading: var(--danger-heading);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-bg-badge: var(--danger-bg-badge);
+  --color-danger-border: var(--danger-border);
+  --color-danger-ring: var(--danger-ring);
+
+  --color-success: var(--success);
+  --color-success-text: var(--success-text);
+  --color-success-text-alt: var(--success-text-alt);
+  --color-success-dot: var(--success-dot);
+
+  --color-warning-text: var(--warning-text);
+  --color-warning-text-alt: var(--warning-text-alt);
+  --color-warning-fill: var(--warning-fill);
+
+  --color-pos-gk-text: var(--pos-gk-text);
+  --color-pos-gk-bg: var(--pos-gk-bg);
+  --color-pos-def-text: var(--pos-def-text);
+  --color-pos-def-bg: var(--pos-def-bg);
+  --color-pos-mid-text: var(--pos-mid-text);
+  --color-pos-mid-bg: var(--pos-mid-bg);
+  --color-pos-fwd-text: var(--pos-fwd-text);
+  --color-pos-fwd-bg: var(--pos-fwd-bg);
+
+  --color-ink: var(--ink);
+}
+
 :root {
-  --color-accent: #10b981;      /* emerald-500 */
-  --color-accent-hover: #34d399; /* emerald-400 */
-  --color-surface: #0f172a;     /* slate-900 */
-  --color-body: #020617;        /* slate-950 */
+  /* Surfaces */
+  --page: #f7f8fa;
+  --surface: #ffffff;
+  --surface-quiet: #fbfbfc;
+  --surface-header: #fafbfc;
+  --surface-inset: #f9fafb;
+
+  /* Borders and rules */
+  --border: #e4e7ec;
+  --border-quiet: #eaecf0;
+  --rule: #f0f1f3;
+  --rule-faint: #f5f6f7;
+  --input-border: #d0d5dd;
+
+  /* Text — #667085 is the floor, never lighter for text */
+  --text: #14171f;
+  --text-secondary: #475467;
+  --text-muted: #667085;
+
+  /* Accent — blue */
+  --accent: #215fbc;
+  --accent-hover: #1050ac;
+  --accent-active: #0347a2;
+  --accent-soft: #407ede;
+  --accent-bg: #eaf2ff;
+  --accent-bg-strong: #dbecff;
+  --accent-avatar: #dce9fd;
+
+  /* Danger — red */
+  --danger: #c53637;
+  --danger-text: #ac1922;
+  --danger-text-alt: #9b1e22;
+  --danger-heading: #970818;
+  --danger-bg: #ffeeeb;
+  --danger-bg-badge: #ffdcd7;
+  --danger-border: #fedbd7;
+  --danger-ring: #f7ccc7;
+
+  /* Success — green */
+  --success: #007b2a;
+  --success-text: #006925;
+  --success-text-alt: #00601c;
+  --success-dot: #008a39;
+
+  /* Warning — amber */
+  --warning-text: #7a4a00;
+  --warning-text-alt: #865100;
+  --warning-fill: #d29923;
+
+  /* Position colours */
+  --pos-gk-text: #7a4a00;
+  --pos-gk-bg: #faf0dd;
+  --pos-def-text: #1050ac;
+  --pos-def-bg: #e2ecfb;
+  --pos-mid-text: #005a1c;
+  --pos-mid-bg: #e0f0e6;
+  --pos-fwd-text: #9b1e22;
+  --pos-fwd-bg: #fbe6e3;
+
+  /* The one deliberately-inverted element (active filter chip) */
+  --ink: #14171f;
+}
+
+/*
+ * Dark theme — derived from this app's existing shipped dark palette (slate
+ * surfaces, emerald accent, red/green/amber semantics already in use across
+ * pages today), re-expressed under the same token names the light set uses.
+ * Not specified by TOKENS.md, which only covers light.
+ */
+[data-theme="dark"] {
+  --page: #020617;
+  --surface: #0f172a;
+  --surface-quiet: #0b1220;
+  --surface-header: #111c2f;
+  --surface-inset: #1e293b;
+
+  --border: #263449;
+  --border-quiet: #1a2436;
+  --rule: #172033;
+  --rule-faint: #131b2b;
+  --input-border: #334155;
+
+  --text: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+
+  --accent: #10b981;
+  --accent-hover: #34d399;
+  --accent-active: #059669;
+  --accent-soft: #6ee7b7;
+  --accent-bg: #0a2e22;
+  --accent-bg-strong: #0d3b28;
+  --accent-avatar: #113b2c;
+
+  --danger: #ef4444;
+  --danger-text: #f87171;
+  --danger-text-alt: #fca5a5;
+  --danger-heading: #f87171;
+  --danger-bg: #2a1215;
+  --danger-bg-badge: #3f1d1f;
+  --danger-border: #4c2326;
+  --danger-ring: #5c2a2e;
+
+  --success: #22c55e;
+  --success-text: #4ade80;
+  --success-text-alt: #86efac;
+  --success-dot: #22c55e;
+
+  --warning-text: #fbbf24;
+  --warning-text-alt: #fcd34d;
+  --warning-fill: #d97706;
+
+  --pos-gk-text: #fbbf24;
+  --pos-gk-bg: #422b06;
+  --pos-def-text: #60a5fa;
+  --pos-def-bg: #1e3a5f;
+  --pos-mid-text: #4ade80;
+  --pos-mid-bg: #14532d;
+  --pos-fwd-text: #f87171;
+  --pos-fwd-bg: #450a0a;
+
+  --ink: #f8fafc;
 }
 
 body {
-  background-color: #020617; /* slate-950 */
-  color: #f8fafc;            /* slate-50 */
+  background-color: var(--color-page);
+  color: var(--color-text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @keyframes toast-in {

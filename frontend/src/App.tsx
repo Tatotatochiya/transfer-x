@@ -8,6 +8,7 @@ import AppShell from "./components/layout/AppShell";
 import Spinner from "./components/ui/Spinner";
 import { ToastProvider } from "./context/ToastContext";
 import { ConfirmProvider } from "./context/ConfirmContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { CompareProvider } from "./context/CompareContext";
 import CompareBar from "./components/players/CompareBar";
@@ -155,6 +156,7 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <ErrorBoundary>
+    <ThemeProvider>
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
       <ConfirmProvider>
@@ -255,6 +257,7 @@ export default function App() {
       </ConfirmProvider>
       </ToastProvider>
     </QueryClientProvider>
+    </ThemeProvider>
     </ErrorBoundary>
   );
 }
