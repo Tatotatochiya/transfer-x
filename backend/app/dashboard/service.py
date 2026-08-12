@@ -54,6 +54,7 @@ async def _approval_items(
                 amount=a.amount,
                 reason=a.summary or "Approval pending your decision",
                 link="/approvals",
+                deadline=a.expires_at,
             ),
         )
         for a in approvals
@@ -83,6 +84,7 @@ async def _offer_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[datet
                 amount=o.fee_amount,
                 reason=_offer_reason(o),
                 link=f"/offers/{o.id}",
+                deadline=o.expires_at,
             ),
         ))
     return out
@@ -148,6 +150,7 @@ async def _sale_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[dateti
                 amount=best,
                 reason="Reserve met — auction closing soon",
                 link=f"/sales/{s.id}",
+                deadline=s.deadline,
             ),
         ))
     return out

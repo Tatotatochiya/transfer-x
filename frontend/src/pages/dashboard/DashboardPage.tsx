@@ -26,6 +26,23 @@ import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { ScoutReportPanel } from "../../components/ai/ScoutReportPanel";
 import { dealWhoseMove, offerWhoseMove, saleWhoseMove } from "../../lib/whoseMove";
 import WaitingOnYouBand, { type WaitingItem } from "../../components/dashboard/WaitingOnYouBand";
+import { useClubDashboard } from "../../hooks/useClubDashboard";
+import type { DashboardItem } from "../../types/api";
+
+// B2 returns the situation in `reason`; the button verb comes from the kind.
+const WAITING_ACTION_LABEL: Record<DashboardItem["kind"], string> = {
+  approval: "Review",
+  offer:    "Respond",
+  deal:     "Open",
+  sale:     "Review bids",
+};
+
+const WAITING_FALLBACK_TITLE: Record<DashboardItem["kind"], string> = {
+  approval: "Approval request",
+  offer:    "Offer",
+  deal:     "Deal",
+  sale:     "Listing",
+};
 import FigureCard from "../../components/dashboard/FigureCard";
 import WorkingPanel from "../../components/dashboard/WorkingPanel";
 import ReferencePanel from "../../components/dashboard/ReferencePanel";
@@ -206,6 +223,9 @@ export default function DashboardPage() {
     enabled: !!myClub,
   });
 
+  // Shares its cache entry with the sidebar's badges — same key, one request.
+  const { data: dashboard } = useClubDashboard(!!myClub);
+
   if (clubLoading) {
     return <div className="flex items-center justify-center py-20"><Spinner size="lg" /></div>;
   }
@@ -232,52 +252,19 @@ export default function DashboardPage() {
   const myPendingApprovals = approvals.filter((a) => a.requested_by_user_id === user?.id);
 
   // ── Tier 1 ──
-  const waitingItems: WaitingItem[] = [
-    ...(isApprover ? approvals : []).map((a) => ({
-      key: `approval-${a.id}`,
-      title: a.summary ?? a.action_type.replace(/_/g, " "),
-      description: `Requested by ${a.requested_by_email ?? "a teammate"}`,
-      amount: a.amount,
-      deadline: a.expires_at,
-      actionLabel: "Review",
-      onClick: () => navigate("/club/approvals"),
-    })),
-    ...offers
-      .filter((o) => offerWhoseMove(o, myClubId) === "your")
-      .map((o) => ({
-        key: `offer-${o.id}`,
-        title: o.player?.name ?? "Offer",
-        description: o.from_club_id === myClubId
-          ? `Sent to ${o.to_club?.name ?? "—"}, awaiting their response`
-          : `From ${o.from_club?.name ?? "—"}`,
-        amount: o.fee_amount,
-        deadline: o.expires_at,
-        actionLabel: o.status === "COUNTERED" ? "Respond" : "Review",
-        onClick: () => navigate(`/offers/${o.id}`),
-      })),
-    ...deals
-      .filter((d) => dealWhoseMove(d, myClubId) === "your")
-      .map((d) => ({
-        key: `deal-${d.id}`,
-        title: d.player?.name ?? "Deal",
-        description: d.stage === "CONFIRMED" ? "Ready to execute" : "Agent negotiation needs a nudge",
-        amount: d.agreed_fee,
-        deadline: null,
-        actionLabel: d.stage === "CONFIRMED" ? "Execute" : "Open",
-        onClick: () => navigate(`/deals/${d.id}`),
-      })),
-    ...sales
-      .filter((s) => saleWhoseMove(s) === "your")
-      .map((s) => ({
-        key: `sale-${s.id}`,
-        title: s.player?.name ?? "Listing",
-        description: `Reserve met, ${s.bid_count} bid${s.bid_count === 1 ? "" : "s"} — decide before it closes`,
-        amount: s.best_bid,
-        deadline: s.deadline,
-        actionLabel: "Review bids",
-        onClick: () => navigate(`/sales/${s.id}`),
-      })),
-  ];
+  // Server-derived (B2). This was four separate client-side whose-move passes
+  // over the queries below; those queries stay because tiers 2-4 need their
+  // rows, but the *verdict* now comes from one place — otherwise the sidebar
+  // badge and this band can disagree while both are "right".
+  const waitingItems: WaitingItem[] = (dashboard?.waiting_on_you ?? []).map((item) => ({
+    key: `${item.kind}-${item.id}`,
+    title: item.player_name ?? WAITING_FALLBACK_TITLE[item.kind],
+    description: item.club_name ? `${item.reason} · ${item.club_name}` : item.reason,
+    amount: item.amount,
+    deadline: item.deadline,
+    actionLabel: WAITING_ACTION_LABEL[item.kind],
+    onClick: () => navigate(item.link),
+  }));
 
   // ── Tier 2 ──
   const posCounts = Object.fromEntries(POSITION_TARGETS.map((t) => [t.pos, players.filter((p) => p.position === t.pos).length]));

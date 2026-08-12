@@ -1184,6 +1184,8 @@ export interface DashboardItem {
   amount: number | null;
   reason: string;
   link: string;
+  /** Null for deals, which have no per-stage deadline. */
+  deadline: string | null;
 }
 
 export interface DashboardResponse {

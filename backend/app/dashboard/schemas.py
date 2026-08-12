@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -16,6 +17,12 @@ class DashboardItem(BaseModel):
     amount: Decimal | None = None
     reason: str
     link: str
+    # When the chance to act runs out — an approval's TTL, an offer's expiry, an
+    # auction's close. Null for deals, which have no per-stage deadline (the
+    # `deal_sla` job is the closest thing and doesn't set one). Urgency is half
+    # of "waiting on you", so a consumer that only had `reason` would have to
+    # re-fetch each entity to show a countdown.
+    deadline: datetime | None = None
 
 
 class DashboardResponse(BaseModel):

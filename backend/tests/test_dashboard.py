@@ -128,3 +128,28 @@ async def test_dashboard_shows_pending_approval_to_owner(client: AsyncClient, db
     dash = await client.get("/clubs/me/dashboard", headers=_auth_headers(buyer))
     items = dash.json()["waiting_on_you"]
     assert [i for i in items if i["kind"] == "approval" and i["id"] == approval_id]
+
+
+@pytest.mark.asyncio
+async def test_dashboard_items_carry_their_deadline(client: AsyncClient, buyer: dict, seller: dict, db):
+    """Urgency is half of "waiting on you". Without a deadline on the item, a
+    consumer showing a countdown would have to re-fetch every entity — which is
+    the per-row fetching this aggregate exists to avoid."""
+    await _give_budget(db)
+    buy_headers = _auth_headers(buyer)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player_for_seller(client, sel_headers)
+    seller_club_id = await _get_club_id(client, sel_headers)
+
+    created = await client.post(
+        "/offers",
+        json={"player_id": player["id"], "to_club_id": seller_club_id, "fee_amount": 5_000_000},
+        headers=buy_headers,
+    )
+    assert created.status_code == 201, created.text
+
+    items = (await client.get("/clubs/me/dashboard", headers=sel_headers)).json()["waiting_on_you"]
+    offer_item = next(i for i in items if i["kind"] == "offer")
+    assert offer_item["deadline"] is not None
+    # and it must be the offer's own expiry, not an arbitrary timestamp
+    assert offer_item["deadline"][:10] == created.json()["expires_at"][:10]
