@@ -75,7 +75,15 @@ function NegotiationHistory({ offer }: { offer: Offer }) {
   );
 }
 
-function YourMoveRow({ offer, valuation }: { offer: Offer; valuation: FairValueSignal | undefined }) {
+function YourMoveRow({
+  offer,
+  valuation,
+  rivalCount,
+}: {
+  offer: Offer;
+  valuation: FairValueSignal | undefined;
+  rivalCount: number;
+}) {
   const navigate = useNavigate();
   const belowValuation = valuation != null && offer.fee_amount != null && offer.fee_amount < valuation.fair_value;
 
@@ -92,6 +100,13 @@ function YourMoveRow({ offer, valuation }: { offer: Offer; valuation: FairValueS
           <p className="text-[13px] text-text-muted">
             {offer.from_club?.name ?? "?"} · {offer.status === "COUNTERED" ? "countered your terms" : "sent an offer"}
           </p>
+          {/* Deciding on an offer without knowing another club is also bidding
+              is the seller losing their strongest card. */}
+          {rivalCount > 0 && (
+            <p className="mt-1 text-[12px] font-semibold text-warning-text">
+              {rivalCount === 1 ? "1 other club is bidding" : `${rivalCount} other clubs are bidding`}
+            </p>
+          )}
         </div>
         <div className="basis-[120px] shrink">
           <p className="text-[11px] text-text-muted">Their offer</p>
@@ -127,7 +142,15 @@ function YourMoveRow({ offer, valuation }: { offer: Offer; valuation: FairValueS
   );
 }
 
-function YourMoveBand({ offers, valuations }: { offers: Offer[]; valuations: Record<string, FairValueSignal> }) {
+function YourMoveBand({
+  offers,
+  valuations,
+  liveOffersByPlayer,
+}: {
+  offers: Offer[];
+  valuations: Record<string, FairValueSignal>;
+  liveOffersByPlayer: Record<string, number>;
+}) {
   if (offers.length === 0) {
     return <p className="mb-[18px] text-sm text-text-secondary">Nothing is waiting on you.</p>;
   }
@@ -141,7 +164,12 @@ function YourMoveBand({ offers, valuations }: { offers: Offer[]; valuations: Rec
       </div>
       <div>
         {offers.map((o) => (
-          <YourMoveRow key={o.id} offer={o} valuation={valuations[o.player_id]} />
+          <YourMoveRow
+            key={o.id}
+            offer={o}
+            valuation={valuations[o.player_id]}
+            rivalCount={Math.max((liveOffersByPlayer[o.player_id] ?? 1) - 1, 0)}
+          />
         ))}
       </div>
     </div>
@@ -170,6 +198,59 @@ interface EverythingRow {
   move: ReturnType<typeof offerWhoseMove>;
 }
 
+/**
+ * One row per *player*, not per offer.
+ *
+ * Two clubs bidding for the same player is the most valuable thing a seller can
+ * know — it is the leverage — but as one row per offer it rendered as two
+ * unrelated lines that happened to sit next to each other. Grouping puts the
+ * competition in the headline, and the row leads to the best offer, whose
+ * detail page already carries the ranked order book.
+ */
+interface PlayerGroup {
+  playerId: string;
+  offers: EverythingRow[];   // best fee first
+  best: EverythingRow;
+  /** Most recent activity across the whole group — not the best offer's own
+   *  date, which can be older than a rival's and would misreport the row. */
+  lastActivity: string;
+}
+
+function feeOf(o: Offer): number {
+  return o.fee_amount ?? -1;   // a fee-less offer ranks below any priced one
+}
+
+function groupByPlayer(rows: EverythingRow[]): PlayerGroup[] {
+  const byPlayer = new Map<string, EverythingRow[]>();
+  for (const row of rows) {
+    const existing = byPlayer.get(row.offer.player_id);
+    if (existing) existing.push(row);
+    else byPlayer.set(row.offer.player_id, [row]);
+  }
+  // Map preserves insertion order, so the server's ordering (last activity)
+  // still decides where each player sits.
+  return [...byPlayer.entries()].map(([playerId, group]) => {
+    const offers = [...group].sort((a, b) => feeOf(b.offer) - feeOf(a.offer));
+    const lastActivity = group
+      .map((r) => r.offer.last_action_at)
+      .reduce((latest, d) => (new Date(d) > new Date(latest) ? d : latest));
+    return { playerId, offers, best: offers[0], lastActivity };
+  });
+}
+
+/**
+ * Is this offer still in play, or is it history?
+ *
+ * The previous single "Everything else" bucket mixed live negotiations, deals
+ * already running, and dead offers — its own subheading admitted as much
+ * ("Waiting on the other club, or closed"). They need different actions.
+ */
+function isLive(offer: Offer): boolean {
+  if (offer.status === "SENT" || offer.status === "COUNTERED") return true;
+  if (offer.deal) return offer.deal.status === "IN_PROGRESS" || offer.deal.status === "PENDING_COMPLETION";
+  return false;
+}
+
 function StateCell({ row }: { row: EverythingRow }) {
   const { offer, move } = row;
   // A seller who accepted an offer has the same problem a buyer does: the deal
@@ -185,6 +266,71 @@ function StateCell({ row }: { row: EverythingRow }) {
   return <span className={move === "your" ? "text-danger-text font-semibold" : "text-text-secondary font-semibold"}>
     {move === "your" ? "Your move" : "Their move"}
   </span>;
+}
+
+function InboxSection({
+  title,
+  hint,
+  groups,
+  columns,
+  navigate,
+  emptyTitle,
+}: {
+  title: string;
+  hint: string;
+  groups: PlayerGroup[];
+  columns: ResponsiveColumn<PlayerGroup>[];
+  navigate: ReturnType<typeof useNavigate>;
+  emptyTitle: string;
+}) {
+  // A grouped row leads to the best offer, whose detail page carries the ranked
+  // order book across every competing club — rather than duplicating that
+  // comparison here.
+  const open = (g: PlayerGroup) => navigate(`/offers/${g.best.offer.id}`);
+
+  return (
+    <div className="mb-6">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-bold text-text">
+          {title}
+          {groups.length > 0 && <span className="ml-2 font-semibold text-text-muted">{groups.length}</span>}
+        </h2>
+        <span className="text-xs text-text-muted">{hint}</span>
+      </div>
+      <ResponsiveTable
+        columns={columns}
+        rows={groups}
+        rowKey={(g) => g.playerId}
+        onRowClick={open}
+        emptyTitle={emptyTitle}
+        renderCard={(g) => (
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-text">
+                {g.best.offer.player?.name ?? "—"}
+                {g.best.offer.player?.position && (
+                  <span className="ml-1.5 text-xs text-text-muted">{g.best.offer.player.position}</span>
+                )}
+              </span>
+              <span className="text-sm font-bold text-text">
+                {g.best.offer.fee_amount != null ? formatCurrency(g.best.offer.fee_amount) : "TBD"}
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs text-text-muted">
+              {g.offers.map((r) => r.offer.from_club?.name ?? "?").join(" · ")}
+              {g.offers.length > 1 && (
+                <span className="ml-1.5 font-bold text-warning-text">{g.offers.length} clubs</span>
+              )}
+            </p>
+            <div className="mt-1 flex items-center justify-between text-xs">
+              <StateCell row={g.best} />
+              <span className="text-text-muted">{formatDate(g.lastActivity)}</span>
+            </div>
+          </div>
+        )}
+      />
+    </div>
+  );
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
@@ -248,20 +394,54 @@ export default function OfferInboxPage() {
     })
     .map((o) => ({ offer: o, move: myClubId ? offerWhoseMove(o, myClubId) : "neither" }));
 
-  const columns: ResponsiveColumn<EverythingRow>[] = [
-    { key: "player", header: "Player", priority: 1, render: ({ offer }) => (
+  const inPlayGroups = groupByPlayer(everythingRows.filter((r) => isLive(r.offer)));
+  const closedGroups = groupByPlayer(everythingRows.filter((r) => !isLive(r.offer)));
+
+  // How many clubs are live on each player, across both bands — a rival sitting
+  // in "In play" still counts against an offer that's waiting on you.
+  const liveOffersByPlayer = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const o of allOffers) {
+      if (!isLive(o)) continue;
+      counts[o.player_id] = (counts[o.player_id] ?? 0) + 1;
+    }
+    return counts;
+  }, [allOffers]);
+
+  const columns: ResponsiveColumn<PlayerGroup>[] = [
+    { key: "player", header: "Player", priority: 1, render: (g) => (
       <span className="font-medium text-text">
-        {offer.player?.name ?? "—"}
-        {offer.player?.position && <span className="ml-2 text-xs text-text-muted">{offer.player.position}</span>}
+        {g.best.offer.player?.name ?? "—"}
+        {g.best.offer.player?.position && (
+          <span className="ml-2 text-xs text-text-muted">{g.best.offer.player.position}</span>
+        )}
+        {g.offers.length > 1 && (
+          <span className="ml-2 rounded-full bg-warning-bg px-2 py-0.5 text-[11px] font-bold text-warning-text ring-1 ring-warning-fill/25">
+            {g.offers.length} clubs
+          </span>
+        )}
       </span>
     ) },
-    { key: "club", header: "Club", priority: 3, render: ({ offer }) => <ClubLink id={offer.from_club?.id} name={offer.from_club?.name} /> },
-    { key: "fee", header: "Fee", priority: 2, className: "text-right", render: ({ offer }) => (
-      <span className="font-bold text-text">{offer.fee_amount != null ? formatCurrency(offer.fee_amount) : "TBD"}</span>
+    { key: "club", header: "Club", priority: 3, render: (g) =>
+      g.offers.length === 1 ? (
+        <ClubLink id={g.best.offer.from_club?.id} name={g.best.offer.from_club?.name} />
+      ) : (
+        <span className="text-text-secondary">
+          {g.offers.map((r) => r.offer.from_club?.name ?? "?").join(" · ")}
+        </span>
+      )
+    },
+    { key: "fee", header: "Fee", priority: 2, className: "text-right", render: (g) => (
+      <span className="font-bold text-text">
+        {g.best.offer.fee_amount != null ? formatCurrency(g.best.offer.fee_amount) : "TBD"}
+        {g.offers.length > 1 && (
+          <span className="ml-1.5 text-[11px] font-normal text-text-muted">best</span>
+        )}
+      </span>
     ) },
-    { key: "state", header: "State", priority: 4, render: (row) => <StateCell row={row} /> },
-    { key: "activity", header: "Last activity", priority: 5, className: "text-right", render: ({ offer }) => (
-      <span className="text-xs text-text-muted">{formatDate(offer.last_action_at)}</span>
+    { key: "state", header: "State", priority: 4, render: (g) => <StateCell row={g.best} /> },
+    { key: "activity", header: "Last activity", priority: 5, className: "text-right", render: (g) => (
+      <span className="text-xs text-text-muted">{formatDate(g.lastActivity)}</span>
     ) },
   ];
 
@@ -293,37 +473,31 @@ export default function OfferInboxPage() {
         <ListSkeleton count={4} />
       ) : (
         <>
-          <YourMoveBand offers={yourMoveOffers} valuations={valuationData?.valuations ?? {}} />
+          <YourMoveBand
+            offers={yourMoveOffers}
+            valuations={valuationData?.valuations ?? {}}
+            liveOffersByPlayer={liveOffersByPlayer}
+          />
 
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-text">Everything else</h2>
-              <span className="text-xs text-text-muted">Waiting on the other club, or closed</span>
-            </div>
-            <ResponsiveTable
+          <InboxSection
+            title="In play"
+            hint="Live negotiations and deals already running"
+            groups={inPlayGroups}
+            columns={columns}
+            navigate={navigate}
+            emptyTitle="Nothing in play"
+          />
+
+          {closedGroups.length > 0 && (
+            <InboxSection
+              title="Closed"
+              hint="Completed, rejected, withdrawn or expired"
+              groups={closedGroups}
               columns={columns}
-              rows={everythingRows}
-              rowKey={(r) => r.offer.id}
-              onRowClick={(r) => navigate(`/offers/${r.offer.id}`)}
-              emptyTitle="No offers here"
-              renderCard={(r) => (
-                <div className="px-4 py-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-text">
-                      {r.offer.player?.name ?? "—"}
-                      {r.offer.player?.position && <span className="ml-1.5 text-xs text-text-muted">{r.offer.player.position}</span>}
-                    </span>
-                    <span className="text-sm font-bold text-text">{r.offer.fee_amount != null ? formatCurrency(r.offer.fee_amount) : "TBD"}</span>
-                  </div>
-                  <p className="mt-0.5 text-xs text-text-muted">{r.offer.from_club?.name ?? "?"}</p>
-                  <div className="mt-1 flex items-center justify-between text-xs">
-                    <StateCell row={r} />
-                    <span className="text-text-muted">{formatDate(r.offer.last_action_at)}</span>
-                  </div>
-                </div>
-              )}
+              navigate={navigate}
+              emptyTitle="Nothing closed yet"
             />
-          </div>
+          )}
 
           {!isClientFiltered && data && data.total > data.page_size && (
             <Pagination page={data.page} total={data.total} pageSize={data.page_size} onChange={setPage} />
