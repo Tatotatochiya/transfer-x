@@ -39,13 +39,11 @@ Out of scope: local dev setup (see [`../engineering/getting-started.md`](../engi
 
 ## Pending data repairs on Railway
 
-One-off repair scripts that have been run locally but **not yet on Railway**. These are not Alembic migrations, so nothing runs them automatically on deploy — each has to be invoked deliberately after the corresponding code change is deployed. Delete a row once it has been run there.
+One-off repair scripts that have been run locally but not yet on Railway. These are not Alembic migrations, so nothing runs them automatically on deploy — each has to be invoked deliberately after the corresponding code change is deployed. Delete a row once it has been run there.
 
-| Script | Why | Run after |
-|---|---|---|
-| `backend/scripts/repair_listings_left_open_after_offer_accepted.py` | Accepting a direct offer against a listing used to leave that listing `OPEN` and never set `deal.sale_id` (see [`../CHANGELOG.md`](../CHANGELOG.md)). Railway's data will contain the same broken rows. | Deploying the `accept_offer` fix. Running it before the fix is deployed would repair existing rows but not stop new ones appearing. |
+*(none outstanding)*
 
-Safe to run repeatedly — it is idempotent, and `--dry-run` reports what it would change without writing.
+`backend/scripts/repair_listings_left_open_after_offer_accepted.py` — deployed and run 2026-08-12. **Verified by direct read-only query against Railway's database, not by trusting the run's own report:** `alembic_version` is at `0063`; zero listings sit `OPEN` behind an `IN_PROGRESS`/`COMPLETED` deal. Worth recording precisely, since it corrects what this doc said before: Railway's data did **not** in fact contain the broken rows this script targets. Of Railway's 8 offers, only 2 were ever made against a listing, and both expired unaccepted — `accept_offer` (where the bug lived) was never invoked with a `sale_id` present there. The three deals that do exist are all from standalone offers, unrelated to this bug. So the repair was correctly a no-op on this environment; the assumption that Railway "carries the same broken rows local did" was untested at the time it was written and turned out to be wrong. Safe to run again regardless — idempotent, `--dry-run` reports what it would change without writing.
 
 ## Related documents
 
