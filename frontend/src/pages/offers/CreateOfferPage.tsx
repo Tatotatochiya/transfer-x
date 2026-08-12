@@ -167,7 +167,14 @@ export default function CreateOfferPage() {
           <p className="text-sm font-semibold text-text">{player.name}</p>
           <p className="text-xs text-text-muted mt-0.5">
             {player.position ?? "No position"} ·{" "}
-            {player.current_club?.name ?? "Free agent"}
+            {/* Fall through the real-world club signals before concluding "free
+                agent" — a vendor-imported player has no TransferX club but is
+                under contract elsewhere (ADR 0003). Same chain PlayerCard,
+                PlayerListRow and GlobalSearch already use. */}
+            {player.current_club?.name ??
+              player.world_team?.name ??
+              player.team_name ??
+              "Free agent"}
           </p>
         </div>
       )}
