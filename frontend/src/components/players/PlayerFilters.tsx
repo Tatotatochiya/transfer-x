@@ -49,28 +49,8 @@ export const DEFAULT_PLAYER_FILTERS: PlayerFilterState = {
 
 const POSITIONS: PlayerPosition[] = ["GK", "DEF", "MID", "FWD"];
 
-const POSITION_COLOUR: Record<string, string> = {
-  GK:  "bg-amber-500/20 text-amber-300 ring-amber-500/30",
-  DEF: "bg-blue-500/20 text-blue-300 ring-blue-500/30",
-  MID: "bg-emerald-500/20 text-emerald-300 ring-emerald-500/30",
-  FWD: "bg-red-500/20 text-red-300 ring-red-500/30",
-};
-
-const SORT_OPTIONS: { label: string; sort_by: PlayerFilterState["sort_by"]; sort_dir: "asc" | "desc" }[] = [
-  { label: "Name A→Z",       sort_by: "name",         sort_dir: "asc" },
-  { label: "Name Z→A",       sort_by: "name",         sort_dir: "desc" },
-  { label: "Youngest first", sort_by: "age",          sort_dir: "asc" },
-  { label: "Oldest first",   sort_by: "age",          sort_dir: "desc" },
-  { label: "Most Goals",     sort_by: "goals",        sort_dir: "desc" },
-  { label: "Most Assists",   sort_by: "assists",      sort_dir: "desc" },
-  { label: "Most Apps",      sort_by: "appearances",  sort_dir: "desc" },
-  { label: "Best Rating",    sort_by: "avg_rating",   sort_dir: "desc" },
-  { label: "Best Form",      sort_by: "form_score",   sort_dir: "desc" },
-];
-
-const inputCls =
-  "w-full rounded-lg bg-slate-800/80 px-3 py-1.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500/60 transition-colors";
-
+const fieldCls = "flex items-center justify-between gap-2 rounded-lg bg-surface px-[11px] py-[9px] text-sm ring-1 ring-input-border focus-within:ring-accent transition-colors";
+const inputCls = "w-full bg-transparent text-text placeholder-text-muted focus:outline-none";
 const numInputCls = `${inputCls} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`;
 
 function countActiveFilters(f: PlayerFilterState): number {
@@ -78,16 +58,10 @@ function countActiveFilters(f: PlayerFilterState): number {
   if (f.status) n++;
   if (f.open_to_offers) n++;
   if (f.nationality) n++;
-  if (f.club_search) n++;
-  if (f.min_age || f.max_age) n++;
   if (f.min_goals) n++;
   if (f.min_assists) n++;
   if (f.min_appearances) n++;
   if (f.min_avg_rating) n++;
-  if (f.min_form_score) n++;
-  if (f.min_value || f.max_value) n++;
-  if (f.contract_expiry_months) n++;
-  if (f.sort_by !== "name" || f.sort_dir !== "asc") n++;
   return n;
 }
 
@@ -98,63 +72,56 @@ interface Props {
   onViewChange: (v: ViewMode) => void;
 }
 
+// ── Filter rail: the six primary spec'd fields as boxed rows, plus a
+// collapsible section for the rest of the existing (working) filter set. ────
+
 export default function PlayerFilters({ filters, onChange, view, onViewChange }: Props) {
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   function set<K extends keyof PlayerFilterState>(key: K, value: PlayerFilterState[K]) {
     onChange({ ...filters, [key]: value });
   }
 
-  function setSort(value: string) {
-    const opt = SORT_OPTIONS.find((o) => `${o.sort_by}_${o.sort_dir}` === value);
-    if (opt) onChange({ ...filters, sort_by: opt.sort_by, sort_dir: opt.sort_dir });
-  }
-
-  const activeCount = countActiveFilters(filters);
-  const sortValue = `${filters.sort_by}_${filters.sort_dir}`;
-
-  // Build active filter chips
-  const chips: { label: string; clear: () => void }[] = [];
-  if (filters.status) chips.push({ label: filters.status === "FREE_AGENT" ? "Free Agent" : "Contracted", clear: () => set("status", "") });
-  if (filters.open_to_offers) chips.push({ label: "Open to offers", clear: () => set("open_to_offers", false) });
-  if (filters.nationality) chips.push({ label: `Nat: ${filters.nationality}`, clear: () => set("nationality", "") });
-  if (filters.club_search) chips.push({ label: `Club: ${filters.club_search}`, clear: () => set("club_search", "") });
-  if (filters.min_age || filters.max_age) chips.push({ label: `Age: ${filters.min_age || "?"} – ${filters.max_age || "?"}`, clear: () => onChange({ ...filters, min_age: "", max_age: "" }) });
-  if (filters.min_goals) chips.push({ label: `Goals ≥ ${filters.min_goals}`, clear: () => set("min_goals", "") });
-  if (filters.min_assists) chips.push({ label: `Assists ≥ ${filters.min_assists}`, clear: () => set("min_assists", "") });
-  if (filters.min_appearances) chips.push({ label: `Apps ≥ ${filters.min_appearances}`, clear: () => set("min_appearances", "") });
-  if (filters.min_avg_rating) chips.push({ label: `Rating ≥ ${filters.min_avg_rating}`, clear: () => set("min_avg_rating", "") });
-  if (filters.min_form_score) chips.push({ label: `Form ≥ ${filters.min_form_score}`, clear: () => set("min_form_score", "") });
-  if (filters.min_value || filters.max_value) chips.push({ label: `Value: ${filters.min_value || "0"}–${filters.max_value || "∞"}M`, clear: () => onChange({ ...filters, min_value: "", max_value: "" }) });
-  if (filters.contract_expiry_months) chips.push({ label: `Expiring ≤ ${filters.contract_expiry_months}mo`, clear: () => set("contract_expiry_months", "") });
+  const moreCount = countActiveFilters(filters);
 
   return (
-    <div className="mb-5 space-y-2">
-      {/* ── Toolbar row ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-3">
+      {/* Search */}
+      <div className={fieldCls}>
+        <input
+          type="text"
+          placeholder="Search players…"
+          value={filters.search}
+          onChange={(e) => set("search", e.target.value)}
+          className={inputCls}
+        />
+      </div>
 
-        {/* Search */}
-        <div className="relative">
-          <svg className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" /></svg>
-          <input
-            type="text"
-            placeholder="Search players…"
-            value={filters.search}
-            onChange={(e) => set("search", e.target.value)}
-            className="rounded-lg bg-slate-800/80 py-1.5 pl-8 pr-3 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500/60 transition-colors w-44"
-          />
-        </div>
+      {/* Club — kept visible, not buried in "More filters": searching for a
+          club by name is common enough (and easy to mistake for the player
+          search above) that hiding it caused real players to look missing. */}
+      <div className={fieldCls}>
+        <input
+          type="text"
+          placeholder="Club…"
+          value={filters.club_search}
+          onChange={(e) => set("club_search", e.target.value)}
+          className={inputCls}
+        />
+      </div>
 
-        {/* Position pills */}
-        <div className="flex gap-1">
+      {/* Position */}
+      <div>
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Position</p>
+        <div className="flex gap-1.5">
           {POSITIONS.map((pos) => {
             const active = filters.position === pos;
             return (
               <button
                 key={pos}
                 onClick={() => set("position", active ? "" : pos)}
-                className={`rounded-md px-2.5 py-1 text-xs font-bold ring-1 transition-all ${
-                  active ? POSITION_COLOUR[pos] : "bg-slate-800/60 text-slate-500 ring-white/10 hover:text-white"
+                className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-bold ring-1 transition-colors ${
+                  active ? "bg-accent-bg text-accent-active ring-accent" : "bg-surface text-text-muted ring-input-border hover:ring-accent"
                 }`}
               >
                 {pos}
@@ -162,201 +129,112 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange }:
             );
           })}
         </div>
+      </div>
 
-        {/* Divider */}
-        <span className="h-5 w-px bg-white/10 shrink-0" />
-
-        {/* Availability quick-picks */}
-        <div className="flex gap-1">
-          <button
-            onClick={() => set("status", filters.status === "FREE_AGENT" ? "" : "FREE_AGENT")}
-            className={`rounded-md px-2.5 py-1 text-xs font-bold ring-1 transition-all ${
-              filters.status === "FREE_AGENT"
-                ? "bg-emerald-500/20 text-emerald-300 ring-emerald-500/30"
-                : "bg-slate-800/60 text-slate-500 ring-white/10 hover:text-white"
-            }`}
-          >
-            Free Agent
-          </button>
-          <button
-            onClick={() => set("open_to_offers", !filters.open_to_offers)}
-            className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-bold ring-1 transition-all ${
-              filters.open_to_offers
-                ? "bg-emerald-500/20 text-emerald-300 ring-emerald-500/30"
-                : "bg-slate-800/60 text-slate-500 ring-white/10 hover:text-white"
-            }`}
-          >
-            {filters.open_to_offers && (
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            )}
-            Open
-          </button>
-        </div>
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Sort */}
-        <select
-          value={sortValue}
-          onChange={(e) => setSort(e.target.value)}
-          className="rounded-lg bg-slate-800/80 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500/60 transition-colors"
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={`${o.sort_by}_${o.sort_dir}`} value={`${o.sort_by}_${o.sort_dir}`}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-
-        {/* More filters toggle */}
-        <button
-          onClick={() => setPanelOpen((o) => !o)}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ring-1 transition-colors ${
-            panelOpen || activeCount > 0
-              ? "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30"
-              : "bg-slate-800/80 text-slate-400 ring-white/10 hover:text-white"
-          }`}
-        >
-          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M7 12h10M11 20h2" /></svg>
-          Filters
-          {activeCount > 0 && (
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white">
-              {activeCount}
-            </span>
-          )}
-        </button>
-
-        {/* View toggle */}
-        <div className="flex rounded-lg ring-1 ring-white/10 overflow-hidden">
-          <button
-            onClick={() => onViewChange("grid")}
-            title="Grid view"
-            className={`px-2.5 py-1.5 transition-colors ${view === "grid" ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-800/80 text-slate-500 hover:text-white"}`}
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 5h4v4H4zM10 5h4v4h-4zM16 5h4v4h-4zM4 11h4v4H4zM10 11h4v4h-4zM16 11h4v4h-4zM4 17h4v4H4zM10 17h4v4h-4zM16 17h4v4h-4z" /></svg>
-          </button>
-          <button
-            onClick={() => onViewChange("list")}
-            title="List view"
-            className={`px-2.5 py-1.5 transition-colors ${view === "list" ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-800/80 text-slate-500 hover:text-white"}`}
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-          </button>
+      {/* Asking price (maps to market-value filter) */}
+      <div>
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Asking price</p>
+        <div className="flex items-center gap-1.5">
+          <div className={fieldCls}><input type="number" min={0} placeholder="Min €M" value={filters.min_value} onChange={(e) => set("min_value", e.target.value)} className={numInputCls} /></div>
+          <span className="text-text-muted text-xs shrink-0">–</span>
+          <div className={fieldCls}><input type="number" min={0} placeholder="Max €M" value={filters.max_value} onChange={(e) => set("max_value", e.target.value)} className={numInputCls} /></div>
         </div>
       </div>
 
-      {/* ── Expandable advanced panel ─────────────────────────────────────────── */}
-      {panelOpen && (
-        <div className="rounded-xl bg-slate-900/80 ring-1 ring-white/[0.06] p-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
-
-          {/* Availability */}
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Availability</p>
-            <div className="space-y-2">
-              <select
-                value={filters.status}
-                onChange={(e) => set("status", e.target.value as PlayerStatus | "")}
-                className={inputCls}
-              >
-                <option value="">Any status</option>
-                <option value="CONTRACTED">Contracted</option>
-                <option value="FREE_AGENT">Free Agent</option>
-              </select>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <div
-                  onClick={() => set("open_to_offers", !filters.open_to_offers)}
-                  className={`relative h-4 w-8 rounded-full transition-colors ${filters.open_to_offers ? "bg-emerald-500" : "bg-slate-700"}`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${filters.open_to_offers ? "translate-x-4" : ""}`} />
-                </div>
-                <span className="text-xs text-slate-400">Open to offers only</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Personal */}
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Personal</p>
-            <div className="space-y-2">
-              <input type="text" placeholder="Club…" value={filters.club_search} onChange={(e) => set("club_search", e.target.value)} className={inputCls} />
-              <input type="text" placeholder="Nationality…" value={filters.nationality} onChange={(e) => set("nationality", e.target.value)} className={inputCls} />
-              <div className="flex items-center gap-1.5">
-                <input type="number" placeholder="Min age" min={14} max={50} value={filters.min_age} onChange={(e) => set("min_age", e.target.value)} className={numInputCls} />
-                <span className="text-slate-600 text-xs shrink-0">–</span>
-                <input type="number" placeholder="Max age" min={14} max={50} value={filters.max_age} onChange={(e) => set("max_age", e.target.value)} className={numInputCls} />
-              </div>
-            </div>
-          </div>
-
-          {/* Performance */}
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Performance</p>
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-1.5">
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">G≥</span>
-                  <input type="number" placeholder="0" min={0} value={filters.min_goals} onChange={(e) => set("min_goals", e.target.value)} className={`${numInputCls} pl-7`} />
-                </div>
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">A≥</span>
-                  <input type="number" placeholder="0" min={0} value={filters.min_assists} onChange={(e) => set("min_assists", e.target.value)} className={`${numInputCls} pl-7`} />
-                </div>
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">Apps≥</span>
-                  <input type="number" placeholder="0" min={0} value={filters.min_appearances} onChange={(e) => set("min_appearances", e.target.value)} className={`${numInputCls} pl-10`} />
-                </div>
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">Rtg≥</span>
-                  <input type="number" placeholder="0.0" min={0} max={10} step={0.1} value={filters.min_avg_rating} onChange={(e) => set("min_avg_rating", e.target.value)} className={`${numInputCls} pl-10`} />
-                </div>
-              </div>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">Form≥</span>
-                <input type="number" placeholder="0" min={0} max={100} value={filters.min_form_score} onChange={(e) => set("min_form_score", e.target.value)} className={`${numInputCls} pl-12`} />
-              </div>
-            </div>
-          </div>
-
-          {/* Market Value & Contract */}
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Valuation</p>
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5">
-                <input type="number" placeholder="Min €M" min={0} value={filters.min_value} onChange={(e) => set("min_value", e.target.value)} className={numInputCls} />
-                <span className="text-slate-600 text-xs shrink-0">–</span>
-                <input type="number" placeholder="Max €M" min={0} value={filters.max_value} onChange={(e) => set("max_value", e.target.value)} className={numInputCls} />
-              </div>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">Exp≤</span>
-                <input type="number" placeholder="months" min={1} max={36} value={filters.contract_expiry_months} onChange={(e) => set("contract_expiry_months", e.target.value)} className={`${numInputCls} pl-10`} />
-              </div>
-            </div>
-          </div>
+      {/* Age */}
+      <div>
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Age</p>
+        <div className="flex items-center gap-1.5">
+          <div className={fieldCls}><input type="number" min={14} max={50} placeholder="Min age" value={filters.min_age} onChange={(e) => set("min_age", e.target.value)} className={numInputCls} /></div>
+          <span className="text-text-muted text-xs shrink-0">–</span>
+          <div className={fieldCls}><input type="number" min={14} max={50} placeholder="Max age" value={filters.max_age} onChange={(e) => set("max_age", e.target.value)} className={numInputCls} /></div>
         </div>
-      )}
+      </div>
 
-      {/* ── Active filter chips ───────────────────────────────────────────────── */}
-      {chips.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {chips.map((chip) => (
-            <button
-              key={chip.label}
-              onClick={chip.clear}
-              className="flex items-center gap-1 rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-300 ring-1 ring-white/10 hover:bg-slate-700 hover:text-white transition-colors"
+      {/* Contract ends within */}
+      <div>
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Contract ends within</p>
+        <div className={fieldCls}>
+          <input type="number" min={1} max={36} placeholder="Any" value={filters.contract_expiry_months} onChange={(e) => set("contract_expiry_months", e.target.value)} className={numInputCls} />
+          <span className="shrink-0 text-[11px] text-text-muted">months</span>
+        </div>
+      </div>
+
+      {/* Form score */}
+      <div>
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Form score</p>
+        <div className={fieldCls}>
+          <input type="number" min={0} max={100} placeholder="Min" value={filters.min_form_score} onChange={(e) => set("min_form_score", e.target.value)} className={numInputCls} />
+          <span className="shrink-0 text-[11px] text-text-muted">and above</span>
+        </div>
+      </div>
+
+      {/* More filters toggle */}
+      <button
+        onClick={() => setMoreOpen((o) => !o)}
+        className="flex w-full items-center justify-between text-xs font-semibold text-text-muted hover:text-text transition-colors"
+      >
+        <span>More filters{moreCount > 0 ? ` (${moreCount})` : ""}</span>
+        <svg className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {moreOpen && (
+        <div className="space-y-3 border-t border-rule pt-3">
+          <div className={fieldCls}>
+            <select value={filters.status} onChange={(e) => set("status", e.target.value as PlayerStatus | "")} className={inputCls}>
+              <option value="">Any status</option>
+              <option value="CONTRACTED">Contracted (on TransferX)</option>
+              <option value="EXTERNAL">Contracted (external club)</option>
+              <option value="FREE_AGENT">Free Agent</option>
+            </select>
+          </div>
+          <label className="flex items-center justify-between rounded-lg bg-surface px-[11px] py-[9px] ring-1 ring-input-border cursor-pointer">
+            <span className="text-sm text-text-secondary">Open to offers only</span>
+            <div
+              onClick={(e) => { e.preventDefault(); set("open_to_offers", !filters.open_to_offers); }}
+              className={`relative h-4 w-8 shrink-0 rounded-full transition-colors ${filters.open_to_offers ? "bg-success" : "bg-border"}`}
             >
-              {chip.label}
-              <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          ))}
-          <button
-            onClick={() => onChange(DEFAULT_PLAYER_FILTERS)}
-            className="text-xs text-slate-500 hover:text-slate-300 transition-colors ml-1"
-          >
-            Clear all
-          </button>
+              <span className={`absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${filters.open_to_offers ? "translate-x-4" : ""}`} />
+            </div>
+          </label>
+          <div className={fieldCls}><input type="text" placeholder="Nationality…" value={filters.nationality} onChange={(e) => set("nationality", e.target.value)} className={inputCls} /></div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className={fieldCls}><input type="number" min={0} placeholder="Goals ≥" value={filters.min_goals} onChange={(e) => set("min_goals", e.target.value)} className={numInputCls} /></div>
+            <div className={fieldCls}><input type="number" min={0} placeholder="Assists ≥" value={filters.min_assists} onChange={(e) => set("min_assists", e.target.value)} className={numInputCls} /></div>
+            <div className={fieldCls}><input type="number" min={0} placeholder="Apps ≥" value={filters.min_appearances} onChange={(e) => set("min_appearances", e.target.value)} className={numInputCls} /></div>
+            <div className={fieldCls}><input type="number" min={0} max={10} step={0.1} placeholder="Rating ≥" value={filters.min_avg_rating} onChange={(e) => set("min_avg_rating", e.target.value)} className={numInputCls} /></div>
+          </div>
         </div>
       )}
+
+      {(moreCount > 0 || filters.min_age || filters.max_age || filters.min_value || filters.max_value || filters.contract_expiry_months || filters.min_form_score) && (
+        <button
+          onClick={() => onChange(DEFAULT_PLAYER_FILTERS)}
+          className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+        >
+          Clear all filters
+        </button>
+      )}
+
+      {/* View toggle (grid/list) — kept as an existing, working feature */}
+      <div className="flex rounded-lg ring-1 ring-input-border overflow-hidden w-fit">
+        <button
+          onClick={() => onViewChange("grid")}
+          title="Grid view"
+          className={`px-2.5 py-1.5 transition-colors ${view === "grid" ? "bg-accent-bg text-accent-active" : "bg-surface text-text-muted hover:text-text"}`}
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 5h4v4H4zM10 5h4v4h-4zM16 5h4v4h-4zM4 11h4v4H4zM10 11h4v4h-4zM16 11h4v4h-4zM4 17h4v4H4zM10 17h4v4h-4zM16 17h4v4h-4z" /></svg>
+        </button>
+        <button
+          onClick={() => onViewChange("list")}
+          title="List view"
+          className={`px-2.5 py-1.5 transition-colors ${view === "list" ? "bg-accent-bg text-accent-active" : "bg-surface text-text-muted hover:text-text"}`}
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+        </button>
+      </div>
     </div>
   );
 }

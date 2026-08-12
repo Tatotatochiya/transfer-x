@@ -234,15 +234,15 @@ async def get_targets(db: AsyncSession, club_id: uuid.UUID) -> list[dict]:
         p = data["player"]
         if p is None:
             continue
-        # Vendor players have status=FREE_AGENT in DB but are contracted when they
-        # have a team_name, world_team_id, or current_club_id — display-layer override
-        is_contracted = bool(p.team_name or p.world_team_id or p.current_club_id)
-        display_status = "CONTRACTED" if is_contracted else p.status.value
+        # ADR 0003: the stored status is now trustworthy — a vendor player with
+        # a real-world club is EXTERNAL, not FREE_AGENT — so the display-layer
+        # override that used to live here has been removed rather than
+        # duplicated. This was the only place the problem was compensated for.
         targets.append({
             "player_id": pid,
             "name": p.name,
             "position": p.position.value if p.position else None,
-            "status": display_status,
+            "status": p.status.value,
             "open_to_offers": p.open_to_offers,
             "on_shortlists": data["on_shortlists"],
             "interest_level": data["interest_level"],

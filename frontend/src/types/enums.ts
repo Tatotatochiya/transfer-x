@@ -2,7 +2,9 @@ export type ClubRole = "SELLER" | "BUYER" | "BOTH" | "ADMIN";
 
 export type PlayerPosition = "GK" | "DEF" | "MID" | "FWD";
 export type PlayerVisibility = "PUBLIC" | "CLUBS_ONLY" | "PRIVATE";
-export type PlayerStatus = "CONTRACTED" | "FREE_AGENT";
+// EXTERNAL = under contract to a real-world club that isn't on TransferX
+// (ADR 0003). Not signable; never presented as an available player.
+export type PlayerStatus = "CONTRACTED" | "EXTERNAL" | "FREE_AGENT";
 
 export type SaleType = "AUCTION" | "OPEN_TO_OFFERS" | "FIXED_PRICE";
 export type SaleStatus = "OPEN" | "CLOSED" | "WITHDRAWN" | "EXPIRED";
