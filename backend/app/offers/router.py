@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -106,6 +107,15 @@ async def _get_offer_or_404(db: AsyncSession, offer_id: uuid.UUID):
     if offer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offer not found")
     return offer
+
+
+def _fee_summary(fee: Decimal | None) -> str:
+    """Approval summaries name a figure, but an offer can legitimately carry no
+    transfer fee (free transfer, loan, swap). Formatting None with `:,.0f`
+    raises, and because the summary is built as an argument to `maybe_capture`
+    it raised for *every* caller, not just the MANAGER role that check targets.
+    """
+    return f"£{fee:,.0f}" if fee is not None else "no fee"
 
 
 def _offer_response(offer, viewer_club_id: uuid.UUID, deal=None) -> OfferResponse:
@@ -283,7 +293,7 @@ async def create_offer(
             "add_ons": body.add_ons,
             "expires_at": body.expires_at.isoformat() if body.expires_at else None,
         },
-        summary=f"Offer £{body.fee_amount:,.0f} for {_pname}",
+        summary=f"Offer for {_pname} — {_fee_summary(body.fee_amount)}",
     )
     if approval is not None:
         await db.commit()
@@ -428,7 +438,7 @@ async def accept_offer(
         action_type=ApprovalActionType.ACCEPT_OFFER,
         amount=offer.fee_amount,
         payload={"offer_id": str(offer_id)},
-        summary=f"Accept £{offer.fee_amount:,.0f} offer for {_pname}",
+        summary=f"Accept offer for {_pname} — {_fee_summary(offer.fee_amount)}",
     )
     if approval is not None:
         await db.commit()

@@ -816,3 +816,78 @@ async def test_accepting_standalone_offer_leaves_no_sale_link(
     deal = await client.post(f"/offers/{offer['id']}/accept", headers=sel_headers)
     assert deal.status_code == 200, deal.text
     assert deal.json()["sale_id"] is None
+
+
+# ── Fee-less offers ───────────────────────────────────────────────────────────
+#
+# An offer with no transfer fee is legitimate — free transfers, loans and swaps
+# all have none — and the create form leaves the field optional. But the D7
+# approval summaries formatted `fee_amount` with `:,.0f`, which raises on None.
+# Because the summary is built as an *argument* to `maybe_capture`, it raised
+# before any threshold logic ran, so it 500'd for every caller rather than just
+# the MANAGER role that check targets.
+
+
+@pytest.mark.asyncio
+async def test_can_create_offer_with_no_fee(client: AsyncClient, buyer: dict, seller: dict, db):
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    resp = await client.post(
+        "/offers",
+        json={"player_id": player["id"], "to_club_id": seller_club_id},
+        headers=_auth_headers(buyer),
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["fee_amount"] is None
+
+
+@pytest.mark.asyncio
+async def test_can_accept_offer_with_no_fee(client: AsyncClient, buyer: dict, seller: dict, db):
+    """The second, latent copy of the same bug — `accept_offer`'s summary."""
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = (await client.post(
+        "/offers",
+        json={"player_id": player["id"], "to_club_id": seller_club_id},
+        headers=_auth_headers(buyer),
+    )).json()
+
+    resp = await client.post(f"/offers/{offer['id']}/accept", headers=sel_headers)
+    assert resp.status_code == 200, resp.text
+
+
+@pytest.mark.asyncio
+async def test_no_fee_offer_does_not_escalate_for_approval(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """A fee-less offer is zero in threshold terms, so a MANAGER can send it
+    without sign-off — but it must reach that conclusion, not crash on the way.
+    Guards `maybe_capture`'s `Decimal(None)`, which the summary fix alone would
+    have left exposed for any club that has a threshold set."""
+    from tests.test_capabilities import _create_staff
+
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    threshold = await client.patch(
+        "/clubs/me/approval-policy",
+        json={"approval_threshold": 1_000_000},
+        headers=_auth_headers(buyer),
+    )
+    assert threshold.status_code == 200, threshold.text
+    manager = await _create_staff(
+        client, db, _auth_headers(buyer), "nofee_mgr@test.com", "MANAGER"
+    )
+
+    resp = await client.post(
+        "/offers",
+        json={"player_id": player["id"], "to_club_id": seller_club_id},
+        headers=_auth_headers(manager),
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["fee_amount"] is None

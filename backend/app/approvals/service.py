@@ -33,7 +33,7 @@ async def maybe_capture(
     current_user: User,
     club: Club,
     action_type: ApprovalActionType,
-    amount: Decimal,
+    amount: Decimal | None,
     payload: dict,
     summary: str | None = None,
 ) -> PendingApproval | None:
@@ -43,9 +43,15 @@ async def maybe_capture(
     Escalates only when: the caller is MANAGER-role staff (owner and
     SPORTING_DIRECTOR are exempt — D7), the club has a threshold set, and
     amount ≥ threshold. Superusers are never escalated (bypass-first).
+
+    `amount` may be None: an offer with no transfer fee is legitimate (free
+    transfer, loan, swap) and is treated as zero, which is what it is in
+    threshold terms — there is no fee to approve. Coerced here rather than at
+    each call site so a nullable amount can never reach `Decimal(None)`.
     """
     if current_user.is_superuser:
         return None
+    amount = amount if amount is not None else Decimal("0")
     from app.clubs import service as clubs_service
 
     role = await clubs_service.get_club_membership_role(db, uuid.UUID(str(current_user.id)))
