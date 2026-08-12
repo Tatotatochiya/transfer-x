@@ -43,14 +43,14 @@ function UploadStep({ onPreview }: { onPreview: (rows: RosterPreviewRow[]) => vo
 
   return (
     <Card>
-      <p className="mb-1 text-base font-semibold text-white">Upload your client roster</p>
-      <p className="mb-6 text-sm text-slate-400">
-        Upload a CSV or Excel file. Required column: <code className="rounded bg-slate-800 px-1 text-xs">Name</code>.
+      <p className="mb-1 text-base font-semibold text-text">Upload your client roster</p>
+      <p className="mb-6 text-sm text-text-muted">
+        Upload a CSV or Excel file. Required column: <code className="rounded bg-surface-inset px-1 text-xs">Name</code>.
         Optional: DOB, Nationality, Position, Current Club, Contract Expiry.
       </p>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-400 ring-1 ring-red-500/30">
+        <div className="mb-4 rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
           {error}
         </div>
       )}
@@ -67,19 +67,19 @@ function UploadStep({ onPreview }: { onPreview: (rows: RosterPreviewRow[]) => vo
         onClick={() => fileRef.current?.click()}
         className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed py-14 transition-colors ${
           dragging
-            ? "border-emerald-500 bg-emerald-500/5"
-            : "border-white/10 bg-slate-800/50 hover:border-white/20 hover:bg-slate-800"
+            ? "border-accent bg-accent-bg"
+            : "border-input-border bg-surface-inset hover:border-accent hover:bg-surface-quiet"
         }`}
       >
         {loading ? (
           <Spinner size="lg" />
         ) : (
           <>
-            <svg className="mb-3 h-10 w-10 text-slate-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+            <svg className="mb-3 h-10 w-10 text-text-muted" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
             </svg>
-            <p className="text-sm font-medium text-white">Drop your file here</p>
-            <p className="mt-1 text-xs text-slate-500">or click to browse (CSV)</p>
+            <p className="text-sm font-medium text-text">Drop your file here</p>
+            <p className="mt-1 text-xs text-text-muted">or click to browse (CSV)</p>
           </>
         )}
       </div>
@@ -113,46 +113,46 @@ function ReviewStep({
   onChange: (index: number, patch: Partial<RowState>) => void;
 }) {
   const actionBadge: Record<RowAction, string> = {
-    create: "bg-sky-500/15 text-sky-400 ring-sky-500/30",
-    link:   "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30",
-    skip:   "bg-slate-700 text-slate-500 ring-white/10",
+    create: "bg-accent/15 text-accent ring-accent/30",
+    link:   "bg-success/15 text-success-text ring-success/30",
+    skip:   "bg-text-muted/15 text-text-muted ring-input-border",
   };
 
   return (
-    <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.08]">
+    <div className="overflow-x-auto rounded-xl ring-1 ring-border">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-white/[0.06] bg-slate-900">
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Name</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Details</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Match</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Action</th>
+          <tr className="border-b border-rule bg-surface-header">
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted">Name</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted">Details</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted">Match</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted">Action</th>
           </tr>
         </thead>
-        <tbody className="bg-slate-900/50">
+        <tbody className="bg-surface">
           {rows.map((row, i) => {
             const state = rowStates[i];
             return (
-              <tr key={row.row_index} className="border-b border-white/[0.04] last:border-0">
+              <tr key={row.row_index} className="border-b border-rule-faint last:border-0">
                 <td className="px-4 py-3">
-                  <p className="font-medium text-white">{row.name}</p>
-                  {row.current_club && <p className="text-xs text-slate-500">{row.current_club}</p>}
+                  <p className="font-medium text-text">{row.name}</p>
+                  {row.current_club && <p className="text-xs text-text-muted">{row.current_club}</p>}
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-400">
+                <td className="px-4 py-3 text-xs text-text-muted">
                   {[row.position, row.nationality, row.dob].filter(Boolean).join(" · ") || "—"}
                 </td>
                 <td className="px-4 py-3">
                   {row.match_status === "no_match" ? (
-                    <span className="text-xs text-slate-500">No match — will create</span>
+                    <span className="text-xs text-text-muted">No match — will create</span>
                   ) : row.match_candidates.length === 1 ? (
-                    <span className="text-xs text-emerald-400">
+                    <span className="text-xs text-success-text">
                       Matched: {row.match_candidates[0].player_name}
                     </span>
                   ) : (
                     <select
                       value={state.linkedPlayerId}
                       onChange={(e) => onChange(i, { linkedPlayerId: e.target.value, action: "link" })}
-                      className="rounded bg-slate-800 px-2 py-1 text-xs text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                      className="rounded bg-surface px-2 py-1 text-xs text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
                     >
                       {row.match_candidates.map((c: MatchCandidate) => (
                         <option key={c.player_id} value={c.player_id}>
@@ -174,7 +174,7 @@ function ReviewStep({
                           className={`rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 transition-all capitalize ${
                             state.action === a
                               ? actionBadge[a]
-                              : "bg-transparent ring-white/10 text-slate-500 hover:text-slate-300"
+                              : "bg-transparent ring-input-border text-text-muted hover:text-text-secondary"
                           }`}
                         >
                           {a}
@@ -208,12 +208,12 @@ function SettingsStep({
   settings: MandateSettings;
   onChange: (patch: Partial<MandateSettings>) => void;
 }) {
-  const INPUT = "w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500";
+  const INPUT = "w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
 
   return (
     <Card>
-      <p className="mb-4 text-base font-semibold text-white">Mandate settings</p>
-      <p className="mb-6 text-sm text-slate-400">
+      <p className="mb-4 text-base font-semibold text-text">Mandate settings</p>
+      <p className="mb-6 text-sm text-text-muted">
         These settings apply to all mandates created from the import. You can edit them individually afterwards.
       </p>
       <div className="space-y-4">
@@ -222,16 +222,16 @@ function SettingsStep({
             type="checkbox"
             checked={settings.exclusive}
             onChange={(e) => onChange({ exclusive: e.target.checked })}
-            className="accent-emerald-500 h-4 w-4"
+            className="accent-accent h-4 w-4"
           />
           <div>
-            <p className="text-sm font-medium text-white">Exclusive mandate</p>
-            <p className="text-xs text-slate-500">You are the sole agent for these clients</p>
+            <p className="text-sm font-medium text-text">Exclusive mandate</p>
+            <p className="text-xs text-text-muted">You are the sole agent for these clients</p>
           </div>
         </label>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="mb-1.5 text-xs font-medium text-slate-400">Start date</p>
+            <p className="mb-1.5 text-xs font-medium text-text-secondary">Start date</p>
             <input
               type="date"
               value={settings.start_date}
@@ -240,7 +240,7 @@ function SettingsStep({
             />
           </div>
           <div>
-            <p className="mb-1.5 text-xs font-medium text-slate-400">End date</p>
+            <p className="mb-1.5 text-xs font-medium text-text-secondary">End date</p>
             <input
               type="date"
               value={settings.end_date}
@@ -250,7 +250,7 @@ function SettingsStep({
           </div>
         </div>
         <div>
-          <p className="mb-1.5 text-xs font-medium text-slate-400">Territory (optional)</p>
+          <p className="mb-1.5 text-xs font-medium text-text-secondary">Territory (optional)</p>
           <input
             type="text"
             value={settings.territory}
@@ -352,10 +352,10 @@ export default function AgentRosterImportPage() {
           <div key={s} className="flex items-center gap-3">
             <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
               i < stepIndex
-                ? "bg-emerald-500 text-white"
+                ? "bg-success text-white"
                 : i === stepIndex
-                ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500"
-                : "bg-slate-800 text-slate-500 ring-1 ring-white/10"
+                ? "bg-accent/20 text-accent ring-1 ring-accent"
+                : "bg-surface-inset text-text-muted ring-1 ring-border"
             }`}>
               {i < stepIndex ? (
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
@@ -365,10 +365,10 @@ export default function AgentRosterImportPage() {
                 i + 1
               )}
             </div>
-            <span className={`text-sm font-medium ${i === stepIndex ? "text-white" : "text-slate-500"}`}>
+            <span className={`hidden md:inline text-sm font-medium ${i === stepIndex ? "text-text" : "text-text-muted"}`}>
               {STEP_LABELS[i]}
             </span>
-            {i < 2 && <div className="h-px w-8 bg-white/10" />}
+            {i < 2 && <div className="h-px w-8 bg-border" />}
           </div>
         ))}
       </div>
@@ -378,13 +378,13 @@ export default function AgentRosterImportPage() {
 
       {step === "review" && (
         <div className="space-y-4">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-text-muted">
             {previewRows.length} player{previewRows.length !== 1 ? "s" : ""} found.
             Review the suggested actions and adjust as needed.
           </p>
           <ReviewStep rows={previewRows} rowStates={rowStates} onChange={updateRowState} />
           <div className="flex justify-end gap-3">
-            <button onClick={() => setStep("upload")} className="text-sm text-slate-400 hover:text-white">
+            <button onClick={() => setStep("upload")} className="text-sm text-text-muted hover:text-text">
               ← Back
             </button>
             <Button variant="primary" onClick={() => setStep("settings")}>
@@ -401,7 +401,7 @@ export default function AgentRosterImportPage() {
             onChange={(patch) => setMandateSettings((s) => ({ ...s, ...patch }))}
           />
           <div className="flex justify-end gap-3">
-            <button onClick={() => setStep("review")} className="text-sm text-slate-400 hover:text-white">
+            <button onClick={() => setStep("review")} className="text-sm text-text-muted hover:text-text">
               ← Back
             </button>
             <Button variant="primary" loading={importing} onClick={handleImport}>
@@ -414,31 +414,31 @@ export default function AgentRosterImportPage() {
       {step === "done" && result && (
         <Card>
           <div className="text-center py-6">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15">
-              <svg className="h-7 w-7 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success/15">
+              <svg className="h-7 w-7 text-success-text" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
               </svg>
             </div>
-            <p className="text-lg font-semibold text-white">Import complete</p>
+            <p className="text-lg font-semibold text-text">Import complete</p>
             <div className="mt-4 flex justify-center gap-6 text-sm">
               <div className="text-center">
-                <p className="text-2xl font-bold text-sky-400">{result.created}</p>
-                <p className="text-slate-500">Created</p>
+                <p className="text-2xl font-bold text-accent">{result.created}</p>
+                <p className="text-text-muted">Created</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-emerald-400">{result.linked}</p>
-                <p className="text-slate-500">Linked</p>
+                <p className="text-2xl font-bold text-success-text">{result.linked}</p>
+                <p className="text-text-muted">Linked</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-slate-500">{result.skipped}</p>
-                <p className="text-slate-500">Skipped</p>
+                <p className="text-2xl font-bold text-text-muted">{result.skipped}</p>
+                <p className="text-text-muted">Skipped</p>
               </div>
             </div>
             {result.errors.length > 0 && (
-              <div className="mt-4 text-left rounded-lg bg-red-500/10 px-4 py-3 ring-1 ring-red-500/25">
-                <p className="mb-2 text-xs font-semibold text-red-400">Errors ({result.errors.length})</p>
+              <div className="mt-4 text-left rounded-lg bg-danger-bg px-4 py-3 ring-1 ring-danger-border">
+                <p className="mb-2 text-xs font-semibold text-danger-text">Errors ({result.errors.length})</p>
                 {result.errors.map((e, i) => (
-                  <p key={i} className="text-xs text-red-400">{e}</p>
+                  <p key={i} className="text-xs text-danger-text">{e}</p>
                 ))}
               </div>
             )}
@@ -448,7 +448,7 @@ export default function AgentRosterImportPage() {
               </Button>
               <button
                 onClick={() => { setStep("upload"); setPreviewRows([]); setResult(null); }}
-                className="text-sm text-slate-400 hover:text-white"
+                className="text-sm text-text-muted hover:text-text"
               >
                 Import another file
               </button>

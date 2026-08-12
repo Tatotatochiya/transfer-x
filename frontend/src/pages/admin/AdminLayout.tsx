@@ -32,20 +32,40 @@ export default function AdminLayout() {
   if (!user?.is_superuser) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="rounded-xl bg-red-500/10 px-8 py-6 text-center ring-1 ring-red-500/30">
-          <p className="text-lg font-semibold text-red-400">Staff access required</p>
-          <p className="mt-1 text-sm text-slate-400">This area is restricted to superusers.</p>
+        <div className="rounded-xl bg-danger-bg px-8 py-6 text-center ring-1 ring-danger-border">
+          <p className="text-lg font-semibold text-danger-text">Staff access required</p>
+          <p className="mt-1 text-sm text-text-muted">This area is restricted to superusers.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex gap-6 min-h-[calc(100vh-4rem)]">
-      {/* Admin sub-sidebar */}
-      <aside className="w-44 shrink-0">
+    <div className="flex flex-col lg:flex-row gap-6 min-h-[calc(100vh-4rem)]">
+      {/* Admin sub-nav — horizontal scroller below 1024px, persistent sidebar at and above */}
+      <nav className="flex lg:hidden gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+        {NAV_LINKS.map(({ to, label, icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === "/admin"}
+            className={({ isActive }) =>
+              `flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                isActive
+                  ? "bg-warning-fill/10 text-warning-text ring-1 ring-warning-fill/20"
+                  : "text-text-muted hover:bg-surface-inset hover:text-text"
+              }`
+            }
+          >
+            <span className="text-xs">{icon}</span>
+            {label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <aside className="hidden lg:block w-44 shrink-0">
         <div className="sticky top-6">
-          <p className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+          <p className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-widest text-text-muted">
             Admin Panel
           </p>
           <nav className="space-y-0.5">
@@ -57,8 +77,8 @@ export default function AdminLayout() {
                 className={({ isActive }) =>
                   `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
-                      ? "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20"
-                      : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                      ? "bg-warning-fill/10 text-warning-text ring-1 ring-warning-fill/20"
+                      : "text-text-muted hover:bg-surface-inset hover:text-text"
                   }`
                 }
               >
@@ -68,9 +88,9 @@ export default function AdminLayout() {
             ))}
           </nav>
 
-          <div className="mt-6 rounded-lg bg-amber-500/10 px-3 py-2 ring-1 ring-amber-500/20">
-            <p className="text-[10px] font-semibold text-amber-400">SUPERUSER MODE</p>
-            <p className="mt-0.5 text-[10px] text-slate-500">{user.email}</p>
+          <div className="mt-6 rounded-lg bg-warning-fill/10 px-3 py-2 ring-1 ring-warning-fill/20">
+            <p className="text-[10px] font-semibold text-warning-text">SUPERUSER MODE</p>
+            <p className="mt-0.5 text-[10px] text-text-muted">{user.email}</p>
           </div>
         </div>
       </aside>

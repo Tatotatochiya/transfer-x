@@ -1,12 +1,37 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.clubs.models import ClubRole, StaffRole
 
 
+
+
+class CommitmentItem(BaseModel):
+    """B5: one row backing ClubFinance's transfer_reserved/committed and
+    wage_reserved_weekly/committed_weekly totals — what it's attached to and
+    what releases it."""
+    kind: Literal["offer", "bid", "deal"]
+    id: uuid.UUID
+    player_name: str | None = None
+    transfer_amount: Decimal
+    wage_weekly_amount: Decimal | None = None
+    status: Literal["reserved", "committed"]
+    releases_when: str
+    link: str
+
+
+class CommitmentsResponse(BaseModel):
+    items: list[CommitmentItem]
+    # Convenience totals matching ClubFinance's own fields 1:1, so a caller can
+    # cross-check that the rows above actually account for the real numbers.
+    total_transfer_reserved: Decimal
+    total_wage_reserved_weekly: Decimal
+    total_transfer_committed: Decimal
+    total_wage_committed_weekly: Decimal
 
 
 class ClubFinanceResponse(BaseModel):

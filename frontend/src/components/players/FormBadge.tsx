@@ -5,10 +5,10 @@ interface Props {
 }
 
 function formColour(score: number): string {
-  if (score >= 75) return "bg-emerald-500/20 text-emerald-300 ring-emerald-500/30";
-  if (score >= 55) return "bg-green-500/20 text-green-300 ring-green-500/30";
-  if (score >= 35) return "bg-amber-500/20 text-amber-300 ring-amber-500/30";
-  return "bg-red-500/20 text-red-300 ring-red-500/30";
+  if (score >= 75) return "bg-success/20 text-success-text ring-success/30";
+  if (score >= 55) return "bg-success/20 text-success-text-alt ring-success/30";
+  if (score >= 35) return "bg-warning-fill/20 text-warning-text ring-warning-fill/30";
+  return "bg-danger/20 text-danger-text ring-danger/30";
 }
 
 function trendArrow(trend: number | null | undefined): string {

@@ -8,11 +8,13 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
+import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import Spinner from "../../components/ui/Spinner";
 import { positionVariant } from "../../lib/badges";
 import { formatCurrency, getApiError } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
 import type { PlayerPosition } from "../../types/enums";
+import type { ShortlistItem } from "../../types/api";
 
 function useDebounce<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -24,10 +26,10 @@ function useDebounce<T>(value: T, ms: number): T {
 }
 
 const positionColour: Record<string, string> = {
-  GK:  "bg-amber-500/20 text-amber-400",
-  DEF: "bg-blue-500/20 text-blue-400",
-  MID: "bg-emerald-500/20 text-emerald-400",
-  FWD: "bg-red-500/20 text-red-400",
+  GK:  "bg-pos-gk-bg text-pos-gk-text",
+  DEF: "bg-pos-def-bg text-pos-def-text",
+  MID: "bg-pos-mid-bg text-pos-mid-text",
+  FWD: "bg-pos-fwd-bg text-pos-fwd-text",
 };
 
 // ── Add player form ───────────────────────────────────────────────────────────
@@ -90,14 +92,14 @@ function AddPlayerForm({
   const players = searchData?.players ?? [];
 
   return (
-    <div className="rounded-xl bg-slate-800/60 px-4 py-4 ring-1 ring-white/[0.08] mb-6">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Add player</p>
+    <div className="rounded-xl bg-surface-inset px-4 py-4 ring-1 ring-border mb-6">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Add player</p>
       <form onSubmit={handleSubmit} className="space-y-3">
         {/* Player search */}
         <div className="relative">
-          <label className="mb-1 block text-xs text-slate-400">Player</label>
+          <label className="mb-1 block text-xs text-text-muted">Player</label>
           <div className="relative">
-            <svg className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <svg className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
             </svg>
             <input
@@ -108,10 +110,10 @@ function AddPlayerForm({
               onFocus={() => setDropdownOpen(true)}
               placeholder="Search by name…"
               autoComplete="off"
-              className="w-full rounded-lg bg-slate-800 pl-8 pr-3 py-2 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+              className="w-full rounded-lg bg-surface pl-8 pr-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
             />
             {isFetching && (
-              <svg className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-slate-500" fill="none" viewBox="0 0 24 24">
+              <svg className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-text-muted" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
               </svg>
@@ -120,29 +122,29 @@ function AddPlayerForm({
 
           {/* Dropdown */}
           {dropdownOpen && !selectedId && players.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full rounded-lg bg-slate-800 ring-1 ring-white/10 shadow-xl overflow-hidden">
+            <div className="absolute z-20 mt-1 w-full rounded-lg bg-surface ring-1 ring-border shadow-xl overflow-hidden">
               {players.map((p) => (
                 <button
                   key={p.id}
                   type="button"
                   onMouseDown={() => selectPlayer(p)}
-                  className="flex w-full items-center gap-3 px-3 py-2.5 hover:bg-slate-700/60 transition-colors text-left"
+                  className="flex w-full items-center gap-3 px-3 py-2.5 hover:bg-surface-inset transition-colors text-left"
                 >
                   {p.photo_url ? (
-                    <img src={p.photo_url} alt={p.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/10" />
+                    <img src={p.photo_url} alt={p.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-border" />
                   ) : (
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-slate-400">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
                       {p.name[0]?.toUpperCase()}
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white">{p.name}</p>
-                    <p className="text-xs text-slate-500 truncate">
+                    <p className="truncate text-sm font-medium text-text">{p.name}</p>
+                    <p className="text-xs text-text-muted truncate">
                       {p.current_club?.name ?? p.team_name ?? "Free Agent"}
                     </p>
                   </div>
                   {p.position && (
-                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${positionColour[p.position] ?? "bg-slate-700 text-slate-400"}`}>
+                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${positionColour[p.position] ?? "bg-surface-inset text-text-muted"}`}>
                       {p.position}
                     </span>
                   )}
@@ -154,29 +156,29 @@ function AddPlayerForm({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-xs text-slate-400">Priority (1–5)</label>
+            <label className="mb-1 block text-xs text-text-muted">Priority (1–5)</label>
             <input
               type="number"
               min="1"
               max="5"
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
-              className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+              className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-400">Notes (optional)</label>
+            <label className="mb-1 block text-xs text-text-muted">Notes (optional)</label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Any notes…"
-              className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+              className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
             />
           </div>
         </div>
 
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-danger-text">{error}</p>}
         <div className="flex gap-2">
           <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}
             disabled={!selectedId}>
@@ -227,7 +229,7 @@ export default function ShortlistDetailPage() {
 
   if (isError || !shortlist) {
     return (
-      <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
         Shortlist not found.{" "}
         <button onClick={() => navigate(-1)} className="underline">
           Go back
@@ -240,7 +242,7 @@ export default function ShortlistDetailPage() {
     <div>
       <button
         onClick={() => navigate("/scouting/shortlists")}
-        className="mb-6 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+        className="mb-6 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
       >
         ← Back to shortlists
       </button>
@@ -273,122 +275,129 @@ export default function ShortlistDetailPage() {
       )}
 
       {shortlist.items.length > 0 && (
-        <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.08]">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/[0.08]">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Player
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Position
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Market Value
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Priority
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Notes
-                </th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04]">
-              {shortlist.items
-                .slice()
-                .sort((a, b) => a.priority - b.priority)
-                .map((item) => (
-                  <tr
-                    key={item.id}
-                    className="bg-slate-900 hover:bg-slate-800/60 transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() =>
-                          navigate(`/players/market/${item.player_id}`)
-                        }
-                        className="font-medium text-white hover:text-emerald-400 transition-colors"
-                      >
-                        {item.player?.name ?? "Unknown"}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      {item.player?.position ? (
-                        <Badge
-                          variant={positionVariant(
-                            item.player.position as PlayerPosition
-                          )}
-                        >
-                          {item.player.position}
-                        </Badge>
-                      ) : (
-                        <span className="text-slate-500">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-400">
-                      {item.player
-                        ? item.player.team_name
-                          ? "Contracted"
-                          : item.player.status === "FREE_AGENT"
-                          ? "Free Agent"
-                          : item.player.status === "CONTRACTED"
-                          ? "Contracted"
-                          : (item.player.status ?? "—")
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm font-semibold text-slate-300 tabular-nums">
-                      {item.player?.market_value != null
-                        ? formatCurrency(item.player.market_value)
-                        : <span className="text-slate-600 font-normal">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span
-                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                          item.priority === 1
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : item.priority === 2
-                            ? "bg-sky-500/20 text-sky-400"
-                            : "bg-slate-700 text-slate-400"
-                        }`}
-                      >
-                        {item.priority}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-400 max-w-[200px] truncate">
-                      {item.notes ?? "—"}
-                    </td>
-                    <td
-                      className="px-4 py-3 text-right"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        onClick={async () => {
-                          if (
-                            await confirm({
-                              message: `Remove ${item.player?.name ?? "player"} from this shortlist?`,
-                              confirmLabel: "Remove",
-                              variant: "danger",
-                            })
-                          ) {
-                            removeMutation.mutate(item.player_id);
-                          }
-                        }}
-                        className="text-xs text-slate-500 hover:text-red-400 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
+        <ShortlistItemsTable
+          items={shortlist.items.slice().sort((a, b) => a.priority - b.priority)}
+          onOpenPlayer={(playerId) => navigate(`/players/market/${playerId}`)}
+          onRemove={async (item) => {
+            if (
+              await confirm({
+                message: `Remove ${item.player?.name ?? "player"} from this shortlist?`,
+                confirmLabel: "Remove",
+                variant: "danger",
+              })
+            ) {
+              removeMutation.mutate(item.player_id);
+            }
+          }}
+        />
       )}
     </div>
+  );
+}
+
+// ── Items table ───────────────────────────────────────────────────────────────
+
+const PRIORITY_DOT_CLS: Record<number, string> = {
+  1: "bg-success/15 text-success-text",
+  2: "bg-accent/15 text-accent",
+};
+
+function statusLabel(item: ShortlistItem): string {
+  if (!item.player) return "—";
+  if (item.player.team_name) return "Contracted";
+  if (item.player.status === "FREE_AGENT") return "Free Agent";
+  if (item.player.status === "CONTRACTED") return "Contracted";
+  return item.player.status ?? "—";
+}
+
+function ShortlistItemsTable({
+  items, onOpenPlayer, onRemove,
+}: {
+  items: ShortlistItem[];
+  onOpenPlayer: (playerId: string) => void;
+  onRemove: (item: ShortlistItem) => void;
+}) {
+  const columns: ResponsiveColumn<ShortlistItem>[] = [
+    { key: "player", header: "Player", priority: 1, render: (item) => (
+      <button
+        onClick={() => onOpenPlayer(item.player_id)}
+        className="font-medium text-text hover:text-accent transition-colors"
+      >
+        {item.player?.name ?? "Unknown"}
+      </button>
+    ) },
+    { key: "position", header: "Position", priority: 3, render: (item) =>
+      item.player?.position ? (
+        <Badge variant={positionVariant(item.player.position as PlayerPosition)}>
+          {item.player.position}
+        </Badge>
+      ) : (
+        <span className="text-text-muted">—</span>
+      ) },
+    { key: "status", header: "Status", priority: 4, render: (item) => (
+      <span className="text-xs text-text-muted">{statusLabel(item)}</span>
+    ) },
+    { key: "value", header: "Market Value", priority: 2, className: "text-right", render: (item) => (
+      <span className="text-sm font-semibold text-text-secondary tabular-nums">
+        {item.player?.market_value != null
+          ? formatCurrency(item.player.market_value)
+          : <span className="text-text-muted font-normal">—</span>}
+      </span>
+    ) },
+    { key: "priority", header: "Priority", priority: 5, className: "text-center", render: (item) => (
+      <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${PRIORITY_DOT_CLS[item.priority] ?? "bg-text-muted/15 text-text-muted"}`}>
+        {item.priority}
+      </span>
+    ) },
+    { key: "notes", header: "Notes", priority: 6, render: (item) => (
+      <span className="text-xs text-text-muted max-w-[200px] truncate block">{item.notes ?? "—"}</span>
+    ) },
+    { key: "actions", header: "", className: "text-right", render: (item) => (
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(item); }}
+        className="text-xs text-text-muted hover:text-danger-text transition-colors"
+      >
+        Remove
+      </button>
+    ) },
+  ];
+
+  return (
+    <ResponsiveTable
+      columns={columns}
+      rows={items}
+      rowKey={(item) => item.id}
+      renderCard={(item) => (
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <button
+              onClick={() => onOpenPlayer(item.player_id)}
+              className="text-sm font-semibold text-text hover:text-accent transition-colors"
+            >
+              {item.player?.name ?? "Unknown"}
+            </button>
+            <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${PRIORITY_DOT_CLS[item.priority] ?? "bg-text-muted/15 text-text-muted"}`}>
+              {item.priority}
+            </span>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-text-muted">
+            {item.player?.position && (
+              <Badge variant={positionVariant(item.player.position as PlayerPosition)}>
+                {item.player.position}
+              </Badge>
+            )}
+            <span>{statusLabel(item)}</span>
+            {item.player?.market_value != null && <span>{formatCurrency(item.player.market_value)}</span>}
+          </div>
+          {item.notes && <p className="mt-1 text-xs text-text-muted truncate">{item.notes}</p>}
+          <button
+            onClick={() => onRemove(item)}
+            className="mt-2 text-xs text-text-muted hover:text-danger-text transition-colors"
+          >
+            Remove
+          </button>
+        </div>
+      )}
+    />
   );
 }

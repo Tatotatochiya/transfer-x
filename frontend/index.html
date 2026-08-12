@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/tx.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TransferX</title>
+    <script>
+      // Resolve theme before the bundle loads, so there's no flash of the
+      // wrong theme — ThemeProvider (src/context/ThemeContext.tsx) can't do
+      // this itself since React hasn't rendered yet at this point.
+      (function () {
+        var stored = localStorage.getItem("transferx-theme");
+        document.documentElement.dataset.theme = stored === "dark" ? "dark" : "light";
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

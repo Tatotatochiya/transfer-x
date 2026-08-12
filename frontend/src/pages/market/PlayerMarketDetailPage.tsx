@@ -49,22 +49,22 @@ function ValuationCard({ player, isAuthenticated }: { player: Player; isAuthenti
     }).format(v);
 
   return (
-    <div className="rounded-xl bg-slate-800/50 px-4 py-3 ring-1 ring-white/[0.06]">
+    <div className="rounded-xl bg-surface-inset px-4 py-3 ring-1 ring-border">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Market Value</p>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Market Value</p>
         {player.valuation_source && (
-          <span className="text-[10px] font-semibold text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded">
+          <span className="text-[10px] font-semibold text-text-muted bg-surface px-1.5 py-0.5 rounded">
             {SOURCE_LABEL[player.valuation_source] ?? player.valuation_source}
           </span>
         )}
       </div>
 
-      <p className="text-xl font-bold text-white tabular-nums">
+      <p className="text-xl font-bold text-text tabular-nums">
         {formatter(player.market_value)}
       </p>
 
       {(player.valuation_low != null || player.valuation_high != null) && (
-        <p className="text-xs text-slate-500 mt-0.5">
+        <p className="text-xs text-text-muted mt-0.5">
           Range:{" "}
           {player.valuation_low != null ? formatter(player.valuation_low) : "—"}
           {" – "}
@@ -73,7 +73,7 @@ function ValuationCard({ player, isAuthenticated }: { player: Player; isAuthenti
       )}
 
       {player.valuation_as_of && (
-        <p className="text-[10px] text-slate-600 mt-1">
+        <p className="text-[10px] text-text-muted mt-1">
           As of {formatDate(player.valuation_as_of)}
         </p>
       )}
@@ -87,15 +87,17 @@ function ValuationCard({ player, isAuthenticated }: { player: Player; isAuthenti
 function DealBanner({ deal }: { deal: ActiveDealStub }) {
   if (deal.status === "IN_PROGRESS") {
     return (
-      <div className="mb-4 flex items-start gap-3 rounded-xl bg-amber-500/10 px-5 py-4 ring-1 ring-amber-500/25">
-        <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 font-bold text-xs">!</div>
+      <div className="mb-4 flex items-start gap-3 rounded-xl bg-warning-bg px-5 py-4 ring-1 ring-warning-fill/25">
+        <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-warning-fill/20 text-warning-text font-bold text-xs">!</div>
         <div>
-          <p className="text-sm font-semibold text-amber-300">Transfer in progress</p>
-          <p className="mt-0.5 text-xs text-slate-400">
+          <p className="text-sm font-semibold text-warning-text">Transfer in progress</p>
+          <p className="mt-0.5 text-xs text-text-muted">
             {deal.buyer_club && deal.seller_club
-              ? `${deal.buyer_club.name} ← ${deal.seller_club.name} · Stage: ${deal.stage ?? "—"}`
+              ? `${deal.seller_club.name} → ${deal.buyer_club.name} · Stage: ${deal.stage ?? "—"}`
               : "A deal for this player is currently being processed."}
-            {" "}New offers and sale listings are not permitted while a deal is active.
+          </p>
+          <p className="mt-1 text-xs text-text-muted">
+            New offers and sale listings are not permitted while a deal is active.
           </p>
         </div>
       </div>
@@ -104,11 +106,11 @@ function DealBanner({ deal }: { deal: ActiveDealStub }) {
 
   // COMPLETED
   return (
-    <div className="mb-4 flex items-start gap-3 rounded-xl bg-emerald-500/10 px-5 py-4 ring-1 ring-emerald-500/20">
-      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xs">✓</div>
+    <div className="mb-4 flex items-start gap-3 rounded-xl bg-success/10 px-5 py-4 ring-1 ring-success/20">
+      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success/20 text-success-text font-bold text-xs">✓</div>
       <div>
-        <p className="text-sm font-semibold text-emerald-300">Recently transferred</p>
-        <p className="mt-0.5 text-xs text-slate-400">
+        <p className="text-sm font-semibold text-success-text">Recently transferred</p>
+        <p className="mt-0.5 text-xs text-text-muted">
           {deal.buyer_club && deal.seller_club
             ? `${deal.buyer_club.name} signed this player from ${deal.seller_club.name}`
             : "This player was recently transferred."}
@@ -124,19 +126,19 @@ function DealBanner({ deal }: { deal: ActiveDealStub }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const positionAvatarBg: Record<string, string> = {
-  GK:  "bg-amber-500/20 text-amber-400 ring-amber-500/20",
-  DEF: "bg-blue-500/20 text-blue-400 ring-blue-500/20",
-  MID: "bg-emerald-500/20 text-emerald-400 ring-emerald-500/20",
-  FWD: "bg-red-500/20 text-red-400 ring-red-500/20",
+  GK:  "bg-pos-gk-bg text-pos-gk-text ring-border",
+  DEF: "bg-pos-def-bg text-pos-def-text ring-border",
+  MID: "bg-pos-mid-bg text-pos-mid-text ring-border",
+  FWD: "bg-pos-fwd-bg text-pos-fwd-text ring-border",
 };
 
 // ── Bio chip ───────────────────────────────────────────────────────────────────
 
 function BioChip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-lg bg-slate-800/80 px-3 py-1.5 ring-1 ring-white/[0.06]">
-      <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wide">{label}</span>
-      <span className="text-sm font-semibold text-white">{value}</span>
+    <div className="flex items-center gap-1.5 rounded-lg bg-surface-inset px-3 py-1.5 ring-1 ring-border">
+      <span className="text-[11px] font-medium text-text-muted uppercase tracking-wide">{label}</span>
+      <span className="text-sm font-semibold text-text">{value}</span>
     </div>
   );
 }
@@ -177,17 +179,17 @@ function ContractSidebar({
   // Row helper
   function Row({ label, value, accent }: { label: string; value: string; accent?: string }) {
     return (
-      <div className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
-        <span className="text-xs text-slate-500">{label}</span>
-        <span className={`text-sm font-semibold tabular-nums ${accent ?? "text-white"}`}>{value}</span>
+      <div className="flex items-center justify-between py-2 border-b border-rule-faint last:border-0">
+        <span className="text-xs text-text-muted">{label}</span>
+        <span className={`text-sm font-semibold tabular-nums ${accent ?? "text-text"}`}>{value}</span>
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="rounded-xl bg-slate-800/50 px-4 py-4 ring-1 ring-white/[0.06] text-sm text-slate-400">
-        <button onClick={onNavigateLogin} className="text-emerald-400 hover:underline font-medium">
+      <div className="rounded-xl bg-surface-inset px-4 py-4 ring-1 ring-border text-sm text-text-muted">
+        <button onClick={onNavigateLogin} className="text-success-text hover:underline font-medium">
           Sign in
         </button>{" "}
         to view contract details and make offers.
@@ -197,16 +199,16 @@ function ContractSidebar({
 
   if (isFreeAgent) {
     return (
-      <div className="rounded-xl bg-emerald-500/10 px-4 py-4 ring-1 ring-emerald-500/30">
-        <p className="text-sm font-semibold text-emerald-400">Available — Free Agent</p>
-        <p className="mt-0.5 text-xs text-slate-400">No contract with any club.</p>
+      <div className="rounded-xl bg-success/10 px-4 py-4 ring-1 ring-success/30">
+        <p className="text-sm font-semibold text-success-text">Available — Free Agent</p>
+        <p className="mt-0.5 text-xs text-text-muted">No contract with any club.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-slate-800/50 px-4 py-3 ring-1 ring-white/[0.06]">
-      <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">Contract</p>
+    <div className="rounded-xl bg-surface-inset px-4 py-3 ring-1 ring-border">
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-text-muted">Contract</p>
       {contract ? (
         <div>
           {contract.start_date && isMyPlayer && (
@@ -222,7 +224,7 @@ function ContractSidebar({
             <Row
               label={`Weekly wage${player.wage_source && !contract.wage_weekly ? ` (${player.wage_source === "CAPOLOGY" ? "Capology" : "est."})` : ""}`}
               value={formatWage((contract.wage_weekly ?? player.wage_weekly)!)}
-              accent="text-emerald-400"
+              accent="text-success-text"
             />
           )}
           {contract.release_clause != null && (
@@ -231,8 +233,8 @@ function ContractSidebar({
 
           {/* Club valuation — owner editable */}
           {isMyPlayer && (
-            <div className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
-              <span className="text-xs text-slate-500">Club valuation</span>
+            <div className="flex items-center justify-between py-2 border-b border-rule-faint last:border-0">
+              <span className="text-xs text-text-muted">Club valuation</span>
               {editingValuation ? (
                 <div className="flex items-center gap-2">
                   <input
@@ -245,16 +247,16 @@ function ContractSidebar({
                       if (e.key === "Escape") onCancelValuation();
                     }}
                     placeholder="e.g. 5000000"
-                    className="w-28 rounded-md bg-slate-700 px-2 py-1 text-xs text-white ring-1 ring-emerald-500/50 focus:outline-none"
+                    className="w-28 rounded-md bg-surface px-2 py-1 text-xs text-text ring-1 ring-success/50 focus:outline-none"
                   />
                   <button
                     onClick={onCommitValuation}
                     disabled={valuationPending}
-                    className="text-xs font-medium text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
+                    className="text-xs font-medium text-success-text hover:text-success-text-alt disabled:opacity-50"
                   >
                     Save
                   </button>
-                  <button onClick={onCancelValuation} className="text-xs text-slate-500 hover:text-slate-300">
+                  <button onClick={onCancelValuation} className="text-xs text-text-muted hover:text-text-secondary">
                     ✕
                   </button>
                 </div>
@@ -265,15 +267,15 @@ function ContractSidebar({
                   title="Click to edit"
                 >
                   {contract.club_valuation != null ? (
-                    <span className="font-semibold text-white group-hover:text-emerald-400 transition-colors">
+                    <span className="font-semibold text-text group-hover:text-success-text transition-colors">
                       {formatCurrency(contract.club_valuation)}
                     </span>
                   ) : (
-                    <span className="text-slate-600 group-hover:text-slate-300 transition-colors text-xs">
+                    <span className="text-text-muted group-hover:text-text-secondary transition-colors text-xs">
                       Not set
                     </span>
                   )}
-                  <svg className="h-3 w-3 text-slate-600 group-hover:text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <svg className="h-3 w-3 text-text-muted group-hover:text-text-secondary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
                 </button>
@@ -282,14 +284,14 @@ function ContractSidebar({
           )}
 
           {contract.notes && isMyPlayer && (
-            <div className="mt-2 rounded-lg bg-slate-700/50 px-3 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-0.5">Notes</p>
-              <p className="text-xs text-slate-300">{contract.notes}</p>
+            <div className="mt-2 rounded-lg bg-surface px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted mb-0.5">Notes</p>
+              <p className="text-xs text-text-secondary">{contract.notes}</p>
             </div>
           )}
         </div>
       ) : (
-        <p className="text-xs text-slate-500 py-1">
+        <p className="text-xs text-text-muted py-1">
           {isMyPlayer
             ? "No formal contract on file. Add one via the admin panel."
             : "Contract details not available."}
@@ -331,11 +333,11 @@ function TabBar({
   return (
     <div
       ref={barRef}
-      className="relative mb-4 flex gap-1 border-b border-white/[0.07] pb-px"
+      className="relative mb-4 flex gap-1 border-b border-rule pb-px"
     >
       {/* sliding underline */}
       <span
-        className="absolute bottom-0 h-0.5 rounded-full bg-emerald-400 transition-all duration-200"
+        className="absolute bottom-0 h-0.5 rounded-full bg-success transition-all duration-200"
         style={inkStyle}
       />
       {tabs.map((t) => (
@@ -345,8 +347,8 @@ function TabBar({
           onClick={() => onChange(t.id)}
           className={`px-3 py-2 text-sm font-medium transition-colors ${
             t.id === active
-              ? "text-white"
-              : "text-slate-500 hover:text-slate-300"
+              ? "text-text"
+              : "text-text-muted hover:text-text-secondary"
           }`}
         >
           {t.label}
@@ -409,32 +411,32 @@ function AgentRepresentationCard({ playerId }: { playerId: string }) {
     }
   }
 
-  const INPUT = "w-full rounded bg-slate-800 px-2 py-1.5 text-xs text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500";
+  const INPUT = "w-full rounded bg-surface px-2 py-1.5 text-xs text-text ring-1 ring-input-border focus:outline-none focus:ring-success";
 
   return (
-    <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] px-4 py-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+    <div className="rounded-xl bg-surface ring-1 ring-border px-4 py-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
         Representation
       </p>
 
       {mandates.length > 0 && (
-        <div className="mb-3 divide-y divide-white/[0.05]">
+        <div className="mb-3 divide-y divide-rule-faint">
           {mandates.map((m) => (
             <div key={m.id} className="flex items-center justify-between py-2">
               <div className="text-xs">
                 {m.exclusive
-                  ? <span className="font-semibold text-emerald-400">Exclusive</span>
-                  : <span className="text-slate-400">Non-exclusive</span>}
+                  ? <span className="font-semibold text-success-text">Exclusive</span>
+                  : <span className="text-text-muted">Non-exclusive</span>}
                 {m.end_date && (
-                  <span className="ml-2 text-slate-500">until {m.end_date}</span>
+                  <span className="ml-2 text-text-muted">until {m.end_date}</span>
                 )}
                 {m.territory && (
-                  <span className="ml-2 text-slate-500">· {m.territory}</span>
+                  <span className="ml-2 text-text-muted">· {m.territory}</span>
                 )}
               </div>
               <button
                 onClick={() => handleRevoke(m.id)}
-                className="ml-3 text-xs text-red-400 hover:text-red-300 transition-colors"
+                className="ml-3 text-xs text-danger-text hover:text-danger-text-alt transition-colors"
               >
                 Revoke
               </button>
@@ -444,43 +446,43 @@ function AgentRepresentationCard({ playerId }: { playerId: string }) {
       )}
 
       {success ? (
-        <p className="text-sm text-emerald-400">
+        <p className="text-sm text-success-text">
           Mandate created. Player added to your clients.
         </p>
       ) : (
         <div className="space-y-2.5">
           {error && (
-            <p className="rounded bg-red-500/10 px-3 py-2 text-xs text-red-400 ring-1 ring-red-500/25">
+            <p className="rounded bg-danger-bg px-3 py-2 text-xs text-danger-text ring-1 ring-danger-border">
               {error}
             </p>
           )}
-          <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
+          <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer select-none">
             <input
               type="checkbox"
               checked={exclusive}
               onChange={(e) => setExclusive(e.target.checked)}
-              className="accent-emerald-500"
+              className="accent-success"
             />
             Exclusive mandate
           </label>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <p className="text-[10px] text-slate-500 mb-1">Start date</p>
+              <p className="text-[10px] text-text-muted mb-1">Start date</p>
               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={INPUT} />
             </div>
             <div>
-              <p className="text-[10px] text-slate-500 mb-1">End date</p>
+              <p className="text-[10px] text-text-muted mb-1">End date</p>
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={INPUT} />
             </div>
           </div>
           <div>
-            <p className="text-[10px] text-slate-500 mb-1">Territory (optional)</p>
+            <p className="text-[10px] text-text-muted mb-1">Territory (optional)</p>
             <input
               type="text"
               value={territory}
               onChange={(e) => setTerritory(e.target.value)}
               placeholder="e.g. Europe"
-              className={INPUT + " placeholder-slate-600"}
+              className={INPUT + " placeholder-text-muted"}
             />
           </div>
           <Button
@@ -662,7 +664,7 @@ export default function PlayerMarketDetailPage() {
 
   if (isError || !player) {
     return (
-      <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
         Player not found.{" "}
         <button onClick={() => navigate(-1)} className="underline">Go back</button>
       </div>
@@ -670,8 +672,8 @@ export default function PlayerMarketDetailPage() {
   }
 
   const avatarBg = player.position
-    ? (positionAvatarBg[player.position] ?? "bg-slate-700 text-slate-400 ring-slate-600/20")
-    : "bg-slate-700 text-slate-400 ring-slate-600/20";
+    ? (positionAvatarBg[player.position] ?? "bg-surface-inset text-text-muted ring-border")
+    : "bg-surface-inset text-text-muted ring-border";
 
   const clubCrest = player.current_club?.crest_url ?? player.world_team?.crest_url ?? null;
   const clubName  = player.current_club?.name ?? player.world_team?.name ?? player.team_name ?? null;
@@ -702,13 +704,13 @@ export default function PlayerMarketDetailPage() {
       {/* Back */}
       <button
         onClick={() => navigate(-1)}
-        className="mb-4 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+        className="mb-4 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
       >
         ← Back
       </button>
 
       {/* ── Hero ────────────────────────────────────────────────────────────── */}
-      <div className="mb-4 rounded-xl bg-slate-900 ring-1 ring-white/[0.08] p-5">
+      <div className="mb-4 rounded-xl bg-surface ring-1 ring-border p-5">
         <div className="flex items-start gap-5">
           <div className="shrink-0">
             {player.photo_url ? (
@@ -716,7 +718,7 @@ export default function PlayerMarketDetailPage() {
                 src={player.photo_url}
                 alt={player.name}
                 loading="lazy"
-                className="h-20 w-20 rounded-full object-cover object-top ring-2 ring-white/10"
+                className="h-20 w-20 rounded-full object-cover object-top ring-2 ring-border"
               />
             ) : (
               <div className={`h-20 w-20 rounded-full flex items-center justify-center text-3xl font-black ring-2 ${avatarBg}`}>
@@ -729,7 +731,7 @@ export default function PlayerMarketDetailPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-bold text-white">{player.name}</h1>
+                  <h1 className="text-2xl font-bold text-text">{player.name}</h1>
                   {player.is_verified_player && <VerifiedBadge />}
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -744,18 +746,18 @@ export default function PlayerMarketDetailPage() {
                     </Badge>
                   )}
                   {player.open_to_offers && (
-                    <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 ring-1 ring-emerald-500/30">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="text-xs font-semibold text-emerald-400">Open to offers</span>
+                    <span className="flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 ring-1 ring-success/30">
+                      <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+                      <span className="text-xs font-semibold text-success-text">Open to offers</span>
                     </span>
                   )}
                   {isMyPlayer && competition && competition.active_count > 0 && (
                     <button
                       onClick={() => navigate("/offers/received")}
-                      className="flex items-center gap-1.5 rounded-full bg-sky-500/15 px-2.5 py-0.5 ring-1 ring-sky-500/25 hover:bg-sky-500/25 transition-colors"
+                      className="flex items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-0.5 ring-1 ring-accent/25 hover:bg-accent/25 transition-colors"
                     >
-                      <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
-                      <span className="text-xs font-semibold text-sky-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+                      <span className="text-xs font-semibold text-accent">
                         {competition.active_count} active offer{competition.active_count !== 1 ? "s" : ""}
                       </span>
                     </button>
@@ -764,11 +766,11 @@ export default function PlayerMarketDetailPage() {
 
                 {/* Club line */}
                 {clubName && (
-                  <div className="mt-2 flex items-center gap-1.5 text-sm text-slate-400">
+                  <div className="mt-2 flex items-center gap-1.5 text-sm text-text-muted">
                     {clubCrest ? (
                       <img src={clubCrest} alt={clubName} loading="lazy" className="h-4 w-4 object-contain" />
                     ) : (
-                      <span className="h-4 w-4 rounded-full bg-slate-700 flex items-center justify-center text-[9px] font-bold text-slate-400">
+                      <span className="h-4 w-4 rounded-full bg-surface-inset flex items-center justify-center text-[9px] font-bold text-text-muted">
                         {clubName[0]?.toUpperCase()}
                       </span>
                     )}
@@ -788,8 +790,8 @@ export default function PlayerMarketDetailPage() {
                   title={has(player.id) ? "Remove from comparison" : "Add to comparison"}
                   className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium ring-1 transition-colors ${
                     has(player.id)
-                      ? "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30"
-                      : "bg-slate-800 text-slate-400 ring-white/10 hover:text-white"
+                      ? "bg-success/15 text-success-text ring-success/30"
+                      : "bg-surface-inset text-text-muted ring-input-border hover:text-text"
                   }`}
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -805,11 +807,11 @@ export default function PlayerMarketDetailPage() {
                     onClick={() => toggleOTOMutation.mutate(!player.open_to_offers)}
                     className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ring-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                       player.open_to_offers
-                        ? "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30 hover:bg-emerald-500/25"
-                        : "bg-slate-800 text-slate-400 ring-white/10 hover:text-white"
+                        ? "bg-success/15 text-success-text ring-success/30 hover:bg-success/25"
+                        : "bg-surface-inset text-text-muted ring-input-border hover:text-text"
                     }`}
                   >
-                    <span className={`h-2 w-2 rounded-full ${player.open_to_offers ? "bg-emerald-400 animate-pulse" : "bg-slate-600"}`} />
+                    <span className={`h-2 w-2 rounded-full ${player.open_to_offers ? "bg-success animate-pulse" : "bg-border"}`} />
                     {player.open_to_offers ? "Open to offers" : "Closed to offers"}
                   </button>
                 )}
@@ -865,7 +867,7 @@ export default function PlayerMarketDetailPage() {
                 {!isAuthenticated && (
                   <button
                     onClick={() => navigate("/login")}
-                    className="rounded-lg bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-400 ring-1 ring-emerald-500/30 hover:bg-emerald-500/20 transition-colors"
+                    className="rounded-lg bg-success/10 px-4 py-2 text-sm font-semibold text-success-text ring-1 ring-success/30 hover:bg-success/20 transition-colors"
                   >
                     Sign in to make offer
                   </button>
@@ -930,7 +932,7 @@ export default function PlayerMarketDetailPage() {
               has no reference price */}
           {isAuthenticated && !isPlayerAccount && (
             <Card>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
                 Model Valuation
               </p>
               {fairValueLoading ? (
@@ -938,7 +940,7 @@ export default function PlayerMarketDetailPage() {
               ) : fairValue ? (
                 <FairValueBadge signal={fairValue} />
               ) : (
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-text-muted">
                   No model valuation — insufficient recent data.
                 </p>
               )}

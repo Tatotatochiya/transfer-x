@@ -1,6 +1,6 @@
 ---
 title: "Architecture Decision Records"
-last_updated: 2026-08-08
+last_updated: 2026-08-11
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -18,6 +18,8 @@ In scope: system-design decisions (e.g. choice of database, a module boundary, a
 ## Table of Contents
 
 - [0001 — Vendor-sourced data never overrides an active TransferX contract](./0001-vendor-data-never-overrides-transferx-contract.md)
+- [0002 — Contract-cliff value-at-risk prefers the fair-value model over legacy market value](./0002-contract-cliff-prefers-fair-value-over-legacy-market-value.md)
+- [0003 — Player status distinguishes external clubs from free agency](./0003-player-status-distinguishes-external-clubs.md)
 
 > **TODO:** Add further decisions here as `NNNN-short-title.md`, following the short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
 >

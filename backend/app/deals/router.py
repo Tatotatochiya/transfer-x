@@ -200,6 +200,7 @@ async def _build_deal_response(db: AsyncSession, deal, *, caller_user_type: str 
         deal_notes=deal.deal_notes,
         sla_deadline=deal.sla_deadline,
         sla_escalated_at=deal.sla_escalated_at,
+        whose_move=service.compute_deal_whose_move(deal),
     )
 
 

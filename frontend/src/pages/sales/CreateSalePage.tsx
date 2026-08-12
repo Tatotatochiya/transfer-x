@@ -97,13 +97,13 @@ export default function CreateSalePage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Player */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">Player</label>
+            <label className="mb-1.5 block text-sm font-semibold text-text-secondary">Player</label>
             <select
               value={playerId}
               onChange={(e) => setPlayerId(e.target.value)}
               required
               disabled={playersLoading}
-              className="w-full rounded-lg bg-slate-800 px-3 py-2.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors disabled:opacity-50"
+              className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors disabled:opacity-50"
             >
               <option value="">
                 {playersLoading ? "Loading players…" : "Select a player"}
@@ -115,12 +115,12 @@ export default function CreateSalePage() {
               ))}
             </select>
             {players.length === 0 && !playersLoading && (
-              <p className="mt-1.5 text-xs text-slate-500">
+              <p className="mt-1.5 text-xs text-text-muted">
                 No players found.{" "}
                 <button
                   type="button"
                   onClick={() => navigate("/players")}
-                  className="text-emerald-400 hover:underline"
+                  className="text-accent hover:underline"
                 >
                   Add players first
                 </button>
@@ -130,7 +130,7 @@ export default function CreateSalePage() {
 
           {/* Sale type */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">Sale type</label>
+            <label className="mb-1.5 block text-sm font-semibold text-text-secondary">Sale type</label>
             <div className="flex gap-2">
               {(["AUCTION", "OPEN_TO_OFFERS", "FIXED_PRICE"] as SaleType[]).map((t) => (
                 <button
@@ -139,8 +139,8 @@ export default function CreateSalePage() {
                   onClick={() => setSaleType(t)}
                   className={`flex-1 rounded-lg py-2 text-sm transition-colors ${
                     saleType === t
-                      ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30"
-                      : "bg-slate-800 text-slate-400 hover:text-white"
+                      ? "bg-accent-bg text-accent-active ring-1 ring-accent"
+                      : "bg-surface-inset text-text-muted hover:text-text ring-1 ring-input-border"
                   }`}
                 >
                   {t === "AUCTION" ? "Auction" : t === "OPEN_TO_OFFERS" ? "Open to Offers" : "Fixed Price"}
@@ -151,17 +151,17 @@ export default function CreateSalePage() {
 
           {/* Asking price */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">
+            <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
               {isAuction ? "Starting price" : "Asking price"}{" "}
-              <span className="text-slate-500">(optional)</span>
+              <span className="text-text-muted font-normal">(optional)</span>
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">£</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">£</span>
               <CurrencyInput
                 value={askingPrice}
                 onChange={setAskingPrice}
                 placeholder="e.g. 25,000,000"
-                className="w-full rounded-lg bg-slate-800 pl-7 pr-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+                className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
               />
             </div>
           </div>
@@ -170,36 +170,36 @@ export default function CreateSalePage() {
           {isAuction && (
             <>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-300">
-                  Reserve price <span className="text-slate-500">(optional)</span>
+                <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                  Reserve price <span className="text-text-muted font-normal">(optional)</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">£</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">£</span>
                   <CurrencyInput
                     value={reservePrice}
                     onChange={setReservePrice}
                     placeholder="Minimum to sell"
-                    className="w-full rounded-lg bg-slate-800 pl-7 pr-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+                    className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-300">
+                <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
                   Minimum bid increment
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">£</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">£</span>
                   <CurrencyInput
                     value={minIncrement}
                     onChange={setMinIncrement}
-                    className="w-full rounded-lg bg-slate-800 pl-7 pr-3 py-2.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+                    className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-300">
+                <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
                   Auction deadline
                 </label>
                 <input
@@ -208,7 +208,7 @@ export default function CreateSalePage() {
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
                   min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
-                  className="w-full rounded-lg bg-slate-800 px-3 py-2.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+                  className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                 />
               </div>
             </>
@@ -216,20 +216,20 @@ export default function CreateSalePage() {
 
           {/* Notes */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">
-              Notes <span className="text-slate-500">(optional)</span>
+            <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+              Notes <span className="text-text-muted font-normal">(optional)</span>
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder="Any additional information for prospective buyers…"
-              className="w-full rounded-lg bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors resize-none"
+              className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors resize-none"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm text-danger-text">{error}</p>
           )}
 
           <div className="flex gap-3 pt-2">

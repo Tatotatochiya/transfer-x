@@ -38,12 +38,12 @@ function CreateForm({ onDone }: { onDone: () => void }) {
 
   return (
     <Card>
-      <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">
         New Shortlist
       </p>
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-300">
+          <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
             Name
           </label>
           <input
@@ -52,22 +52,22 @@ function CreateForm({ onDone }: { onDone: () => void }) {
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Summer targets"
             autoFocus
-            className="w-full rounded-lg bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+            className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-300">
-            Description <span className="text-slate-500">(optional)</span>
+          <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+            Description <span className="text-text-muted font-normal">(optional)</span>
           </label>
           <input
             type="text"
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
             placeholder="What's this list for?"
-            className="w-full rounded-lg bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+            className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
           />
         </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-danger-text">{error}</p>}
         <div className="flex gap-2 pt-1">
           <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}>
             Create
@@ -139,10 +139,10 @@ export default function ShortlistListPage() {
             <button
               key={sl.id}
               onClick={() => navigate(`/scouting/shortlists/${sl.id}`)}
-              className="group rounded-2xl bg-slate-900 px-5 py-4 ring-1 ring-white/[0.08] hover:ring-emerald-500/30 transition-all text-left"
+              className="group rounded-2xl bg-surface px-5 py-4 ring-1 ring-border hover:ring-accent transition-all text-left"
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="font-semibold text-white group-hover:text-emerald-400 transition-colors">
+                <p className="font-semibold text-text group-hover:text-accent transition-colors">
                   {sl.name}
                 </p>
                 <button
@@ -152,17 +152,17 @@ export default function ShortlistListPage() {
                       deleteMutation.mutate(sl.id);
                     }
                   }}
-                  className="shrink-0 text-xs text-slate-600 hover:text-red-400 transition-colors"
+                  className="shrink-0 text-xs text-text-muted hover:text-danger-text transition-colors"
                 >
                   Delete
                 </button>
               </div>
               {sl.description && (
-                <p className="mt-1 text-xs text-slate-500 line-clamp-2">
+                <p className="mt-1 text-xs text-text-muted line-clamp-2">
                   {sl.description}
                 </p>
               )}
-              <div className="mt-3 flex items-center gap-3 text-xs text-slate-500">
+              <div className="mt-3 flex items-center gap-3 text-xs text-text-muted">
                 <span>{sl.item_count} player{sl.item_count !== 1 ? "s" : ""}</span>
                 <span>·</span>
                 <span>{formatDate(sl.updated_at)}</span>

@@ -51,25 +51,25 @@ function RequestRow({ req }: { req: VerificationRequest }) {
   });
 
   return (
-    <tr className="border-t border-white/[0.05] align-top">
+    <tr className="border-t border-rule-faint align-top">
       <td className="px-4 py-3">
         <Badge variant="neutral">{req.entity_type}</Badge>
       </td>
-      <td className="px-4 py-3 text-white font-medium">{req.entity_name ?? "—"}</td>
-      <td className="px-4 py-3 text-slate-400">{req.requested_by_email ?? "—"}</td>
-      <td className="px-4 py-3 text-slate-400">
+      <td className="px-4 py-3 text-text font-medium">{req.entity_name ?? "—"}</td>
+      <td className="px-4 py-3 text-text-muted">{req.requested_by_email ?? "—"}</td>
+      <td className="px-4 py-3 text-text-muted">
         {req.evidence_ref ? (
           <span className="break-all">{req.evidence_ref}</span>
         ) : "—"}
-        {req.notes && <p className="mt-1 text-xs text-slate-500">{req.notes}</p>}
+        {req.notes && <p className="mt-1 text-xs text-text-muted">{req.notes}</p>}
       </td>
       <td className="px-4 py-3">
         <Badge variant={STATUS_VARIANT[req.status]}>{req.status}</Badge>
         {req.status !== "PENDING" && req.review_notes && (
-          <p className="mt-1 text-xs text-slate-500">{req.review_notes}</p>
+          <p className="mt-1 text-xs text-text-muted">{req.review_notes}</p>
         )}
       </td>
-      <td className="px-4 py-3 text-xs text-slate-500">{formatDate(req.created_at)}</td>
+      <td className="px-4 py-3 text-xs text-text-muted">{formatDate(req.created_at)}</td>
       <td className="px-4 py-3">
         {req.status === "PENDING" && (
           rejecting ? (
@@ -79,7 +79,7 @@ function RequestRow({ req }: { req: VerificationRequest }) {
                 value={reviewNotes}
                 onChange={(e) => setReviewNotes(e.target.value)}
                 placeholder="Reason (optional)"
-                className="rounded-lg bg-slate-900 px-2 py-1.5 text-xs text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-red-500"
+                className="rounded-lg bg-surface px-2 py-1.5 text-xs text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-danger"
               />
               <div className="flex gap-2">
                 <Button variant="danger" size="sm" loading={rejectMutation.isPending} onClick={() => rejectMutation.mutate()}>
@@ -123,13 +123,13 @@ export default function AdminVerificationPage() {
     <div>
       <PageHeader title="Verification Requests" subtitle="Review and action verification requests from clubs, agents, and players" />
 
-      <div className="mb-4 flex gap-1 rounded-xl bg-slate-800/50 p-1 w-fit">
+      <div className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl bg-surface-inset p-1">
         {STATUS_TABS.map((t) => (
           <button
             key={t.value}
             onClick={() => setTab(t.value)}
             className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-              tab === t.value ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-white"
+              tab === t.value ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
             }`}
           >
             {t.label}
@@ -140,15 +140,15 @@ export default function AdminVerificationPage() {
       {isLoading ? (
         <div className="flex justify-center py-12"><Spinner size="lg" /></div>
       ) : requests.length === 0 ? (
-        <div className="rounded-xl bg-slate-900 px-5 py-12 text-center ring-1 ring-white/[0.08]">
-          <p className="text-sm font-medium text-white">No requests</p>
-          <p className="mt-1 text-sm text-slate-500">Nothing to review in this filter.</p>
+        <div className="rounded-xl bg-surface px-5 py-12 text-center ring-1 ring-border">
+          <p className="text-sm font-medium text-text">No requests</p>
+          <p className="mt-1 text-sm text-text-muted">Nothing to review in this filter.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.08]">
+        <div className="overflow-x-auto rounded-xl ring-1 ring-border">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-white/[0.08] text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-rule bg-surface-header text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Entity</th>
                 <th className="px-4 py-3">Requested by</th>

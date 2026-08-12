@@ -31,6 +31,19 @@ router = APIRouter(tags=["players"])
 _market_write = require_club_capability(Capability.MARKET_WRITE)
 
 
+async def _viewer_wage_remaining(db: AsyncSession, current_user: User | None) -> Decimal | None:
+    """B4: the viewing club's remaining weekly wage room, or None if the
+    viewer isn't an authenticated club account (agent/player/anonymous)."""
+    if current_user is None:
+        return None
+    from app.clubs import service as clubs_service
+
+    club = await clubs_service.get_club_for_user(db, current_user.id)
+    if club is None or club.finance is None:
+        return None
+    return club.finance.wage_remaining_weekly
+
+
 # ── Player market (public / optional auth) ────────────────────────────────────
 
 
@@ -52,7 +65,7 @@ async def player_market(
     min_market_value: Decimal | None = Query(None, ge=0),
     max_market_value: Decimal | None = Query(None, ge=0),
     contract_expiry_within_months: int | None = Query(None, ge=1, le=36),
-    sort_by: str = Query("name", pattern="^(name|age|goals|assists|appearances|avg_rating|form_score)$"),
+    sort_by: str = Query("name", pattern="^(name|age|goals|assists|appearances|avg_rating|form_score|value)$"),
     sort_dir: str = Query("asc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(24, ge=1, le=100),
@@ -83,8 +96,15 @@ async def player_market(
         page=page,
         page_size=page_size,
     )
+    # B4: one club lookup for the whole page, not per row (TRA-92's own batch
+    # discipline) — wage_fit stays null for non-club viewers or players with
+    # no prospective wage figure to compare.
+    wage_remaining = await _viewer_wage_remaining(db, current_user)
+    items = [PlayerResponse.model_validate(p) for p in players]
+    for item, p in zip(items, players):
+        item.wage_fit = players_service.compute_wage_fit(p.wage_weekly, wage_remaining)
     return Paginated(
-        items=[PlayerResponse.model_validate(p) for p in players],
+        items=items,
         total=total,
         page=page,
         page_size=page_size,
@@ -121,6 +141,9 @@ async def player_market_detail(
         data.active_deal = ActiveDealStub.model_validate(deal)
 
     data.is_verified_player = await players_service.is_player_verified(db, player_id)
+
+    wage_remaining = await _viewer_wage_remaining(db, current_user)
+    data.wage_fit = players_service.compute_wage_fit(player.wage_weekly, wage_remaining)
 
     return data
 

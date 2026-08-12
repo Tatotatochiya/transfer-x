@@ -12,11 +12,11 @@ import type { OfferStatus } from "../../types/enums";
 
 const OFFER_STATUSES = ["SENT", "COUNTERED", "ACCEPTED", "REJECTED", "WITHDRAWN", "EXPIRED"];
 
-const STATUS_VARIANT: Record<string, "success" | "info" | "warning" | "neutral" | "error"> = {
+const STATUS_VARIANT: Record<string, "success" | "info" | "warning" | "neutral" | "danger"> = {
   SENT:      "info",
   COUNTERED: "warning",
   ACCEPTED:  "success",
-  REJECTED:  "error",
+  REJECTED:  "danger",
   WITHDRAWN: "neutral",
   EXPIRED:   "neutral",
 };
@@ -60,13 +60,13 @@ export default function AdminOffersPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Offers</h1>
-          <p className="mt-1 text-sm text-slate-400">{data ? `${data.total} total` : ""}</p>
+          <h1 className="text-2xl font-bold text-text">Offers</h1>
+          <p className="mt-1 text-sm text-text-muted">{data ? `${data.total} total` : ""}</p>
         </div>
         <select
           value={status}
           onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
         >
           <option value="">All statuses</option>
           {OFFER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -78,7 +78,7 @@ export default function AdminOffersPage() {
       </div>
 
       {withdrawMutation.isError && (
-        <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-2 text-xs text-red-400 ring-1 ring-red-500/20">
+        <div className="mb-4 rounded-lg bg-danger-bg px-4 py-2 text-xs text-danger-text ring-1 ring-danger-border">
           {getApiError(withdrawMutation.error, "Withdraw failed.")}
         </div>
       )}
@@ -87,10 +87,10 @@ export default function AdminOffersPage() {
 
       {data && (
         <>
-          <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.08]">
+          <div className="overflow-x-auto rounded-xl ring-1 ring-border">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.08] text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-rule bg-surface-header text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
                   <th className="px-4 py-3">Player</th>
                   <th className="px-4 py-3">From</th>
                   <th className="px-4 py-3">To</th>
@@ -100,17 +100,17 @@ export default function AdminOffersPage() {
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-rule-faint">
                 {data.items.map((o) => (
                   <tr
                     key={o.id}
                     onClick={() => navigate(`/offers/${o.id}`)}
-                    className="cursor-pointer bg-slate-900 hover:bg-slate-800/40 transition-colors"
+                    className="cursor-pointer bg-surface hover:bg-surface-inset transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-white">{o.player?.name ?? "—"}</td>
-                    <td className="px-4 py-3 text-xs text-slate-400">{o.from_club?.name ?? "—"}</td>
-                    <td className="px-4 py-3 text-xs text-slate-400">{o.to_club?.name ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-300 text-xs">
+                    <td className="px-4 py-3 font-medium text-text">{o.player?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs text-text-muted">{o.from_club?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs text-text-muted">{o.to_club?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-text-secondary text-xs">
                       {o.fee_amount != null ? formatCurrency(o.fee_amount) : "—"}
                     </td>
                     <td className="px-4 py-3">
@@ -118,13 +118,13 @@ export default function AdminOffersPage() {
                         {o.status}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{formatDate(o.last_action_at)}</td>
+                    <td className="px-4 py-3 text-xs text-text-muted">{formatDate(o.last_action_at)}</td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       {!TERMINAL.has(o.status) && (
                         <button
                           disabled={withdrawMutation.isPending}
                           onClick={() => withdrawMutation.mutate(o.id)}
-                          className="rounded bg-red-500/10 px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40"
+                          className="rounded bg-danger/10 px-2 py-1 text-xs text-danger-text hover:bg-danger/20 transition-colors disabled:opacity-40"
                         >
                           Force withdraw
                         </button>

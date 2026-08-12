@@ -10,9 +10,9 @@ import Badge from "../../components/ui/Badge";
 import RequestVerificationPanel from "../../components/verification/RequestVerificationPanel";
 
 const INPUT_CLS =
-  "w-full rounded-lg bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors disabled:opacity-50";
+  "w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors disabled:opacity-50";
 
-const LABEL_CLS = "mb-1.5 block text-sm font-medium text-slate-300";
+const LABEL_CLS = "mb-1.5 block text-sm font-semibold text-text-secondary";
 
 export default function AgentProfilePage() {
   const queryClient = useQueryClient();
@@ -86,8 +86,8 @@ export default function AgentProfilePage() {
       <Card>
         <div className="flex items-start justify-between mb-6">
           <div>
-            <p className="text-lg font-semibold text-white">{profile.display_name}</p>
-            <p className="text-sm text-slate-400">{profile.agency_name}</p>
+            <p className="text-lg font-semibold text-text">{profile.display_name}</p>
+            <p className="text-sm text-text-muted">{profile.agency_name}</p>
           </div>
           <div className="flex items-center gap-2">
             {profile.verified && <Badge variant="success">Verified</Badge>}
@@ -100,7 +100,7 @@ export default function AgentProfilePage() {
         </div>
 
         {saveError && (
-          <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-400 ring-1 ring-red-500/30">
+          <div className="mb-4 rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
             {saveError}
           </div>
         )}
@@ -138,7 +138,7 @@ export default function AgentProfilePage() {
           </div>
           <div>
             <label className={LABEL_CLS}>
-              FIFA licence no. <span className="text-slate-500">(optional)</span>
+              FIFA licence no. <span className="text-text-muted font-normal">(optional)</span>
             </label>
             <input
               type="text"
@@ -150,7 +150,7 @@ export default function AgentProfilePage() {
             />
           </div>
 
-          <div className="pt-2 border-t border-white/[0.06] text-xs text-slate-500">
+          <div className="pt-2 border-t border-rule text-xs text-text-muted">
             Member since {new Date(profile.created_at).toLocaleDateString()}
             {profile.verified && " · Verified agent"}
           </div>

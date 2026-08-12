@@ -3,12 +3,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useAuth } from "../../hooks/useAuth";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
-import type { ApprovalPolicy, PendingApproval } from "../../types/api";
+import type { ApprovalPolicy, Club, PendingApproval } from "../../types/api";
 import type { ApprovalStatus } from "../../types/enums";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
+import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import Spinner from "../../components/ui/Spinner";
 import { useToast } from "../../context/ToastContext";
 import { formatCurrency, formatDateTime, getApiError } from "../../lib/utils";
@@ -22,6 +24,73 @@ const STATUS_BADGE: Record<ApprovalStatus, { label: string; variant: "info" | "s
   CANCELLED:         { label: "Cancelled", variant: "neutral" },
 };
 
+function elapsed(iso: string): string {
+  const hours = (Date.now() - new Date(iso).getTime()) / 3_600_000;
+  if (hours < 1) return "just now";
+  if (hours < 24) return `${Math.floor(hours)}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+// ── Tier 1 — waiting on your decision ─────────────────────────────────────────
+
+function DecisionRow({
+  approval, transferRemaining, onApprove, onReject, approving, isRejectPending,
+}: {
+  approval: PendingApproval;
+  transferRemaining: number | null;
+  onApprove: () => void;
+  onReject: (reason: string | null) => void;
+  approving: boolean;
+  isRejectPending: boolean;
+}) {
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [reason, setReason] = useState("");
+  const budgetAfter = transferRemaining != null ? transferRemaining - approval.amount : null;
+
+  return (
+    <div className="border-b border-rule px-5 py-[18px] last:border-b-0">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex-1 basis-[260px]">
+          <p className="text-base font-bold text-text">{approval.summary ?? approval.action_type.replace(/_/g, " ")}</p>
+          <p className="text-[13px] text-text-secondary">
+            {approval.requested_by_email ?? "Unknown requester"} · {elapsed(approval.created_at)}
+            {approval.expires_at && ` · expires ${formatDateTime(approval.expires_at)}`}
+          </p>
+        </div>
+        <div className="basis-[150px] shrink">
+          <p className="text-[11px] text-text-muted">Amount</p>
+          <p className="text-[17px] font-bold text-text">{formatCurrency(approval.amount)}</p>
+        </div>
+        {budgetAfter != null && (
+          <div className="basis-[150px] shrink">
+            <p className="text-[11px] text-text-muted">Budget after</p>
+            <p className="text-[17px] font-bold text-success-text">{formatCurrency(budgetAfter)}</p>
+          </div>
+        )}
+        <div className="flex shrink-0 gap-2">
+          <Button variant="primary" size="sm" loading={approving} onClick={onApprove}>Approve</Button>
+          <Button variant="danger" size="sm" loading={isRejectPending} onClick={() => setShowRejectForm((v) => !v)}>Reject</Button>
+        </div>
+      </div>
+      {showRejectForm && (
+        <div className="mt-3 flex items-center gap-2 border-t border-rule-faint pt-3">
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Reason (optional)"
+            className="min-w-0 flex-1 rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
+          />
+          <Button variant="danger" size="sm" loading={isRejectPending} onClick={() => onReject(reason || null)}>Confirm reject</Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowRejectForm(false)}>Cancel</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────────
+
 type Filter = "PENDING" | "ALL";
 
 export default function ApprovalsPage() {
@@ -30,10 +99,15 @@ export default function ApprovalsPage() {
   const { user } = useAuth();
   const { can, isLoading: capsLoading } = useClubCapabilities();
   const [filter, setFilter] = useState<Filter>("PENDING");
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
+  const [decidingId, setDecidingId] = useState<string | null>(null);
 
   const canDecide = can("APPROVE_ACTIONS");
+
+  const { data: club } = useQuery<Club>({
+    queryKey: ["clubs", "me"],
+    queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
+    staleTime: 60_000,
+  });
 
   const { data: approvals, isLoading } = useQuery<PendingApproval[]>({
     queryKey: ["clubs", "me", "approvals", filter],
@@ -59,13 +133,14 @@ export default function ApprovalsPage() {
     mutationFn: (id: string) => api.post<PendingApproval>(`/clubs/me/approvals/${id}/approve`).then((r) => r.data),
     onSuccess: (data) => {
       invalidate();
+      setDecidingId(null);
       if (data.status === "APPROVED_EXECUTED") {
         addToast("Approved and executed", "success");
       } else {
         addToast(`Approved, but execution failed: ${data.failure_reason ?? "unknown reason"}`, "warning");
       }
     },
-    onError: (err: unknown) => addToast(getApiError(err, "Failed to approve."), "error"),
+    onError: (err: unknown) => { setDecidingId(null); addToast(getApiError(err, "Failed to approve."), "error"); },
   });
 
   const rejectMutation = useMutation({
@@ -73,11 +148,10 @@ export default function ApprovalsPage() {
       api.post<PendingApproval>(`/clubs/me/approvals/${id}/reject`, { reason }).then((r) => r.data),
     onSuccess: () => {
       invalidate();
-      setRejectingId(null);
-      setRejectReason("");
+      setDecidingId(null);
       addToast("Request rejected", "info");
     },
-    onError: (err: unknown) => addToast(getApiError(err, "Failed to reject."), "error"),
+    onError: (err: unknown) => { setDecidingId(null); addToast(getApiError(err, "Failed to reject."), "error"); },
   });
 
   const cancelMutation = useMutation({
@@ -94,33 +168,42 @@ export default function ApprovalsPage() {
   }
 
   const rows = approvals ?? [];
+  const pending = rows.filter((a) => a.status === "PENDING");
+  const decided = rows.filter((a) => a.status !== "PENDING");
+  const transferRemaining = club?.finance ? Number(club.finance.transfer_remaining) : null;
+
+  const decidedColumns: ResponsiveColumn<PendingApproval>[] = [
+    { key: "request", header: "Request", priority: 1, render: (a) => (
+      <span className="font-medium text-text">{a.summary ?? a.action_type.replace(/_/g, " ")}</span>
+    ) },
+    { key: "requester", header: "Requested by", priority: 3, render: (a) => <span className="text-text-muted">{a.requested_by_email ?? "—"}</span> },
+    { key: "amount", header: "Amount", priority: 2, className: "text-right", render: (a) => <span className="font-bold text-text">{formatCurrency(a.amount)}</span> },
+    { key: "outcome", header: "Outcome", priority: 4, render: (a) => <Badge variant={STATUS_BADGE[a.status].variant}>{STATUS_BADGE[a.status].label}</Badge> },
+    { key: "decided", header: "Decided", priority: 5, className: "text-right", render: (a) => <span className="text-xs text-text-muted">{a.decided_at ? formatDateTime(a.decided_at) : "—"}</span> },
+  ];
 
   return (
     <div>
       <PageHeader
         title="Approvals"
-        subtitle={
-          canDecide
-            ? "Spending requests from your team that need a decision"
-            : "Your spending requests awaiting a decision"
-        }
+        subtitle={canDecide ? "Spending requests from your team that need a decision" : "Your spending requests awaiting a decision"}
       />
 
       {can("TEAM_MANAGE") && (
-        <p className="mb-5 text-xs text-slate-500">
+        <p className="mb-5 text-[13px] text-text-secondary">
           {policy?.approval_threshold != null
-            ? <>Manager actions at or above <span className="text-slate-300">{formatCurrency(policy.approval_threshold)}</span> require approval. Change this on the Finance page.</>
+            ? <>Manager actions at or above <span className="font-semibold text-text">{formatCurrency(policy.approval_threshold)}</span> require your approval. Change this on the Finance page.</>
             : "No approval threshold is set — manager actions execute directly. Set one on the Finance page."}
         </p>
       )}
 
-      <div className="mb-5 flex gap-1 rounded-xl bg-slate-800/50 p-1 w-fit">
+      <div className="mb-5 flex w-fit gap-1 rounded-xl bg-surface-inset p-1">
         {(["PENDING", "ALL"] as Filter[]).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
             className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-              filter === f ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-white"
+              filter === f ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
             }`}
           >
             {f === "PENDING" ? "Pending" : "All"}
@@ -138,80 +221,76 @@ export default function ApprovalsPage() {
           }
         />
       ) : (
-        <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden divide-y divide-white/[0.04]">
-          {rows.map((a) => {
-            const isMine = a.requested_by_user_id === user?.id;
-            const pending = a.status === "PENDING";
-            return (
-              <div key={a.id} className="px-5 py-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-white">
-                      {a.summary ?? a.action_type.replace(/_/g, " ")}
-                    </p>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {a.requested_by_email ?? "Unknown requester"} · {formatDateTime(a.created_at)}
-                      {pending && <> · expires {formatDateTime(a.expires_at)}</>}
-                    </p>
-                    {a.failure_reason && a.status !== "PENDING" && (
-                      <p className="mt-1 text-xs text-amber-400/80">{a.failure_reason}</p>
+        <>
+          {canDecide && pending.length > 0 && (
+            <Card tier={1} noPadding className="mb-6">
+              <div className="flex items-center justify-between border-b border-danger-border bg-danger-bg px-5 py-3 rounded-t-xl">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-danger" />
+                  <span className="text-[13px] font-bold text-danger-heading">Waiting on your decision — {pending.length}</span>
+                </div>
+              </div>
+              <div>
+                {pending.map((a) => (
+                  <DecisionRow
+                    key={a.id}
+                    approval={a}
+                    transferRemaining={transferRemaining}
+                    onApprove={() => { setDecidingId(a.id); approveMutation.mutate(a.id); }}
+                    onReject={(reason) => { setDecidingId(a.id); rejectMutation.mutate({ id: a.id, reason }); }}
+                    approving={decidingId === a.id && approveMutation.isPending}
+                    isRejectPending={decidingId === a.id && rejectMutation.isPending}
+                  />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {!canDecide && pending.length > 0 && (
+            <div className="mb-6 space-y-3">
+              {pending.map((a) => (
+                <Card key={a.id}>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex-1 basis-[240px]">
+                      <p className="text-sm font-semibold text-text">{a.summary ?? a.action_type.replace(/_/g, " ")}</p>
+                      <p className="text-xs text-text-muted">{elapsed(a.created_at)} · expires {formatDateTime(a.expires_at)}</p>
+                    </div>
+                    <span className="text-sm font-bold text-text">{formatCurrency(a.amount)}</span>
+                    <Badge variant="warning">Pending</Badge>
+                    {a.requested_by_user_id === user?.id && (
+                      <Button variant="ghost" size="sm" loading={cancelMutation.isPending} onClick={() => cancelMutation.mutate(a.id)}>
+                        <span className="text-danger-text">Cancel</span>
+                      </Button>
                     )}
                   </div>
-                  <span className="text-sm font-semibold text-white">{formatCurrency(a.amount)}</span>
-                  <Badge variant={STATUS_BADGE[a.status].variant}>{STATUS_BADGE[a.status].label}</Badge>
-                  {pending && canDecide && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => approveMutation.mutate(a.id)}
-                        loading={approveMutation.isPending}
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setRejectingId(rejectingId === a.id ? null : a.id)}
-                      >
-                        Reject
-                      </Button>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {decided.length > 0 && (
+            <div>
+              {filter === "PENDING" ? null : <h2 className="mb-3 text-sm font-bold text-text">Decided</h2>}
+              <ResponsiveTable
+                columns={decidedColumns}
+                rows={decided}
+                rowKey={(a) => a.id}
+                renderCard={(a) => (
+                  <div className="px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-text">{a.summary ?? a.action_type.replace(/_/g, " ")}</span>
+                      <span className="text-sm font-bold text-text">{formatCurrency(a.amount)}</span>
                     </div>
-                  )}
-                  {pending && isMine && !canDecide && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => cancelMutation.mutate(a.id)}
-                      loading={cancelMutation.isPending}
-                    >
-                      <span className="text-red-400">Cancel</span>
-                    </Button>
-                  )}
-                </div>
-                {rejectingId === a.id && (
-                  <div className="mt-3 flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={rejectReason}
-                      onChange={(e) => setRejectReason(e.target.value)}
-                      placeholder="Reason (optional)"
-                      className="min-w-0 flex-1 rounded-lg bg-slate-950 px-3 py-2 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
-                    />
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => rejectMutation.mutate({ id: a.id, reason: rejectReason || null })}
-                      loading={rejectMutation.isPending}
-                    >
-                      Confirm reject
-                    </Button>
+                    <div className="mt-1 flex items-center justify-between">
+                      <Badge variant={STATUS_BADGE[a.status].variant}>{STATUS_BADGE[a.status].label}</Badge>
+                      <span className="text-xs text-text-muted">{a.decided_at ? formatDateTime(a.decided_at) : "—"}</span>
+                    </div>
                   </div>
                 )}
-              </div>
-            );
-          })}
-        </div>
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

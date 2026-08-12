@@ -46,25 +46,25 @@ export default function RequestVerificationPanel({ verified }: RequestVerificati
   const isPending = latest?.status === "PENDING";
 
   return (
-    <div className="mt-4 rounded-lg bg-slate-800/60 px-4 py-3 ring-1 ring-white/[0.06]">
+    <div className="mt-4 rounded-lg bg-surface-inset px-4 py-3 ring-1 ring-border">
       {isPending ? (
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-text-secondary">
             Verification request pending review
-            <span className="ml-2 text-xs text-slate-500">submitted {formatDate(latest.created_at)}</span>
+            <span className="ml-2 text-xs text-text-muted">submitted {formatDate(latest.created_at)}</span>
           </p>
         </div>
       ) : (
         <>
           {latest?.status === "REJECTED" && (
-            <p className="mb-2 text-sm text-red-400">
+            <p className="mb-2 text-sm text-danger-text">
               Your last verification request was not approved
               {latest.review_notes ? `: ${latest.review_notes}` : "."}
             </p>
           )}
           {!showForm ? (
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-slate-400">Not verified yet.</p>
+              <p className="text-sm text-text-muted">Not verified yet.</p>
               <Button variant="secondary" size="sm" onClick={() => setShowForm(true)}>
                 Request verification
               </Button>
@@ -72,26 +72,26 @@ export default function RequestVerificationPanel({ verified }: RequestVerificati
           ) : (
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">
-                  Evidence link <span className="text-slate-600">(optional)</span>
+                <label className="mb-1 block text-xs font-medium text-text-muted">
+                  Evidence link <span className="text-text-muted">(optional)</span>
                 </label>
                 <input
                   type="text"
                   value={evidenceRef}
                   onChange={(e) => setEvidenceRef(e.target.value)}
                   placeholder="Link to licence, official profile, etc."
-                  className="w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">
-                  Notes <span className="text-slate-600">(optional)</span>
+                <label className="mb-1 block text-xs font-medium text-text-muted">
+                  Notes <span className="text-text-muted">(optional)</span>
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  className="w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                 />
               </div>
               <div className="flex gap-2">

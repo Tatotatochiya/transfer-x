@@ -14,12 +14,12 @@ import type { PlayerPosition } from "../../types/enums";
 
 const POSITIONS  = ["GK", "DEF", "MID", "FWD"];
 const VISIBILITIES = ["PUBLIC", "CLUBS_ONLY", "PRIVATE"];
-const STATUSES   = ["CONTRACTED", "FREE_AGENT"];
+const STATUSES   = ["CONTRACTED", "EXTERNAL", "FREE_AGENT"];
 
 const VIS_STYLE: Record<string, string> = {
-  PUBLIC:     "text-emerald-400",
-  CLUBS_ONLY: "text-sky-400",
-  PRIVATE:    "text-slate-500",
+  PUBLIC:     "text-success-text",
+  CLUBS_ONLY: "text-accent",
+  PRIVATE:    "text-text-muted",
 };
 
 export default function AdminPlayerDetailPage() {
@@ -90,7 +90,7 @@ export default function AdminPlayerDetailPage() {
 
   if (isLoading) return <div className="flex justify-center py-12"><Spinner size="lg" /></div>;
   if (!player) return (
-    <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+    <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
       Player not found.{" "}
       <button onClick={() => navigate("/admin/players")} className="underline">Back</button>
     </div>
@@ -100,22 +100,22 @@ export default function AdminPlayerDetailPage() {
     <div>
       <button
         onClick={() => navigate("/admin/players")}
-        className="mb-6 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+        className="mb-6 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
       >
         ← Back to players
       </button>
 
       <div className="mb-6 flex items-center gap-3">
         {player.photo_url ? (
-          <img src={player.photo_url} alt={player.name} className="h-12 w-12 rounded-full object-cover ring-1 ring-white/10" />
+          <img src={player.photo_url} alt={player.name} className="h-12 w-12 rounded-full object-cover ring-1 ring-border" />
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-800 text-lg font-bold text-slate-400">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-inset text-lg font-bold text-text-muted">
             {player.name[0]?.toUpperCase()}
           </div>
         )}
         <div>
-          <h1 className="text-2xl font-bold text-white">{player.name}</h1>
-          <p className="text-xs text-slate-500">ID: {player.id}</p>
+          <h1 className="text-2xl font-bold text-text">{player.name}</h1>
+          <p className="text-xs text-text-muted">ID: {player.id}</p>
         </div>
       </div>
 
@@ -123,7 +123,7 @@ export default function AdminPlayerDetailPage() {
         {/* ── Profile card ── */}
         <Card>
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Player Profile</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Player Profile</p>
             {!editing && <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>Edit</Button>}
           </div>
 
@@ -139,7 +139,9 @@ export default function AdminPlayerDetailPage() {
               <Metric label="Nationality" value={player.nationality ?? "—"} />
               <Metric label="Status"      value={
                 <Badge variant={player.status === "FREE_AGENT" ? "warning" : "info"}>
-                  {player.status === "FREE_AGENT" ? "Free Agent" : "Contracted"}
+                  {player.status === "FREE_AGENT" ? "Free Agent"
+                    : player.status === "EXTERNAL" ? "External"
+                    : "Contracted"}
                 </Badge>
               } />
               <Metric label="Visibility"  value={
@@ -163,21 +165,21 @@ export default function AdminPlayerDetailPage() {
                 { label: "Photo URL",   val: fPhotoUrl,    set: setFPhotoUrl    },
               ].map(({ label, val, set }) => (
                 <div key={label}>
-                  <label className="mb-1 block text-xs text-slate-400">{label}</label>
+                  <label className="mb-1 block text-xs text-text-muted">{label}</label>
                   <input
                     value={val}
                     onChange={(e) => set(e.target.value)}
-                    className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+                    className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
                   />
                 </div>
               ))}
               <div>
-                <label className="mb-1 block text-xs text-slate-400">Age</label>
+                <label className="mb-1 block text-xs text-text-muted">Age</label>
                 <input
                   type="number"
                   value={fAge}
                   onChange={(e) => setFAge(e.target.value)}
-                  className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
                 />
               </div>
               {[
@@ -186,11 +188,11 @@ export default function AdminPlayerDetailPage() {
                 { label: "Status",     val: fStatus,     set: setFStatus,     options: ["", ...STATUSES]     },
               ].map(({ label, val, set, options }) => (
                 <div key={label}>
-                  <label className="mb-1 block text-xs text-slate-400">{label}</label>
+                  <label className="mb-1 block text-xs text-text-muted">{label}</label>
                   <select
                     value={val}
                     onChange={(e) => set(e.target.value)}
-                    className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+                    className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
                   >
                     {options.map((o) => <option key={o} value={o}>{o || `— keep current —`}</option>)}
                   </select>
@@ -203,33 +205,33 @@ export default function AdminPlayerDetailPage() {
                   id="oto"
                   checked={fOpenToOffers}
                   onChange={(e) => setFOpenToOffers(e.target.checked)}
-                  className="rounded accent-amber-500"
+                  className="rounded accent-warning-fill"
                 />
-                <label htmlFor="oto" className="text-sm text-slate-300">Open to offers</label>
+                <label htmlFor="oto" className="text-sm text-text-secondary">Open to offers</label>
               </div>
 
-              <div className="border-t border-white/[0.06] pt-3">
-                <label className="mb-1 block text-xs text-slate-400">Reassign to club (ID)</label>
+              <div className="border-t border-rule pt-3">
+                <label className="mb-1 block text-xs text-text-muted">Reassign to club (ID)</label>
                 <input
                   value={fClubId}
                   onChange={(e) => { setFClubId(e.target.value); setFClearClub(false); }}
                   placeholder="paste club UUID…"
                   disabled={fClearClub}
-                  className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500 disabled:opacity-40"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill disabled:opacity-40"
                 />
-                <label className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+                <label className="mt-2 flex items-center gap-2 text-xs text-text-muted">
                   <input
                     type="checkbox"
                     checked={fClearClub}
                     onChange={(e) => { setFClearClub(e.target.checked); if (e.target.checked) setFClubId(""); }}
-                    className="rounded accent-amber-500"
+                    className="rounded accent-warning-fill"
                   />
                   Make free agent (clear club)
                 </label>
               </div>
 
               {mutation.isError && (
-                <p className="text-xs text-red-400">{getApiError(mutation.error, "Save failed.")}</p>
+                <p className="text-xs text-danger-text">{getApiError(mutation.error, "Save failed.")}</p>
               )}
               <div className="flex gap-2">
                 <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}>Save</Button>
@@ -241,18 +243,18 @@ export default function AdminPlayerDetailPage() {
 
         {/* ── Contract info ── */}
         <Card>
-          <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Contracts</p>
+          <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">Contracts</p>
           {(!player.contracts || player.contracts.length === 0) ? (
-            <p className="text-sm text-slate-500">No contracts on record.</p>
+            <p className="text-sm text-text-muted">No contracts on record.</p>
           ) : (
             <div className="space-y-2">
               {player.contracts.map((c: { id: string; club_id: string; start_date?: string; end_date?: string; wage_weekly?: number; is_active: boolean }) => (
-                <div key={c.id} className="rounded-lg bg-slate-800/50 px-3 py-2 text-xs">
+                <div key={c.id} className="rounded-lg bg-surface-inset px-3 py-2 text-xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-300">Club: {c.club_id.slice(0, 8)}…</span>
+                    <span className="text-text-secondary">Club: {c.club_id.slice(0, 8)}…</span>
                     <Badge variant={c.is_active ? "success" : "neutral"}>{c.is_active ? "Active" : "Inactive"}</Badge>
                   </div>
-                  {c.end_date && <p className="mt-1 text-slate-500">Ends: {formatDate(c.end_date)}</p>}
+                  {c.end_date && <p className="mt-1 text-text-muted">Ends: {formatDate(c.end_date)}</p>}
                 </div>
               ))}
             </div>

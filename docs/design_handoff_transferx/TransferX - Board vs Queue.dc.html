@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #f4f5f7; }
+  * { box-sizing: border-box; }
+  a { color: oklch(50% 0.16 259); }
+  a:hover { color: oklch(42% 0.16 259); }
+</style>
+</helmet>
+
+<div style="min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#14171f;font-size:14px;padding:36px 36px 72px;">
+  <div style="max-width:1440px;margin:0 auto;">
+
+    <div style="margin-bottom:26px;max-width:720px;">
+      <h1 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.01em;">Status board or work queue</h1>
+      <p style="margin:8px 0 0;font-size:15px;line-height:1.6;color:#475467;">Same club, same morning, same data — arranged under two different assumptions about what a sporting director opens the app to do. Both are drawn in the new light styling so the only thing you are comparing is the structure.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:22px;margin-bottom:32px;align-items:start;">
+
+      <!-- ── STATUS BOARD ─────────────────────────────────────────────── -->
+      <div>
+        <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px;flex-wrap:wrap;">
+          <h2 style="margin:0;font-size:19px;font-weight:700;">Status board</h2>
+          <span style="font-size:13px;color:#667085;">what you have today</span>
+        </div>
+        <p style="margin:0 0 14px;font-size:13px;line-height:1.55;color:#667085;">Assumes: I open this to find out where everything stands.</p>
+
+        <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:18px;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+            <sc-for list="{{ stats }}" as="s" hint-placeholder-count="3">
+              <div style="border-radius:10px;background:#f9fafb;padding:12px 14px;">
+                <p style="margin:0;font-size:11px;font-weight:600;color:#667085;">{{ s.label }}</p>
+                <p style="margin:5px 0 0;font-size:22px;font-weight:700;">{{ s.value }}</p>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">
+            <sc-for list="{{ boardPanels }}" as="p" hint-placeholder-count="6">
+              <div style="border-radius:10px;box-shadow:0 0 0 1px #eaecf0;overflow:hidden;">
+                <div style="padding:9px 12px;border-bottom:1px solid #f0f1f3;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                  <span style="font-size:12px;font-weight:700;">{{ p.title }}</span>
+                  <span style="font-size:11px;font-weight:600;color:#475467;background:#f0f1f3;border-radius:9px;padding:1px 7px;">{{ p.count }}</span>
+                </div>
+                <div style="padding:10px 12px;">
+                  <sc-for list="{{ p.rows }}" as="r" hint-placeholder-count="2">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;">
+                      <span style="font-size:12px;color:#344054;min-width:0;">{{ r.left }}</span>
+                      <span style="font-size:12px;font-weight:600;color:{{ r.color }};white-space:nowrap;">{{ r.right }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:16px 18px;">
+          <p style="margin:0 0 10px;font-size:13px;font-weight:700;">To answer "what needs me today?"</p>
+          <sc-for list="{{ boardSteps }}" as="s" hint-placeholder-count="4">
+            <div style="display:flex;gap:10px;padding:7px 0;border-top:1px solid #f5f6f7;">
+              <span style="width:18px;flex-shrink:0;font-size:12px;font-weight:700;color:#98a2b3;">{{ s.n }}</span>
+              <span style="font-size:13px;line-height:1.5;color:#475467;">{{ s.text }}</span>
+            </div>
+          </sc-for>
+          <p style="margin:12px 0 0;font-size:13px;font-weight:600;color:oklch(48% 0.14 80);">Four panels, two pages, and you still hold the priority in your head.</p>
+        </div>
+      </div>
+
+      <!-- ── WORK QUEUE ───────────────────────────────────────────────── -->
+      <div>
+        <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px;flex-wrap:wrap;">
+          <h2 style="margin:0;font-size:19px;font-weight:700;">Work queue</h2>
+          <span style="font-size:13px;color:#667085;">the radical direction</span>
+        </div>
+        <p style="margin:0 0 14px;font-size:13px;line-height:1.55;color:#667085;">Assumes: I open this to find out what I owe someone.</p>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <sc-for list="{{ queue }}" as="q" hint-placeholder-count="3">
+            <div style="background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,0.06),0 0 0 1px #e4e7ec;overflow:hidden;display:flex;">
+              <div style="width:5px;background:{{ q.accent }};flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;padding:16px 18px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
+                  <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:{{ q.accent }};">{{ q.kind }}</span>
+                  <span style="font-size:12px;font-weight:600;color:{{ q.timeColor }};">{{ q.time }}</span>
+                </div>
+                <p style="margin:0;font-size:17px;font-weight:700;line-height:1.35;">{{ q.headline }}</p>
+                <div style="margin:12px 0;display:flex;gap:18px;flex-wrap:wrap;padding:10px 0;border-top:1px solid #f0f1f3;border-bottom:1px solid #f0f1f3;">
+                  <sc-for list="{{ q.facts }}" as="f" hint-placeholder-count="3">
+                    <div>
+                      <p style="margin:0;font-size:11px;color:#98a2b3;">{{ f.label }}</p>
+                      <p style="margin:2px 0 0;font-size:15px;font-weight:700;color:{{ f.color }};">{{ f.value }}</p>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:9px;flex-wrap:wrap;">
+                  <button style="border:none;cursor:pointer;white-space:nowrap;border-radius:8px;padding:10px 17px;font-size:14px;font-weight:600;background:{{ q.accent }};color:#fff;">{{ q.primary }}</button>
+                  <button style="cursor:pointer;white-space:nowrap;border-radius:8px;padding:10px 17px;font-size:14px;font-weight:600;background:#fff;color:#344054;border:1px solid #d0d5dd;">{{ q.secondary }}</button>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+
+          <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:14px 18px;">
+            <p style="margin:0 0 8px;font-size:13px;font-weight:700;">Nothing else needs you today</p>
+            <sc-for list="{{ quiet }}" as="q" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid #f5f6f7;">
+                <span style="font-size:13px;color:#475467;">{{ q.label }}</span>
+                <span style="font-size:13px;font-weight:600;color:#98a2b3;white-space:nowrap;">{{ q.value }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:16px 18px;">
+          <p style="margin:0 0 10px;font-size:13px;font-weight:700;">To answer "what needs me today?"</p>
+          <sc-for list="{{ queueSteps }}" as="s" hint-placeholder-count="2">
+            <div style="display:flex;gap:10px;padding:7px 0;border-top:1px solid #f5f6f7;">
+              <span style="width:18px;flex-shrink:0;font-size:12px;font-weight:700;color:#98a2b3;">{{ s.n }}</span>
+              <span style="font-size:13px;line-height:1.5;color:#475467;">{{ s.text }}</span>
+            </div>
+          </sc-for>
+          <p style="margin:12px 0 0;font-size:13px;font-weight:600;color:oklch(45% 0.14 150);">Read the top card. The priority was decided before you opened the app.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── The honest comparison ─────────────────────────────────────── -->
+    <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;overflow-x:auto;">
+      <table style="width:100%;min-width:760px;border-collapse:collapse;font-size:14px;">
+        <thead>
+          <tr style="text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#98a2b3;background:#fafbfc;">
+            <th style="padding:12px 22px;font-weight:600;width:210px;"></th>
+            <th style="padding:12px 18px;font-weight:600;">Status board</th>
+            <th style="padding:12px 22px;font-weight:600;">Work queue</th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{ comparison }}" as="c" hint-placeholder-count="6">
+            <tr style="border-top:1px solid #f0f1f3;">
+              <td style="padding:14px 22px;font-weight:600;color:#14171f;vertical-align:top;">{{ c.dimension }}</td>
+              <td style="padding:14px 18px;color:#475467;line-height:1.55;vertical-align:top;">{{ c.board }}</td>
+              <td style="padding:14px 22px;color:#475467;line-height:1.55;vertical-align:top;">{{ c.queue }}</td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:22px;background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:20px 24px;max-width:820px;">
+      <p style="margin:0 0 10px;font-size:15px;font-weight:700;">What to ask a real sporting director</p>
+      <p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#475467;">Show them both and ask one question: <em>when you open this on a Tuesday morning, what are you trying to find out?</em> If the answer is "whether anything has moved", the board wins and the light redesign is all you need. If it is "what I have to reply to", the queue wins.</p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#475467;">A hybrid is also legitimate: the queue at the top, the board kept below it. It hedges the bet, at the cost of a longer page.</p>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const STATS = [
+  { label: "Open listings", value: "5" },
+  { label: "Action required", value: "4" },
+  { label: "Active deals", value: "2" },
+];
+
+const BOARD_PANELS = [
+  { title: "My Open Listings", count: "5", rows: [
+    { left: "Yannick Sorel", right: "£6.5M", color: "#14171f" },
+    { left: "Theo Marsh", right: "£3.2M", color: "#14171f" },
+  ]},
+  { title: "Active Offers", count: "4", rows: [
+    { left: "Marcus Webb", right: "£4.2M", color: "oklch(45% 0.13 80)" },
+    { left: "Dario Kastanos", right: "£1.8M", color: "oklch(45% 0.16 259)" },
+  ]},
+  { title: "Active Deals", count: "2", rows: [
+    { left: "Adrian Kofi", right: "£8.1M", color: "#14171f" },
+    { left: "Bram Wouters", right: "£5.4M", color: "#14171f" },
+  ]},
+  { title: "Squad Needs", count: "2", rows: [
+    { left: "Goalkeepers", right: "Need 1", color: "oklch(45% 0.13 80)" },
+    { left: "Forwards", right: "Need 2", color: "oklch(45% 0.16 25)" },
+  ]},
+  { title: "Shortlist on Market", count: "2", rows: [
+    { left: "Elian Vos", right: "£4.9M", color: "#14171f" },
+    { left: "Rasmus Ege", right: "£2.1M", color: "#14171f" },
+  ]},
+  { title: "Expiring Contracts", count: "2", rows: [
+    { left: "Owen Castillo", right: "42d", color: "oklch(45% 0.16 25)" },
+    { left: "Nils Bergstrom", right: "98d", color: "oklch(45% 0.13 80)" },
+  ]},
+];
+
+const BOARD_STEPS = [
+  { n: "1", text: "Scan six panels and three stat cards for anything that looks urgent." },
+  { n: "2", text: "Notice Marcus Webb is amber — open the offer to find out it expires in six hours." },
+  { n: "3", text: "Check the budget panel separately to see whether you can afford the counter." },
+  { n: "4", text: "Open the deal to check whether Sorel is waiting on your signature — the panel says \"Confirmed\", which does not tell you it is waiting on you." },
+];
+
+const QUEUE = [
+  {
+    kind: "Counter-offer", time: "Expires in 6h", timeColor: "oklch(50% 0.18 25)", accent: "oklch(55% 0.16 80)",
+    headline: "Ashfield United countered at £4.2M for Marcus Webb",
+    facts: [
+      { label: "Their offer", value: "£4.2M", color: "#14171f" },
+      { label: "Your valuation", value: "£4.8M", color: "#14171f" },
+      { label: "Gap", value: "−£600K", color: "oklch(50% 0.18 25)" },
+    ],
+    primary: "Counter at £4.6M", secondary: "Accept £4.2M",
+  },
+  {
+    kind: "Ready to execute", time: "Waiting on you · 2 days", timeColor: "oklch(45% 0.14 150)", accent: "oklch(50% 0.16 150)",
+    headline: "Yannick Sorel is cleared for your signature",
+    facts: [
+      { label: "Agreed fee", value: "£6.5M", color: "#14171f" },
+      { label: "Net to club", value: "£6.18M", color: "oklch(45% 0.14 150)" },
+    ],
+    primary: "Sign and complete", secondary: "Review paperwork",
+  },
+  {
+    kind: "Offer received", time: "New · 6h ago", timeColor: "oklch(50% 0.16 259)", accent: "oklch(50% 0.16 259)",
+    headline: "Northgate Rovers bid £1.8M for Dario Kastanos",
+    facts: [
+      { label: "Their offer", value: "£1.8M", color: "#14171f" },
+      { label: "Asking price", value: "£2.4M", color: "#14171f" },
+      { label: "Wage saved", value: "£22K/wk", color: "oklch(45% 0.14 150)" },
+    ],
+    primary: "Counter at £2.2M", secondary: "Accept £1.8M",
+  },
+];
+
+const QUIET = [
+  { label: "Adrian Kofi — agent negotiation", value: "Their move" },
+  { label: "Bram Wouters — paperwork", value: "Due Thursday" },
+  { label: "Theo Marsh — listed, no bids", value: "9 days" },
+  { label: "Squad gaps, shortlist, expiring contracts", value: "Nothing new" },
+];
+
+const QUEUE_STEPS = [
+  { n: "1", text: "Read the first card. It is first because it expires soonest." },
+  { n: "2", text: "The numbers you would have gone looking for — their offer, your valuation, the gap — are already on it, and so is the button." },
+];
+
+const COMPARISON = [
+  {
+    dimension: "What it optimises for",
+    board: "Awareness. Everything visible at once, nothing hidden behind a click.",
+    queue: "Throughput. Getting the three things that need a reply replied to.",
+  },
+  {
+    dimension: "Who it suits",
+    board: "Daily users who have memorised the layout, and oversight roles — a CEO or board member who wants the state of things, not tasks.",
+    queue: "People who open the app a few times a week between other jobs. That is most sporting directors.",
+  },
+  {
+    dimension: "How priority is expressed",
+    board: "By position on the page, which is fixed. A £6.5M signature and an empty listing panel look equally important.",
+    queue: "By order and size. The most urgent item is physically the largest thing on screen.",
+  },
+  {
+    dimension: "Failure mode",
+    board: "Something urgent sits quietly in a panel and gets missed. The user compensates by checking email instead.",
+    queue: "A wrong sort order is now highly visible, and anything not in the queue feels invisible. Bad prioritisation logic does real damage.",
+  },
+  {
+    dimension: "What it needs from the backend",
+    board: "Nothing new. Every panel maps to an endpoint you already have.",
+    queue: "One new endpoint that merges offers, deals and deadlines into a ranked list, plus valuation and wage data joined per item.",
+  },
+  {
+    dimension: "Cost to build",
+    board: "Already built. The light restyle is 2–3 weeks.",
+    queue: "Roughly 3 weeks of frontend plus 1–2 weeks of backend for the dashboard and offer inbox.",
+  },
+  {
+    dimension: "On a phone",
+    board: "A long scroll of small panels. Effectively unusable on the move.",
+    queue: "Works as-is — the queue is already a single column.",
+  },
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      stats: STATS,
+      boardPanels: BOARD_PANELS,
+      boardSteps: BOARD_STEPS,
+      queue: QUEUE,
+      quiet: QUIET,
+      queueSteps: QUEUE_STEPS,
+      comparison: COMPARISON,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

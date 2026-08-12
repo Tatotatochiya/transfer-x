@@ -1,29 +1,41 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { AgentDealInvitation, AgentPipelineResponse, AgentProfileResponse, PipelineDealItem, RepresentedPlayerItem } from "../../types/api";
+import type {
+  AgentDealInvitation,
+  AgentPipelineResponse,
+  AgentProfileResponse,
+  PipelineDealItem,
+  RepresentedPlayerItem,
+} from "../../types/api";
+import Badge from "../../components/ui/Badge";
 import Card from "../../components/ui/Card";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
-import Badge from "../../components/ui/Badge";
 import { formatCurrency, formatDate } from "../../lib/utils";
 import IntelligenceFeed from "../../components/agent/IntelligenceFeed";
+import WaitingOnYouBand, { type WaitingItem } from "../../components/dashboard/WaitingOnYouBand";
+import FigureCard from "../../components/dashboard/FigureCard";
+import WorkingPanel from "../../components/dashboard/WorkingPanel";
+import ReferencePanel from "../../components/dashboard/ReferencePanel";
 
-const CLIENT_STATUS_COLORS: Record<string, string> = {
-  ACTIVE:             "text-emerald-400",
-  SEEKING_MOVE:       "text-sky-400",
-  LOAN_AVAILABLE:     "text-purple-400",
-  CONTRACT_EXTENSION: "text-amber-400",
-  UNAVAILABLE:        "text-slate-500",
+// ── Client roster (full list, this page's core purpose — never capped) ───────
+
+const CLIENT_STATUS_LABEL: Record<string, string> = {
+  ACTIVE: "Active",
+  SEEKING_MOVE: "Seeking move",
+  LOAN_AVAILABLE: "Loan available",
+  CONTRACT_EXTENSION: "Contract extension",
+  UNAVAILABLE: "Unavailable",
 };
 
-const CLIENT_STATUS_LABELS: Record<string, string> = {
-  ACTIVE:             "Active",
-  SEEKING_MOVE:       "Seeking move",
-  LOAN_AVAILABLE:     "Loan available",
-  CONTRACT_EXTENSION: "Contract extension",
-  UNAVAILABLE:        "Unavailable",
+const CLIENT_STATUS_COLOUR: Record<string, string> = {
+  ACTIVE: "text-success-text",
+  SEEKING_MOVE: "text-accent",
+  LOAN_AVAILABLE: "text-accent",
+  CONTRACT_EXTENSION: "text-warning-text",
+  UNAVAILABLE: "text-text-muted",
 };
 
 function ClientCard({ client }: { client: RepresentedPlayerItem }) {
@@ -44,34 +56,24 @@ function ClientCard({ client }: { client: RepresentedPlayerItem }) {
 
   return (
     <Link to={`/agent/clients/${client.mandate_id}`} className="block">
-      <Card>
+      <Card hover>
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-white hover:text-emerald-400 transition-colors">
-              {client.player_name}
-            </p>
+            <p className="text-sm font-semibold text-text">{client.player_name}</p>
             <div className="mt-0.5 flex items-center gap-2 text-xs">
-              {client.player_position && (
-                <span className="text-slate-400">{client.player_position}</span>
-              )}
-              <span className={CLIENT_STATUS_COLORS[client.client_status] ?? "text-slate-500"}>
-                · {CLIENT_STATUS_LABELS[client.client_status] ?? client.client_status}
+              {client.player_position && <span className="text-text-muted">{client.player_position}</span>}
+              <span className={CLIENT_STATUS_COLOUR[client.client_status] ?? "text-text-muted"}>
+                · {CLIENT_STATUS_LABEL[client.client_status] ?? client.client_status}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs shrink-0">
-            {client.exclusive && (
-              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-400 font-medium">
-                Exclusive
-              </span>
-            )}
-            {client.end_date && (
-              <span className="text-slate-500">Until {client.end_date}</span>
-            )}
+            {client.exclusive && <Badge variant="info">Exclusive</Badge>}
+            {client.end_date && <span className="text-text-muted">Until {formatDate(client.end_date)}</span>}
             <button
               onClick={handleRevoke}
               disabled={revoking}
-              className="rounded-lg bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-400 ring-1 ring-red-500/30 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+              className="rounded-lg bg-danger-bg px-2.5 py-1 text-xs font-medium text-danger-text ring-1 ring-danger-border hover:bg-danger/15 transition-colors disabled:opacity-50"
             >
               {revoking ? "…" : "Revoke"}
             </button>
@@ -82,62 +84,26 @@ function ClientCard({ client }: { client: RepresentedPlayerItem }) {
   );
 }
 
-const STAGE_LABELS: Record<string, string> = {
-  AGREEMENT: "Agreement",
-  AGENT_NEGOTIATION: "Agent Negotiation",
-  PERSONAL_TERMS: "Personal Terms",
-  PAPERWORK: "Paperwork",
-  CONFIRMED: "Confirmed",
-  COMPLETED: "Completed",
+// ── Main page ─────────────────────────────────────────────────────────────────
+
+const STAGE_LABEL: Record<string, string> = {
+  AGREEMENT: "agreement",
+  AGENT_NEGOTIATION: "agent negotiation",
+  PERSONAL_TERMS: "personal terms",
+  PAPERWORK: "paperwork",
+  CONFIRMED: "confirmed",
+  COMPLETED: "completed",
 };
 
-function PipelineRow({ item }: { item: PipelineDealItem }) {
-  return (
-    <Link to={`/deals/${item.deal_id}`} className="block">
-      <div
-        className={`rounded-xl px-4 py-3 ring-1 transition-all hover:ring-emerald-500/30 ${
-          item.action_required
-            ? "bg-amber-500/5 ring-amber-500/20 hover:ring-amber-500/40"
-            : "bg-slate-900 ring-white/[0.07]"
-        }`}
-      >
-        <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-semibold text-white">
-                {item.player_name}
-              </p>
-              {item.has_unread_messages && (
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" title="New messages" />
-              )}
-              {item.action_required && (
-                <span className="shrink-0 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-400">
-                  Action needed
-                </span>
-              )}
-            </div>
-            <p className="mt-0.5 truncate text-xs text-slate-500">
-              {item.seller_club_name ?? "?"} → {item.buyer_club_name ?? "?"}
-            </p>
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="text-xs font-medium text-slate-400">
-              {STAGE_LABELS[item.stage] ?? item.stage}
-            </p>
-            {item.commission_amount != null && (
-              <p className="text-[11px] text-emerald-400 tabular-nums mt-0.5">
-                {formatCurrency(item.commission_amount)}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
+const EXPIRING_MANDATE_WITHIN_DAYS = 90;
+
+function daysUntil(iso: string): number {
+  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
 }
 
 export default function AgentDashboardPage() {
   const navigate = useNavigate();
+
   const { data: profile, isLoading: profileLoading } = useQuery<AgentProfileResponse>({
     queryKey: ["agents", "me"],
     queryFn: () => api.get<AgentProfileResponse>("/agents/me").then((r) => r.data),
@@ -159,161 +125,121 @@ export default function AgentDashboardPage() {
   });
 
   if (profileLoading || clientsLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <div className="flex items-center justify-center py-20"><Spinner size="lg" /></div>;
   }
 
+  const pipelineItems = pipeline?.items ?? [];
+  const pendingInvitations = invitations.filter((inv) => inv.status === "PENDING");
+
+  // ── Tier 1 ──
+  const waitingItems: WaitingItem[] = [
+    ...pendingInvitations.map((inv): WaitingItem => ({
+      key: `invitation-${inv.id}`,
+      title: inv.deal?.player_name ?? "Deal invitation",
+      description: `${inv.deal?.seller_club_name ?? "?"} → ${inv.deal?.buyer_club_name ?? "?"}`,
+      amount: inv.deal?.agreed_fee ?? null,
+      deadline: null,
+      actionLabel: "Enter deal room",
+      onClick: () => navigate(`/deals/${inv.deal_id}`),
+    })),
+    ...pipelineItems
+      .filter((item) => item.action_required)
+      .map((item): WaitingItem => ({
+        key: `pipeline-${item.deal_id}`,
+        title: item.player_name,
+        description: `${item.seller_club_name ?? "?"} → ${item.buyer_club_name ?? "?"} · ${STAGE_LABEL[item.stage] ?? item.stage}`,
+        amount: item.agreed_fee,
+        deadline: null,
+        actionLabel: "Open",
+        onClick: () => navigate(`/deals/${item.deal_id}`),
+      })),
+  ];
+
+  // ── Tier 3 ──
+  const pipelineRows = pipelineItems.slice(0, 3).map((item: PipelineDealItem) => ({
+    key: item.deal_id,
+    onClick: () => navigate(`/deals/${item.deal_id}`),
+    name: item.player_name,
+    sub: `${item.seller_club_name ?? "?"} → ${item.buyer_club_name ?? "?"}`,
+    value: item.agreed_fee != null ? formatCurrency(item.agreed_fee) : "—",
+    move: item.action_required ? ("your" as const) : ("neither" as const),
+  }));
+
+  // ── Tier 4 ──
+  const expiringMandateRows = clients
+    .filter((c) => c.end_date && daysUntil(c.end_date) >= 0 && daysUntil(c.end_date) <= EXPIRING_MANDATE_WITHIN_DAYS)
+    .sort((a, b) => new Date(a.end_date!).getTime() - new Date(b.end_date!).getTime())
+    .slice(0, 5)
+    .map((c) => {
+      const days = daysUntil(c.end_date!);
+      return {
+        key: c.mandate_id,
+        onClick: () => navigate(`/agent/clients/${c.mandate_id}`),
+        label: c.player_name,
+        sub: formatDate(c.end_date),
+        value: `${days}d`,
+        valueColour: days <= 30 ? "text-danger-text" : days <= 60 ? "text-warning-text" : "text-text-secondary",
+      };
+    });
+
   return (
-    <div className="max-w-3xl">
+    <div>
       <PageHeader
         title="My Roster"
         subtitle={profile ? `${profile.agency_name} · ${profile.country}` : ""}
       />
 
-      {/* Profile summary */}
-      {profile && (
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-base font-semibold text-white">{profile.display_name}</p>
-              <p className="text-sm text-slate-400 mt-0.5">{profile.agency_name}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {profile.verified && <Badge variant="success">Verified</Badge>}
-              <Link
-                to="/agent/profile"
-                className="text-xs text-slate-400 hover:text-white transition-colors"
-              >
-                Edit profile →
-              </Link>
-            </div>
-          </div>
-        </Card>
-      )}
+      <WaitingOnYouBand items={waitingItems} />
 
-      {/* Deal invitations — prominent banner (TRA-126) */}
-      {invitations.length > 0 && (
-        <div className="mt-6 rounded-xl bg-purple-500/10 ring-2 ring-purple-500/40 overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center gap-3 bg-purple-500/15 px-5 py-3">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-500 text-[10px] font-bold text-white">
-              {invitations.length}
-            </span>
-            <p className="text-sm font-bold text-purple-300">
-              {invitations.length === 1 ? "New deal invitation" : `${invitations.length} new deal invitations`} — action required
-            </p>
-          </div>
-          {/* Cards */}
-          <div className="divide-y divide-purple-500/10">
-            {invitations.map((inv) => {
-              const daysSince = Math.floor(
-                (Date.now() - new Date(inv.created_at).getTime()) / (1000 * 60 * 60 * 24)
-              );
-              return (
-                <div key={inv.id} className="px-5 py-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-base font-bold text-white truncate">
-                        {inv.deal?.player_name ?? "Unknown player"}
-                      </p>
-                      <p className="text-sm text-slate-400 mt-0.5 truncate">
-                        {inv.deal?.seller_club_name ?? "?"} → {inv.deal?.buyer_club_name ?? "?"}
-                      </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-                        {inv.deal?.agreed_fee != null && (
-                          <span className="font-semibold text-white">
-                            {formatCurrency(inv.deal.agreed_fee)} agreed fee
-                          </span>
-                        )}
-                        <span className={`font-medium ${daysSince === 0 ? "text-red-400" : daysSince <= 2 ? "text-amber-400" : "text-slate-400"}`}>
-                          {daysSince === 0 ? "Today" : `${daysSince}d ago`}
-                        </span>
-                        <span className="text-slate-500">Invited {formatDate(inv.created_at)}</span>
-                      </div>
-                    </div>
-                    <Link
-                      to={`/deals/${inv.deal_id}`}
-                      className="shrink-0 rounded-lg bg-purple-500 px-4 py-2 text-sm font-bold text-white hover:bg-purple-400 transition-colors"
-                    >
-                      Enter deal room →
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <div className="mb-[18px] grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <FigureCard label="Active deals" value={String(pipeline?.deals_in_progress ?? 0)} />
+        <FigureCard label="Completed (90d)" value={String(pipeline?.deals_completed_this_window ?? 0)} />
+        <FigureCard
+          label="Commission pipeline"
+          value={pipeline && pipeline.total_commission_pipeline > 0 ? formatCurrency(pipeline.total_commission_pipeline) : "—"}
+        />
+        <FigureCard label="Active mandates" value={String(clients.length)} />
+      </div>
 
-      {/* Client intelligence feed (TRA-135) */}
-      <div className="mt-6">
+      <div className="mb-[18px] grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+        <WorkingPanel title="Deal pipeline" linkTo="/agent/pipeline" rows={pipelineRows} />
+        <ReferencePanel title="Expiring mandates" rows={expiringMandateRows} />
+      </div>
+
+      <div className="mb-[18px]">
         <IntelligenceFeed />
       </div>
 
-      {/* Pipeline (TRA-130) */}
-      {pipeline && pipeline.items.length > 0 && (
-        <div className="mt-6">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Deal pipeline
-            </p>
-            <div className="flex items-center gap-4 text-xs text-slate-500">
-              <span>
-                <span className="text-white font-semibold">{pipeline.deals_in_progress}</span> active
-              </span>
-              <span>
-                <span className="text-white font-semibold">{pipeline.deals_completed_this_window}</span> completed
-              </span>
-              {pipeline.total_commission_pipeline > 0 && (
-                <span className="text-emerald-400 font-semibold">
-                  {formatCurrency(pipeline.total_commission_pipeline)} pipeline
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="space-y-2">
-            {pipeline.items.map((item) => (
-              <PipelineRow key={item.deal_id} item={item} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Clients */}
-      <div className="mt-6">
+      {/* Client roster — this page's core purpose, always shown in full */}
+      <div>
         {clients.length === 0 ? (
-          <div className="rounded-xl bg-slate-900 px-5 py-10 text-center ring-1 ring-white/[0.08]">
-            <p className="text-sm font-medium text-white">No represented players yet</p>
-            <p className="mt-1 text-sm text-slate-500">
-              Browse the market or import your existing roster.
-            </p>
+          <Card tier={4} className="text-center py-10">
+            <p className="text-sm font-medium text-text">No represented players yet</p>
+            <p className="mt-1 text-sm text-text-muted">Browse the market or import your existing roster.</p>
             <div className="mt-4 flex justify-center gap-3">
               <Link
                 to="/players/market"
-                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 transition-colors"
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover transition-colors"
               >
                 Browse players
               </Link>
               <button
                 onClick={() => navigate("/agent/roster/import")}
-                className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/10 hover:ring-white/20 transition-colors"
+                className="rounded-lg bg-surface-inset px-4 py-2 text-sm font-semibold text-text ring-1 ring-border hover:ring-input-border transition-colors"
               >
                 Import roster
               </button>
             </div>
-          </div>
+          </Card>
         ) : (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 {clients.length} active mandate{clients.length !== 1 ? "s" : ""}
               </p>
               <button
                 onClick={() => navigate("/agent/roster/import")}
-                className="text-xs text-slate-400 hover:text-white transition-colors"
+                className="text-xs text-text-muted hover:text-text-secondary transition-colors"
               >
                 + Import more
               </button>

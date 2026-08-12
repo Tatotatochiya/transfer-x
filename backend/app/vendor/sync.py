@@ -285,7 +285,10 @@ async def _upsert_player_from_api_data(
             position=position,
             photo_url=api_player.get("photo"),
             vendor_id=vendor_id,
-            status=PlayerStatus.FREE_AGENT,
+            # ADR 0003: a vendor-imported player belongs to a real-world club,
+            # not to nobody. Creating them FREE_AGENT made every imported
+            # professional look signable for free.
+            status=PlayerStatus.EXTERNAL,
             visibility=PlayerVisibility.PUBLIC,
             created_by_user_id=created_by_user_id,
         )

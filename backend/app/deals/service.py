@@ -1,6 +1,7 @@
 """M4 — Deal lifecycle service layer."""
 
 import uuid
+from collections.abc import Sequence
 from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
 
@@ -11,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from app import clubs as clubs_module
 from app.audit import service as audit_service
 from app.common.filters import apply_date_range
+from app.common.schemas import WhoseMove
 from app.deals.models import (
     ClauseStatus,
     ClauseType,
@@ -31,6 +33,33 @@ from app.players.models import Contract, Player
 # Item 5: window staff have to execute a fully-agreed deal before it's flagged overdue.
 _DEAL_SLA_DAYS = 14
 
+# B1: agent silence past this threshold counts as "your move" (chasing is an
+# action) — the DECISIONS.md item 1 default, matching AGENT_SILENCE_HOURS in
+# frontend/src/lib/whoseMove.ts exactly.
+_AGENT_SILENCE_HOURS = 72
+
+
+def compute_deal_whose_move(deal: Deal) -> WhoseMove:
+    """B1: mirrors dealWhoseMove() in frontend/src/lib/whoseMove.ts exactly,
+    including what it does NOT do: distinguish buyer from seller. At
+    CONFIRMED both clubs must sign and per-club signature status isn't
+    tracked separately today, so "your move" is returned to whichever club
+    asks. AGENT_NEGOTIATION uses updated_at as a proxy for "how long has this
+    state persisted" — the frontend's own comment calls this "the best
+    available proxy", not a real signal; see DECISIONS.md item 1.
+    """
+    if deal.status in (DealStatus.COMPLETED, DealStatus.COLLAPSED):
+        return WhoseMove.NEITHER
+    if deal.stage == DealStage.CONFIRMED:
+        return WhoseMove.YOUR
+    if deal.stage == DealStage.AGENT_NEGOTIATION:
+        updated_at = deal.updated_at
+        if updated_at.tzinfo is None:  # SQLite drops tzinfo
+            updated_at = updated_at.replace(tzinfo=timezone.utc)
+        hours_since_update = (datetime.now(timezone.utc) - updated_at).total_seconds() / 3600
+        return WhoseMove.YOUR if hours_since_update >= _AGENT_SILENCE_HOURS else WhoseMove.THEIR
+    return WhoseMove.NEITHER
+
 
 def _load_options():
     return [
@@ -50,6 +79,23 @@ def _load_options():
 _DEAL_CLUB_OPTS = [selectinload(Deal.buyer_club), selectinload(Deal.seller_club)]
 
 _RECENT_DEAL_DAYS = 30
+
+
+async def get_deals_by_offer_ids(
+    db: AsyncSession, offer_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, Deal]:
+    """Map offer_id -> the deal it produced, for a whole page of offers in one
+    query. An accepted offer is not a finished story: the deal it created can
+    still collapse, and the offer row keeps saying ACCEPTED either way. Batched
+    rather than per-row, the same rule the valuation embeds follow."""
+    if not offer_ids:
+        return {}
+    result = await db.execute(
+        select(Deal)
+        .where(Deal.offer_id.in_(offer_ids))
+        .options(*_DEAL_CLUB_OPTS)
+    )
+    return {d.offer_id: d for d in result.scalars().all() if d.offer_id is not None}
 
 
 async def get_active_deal_for_player(db: AsyncSession, player_id: uuid.UUID) -> Deal | None:

@@ -30,25 +30,25 @@ function TopPerformers({
   if (ranked.length === 0) return null;
 
   return (
-    <div className="mb-6 rounded-xl bg-slate-800/50 px-5 py-4 ring-1 ring-white/[0.06]">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+    <div className="mb-6 rounded-xl bg-surface px-5 py-4 ring-1 ring-border">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
         Top Form
       </p>
       <div className="flex flex-wrap gap-2">
         {ranked.map((p) => (
-          <Link key={p.id} to={`/players/market/${p.id}`} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-slate-700/50 transition-colors group">
+          <Link key={p.id} to={`/players/market/${p.id}`} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-surface-inset transition-colors group">
             {p.photo_url ? (
               <img
                 src={p.photo_url}
                 alt={p.name}
-                className="h-7 w-7 rounded-full object-cover ring-1 ring-white/10"
+                className="h-7 w-7 rounded-full object-cover ring-1 ring-border"
               />
             ) : (
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-slate-400">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
                 {p.name[0]?.toUpperCase()}
               </div>
             )}
-            <span className="text-sm font-medium text-white group-hover:text-emerald-400 transition-colors">{p.name}</span>
+            <span className="text-sm font-medium text-text group-hover:text-accent transition-colors">{p.name}</span>
             <FormBadge score={formScores[p.id].score} trend={formScores[p.id].trend} />
           </Link>
         ))}
@@ -118,9 +118,9 @@ function SquadStatsPanel({ players }: { players: Player[] }) {
           { label: "Appearances", value: totalApps },
           { label: "Avg Rating", value: avgRating ?? "—" },
         ].map((m) => (
-          <div key={m.label} className="rounded-xl bg-slate-800/70 px-4 py-3 text-center">
-            <p className="text-2xl font-bold text-white tabular-nums">{m.value}</p>
-            <p className="mt-1 text-xs text-slate-500">{m.label}</p>
+          <div key={m.label} className="rounded-xl bg-surface-inset px-4 py-3 text-center">
+            <p className="text-2xl font-bold text-text tabular-nums">{m.value}</p>
+            <p className="mt-1 text-xs text-text-muted">{m.label}</p>
           </div>
         ))}
       </div>
@@ -128,24 +128,24 @@ function SquadStatsPanel({ players }: { players: Player[] }) {
       <div className="grid gap-4 md:grid-cols-2">
         {/* Top scorers */}
         {topScorers.length > 0 && (
-          <div className="rounded-xl bg-slate-800/40 px-4 py-3 ring-1 ring-white/[0.06]">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Top Scorers</p>
+          <div className="rounded-xl bg-surface-quiet px-4 py-3 ring-1 ring-border">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">Top Scorers</p>
             {topScorers.map(({ player, goals }, i) => (
               <Link
                 key={player.id}
                 to={`/players/market/${player.id}`}
-                className="flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-slate-700/50 transition-colors group"
+                className="flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-surface-inset transition-colors group"
               >
-                <span className="w-4 shrink-0 text-xs font-bold text-slate-600 tabular-nums">{i + 1}</span>
+                <span className="w-4 shrink-0 text-xs font-bold text-text-muted tabular-nums">{i + 1}</span>
                 {player.photo_url ? (
-                  <img src={player.photo_url} alt={player.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/10" />
+                  <img src={player.photo_url} alt={player.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-border" />
                 ) : (
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-slate-400">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
                     {player.name[0]?.toUpperCase()}
                   </div>
                 )}
-                <span className="flex-1 truncate text-sm text-slate-300 group-hover:text-emerald-400 transition-colors">{player.name}</span>
-                <span className="shrink-0 text-sm font-bold text-emerald-400 tabular-nums">{goals}g</span>
+                <span className="flex-1 truncate text-sm text-text-secondary group-hover:text-accent transition-colors">{player.name}</span>
+                <span className="shrink-0 text-sm font-bold text-success-text tabular-nums">{goals}g</span>
               </Link>
             ))}
           </div>
@@ -153,24 +153,24 @@ function SquadStatsPanel({ players }: { players: Player[] }) {
 
         {/* Top assisters */}
         {topAssisters.length > 0 && (
-          <div className="rounded-xl bg-slate-800/40 px-4 py-3 ring-1 ring-white/[0.06]">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Top Assisters</p>
+          <div className="rounded-xl bg-surface-quiet px-4 py-3 ring-1 ring-border">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">Top Assisters</p>
             {topAssisters.map(({ player, assists }, i) => (
               <Link
                 key={player.id}
                 to={`/players/market/${player.id}`}
-                className="flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-slate-700/50 transition-colors group"
+                className="flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-surface-inset transition-colors group"
               >
-                <span className="w-4 shrink-0 text-xs font-bold text-slate-600 tabular-nums">{i + 1}</span>
+                <span className="w-4 shrink-0 text-xs font-bold text-text-muted tabular-nums">{i + 1}</span>
                 {player.photo_url ? (
-                  <img src={player.photo_url} alt={player.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/10" />
+                  <img src={player.photo_url} alt={player.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-border" />
                 ) : (
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-slate-400">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
                     {player.name[0]?.toUpperCase()}
                   </div>
                 )}
-                <span className="flex-1 truncate text-sm text-slate-300 group-hover:text-emerald-400 transition-colors">{player.name}</span>
-                <span className="shrink-0 text-sm font-bold text-blue-400 tabular-nums">{assists}a</span>
+                <span className="flex-1 truncate text-sm text-text-secondary group-hover:text-accent transition-colors">{player.name}</span>
+                <span className="shrink-0 text-sm font-bold text-accent tabular-nums">{assists}a</span>
               </Link>
             ))}
           </div>
@@ -280,7 +280,7 @@ export default function WorldTeamDetailPage() {
 
   if (isError || !team) {
     return (
-      <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
         Team not found.{" "}
         <button onClick={() => navigate(-1)} className="underline">Go back</button>
       </div>
@@ -297,7 +297,7 @@ export default function WorldTeamDetailPage() {
     <div>
       <button
         onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+        className="mb-6 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
       >
         ← Back
       </button>
@@ -311,7 +311,7 @@ export default function WorldTeamDetailPage() {
             className="h-20 w-20 shrink-0 object-contain drop-shadow-lg"
           />
         ) : (
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-slate-800 text-3xl font-black text-slate-600 ring-1 ring-white/[0.08]">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-surface-inset text-3xl font-black text-text-muted ring-1 ring-border">
             {team.name[0]?.toUpperCase()}
           </div>
         )}
@@ -319,24 +319,24 @@ export default function WorldTeamDetailPage() {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white">{team.name}</h1>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-400">
+              <h1 className="text-3xl font-bold text-text">{team.name}</h1>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-text-muted">
                 {team.country && <span>{team.country}</span>}
                 {team.league_name && (
                   <>
-                    {team.country && <span className="text-slate-600">·</span>}
+                    {team.country && <span className="text-text-muted">·</span>}
                     <Badge variant="neutral">{team.league_name}</Badge>
                   </>
                 )}
                 {team.season && (
                   <>
-                    <span className="text-slate-600">·</span>
+                    <span className="text-text-muted">·</span>
                     <span>Season {team.season}</span>
                   </>
                 )}
                 {players.length > 0 && (
                   <>
-                    <span className="text-slate-600">·</span>
+                    <span className="text-text-muted">·</span>
                     <span>{squadData?.total ?? players.length} players</span>
                   </>
                 )}
@@ -349,19 +349,19 @@ export default function WorldTeamDetailPage() {
                 <button
                   disabled={claimMutation.isPending}
                   onClick={() => { setClaimError(null); claimMutation.mutate(id); }}
-                  className="flex items-center gap-2 rounded-lg bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-400 ring-1 ring-emerald-500/30 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-lg bg-success/15 px-4 py-2 text-sm font-semibold text-success-text ring-1 ring-success/30 hover:bg-success/25 transition-colors disabled:opacity-50"
                 >
                   {claimMutation.isPending ? "Registering…" : "Register as my club"}
                 </button>
                 {claimError && (
-                  <p className="mt-1.5 text-xs text-red-400">{claimError}</p>
+                  <p className="mt-1.5 text-xs text-danger-text">{claimError}</p>
                 )}
               </div>
             )}
 
             {/* Already has a club — can't claim */}
             {isAuthenticated && myClub && (
-              <span className="shrink-0 rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-500 ring-1 ring-white/[0.06]">
+              <span className="shrink-0 rounded-lg bg-surface-inset px-3 py-2 text-xs text-text-muted ring-1 ring-border">
                 Your club: {myClub.name}
               </span>
             )}
@@ -377,8 +377,8 @@ export default function WorldTeamDetailPage() {
             onClick={() => setTab(t.value)}
             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               tab === t.value
-                ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30"
-                : "bg-slate-800 text-slate-400 hover:text-white"
+                ? "bg-accent/15 text-accent ring-1 ring-accent/30"
+                : "bg-surface-inset text-text-muted hover:text-text"
             }`}
           >
             {t.label}
@@ -416,17 +416,17 @@ export default function WorldTeamDetailPage() {
               <button
                 disabled={page === 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+                className="rounded-lg bg-surface-inset px-3 py-1.5 text-sm text-text-muted hover:text-text disabled:opacity-30 transition-colors"
               >
                 ← Prev
               </button>
-              <span className="px-3 py-1.5 text-sm text-slate-500">
+              <span className="px-3 py-1.5 text-sm text-text-muted">
                 {page} / {Math.ceil(squadData.total / 50)}
               </span>
               <button
                 disabled={page * 50 >= squadData.total}
                 onClick={() => setPage((p) => p + 1)}
-                className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+                className="rounded-lg bg-surface-inset px-3 py-1.5 text-sm text-text-muted hover:text-text disabled:opacity-30 transition-colors"
               >
                 Next →
               </button>

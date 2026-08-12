@@ -1,6 +1,6 @@
 ---
 title: "TransferX Product Specification"
-last_updated: 2026-08-08
+last_updated: 2026-08-11
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -30,6 +30,7 @@ Out of scope: implementation detail (see `architecture/` and `engineering/`), da
   - [Operations](#operations)
   - [Security & Compliance](#security--compliance)
   - [Feature specs](#feature-specs)
+  - [UI redesign](#ui-redesign-in-progress)
   - [Tracking documents](#tracking-documents)
 - [System diagram](#system-diagram)
 - [Related documents](#related-documents)
@@ -120,6 +121,14 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 - [`feature_spec/fair-value-vs-asking-signal.md`](./feature_spec/fair-value-vs-asking-signal.md) — fair-value-vs-asking valuation signal (TRA-91/TRA-92) — **implemented 2026-07-07**
 - [`feature_spec/injury-availability-risk-profile.md`](./feature_spec/injury-availability-risk-profile.md) — injury-availability risk profile (no ticket yet)
 - [`feature_spec/club-team-roles-and-onboarding.md`](./feature_spec/club-team-roles-and-onboarding.md) — club team accounts, roles & onboarding (TRA-151/146/152/86 + two proposed) — **implemented 2026-07-10**
+
+### UI redesign (in progress)
+*Full frontend visual redesign — light theme with dark mode as a togglable preference, a four-tier information hierarchy, and a server-derived "whose move" state on every negotiation row. In progress on branch `redesign/ui-light-theme`.*
+
+- [`design_handoff_transferx/README.md`](./design_handoff_transferx/README.md) — overview, the four-tier hierarchy, the "whose move" rule, and what's in the package
+- [`design_handoff_transferx/CLAUDE.md`](./design_handoff_transferx/CLAUDE.md) — non-negotiables for any session working on this
+- [`design_handoff_transferx/BASELINE.md`](./design_handoff_transferx/BASELINE.md) — test baseline recorded before this work started; every phase's "done" is measured against this, not against "fully green"
+- [`design_handoff_transferx/SESSIONS.md`](./design_handoff_transferx/SESSIONS.md) — the 13 frontend phases plus the parallel backend track (B1–B7); see [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) for current, verified status of both — frontend Phases 0–12 and backend B1–B6 are built (not yet merged to `main`); B7 deferred
 
 ### Tracking documents
 *Root-level documents that track ongoing state rather than belonging to one area — see [`README.md#tracking-documents`](./README.md#tracking-documents) for the full explanation.*

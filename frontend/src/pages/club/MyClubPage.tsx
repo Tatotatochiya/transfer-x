@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Club, FairValueSignal, Paginated, PlayerDetail, PlayerForm, Sale } from "../../types/api";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
+import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import Spinner from "../../components/ui/Spinner";
 import SaleCard from "../../components/sales/SaleCard";
 import SquadTable from "../../components/players/SquadTable";
+import SquadRail from "../../components/clubs/SquadRail";
 import ClubInfoPanel from "../../components/clubs/ClubInfoPanel";
 import FinanceSummaryPanel from "../../components/clubs/FinanceSummaryPanel";
 import TopPerformers from "../../components/clubs/TopPerformers";
@@ -16,10 +18,22 @@ import SquadStatsPanel from "../../components/clubs/SquadStatsPanel";
 import FixturesPanel from "../../components/fixtures/FixturesPanel";
 import VerifiedBadge from "../../components/verification/VerifiedBadge";
 import RequestVerificationPanel from "../../components/verification/RequestVerificationPanel";
-import { getApiError } from "../../lib/utils";
+import { formatCurrency, getApiError } from "../../lib/utils";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 
 type Tab = "squad" | "stats" | "listings" | "fixtures";
+
+// ── Tier-2 squad figures ──────────────────────────────────────────────────────
+
+function FigureCard({ label, value, note, warn }: { label: string; value: string; note?: string; warn?: boolean }) {
+  return (
+    <Card tier={2}>
+      <p className="text-xs font-semibold text-text-secondary">{label}</p>
+      <p className={`mt-1.5 text-[28px] font-bold tracking-[-0.01em] ${warn ? "text-warning-text" : "text-text"}`}>{value}</p>
+      {note && <p className="mt-[3px] text-xs text-text-muted">{note}</p>}
+    </Card>
+  );
+}
 
 export default function MyClubPage() {
   const navigate = useNavigate();
@@ -81,14 +95,21 @@ export default function MyClubPage() {
   });
 
   // ── Listings ──────────────────────────────────────────────────────────────
+  // Fetched unconditionally (not gated to the listings tab) — the squad tab's
+  // "Listed" chip and per-row flag both need this to cross-reference players.
 
   const { data: salesData, isLoading: salesLoading } = useQuery<Paginated<Sale>>({
     queryKey: ["sales", { sellerClubId: club?.id, status: "OPEN" }],
     queryFn: () =>
       api.get<Paginated<Sale>>("/sales", { params: { seller_club_id: club!.id, status: "OPEN", page_size: 20 } })
         .then((r) => r.data),
-    enabled: !!club?.id && tab === "listings",
+    enabled: !!club?.id,
   });
+
+  const listedPlayerIds = useMemo(
+    () => new Set((salesData?.items ?? []).map((s) => s.player_id)),
+    [salesData]
+  );
 
   // ── Edit form ─────────────────────────────────────────────────────────────
 
@@ -206,20 +227,28 @@ export default function MyClubPage() {
     { id: "fixtures", label: "Fixtures" },
   ];
 
+  const contractsUnder12mo = players.filter((p) => {
+    const end = p.active_contract?.end_date;
+    if (!end) return false;
+    return (new Date(end).getTime() - Date.now()) / (30 * 86_400_000) < 12;
+  }).length;
+  const agesKnown = players.filter((p) => p.age != null);
+  const averageAge = agesKnown.length > 0 ? agesKnown.reduce((s, p) => s + (p.age ?? 0), 0) / agesKnown.length : null;
+
   return (
     <div>
       {/* ── Header ── */}
       <div className="mb-6 flex items-start gap-5">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-slate-800 overflow-hidden ring-1 ring-white/[0.08]">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-surface-inset overflow-hidden ring-1 ring-border">
           {club.crest_url ? (
             <img src={club.crest_url} alt={club.name} className="h-full w-full object-contain p-2" />
           ) : (
-            <span className="text-3xl font-bold text-slate-500">{club.name[0]?.toUpperCase()}</span>
+            <span className="text-3xl font-bold text-text-muted">{club.name[0]?.toUpperCase()}</span>
           )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-white">{club.name}</h1>
+            <h1 className="text-2xl font-bold text-text">{club.name}</h1>
             <Badge variant="neutral">{club.role}</Badge>
             {club.verified && <VerifiedBadge />}
             {isStaff && (
@@ -228,11 +257,11 @@ export default function MyClubPage() {
               </Badge>
             )}
           </div>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-text-muted">
             {[club.league_name, club.city, club.country].filter(Boolean).join(" · ") || "—"}
           </p>
           {squadData && (
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-text-muted">
               {squadData.total} player{squadData.total !== 1 ? "s" : ""} in squad
             </p>
           )}
@@ -253,8 +282,8 @@ export default function MyClubPage() {
 
       {/* ── Inline edit form ── */}
       {editing && (
-        <div className="mb-6 rounded-xl bg-slate-800/60 ring-1 ring-white/[0.08] px-6 py-5">
-          <p className="mb-4 text-sm font-semibold text-white">Edit Club Profile</p>
+        <div className="mb-6 rounded-xl bg-surface-inset ring-1 ring-border px-6 py-5">
+          <p className="mb-4 text-sm font-semibold text-text">Edit Club Profile</p>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
               { label: "Club name",  value: name,     set: setName,     placeholder: "e.g. Arsenal FC" },
@@ -264,18 +293,18 @@ export default function MyClubPage() {
               { label: "Crest URL",  value: crestUrl, set: setCrestUrl, placeholder: "https://..." },
             ].map(({ label, value, set, placeholder }) => (
               <div key={label}>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">{label}</label>
+                <label className="mb-1.5 block text-xs font-medium text-text-muted">{label}</label>
                 <input
                   type="text"
                   value={value}
                   onChange={(e) => set(e.target.value)}
                   placeholder={placeholder}
-                  className="w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                 />
               </div>
             ))}
             <div className="sm:col-span-2 lg:col-span-3">
-              {formError && <p className="mb-3 text-sm text-red-400">{formError}</p>}
+              {formError && <p className="mb-3 text-sm text-danger-text">{formError}</p>}
               <div className="flex gap-3">
                 <Button type="submit" variant="primary" size="sm" loading={updateMutation.isPending}>
                   Save changes
@@ -290,27 +319,27 @@ export default function MyClubPage() {
       )}
 
       {/* ── Two-column layout ── */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_260px]">
         {/* Main content */}
         <div>
           {/* Tabs */}
-          <div className="mb-6 flex gap-1 rounded-xl bg-slate-800/50 p-1 w-fit">
+          <div className="mb-6 flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl bg-surface-inset p-1">
             {tabs.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-                  tab === t.id ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-white"
+                  tab === t.id ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
                 }`}
               >
                 {t.label}
                 {t.id === "squad" && squadData && (
-                  <span className="ml-1.5 rounded-full bg-slate-600 px-1.5 py-0.5 text-xs text-slate-300">
+                  <span className="ml-1.5 rounded-full bg-surface-inset px-1.5 py-0.5 text-xs text-text-secondary">
                     {squadData.total}
                   </span>
                 )}
                 {t.id === "listings" && salesData && salesData.total > 0 && (
-                  <span className="ml-1.5 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-xs text-emerald-400">
+                  <span className="ml-1.5 rounded-full bg-accent-bg px-1.5 py-0.5 text-xs text-accent-active">
                     {salesData.total}
                   </span>
                 )}
@@ -335,6 +364,13 @@ export default function MyClubPage() {
                 />
               ) : (
                 <>
+                  <div className="mb-5 grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+                    <FigureCard label="Contracts < 12mo" value={String(contractsUnder12mo)} warn={contractsUnder12mo > 0} />
+                    <FigureCard label="Listed" value={String(listedPlayerIds.size)} />
+                    <FigureCard label="Average age" value={averageAge != null ? averageAge.toFixed(1) : "—"} />
+                    <FigureCard label="Wage room" value={club.finance ? formatCurrency(Number(club.finance.wage_remaining_weekly)) : "—"} note="per week" />
+                  </div>
+
                   {Object.keys(formScores).length > 0 && (
                     <TopPerformers players={players} formScores={formScores} />
                   )}
@@ -345,6 +381,7 @@ export default function MyClubPage() {
                     fairValues={fairValues}
                     onToggleOpenToOffers={canMarketWrite ? toggleOpenToOffers : undefined}
                     onSetValuation={canMarketWrite ? setValuation : undefined}
+                    listedPlayerIds={listedPlayerIds}
                   />
                 </>
               )}
@@ -396,7 +433,7 @@ export default function MyClubPage() {
               ) : (
                 <>
                   <div className="mb-4 flex items-center justify-between">
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-text-muted">
                       {salesData.total} active listing{salesData.total !== 1 ? "s" : ""}
                     </p>
                     <div className="flex gap-2">
@@ -423,6 +460,7 @@ export default function MyClubPage() {
 
         {/* Sidebar */}
         <div className="space-y-4 lg:sticky lg:top-6 h-fit">
+          {tab === "squad" && players.length > 0 && <SquadRail players={players} />}
           <ClubInfoPanel
             club={club}
             squadSize={squadData?.total ?? null}

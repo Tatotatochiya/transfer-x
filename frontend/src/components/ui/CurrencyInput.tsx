@@ -7,28 +7,30 @@ interface CurrencyInputProps
 }
 
 function formatWithCommas(raw: string): string {
-  if (!raw) return "";
-  const digits = raw.replace(/\D/g, "");
-  if (!digits) return "";
-  return parseInt(digits, 10).toLocaleString("en-GB");
+  if (raw === "") return "";
+  const [intPart, decPart] = raw.split(".");
+  const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return decPart !== undefined ? `${withCommas}.${decPart}` : withCommas;
 }
 
 /**
- * A text input that shows thousand separators while the user types.
- * `value` and `onChange` work with raw numeric strings (no commas),
- * so they're compatible with the existing parseFloat() calls.
+ * A text input that shows thousand separators (and up to 2 decimal places)
+ * while the user types. `value`/`onChange` work with raw numeric strings (no
+ * commas), so they're compatible with existing parseFloat() calls.
  */
 export default function CurrencyInput({ value, onChange, ...props }: CurrencyInputProps) {
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const raw = e.target.value.replace(/\D/g, "");
-    onChange(raw);
+    const raw = e.target.value.replace(/,/g, "");
+    if (raw === "" || /^\d*\.?\d{0,2}$/.test(raw)) {
+      onChange(raw);
+    }
   }
 
   return (
     <input
       {...props}
       type="text"
-      inputMode="numeric"
+      inputMode="decimal"
       value={formatWithCommas(value)}
       onChange={handleChange}
     />

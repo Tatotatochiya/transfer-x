@@ -14,7 +14,7 @@ import Spinner from "../../components/ui/Spinner";
 import OfferThread from "../../components/offers/OfferThread";
 import SellerOrderBook from "../../components/sales/SellerOrderBook";
 import BuyerOrderBook from "../../components/sales/BuyerOrderBook";
-import { offerStatusVariant } from "../../lib/badges";
+import { offerOutcome, offerStatusLabel } from "../../lib/badges";
 import { formatCurrency, formatDate, formatWage, getApiError } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
@@ -68,26 +68,26 @@ function CounterForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 pt-3 border-t border-white/[0.06]">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Counter Offer</p>
+    <form onSubmit={handleSubmit} className="space-y-3 pt-3 border-t border-rule">
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Counter Offer</p>
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className="mb-1 block text-xs text-slate-400">Fee (£)</label>
+          <label className="mb-1 block text-xs text-text-muted">Fee (£)</label>
           <CurrencyInput value={fee} onChange={setFee} placeholder="Transfer fee"
-            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors" />
+            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors" />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-slate-400">Wage/wk (£)</label>
+          <label className="mb-1 block text-xs text-text-muted">Wage/wk (£)</label>
           <CurrencyInput value={wage} onChange={setWage} placeholder="Weekly wage"
-            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors" />
+            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors" />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-slate-400">Contract yrs</label>
+          <label className="mb-1 block text-xs text-text-muted">Contract yrs</label>
           <input type="number" min="1" max="10" step="1" value={years} onChange={(e) => setYears(e.target.value)} placeholder="Years"
-            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors" />
+            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors" />
         </div>
       </div>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-danger-text">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}>Submit counter</Button>
         <Button type="button" variant="ghost" size="sm" onClick={onSuccess}>Cancel</Button>
@@ -106,6 +106,7 @@ export default function OfferDetailPage() {
   const { addToast } = useToast();
   const { can } = useClubCapabilities();
   const [showCounter, setShowCounter] = useState(false);
+  const [mobileSection, setMobileSection] = useState<"detail" | "context">("detail");
 
   const { data: offer, isLoading, isError } = useQuery<Offer>({
     queryKey: ["offers", id],
@@ -168,7 +169,7 @@ export default function OfferDetailPage() {
 
   if (isError || !offer) {
     return (
-      <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
         Offer not found.{" "}
         <button onClick={() => navigate(-1)} className="underline">Go back</button>
       </div>
@@ -203,19 +204,35 @@ export default function OfferDetailPage() {
     : null;
 
   // ── Offer detail panel (shared between layouts) ─────────────────────────────
+  const outcome = offerOutcome(offer.status, offer.deal);
   const offerDetailPanel = (
     <div className="space-y-4">
       {/* Player + status */}
       <Card>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Offer</p>
-        <p className="text-lg font-semibold text-white">{offer.player?.name ?? "Unknown player"}</p>
-        {offer.player?.position && <p className="text-xs text-slate-500 mt-0.5">{offer.player.position}</p>}
-        <div className="mt-3 flex items-center gap-2">
-          <Badge variant={offerStatusVariant(offer.status)}>{offer.status}</Badge>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Offer</p>
+        <p className="text-lg font-semibold text-text">{offer.player?.name ?? "Unknown player"}</p>
+        {offer.player?.position && <p className="text-xs text-text-muted mt-0.5">{offer.player.position}</p>}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Badge variant={outcome.variant}>{outcome.label}</Badge>
+          {/* Keep the offer's own status visible once the deal has taken over the
+              headline — it stays the truthful record of what this offer did. */}
+          {offer.deal && (
+            <span className="text-xs text-text-muted">
+              Offer {offerStatusLabel(offer.status).toLowerCase()}
+            </span>
+          )}
+          {offer.deal && (
+            <button
+              onClick={() => navigate(`/deals/${offer.deal!.id}`)}
+              className="text-xs font-semibold text-accent hover:underline"
+            >
+              View the deal →
+            </button>
+          )}
           {offer.sale_id && (
             <button
               onClick={() => navigate(`/sales/${offer.sale_id}`)}
-              className="text-xs text-slate-500 hover:text-emerald-400 transition-colors"
+              className="text-xs text-text-muted hover:text-accent transition-colors"
             >
               View listing →
             </button>
@@ -225,7 +242,7 @@ export default function OfferDetailPage() {
 
       {/* Parties */}
       <Card>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Parties</p>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Parties</p>
         <div className="space-y-2">
           <Metric label="Buying club"  valueNode={<ClubLink id={offer.from_club?.id} name={offer.from_club?.name} />} />
           <Metric label="Selling club" valueNode={<ClubLink id={offer.to_club?.id}   name={offer.to_club?.name} />} />
@@ -235,14 +252,14 @@ export default function OfferDetailPage() {
 
       {/* Terms */}
       <Card>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Terms</p>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Terms</p>
         <div className="space-y-2">
           {offer.fee_amount != null && <Metric label="Transfer fee" value={formatCurrency(offer.fee_amount)} />}
           {offer.wage_weekly != null && <Metric label="Wage"         value={formatWage(offer.wage_weekly)} />}
           {offer.contract_years != null && <Metric label="Contract"  value={`${offer.contract_years} years`} />}
           {offer.contract_end_date != null && <Metric label="Ends"   value={formatDate(offer.contract_end_date)} />}
           {offer.fee_amount == null && offer.wage_weekly == null && (
-            <p className="text-sm text-slate-500">No terms specified yet.</p>
+            <p className="text-sm text-text-muted">No terms specified yet.</p>
           )}
         </div>
       </Card>
@@ -250,17 +267,17 @@ export default function OfferDetailPage() {
       {/* Actions */}
       {(canAct || canWithdraw || waitingFor) && (
         <Card>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Actions</p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Actions</p>
           <div className="space-y-2">
             {/* Waiting indicator — shown to whichever party just acted */}
             {waitingFor && (
-              <div className="flex items-center gap-2 rounded-lg bg-slate-800/60 px-3 py-2.5">
-                <svg className="h-3.5 w-3.5 shrink-0 animate-spin text-slate-500" fill="none" viewBox="0 0 24 24">
+              <div className="flex items-center gap-2 rounded-lg bg-surface-inset px-3 py-2.5">
+                <svg className="h-3.5 w-3.5 shrink-0 animate-spin text-text-muted" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                 </svg>
-                <p className="text-xs text-slate-400">
-                  Waiting for <span className="font-medium text-white">{waitingFor}</span> to respond…
+                <p className="text-xs text-text-muted">
+                  Waiting for <span className="font-medium text-text">{waitingFor}</span> to respond…
                 </p>
               </div>
             )}
@@ -301,51 +318,75 @@ export default function OfferDetailPage() {
                 Withdraw offer
               </Button>
             )}
-            {mutError && <p className="text-xs text-red-400">{mutError}</p>}
+            {mutError && <p className="text-xs text-danger-text">{mutError}</p>}
           </div>
         </Card>
       )}
 
       {/* Negotiation thread */}
-      <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Negotiations</p>
+      <div className="rounded-xl bg-surface ring-1 ring-border p-4">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Negotiations</p>
         <OfferThread offer={offer} myClubId={myClubId} canMessage={canMessage} />
         {showCounter && canAct && <CounterForm offer={offer} onSuccess={() => setShowCounter(false)} />}
       </div>
     </div>
   );
 
+  const orderBookRail = isSeller ? (
+    <SellerOrderBook
+      saleId={offer.sale_id ?? undefined}
+      playerId={offer.sale_id ? undefined : offer.player_id}
+      saleType="OPEN_TO_OFFERS"
+      isOpen={isActive}
+      selectedId={offer.id}
+      onSelectBid={undefined}
+    />
+  ) : (
+    <BuyerOrderBook
+      saleId={offer.sale_id ?? undefined}
+      playerId={offer.sale_id ? undefined : offer.player_id}
+      saleType="OPEN_TO_OFFERS"
+    />
+  );
+
   return (
     <div>
-      <button onClick={() => navigate(-1)} className="mb-6 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors">
+      <button onClick={() => navigate(-1)} className="mb-6 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors">
         ← Back
       </button>
 
       {isParty ? (
-        /* ── Two-panel layout for parties to the offer ── */
-        <div className="flex flex-col lg:flex-row gap-0 rounded-xl overflow-hidden ring-1 ring-white/[0.08] bg-slate-900">
-          {/* Left: order book */}
-          <div className="w-full lg:w-80 xl:w-96 shrink-0 border-b lg:border-b-0 lg:border-r border-white/[0.08] lg:max-h-[calc(100vh-10rem)] overflow-y-auto">
-            {isSeller ? (
-              <SellerOrderBook
-                saleId={offer.sale_id ?? undefined}
-                playerId={offer.sale_id ? undefined : offer.player_id}
-                saleType="OPEN_TO_OFFERS"
-                isOpen={isActive}
-                selectedId={offer.id}
-                onSelectBid={undefined}
-              />
-            ) : (
-              <BuyerOrderBook
-                saleId={offer.sale_id ?? undefined}
-                playerId={offer.sale_id ? undefined : offer.player_id}
-                saleType="OPEN_TO_OFFERS"
-              />
-            )}
+        /* ── Two-pane content + rail layout (RESPONSIVE.md): side by side on
+           desktop, rail below content on tablet, a segmented control showing
+           one section at a time on mobile — the pattern Phases 6 and 10 reuse. ── */
+        <div className="rounded-xl ring-1 ring-border overflow-hidden">
+          <div className="sm:hidden flex border-b border-rule">
+            {(["detail", "context"] as const).map((section) => (
+              <button
+                key={section}
+                onClick={() => setMobileSection(section)}
+                className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
+                  mobileSection === section
+                    ? "text-accent border-b-2 border-accent"
+                    : "text-text-muted border-b-2 border-transparent"
+                }`}
+              >
+                {section === "detail" ? "Detail" : "Order book"}
+              </button>
+            ))}
           </div>
-          {/* Right: offer detail */}
-          <div className="flex-1 min-w-0 p-5">
-            {offerDetailPanel}
+
+          <div className="flex flex-col lg:flex-row">
+            <div className={`flex-1 min-w-0 p-5 bg-page ${mobileSection === "context" ? "hidden sm:block" : ""}`}>
+              {offerDetailPanel}
+            </div>
+            <div
+              className={`w-full lg:w-80 shrink-0 border-t lg:border-t-0 lg:border-l border-rule bg-surface lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] overflow-y-auto ${
+                mobileSection === "detail" ? "hidden sm:block" : ""
+              }`}
+            >
+              {orderBookRail}
+            </div>
           </div>
         </div>
       ) : (

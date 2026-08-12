@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { NotificationPreferencesResponse } from "../../types/api";
+import Card from "../../components/ui/Card";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import { getApiError } from "../../lib/utils";
@@ -16,7 +17,7 @@ function MiniToggle({
       aria-label={label}
       title={label}
       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50 ${
-        value ? "bg-emerald-500" : "bg-slate-600"
+        value ? "bg-success" : "bg-border"
       }`}
     >
       <span
@@ -122,7 +123,7 @@ export default function NotificationPreferencesPage() {
 
   if (isError || !data) {
     return (
-      <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
         Failed to load preferences.
       </div>
     );
@@ -134,7 +135,7 @@ export default function NotificationPreferencesPage() {
     <div>
       <button
         onClick={() => navigate("/notifications")}
-        className="mb-6 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+        className="mb-6 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
       >
         ← Back to notifications
       </button>
@@ -145,19 +146,19 @@ export default function NotificationPreferencesPage() {
       />
 
       <div className="space-y-6 max-w-xl">
-        <div className="flex items-center justify-end gap-8 px-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+        <div className="flex items-center justify-end gap-8 px-1 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
           <span className="w-9 text-center">In-app</span>
           <span className="w-9 text-center">Email</span>
         </div>
 
         {TYPE_GROUPS.map((group) => (
-          <div key={group.label} className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
-            <div className="border-b border-white/[0.06] px-5 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <Card key={group.label} noPadding>
+            <div className="border-b border-rule px-5 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 {group.label}
               </p>
             </div>
-            <div className="divide-y divide-white/[0.04]">
+            <div className="divide-y divide-rule-faint">
               {group.types.map((type) => {
                 const pref = prefMap[type];
                 const enabled = pref?.enabled ?? true;
@@ -167,7 +168,7 @@ export default function NotificationPreferencesPage() {
                   mutation.isPending && vars?.type === type && vars?.channel === channel;
                 return (
                   <div key={type} className="flex items-center justify-between px-5 py-3.5">
-                    <span className="text-sm text-slate-200">
+                    <span className="text-sm text-text">
                       {TYPE_LABELS[type] ?? type}
                     </span>
                     <div className="flex items-center gap-8">
@@ -192,11 +193,11 @@ export default function NotificationPreferencesPage() {
                 );
               })}
             </div>
-          </div>
+          </Card>
         ))}
 
         {mutation.isError && (
-          <p className="text-sm text-red-400">
+          <p className="text-sm text-danger-text">
             {getApiError(mutation.error, "Failed to save preference.")}
           </p>
         )}

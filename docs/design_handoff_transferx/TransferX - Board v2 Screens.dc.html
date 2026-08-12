@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; }
+  * { box-sizing: border-box; }
+  a { color: oklch(50% 0.16 259); }
+  a:hover { color: oklch(42% 0.16 259); }
+</style>
+</helmet>
+
+<div style="display:flex;min-height:100vh;background:#f7f8fa;color:#14171f;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:14px;">
+
+  <aside style="width:232px;flex-shrink:0;display:flex;flex-direction:column;background:#ffffff;border-right:1px solid #e4e7ec;position:sticky;top:0;height:100vh;">
+    <div style="height:60px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid #e4e7ec;">
+      <div style="width:28px;height:28px;border-radius:7px;background:oklch(50% 0.16 259);display:flex;align-items:center;justify-content:center;">
+        <svg style="width:16px;height:16px;color:#fff;" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+      </div>
+      <span style="font-size:15px;font-weight:700;">TransferX</span>
+    </div>
+    <nav style="flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;">
+      <sc-for list="{{ navGroups }}" as="group" hint-placeholder-count="4">
+        <div>
+          <p style="margin:0 0 6px;padding:0 10px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#667085;">{{ group.title }}</p>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <sc-for list="{{ group.items }}" as="item" hint-placeholder-count="4">
+              <div onClick="{{ item.select }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:8px;padding:8px 10px;background:{{ item.bg }};color:{{ item.color }};font-weight:{{ item.weight }};cursor:pointer;">
+                <span>{{ item.label }}</span>
+                <span style="font-size:11px;font-weight:700;color:{{ item.countColor }};background:{{ item.countBg }};border-radius:9px;padding:{{ item.countPad }};">{{ item.count }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </nav>
+    <div style="padding:12px;border-top:1px solid #e4e7ec;display:flex;align-items:center;gap:10px;">
+      <div style="height:30px;width:30px;border-radius:8px;background:oklch(93% 0.03 259);color:oklch(42% 0.16 259);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">RM</div>
+      <div><p style="margin:0;font-size:13px;font-weight:600;">Meridian FC</p><p style="margin:0;font-size:11px;color:#667085;">Sporting Director</p></div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0;">
+    <div style="max-width:1280px;margin:0 auto;padding:28px 32px 64px;">
+
+      <div style="margin-bottom:20px;">
+        <h1 style="margin:0;font-size:24px;font-weight:700;">{{ title }}</h1>
+        <p style="margin:3px 0 0;font-size:13px;color:#667085;">{{ subtitle }}</p>
+      </div>
+
+      <!-- ══ OFFER INBOX ═════════════════════════════════════════════ -->
+      <sc-if value="{{ isOffers }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+            <sc-for list="{{ offerTabs }}" as="t" hint-placeholder-count="5">
+              <button style="cursor:pointer;white-space:nowrap;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;background:{{ t.bg }};color:{{ t.color }};border:1px solid {{ t.border }};">{{ t.label }}</button>
+            </sc-for>
+          </div>
+
+          <div style="border-radius:12px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,0.06),0 0 0 1px oklch(88% 0.05 25);overflow:hidden;margin-bottom:18px;">
+            <div style="display:flex;align-items:center;gap:9px;padding:12px 20px;background:oklch(97% 0.03 25);border-bottom:1px solid oklch(92% 0.04 25);">
+              <span style="height:8px;width:8px;border-radius:50%;background:oklch(55% 0.18 25);"></span>
+              <p style="margin:0;font-size:13px;font-weight:700;color:oklch(43% 0.17 25);">Your move — 2</p>
+            </div>
+            <sc-for list="{{ offersMine }}" as="o" hint-placeholder-count="2">
+              <div style="padding:16px 20px;border-bottom:1px solid #f0f1f3;">
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                  <div style="flex:1 1 260px;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;">
+                      <p style="margin:0;font-size:16px;font-weight:700;">{{ o.player }}</p>
+                      <span style="font-size:11px;font-weight:700;color:{{ o.posColor }};">{{ o.position }}</span>
+                    </div>
+                    <p style="margin:3px 0 0;font-size:13px;color:#475467;">{{ o.sub }}</p>
+                  </div>
+                  <div style="flex:0 1 120px;">
+                    <p style="margin:0;font-size:11px;color:#667085;">Their offer</p>
+                    <p style="margin:2px 0 0;font-size:17px;font-weight:700;">{{ o.fee }}</p>
+                  </div>
+                  <div style="flex:0 1 120px;">
+                    <p style="margin:0;font-size:11px;color:#667085;">Your valuation</p>
+                    <p style="margin:2px 0 0;font-size:17px;font-weight:700;color:{{ o.gapColor }};">{{ o.valuation }}</p>
+                  </div>
+                  <div style="flex:0 1 110px;">
+                    <p style="margin:0;font-size:11px;color:#667085;">Deadline</p>
+                    <p style="margin:2px 0 0;font-size:14px;font-weight:700;color:{{ o.timeColor }};">{{ o.time }}</p>
+                  </div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button style="border:none;cursor:pointer;white-space:nowrap;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;background:oklch(50% 0.16 259);color:#fff;">Counter</button>
+                    <button style="cursor:pointer;white-space:nowrap;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;background:#fff;color:#344054;border:1px solid #d0d5dd;">Accept</button>
+                  </div>
+                </div>
+                <div style="margin-top:12px;padding-top:10px;border-top:1px solid #f5f6f7;display:flex;gap:22px;flex-wrap:wrap;">
+                  <sc-for list="{{ o.history }}" as="h" hint-placeholder-count="3">
+                    <div>
+                      <p style="margin:0;font-size:11px;color:#667085;">{{ h.when }}</p>
+                      <p style="margin:2px 0 0;font-size:13px;color:#344054;">{{ h.text }} <strong>{{ h.value }}</strong></p>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;overflow:hidden;">
+            <div style="padding:13px 20px;border-bottom:1px solid #f0f1f3;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+              <p style="margin:0;font-size:14px;font-weight:700;">Everything else</p>
+              <span style="font-size:12px;color:#667085;">Waiting on the other club, or closed</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%;min-width:640px;border-collapse:collapse;font-size:14px;">
+                <thead>
+                  <tr style="text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#667085;background:#fafbfc;">
+                    <th style="padding:10px 20px;font-weight:600;">Player</th>
+                    <th style="padding:10px 12px;font-weight:600;">Club</th>
+                    <th style="padding:10px 12px;font-weight:600;text-align:right;">Fee</th>
+                    <th style="padding:10px 12px;font-weight:600;">State</th>
+                    <th style="padding:10px 20px;font-weight:600;text-align:right;">Last activity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ offersOther }}" as="o" hint-placeholder-count="4">
+                    <tr style="border-top:1px solid #f0f1f3;">
+                      <td style="padding:13px 20px;font-weight:600;">{{ o.player }}</td>
+                      <td style="padding:13px 12px;color:#475467;">{{ o.club }}</td>
+                      <td style="padding:13px 12px;text-align:right;font-weight:700;">{{ o.fee }}</td>
+                      <td style="padding:13px 12px;font-weight:600;color:{{ o.stateColor }};">{{ o.state }}</td>
+                      <td style="padding:13px 20px;text-align:right;color:#667085;font-size:13px;">{{ o.when }}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ══ DEALS ═══════════════════════════════════════════════════ -->
+      <sc-if value="{{ isDeals }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+            <sc-for list="{{ dealTabs }}" as="t" hint-placeholder-count="5">
+              <button style="cursor:pointer;white-space:nowrap;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;background:{{ t.bg }};color:{{ t.color }};border:1px solid {{ t.border }};">{{ t.label }}</button>
+            </sc-for>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+            <sc-for list="{{ deals }}" as="d" hint-placeholder-count="3">
+              <div style="border-radius:12px;background:#fff;box-shadow:0 0 0 1px {{ d.ring }};padding:16px 20px;">
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
+                  <div style="flex:1 1 240px;min-width:0;">
+                    <p style="margin:0;font-size:16px;font-weight:700;">{{ d.player }}</p>
+                    <p style="margin:3px 0 0;font-size:13px;color:#475467;">{{ d.route }}</p>
+                  </div>
+                  <div style="flex:0 1 120px;">
+                    <p style="margin:0;font-size:11px;color:#667085;">Agreed fee</p>
+                    <p style="margin:2px 0 0;font-size:17px;font-weight:700;">{{ d.fee }}</p>
+                  </div>
+                  <div style="flex:0 1 150px;">
+                    <p style="margin:0;font-size:11px;color:#667085;">Whose move</p>
+                    <p style="margin:2px 0 0;font-size:14px;font-weight:700;color:{{ d.moveColor }};">{{ d.move }}</p>
+                  </div>
+                  <button style="cursor:pointer;white-space:nowrap;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;background:{{ d.actionBg }};color:{{ d.actionColor }};border:1px solid {{ d.actionBorder }};">{{ d.action }}</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap;">
+                  <sc-for list="{{ d.stages }}" as="s" hint-placeholder-count="6">
+                    <div style="display:flex;align-items:center;">
+                      <div style="display:flex;align-items:center;gap:7px;padding:5px 11px;border-radius:20px;background:{{ s.bg }};color:{{ s.color }};font-size:12px;font-weight:600;white-space:nowrap;">
+                        <span style="width:6px;height:6px;border-radius:50%;background:{{ s.dot }};"></span>{{ s.label }}
+                      </div>
+                      <span style="width:12px;height:1px;background:#e4e7ec;"></span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="border-radius:12px;background:#fbfbfc;box-shadow:0 0 0 1px #eaecf0;overflow:hidden;">
+            <div style="padding:13px 20px;border-bottom:1px solid #f0f1f3;">
+              <p style="margin:0;font-size:13px;font-weight:600;color:#475467;">Closed this window</p>
+            </div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%;min-width:620px;border-collapse:collapse;font-size:14px;">
+                <thead>
+                  <tr style="text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#667085;">
+                    <th style="padding:10px 20px;font-weight:600;">Player</th>
+                    <th style="padding:10px 12px;font-weight:600;">Route</th>
+                    <th style="padding:10px 12px;font-weight:600;text-align:right;">Fee</th>
+                    <th style="padding:10px 12px;font-weight:600;">Outcome</th>
+                    <th style="padding:10px 20px;font-weight:600;text-align:right;">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ closedDeals }}" as="c" hint-placeholder-count="3">
+                    <tr style="border-top:1px solid #f0f1f3;">
+                      <td style="padding:12px 20px;font-weight:600;">{{ c.player }}</td>
+                      <td style="padding:12px 12px;color:#475467;font-size:13px;">{{ c.route }}</td>
+                      <td style="padding:12px 12px;text-align:right;font-weight:700;">{{ c.fee }}</td>
+                      <td style="padding:12px 12px;font-weight:600;color:{{ c.color }};">{{ c.outcome }}</td>
+                      <td style="padding:12px 20px;text-align:right;color:#667085;font-size:13px;">{{ c.date }}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ══ FINANCE ═════════════════════════════════════════════════ -->
+      <sc-if value="{{ isFinance }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:18px;">
+            <sc-for list="{{ budgets }}" as="b" hint-placeholder-count="2">
+              <div style="border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;padding:20px 22px;">
+                <p style="margin:0;font-size:13px;font-weight:600;color:#475467;">{{ b.title }}</p>
+                <p style="margin:10px 0 0;font-size:34px;font-weight:700;letter-spacing:-0.01em;">{{ b.remaining }}</p>
+                <p style="margin:2px 0 0;font-size:13px;color:#667085;">remaining of {{ b.total }}</p>
+                <div style="margin-top:14px;height:10px;border-radius:5px;background:#eaecf0;overflow:hidden;display:flex;">
+                  <div style="height:100%;background:#475467;width:{{ b.spentPct }}%;"></div>
+                  <div style="height:100%;background:oklch(60% 0.16 259);width:{{ b.committedPct }}%;"></div>
+                  <div style="height:100%;background:oklch(72% 0.14 80);width:{{ b.reservedPct }}%;"></div>
+                </div>
+                <div style="margin-top:14px;padding-top:12px;border-top:1px solid #f0f1f3;">
+                  <sc-for list="{{ b.lines }}" as="l" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;">
+                      <span style="display:flex;align-items:center;gap:8px;font-size:13px;color:#475467;"><span style="width:9px;height:9px;border-radius:2px;background:{{ l.swatch }};"></span>{{ l.label }}</span>
+                      <span style="font-size:14px;font-weight:600;">{{ l.value }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;padding:20px 22px;margin-bottom:18px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+              <div style="flex:1 1 380px;">
+                <p style="margin:0;font-size:14px;font-weight:700;">Spending approvals</p>
+                <p style="margin:6px 0 0;font-size:14px;line-height:1.6;color:#475467;max-width:560px;">A manager's bid, offer or acceptance at or above this amount waits for sign-off from you or a sporting director instead of executing.</p>
+              </div>
+              <div style="text-align:right;">
+                <p style="margin:0;font-size:11px;color:#667085;">Threshold</p>
+                <p style="margin:4px 0 0;font-size:30px;font-weight:700;">£5.0M</p>
+                <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+                  <button style="cursor:pointer;white-space:nowrap;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;background:#fff;color:#344054;border:1px solid #d0d5dd;">Change</button>
+                  <button style="cursor:pointer;white-space:nowrap;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;background:#fff;color:#667085;border:1px solid #e4e7ec;">Turn off</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;overflow:hidden;">
+            <div style="padding:15px 20px;border-bottom:1px solid #f0f1f3;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+              <p style="margin:0;font-size:14px;font-weight:700;">Where the money is committed</p>
+              <span style="font-size:12px;color:#667085;">£8.4M across 4 commitments</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%;min-width:620px;border-collapse:collapse;font-size:14px;">
+                <thead>
+                  <tr style="text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#667085;background:#fafbfc;">
+                    <th style="padding:10px 20px;font-weight:600;">Commitment</th>
+                    <th style="padding:10px 12px;font-weight:600;">Type</th>
+                    <th style="padding:10px 12px;font-weight:600;text-align:right;">Amount</th>
+                    <th style="padding:10px 20px;font-weight:600;">Releases when</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ commitments }}" as="c" hint-placeholder-count="4">
+                    <tr style="border-top:1px solid #f0f1f3;">
+                      <td style="padding:13px 20px;font-weight:600;">{{ c.label }}</td>
+                      <td style="padding:13px 12px;color:#475467;">{{ c.type }}</td>
+                      <td style="padding:13px 12px;text-align:right;font-weight:700;">{{ c.amount }}</td>
+                      <td style="padding:13px 20px;color:#475467;">{{ c.releases }}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ══ APPROVALS ═══════════════════════════════════════════════ -->
+      <sc-if value="{{ isApprovals }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <p style="margin:0 0 16px;font-size:13px;color:#475467;">Manager actions at or above <strong>£5.0M</strong> require your approval. Change this on the Finance page.</p>
+
+          <div style="border-radius:12px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,0.06),0 0 0 1px oklch(88% 0.05 25);overflow:hidden;margin-bottom:18px;">
+            <div style="display:flex;align-items:center;gap:9px;padding:12px 20px;background:oklch(97% 0.03 25);border-bottom:1px solid oklch(92% 0.04 25);">
+              <span style="height:8px;width:8px;border-radius:50%;background:oklch(55% 0.18 25);"></span>
+              <p style="margin:0;font-size:13px;font-weight:700;color:oklch(43% 0.17 25);">Waiting on your decision — 1</p>
+            </div>
+            <div style="padding:18px 20px;">
+              <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+                <div style="flex:1 1 300px;min-width:0;">
+                  <p style="margin:0;font-size:16px;font-weight:700;">Bid of £5.7M on Yannick Sorel</p>
+                  <p style="margin:4px 0 0;font-size:13px;color:#475467;">Requested by James Okoro (Manager) · 40 minutes ago · auction closes in 2d 04h</p>
+                </div>
+                <div style="flex:0 1 150px;">
+                  <p style="margin:0;font-size:11px;color:#667085;">Budget after</p>
+                  <p style="margin:2px 0 0;font-size:17px;font-weight:700;color:oklch(45% 0.14 150);">£6.7M free</p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button style="border:none;cursor:pointer;white-space:nowrap;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;background:oklch(50% 0.16 150);color:#fff;">Approve</button>
+                  <button style="cursor:pointer;white-space:nowrap;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;background:#fff;color:oklch(45% 0.16 25);border:1px solid #f0d3d3;">Reject</button>
+                </div>
+              </div>
+              <div style="margin-top:14px;padding-top:12px;border-top:1px solid #f5f6f7;display:flex;gap:26px;flex-wrap:wrap;">
+                <sc-for list="{{ approvalContext }}" as="a" hint-placeholder-count="4">
+                  <div>
+                    <p style="margin:0;font-size:11px;color:#667085;">{{ a.label }}</p>
+                    <p style="margin:2px 0 0;font-size:14px;font-weight:600;color:{{ a.color }};">{{ a.value }}</p>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div style="border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;overflow:hidden;">
+            <div style="padding:13px 20px;border-bottom:1px solid #f0f1f3;">
+              <p style="margin:0;font-size:14px;font-weight:700;">Decided</p>
+            </div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%;min-width:620px;border-collapse:collapse;font-size:14px;">
+                <thead>
+                  <tr style="text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#667085;background:#fafbfc;">
+                    <th style="padding:10px 20px;font-weight:600;">Request</th>
+                    <th style="padding:10px 12px;font-weight:600;">Requested by</th>
+                    <th style="padding:10px 12px;font-weight:600;text-align:right;">Amount</th>
+                    <th style="padding:10px 12px;font-weight:600;">Outcome</th>
+                    <th style="padding:10px 20px;font-weight:600;text-align:right;">Decided</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ decided }}" as="d" hint-placeholder-count="4">
+                    <tr style="border-top:1px solid #f0f1f3;">
+                      <td style="padding:13px 20px;font-weight:600;">{{ d.request }}</td>
+                      <td style="padding:13px 12px;color:#475467;">{{ d.by }}</td>
+                      <td style="padding:13px 12px;text-align:right;font-weight:700;">{{ d.amount }}</td>
+                      <td style="padding:13px 12px;font-weight:600;color:{{ d.color }};">{{ d.outcome }}</td>
+                      <td style="padding:13px 20px;text-align:right;color:#667085;font-size:13px;">{{ d.when }}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </main>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const SCREENS = {
+  offers: { title: "Offer inbox", subtitle: "6 offers · 2 need a decision from you" },
+  deals: { title: "My deals", subtitle: "3 in progress · 2 waiting on the other side" },
+  finance: { title: "Finance", subtitle: "Meridian FC · summer window 2026" },
+  approvals: { title: "Approvals", subtitle: "Spending requests from your team that need a decision" },
+};
+
+const NAV = [
+  { title: "Market", items: [
+    { label: "Browse Players", count: "" },
+    { label: "Listings", count: "" },
+    { label: "Transfers", count: "" },
+  ]},
+  { title: "My Deals", items: [
+    { label: "Auctions", count: "5" },
+    { label: "Inbox", count: "2", alert: true, screen: "offers" },
+    { label: "Sent Offers", count: "2" },
+    { label: "Deals", count: "3", screen: "deals" },
+  ]},
+  { title: "Club", items: [
+    { label: "Dashboard", count: "" },
+    { label: "My Club", count: "" },
+    { label: "Finance", count: "", screen: "finance" },
+    { label: "Approvals", count: "1", alert: true, screen: "approvals" },
+  ]},
+  { title: "Scouting", items: [
+    { label: "Shortlists", count: "2" },
+  ]},
+];
+
+const OFFERS_MINE = [
+  {
+    player: "Marcus Webb", position: "MID", posColor: "oklch(40% 0.13 150)",
+    sub: "Ashfield United countered your £5.0M ask — third round",
+    fee: "£4.2M", valuation: "£4.8M", gapColor: "oklch(45% 0.16 25)",
+    time: "6 hours", timeColor: "oklch(48% 0.18 25)",
+    history: [
+      { when: "2 days ago", text: "They countered", value: "£4.2M" },
+      { when: "4 days ago", text: "You countered", value: "£5.0M" },
+      { when: "6 days ago", text: "They opened", value: "£3.8M" },
+    ],
+  },
+  {
+    player: "Dario Kastanos", position: "FWD", posColor: "oklch(45% 0.16 25)",
+    sub: "Northgate Rovers, first offer, below your asking price",
+    fee: "£1.8M", valuation: "£2.4M", gapColor: "oklch(45% 0.16 25)",
+    time: "72 hours", timeColor: "#475467",
+    history: [
+      { when: "6 hours ago", text: "They opened", value: "£1.8M" },
+    ],
+  },
+];
+
+const OFFERS_OTHER = [
+  { player: "Elian Vos", club: "Castlebrook", fee: "£4.9M", state: "Their move", stateColor: "#475467", when: "1 day ago" },
+  { player: "Theo Marsh", club: "Riverton City", fee: "£2.6M", state: "Their move", stateColor: "#475467", when: "3 days ago" },
+  { player: "Owen Castillo", club: "Ashfield United", fee: "£1.4M", state: "Rejected", stateColor: "oklch(45% 0.16 25)", when: "9 days ago" },
+  { player: "Petar Ilic", club: "Northgate Rovers", fee: "£4.6M", state: "Accepted — now a deal", stateColor: "oklch(42% 0.14 150)", when: "12 days ago" },
+];
+
+function stages(currentIdx, collapsed) {
+  const labels = ["Agreement", "Agent negotiation", "Personal terms", "Paperwork", "Confirmed", "Completed"];
+  return labels.map((label, i) => ({
+    label,
+    bg: i === currentIdx ? "oklch(94% 0.04 259)" : "transparent",
+    color: i < currentIdx ? "#475467" : i === currentIdx ? "oklch(42% 0.16 259)" : "#98a2b3",
+    dot: i < currentIdx ? "oklch(55% 0.16 150)" : i === currentIdx ? "oklch(50% 0.16 259)" : "#d0d5dd",
+  }));
+}
+
+const DEALS = [
+  {
+    player: "Yannick Sorel", route: "Meridian FC → Castlebrook · opened 6 days ago",
+    fee: "£6.5M", move: "You — signature", moveColor: "oklch(48% 0.18 25)",
+    action: "Sign and complete", actionBg: "oklch(50% 0.16 150)", actionColor: "#fff", actionBorder: "oklch(50% 0.16 150)",
+    ring: "oklch(88% 0.05 25)", stages: stages(4),
+  },
+  {
+    player: "Adrian Kofi", route: "Meridian FC → Riverton City · opened 11 days ago",
+    fee: "£8.1M", move: "Agent — 4 days idle", moveColor: "oklch(45% 0.13 80)",
+    action: "Open deal room", actionBg: "#fff", actionColor: "#344054", actionBorder: "#d0d5dd",
+    ring: "#e4e7ec", stages: stages(1),
+  },
+  {
+    player: "Bram Wouters", route: "Ashfield United → Meridian FC · opened 4 days ago",
+    fee: "£5.4M", move: "Them — documents due Thu", moveColor: "#475467",
+    action: "Open deal room", actionBg: "#fff", actionColor: "#344054", actionBorder: "#d0d5dd",
+    ring: "#e4e7ec", stages: stages(3),
+  },
+];
+
+const CLOSED_DEALS = [
+  { player: "Ismael Toure", route: "Meridian FC → Castlebrook", fee: "£11.2M", outcome: "Completed", color: "oklch(42% 0.14 150)", date: "3 Aug 2026" },
+  { player: "Petar Ilic", route: "Northgate Rovers → Meridian FC", fee: "£4.6M", outcome: "Completed", color: "oklch(42% 0.14 150)", date: "28 Jul 2026" },
+  { player: "Luca Ferraro", route: "Meridian FC → Riverton City", fee: "£3.1M", outcome: "Collapsed — medical", color: "oklch(45% 0.16 25)", date: "22 Jul 2026" },
+];
+
+const BUDGETS = [
+  {
+    title: "Transfer budget", remaining: "£12.4M", total: "£40.0M",
+    spentPct: 48, committedPct: 16, reservedPct: 5,
+    lines: [
+      { label: "Spent", value: "£19.2M", swatch: "#475467" },
+      { label: "Committed to deals", value: "£6.4M", swatch: "oklch(60% 0.16 259)" },
+      { label: "Reserved for open bids", value: "£2.0M", swatch: "oklch(72% 0.14 80)" },
+      { label: "Free", value: "£12.4M", swatch: "#eaecf0" },
+    ],
+  },
+  {
+    title: "Wage budget (weekly)", remaining: "£95K", total: "£620K",
+    spentPct: 61, committedPct: 18, reservedPct: 6,
+    lines: [
+      { label: "Current squad", value: "£378K", swatch: "#475467" },
+      { label: "Committed to deals", value: "£112K", swatch: "oklch(60% 0.16 259)" },
+      { label: "Reserved for open bids", value: "£35K", swatch: "oklch(72% 0.14 80)" },
+      { label: "Free", value: "£95K", swatch: "#eaecf0" },
+    ],
+  },
+];
+
+const COMMITMENTS = [
+  { label: "Adrian Kofi — Riverton City", type: "Deal in progress", amount: "£8.1M", releases: "On completion or collapse" },
+  { label: "Yannick Sorel — Castlebrook", type: "Incoming, not committed", amount: "—", releases: "Adds £6.5M on completion" },
+  { label: "Bid on Elian Vos", type: "Open bid", amount: "£4.9M", releases: "If outbid or auction closes" },
+  { label: "Offer to Castlebrook", type: "Sent offer", amount: "£2.6M", releases: "If rejected or withdrawn" },
+];
+
+const APPROVAL_CONTEXT = [
+  { label: "Reserve on the listing", value: "£5.2M", color: "#14171f" },
+  { label: "Current best bid", value: "£5.6M (Castlebrook)", color: "#14171f" },
+  { label: "Our valuation", value: "£5.8M", color: "#14171f" },
+  { label: "Squad effect", value: "Fills 1 of 2 GK gap", color: "oklch(42% 0.14 150)" },
+];
+
+const DECIDED = [
+  { request: "Offer of £5.4M on Elian Vos", by: "James Okoro", amount: "£5.4M", outcome: "Approved", color: "oklch(42% 0.14 150)", when: "2 days ago" },
+  { request: "Bid of £6.2M on Rui Santos", by: "James Okoro", amount: "£6.2M", outcome: "Rejected — over valuation", color: "oklch(45% 0.16 25)", when: "5 days ago" },
+  { request: "Accept £4.6M for Petar Ilic", by: "Dana Whitfield", amount: "£4.6M", outcome: "Approved", color: "oklch(42% 0.14 150)", when: "12 days ago" },
+  { request: "Bid of £5.1M on Lukas Brandt", by: "James Okoro", amount: "£5.1M", outcome: "Expired", color: "#667085", when: "15 days ago" },
+];
+
+const TAB_SETS = {
+  offers: ["All", "Your move", "Their move", "Accepted", "Rejected"],
+  deals: ["All", "In progress", "Pending completion", "Completed", "Collapsed"],
+};
+
+class Component extends DCLogic {
+  state = { screen: "offers" };
+
+  renderVals() {
+    const screen = this.state.screen;
+    const meta = SCREENS[screen];
+    const chip = (label, on) => ({
+      label,
+      bg: on ? "#14171f" : "#fff",
+      color: on ? "#fff" : "#475467",
+      border: on ? "#14171f" : "#d0d5dd",
+    });
+    return {
+      navGroups: NAV.map((g) => ({
+        title: g.title,
+        items: g.items.map((i) => ({
+          label: i.label,
+          count: i.count,
+          bg: i.screen === screen ? "oklch(96% 0.02 259)" : "transparent",
+          color: i.screen === screen ? "oklch(45% 0.16 259)" : "#475467",
+          weight: i.screen === screen ? "600" : "500",
+          countBg: !i.count ? "transparent" : i.alert ? "oklch(94% 0.06 25)" : "#f0f1f3",
+          countColor: i.alert ? "oklch(45% 0.17 25)" : "#667085",
+          countPad: i.count ? "1px 7px" : "0",
+          select: i.screen ? () => this.setState({ screen: i.screen }) : () => {},
+        })),
+      })),
+      title: meta.title,
+      subtitle: meta.subtitle,
+      isOffers: screen === "offers",
+      isDeals: screen === "deals",
+      isFinance: screen === "finance",
+      isApprovals: screen === "approvals",
+
+      offerTabs: TAB_SETS.offers.map((l, i) => chip(l, i === 0)),
+      offersMine: OFFERS_MINE,
+      offersOther: OFFERS_OTHER,
+
+      dealTabs: TAB_SETS.deals.map((l, i) => chip(l, i === 0)),
+      deals: DEALS,
+      closedDeals: CLOSED_DEALS,
+
+      budgets: BUDGETS,
+      commitments: COMMITMENTS,
+
+      approvalContext: APPROVAL_CONTEXT,
+      decided: DECIDED,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

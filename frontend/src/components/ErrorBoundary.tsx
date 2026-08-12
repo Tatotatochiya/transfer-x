@@ -23,14 +23,14 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-950 p-6">
-          <div className="max-w-md w-full rounded-xl bg-slate-900 ring-1 ring-white/[0.08] px-8 py-10 text-center">
-            <p className="text-4xl font-bold text-slate-700">Oops</p>
-            <p className="mt-3 text-base font-semibold text-white">Something went wrong</p>
-            <p className="mt-2 text-sm text-slate-400 break-words">{this.state.message}</p>
+        <div className="flex min-h-screen items-center justify-center bg-page p-6">
+          <div className="max-w-md w-full rounded-xl bg-surface ring-1 ring-border px-8 py-10 text-center">
+            <p className="text-4xl font-bold text-text-muted">Oops</p>
+            <p className="mt-3 text-base font-semibold text-text">Something went wrong</p>
+            <p className="mt-2 text-sm text-text-muted break-words">{this.state.message}</p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-6 rounded-lg bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-400 ring-1 ring-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+              className="mt-6 rounded-lg bg-accent/10 px-4 py-2 text-sm font-medium text-accent ring-1 ring-accent/20 hover:bg-accent/20 transition-colors"
             >
               Reload page
             </button>

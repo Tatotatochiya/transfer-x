@@ -1,19 +1,25 @@
 import Spinner from "./Spinner";
 
-export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+export type ButtonVariant = "primary" | "primary-success" | "secondary" | "danger" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary:   "bg-emerald-500 hover:bg-emerald-400 text-white font-semibold shadow-sm hover:-translate-y-px",
-  secondary: "bg-slate-800 hover:bg-slate-700 text-white font-medium ring-1 ring-white/10",
-  danger:    "bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium ring-1 ring-red-500/30",
-  ghost:     "text-slate-400 hover:text-white hover:bg-white/5 font-medium",
+  primary:         "bg-accent hover:bg-accent-hover text-white font-semibold shadow-sm",
+  "primary-success": "bg-success hover:bg-success-text-alt text-white font-semibold shadow-sm",
+  secondary:       "bg-surface hover:bg-surface-inset text-text-secondary font-medium ring-1 ring-input-border",
+  danger:          "bg-surface hover:bg-danger-bg text-danger-text-alt font-medium ring-1 ring-danger-border",
+  ghost:           "text-text-muted hover:text-text hover:bg-surface-inset font-medium",
 };
 
+// Base sizing matches TOKENS.md exactly (radius 8px, 14px/600 label, 10px/18px
+// padding for the standard size). Below 1024px every size gets a min-height
+// floor per RESPONSIVE.md's 44px touch-target rule (48px for `lg`, used for
+// full-width/tier-1 actions) — shed at the lg: breakpoint back to the desktop
+// spec, which doesn't need the floor since pointer input isn't touch.
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "px-3 py-1.5 text-xs rounded-lg",
-  md: "px-4 py-2 text-sm rounded-lg",
-  lg: "px-5 py-2.5 text-sm rounded-xl",
+  sm: "min-h-11 lg:min-h-0 px-3 py-1.5 text-xs rounded-lg",
+  md: "min-h-11 lg:min-h-0 px-[18px] py-2.5 text-sm rounded-lg",
+  lg: "min-h-12 lg:min-h-0 px-5 py-2.5 text-sm rounded-xl",
 };
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

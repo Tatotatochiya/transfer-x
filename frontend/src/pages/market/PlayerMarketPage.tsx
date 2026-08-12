@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import { useAuthStore } from "../../store/auth";
+import { useAuth } from "../../hooks/useAuth";
 import { usePreferencesStore } from "../../store/preferences";
-import type { FairValueSignal, Paginated, Player, PlayerForm, PlayerSearchView, PlayerStats } from "../../types/api";
+import type { Club, FairValueSignal, Paginated, Player, PlayerForm, PlayerSearchView, PlayerStats } from "../../types/api";
 import PlayerCard from "../../components/players/PlayerCard";
 import PlayerListRow from "../../components/players/PlayerListRow";
 import PlayerFilters, {
@@ -12,12 +12,14 @@ import PlayerFilters, {
   type ViewMode,
 } from "../../components/players/PlayerFilters";
 import ViewSwitcher from "../../components/players/ViewSwitcher";
-import PageHeader from "../../components/ui/PageHeader";
+import Card from "../../components/ui/Card";
 import Pagination from "../../components/ui/Pagination";
 import EmptyState from "../../components/ui/EmptyState";
 import Spinner from "../../components/ui/Spinner";
 import { MarketRecommendationsPanel } from "../../components/ai/MarketRecommendationsPanel";
 import { NLPlayerSearch } from "../../components/ai/NLPlayerSearch";
+import { useCompare } from "../../context/CompareContext";
+import { formatCurrency } from "../../lib/utils";
 
 // ── Saveable filter keys (search + club_search are intentionally excluded) ────
 
@@ -32,10 +34,8 @@ function toSavedFilters(f: PlayerFilterState): SavedFilters {
 function applySavedFilters(saved: Record<string, unknown>, current: PlayerFilterState): PlayerFilterState {
   return {
     ...DEFAULT_PLAYER_FILTERS,
-    // Preserve ephemeral fields from current state
     search: current.search,
     club_search: current.club_search,
-    // Apply saved fields
     position: (saved.position as PlayerFilterState["position"]) ?? "",
     status: (saved.status as PlayerFilterState["status"]) ?? "",
     open_to_offers: (saved.open_to_offers as boolean) ?? false,
@@ -69,18 +69,37 @@ function getInitialView(): ViewMode {
   return usePreferencesStore.getState().defaultMarketView as ViewMode;
 }
 
+// ── Sort chips ─────────────────────────────────────────────────────────────────
+// "Form" and "Youngest" map onto real server sort_by values, so they trigger a
+// real re-fetch (sorted across every page). "Best value" and "Cheapest" have no
+// server-side equivalent — the /players/market endpoint only accepts
+// name|age|goals|assists|appearances|avg_rating|form_score — so those two sort
+// only the current page, using the fair-value/market-value data already on
+// screen. Documented rather than silently wrong.
+
+type SortChip = "value" | "form" | "cheapest" | "youngest";
+
+const SORT_CHIPS: { key: SortChip; label: string }[] = [
+  { key: "value", label: "Best value first" },
+  { key: "form", label: "Form" },
+  { key: "cheapest", label: "Cheapest" },
+  { key: "youngest", label: "Youngest" },
+];
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PlayerMarketPage() {
-  const { accessToken, user } = useAuthStore();
+  const { accessToken, user, isClub } = useAuth();
   const isAuthenticated = !!accessToken;
   const isPlayerAccount = user?.user_type === "PLAYER";
   const queryClient = useQueryClient();
+  const { compareIds } = useCompare();
 
   const [filters, setFilters] = useState<PlayerFilterState>(DEFAULT_PLAYER_FILTERS);
   const [page, setPage] = useState(1);
   const [view, setView] = useState<ViewMode>(getInitialView);
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
+  const [sortChip, setSortChip] = useState<SortChip | null>(null);
   const defaultApplied = useRef(false);
 
   // ── Search views ─────────────────────────────────────────────────────────
@@ -92,7 +111,6 @@ export default function PlayerMarketPage() {
     staleTime: 60_000,
   });
 
-  // Apply default view on first load (once views arrive)
   useEffect(() => {
     if (defaultApplied.current || views.length === 0) return;
     defaultApplied.current = true;
@@ -123,8 +141,6 @@ export default function PlayerMarketPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["search-views"] }),
   });
 
-  // ── View selection ────────────────────────────────────────────────────────
-
   function handleSelectView(id: string | null) {
     setActiveViewId(id);
     if (id === null) {
@@ -136,17 +152,8 @@ export default function PlayerMarketPage() {
     setPage(1);
   }
 
-  // Re-apply view filters when "Discard" is clicked (onSelect called with same id)
-  function handleSelectViewOrDiscard(id: string | null) {
-    handleSelectView(id);
-  }
-
   const activeView = views.find((v) => v.id === activeViewId) ?? null;
-  const isModified = !!(
-    activeView && !filtersMatchSaved(filters, activeView.filters)
-  );
-
-  // ── Filters ───────────────────────────────────────────────────────────────
+  const isModified = !!(activeView && !filtersMatchSaved(filters, activeView.filters));
 
   function handleFiltersChange(next: PlayerFilterState) {
     setFilters(next);
@@ -158,29 +165,29 @@ export default function PlayerMarketPage() {
     try { localStorage.setItem("playerMarketView", v); } catch {}
   }
 
-  // ── ViewSwitcher callbacks ────────────────────────────────────────────────
-
   async function handleCreate(name: string) {
-    await createViewMutation.mutateAsync({
-      name,
-      filters: toSavedFilters(filters),
-    });
+    await createViewMutation.mutateAsync({ name, filters: toSavedFilters(filters) });
   }
-
   async function handleUpdate(id: string, patch: { name?: string; filters?: Record<string, unknown>; is_default?: boolean }) {
     await updateViewMutation.mutateAsync({ id, patch });
   }
-
   async function handleDelete(id: string) {
     await deleteViewMutation.mutateAsync(id);
   }
-
   async function handleSaveCurrentToView(id: string) {
     await updateViewMutation.mutateAsync({ id, patch: { filters: toSavedFilters(filters) } });
   }
-
   async function handleSaveCurrentAsNew(name: string) {
     await createViewMutation.mutateAsync({ name, filters: toSavedFilters(filters) });
+  }
+
+  // ── Sort chip handling ───────────────────────────────────────────────────
+
+  function handleSortChip(chip: SortChip) {
+    setSortChip(chip);
+    if (chip === "form") { setFilters((f) => ({ ...f, sort_by: "form_score", sort_dir: "desc" })); setPage(1); }
+    if (chip === "youngest") { setFilters((f) => ({ ...f, sort_by: "age", sort_dir: "asc" })); setPage(1); }
+    // "value" and "cheapest" are applied client-side below — no re-fetch.
   }
 
   // ── Player query ──────────────────────────────────────────────────────────
@@ -218,12 +225,12 @@ export default function PlayerMarketPage() {
         .then((r) => r.data),
   });
 
-  const players = data?.items ?? [];
-  const playerIds = players.map((p) => p.id).join(",");
+  const fetchedPlayers = data?.items ?? [];
+  const playerIds = fetchedPlayers.map((p) => p.id).join(",");
 
   const { data: formScores = {} } = useQuery<Record<string, { score: number; trend: number | null }>>({
     queryKey: ["players", "form-batch", playerIds],
-    enabled: players.length > 0,
+    enabled: fetchedPlayers.length > 0,
     staleTime: 60_000,
     queryFn: async () => {
       const resp = await api
@@ -241,14 +248,11 @@ export default function PlayerMarketPage() {
   // D6: a player-account identity must not fire the call at all.
   const { data: fairValues = {} } = useQuery<Record<string, FairValueSignal>>({
     queryKey: ["valuation", "batch", playerIds],
-    enabled: isAuthenticated && !isPlayerAccount && players.length > 0,
+    enabled: isAuthenticated && !isPlayerAccount && fetchedPlayers.length > 0,
     staleTime: 300_000,
     queryFn: async () => {
-      // The signal is an enhancement — a failure must never break the grid.
       const resp = await api
-        .get<{ valuations: Record<string, FairValueSignal> }>("/valuation/players", {
-          params: { ids: playerIds },
-        })
+        .get<{ valuations: Record<string, FairValueSignal> }>("/valuation/players", { params: { ids: playerIds } })
         .catch(() => ({ data: { valuations: {} as Record<string, FairValueSignal> } }));
       return resp.data.valuations;
     },
@@ -256,12 +260,10 @@ export default function PlayerMarketPage() {
 
   const { data: statsMap = {} } = useQuery<Record<string, PlayerStats | null>>({
     queryKey: ["players", "stats-batch", playerIds],
-    enabled: view === "list" && players.length > 0,
+    enabled: view === "list" && fetchedPlayers.length > 0,
     staleTime: 120_000,
     queryFn: async () => {
-      const resp = await api.get<Record<string, PlayerStats[]>>("/players/stats/batch", {
-        params: { player_ids: playerIds },
-      });
+      const resp = await api.get<Record<string, PlayerStats[]>>("/players/stats/batch", { params: { player_ids: playerIds } });
       const map: Record<string, PlayerStats | null> = {};
       for (const [id, statsList] of Object.entries(resp.data)) {
         map[id] = statsList.sort((a, b) => b.appearances - a.appearances)[0] ?? null;
@@ -270,117 +272,170 @@ export default function PlayerMarketPage() {
     },
   });
 
+  // Club-only budget context for the tier-2 figures.
+  const { data: myClub } = useQuery<Club>({
+    queryKey: ["clubs", "me"],
+    queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
+    enabled: isClub,
+    staleTime: 60_000,
+  });
+
+  // Client-side sort for the two chips with no server equivalent — page-local only.
+  const players = useMemo(() => {
+    if (sortChip === "cheapest") {
+      return [...fetchedPlayers].sort((a, b) => (a.market_value ?? Infinity) - (b.market_value ?? Infinity));
+    }
+    if (sortChip === "value") {
+      return [...fetchedPlayers].sort((a, b) => {
+        const da = fairValues[a.id]?.divergence?.pct ?? Infinity;
+        const db = fairValues[b.id]?.divergence?.pct ?? Infinity;
+        return da - db;
+      });
+    }
+    return fetchedPlayers;
+  }, [fetchedPlayers, sortChip, fairValues]);
+
+  const underFairValueCount = fetchedPlayers.filter(
+    (p) => fairValues[p.id]?.divergence?.band === "BELOW" || fairValues[p.id]?.divergence?.band === "WELL_BELOW"
+  ).length;
+
   return (
     <div>
-      <PageHeader title="Player Market" subtitle="Browse available players" />
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold tracking-[-0.01em] text-text">Player Market</h1>
+        <p className="mt-[3px] text-sm text-text-muted">
+          {activeView
+            ? `Search view: ${activeView.name} · ${data?.total ?? 0} matches`
+            : "Browse available players"}
+        </p>
+      </div>
 
-      {/* View switcher — only for authenticated club users */}
-      {isAuthenticated && (
-        <ViewSwitcher
-          views={views}
-          activeViewId={activeViewId}
-          isModified={isModified}
-          onCreate={handleCreate}
-          onUpdate={handleUpdate}
-          onDelete={handleDelete}
-          onSelect={handleSelectViewOrDiscard}
-          onSaveCurrentToView={handleSaveCurrentToView}
-          onSaveCurrentAsNew={handleSaveCurrentAsNew}
-        />
+      {isClub && myClub?.finance && (
+        <div className="mb-5 grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+          <Card tier={2}>
+            <p className="text-xs font-semibold text-text-secondary">Budget free</p>
+            <p className="mt-1.5 text-[28px] font-bold text-text">{formatCurrency(Number(myClub.finance.transfer_remaining))}</p>
+          </Card>
+          <Card tier={2}>
+            <p className="text-xs font-semibold text-text-secondary">Wage room</p>
+            <p className="mt-1.5 text-[28px] font-bold text-text">{formatCurrency(Number(myClub.finance.wage_remaining_weekly))}</p>
+            <p className="mt-[3px] text-xs text-text-muted">per week</p>
+          </Card>
+          <Card tier={2}>
+            <p className="text-xs font-semibold text-text-secondary">Under fair value</p>
+            <p className="mt-1.5 text-[28px] font-bold text-text">{underFairValueCount}</p>
+            <p className="mt-[3px] text-xs text-text-muted">on this page</p>
+          </Card>
+        </div>
       )}
 
       {isAuthenticated && <NLPlayerSearch />}
 
-      <PlayerFilters
-        filters={filters}
-        onChange={handleFiltersChange}
-        view={view}
-        onViewChange={handleViewChange}
-      />
-
-      {isAuthenticated && (
-        <MarketRecommendationsPanel
-          positionFilter={filters.position || undefined}
-          maxBudget={undefined}
-        />
-      )}
-
-      {isLoading && (
-        <div className="flex justify-center py-16">
-          <Spinner size="lg" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[250px_1fr]">
+        {/* Filter rail */}
+        <div className="lg:sticky lg:top-6 h-fit space-y-5">
+          <Card>
+            <PlayerFilters filters={filters} onChange={handleFiltersChange} view={view} onViewChange={handleViewChange} />
+          </Card>
+          {isAuthenticated && (
+            <Card>
+              <ViewSwitcher
+                views={views}
+                activeViewId={activeViewId}
+                isModified={isModified}
+                onCreate={handleCreate}
+                onUpdate={handleUpdate}
+                onDelete={handleDelete}
+                onSelect={handleSelectView}
+                onSaveCurrentToView={handleSaveCurrentToView}
+                onSaveCurrentAsNew={handleSaveCurrentAsNew}
+              />
+            </Card>
+          )}
         </div>
-      )}
 
-      {isError && (
-        <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
-          Failed to load players. Please try again.
-        </div>
-      )}
-
-      {data && data.items.length === 0 && (
-        <EmptyState title="No players found" body="Try adjusting your filters." />
-      )}
-
-      {data && data.items.length > 0 && (
-        <>
-          <p className="mb-3 text-xs text-slate-600">
-            {data.total} player{data.total !== 1 ? "s" : ""} found
-          </p>
-
-          {view === "grid" && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-              {players.map((player) => (
-                <PlayerCard
-                  key={player.id}
-                  player={player}
-                  formScore={formScores[player.id]?.score}
-                  formTrend={formScores[player.id]?.trend}
-                  fairValueSignal={fairValues[player.id]}
-                />
-              ))}
+        {/* Results */}
+        <div className="min-w-0">
+          {isAuthenticated && (
+            <div className="mb-4">
+              <MarketRecommendationsPanel positionFilter={filters.position || undefined} maxBudget={undefined} />
             </div>
           )}
 
-          {view === "list" && (
-            <div className="rounded-xl ring-1 ring-white/[0.07] overflow-hidden">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-white/[0.06] bg-slate-900/60">
-                    <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Player</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 hidden sm:table-cell">Pos</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 hidden md:table-cell">Club</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 hidden sm:table-cell">Status</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Form</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 hidden lg:table-cell">G</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 hidden lg:table-cell">A</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 hidden xl:table-cell">Apps</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 hidden xl:table-cell">Rtg</th>
-                    <th className="px-2 py-2.5" />
-                  </tr>
-                </thead>
-                <tbody className="bg-slate-900/40">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {SORT_CHIPS.map((c) => (
+                <button
+                  key={c.key}
+                  onClick={() => handleSortChip(c.key)}
+                  className={`rounded-lg px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
+                    sortChip === c.key ? "bg-ink text-white" : "bg-surface text-text-secondary ring-1 ring-input-border hover:ring-accent"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            {data && (
+              <span className="text-[13px] text-text-muted">
+                {data.total} player{data.total !== 1 ? "s" : ""}
+                {compareIds.length > 0 && ` · ${compareIds.length} selected to compare`}
+              </span>
+            )}
+          </div>
+
+          {isLoading && (
+            <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+          )}
+
+          {isError && (
+            <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+              Failed to load players. Please try again.
+            </div>
+          )}
+
+          {data && data.items.length === 0 && (
+            <EmptyState title="No players found" body="Try adjusting your filters." />
+          )}
+
+          {data && data.items.length > 0 && (
+            <>
+              {view === "grid" && (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                  {players.map((player) => (
+                    <PlayerCard
+                      key={player.id}
+                      player={player}
+                      formScore={formScores[player.id]?.score}
+                      formTrend={formScores[player.id]?.trend}
+                      fairValueSignal={fairValues[player.id]}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {view === "list" && (
+                <div className="space-y-2.5">
                   {players.map((player) => (
                     <PlayerListRow
                       key={player.id}
                       player={player}
                       formScore={formScores[player.id]?.score}
                       formTrend={formScores[player.id]?.trend}
-                      stats={statsMap[player.id]}
+                      fairValueSignal={fairValues[player.id]}
+                      canAct={isClub}
                     />
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                </div>
+              )}
 
-          <Pagination
-            page={data.page}
-            total={data.total}
-            pageSize={data.page_size}
-            onChange={setPage}
-          />
-        </>
-      )}
+              <div className="mt-6">
+                <Pagination page={data.page} total={data.total} pageSize={data.page_size} onChange={setPage} />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

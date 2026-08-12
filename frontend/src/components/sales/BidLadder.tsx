@@ -2,41 +2,32 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import api from "../../lib/api";
 import type { Bid, DealStub, Sale } from "../../types/api";
-import { useAuthStore } from "../../store/auth";
-import Badge from "../ui/Badge";
 import Button from "../ui/Button";
 import ClubLink from "../ui/ClubLink";
 import EmptyState from "../ui/EmptyState";
 import Spinner from "../ui/Spinner";
-import { bidStatusVariant } from "../../lib/badges";
 import { formatCurrency, formatDateTime, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
-import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 
 interface BidLadderProps {
   sale: Sale;
   isSeller: boolean;
 }
 
+/**
+ * The bid ladder — SCREENS.md "Sale detail / bidding". The bar is the point
+ * of the screen: every bid painted to a shared scale, with reserve and your
+ * valuation marked as reference lines, so a decision reads at a glance
+ * instead of requiring a mental comparison across table rows.
+ */
 export default function BidLadder({ sale, isSeller }: BidLadderProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addToast } = useToast();
-  const { accessToken } = useAuthStore();
-  const isAuthenticated = !!accessToken;
-
-  const deadline = useDeadlineCountdown(sale.deadline);
-
-  const deadlineColour =
-    deadline.state === "danger"  ? "text-red-400" :
-    deadline.state === "warning" ? "text-amber-400" :
-    deadline.state === "expired" ? "text-slate-500" :
-    "text-slate-300";
 
   const { data: bids, isLoading } = useQuery<Bid[]>({
     queryKey: ["sales", sale.id, "bids"],
     queryFn: () => api.get<Bid[]>(`/sales/${sale.id}/bids`).then((r) => r.data),
-    enabled: isAuthenticated,
   });
 
   const acceptMutation = useMutation({
@@ -51,158 +42,95 @@ export default function BidLadder({ sale, isSeller }: BidLadderProps) {
     onError: (err) => addToast(getApiError(err, "Failed to accept bid."), "error"),
   });
 
-  // ── Header summary ────────────────────────────────────────────────────────
+  if (isLoading) {
+    return <div className="flex justify-center py-10"><Spinner /></div>;
+  }
+
+  if (!bids || bids.length === 0) {
+    return (
+      <EmptyState
+        title="No bids yet"
+        body={sale.status === "OPEN" ? `Be the first — minimum bid ${formatCurrency(sale.minimum_next_bid ?? sale.min_increment)}` : undefined}
+      />
+    );
+  }
+
+  const valuation = sale.fair_value_signal?.fair_value ?? null;
+  const reserve = isSeller ? sale.reserve_price : null;
+  const highestBid = Math.max(...bids.map((b) => b.amount));
+  const scaleMax = Math.max(highestBid, valuation ?? 0) * 1.03;
+  const reservePct = reserve != null ? (reserve / scaleMax) * 100 : null;
+  const valuationPct = valuation != null ? (valuation / scaleMax) * 100 : null;
+
+  const sorted = [...bids].sort((a, b) => b.amount - a.amount);
 
   return (
     <div>
-      {/* Stats row */}
-      <div className="mb-4 flex flex-wrap items-center gap-4 text-sm">
-        {sale.bid_count != null && (
-          <span className="text-slate-400">
-            <span className="font-semibold text-white">{sale.bid_count}</span>{" "}
-            bid{sale.bid_count !== 1 ? "s" : ""}
-          </span>
-        )}
-
-        {sale.best_bid != null && (
-          <span className="text-slate-400">
-            Best: <span className="font-semibold text-white">{formatCurrency(sale.best_bid)}</span>
-          </span>
-        )}
-
-        {sale.minimum_next_bid != null && sale.status === "OPEN" && (
-          <span className="text-slate-400">
-            Min next: <span className="font-semibold text-white">{formatCurrency(sale.minimum_next_bid)}</span>
-          </span>
-        )}
-
-        {!sale.reserve_met && sale.reserve_price != null && (
-          <Badge variant="warning">Reserve not met</Badge>
-        )}
-
-        {sale.reserve_met && <Badge variant="success">Reserve met</Badge>}
-
-        {sale.deadline && (
-          <span className={`font-semibold tabular-nums ${deadlineColour}`}>
-            {deadline.state === "expired" ? "Expired" : `⏱ ${deadline.label}`}
-          </span>
-        )}
+      {/* Legend */}
+      <div className="mb-4 flex flex-wrap items-center gap-[22px] text-xs text-text-muted">
+        <span className="flex items-center gap-1.5"><span className="h-[3px] w-[14px] rounded-full bg-ink" /> Bid</span>
+        {reserve != null && <span className="flex items-center gap-1.5"><span className="h-[3px] w-[14px] rounded-full bg-danger" /> Reserve</span>}
+        {valuation != null && <span className="flex items-center gap-1.5"><span className="h-[3px] w-[14px] rounded-full bg-accent" /> Your valuation</span>}
       </div>
 
-      {/* Gate: must be logged in to see bids */}
-      {!isAuthenticated && (
-        <div className="rounded-xl bg-slate-800/50 px-5 py-8 text-center ring-1 ring-white/[0.08]">
-          <p className="text-sm text-slate-400">
-            <button onClick={() => navigate("/login")} className="text-emerald-400 hover:underline">
-              Sign in
-            </button>{" "}
-            to view the bid ladder.
-          </p>
-        </div>
-      )}
+      <div className="space-y-3.5">
+        {sorted.map((bid, i) => {
+          const isLeading = bid.amount === highestBid && bid.status === "ACTIVE";
+          const belowReserve = reserve != null && bid.amount < reserve;
+          const barPct = Math.min(100, (bid.amount / scaleMax) * 100);
+          const barColour = isLeading ? "bg-ink" : belowReserve ? "bg-border" : "bg-text-muted/40";
+          const statusText = bid.status !== "ACTIVE" ? bid.status
+            : isLeading ? "Leading"
+            : belowReserve ? "Below reserve"
+            : "Outbid";
+          const statusColour = bid.status !== "ACTIVE" ? "text-text-muted"
+            : isLeading ? "text-success-text"
+            : "text-danger-text";
 
-      {isAuthenticated && isLoading && (
-        <div className="flex items-center justify-center py-10">
-          <Spinner />
-        </div>
-      )}
+          return (
+            <div key={bid.id} className="flex flex-wrap items-center gap-3.5">
+              <span className="w-[26px] shrink-0 text-[13px] font-bold text-text-muted">#{i + 1}</span>
 
-      {isAuthenticated && !isLoading && (!bids || bids.length === 0) && (
-        <EmptyState
-          title="No bids yet"
-          body={
-            sale.status === "OPEN"
-              ? `Be the first — minimum bid ${formatCurrency(sale.minimum_next_bid ?? sale.min_increment)}`
-              : undefined
-          }
-        />
-      )}
+              <div className="basis-[190px] shrink-0 min-w-0">
+                <p className="truncate text-[15px] font-semibold text-text">
+                  <ClubLink id={bid.buyer_club?.id} name={bid.buyer_club?.name} />
+                </p>
+                <p className="truncate text-xs text-text-muted">
+                  {formatDateTime(bid.created_at)}
+                  {bid.wage_offer_weekly != null && ` · wage offer ${formatCurrency(bid.wage_offer_weekly)}`}
+                </p>
+              </div>
 
-      {isAuthenticated && bids && bids.length > 0 && (
-        <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.08]">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/[0.08]">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">#</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Club</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400">Amount</th>
-                {isSeller && (
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Wage offer</th>
+              {/* The bar */}
+              <div className="relative h-[26px] flex-1 basis-[260px] min-w-[120px] overflow-hidden rounded bg-surface-inset">
+                <div className={`h-full ${barColour} transition-all`} style={{ width: `${barPct}%` }} />
+                {reservePct != null && reservePct <= 100 && (
+                  <div className="absolute inset-y-0 w-0.5 bg-danger/55" style={{ left: `${reservePct}%` }} />
                 )}
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Placed</th>
-                {isSeller && sale.status === "OPEN" && (
-                  <th className="px-4 py-3" />
+                {valuationPct != null && valuationPct <= 100 && (
+                  <div className="absolute inset-y-0 w-0.5 bg-accent/55" style={{ left: `${valuationPct}%` }} />
                 )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04]">
-              {bids.map((bid, i) => {
-                const isLeading = bid.amount === sale.best_bid || (i === 0 && isSeller);
-                return (
-                  <tr
-                    key={bid.id}
-                    className={`${isLeading ? "bg-emerald-500/5" : "bg-slate-900"} transition-colors`}
-                  >
-                    <td className="px-4 py-3 text-slate-500">{i + 1}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-200">
-                          <ClubLink id={bid.buyer_club?.id} name={bid.buyer_club?.name} />
-                        </span>
-                        {isLeading && !isSeller && (
-                          <Badge variant="success">Leading</Badge>
-                        )}
-                        {!isLeading && !isSeller && (
-                          <Badge variant="danger">Outbid</Badge>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">
-                      {formatCurrency(bid.amount)}
-                    </td>
-                    {isSeller && (
-                      <td className="px-4 py-3 text-slate-400">
-                        {bid.wage_offer_weekly != null
-                          ? `£${Math.round(bid.wage_offer_weekly).toLocaleString("en-GB")}/wk`
-                          : "—"}
-                      </td>
-                    )}
-                    <td className="px-4 py-3">
-                      <Badge variant={bidStatusVariant(bid.status)}>{bid.status}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-500">
-                      {formatDateTime(bid.created_at)}
-                    </td>
-                    {isSeller && sale.status === "OPEN" && (
-                      <td className="px-4 py-3">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          loading={
-                            acceptMutation.isPending &&
-                            acceptMutation.variables === bid.id
-                          }
-                          onClick={() => acceptMutation.mutate(bid.id)}
-                        >
-                          Accept
-                        </Button>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </div>
 
-      {/* Accept error */}
-      {acceptMutation.isError && (
-        <p className="mt-3 text-sm text-red-400">
-          {getApiError(acceptMutation.error, "Failed to accept bid.")}
-        </p>
-      )}
+              <div className="basis-[120px] shrink-0 text-right">
+                <p className="text-[17px] font-bold text-text tabular-nums">{formatCurrency(bid.amount)}</p>
+                <p className={`text-xs font-semibold ${statusColour}`}>{statusText}</p>
+              </div>
+
+              {isSeller && sale.status === "OPEN" && bid.status === "ACTIVE" && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={acceptMutation.isPending && acceptMutation.variables === bid.id}
+                  onClick={() => acceptMutation.mutate(bid.id)}
+                >
+                  Accept
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

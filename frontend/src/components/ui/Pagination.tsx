@@ -14,14 +14,14 @@ export default function Pagination({ page, total, pageSize, onChange }: Paginati
 
   return (
     <div className="flex items-center justify-between pt-4 text-sm">
-      <span className="text-slate-400">
+      <span className="text-text-muted">
         {start}–{end} of {total}
       </span>
       <div className="flex items-center gap-1">
         <button
           onClick={() => onChange(page - 1)}
           disabled={page <= 1}
-          className="rounded-lg px-3 py-1.5 text-slate-400 hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="rounded-lg px-3 py-1.5 text-text-muted hover:bg-surface-inset hover:text-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           ←
         </button>
@@ -34,15 +34,15 @@ export default function Pagination({ page, total, pageSize, onChange }: Paginati
           }, [])
           .map((p, i) =>
             p === "…" ? (
-              <span key={`ellipsis-${i}`} className="px-2 text-slate-500">…</span>
+              <span key={`ellipsis-${i}`} className="px-2 text-text-muted">…</span>
             ) : (
               <button
                 key={p}
                 onClick={() => onChange(p as number)}
                 className={`min-w-[2rem] rounded-lg px-2 py-1.5 transition-colors ${
                   p === page
-                    ? "bg-emerald-500/15 text-emerald-400 font-semibold"
-                    : "text-slate-400 hover:bg-white/5 hover:text-white"
+                    ? "bg-accent-bg text-accent font-semibold"
+                    : "text-text-muted hover:bg-surface-inset hover:text-text"
                 }`}
               >
                 {p}
@@ -52,7 +52,7 @@ export default function Pagination({ page, total, pageSize, onChange }: Paginati
         <button
           onClick={() => onChange(page + 1)}
           disabled={page >= totalPages}
-          className="rounded-lg px-3 py-1.5 text-slate-400 hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="rounded-lg px-3 py-1.5 text-text-muted hover:bg-surface-inset hover:text-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           →
         </button>

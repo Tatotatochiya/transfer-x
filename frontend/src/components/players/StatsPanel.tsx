@@ -28,12 +28,12 @@ interface Props {
 type StatBoxAccent = "emerald" | "blue" | "amber" | "slate" | "red" | "violet";
 
 const accentCls: Record<StatBoxAccent, { bg: string; value: string }> = {
-  emerald: { bg: "bg-emerald-500/10 ring-emerald-500/20", value: "text-emerald-400" },
-  blue:    { bg: "bg-blue-500/10 ring-blue-500/20",       value: "text-blue-400" },
-  amber:   { bg: "bg-amber-500/10 ring-amber-500/20",     value: "text-amber-400" },
-  slate:   { bg: "bg-slate-800/70 ring-white/[0.06]",     value: "text-white" },
-  red:     { bg: "bg-red-500/10 ring-red-500/20",         value: "text-red-400" },
-  violet:  { bg: "bg-violet-500/10 ring-violet-500/20",   value: "text-violet-400" },
+  emerald: { bg: "bg-success/10 ring-success/20",             value: "text-success-text" },
+  blue:    { bg: "bg-accent/10 ring-accent/20",                value: "text-accent" },
+  amber:   { bg: "bg-warning-fill/10 ring-warning-fill/20",    value: "text-warning-text" },
+  slate:   { bg: "bg-surface-inset ring-border",               value: "text-text" },
+  red:     { bg: "bg-danger/10 ring-danger/20",                value: "text-danger-text" },
+  violet:  { bg: "bg-role-agent-text/10 ring-role-agent-text/20", value: "text-role-agent-text" },
 };
 
 function StatBox({
@@ -51,10 +51,10 @@ function StatBox({
   return (
     <div className={`flex flex-col items-center rounded-xl px-3 py-3 min-w-0 ring-1 ${cls.bg}`}>
       <span className={`text-2xl font-bold tabular-nums leading-none ${cls.value}`}>
-        {value != null && value !== "" ? value : <span className="text-slate-600">—</span>}
+        {value != null && value !== "" ? value : <span className="text-text-muted">—</span>}
       </span>
-      {sub && <span className="mt-0.5 text-[10px] text-slate-500">{sub}</span>}
-      <span className="mt-1 text-[11px] text-slate-500 text-center leading-tight">{label}</span>
+      {sub && <span className="mt-0.5 text-[10px] text-text-muted">{sub}</span>}
+      <span className="mt-1 text-[11px] text-text-muted text-center leading-tight">{label}</span>
     </div>
   );
 }
@@ -70,9 +70,9 @@ function StatRow({
 }) {
   if (value == null) return null;
   return (
-    <div className="flex items-center justify-between py-1.5 border-b border-white/[0.04] last:border-0">
-      <span className="text-sm text-slate-400">{label}</span>
-      <span className={`text-sm font-semibold tabular-nums ${highlight ?? "text-white"}`}>{value}</span>
+    <div className="flex items-center justify-between py-1.5 border-b border-rule-faint last:border-0">
+      <span className="text-sm text-text-muted">{label}</span>
+      <span className={`text-sm font-semibold tabular-nums ${highlight ?? "text-text"}`}>{value}</span>
     </div>
   );
 }
@@ -80,12 +80,12 @@ function StatRow({
 type SectionTheme = "default" | "emerald" | "blue" | "red" | "amber" | "violet";
 
 const sectionThemeCls: Record<SectionTheme, { wrapper: string; bar: string; title: string }> = {
-  default: { wrapper: "bg-slate-800/40 ring-white/[0.06]",      bar: "bg-slate-600",   title: "text-slate-500" },
-  emerald: { wrapper: "bg-emerald-500/[0.07] ring-emerald-500/20", bar: "bg-emerald-500", title: "text-emerald-500" },
-  blue:    { wrapper: "bg-blue-500/[0.07] ring-blue-500/20",       bar: "bg-blue-500",    title: "text-blue-500" },
-  red:     { wrapper: "bg-red-500/[0.07] ring-red-500/20",         bar: "bg-red-500",     title: "text-red-500" },
-  amber:   { wrapper: "bg-amber-500/[0.07] ring-amber-500/20",     bar: "bg-amber-500",   title: "text-amber-500" },
-  violet:  { wrapper: "bg-violet-500/[0.07] ring-violet-500/20",   bar: "bg-violet-500",  title: "text-violet-500" },
+  default: { wrapper: "bg-surface-inset ring-border",              bar: "bg-text-muted",       title: "text-text-muted" },
+  emerald: { wrapper: "bg-success/[0.07] ring-success/20",         bar: "bg-success",          title: "text-success-text" },
+  blue:    { wrapper: "bg-accent/[0.07] ring-accent/20",           bar: "bg-accent",           title: "text-accent" },
+  red:     { wrapper: "bg-danger/[0.07] ring-danger/20",           bar: "bg-danger",           title: "text-danger-text" },
+  amber:   { wrapper: "bg-warning-fill/[0.07] ring-warning-fill/20", bar: "bg-warning-fill",   title: "text-warning-text" },
+  violet:  { wrapper: "bg-role-agent-text/[0.07] ring-role-agent-text/20", bar: "bg-role-agent-text", title: "text-role-agent-text" },
 };
 
 function Section({
@@ -136,23 +136,23 @@ function CoreGrid({ s }: { s: PlayerStats }) {
 
       {/* Starter / sub usage bar */}
       {s.appearances > 0 && (s.lineups != null || s.substitutes_in != null) && (
-        <div className="rounded-xl bg-slate-800/50 px-4 py-2.5 ring-1 ring-white/[0.05]">
-          <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5">
+        <div className="rounded-xl bg-surface-inset px-4 py-2.5 ring-1 ring-border">
+          <div className="flex items-center justify-between text-[11px] text-text-muted mb-1.5">
             <span>Usage</span>
             <span className="tabular-nums">
               {s.lineups ?? 0} starts · {s.substitutes_in ?? 0} sub appearances · {s.substitutes_bench ?? 0} on bench
             </span>
           </div>
           {starterPct != null && (
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-700">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
               <div
-                className="h-full rounded-full bg-emerald-500 transition-all"
+                className="h-full rounded-full bg-success transition-all"
                 style={{ width: `${starterPct}%` }}
               />
             </div>
           )}
           {starterPct != null && (
-            <div className="mt-1 flex justify-between text-[10px] text-slate-600">
+            <div className="mt-1 flex justify-between text-[10px] text-text-muted">
               <span>Starter {starterPct}%</span>
               <span>Sub {100 - starterPct}%</span>
             </div>
@@ -166,8 +166,8 @@ function CoreGrid({ s }: { s: PlayerStats }) {
 function GKStats({ s }: { s: PlayerStats }) {
   return (
     <Section title="Goalkeeping" theme="amber">
-      <StatRow label="Saves"          value={s.saves}          highlight="text-amber-400" />
-      <StatRow label="Goals Conceded" value={s.goals_conceded} highlight="text-red-400" />
+      <StatRow label="Saves"          value={s.saves}          highlight="text-warning-text" />
+      <StatRow label="Goals Conceded" value={s.goals_conceded} highlight="text-danger-text" />
       <StatRow label="Minutes"        value={s.minutes != null ? `${s.minutes.toLocaleString()} min` : null} />
     </Section>
   );
@@ -178,16 +178,16 @@ function DEFStats({ s }: { s: PlayerStats }) {
   return (
     <div className="space-y-3">
       <Section title="Defending" theme="blue">
-        <StatRow label="Tackles"         value={s.tackles_total}  highlight="text-blue-400" />
-        <StatRow label="Interceptions"   value={s.interceptions}  highlight="text-blue-400" />
-        <StatRow label="Blocks"          value={s.blocks}         highlight="text-blue-400" />
-        <StatRow label="Duel Win %"      value={duelWin}          highlight="text-blue-300" />
-        <StatRow label="Dribbled Past"   value={s.dribbles_past}  highlight="text-red-400" />
+        <StatRow label="Tackles"         value={s.tackles_total}  highlight="text-accent" />
+        <StatRow label="Interceptions"   value={s.interceptions}  highlight="text-accent" />
+        <StatRow label="Blocks"          value={s.blocks}         highlight="text-accent" />
+        <StatRow label="Duel Win %"      value={duelWin}          highlight="text-accent-soft" />
+        <StatRow label="Dribbled Past"   value={s.dribbles_past}  highlight="text-danger-text" />
       </Section>
       <Section title="Discipline" theme="violet">
-        <StatRow label="Yellow Cards"     value={s.yellow_cards}    highlight="text-amber-400" />
-        <StatRow label="2nd Yellow"       value={s.cards_yellowred} highlight="text-amber-500" />
-        <StatRow label="Red Cards"        value={s.red_cards}       highlight="text-red-400" />
+        <StatRow label="Yellow Cards"     value={s.yellow_cards}    highlight="text-warning-text" />
+        <StatRow label="2nd Yellow"       value={s.cards_yellowred} highlight="text-warning-text" />
+        <StatRow label="Red Cards"        value={s.red_cards}       highlight="text-danger-text" />
         <StatRow label="Fouls Committed"  value={s.fouls_committed} />
       </Section>
     </div>
@@ -199,14 +199,14 @@ function MIDStats({ s }: { s: PlayerStats }) {
   return (
     <div className="space-y-3">
       <Section title="Passing & Creativity" theme="emerald">
-        <StatRow label="Key Passes"    value={s.key_passes}     highlight="text-emerald-400" />
-        <StatRow label="Pass Accuracy" value={s.pass_accuracy != null ? `${s.pass_accuracy}%` : null} highlight="text-emerald-400" />
+        <StatRow label="Key Passes"    value={s.key_passes}     highlight="text-success-text" />
+        <StatRow label="Pass Accuracy" value={s.pass_accuracy != null ? `${s.pass_accuracy}%` : null} highlight="text-success-text" />
         <StatRow label="Dribbles"      value={dribblePct ? `${s.dribbles_success}/${s.dribbles_attempts} (${dribblePct})` : s.dribbles_success} />
       </Section>
       <Section title="Defending & Discipline" theme="blue">
-        <StatRow label="Tackles"          value={s.tackles_total}   highlight="text-blue-400" />
-        <StatRow label="Interceptions"    value={s.interceptions}   highlight="text-blue-400" />
-        <StatRow label="Yellow Cards"     value={s.yellow_cards}    highlight="text-amber-400" />
+        <StatRow label="Tackles"          value={s.tackles_total}   highlight="text-accent" />
+        <StatRow label="Interceptions"    value={s.interceptions}   highlight="text-accent" />
+        <StatRow label="Yellow Cards"     value={s.yellow_cards}    highlight="text-warning-text" />
         <StatRow label="Fouls Committed"  value={s.fouls_committed} />
       </Section>
     </div>
@@ -220,15 +220,15 @@ function FWDStats({ s }: { s: PlayerStats }) {
     <div className="space-y-3">
       <Section title="Attack" theme="red">
         <StatRow label="Shots"            value={s.shots_total} />
-        <StatRow label="Shots on Target"  value={shotAcc ? `${s.shots_on_target}/${s.shots_total} (${shotAcc})` : s.shots_on_target} highlight="text-red-400" />
+        <StatRow label="Shots on Target"  value={shotAcc ? `${s.shots_on_target}/${s.shots_total} (${shotAcc})` : s.shots_on_target} highlight="text-danger-text" />
         <StatRow label="Dribbles"         value={dribblePct ? `${s.dribbles_success}/${s.dribbles_attempts} (${dribblePct})` : s.dribbles_success} />
         <StatRow label="Fouls Drawn"      value={s.fouls_drawn} />
       </Section>
       {((s.penalty_scored ?? 0) > 0 || (s.penalty_missed ?? 0) > 0 || (s.penalty_won ?? 0) > 0) && (
         <Section title="Penalties" theme="violet">
-          <StatRow label="Won"    value={s.penalty_won}    highlight="text-emerald-400" />
-          <StatRow label="Scored" value={s.penalty_scored} highlight="text-emerald-400" />
-          <StatRow label="Missed" value={s.penalty_missed} highlight="text-red-400" />
+          <StatRow label="Won"    value={s.penalty_won}    highlight="text-success-text" />
+          <StatRow label="Scored" value={s.penalty_scored} highlight="text-success-text" />
+          <StatRow label="Missed" value={s.penalty_missed} highlight="text-danger-text" />
         </Section>
       )}
     </div>
@@ -241,19 +241,19 @@ function FormBlock({ form }: { form: PlayerForm }) {
   const score = Number(form.form_score);
   const trend = form.trend != null ? Number(form.trend) : null;
   const barColour =
-    score >= 75 ? "bg-emerald-400"
-    : score >= 55 ? "bg-green-400"
-    : score >= 35 ? "bg-amber-400"
-    : "bg-red-400";
+    score >= 75 ? "bg-success"
+    : score >= 55 ? "bg-success-text-alt"
+    : score >= 35 ? "bg-warning-fill"
+    : "bg-danger";
 
   return (
-    <div className="flex items-center justify-between rounded-xl bg-slate-800/70 px-5 py-4 ring-1 ring-white/[0.06]">
+    <div className="flex items-center justify-between rounded-xl bg-surface-inset px-5 py-4 ring-1 ring-border">
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Form Score</p>
-        <p className="mt-0.5 text-xs text-slate-500">Last {form.games_considered} games</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-text-muted">Form Score</p>
+        <p className="mt-0.5 text-xs text-text-muted">Last {form.games_considered} games</p>
       </div>
       <div className="flex items-center gap-3">
-        <div className="hidden sm:block w-28 overflow-hidden rounded-full bg-slate-700 h-2">
+        <div className="hidden sm:block w-28 overflow-hidden rounded-full bg-border h-2">
           <div
             className={`h-full rounded-full transition-all ${barColour}`}
             style={{ width: `${Math.min(100, score)}%` }}
@@ -283,7 +283,7 @@ export default function StatsPanel({ stats, form, position }: Props) {
 
   if (!primary && !form) {
     return (
-      <div className="rounded-xl bg-slate-800/40 px-5 py-4 text-sm text-slate-500 ring-1 ring-white/[0.06]">
+      <div className="rounded-xl bg-surface-inset px-5 py-4 text-sm text-text-muted ring-1 ring-border">
         No performance data available yet.
       </div>
     );
@@ -304,8 +304,8 @@ export default function StatsPanel({ stats, form, position }: Props) {
                 onClick={() => setSelectedIdx(i)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium ring-1 transition-colors ${
                   i === selectedIdx
-                    ? "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30"
-                    : "bg-slate-800 text-slate-400 ring-white/[0.06] hover:text-white"
+                    ? "bg-accent/15 text-accent ring-accent/30"
+                    : "bg-surface-inset text-text-muted ring-border hover:text-text"
                 }`}
               >
                 {label}
@@ -317,13 +317,13 @@ export default function StatsPanel({ stats, form, position }: Props) {
 
       {/* Season / team header when single record */}
       {primary && sorted.length === 1 && (
-        <div className="flex items-center justify-between text-xs text-slate-500">
+        <div className="flex items-center justify-between text-xs text-text-muted">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-slate-400">
+            <span className="font-medium text-text-muted">
               {primary.league_id ? (LEAGUE_NAMES[primary.league_id] ?? primary.team_name ?? "—") : (primary.team_name ?? "—")}
             </span>
             {primary.position_played && (
-              <span className="rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+              <span className="rounded-full bg-surface-inset px-2 py-0.5 text-[10px] font-bold text-text-secondary">
                 {primary.position_played}
               </span>
             )}
@@ -337,7 +337,7 @@ export default function StatsPanel({ stats, form, position }: Props) {
 
       {/* Minutes */}
       {primary?.minutes != null && (
-        <p className="text-right text-xs text-slate-600">
+        <p className="text-right text-xs text-text-muted">
           {primary.minutes.toLocaleString()} minutes played
         </p>
       )}

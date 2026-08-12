@@ -27,15 +27,15 @@ function TabNav({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
     { id: "analytics", label: "Analytics" },
   ];
   return (
-    <div className="mb-6 flex gap-1 rounded-xl bg-slate-800/50 p-1 ring-1 ring-white/[0.06] w-fit">
+    <div className="mb-6 flex gap-1 rounded-xl bg-surface-inset p-1 ring-1 ring-border w-fit">
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
           className={`rounded-lg px-5 py-2 text-sm font-medium transition-colors ${
             active === t.id
-              ? "bg-slate-700 text-white shadow-sm"
-              : "text-slate-400 hover:text-white"
+              ? "bg-surface text-text shadow-sm"
+              : "text-text-muted hover:text-text"
           }`}
         >
           {t.label}
@@ -49,17 +49,17 @@ function TabNav({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
 
 function TransferRow({ t }: { t: TransferActivity }) {
   return (
-    <tr className="border-b border-slate-800/60 transition-colors hover:bg-slate-800/30">
+    <tr className="border-b border-rule-faint transition-colors hover:bg-surface-inset">
       <td className="px-4 py-3">
         {t.player ? (
           <Link
             to={`/players/market/${t.player.id}`}
-            className="font-medium text-white hover:text-emerald-400 transition-colors"
+            className="font-medium text-text hover:text-accent transition-colors"
           >
             {t.player.name}
           </Link>
         ) : (
-          <span className="text-slate-500">Unknown</span>
+          <span className="text-text-muted">Unknown</span>
         )}
         {t.player?.position && (
           <Badge
@@ -72,24 +72,24 @@ function TransferRow({ t }: { t: TransferActivity }) {
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2 text-sm flex-wrap">
-          <span className="text-slate-400">
+          <span className="text-text-muted">
             {t.seller_club ? (
               <ClubLink id={t.seller_club.id} name={t.seller_club.name} />
             ) : (
-              <span className="italic text-slate-500">Free Agent</span>
+              <span className="italic text-text-muted">Free Agent</span>
             )}
           </span>
-          <span className="text-slate-600">→</span>
-          <span className="text-slate-200">
+          <span className="text-text-muted">→</span>
+          <span className="text-text-secondary">
             {t.buyer_club ? (
               <ClubLink id={t.buyer_club.id} name={t.buyer_club.name} />
             ) : (
-              <span className="text-slate-500">—</span>
+              <span className="text-text-muted">—</span>
             )}
           </span>
         </div>
       </td>
-      <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">
+      <td className="px-4 py-3 text-right font-semibold text-text tabular-nums">
         {formatCurrency(t.agreed_fee)}
       </td>
       <td className="px-4 py-3">
@@ -97,7 +97,7 @@ function TransferRow({ t }: { t: TransferActivity }) {
           {t.is_auction_deal ? "Auction" : "Offer"}
         </Badge>
       </td>
-      <td className="px-4 py-3 text-sm text-slate-400">
+      <td className="px-4 py-3 text-sm text-text-muted">
         {t.completed_at ? formatDate(t.completed_at) : "—"}
       </td>
     </tr>
@@ -138,7 +138,7 @@ function FeedTab() {
         <select
           value={position}
           onChange={(e) => { setPosition(e.target.value); handleFilterChange(); }}
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
         >
           <option value="">All positions</option>
           {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -146,7 +146,7 @@ function FeedTab() {
         <select
           value={dealType}
           onChange={(e) => { setDealType(e.target.value); handleFilterChange(); }}
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
         >
           <option value="">All types</option>
           <option value="offer">Direct offer</option>
@@ -155,7 +155,7 @@ function FeedTab() {
         {(position || dealType) && (
           <button
             onClick={() => { setPosition(""); setDealType(""); setPage(1); }}
-            className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-400 hover:text-white ring-1 ring-white/10 transition-colors"
+            className="rounded-lg bg-surface-inset px-3 py-2 text-sm text-text-muted hover:text-text ring-1 ring-input-border transition-colors"
           >
             Clear filters
           </button>
@@ -165,7 +165,7 @@ function FeedTab() {
       {isLoading && <div className="flex justify-center py-16"><Spinner size="lg" /></div>}
 
       {isError && (
-        <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+        <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
           Failed to load transfer activity.
         </div>
       )}
@@ -176,10 +176,10 @@ function FeedTab() {
 
       {data && data.items.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.06]">
+          <div className="overflow-x-auto rounded-xl ring-1 ring-border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-rule text-xs font-semibold uppercase tracking-wider text-text-muted">
                   <th className="px-4 py-3 text-left">Player</th>
                   <th className="px-4 py-3 text-left">Movement</th>
                   <th className="px-4 py-3 text-right">Fee</th>
@@ -205,17 +205,17 @@ function FeedTab() {
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl bg-slate-800/50 px-5 py-4 ring-1 ring-white/[0.06]">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="mt-1.5 text-2xl font-bold text-white tabular-nums">{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
+    <div className="rounded-xl bg-surface px-5 py-4 ring-1 ring-border">
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">{label}</p>
+      <p className="mt-1.5 text-2xl font-bold text-text tabular-nums">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-text-muted">{sub}</p>}
     </div>
   );
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+    <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">
       {children}
     </h2>
   );
@@ -223,31 +223,31 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 
 function TopTransferRow({ t, rank }: { t: TransferActivity; rank: number }) {
   return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0">
-      <span className="w-5 text-center text-sm font-bold text-slate-600 tabular-nums shrink-0">{rank}</span>
+    <div className="flex items-center gap-3 py-2.5 border-b border-rule-faint last:border-0">
+      <span className="w-5 text-center text-sm font-bold text-text-muted tabular-nums shrink-0">{rank}</span>
       <div className="flex-1 min-w-0">
         {t.player ? (
           <Link
             to={`/players/market/${t.player.id}`}
-            className="text-sm font-medium text-white hover:text-emerald-400 transition-colors"
+            className="text-sm font-medium text-text hover:text-accent transition-colors"
           >
             {t.player.name}
           </Link>
         ) : (
-          <span className="text-sm text-slate-500">Unknown</span>
+          <span className="text-sm text-text-muted">Unknown</span>
         )}
         {t.player?.position && (
           <Badge variant={positionVariant(t.player.position as PlayerPosition)} className="ml-1.5 text-[10px]">
             {t.player.position}
           </Badge>
         )}
-        <div className="mt-0.5 text-xs text-slate-500 flex items-center gap-1.5">
+        <div className="mt-0.5 text-xs text-text-muted flex items-center gap-1.5">
           <span>{t.seller_club?.name ?? "Free Agent"}</span>
           <span>→</span>
           <span>{t.buyer_club?.name ?? "—"}</span>
         </div>
       </div>
-      <span className="text-sm font-semibold text-white tabular-nums shrink-0">
+      <span className="text-sm font-semibold text-text tabular-nums shrink-0">
         {formatCurrency(t.agreed_fee)}
       </span>
     </div>
@@ -257,20 +257,20 @@ function TopTransferRow({ t, rank }: { t: TransferActivity; rank: number }) {
 function PositionBar({ position, count, total, spend }: { position: string; count: number; total: number; spend: number }) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   const COLORS: Record<string, string> = {
-    GK: "bg-amber-500",
-    DEF: "bg-sky-500",
-    MID: "bg-emerald-500",
-    FWD: "bg-rose-500",
+    GK: "bg-pos-gk-text",
+    DEF: "bg-pos-def-text",
+    MID: "bg-pos-mid-text",
+    FWD: "bg-pos-fwd-text",
   };
   return (
     <div className="py-2">
       <div className="mb-1.5 flex items-center justify-between text-xs">
-        <span className="font-medium text-slate-300">{position}</span>
-        <span className="tabular-nums text-slate-400">{count} · {formatCurrency(spend)}</span>
+        <span className="font-medium text-text-secondary">{position}</span>
+        <span className="tabular-nums text-text-muted">{count} · {formatCurrency(spend)}</span>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-slate-700">
+      <div className="h-1.5 w-full rounded-full bg-border">
         <div
-          className={`h-1.5 rounded-full ${COLORS[position] ?? "bg-slate-500"} transition-all`}
+          className={`h-1.5 rounded-full ${COLORS[position] ?? "bg-text-muted"} transition-all`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -285,9 +285,9 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 const STAGE_COLOR: Record<string, string> = {
-  AGREEMENT: "text-amber-400 bg-amber-500/10 ring-amber-500/20",
-  PAPERWORK: "text-sky-400 bg-sky-500/10 ring-sky-500/20",
-  CONFIRMED: "text-emerald-400 bg-emerald-500/10 ring-emerald-500/20",
+  AGREEMENT: "text-warning-text bg-warning-fill/10 ring-warning-fill/20",
+  PAPERWORK: "text-accent bg-accent/10 ring-accent/20",
+  CONFIRMED: "text-success-text bg-success/10 ring-success/20",
 };
 
 function AnalyticsTab() {
@@ -299,7 +299,7 @@ function AnalyticsTab() {
 
   if (isLoading) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>;
   if (isError || !data) return (
-    <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+    <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
       Failed to load analytics.
     </div>
   );
@@ -330,46 +330,46 @@ function AnalyticsTab() {
         <SectionHeading>Club Activity</SectionHeading>
         <div className="grid gap-4 sm:grid-cols-3">
           {/* Most active buyer */}
-          <div className="rounded-xl bg-slate-800/50 px-5 py-4 ring-1 ring-white/[0.06]">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Most Active Buyer</p>
+          <div className="rounded-xl bg-surface px-5 py-4 ring-1 ring-border">
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Most Active Buyer</p>
             {c.most_active_buyer ? (
               <>
-                <p className="text-base font-bold text-white">{c.most_active_buyer.club.name}</p>
-                <p className="mt-0.5 text-sm text-slate-400">{c.most_active_buyer.count} purchase{c.most_active_buyer.count !== 1 ? "s" : ""}</p>
-                <p className="mt-0.5 text-xs text-slate-500">{formatCurrency(c.most_active_buyer.total_spend)} spent</p>
+                <p className="text-base font-bold text-text">{c.most_active_buyer.club.name}</p>
+                <p className="mt-0.5 text-sm text-text-muted">{c.most_active_buyer.count} purchase{c.most_active_buyer.count !== 1 ? "s" : ""}</p>
+                <p className="mt-0.5 text-xs text-text-muted">{formatCurrency(c.most_active_buyer.total_spend)} spent</p>
               </>
-            ) : <p className="text-sm text-slate-500">No data</p>}
+            ) : <p className="text-sm text-text-muted">No data</p>}
           </div>
 
           {/* Most active seller */}
-          <div className="rounded-xl bg-slate-800/50 px-5 py-4 ring-1 ring-white/[0.06]">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Most Active Seller</p>
+          <div className="rounded-xl bg-surface px-5 py-4 ring-1 ring-border">
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Most Active Seller</p>
             {c.most_active_seller ? (
               <>
-                <p className="text-base font-bold text-white">{c.most_active_seller.club.name}</p>
-                <p className="mt-0.5 text-sm text-slate-400">{c.most_active_seller.count} sale{c.most_active_seller.count !== 1 ? "s" : ""}</p>
-                <p className="mt-0.5 text-xs text-slate-500">{formatCurrency(c.most_active_seller.total_spend)} earned</p>
+                <p className="text-base font-bold text-text">{c.most_active_seller.club.name}</p>
+                <p className="mt-0.5 text-sm text-text-muted">{c.most_active_seller.count} sale{c.most_active_seller.count !== 1 ? "s" : ""}</p>
+                <p className="mt-0.5 text-xs text-text-muted">{formatCurrency(c.most_active_seller.total_spend)} earned</p>
               </>
-            ) : <p className="text-sm text-slate-500">No data</p>}
+            ) : <p className="text-sm text-text-muted">No data</p>}
           </div>
 
           {/* Deal types */}
-          <div className="rounded-xl bg-slate-800/50 px-5 py-4 ring-1 ring-white/[0.06]">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Deal Types</p>
+          <div className="rounded-xl bg-surface px-5 py-4 ring-1 ring-border">
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Deal Types</p>
             <div className="space-y-2">
               {[
-                { label: "Direct Offer", count: c.offer_count, color: "bg-sky-500" },
-                { label: "Auction",      count: c.auction_count, color: "bg-amber-500" },
+                { label: "Direct Offer", count: c.offer_count, color: "bg-accent" },
+                { label: "Auction",      count: c.auction_count, color: "bg-warning-fill" },
               ].map(({ label, count, color }) => {
                 const total = c.offer_count + c.auction_count;
                 const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                 return (
                   <div key={label}>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-slate-300">{label}</span>
-                      <span className="text-slate-400 tabular-nums">{count} ({pct}%)</span>
+                      <span className="text-text-secondary">{label}</span>
+                      <span className="text-text-muted tabular-nums">{count} ({pct}%)</span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-slate-700">
+                    <div className="h-1.5 w-full rounded-full bg-border">
                       <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
@@ -384,24 +384,24 @@ function AnalyticsTab() {
       <section>
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Top 5 transfers */}
-          <div className="rounded-xl bg-slate-800/50 px-5 py-4 ring-1 ring-white/[0.06]">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+          <div className="rounded-xl bg-surface px-5 py-4 ring-1 ring-border">
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
               Biggest Transfers
             </p>
             {c.top_transfers.length === 0 ? (
-              <p className="text-sm text-slate-500">No completed transfers yet.</p>
+              <p className="text-sm text-text-muted">No completed transfers yet.</p>
             ) : (
               c.top_transfers.map((t, i) => <TopTransferRow key={t.id} t={t} rank={i + 1} />)
             )}
           </div>
 
           {/* By position */}
-          <div className="rounded-xl bg-slate-800/50 px-5 py-4 ring-1 ring-white/[0.06]">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+          <div className="rounded-xl bg-surface px-5 py-4 ring-1 ring-border">
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
               Activity by Position
             </p>
             {c.by_position.length === 0 ? (
-              <p className="text-sm text-slate-500">No data.</p>
+              <p className="text-sm text-text-muted">No data.</p>
             ) : (
               c.by_position.map((p) => (
                 <PositionBar
@@ -421,20 +421,20 @@ function AnalyticsTab() {
       <section>
         <SectionHeading>Ongoing Transfers</SectionHeading>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl bg-slate-800/50 px-5 py-4 ring-1 ring-white/[0.06] sm:col-span-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Active Deals</p>
-            <p className="mt-1.5 text-2xl font-bold text-white tabular-nums">{o.total_count}</p>
-            <p className="mt-0.5 text-xs text-slate-500">{formatCurrency(o.total_committed_fees)} in committed fees</p>
+          <div className="rounded-xl bg-surface px-5 py-4 ring-1 ring-border sm:col-span-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Active Deals</p>
+            <p className="mt-1.5 text-2xl font-bold text-text tabular-nums">{o.total_count}</p>
+            <p className="mt-0.5 text-xs text-text-muted">{formatCurrency(o.total_committed_fees)} in committed fees</p>
           </div>
           {Object.entries(o.by_stage).length === 0 ? (
-            <div className="rounded-xl bg-slate-800/40 px-5 py-4 ring-1 ring-white/[0.04] sm:col-span-3 flex items-center">
-              <p className="text-sm text-slate-500">No active deals in progress.</p>
+            <div className="rounded-xl bg-surface-inset px-5 py-4 ring-1 ring-border sm:col-span-3 flex items-center">
+              <p className="text-sm text-text-muted">No active deals in progress.</p>
             </div>
           ) : (
             Object.entries(o.by_stage).map(([stage, count]) => (
               <div
                 key={stage}
-                className={`rounded-xl px-5 py-4 ring-1 ${STAGE_COLOR[stage] ?? "text-slate-400 bg-slate-800/50 ring-white/[0.06]"}`}
+                className={`rounded-xl px-5 py-4 ring-1 ${STAGE_COLOR[stage] ?? "text-text-muted bg-surface ring-border"}`}
               >
                 <p className="text-xs font-semibold uppercase tracking-wider opacity-70">
                   {STAGE_LABELS[stage] ?? stage}
@@ -450,9 +450,9 @@ function AnalyticsTab() {
       {/* ── Transfer Rumors ── */}
       <section>
         <SectionHeading>Transfer Rumors</SectionHeading>
-        <div className="rounded-xl bg-slate-800/30 px-6 py-8 ring-1 ring-white/[0.06] ring-dashed text-center">
-          <p className="text-sm font-medium text-slate-400">Rumors coming soon</p>
-          <p className="mt-1 text-xs text-slate-600">
+        <div className="rounded-xl bg-surface-inset px-6 py-8 ring-1 ring-border ring-dashed text-center">
+          <p className="text-sm font-medium text-text-muted">Rumors coming soon</p>
+          <p className="mt-1 text-xs text-text-muted">
             Unconfirmed transfer links and market speculation will appear here.
           </p>
         </div>

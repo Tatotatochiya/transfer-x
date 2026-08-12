@@ -87,6 +87,92 @@ async def test_cannot_sign_contracted_player_as_free_agent(
     assert "free agent" in resp.json()["detail"].lower()
 
 
+# ── ADR 0003: vendor-imported players are EXTERNAL, never free agents ────────
+
+
+async def _make_vendor_player(client: AsyncClient, db, headers: dict, name: str = "Vendor Star") -> dict:
+    """A player as the stats vendor imports them: a real-world club in
+    `team_name`, no TransferX contract. Before ADR 0003 this stored as
+    FREE_AGENT, which made them signable for nothing."""
+    import uuid as uuid_mod
+
+    from sqlalchemy import select
+
+    from app.players import service as players_service
+    from app.players.models import Player
+
+    resp = await client.post("/players", json={"name": name, "position": "FWD"}, headers=headers)
+    assert resp.status_code == 201, resp.text
+    created = resp.json()
+
+    player = (
+        await db.execute(select(Player).where(Player.id == uuid_mod.UUID(created["id"])))
+    ).scalar_one()
+    player.team_name = "Barcelona"
+    await players_service.normalize_player_status(db, player)
+    await db.commit()
+    return created
+
+
+async def test_vendor_player_is_external_not_free_agent(client: AsyncClient, buyer: dict, db):
+    buy_headers = _auth_headers(buyer)
+    player = await _make_vendor_player(client, db, buy_headers)
+
+    detail = (await client.get(f"/players/market/{player['id']}", headers=buy_headers)).json()
+    assert detail["status"] == "EXTERNAL"
+
+
+async def test_cannot_sign_vendor_player_as_free_agent(client: AsyncClient, buyer: dict, db):
+    """The exploit this ADR closes: every vendor-imported professional was
+    stored FREE_AGENT, and sign_free_agent gated on nothing else."""
+    buy_headers = _auth_headers(buyer)
+    player = await _make_vendor_player(client, db, buy_headers)
+
+    resp = await client.post(f"/players/{player['id']}/sign-free-agent", headers=buy_headers)
+    assert resp.status_code == 400
+    assert "outside transferx" in resp.json()["detail"].lower()
+
+
+async def test_vendor_player_returns_to_external_when_contract_lapses(
+    client: AsyncClient, buyer: dict, seller: dict, db,
+):
+    """A vendor player signed to a TransferX club and then released must fall
+    back to EXTERNAL — not FREE_AGENT, which would make them free to sign."""
+    import uuid as uuid_mod
+
+    from sqlalchemy import select
+
+    from app.players.models import Player
+
+    sel_headers, buy_headers = _auth_headers(seller), _auth_headers(buyer)
+    player = await _make_vendor_player(client, db, sel_headers, name="Vendor Loanee")
+    seller_club_id = (await client.get("/clubs/me", headers=sel_headers)).json()["id"]
+
+    contract = await client.post(
+        f"/players/{player['id']}/contracts",
+        json={"club_id": seller_club_id, "wage_weekly": "25000"},
+        headers=sel_headers,
+    )
+    assert contract.status_code == 201, contract.text
+
+    fresh = (
+        await db.execute(select(Player).where(Player.id == uuid_mod.UUID(player["id"])))
+    ).scalar_one()
+    await db.refresh(fresh)
+    assert fresh.status.value == "CONTRACTED"
+
+    released = await client.delete(
+        f"/players/{player['id']}/contracts/{contract.json()['id']}", headers=sel_headers
+    )
+    assert released.status_code in (200, 204), released.text
+
+    await db.refresh(fresh)
+    assert fresh.status.value == "EXTERNAL"
+
+    resp = await client.post(f"/players/{player['id']}/sign-free-agent", headers=buy_headers)
+    assert resp.status_code == 400
+
+
 # ── Pre-contract (Bosman) ─────────────────────────────────────────────────────
 
 

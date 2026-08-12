@@ -81,10 +81,10 @@ function shortenUA(ua: string | null): string {
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] px-5 py-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="mt-1.5 text-2xl font-bold text-white">{typeof value === "number" ? value.toLocaleString() : value}</p>
-      {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
+    <div className="rounded-xl bg-surface ring-1 ring-border px-5 py-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">{label}</p>
+      <p className="mt-1.5 text-2xl font-bold text-text">{typeof value === "number" ? value.toLocaleString() : value}</p>
+      {sub && <p className="mt-0.5 text-xs text-text-muted">{sub}</p>}
     </div>
   );
 }
@@ -94,21 +94,21 @@ function TrendChart({ data }: { data: DailyCount[] }) {
   if (!data.length) return null;
   const max = Math.max(...data.map((d) => d.page_views), 1);
   return (
-    <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] px-5 py-4">
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+    <div className="rounded-xl bg-surface ring-1 ring-border px-5 py-4">
+      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
         Daily Page Views (last {data.length} days)
       </p>
       <div className="flex items-end gap-0.5 h-16">
         {data.map((d) => (
           <div
             key={d.date}
-            className="flex-1 min-w-0 rounded-sm bg-emerald-500/60 hover:bg-emerald-400 transition-colors"
+            className="flex-1 min-w-0 rounded-sm bg-success/60 hover:bg-success transition-colors"
             style={{ height: `${(d.page_views / max) * 100}%` }}
             title={`${d.date}: ${d.page_views} views, ${d.unique_sessions} sessions`}
           />
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-slate-600">
+      <div className="mt-1 flex justify-between text-[10px] text-text-muted">
         <span>{data[0]?.date}</span>
         <span>{data[data.length - 1]?.date}</span>
       </div>
@@ -156,8 +156,8 @@ export default function AdminAnalyticsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Analytics</h1>
-        <p className="mt-1 text-sm text-slate-400">Usage stats — page views, sessions, time on page, user activity</p>
+        <h1 className="text-2xl font-bold text-text">Analytics</h1>
+        <p className="mt-1 text-sm text-text-muted">Usage stats — page views, sessions, time on page, user activity</p>
       </div>
 
       {/* Overview cards */}
@@ -180,15 +180,15 @@ export default function AdminAnalyticsPage() {
       )}
 
       {/* Tabs */}
-      <div className="mb-4 flex gap-2 border-b border-white/[0.06] pb-0">
+      <div className="mb-4 flex gap-2 border-b border-rule pb-0">
         {(["pages", "users", "sessions"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
               activeTab === tab
-                ? "border-emerald-500 text-emerald-400"
-                : "border-transparent text-slate-500 hover:text-slate-300"
+                ? "border-success text-success-text"
+                : "border-transparent text-text-muted hover:text-text-secondary"
             }`}
           >
             {tab}
@@ -200,15 +200,15 @@ export default function AdminAnalyticsPage() {
       {activeTab === "pages" && (
         <div>
           <div className="mb-3 flex items-center gap-3">
-            <p className="text-sm text-slate-400">Last</p>
+            <p className="text-sm text-text-muted">Last</p>
             {[7, 14, 30].map((d) => (
               <button
                 key={d}
                 onClick={() => setPagesDays(d)}
                 className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                   pagesDays === d
-                    ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30"
-                    : "text-slate-500 hover:text-slate-300"
+                    ? "bg-success/20 text-success-text ring-1 ring-success/30"
+                    : "text-text-muted hover:text-text-secondary"
                 }`}
               >
                 {d}d
@@ -219,28 +219,28 @@ export default function AdminAnalyticsPage() {
           {pagesLoading ? (
             <div className="flex justify-center py-10"><Spinner /></div>
           ) : (
-            <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
+            <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/[0.06]">
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Path</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">Views</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">Sessions</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">Avg Time</th>
+                  <tr className="border-b border-rule">
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">Path</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Views</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Sessions</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Avg Time</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(topPages ?? []).map((p, i) => (
-                    <tr key={p.path} className={i % 2 === 0 ? "" : "bg-white/[0.02]"}>
-                      <td className="px-4 py-2.5 font-mono text-xs text-slate-300">{p.path}</td>
-                      <td className="px-4 py-2.5 text-right text-slate-200">{p.views.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 text-right text-slate-400">{p.unique_sessions.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 text-right text-slate-400">{fmtDuration(p.avg_duration_ms)}</td>
+                    <tr key={p.path} className={i % 2 === 0 ? "" : "bg-surface-inset"}>
+                      <td className="px-4 py-2.5 font-mono text-xs text-text-secondary">{p.path}</td>
+                      <td className="px-4 py-2.5 text-right text-text">{p.views.toLocaleString()}</td>
+                      <td className="px-4 py-2.5 text-right text-text-muted">{p.unique_sessions.toLocaleString()}</td>
+                      <td className="px-4 py-2.5 text-right text-text-muted">{fmtDuration(p.avg_duration_ms)}</td>
                     </tr>
                   ))}
                   {(topPages ?? []).length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-600">No data yet</td>
+                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-text-muted">No data yet</td>
                     </tr>
                   )}
                 </tbody>
@@ -254,15 +254,15 @@ export default function AdminAnalyticsPage() {
       {activeTab === "users" && (
         <div>
           <div className="mb-3 flex items-center gap-3">
-            <p className="text-sm text-slate-400">Last</p>
+            <p className="text-sm text-text-muted">Last</p>
             {[7, 14, 30].map((d) => (
               <button
                 key={d}
                 onClick={() => setUsersDays(d)}
                 className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                   usersDays === d
-                    ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30"
-                    : "text-slate-500 hover:text-slate-300"
+                    ? "bg-success/20 text-success-text ring-1 ring-success/30"
+                    : "text-text-muted hover:text-text-secondary"
                 }`}
               >
                 {d}d
@@ -273,28 +273,28 @@ export default function AdminAnalyticsPage() {
           {usersLoading ? (
             <div className="flex justify-center py-10"><Spinner /></div>
           ) : (
-            <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
+            <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/[0.06]">
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">User</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">Page Views</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">Sessions</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">Last Seen</th>
+                  <tr className="border-b border-rule">
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">User</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Page Views</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Sessions</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Last Seen</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(userActivity ?? []).map((u, i) => (
-                    <tr key={u.user_id} className={i % 2 === 0 ? "" : "bg-white/[0.02]"}>
-                      <td className="px-4 py-2.5 text-slate-300">{u.email ?? <span className="text-slate-600">anonymous</span>}</td>
-                      <td className="px-4 py-2.5 text-right text-slate-200">{u.page_views.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 text-right text-slate-400">{u.sessions}</td>
-                      <td className="px-4 py-2.5 text-right text-slate-400">{fmtDate(u.last_seen)}</td>
+                    <tr key={u.user_id} className={i % 2 === 0 ? "" : "bg-surface-inset"}>
+                      <td className="px-4 py-2.5 text-text-secondary">{u.email ?? <span className="text-text-muted">anonymous</span>}</td>
+                      <td className="px-4 py-2.5 text-right text-text">{u.page_views.toLocaleString()}</td>
+                      <td className="px-4 py-2.5 text-right text-text-muted">{u.sessions}</td>
+                      <td className="px-4 py-2.5 text-right text-text-muted">{fmtDate(u.last_seen)}</td>
                     </tr>
                   ))}
                   {(userActivity ?? []).length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-600">No logged-in user activity yet</td>
+                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-text-muted">No logged-in user activity yet</td>
                     </tr>
                   )}
                 </tbody>
@@ -310,36 +310,36 @@ export default function AdminAnalyticsPage() {
           {sessionsLoading ? (
             <div className="flex justify-center py-10"><Spinner /></div>
           ) : (
-            <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
+            <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/[0.06]">
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Session</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">User</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">IP</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Browser</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">Pages</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">Last Seen</th>
+                  <tr className="border-b border-rule">
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">Session</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">User</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">IP</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">Browser</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Pages</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Last Seen</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(sessions ?? []).map((s, i) => (
-                    <tr key={s.session_id} className={i % 2 === 0 ? "" : "bg-white/[0.02]"}>
-                      <td className="px-4 py-2.5 font-mono text-[11px] text-slate-600">
+                    <tr key={s.session_id} className={i % 2 === 0 ? "" : "bg-surface-inset"}>
+                      <td className="px-4 py-2.5 font-mono text-[11px] text-text-muted">
                         {s.session_id.slice(0, 8)}…
                       </td>
-                      <td className="px-4 py-2.5 text-slate-300">
-                        {s.email ?? <span className="text-slate-600">anon</span>}
+                      <td className="px-4 py-2.5 text-text-secondary">
+                        {s.email ?? <span className="text-text-muted">anon</span>}
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-slate-400">{s.ip_address ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-xs text-slate-400">{shortenUA(s.user_agent)}</td>
-                      <td className="px-4 py-2.5 text-right text-slate-200">{s.pages_visited}</td>
-                      <td className="px-4 py-2.5 text-right text-slate-400">{fmtDate(s.last_seen)}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-text-muted">{s.ip_address ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-xs text-text-muted">{shortenUA(s.user_agent)}</td>
+                      <td className="px-4 py-2.5 text-right text-text">{s.pages_visited}</td>
+                      <td className="px-4 py-2.5 text-right text-text-muted">{fmtDate(s.last_seen)}</td>
                     </tr>
                   ))}
                   {(sessions ?? []).length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-600">No sessions recorded yet</td>
+                      <td colSpan={6} className="px-4 py-8 text-center text-sm text-text-muted">No sessions recorded yet</td>
                     </tr>
                   )}
                 </tbody>

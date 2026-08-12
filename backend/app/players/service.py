@@ -17,10 +17,23 @@ from app.players.models import (
 # ── Status normalization ──────────────────────────────────────────────────────
 
 
+def has_external_club(player: Player) -> bool:
+    """True when a player is attached to a real-world club that isn't on
+    TransferX. `team_name` and `world_team_id` are both vendor-sourced; either
+    one is proof the player is somebody's, so absence of a TransferX contract
+    must not be read as "available"."""
+    return bool(player.team_name or player.world_team_id)
+
+
 async def normalize_player_status(db: AsyncSession, player: Player) -> None:
     """
     Derive player.status and player.current_club_id from active contracts.
     Must be called explicitly after any contract change — no signals.
+
+    ADR 0003: no active TransferX contract does NOT imply free agency. A
+    vendor-imported player with a real-world club is EXTERNAL — visible and
+    scoutable, but not signable. Only a player with no club anywhere is a true
+    FREE_AGENT.
     """
     # Coerce player.id to uuid.UUID — SQLite/aiosqlite may return strings or other types
     player_id = uuid.UUID(str(player.id))
@@ -39,7 +52,9 @@ async def normalize_player_status(db: AsyncSession, player: Player) -> None:
         player.status = PlayerStatus.CONTRACTED
         player.current_club_id = active.club_id
     else:
-        player.status = PlayerStatus.FREE_AGENT
+        player.status = (
+            PlayerStatus.EXTERNAL if has_external_club(player) else PlayerStatus.FREE_AGENT
+        )
         player.current_club_id = None
         player.open_to_offers = False  # flag only meaningful for contracted players
 
@@ -189,6 +204,15 @@ async def create_free_agent_deal(db: AsyncSession, player: Player, *, buyer_club
     from app.deals.models import Deal, DealStage, DealStatus, DealType
     from app.offers.service import maybe_invite_agent_for_deal, reject_offers_for_player
 
+    # Defence in depth (ADR 0003): the status check alone is what let ~7.8k
+    # vendor-imported professionals be signed for nothing, because they were
+    # all stored as FREE_AGENT. Re-derive from the club signals too, so a stale
+    # or hand-edited status row can't reopen that hole.
+    if player.status == PlayerStatus.EXTERNAL or has_external_club(player):
+        raise ValueError(
+            "This player is under contract to a club outside TransferX and cannot "
+            "be signed as a free agent"
+        )
     if player.status != PlayerStatus.FREE_AGENT:
         raise ValueError("This player is not a free agent")
 
@@ -455,6 +479,37 @@ async def list_market_players(
         order_col = form_sub.c.s_form
     elif sort_by == "age":
         order_col = Player.age
+    elif sort_by == "value":
+        # B3: server-side "best value first" — PlayerMarketPage.tsx's own
+        # comment documents this as page-local-only today because this param
+        # didn't exist ("the /players/market endpoint only accepts
+        # name|age|goals|assists|appearances|avg_rating|form_score"). Ranks by
+        # fair-value model score minus nominal market_value (desc = most
+        # undervalued first); nullslast below handles players with no
+        # valuation row or no market_value the same way every other sort here
+        # already handles missing data.
+        from app.valuation.models import PlayerValuation
+
+        val_rn = (
+            select(
+                PlayerValuation.player_id.label("pid"),
+                PlayerValuation.fair_value.label("s_fair_value"),
+                func.row_number()
+                .over(
+                    partition_by=PlayerValuation.player_id,
+                    order_by=PlayerValuation.computed_at.desc(),
+                )
+                .label("rn"),
+            )
+            .subquery("val_rn")
+        )
+        val_latest = (
+            select(val_rn.c.pid, val_rn.c.s_fair_value)
+            .where(val_rn.c.rn == 1)
+            .subquery("val_latest")
+        )
+        q = q.outerjoin(val_latest, Player.id == val_latest.c.pid)
+        order_col = val_latest.c.s_fair_value - Player.market_value
     else:
         order_col = Player.name
 
@@ -570,3 +625,16 @@ async def deactivate_contract(db: AsyncSession, contract: Contract, player: Play
     contract.is_active = False
     await db.flush()
     await normalize_player_status(db, player)
+
+
+def compute_wage_fit(
+    player_wage_weekly: Decimal | None, club_wage_remaining_weekly: Decimal | None
+) -> "WageFit | None":
+    """B4: null when there's nothing to compare — no prospective wage figure
+    for the player, or the viewer isn't a club with wage room of its own."""
+    from app.players.schemas import WageFit
+
+    if player_wage_weekly is None or club_wage_remaining_weekly is None:
+        return None
+    room_after = club_wage_remaining_weekly - player_wage_weekly
+    return WageFit(fits=room_after >= 0, wage_room_after=room_after)

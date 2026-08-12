@@ -108,6 +108,27 @@ async def _get_offer_or_404(db: AsyncSession, offer_id: uuid.UUID):
     return offer
 
 
+def _offer_response(offer, viewer_club_id: uuid.UUID, deal=None) -> OfferResponse:
+    """B1: whose_move is relative to the viewer's own club, so it can't be a
+    plain model_validate() attribute — set it explicitly here instead. `deal` is
+    likewise passed in rather than looked up, so list endpoints can batch."""
+    resp = OfferResponse.model_validate(offer)
+    resp.whose_move = service.compute_offer_whose_move(offer, viewer_club_id)
+    if deal is not None:
+        from app.players.schemas import ActiveDealStub
+
+        resp.deal = ActiveDealStub.model_validate(deal)
+    return resp
+
+
+async def _offer_page(db: AsyncSession, offers, viewer_club_id: uuid.UUID) -> list[OfferResponse]:
+    """One deal query for the whole page, never one per row."""
+    from app.deals import service as deals_service
+
+    deals = await deals_service.get_deals_by_offer_ids(db, [o.id for o in offers])
+    return [_offer_response(o, viewer_club_id, deals.get(o.id)) for o in offers]
+
+
 # ── Competition (player-scoped order book) ────────────────────────────────────
 
 
@@ -145,7 +166,7 @@ async def list_received_offers(
         date_from=date_from, date_to=date_to, page=page, page_size=page_size,
     )
     return Paginated(
-        items=[OfferResponse.model_validate(o) for o in offers],
+        items=await _offer_page(db, offers, club.id),
         total=total, page=page, page_size=page_size,
     )
 
@@ -166,7 +187,7 @@ async def list_sent_offers(
         date_from=date_from, date_to=date_to, page=page, page_size=page_size,
     )
     return Paginated(
-        items=[OfferResponse.model_validate(o) for o in offers],
+        items=await _offer_page(db, offers, club.id),
         total=total, page=page, page_size=page_size,
     )
 
@@ -183,7 +204,7 @@ async def get_active_offer_for_player(
     """Return the caller's active (SENT/COUNTERED) offer for a player, or null."""
     club = await _get_club_or_403(db, current_user)
     offer = await service.get_active_offer_for_buyer(db, player_id, club.id)
-    return OfferResponse.model_validate(offer) if offer else None
+    return _offer_response(offer, club.id) if offer else None
 
 
 # ── Detail ────────────────────────────────────────────────────────────────────
@@ -199,7 +220,10 @@ async def get_offer(
     offer = await _get_offer_or_404(db, offer_id)
     if club.id not in (offer.from_club_id, offer.to_club_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this offer")
-    return OfferResponse.model_validate(offer)
+    from app.deals import service as deals_service
+
+    deals = await deals_service.get_deals_by_offer_ids(db, [offer.id])
+    return _offer_response(offer, club.id, deals.get(offer.id))
 
 
 # ── Create ────────────────────────────────────────────────────────────────────
@@ -296,7 +320,7 @@ async def create_offer(
 
     offer = await service.get_offer_by_id(db, offer.id)
     await _notify_offer_parties(db, offer.id)
-    return OfferResponse.model_validate(offer)
+    return _offer_response(offer, club.id)
 
 
 # ── Counter ───────────────────────────────────────────────────────────────────
@@ -339,7 +363,7 @@ async def counter_offer(
 
     offer = await service.get_offer_by_id(db, offer_id)
     await _notify_offer_parties(db, offer_id)
-    return OfferResponse.model_validate(offer)
+    return _offer_response(offer, club.id)
 
 
 @router.post("/offers/{offer_id}/improve", response_model=OfferResponse)
@@ -376,7 +400,7 @@ async def improve_offer(
 
     offer = await service.get_offer_by_id(db, offer_id)
     await _notify_offer_parties(db, offer_id)
-    return OfferResponse.model_validate(offer)
+    return _offer_response(offer, club.id)
 
 
 # ── Accept ────────────────────────────────────────────────────────────────────
@@ -459,7 +483,7 @@ async def reject_offer(
 
     offer = await service.get_offer_by_id(db, offer_id)
     await _notify_offer_parties(db, offer_id)
-    return OfferResponse.model_validate(offer)
+    return _offer_response(offer, club.id)
 
 
 # ── Withdraw ──────────────────────────────────────────────────────────────────
@@ -491,7 +515,7 @@ async def withdraw_offer(
 
     offer = await service.get_offer_by_id(db, offer_id)
     await _notify_offer_parties(db, offer_id)
-    return OfferResponse.model_validate(offer)
+    return _offer_response(offer, club.id)
 
 
 # ── Messages ──────────────────────────────────────────────────────────────────

@@ -24,7 +24,16 @@ class PlayerVisibility(str, enum.Enum):
 
 
 class PlayerStatus(str, enum.Enum):
+    """Three states, not two — see ADR 0003.
+
+    CONTRACTED is specifically "under contract to a club on TransferX".
+    EXTERNAL is the overwhelmingly common case for vendor-imported players:
+    contracted in the real world (Barcelona, Bayern...) but to a club that
+    isn't on the platform. They are NOT signable and must never be treated as
+    free agents. FREE_AGENT means genuinely unattached, with no club anywhere.
+    """
     CONTRACTED = "CONTRACTED"
+    EXTERNAL = "EXTERNAL"
     FREE_AGENT = "FREE_AGENT"
 
 

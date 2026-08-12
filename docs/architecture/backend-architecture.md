@@ -1,6 +1,6 @@
 ---
 title: "Backend Architecture"
-last_updated: 2026-08-08
+last_updated: 2026-08-11
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -35,6 +35,7 @@ Each module under `backend/app/` follows a `models.py` / `schemas.py` / `service
 | `sales` | Listings (auction / fixed price / open to offers), bids |
 | `offers` | Direct offer negotiation |
 | `deals` | Deal lifecycle and stage machine (includes `deals/room_*` — the deal room: versioned terms, comments, attachments) |
+| `dashboard` | Cross-module read aggregation for the club "waiting on you" view (B2) — calls into `offers`/`deals`/`sales`/`approvals`' own service-layer functions, owns no models of its own |
 | `agents` | Agent profiles, deal invitations, negotiation, negotiation messaging, commissions |
 | `mandates` | Agent–player representation mandates, client alerts |
 | `verification` | Verification request workflow (club/agent/player) |

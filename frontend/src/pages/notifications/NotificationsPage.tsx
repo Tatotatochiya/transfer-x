@@ -46,36 +46,38 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   APPROVAL_DECIDED:           "Approval decided",
 };
 
+// Folded onto the app's 7-hue semantic token vocabulary (danger/success/
+// warning/accent/muted/role-club/role-agent) — no per-type hues invented.
 const TYPE_COLOURS: Record<NotificationType, string> = {
-  OUTBID:               "text-red-400",
-  OFFER_RECEIVED:       "text-sky-400",
-  OFFER_ACCEPTED:       "text-emerald-400",
-  OFFER_REJECTED:       "text-red-400",
-  OFFER_COUNTERED:      "text-amber-400",
-  OFFER_WITHDRAWN:      "text-slate-400",
-  OFFER_EXPIRING:       "text-amber-400",
-  OFFER_MESSAGE:        "text-violet-400",
-  AUCTION_BID_RECEIVED: "text-sky-400",
-  AUCTION_ENDING:       "text-amber-400",
-  AUCTION_BID_ACCEPTED: "text-emerald-400",
-  DEAL_COMPLETED:           "text-emerald-400",
-  DEAL_COLLAPSED:           "text-red-400",
-  DEAL_SELL_ON:             "text-amber-400",
-  DEAL_AGENT_INVITED:       "text-purple-400",
-  DEAL_PERSONAL_TERMS_SENT: "text-amber-400",
-  PLAYER_AVAILABLE:         "text-slate-300",
-  VERIFICATION_APPROVED:    "text-sky-400",
-  VERIFICATION_REJECTED:    "text-red-400",
-  REPRESENTATION_STARTED:   "text-purple-400",
-  REPRESENTATION_REVOKED:   "text-red-400",
-  PERSONAL_TERMS_DECISION:  "text-amber-400",
-  INSTALMENT_DUE:           "text-amber-400",
-  DEAL_CLAUSE_TRIGGERED:    "text-amber-400",
-  NEGOTIATION_MESSAGE:      "text-violet-400",
-  CLIENT_ALERT:             "text-sky-400",
-  STAFF_INVITATION:         "text-indigo-400",
-  APPROVAL_REQUESTED:       "text-amber-400",
-  APPROVAL_DECIDED:         "text-emerald-400",
+  OUTBID:               "text-danger-text",
+  OFFER_RECEIVED:       "text-accent",
+  OFFER_ACCEPTED:       "text-success-text",
+  OFFER_REJECTED:       "text-danger-text",
+  OFFER_COUNTERED:      "text-warning-text",
+  OFFER_WITHDRAWN:      "text-text-muted",
+  OFFER_EXPIRING:       "text-warning-text",
+  OFFER_MESSAGE:        "text-role-agent-text",
+  AUCTION_BID_RECEIVED: "text-accent",
+  AUCTION_ENDING:       "text-warning-text",
+  AUCTION_BID_ACCEPTED: "text-success-text",
+  DEAL_COMPLETED:           "text-success-text",
+  DEAL_COLLAPSED:           "text-danger-text",
+  DEAL_SELL_ON:             "text-warning-text",
+  DEAL_AGENT_INVITED:       "text-role-agent-text",
+  DEAL_PERSONAL_TERMS_SENT: "text-warning-text",
+  PLAYER_AVAILABLE:         "text-text-secondary",
+  VERIFICATION_APPROVED:    "text-accent",
+  VERIFICATION_REJECTED:    "text-danger-text",
+  REPRESENTATION_STARTED:   "text-role-agent-text",
+  REPRESENTATION_REVOKED:   "text-danger-text",
+  PERSONAL_TERMS_DECISION:  "text-warning-text",
+  INSTALMENT_DUE:           "text-warning-text",
+  DEAL_CLAUSE_TRIGGERED:    "text-warning-text",
+  NEGOTIATION_MESSAGE:      "text-role-agent-text",
+  CLIENT_ALERT:             "text-accent",
+  STAFF_INVITATION:         "text-role-club-text",
+  APPROVAL_REQUESTED:       "text-warning-text",
+  APPROVAL_DECIDED:         "text-success-text",
 };
 
 // ── Row component ─────────────────────────────────────────────────────────────
@@ -129,19 +131,19 @@ function NotificationRow({
     }
   }
 
-  const colour = TYPE_COLOURS[notification.type] ?? "text-slate-300";
+  const colour = TYPE_COLOURS[notification.type] ?? "text-text-secondary";
 
   return (
     <div
       onClick={handleClick}
       className={`flex items-start gap-3 px-4 py-3 transition-colors ${
-        notification.link ? "cursor-pointer hover:bg-slate-800/60" : ""
-      } ${!notification.is_read ? "bg-slate-900" : "bg-slate-900/40"}`}
+        notification.link ? "cursor-pointer hover:bg-surface-inset" : ""
+      } ${!notification.is_read ? "bg-surface" : "bg-surface-quiet"}`}
     >
       {/* Unread dot */}
       <div className="mt-1.5 shrink-0">
         {!notification.is_read ? (
-          <div className="h-2 w-2 rounded-full bg-emerald-500" />
+          <div className="h-2 w-2 rounded-full bg-success" />
         ) : (
           <div className="h-2 w-2 rounded-full bg-transparent" />
         )}
@@ -152,11 +154,11 @@ function NotificationRow({
           <span className={`text-xs font-semibold ${colour}`}>
             {TYPE_LABELS[notification.type] ?? notification.type}
           </span>
-          <span className="text-[10px] text-slate-500">
+          <span className="text-[10px] text-text-muted">
             {formatDateTime(notification.created_at)}
           </span>
         </div>
-        <p className="mt-0.5 text-sm text-slate-300">{notification.message}</p>
+        <p className="mt-0.5 text-sm text-text-secondary">{notification.message}</p>
       </div>
     </div>
   );
@@ -216,7 +218,7 @@ export default function NotificationsPage() {
           <div className="flex items-center gap-2">
             <Link
               to="/account"
-              className="text-sm text-slate-400 hover:text-white transition-colors"
+              className="text-sm text-text-muted hover:text-text transition-colors"
             >
               Preferences
             </Link>
@@ -250,7 +252,7 @@ export default function NotificationsPage() {
 
       {data && data.items.length > 0 && (
         <>
-          <div className="rounded-xl ring-1 ring-white/[0.08] overflow-hidden divide-y divide-white/[0.04]">
+          <div className="rounded-xl ring-1 ring-border overflow-hidden divide-y divide-rule-faint">
             {data.items.map((n) => (
               <NotificationRow key={n.id} notification={n} dateRange={dateRange} page={page} />
             ))}

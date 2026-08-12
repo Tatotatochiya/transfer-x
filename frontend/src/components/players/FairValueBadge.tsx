@@ -21,11 +21,11 @@ const BAND_PHRASE: Record<ValuationBand, string> = {
 };
 
 const BAND_COLOUR: Record<ValuationBand, string> = {
-  WELL_BELOW: "text-emerald-500",
-  BELOW: "text-emerald-400",
-  IN_LINE: "text-slate-400",
-  ABOVE: "text-amber-400",
-  WELL_ABOVE: "text-rose-400",
+  WELL_BELOW: "text-success-text",
+  BELOW: "text-success-text-alt",
+  IN_LINE: "text-text-muted",
+  ABOVE: "text-warning-text",
+  WELL_ABOVE: "text-danger-text",
 };
 
 function compactMoney(value: number): string {
@@ -50,21 +50,21 @@ export default function FairValueBadge({ signal, referenceLabel, compact = false
 
   const low = signal.confidence === "LOW";
   const divergence = signal.divergence;
-  const bandColour = divergence ? BAND_COLOUR[divergence.band] : "text-slate-400";
+  const bandColour = divergence ? BAND_COLOUR[divergence.band] : "text-text-muted";
 
   if (compact) {
     return (
       <span
         className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ring-1 ${
           low
-            ? "bg-slate-800/60 text-slate-500 ring-white/[0.06]"
-            : "bg-slate-800 text-slate-300 ring-white/[0.1]"
+            ? "bg-surface-inset text-text-muted ring-border"
+            : "bg-surface-inset text-text-secondary ring-input-border"
         }`}
         title={`Model fair value ${compactMoney(signal.fair_value)} (${signal.confidence} confidence)`}
       >
         Model {compactMoney(signal.fair_value)}
         {divergence && (
-          <span className={low ? "text-slate-500" : bandColour}>
+          <span className={low ? "text-text-muted" : bandColour}>
             · {signedPct(divergence.pct)}
           </span>
         )}
@@ -80,20 +80,20 @@ export default function FairValueBadge({ signal, referenceLabel, compact = false
     >
       {divergence && (
         <>
-          <span className="text-slate-300">
+          <span className="text-text-secondary">
             {referenceLabel ?? "Asking"} {compactMoney(divergence.reference_price)}
           </span>
-          <span className="text-slate-700">·</span>
+          <span className="text-text-muted">·</span>
         </>
       )}
-      <span className="font-semibold text-slate-200">Model {compactMoney(signal.fair_value)}</span>
-      <span className="text-slate-500">
+      <span className="font-semibold text-text-secondary">Model {compactMoney(signal.fair_value)}</span>
+      <span className="text-text-muted">
         (range {compactMoney(signal.fair_value_low)}–{compactMoney(signal.fair_value_high)})
       </span>
       {divergence && (
         <>
-          <span className="text-slate-700">·</span>
-          <span className={`font-semibold ${low ? "text-slate-500" : bandColour}`}>
+          <span className="text-text-muted">·</span>
+          <span className={`font-semibold ${low ? "text-text-muted" : bandColour}`}>
             {signedPct(divergence.pct)} {BAND_PHRASE[divergence.band].toLowerCase()}
           </span>
         </>
@@ -101,14 +101,14 @@ export default function FairValueBadge({ signal, referenceLabel, compact = false
       <span
         className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ${
           low
-            ? "bg-slate-800/60 text-slate-500 ring-white/[0.06]"
-            : "bg-slate-800 text-slate-400 ring-white/[0.08]"
+            ? "bg-surface-inset text-text-muted ring-border"
+            : "bg-surface-inset text-text-muted ring-input-border"
         }`}
       >
         {low ? "Low confidence" : `${signal.confidence} confidence`}
       </span>
       {isStale(signal.as_of) && (
-        <span className="text-amber-400/80">as of {formatDate(signal.as_of)}</span>
+        <span className="text-warning-text-alt">as of {formatDate(signal.as_of)}</span>
       )}
       <ValuationBreakdownPopover signal={signal} />
     </div>

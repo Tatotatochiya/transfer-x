@@ -53,6 +53,17 @@ class WorldTeamMinimal(BaseModel):
     league_name: str | None = None
 
 
+class WageFit(BaseModel):
+    """B4: whether this player's wage fits the viewing club's remaining
+    weekly wage room, and what would be left if signed. Uses Player.wage_weekly
+    (a prospective figure — no contract exists yet) against ClubFinance's own
+    wage_remaining_weekly, so this comparison rule lives in one place instead
+    of being re-derived by hand on every page that needs a "fits wage room"
+    check (Sessions 9/10)."""
+    fits: bool
+    wage_room_after: Decimal
+
+
 class PlayerResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -90,6 +101,9 @@ class PlayerResponse(BaseModel):
     wage_currency: str | None = None
     wage_source: WageSource | None = None
     wage_verified: bool = False
+    # B4: populated only for authenticated club viewers with wage data to
+    # compare against — see WageFit.
+    wage_fit: WageFit | None = None
 
 
 class ActiveDealStub(BaseModel):

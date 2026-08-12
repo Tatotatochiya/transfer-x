@@ -48,7 +48,7 @@ function DealActions({
         <button
           disabled={isPending}
           onClick={(e) => { e.stopPropagation(); onAdvance(deal.id); }}
-          className="rounded bg-sky-500/10 px-2 py-1 text-xs text-sky-400 hover:bg-sky-500/20 transition-colors disabled:opacity-40"
+          className="rounded bg-accent/10 px-2 py-1 text-xs text-accent hover:bg-accent/20 transition-colors disabled:opacity-40"
         >
           Advance
         </button>
@@ -56,7 +56,7 @@ function DealActions({
       <button
         disabled={isPending}
         onClick={(e) => { e.stopPropagation(); onComplete(deal.id); }}
-        className="rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-40"
+        className="rounded bg-success/10 px-2 py-1 text-xs text-success-text hover:bg-success/20 transition-colors disabled:opacity-40"
         title="Force complete"
       >
         Complete
@@ -64,7 +64,7 @@ function DealActions({
       <button
         disabled={isPending}
         onClick={(e) => { e.stopPropagation(); onCollapse(deal.id); }}
-        className="rounded bg-red-500/10 px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40"
+        className="rounded bg-danger/10 px-2 py-1 text-xs text-danger-text hover:bg-danger/20 transition-colors disabled:opacity-40"
       >
         Collapse
       </button>
@@ -95,33 +95,33 @@ function PipelineCard({
     <Link
       to={`/deals/${deal.id}`}
       onClick={(e) => e.stopPropagation()}
-      className="block rounded-xl bg-slate-800 ring-1 ring-white/[0.06] p-4 hover:ring-white/[0.18] transition-all space-y-2"
+      className="block rounded-xl bg-surface ring-1 ring-border p-4 hover:ring-input-border transition-all space-y-2"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-white">
+          <p className="truncate text-sm font-semibold text-text">
             {deal.player?.name ?? "Unknown"}
             {deal.player?.position && (
-              <span className="ml-1.5 text-xs font-normal text-slate-500">{deal.player.position}</span>
+              <span className="ml-1.5 text-xs font-normal text-text-muted">{deal.player.position}</span>
             )}
           </p>
-          <p className="mt-0.5 text-xs text-slate-400">
+          <p className="mt-0.5 text-xs text-text-muted">
             {deal.buyer_club?.name ?? "?"} ← {deal.seller_club?.name ?? "?"}
           </p>
         </div>
-        <p className="shrink-0 text-sm font-semibold text-slate-200">{formatCurrency(deal.agreed_fee)}</p>
+        <p className="shrink-0 text-sm font-semibold text-text-secondary">{formatCurrency(deal.agreed_fee)}</p>
       </div>
 
       <div className="flex items-center gap-2">
         <Badge variant={STATUS_VARIANT[deal.status] ?? "neutral"}>{deal.status.replace("_", " ")}</Badge>
         {isStale && (
-          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400 ring-1 ring-amber-500/30">
+          <span className="rounded-full bg-warning-fill/15 px-2 py-0.5 text-[10px] font-semibold text-warning-text ring-1 ring-warning-fill/30">
             {ageDays}d stale
           </span>
         )}
       </div>
 
-      <p className="text-xs text-slate-500">{formatDate(deal.created_at)}</p>
+      <p className="text-xs text-text-muted">{formatDate(deal.created_at)}</p>
 
       <div onClick={(e) => e.preventDefault()}>
         <DealActions
@@ -139,9 +139,9 @@ function PipelineCard({
 // ── Pipeline view ─────────────────────────────────────────────────────────────
 
 const PIPELINE_STAGES = [
-  { key: "AGREEMENT", label: "Agreement",          color: "text-amber-400",   border: "border-amber-500/30"  },
-  { key: "PAPERWORK", label: "Paperwork",          color: "text-sky-400",     border: "border-sky-500/30"    },
-  { key: "CONFIRMED", label: "Ready to Execute",   color: "text-emerald-400", border: "border-emerald-500/30" },
+  { key: "AGREEMENT", label: "Agreement",          color: "text-warning-text", border: "border-warning-fill/30" },
+  { key: "PAPERWORK", label: "Paperwork",          color: "text-accent",       border: "border-accent/30"       },
+  { key: "CONFIRMED", label: "Ready to Execute",   color: "text-success-text", border: "border-success/30"      },
 ];
 
 function PipelineView({
@@ -170,16 +170,16 @@ function PipelineView({
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       {PIPELINE_STAGES.map(({ key, label, color, border }) => (
-        <div key={key} className={`rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden`}>
+        <div key={key} className={`rounded-xl bg-surface ring-1 ring-border overflow-hidden`}>
           <div className={`border-b ${border} px-4 py-3 flex items-center justify-between`}>
             <p className={`text-xs font-semibold uppercase tracking-wider ${color}`}>{label}</p>
-            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs font-bold text-white">
+            <span className="rounded-full bg-surface-inset px-2 py-0.5 text-xs font-bold text-text">
               {byStage[key].length}
             </span>
           </div>
           <div className="p-3 space-y-3 min-h-[200px]">
             {byStage[key].length === 0 ? (
-              <p className="py-8 text-center text-xs text-slate-600">No deals in this stage</p>
+              <p className="py-8 text-center text-xs text-text-muted">No deals in this stage</p>
             ) : (
               byStage[key].map((d) => (
                 <PipelineCard
@@ -246,20 +246,20 @@ export default function AdminDealsPage() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-white">Deals</h1>
+          <h1 className="text-2xl font-bold text-text">Deals</h1>
           {view === "table" && data && (
-            <p className="mt-1 text-sm text-slate-400">{data.total} total</p>
+            <p className="mt-1 text-sm text-text-muted">{data.total} total</p>
           )}
         </div>
         <div className="flex items-center gap-3">
           {/* View toggle */}
-          <div className="flex rounded-lg bg-slate-800 p-0.5 ring-1 ring-white/[0.06]">
+          <div className="flex rounded-lg bg-surface-inset p-0.5 ring-1 ring-border">
             {(["table", "pipeline"] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-                  view === v ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+                  view === v ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text-secondary"
                 }`}
               >
                 {v}
@@ -271,7 +271,7 @@ export default function AdminDealsPage() {
             <select
               value={status}
               onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-              className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+              className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
             >
               <option value="">All statuses</option>
               {DEAL_STATUSES.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
@@ -288,7 +288,7 @@ export default function AdminDealsPage() {
 
       {/* Error banners */}
       {(advanceMutation.isError || completeMutation.isError || collapseMutation.isError) && (
-        <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-2 text-xs text-red-400 ring-1 ring-red-500/20">
+        <div className="mb-4 rounded-lg bg-danger-bg px-4 py-2 text-xs text-danger-text ring-1 ring-danger-border">
           {getApiError(advanceMutation.error ?? completeMutation.error ?? collapseMutation.error, "Action failed.")}
         </div>
       )}
@@ -309,10 +309,10 @@ export default function AdminDealsPage() {
           {isLoading && <div className="flex justify-center py-12"><Spinner size="lg" /></div>}
           {data && (
             <>
-              <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.08]">
+              <div className="overflow-x-auto rounded-xl ring-1 ring-border">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/[0.08] text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <tr className="border-b border-rule bg-surface-header text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
                       <th className="px-4 py-3">Player</th>
                       <th className="px-4 py-3">Buyer</th>
                       <th className="px-4 py-3">Seller</th>
@@ -323,22 +323,22 @@ export default function AdminDealsPage() {
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/[0.04]">
+                  <tbody className="divide-y divide-rule-faint">
                     {data.items.map((d) => (
                       <tr
                         key={d.id}
                         onClick={() => navigate(`/deals/${d.id}`)}
-                        className="cursor-pointer bg-slate-900 hover:bg-slate-800/40 transition-colors"
+                        className="cursor-pointer bg-surface hover:bg-surface-inset transition-colors"
                       >
-                        <td className="px-4 py-3 font-medium text-white">
+                        <td className="px-4 py-3 font-medium text-text">
                           {d.player?.name ?? "—"}
                           {d.player?.position && (
-                            <span className="ml-1.5 text-xs text-slate-500">{d.player.position}</span>
+                            <span className="ml-1.5 text-xs text-text-muted">{d.player.position}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-xs text-slate-400">{d.buyer_club?.name ?? "—"}</td>
-                        <td className="px-4 py-3 text-xs text-slate-400">{d.seller_club?.name ?? "—"}</td>
-                        <td className="px-4 py-3 text-slate-300">{formatCurrency(d.agreed_fee)}</td>
+                        <td className="px-4 py-3 text-xs text-text-muted">{d.buyer_club?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-xs text-text-muted">{d.seller_club?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-text-secondary">{formatCurrency(d.agreed_fee)}</td>
                         <td className="px-4 py-3">
                           <Badge variant={STATUS_VARIANT[d.status] ?? "neutral"}>
                             {d.status.replace("_", " ")}
@@ -347,7 +347,7 @@ export default function AdminDealsPage() {
                         <td className="px-4 py-3">
                           <Badge variant={STAGE_VARIANT[d.stage] ?? "neutral"}>{d.stage}</Badge>
                         </td>
-                        <td className="px-4 py-3 text-xs text-slate-500">{formatDate(d.created_at)}</td>
+                        <td className="px-4 py-3 text-xs text-text-muted">{formatDate(d.created_at)}</td>
                         <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <DealActions
                             deal={d}

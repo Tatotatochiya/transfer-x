@@ -27,7 +27,7 @@ export default function AdminAIPage() {
 
       {/* Usage stats */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
           Usage (current session)
         </h2>
         {usageLoading ? (
@@ -42,21 +42,21 @@ export default function AdminAIPage() {
             </div>
 
             {Object.keys(usage.by_endpoint).length > 0 && (
-              <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
+              <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <tr className="border-b border-rule text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
                       <th className="px-4 py-2">Endpoint</th>
                       <th className="px-4 py-2 text-right">Requests</th>
                       <th className="px-4 py-2 text-right">Est. Cost</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/[0.04]">
+                  <tbody className="divide-y divide-rule-faint">
                     {Object.entries(usage.by_endpoint).map(([ep, stats]) => (
                       <tr key={ep}>
-                        <td className="px-4 py-2 font-mono text-xs text-slate-300">{ep}</td>
-                        <td className="px-4 py-2 text-right text-slate-400">{stats.requests}</td>
-                        <td className="px-4 py-2 text-right text-slate-400">${stats.cost_usd.toFixed(4)}</td>
+                        <td className="px-4 py-2 font-mono text-xs text-text-secondary">{ep}</td>
+                        <td className="px-4 py-2 text-right text-text-muted">{stats.requests}</td>
+                        <td className="px-4 py-2 text-right text-text-muted">${stats.cost_usd.toFixed(4)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -64,14 +64,14 @@ export default function AdminAIPage() {
               </div>
             )}
 
-            <p className="text-xs text-slate-600">{usage.note}</p>
+            <p className="text-xs text-text-muted">{usage.note}</p>
           </div>
         ) : null}
       </section>
 
       {/* Prompt versioning */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
           Prompt Templates
         </h2>
         {promptsLoading ? (
@@ -109,9 +109,9 @@ function StatCard({
   highlight?: boolean;
 }) {
   return (
-    <div className="rounded-xl bg-slate-900 px-4 py-3 ring-1 ring-white/[0.08]">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className={`mt-1 text-xl font-bold ${highlight ? "text-violet-400" : "text-white"}`}>
+    <div className="rounded-xl bg-surface px-4 py-3 ring-1 ring-border">
+      <p className="text-xs text-text-muted">{label}</p>
+      <p className={`mt-1 text-xl font-bold ${highlight ? "text-role-agent-text" : "text-text"}`}>
         {value}
       </p>
     </div>
@@ -153,10 +153,10 @@ function PromptRow({
   }
 
   return (
-    <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
+    <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-sm text-white">{prompt.key}</span>
+          <span className="font-mono text-sm text-text">{prompt.key}</span>
           {prompt.is_overridden && <Badge variant="warning">overridden</Badge>}
         </div>
         <div className="flex items-center gap-2">
@@ -164,7 +164,7 @@ function PromptRow({
             <button
               onClick={handleReset}
               disabled={saving}
-              className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+              className="text-xs text-text-muted hover:text-danger-text transition-colors"
             >
               Reset
             </button>
@@ -175,7 +175,7 @@ function PromptRow({
               setDraft(prompt.content);
               setEditing(false);
             }}
-            className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            className="text-xs text-text-muted hover:text-text-secondary transition-colors"
           >
             {expanded ? "Hide" : "Edit"}
           </button>
@@ -183,25 +183,25 @@ function PromptRow({
       </div>
 
       {expanded && (
-        <div className="border-t border-white/[0.06] px-4 py-3 space-y-3">
+        <div className="border-t border-rule px-4 py-3 space-y-3">
           <textarea
             value={editing ? draft : prompt.content}
             onChange={(e) => { setDraft(e.target.value); setEditing(true); }}
             rows={8}
-            className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs text-slate-300 ring-1 ring-white/10 focus:outline-none focus:ring-violet-500/50 resize-y"
+            className="w-full rounded-lg bg-surface-inset px-3 py-2 font-mono text-xs text-text-secondary ring-1 ring-input-border focus:outline-none focus:ring-role-agent-text/50 resize-y"
           />
           {editing && (
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-lg bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-violet-400 ring-1 ring-violet-500/30 hover:bg-violet-500/25 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-role-agent-text/15 px-3 py-1.5 text-xs font-semibold text-role-agent-text ring-1 ring-role-agent-text/30 hover:bg-role-agent-text/25 disabled:opacity-50 transition-colors"
               >
                 {saving ? "Saving…" : "Save Override"}
               </button>
               <button
                 onClick={() => { setDraft(prompt.content); setEditing(false); }}
-                className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                className="text-xs text-text-muted hover:text-text-secondary transition-colors"
               >
                 Cancel
               </button>

@@ -35,6 +35,7 @@ from app.audit import router as audit_router
 from app.verification import router as verification_router
 from app.valuation import router as valuation_router
 from app.approvals import router as approvals_router
+from app.dashboard import router as dashboard_router
 
 logger = logging.getLogger(__name__)
 
@@ -275,3 +276,4 @@ app.include_router(audit_router.router, prefix="")
 app.include_router(verification_router.router, prefix="")
 app.include_router(valuation_router.router, prefix="/valuation")
 app.include_router(approvals_router.router, prefix="")
+app.include_router(dashboard_router.router, prefix="")

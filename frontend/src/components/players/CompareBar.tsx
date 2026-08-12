@@ -12,11 +12,11 @@ function PlayerSlot({ id, onRemove }: { id: string; onRemove: () => void }) {
   });
 
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-slate-700/60 px-2.5 py-1.5 ring-1 ring-white/10">
+    <div className="flex items-center gap-2 rounded-lg bg-white/10 px-2.5 py-1.5 ring-1 ring-white/15">
       {player?.photo_url ? (
         <img src={player.photo_url} alt={player.name} className="h-6 w-6 shrink-0 rounded-full object-cover" />
       ) : (
-        <div className="h-6 w-6 shrink-0 rounded-full bg-slate-600 flex items-center justify-center text-[10px] font-bold text-slate-300">
+        <div className="h-6 w-6 shrink-0 rounded-full bg-white/15 flex items-center justify-center text-[10px] font-bold text-white/80">
           {player?.name[0]?.toUpperCase() ?? "?"}
         </div>
       )}
@@ -25,7 +25,7 @@ function PlayerSlot({ id, onRemove }: { id: string; onRemove: () => void }) {
       </span>
       <button
         onClick={onRemove}
-        className="ml-0.5 text-slate-500 hover:text-white transition-colors"
+        className="ml-0.5 text-white/50 hover:text-white transition-colors"
         title="Remove"
       >
         <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
@@ -44,15 +44,15 @@ export default function CompareBar() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center px-4 pb-4 pointer-events-none">
-      <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-slate-900/95 backdrop-blur px-5 py-3 shadow-2xl ring-1 ring-white/[0.12]">
-        <span className="text-xs font-semibold text-slate-400 shrink-0">Compare</span>
+      <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-ink px-9 py-3.5 shadow-2xl">
+        <span className="text-xs font-semibold text-white/60 shrink-0">Comparing</span>
 
         <div className="flex items-center gap-2">
           {compareIds.map((id) => (
             <PlayerSlot key={id} id={id} onRemove={() => toggle(id)} />
           ))}
           {compareIds.length === 1 && (
-            <div className="flex h-9 w-28 items-center justify-center rounded-lg border-2 border-dashed border-slate-700 text-xs text-slate-600">
+            <div className="flex h-9 w-28 items-center justify-center rounded-lg border-2 border-dashed border-white/20 text-xs text-white/40">
               + add player
             </div>
           )}
@@ -61,15 +61,15 @@ export default function CompareBar() {
         {compareIds.length === 2 && (
           <button
             onClick={() => navigate(`/compare?a=${compareIds[0]}&b=${compareIds[1]}`)}
-            className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-400 transition-colors shrink-0"
+            className="shrink-0 rounded-lg bg-white px-3.5 py-1.5 text-xs font-bold text-ink hover:bg-white/90 transition-colors"
           >
-            Compare →
+            Compare 2 players →
           </button>
         )}
 
         <button
           onClick={clear}
-          className="text-slate-600 hover:text-slate-300 transition-colors"
+          className="text-white/50 hover:text-white transition-colors"
           title="Clear"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

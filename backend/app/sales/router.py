@@ -58,7 +58,12 @@ def _enrich_sale_response(
     minimum_next_bid stays visible to all, since a prospective bidder needs it
     to place a valid bid at all.
     """
-    from app.sales.service import get_best_bid_amount, get_minimum_next_bid, is_reserve_met
+    from app.sales.service import (
+        compute_sale_whose_move,
+        get_best_bid_amount,
+        get_minimum_next_bid,
+        is_reserve_met,
+    )
 
     active_bids = [b for b in (sale.bids or []) if b.status == BidStatus.ACTIVE]
     best = get_best_bid_amount(sale.bids or [])
@@ -67,6 +72,7 @@ def _enrich_sale_response(
     is_seller_or_staff = is_staff or (
         viewer_club_id is not None and viewer_club_id == sale.seller_club_id
     )
+    bid_count = len(active_bids) if is_seller_or_staff else None
 
     return SaleResponse(
         id=sale.id,
@@ -83,10 +89,11 @@ def _enrich_sale_response(
         updated_at=sale.updated_at,
         player=sale.player,
         seller_club=sale.seller_club,
-        bid_count=len(active_bids) if is_seller_or_staff else None,
+        bid_count=bid_count,
         best_bid=best if is_seller_or_staff else None,
         minimum_next_bid=min_next,
         reserve_met=reserve_ok,
+        whose_move=compute_sale_whose_move(bid_count=bid_count, reserve_met=reserve_ok, deadline=sale.deadline),
     )
 
 
@@ -154,6 +161,17 @@ async def get_sale(
             resp.fair_value_signal = valuation_service.build_valuation_response(
                 valuation_row, reference_price=reference
             )
+
+    # A resolved listing should say what resolved it. Without this the seller sees
+    # a CLOSED listing with an empty order book and no way to tell whether an
+    # offer was accepted, it expired, or it was withdrawn.
+    if sale.status != SaleStatus.OPEN:
+        from app.deals import service as deals_service
+        from app.players.schemas import ActiveDealStub
+
+        deal = await deals_service.get_active_deal_for_player(db, sale.player_id)
+        if deal is not None:
+            resp.active_deal = ActiveDealStub.model_validate(deal)
     return resp
 
 

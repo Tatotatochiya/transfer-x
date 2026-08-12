@@ -1,6 +1,6 @@
 ---
 title: "API Reference"
-last_updated: 2026-07-10
+last_updated: 2026-08-11
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -45,6 +45,9 @@ Running locally, the interactive Swagger UI is available at `http://localhost:80
 | `/clubs/me/membership`, `/clubs/me/staff` | Club role/capability membership (TRA-151) + owner team management & invitations (TRA-86) |
 | `/auth/invitations/{token}` | Public staff-invitation preview + accept (single-use tokenised link) |
 | `/clubs/me/approvals`, `/clubs/me/approval-policy` | Spending-authority approvals: queue, decisions, threshold policy |
+| `/clubs/me/dashboard` | "Waiting on you" aggregate across offers/deals/sales/approvals (`dashboard` module, B2) |
+| `/clubs/me/commitments` | Row-level breakdown of committed/reserved budget (`clubs` module, B5) |
+| `/clubs/me/contract-cliff` | Windowed contract-expiry aggregation with value-at-risk (`clubs` module, B6) — separate from `/clubs/me/expiring-contracts`' flat list |
 
 > **TODO:** Complete this table against the current router mounts in `backend/app/main.py` — this is a starting point, not verified exhaustive as of this writing.
 

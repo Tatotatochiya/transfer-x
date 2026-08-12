@@ -107,16 +107,16 @@ export default function CreateOfferPage() {
           title="Make an Offer"
           subtitle="Submit a formal offer to begin negotiations"
         />
-        <div className="rounded-xl bg-amber-500/10 ring-1 ring-amber-500/25 px-6 py-5 space-y-3">
+        <div className="rounded-xl bg-warning-bg ring-1 ring-warning-fill/25 px-6 py-5 space-y-3">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 font-bold text-xs">!</div>
+            <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-warning-fill/20 text-warning-text font-bold text-xs">!</div>
             <div>
-              <p className="text-sm font-semibold text-amber-300">
+              <p className="text-sm font-semibold text-warning-text">
                 You already have an active offer for {player?.name ?? "this player"}
               </p>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-text-secondary">
                 You can only have one active offer per player at a time. To change your terms,
-                use the <span className="text-white font-medium">Counter offer</span> action on your existing offer.
+                use the <span className="text-text font-medium">Counter offer</span> action on your existing offer.
                 To start fresh, withdraw the current offer first.
               </p>
             </div>
@@ -124,13 +124,13 @@ export default function CreateOfferPage() {
           <div className="flex gap-3 pt-1">
             <Link
               to={`/offers/${activeOffer.id}`}
-              className="inline-flex items-center rounded-lg bg-amber-500/15 px-4 py-2 text-sm font-medium text-amber-300 ring-1 ring-amber-500/30 hover:bg-amber-500/25 transition-colors"
+              className="inline-flex items-center rounded-lg bg-warning-fill/15 px-4 py-2 text-sm font-medium text-warning-text ring-1 ring-warning-fill/30 hover:bg-warning-fill/25 transition-colors"
             >
               View existing offer →
             </Link>
             <button
               onClick={() => navigate(-1)}
-              className="text-sm text-slate-400 hover:text-white transition-colors"
+              className="text-sm text-text-muted hover:text-text transition-colors"
             >
               Go back
             </button>
@@ -163,10 +163,10 @@ export default function CreateOfferPage() {
 
       {/* Player info */}
       {player && (
-        <div className="mb-6 rounded-xl bg-slate-900 px-4 py-3 ring-1 ring-white/[0.08]">
-          <p className="text-sm font-semibold text-white">{player.name}</p>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {player.position ?? "No position"} •{" "}
+        <div className="mb-6 rounded-xl bg-surface px-4 py-3 ring-1 ring-border">
+          <p className="text-sm font-semibold text-text">{player.name}</p>
+          <p className="text-xs text-text-muted mt-0.5">
+            {player.position ?? "No position"} ·{" "}
             {player.current_club?.name ?? "Free agent"}
           </p>
         </div>
@@ -176,44 +176,44 @@ export default function CreateOfferPage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Transfer fee */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">
-              Transfer fee <span className="text-slate-500">(optional)</span>
+            <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+              Transfer fee <span className="text-text-muted font-normal">(optional)</span>
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
                 £
               </span>
               <CurrencyInput
                 value={fee}
                 onChange={setFee}
                 placeholder="e.g. 25,000,000"
-                className="w-full rounded-lg bg-slate-800 pl-7 pr-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+                className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
               />
             </div>
           </div>
 
           {/* Weekly wage */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">
-              Weekly wage <span className="text-slate-500">(optional)</span>
+            <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+              Weekly wage <span className="text-text-muted font-normal">(optional)</span>
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
                 £
               </span>
               <CurrencyInput
                 value={wage}
                 onChange={setWage}
                 placeholder="e.g. 100,000"
-                className="w-full rounded-lg bg-slate-800 pl-7 pr-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+                className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
               />
             </div>
           </div>
 
           {/* Contract years */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">
-              Contract length <span className="text-slate-500">(optional)</span>
+            <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+              Contract length <span className="text-text-muted font-normal">(optional)</span>
             </label>
             <input
               type="number"
@@ -223,24 +223,24 @@ export default function CreateOfferPage() {
               value={years}
               onChange={(e) => setYears(e.target.value)}
               placeholder="Years"
-              className="w-full rounded-lg bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+              className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
             />
           </div>
 
           {/* Contract end date */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-300">
-              Contract end date <span className="text-slate-500">(optional)</span>
+            <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+              Contract end date <span className="text-text-muted font-normal">(optional)</span>
             </label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full rounded-lg bg-slate-800 px-3 py-2.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+              className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
             />
           </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-danger-text">{error}</p>}
 
           <div className="flex gap-3 pt-2">
             <Button

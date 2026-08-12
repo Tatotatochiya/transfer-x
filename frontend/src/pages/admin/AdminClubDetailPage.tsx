@@ -94,7 +94,7 @@ export default function AdminClubDetailPage() {
 
   if (!club) {
     return (
-      <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
         Club not found.{" "}
         <button onClick={() => navigate("/admin/clubs")} className="underline">Back</button>
       </div>
@@ -105,14 +105,14 @@ export default function AdminClubDetailPage() {
     <div>
       <button
         onClick={() => navigate("/admin/clubs")}
-        className="mb-6 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+        className="mb-6 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
       >
         ← Back to clubs
       </button>
 
       <div className="mb-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-xl font-bold text-slate-400 overflow-hidden">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-inset text-xl font-bold text-text-muted overflow-hidden">
             {club.crest_url ? (
               <img src={club.crest_url} alt={club.name} className="h-full w-full object-contain p-1" />
             ) : (
@@ -120,20 +120,20 @@ export default function AdminClubDetailPage() {
             )}
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">{club.name}</h1>
-            <p className="text-xs text-slate-500">ID: {club.id}</p>
+            <h1 className="text-2xl font-bold text-text">{club.name}</h1>
+            <p className="text-xs text-text-muted">ID: {club.id}</p>
           </div>
         </div>
         <button
           onClick={handleDelete}
           disabled={deleteMutation.isPending}
-          className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 ring-1 ring-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-40"
+          className="rounded-lg bg-danger/10 px-3 py-1.5 text-xs font-medium text-danger-text ring-1 ring-danger/20 hover:bg-danger/20 transition-colors disabled:opacity-40"
         >
           Delete club
         </button>
       </div>
       {deleteMutation.isError && (
-        <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-2 text-xs text-red-400 ring-1 ring-red-500/20">
+        <div className="mb-4 rounded-lg bg-danger/10 px-4 py-2 text-xs text-danger-text ring-1 ring-danger/20">
           {getApiError(deleteMutation.error, "Delete failed.")}
         </div>
       )}
@@ -142,7 +142,7 @@ export default function AdminClubDetailPage() {
         {/* ── Profile ── */}
         <Card>
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Club Profile</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Club Profile</p>
             {!editProfile && (
               <Button variant="secondary" size="sm" onClick={openProfileEdit}>Edit</Button>
             )}
@@ -155,7 +155,7 @@ export default function AdminClubDetailPage() {
               <Metric label="Country" value={club.country ?? "—"} />
               <Metric label="City"    value={club.city ?? "—"} />
               <Metric label="League"  value={club.league_name ?? "—"} />
-              <Metric label="User ID" value={<span className="text-xs text-slate-500">{club.user_id}</span>} />
+              <Metric label="User ID" value={<span className="text-xs text-text-muted">{club.user_id}</span>} />
               <Metric label="Created" value={formatDate(club.created_at)} />
             </div>
           ) : (
@@ -167,33 +167,33 @@ export default function AdminClubDetailPage() {
               className="space-y-3"
             >
               <div>
-                <label className="mb-1 block text-xs text-slate-400">Name</label>
+                <label className="mb-1 block text-xs text-text-muted">Name</label>
                 <input
                   value={pName}
                   onChange={(e) => setPName(e.target.value)}
-                  className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-slate-400">Role</label>
+                <label className="mb-1 block text-xs text-text-muted">Role</label>
                 <select
                   value={pRole}
                   onChange={(e) => setPRole(e.target.value)}
-                  className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
                 >
                   {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-slate-400">Country</label>
+                <label className="mb-1 block text-xs text-text-muted">Country</label>
                 <input
                   value={pCountry}
                   onChange={(e) => setPCountry(e.target.value)}
-                  className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
                 />
               </div>
               {profileMutation.isError && (
-                <p className="text-xs text-red-400">{getApiError(profileMutation.error, "Save failed.")}</p>
+                <p className="text-xs text-danger-text">{getApiError(profileMutation.error, "Save failed.")}</p>
               )}
               <div className="flex gap-2">
                 <Button type="submit" variant="primary" size="sm" loading={profileMutation.isPending}>Save</Button>
@@ -206,24 +206,24 @@ export default function AdminClubDetailPage() {
         {/* ── Finance ── */}
         <Card>
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Finances</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Finances</p>
             {!editFinance && club.finance && (
               <Button variant="secondary" size="sm" onClick={openFinanceEdit}>Edit budgets</Button>
             )}
           </div>
 
           {!club.finance ? (
-            <p className="text-sm text-slate-500">No finance record.</p>
+            <p className="text-sm text-text-muted">No finance record.</p>
           ) : !editFinance ? (
             <div className="space-y-2">
               <Metric label="Transfer budget"   value={formatCurrency(club.finance.transfer_budget_total)} />
               <Metric label="Transfer reserved" value={formatCurrency(club.finance.transfer_reserved)} />
               <Metric label="Transfer committed" value={formatCurrency(club.finance.transfer_committed)} />
-              <Metric label="Transfer remaining" value={<span className="text-emerald-400">{formatCurrency(club.finance.transfer_remaining)}</span>} />
-              <div className="border-t border-white/[0.06] pt-2">
+              <Metric label="Transfer remaining" value={<span className="text-success-text">{formatCurrency(club.finance.transfer_remaining)}</span>} />
+              <div className="border-t border-rule pt-2">
                 <Metric label="Wage budget / wk"   value={formatCurrency(club.finance.wage_budget_total_weekly)} />
                 <Metric label="Wage reserved / wk" value={formatCurrency(club.finance.wage_reserved_weekly)} />
-                <Metric label="Wage remaining / wk" value={<span className="text-emerald-400">{formatCurrency(club.finance.wage_remaining_weekly)}</span>} />
+                <Metric label="Wage remaining / wk" value={<span className="text-success-text">{formatCurrency(club.finance.wage_remaining_weekly)}</span>} />
               </div>
             </div>
           ) : (
@@ -238,25 +238,25 @@ export default function AdminClubDetailPage() {
               className="space-y-3"
             >
               <div>
-                <label className="mb-1 block text-xs text-slate-400">Transfer budget total (£)</label>
+                <label className="mb-1 block text-xs text-text-muted">Transfer budget total (£)</label>
                 <input
                   type="number"
                   value={fTransfer}
                   onChange={(e) => setFTransfer(e.target.value)}
-                  className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-slate-400">Weekly wage budget total (£)</label>
+                <label className="mb-1 block text-xs text-text-muted">Weekly wage budget total (£)</label>
                 <input
                   type="number"
                   value={fWage}
                   onChange={(e) => setFWage(e.target.value)}
-                  className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
                 />
               </div>
               {financeMutation.isError && (
-                <p className="text-xs text-red-400">{getApiError(financeMutation.error, "Save failed.")}</p>
+                <p className="text-xs text-danger-text">{getApiError(financeMutation.error, "Save failed.")}</p>
               )}
               <div className="flex gap-2">
                 <Button type="submit" variant="primary" size="sm" loading={financeMutation.isPending}>Save</Button>
@@ -319,8 +319,8 @@ function StaffPanel({ clubId }: { clubId: string }) {
     <Card>
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Staff Accounts</p>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Staff Accounts</p>
+          <p className="mt-0.5 text-xs text-text-muted">
             Staff can log in with their own credentials. Managers can bid/offer; Read-only can only view.
           </p>
         </div>
@@ -338,44 +338,44 @@ function StaffPanel({ clubId }: { clubId: string }) {
             e.preventDefault();
             createMutation.mutate({ email, password, role });
           }}
-          className="mb-5 rounded-lg bg-slate-800/50 p-4 space-y-3 ring-1 ring-white/[0.06]"
+          className="mb-5 rounded-lg bg-surface-inset p-4 space-y-3 ring-1 ring-border"
         >
-          <p className="text-xs font-semibold text-slate-300">New staff account</p>
+          <p className="text-xs font-semibold text-text-secondary">New staff account</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Email</label>
+              <label className="mb-1 block text-xs text-text-muted">Email</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Password</label>
+              <label className="mb-1 block text-xs text-text-muted">Password</label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-400">Role</label>
+            <label className="mb-1 block text-xs text-text-muted">Role</label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as "MANAGER" | "READONLY")}
-              className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+              className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
             >
               <option value="MANAGER">Manager — can bid, offer &amp; cancel</option>
               <option value="READONLY">Read-only — view only</option>
             </select>
           </div>
           {createMutation.isError && (
-            <p className="text-xs text-red-400">{getApiError(createMutation.error, "Create failed.")}</p>
+            <p className="text-xs text-danger-text">{getApiError(createMutation.error, "Create failed.")}</p>
           )}
           <div className="flex gap-2">
             <Button type="submit" variant="primary" size="sm" loading={createMutation.isPending}>
@@ -392,24 +392,24 @@ function StaffPanel({ clubId }: { clubId: string }) {
       {isLoading && <div className="flex justify-center py-4"><Spinner size="sm" /></div>}
 
       {staff && staff.length === 0 && !showForm && (
-        <p className="text-sm text-slate-500">No staff accounts yet.</p>
+        <p className="text-sm text-text-muted">No staff accounts yet.</p>
       )}
 
       {staff && staff.length > 0 && (
-        <div className="overflow-x-auto rounded-lg ring-1 ring-white/[0.06]">
+        <div className="overflow-x-auto rounded-lg ring-1 ring-border">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-rule text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
                 <th className="px-3 py-2">Email</th>
                 <th className="px-3 py-2">Role</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.04]">
+            <tbody className="divide-y divide-rule-faint">
               {staff.map((s) => (
-                <tr key={s.id} className="bg-slate-800/30">
-                  <td className="px-3 py-2 text-white text-xs">{s.user?.email ?? s.user_id}</td>
+                <tr key={s.id} className="bg-surface-inset">
+                  <td className="px-3 py-2 text-text text-xs">{s.user?.email ?? s.user_id}</td>
                   <td className="px-3 py-2">
                     <select
                       value={s.role}
@@ -417,7 +417,7 @@ function StaffPanel({ clubId }: { clubId: string }) {
                       onChange={(e) =>
                         roleMutation.mutate({ staffId: s.id, newRole: e.target.value })
                       }
-                      className="rounded bg-slate-700 px-2 py-1 text-xs text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500 disabled:opacity-50"
+                      className="rounded bg-surface px-2 py-1 text-xs text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill disabled:opacity-50"
                     >
                       <option value="MANAGER">Manager</option>
                       <option value="READONLY">Read-only</option>
@@ -432,7 +432,7 @@ function StaffPanel({ clubId }: { clubId: string }) {
                     <button
                       onClick={() => deleteMutation.mutate(s.id)}
                       disabled={deleteMutation.isPending}
-                      className="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-40"
+                      className="text-xs text-danger-text hover:text-danger-text-alt transition-colors disabled:opacity-40"
                     >
                       Remove
                     </button>
@@ -442,7 +442,7 @@ function StaffPanel({ clubId }: { clubId: string }) {
             </tbody>
           </table>
           {deleteMutation.isError && (
-            <p className="mt-2 px-3 text-xs text-red-400">{getApiError(deleteMutation.error, "Delete failed.")}</p>
+            <p className="mt-2 px-3 text-xs text-danger-text">{getApiError(deleteMutation.error, "Delete failed.")}</p>
           )}
         </div>
       )}

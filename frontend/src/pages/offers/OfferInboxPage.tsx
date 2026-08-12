@@ -1,203 +1,218 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { Offer, Paginated } from "../../types/api";
+import type { Club, FairValueSignal, Offer, Paginated } from "../../types/api";
 import type { OfferStatus } from "../../types/enums";
-import Badge from "../../components/ui/Badge";
 import ClubLink from "../../components/ui/ClubLink";
 import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
-import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
 import Pagination from "../../components/ui/Pagination";
+import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import { ListSkeleton } from "../../components/ui/Skeleton";
-import { offerStatusVariant, positionVariant } from "../../lib/badges";
+import { offerOutcome } from "../../lib/badges";
+import { offerWhoseMove } from "../../lib/whoseMove";
+import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 import { formatCurrency, formatDate } from "../../lib/utils";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// ── Filter chips ──────────────────────────────────────────────────────────────
 
-type PlayerGroup = {
-  playerId: string;
-  playerName: string;
-  position: string | null;
-  offers: Offer[];
-  activeCount: number;
-  bestFee: number | null;
-  latestActivity: string;
-};
+type Chip = "ALL" | "YOUR_MOVE" | "THEIR_MOVE" | "ACCEPTED" | "REJECTED";
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-const ACTIVE = new Set<OfferStatus>(["SENT", "COUNTERED"]);
-
-function groupOffersByPlayer(offers: Offer[]): PlayerGroup[] {
-  const map = new Map<string, Offer[]>();
-  for (const offer of offers) {
-    const pid = offer.player_id;
-    if (!map.has(pid)) map.set(pid, []);
-    map.get(pid)!.push(offer);
-  }
-  return [...map.entries()]
-    .map(([playerId, playerOffers]) => {
-      const first = playerOffers[0];
-      const active = playerOffers.filter((o) => ACTIVE.has(o.status as OfferStatus));
-      const fees = active.filter((o) => o.fee_amount != null).map((o) => o.fee_amount!);
-      const latestActivity = playerOffers.reduce(
-        (max, o) => (o.last_action_at > max ? o.last_action_at : max),
-        ""
-      );
-      return {
-        playerId,
-        playerName: first.player?.name ?? "Unknown player",
-        position: first.player?.position ?? null,
-        offers: [...playerOffers].sort(
-          (a, b) => new Date(b.last_action_at).getTime() - new Date(a.last_action_at).getTime()
-        ),
-        activeCount: active.length,
-        bestFee: fees.length > 0 ? Math.max(...fees) : null,
-        latestActivity,
-      };
-    })
-    .sort((a, b) => b.latestActivity.localeCompare(a.latestActivity));
-}
-
-// ── Status filter tabs ─────────────────────────────────────────────────────────
-
-const TABS: { label: string; value: OfferStatus | "" }[] = [
-  { label: "All",       value: "" },
-  { label: "Pending",   value: "SENT" },
-  { label: "Countered", value: "COUNTERED" },
-  { label: "Accepted",  value: "ACCEPTED" },
-  { label: "Rejected",  value: "REJECTED" },
+const CHIPS: { label: string; value: Chip }[] = [
+  { label: "All", value: "ALL" },
+  { label: "Your move", value: "YOUR_MOVE" },
+  { label: "Their move", value: "THEIR_MOVE" },
+  { label: "Accepted", value: "ACCEPTED" },
+  { label: "Rejected", value: "REJECTED" },
 ];
 
-// ── Player group card ──────────────────────────────────────────────────────────
+// Chips backed by a real server status filter get real pagination. "Your
+// move"/"Their move" are derived client-side (whose_move isn't a server
+// filter yet — B1), so they filter within the currently-fetched page rather
+// than across the whole inbox; pagination hides while one of them is active.
+const CHIP_STATUS: Partial<Record<Chip, OfferStatus>> = {
+  ACCEPTED: "ACCEPTED",
+  REJECTED: "REJECTED",
+};
 
-function PlayerGroupCard({ group }: { group: PlayerGroup }) {
-  const navigate = useNavigate();
-  const [expanded, setExpanded] = useState(true);
+// ── Tier 1 — "Your move" ──────────────────────────────────────────────────────
 
-  const needsAction = group.offers.some((o) => o.status === "SENT");
-  const hasCounter  = group.offers.some((o) => o.status === "COUNTERED");
+const NEGOTIATION_TERMINAL = new Set<OfferStatus>(["ACCEPTED", "REJECTED", "WITHDRAWN", "EXPIRED"]);
+
+function YourMoveDeadline({ deadline }: { deadline: string | null }) {
+  const result = useDeadlineCountdown(deadline);
+  if (!deadline) return <span className="text-success-text">—</span>;
+  const urgent = result.state === "danger";
+  return (
+    <span className={`font-bold ${urgent ? "text-danger-text" : "text-text-secondary"}`}>
+      {result.state === "expired" ? "Expired" : result.label}
+    </span>
+  );
+}
+
+function NegotiationHistory({ offer }: { offer: Offer }) {
+  const entries = [...offer.events]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 3);
+  if (entries.length === 0) return null;
 
   return (
-    <div className={`rounded-xl ring-1 overflow-hidden ${
-      needsAction
-        ? "ring-emerald-500/20 bg-emerald-500/[0.03]"
-        : hasCounter
-        ? "ring-amber-500/20 bg-amber-500/[0.03]"
-        : "ring-white/[0.06] bg-slate-900"
-    }`}>
-      {/* Group header — click to expand/collapse */}
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors text-left"
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          {/* Expand chevron */}
-          <svg
-            className={`h-4 w-4 text-slate-600 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
-            fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-semibold text-white">{group.playerName}</span>
-              {group.position && (
-                <Badge variant={positionVariant(group.position)}>{group.position}</Badge>
-              )}
-              {group.activeCount > 0 && (
-                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/20">
-                  {group.activeCount} active
-                </span>
-              )}
-              {needsAction && (
-                <span className="flex items-center gap-1 text-xs text-emerald-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Action needed
-                </span>
-              )}
-              {!needsAction && hasCounter && (
-                <span className="text-xs text-amber-400/80">Countered</span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="shrink-0 ml-3 text-right">
-          {group.bestFee != null && (
-            <p className="text-sm font-semibold text-white tabular-nums">
-              Best: {formatCurrency(group.bestFee)}
+    <div className="mt-3 flex flex-wrap gap-x-[22px] gap-y-2 border-t border-rule-faint pt-3">
+      {entries.map((e) => {
+        const amount = e.payload && typeof e.payload.fee_amount === "number" ? e.payload.fee_amount : null;
+        return (
+          <div key={e.id}>
+            <p className="text-[11px] text-text-muted">{formatDate(e.created_at)}</p>
+            <p className="text-[13px] text-text-secondary">
+              {e.event_type.charAt(0) + e.event_type.slice(1).toLowerCase()}
+              {amount != null && <strong className="text-text"> {formatCurrency(amount)}</strong>}
             </p>
-          )}
-          <p className="text-xs text-slate-500">{group.offers.length} offer{group.offers.length !== 1 ? "s" : ""}</p>
-        </div>
-      </button>
-
-      {/* Offer rows */}
-      {expanded && (
-        <div className="border-t border-white/[0.06] divide-y divide-white/[0.04]">
-          {group.offers.map((offer) => (
-            <div
-              key={offer.id}
-              onClick={() => navigate(`/offers/${offer.id}`)}
-              className={`flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-white/[0.04] ${
-                !ACTIVE.has(offer.status as OfferStatus) ? "opacity-50" : ""
-              }`}
-            >
-              {/* Indent */}
-              <div className="w-4 shrink-0" />
-
-              {/* From club */}
-              <div className="flex-1 min-w-0">
-                <ClubLink id={offer.from_club?.id} name={offer.from_club?.name} />
-              </div>
-
-              {/* Fee */}
-              <div className="shrink-0 tabular-nums text-sm font-semibold text-white">
-                {offer.fee_amount != null ? formatCurrency(offer.fee_amount) : <span className="text-slate-500 font-normal">TBD</span>}
-              </div>
-
-              {/* Status */}
-              <div className="shrink-0 w-28 text-right">
-                <Badge variant={offerStatusVariant(offer.status)}>{offer.status}</Badge>
-              </div>
-
-              {/* Last activity */}
-              <div className="shrink-0 text-xs text-slate-500 w-24 text-right hidden sm:block">
-                {formatDate(offer.last_action_at)}
-              </div>
-
-              {/* Chevron */}
-              <svg className="h-4 w-4 text-slate-700 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          ))}
-        </div>
-      )}
+          </div>
+        );
+      })}
     </div>
   );
+}
+
+function YourMoveRow({ offer, valuation }: { offer: Offer; valuation: FairValueSignal | undefined }) {
+  const navigate = useNavigate();
+  const belowValuation = valuation != null && offer.fee_amount != null && offer.fee_amount < valuation.fair_value;
+
+  return (
+    <div className="border-b border-rule px-5 py-4 last:border-b-0">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex-1 basis-[260px]">
+          <p className="text-base font-bold text-text">
+            {offer.player?.name ?? "Unknown player"}
+            {offer.player?.position && (
+              <span className="ml-2 text-[11px] font-bold text-text-muted">{offer.player.position}</span>
+            )}
+          </p>
+          <p className="text-[13px] text-text-muted">
+            {offer.from_club?.name ?? "?"} · {offer.status === "COUNTERED" ? "countered your terms" : "sent an offer"}
+          </p>
+        </div>
+        <div className="basis-[120px] shrink">
+          <p className="text-[11px] text-text-muted">Their offer</p>
+          <p className="text-[17px] font-bold text-text">{offer.fee_amount != null ? formatCurrency(offer.fee_amount) : "TBD"}</p>
+        </div>
+        <div className="basis-[120px] shrink">
+          <p className="text-[11px] text-text-muted">Your valuation</p>
+          <p className={`text-[17px] font-bold ${belowValuation ? "text-danger-text" : "text-text"}`}>
+            {valuation ? formatCurrency(valuation.fair_value) : "—"}
+          </p>
+        </div>
+        <div className="basis-[110px] shrink">
+          <p className="text-[11px] text-text-muted">Deadline</p>
+          <YourMoveDeadline deadline={offer.expires_at} />
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <button
+            onClick={() => navigate(`/offers/${offer.id}`)}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover transition-colors"
+          >
+            Counter
+          </button>
+          <button
+            onClick={() => navigate(`/offers/${offer.id}`)}
+            className="rounded-lg bg-surface-inset px-4 py-2 text-sm font-semibold text-text ring-1 ring-border hover:ring-input-border transition-colors"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+      <NegotiationHistory offer={offer} />
+    </div>
+  );
+}
+
+function YourMoveBand({ offers, valuations }: { offers: Offer[]; valuations: Record<string, FairValueSignal> }) {
+  if (offers.length === 0) {
+    return <p className="mb-[18px] text-sm text-text-secondary">Nothing is waiting on you.</p>;
+  }
+  return (
+    <div className="mb-[18px] rounded-xl bg-surface ring-1 ring-danger-ring shadow-[0_1px_2px_rgba(16,24,40,0.06)] overflow-hidden">
+      <div className="flex items-center justify-between border-b border-danger-border bg-danger-bg px-5 py-3">
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-danger" />
+          <span className="text-[13px] font-bold text-danger-heading">Your move — {offers.length}</span>
+        </div>
+      </div>
+      <div>
+        {offers.map((o) => (
+          <YourMoveRow key={o.id} offer={o} valuation={valuations[o.player_id]} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── "Everything else" table ───────────────────────────────────────────────────
+
+const TERMINAL_STATE_COLOUR: Record<string, string> = {
+  ACCEPTED: "text-success-text",
+  REJECTED: "text-danger-text",
+};
+
+// This page renders state as plain coloured text rather than badges, so it maps
+// offerOutcome's badge variants onto the same text colours.
+const OUTCOME_COLOUR: Record<string, string> = {
+  success: "text-success-text",
+  danger:  "text-danger-text",
+  info:    "text-text-secondary",
+  warning: "text-warning-text",
+  neutral: "text-text-muted",
+};
+
+interface EverythingRow {
+  offer: Offer;
+  move: ReturnType<typeof offerWhoseMove>;
+}
+
+function StateCell({ row }: { row: EverythingRow }) {
+  const { offer, move } = row;
+  // A seller who accepted an offer has the same problem a buyer does: the deal
+  // can collapse afterwards and "Accepted" would still read green.
+  if (offer.deal) {
+    const outcome = offerOutcome(offer.status, offer.deal);
+    return <span className={`font-semibold ${OUTCOME_COLOUR[outcome.variant] ?? "text-text-secondary"}`}>{outcome.label}</span>;
+  }
+  if (offer.status === "ACCEPTED" || offer.status === "REJECTED") {
+    return <span className={`font-semibold ${TERMINAL_STATE_COLOUR[offer.status]}`}>{offer.status === "ACCEPTED" ? "Accepted" : "Rejected"}</span>;
+  }
+  if (move === "neither") return <span className="text-text-muted">{offer.status}</span>;
+  return <span className={move === "your" ? "text-danger-text font-semibold" : "text-text-secondary font-semibold"}>
+    {move === "your" ? "Your move" : "Their move"}
+  </span>;
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function OfferInboxPage() {
-  const [statusFilter, setStatusFilter] = useState<OfferStatus | "">("");
+  const navigate = useNavigate();
+  const [chip, setChip] = useState<Chip>("ALL");
   const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page, setPage] = useState(1);
 
+  const { data: myClub } = useQuery<Club>({
+    queryKey: ["clubs", "me"],
+    queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
+    staleTime: 60_000,
+  });
+
+  const serverStatus = CHIP_STATUS[chip];
+  const isClientFiltered = chip === "YOUR_MOVE" || chip === "THEIR_MOVE";
+
   const { data, isLoading } = useQuery<Paginated<Offer>>({
-    queryKey: ["offers", "received", { status: statusFilter, ...dateRange, page }],
+    queryKey: ["offers", "received", { status: serverStatus, ...dateRange, page }],
     queryFn: () =>
       api
         .get<Paginated<Offer>>("/offers/received", {
           params: {
             page,
             page_size: 30,
-            ...(statusFilter && { offer_status: statusFilter }),
+            ...(serverStatus && { offer_status: serverStatus }),
             ...(dateRange.dateFrom && { date_from: dateRange.dateFrom }),
             ...(dateRange.dateTo && { date_to: dateRange.dateTo }),
           },
@@ -205,72 +220,113 @@ export default function OfferInboxPage() {
         .then((r) => r.data),
   });
 
-  function handleTabChange(val: OfferStatus | "") {
-    setStatusFilter(val);
-    setPage(1);
-  }
+  const myClubId = myClub?.id;
+  const allOffers = data?.items ?? [];
 
-  function handleDateRangeChange(range: DateRange) {
-    setDateRange(range);
-    setPage(1);
-  }
+  const yourMoveOffers = useMemo(
+    () => (myClubId ? allOffers.filter((o) => offerWhoseMove(o, myClubId) === "your") : []),
+    [allOffers, myClubId]
+  );
 
-  const groups = data ? groupOffersByPlayer(data.items) : [];
-  const totalActive = data?.items.filter((o) => ACTIVE.has(o.status as OfferStatus)).length ?? 0;
+  const playerIds = useMemo(
+    () => [...new Set(yourMoveOffers.map((o) => o.player_id))],
+    [yourMoveOffers]
+  );
+
+  const { data: valuationData } = useQuery<{ valuations: Record<string, FairValueSignal> }>({
+    queryKey: ["valuation", "batch", "offer-inbox", playerIds],
+    queryFn: () => api.get<{ valuations: Record<string, FairValueSignal> }>("/valuation/players", { params: { ids: playerIds.join(",") } }).then((r) => r.data),
+    enabled: playerIds.length > 0,
+  });
+
+  const everythingRows: EverythingRow[] = allOffers
+    .filter((o) => !myClubId || offerWhoseMove(o, myClubId) !== "your")
+    .filter((o) => {
+      if (!isClientFiltered || !myClubId) return true;
+      const move = offerWhoseMove(o, myClubId);
+      return chip === "YOUR_MOVE" ? move === "your" : move === "their";
+    })
+    .map((o) => ({ offer: o, move: myClubId ? offerWhoseMove(o, myClubId) : "neither" }));
+
+  const columns: ResponsiveColumn<EverythingRow>[] = [
+    { key: "player", header: "Player", priority: 1, render: ({ offer }) => (
+      <span className="font-medium text-text">
+        {offer.player?.name ?? "—"}
+        {offer.player?.position && <span className="ml-2 text-xs text-text-muted">{offer.player.position}</span>}
+      </span>
+    ) },
+    { key: "club", header: "Club", priority: 3, render: ({ offer }) => <ClubLink id={offer.from_club?.id} name={offer.from_club?.name} /> },
+    { key: "fee", header: "Fee", priority: 2, className: "text-right", render: ({ offer }) => (
+      <span className="font-bold text-text">{offer.fee_amount != null ? formatCurrency(offer.fee_amount) : "TBD"}</span>
+    ) },
+    { key: "state", header: "State", priority: 4, render: (row) => <StateCell row={row} /> },
+    { key: "activity", header: "Last activity", priority: 5, className: "text-right", render: ({ offer }) => (
+      <span className="text-xs text-text-muted">{formatDate(offer.last_action_at)}</span>
+    ) },
+  ];
 
   return (
     <div>
-      <PageHeader
-        title="Offer Inbox"
-        subtitle={
-          totalActive > 0
-            ? `${totalActive} offer${totalActive !== 1 ? "s" : ""} requiring attention`
-            : "Offers received from other clubs"
-        }
-      />
+      <PageHeader title="Offer Inbox" subtitle="Offers received from other clubs" />
 
-      {/* Tabs */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        {TABS.map((tab) => (
+      <div className="mb-5 flex flex-wrap gap-2">
+        {CHIPS.map((c) => (
           <button
-            key={tab.value}
-            onClick={() => handleTabChange(tab.value)}
-            className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-              statusFilter === tab.value
-                ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30"
-                : "bg-slate-800 text-slate-400 hover:text-white"
+            key={c.value}
+            onClick={() => { setChip(c.value); setPage(1); }}
+            className={`rounded-lg px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
+              chip === c.value
+                ? "bg-ink text-white"
+                : "bg-surface text-text-secondary ring-1 ring-input-border hover:ring-accent"
             }`}
           >
-            {tab.label}
+            {c.label}
           </button>
         ))}
       </div>
 
       <div className="mb-6">
-        <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
+        <DateRangeFilter value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} />
       </div>
 
-      {isLoading && <ListSkeleton count={4} />}
-
-      {!isLoading && groups.length === 0 && (
-        <EmptyState title="No offers received" body="When clubs make you an offer, it will appear here." />
-      )}
-
-      {groups.length > 0 && (
+      {isLoading ? (
+        <ListSkeleton count={4} />
+      ) : (
         <>
-          <div className="space-y-3">
-            {groups.map((group) => (
-              <PlayerGroupCard key={group.playerId} group={group} />
-            ))}
+          <YourMoveBand offers={yourMoveOffers} valuations={valuationData?.valuations ?? {}} />
+
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-text">Everything else</h2>
+              <span className="text-xs text-text-muted">Waiting on the other club, or closed</span>
+            </div>
+            <ResponsiveTable
+              columns={columns}
+              rows={everythingRows}
+              rowKey={(r) => r.offer.id}
+              onRowClick={(r) => navigate(`/offers/${r.offer.id}`)}
+              emptyTitle="No offers here"
+              renderCard={(r) => (
+                <div className="px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-text">
+                      {r.offer.player?.name ?? "—"}
+                      {r.offer.player?.position && <span className="ml-1.5 text-xs text-text-muted">{r.offer.player.position}</span>}
+                    </span>
+                    <span className="text-sm font-bold text-text">{r.offer.fee_amount != null ? formatCurrency(r.offer.fee_amount) : "TBD"}</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-text-muted">{r.offer.from_club?.name ?? "?"}</p>
+                  <div className="mt-1 flex items-center justify-between text-xs">
+                    <StateCell row={r} />
+                    <span className="text-text-muted">{formatDate(r.offer.last_action_at)}</span>
+                  </div>
+                </div>
+              )}
+            />
           </div>
 
-          {data && data.total > data.page_size && (
-            <Pagination
-              page={data.page}
-              total={data.total}
-              pageSize={data.page_size}
-              onChange={setPage}
-            />
+          {!isClientFiltered && data && data.total > data.page_size && (
+            <Pagination page={data.page} total={data.total} pageSize={data.page_size} onChange={setPage} />
           )}
         </>
       )}

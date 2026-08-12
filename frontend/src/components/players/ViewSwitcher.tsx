@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { PlayerSearchView } from "../../types/api";
 
 interface Props {
@@ -32,8 +32,6 @@ export default function ViewSwitcher({
   const [saving, setSaving] = useState(false);
   const [saveAsNewName, setSaveAsNewName] = useState("");
   const [showSaveAsNew, setShowSaveAsNew] = useState(false);
-  const newInputRef = useRef<HTMLInputElement>(null);
-  const renameInputRef = useRef<HTMLInputElement>(null);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -97,16 +95,14 @@ export default function ViewSwitcher({
   const activeView = views.find((v) => v.id === activeViewId) ?? null;
 
   return (
-    <div className="mb-4 space-y-2">
-      {/* ── Pill row ── */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {/* All */}
+    <div>
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Saved views</p>
+
+      <div className="space-y-0.5">
         <button
           onClick={() => { onSelect(null); setRenamingId(null); setConfirmDeleteId(null); }}
-          className={`rounded-md px-3 py-1 text-xs font-semibold ring-1 transition-all ${
-            activeViewId === null
-              ? "bg-slate-700 text-white ring-white/20"
-              : "bg-slate-800/60 text-slate-500 ring-white/10 hover:text-white"
+          className={`block w-full rounded-md px-2 py-1.5 text-left text-[13px] transition-colors ${
+            activeViewId === null ? "font-semibold text-ink" : "text-text-secondary hover:text-text"
           }`}
         >
           All players
@@ -119,173 +115,130 @@ export default function ViewSwitcher({
 
           if (isRenaming) {
             return (
-              <form key={view.id} onSubmit={(e) => handleRename(e, view.id)} className="flex items-center gap-1">
+              <form key={view.id} onSubmit={(e) => handleRename(e, view.id)} className="flex items-center gap-1 px-2 py-0.5">
                 <input
-                  ref={renameInputRef}
                   autoFocus
                   value={renameValue}
                   onChange={(e) => setRenameValue(e.target.value)}
-                  className="rounded-md bg-slate-800 px-2 py-1 text-xs text-white ring-1 ring-emerald-500/60 focus:outline-none w-32"
+                  className="min-w-0 flex-1 rounded-md bg-surface-inset px-2 py-1 text-xs text-text ring-1 ring-accent focus:outline-none"
                 />
-                <button type="submit" disabled={saving} className="text-xs text-emerald-400 hover:text-emerald-300 px-1">✓</button>
-                <button type="button" onClick={() => setRenamingId(null)} className="text-xs text-slate-500 hover:text-white px-1">✕</button>
+                <button type="submit" disabled={saving} className="shrink-0 text-xs text-success-text hover:text-success px-1">✓</button>
+                <button type="button" onClick={() => setRenamingId(null)} className="shrink-0 text-xs text-text-muted hover:text-text px-1">✕</button>
               </form>
             );
           }
 
           if (isConfirmDelete) {
             return (
-              <div key={view.id} className="flex items-center gap-1 rounded-md bg-red-500/10 ring-1 ring-red-500/30 px-2 py-1">
-                <span className="text-xs text-red-400">Delete "{view.name}"?</span>
-                <button onClick={() => handleDelete(view.id)} disabled={saving} className="text-xs text-red-400 hover:text-red-300 font-semibold px-1">Yes</button>
-                <button onClick={() => setConfirmDeleteId(null)} className="text-xs text-slate-500 hover:text-white px-1">No</button>
+              <div key={view.id} className="flex items-center gap-1.5 rounded-md bg-danger-bg px-2 py-1.5">
+                <span className="flex-1 text-xs text-danger-text truncate">Delete "{view.name}"?</span>
+                <button onClick={() => handleDelete(view.id)} disabled={saving} className="shrink-0 text-xs font-semibold text-danger-text hover:text-danger px-1">Yes</button>
+                <button onClick={() => setConfirmDeleteId(null)} className="shrink-0 text-xs text-text-muted hover:text-text px-1">No</button>
               </div>
             );
           }
 
           return (
-            <div key={view.id} className="group relative flex items-center">
+            <div key={view.id} className="group flex items-center rounded-md hover:bg-surface-inset">
               <button
                 onClick={() => { onSelect(view.id); setConfirmDeleteId(null); setRenamingId(null); }}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold ring-1 transition-all ${
-                  isActive
-                    ? "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30"
-                    : "bg-slate-800/60 text-slate-500 ring-white/10 hover:text-white"
+                className={`flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-left text-[13px] transition-colors ${
+                  isActive ? "font-semibold text-ink" : "text-text-secondary group-hover:text-text"
                 }`}
               >
-                {view.is_default && (
-                  <span className="text-amber-400" title="Default view">★</span>
-                )}
-                {view.name}
+                {view.is_default && <span className="shrink-0 text-warning-fill" title="Default view">★</span>}
+                <span className="truncate">{view.name}</span>
                 {isActive && isModified && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" title="Unsaved changes" />
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning-fill" title="Unsaved changes" />
                 )}
               </button>
 
-              {/* Hover actions — positioned above, pb-2 bridges gap to keep hover active */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 hidden group-hover:flex flex-col items-center z-10">
-              <div className="flex items-center gap-0.5 bg-slate-900 rounded-md ring-1 ring-white/10 px-1 py-0.5">
+              <div className="hidden shrink-0 items-center gap-0.5 pr-1 group-hover:flex">
                 <button
                   title={view.is_default ? "Remove default" : "Set as default"}
                   onClick={() => handleSetDefault(view)}
-                  className={`p-0.5 text-xs transition-colors ${view.is_default ? "text-amber-400" : "text-slate-500 hover:text-amber-400"}`}
+                  className={`p-0.5 text-xs transition-colors ${view.is_default ? "text-warning-fill" : "text-text-muted hover:text-warning-fill"}`}
                 >
                   ★
                 </button>
                 <button
                   title="Rename"
                   onClick={() => { setRenamingId(view.id); setRenameValue(view.name); }}
-                  className="p-0.5 text-slate-500 hover:text-white transition-colors text-xs"
+                  className="p-0.5 text-xs text-text-muted hover:text-text transition-colors"
                 >
                   ✏
                 </button>
                 <button
                   title="Delete"
                   onClick={() => setConfirmDeleteId(view.id)}
-                  className="p-0.5 text-slate-500 hover:text-red-400 transition-colors text-xs"
+                  className="p-0.5 text-xs text-text-muted hover:text-danger-text transition-colors"
                 >
                   ✕
                 </button>
               </div>
-              </div>
             </div>
           );
         })}
-
-        {/* New view button / inline form */}
-        {showNewForm ? (
-          <form onSubmit={handleCreate} className="flex items-center gap-1.5">
-            <input
-              ref={newInputRef}
-              autoFocus
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="View name…"
-              className="rounded-md bg-slate-800 px-2.5 py-1 text-xs text-white placeholder-slate-500 ring-1 ring-emerald-500/60 focus:outline-none w-36"
-            />
-            <button
-              type="submit"
-              disabled={saving || !newName.trim()}
-              className="rounded-md bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/30 hover:bg-emerald-500/25 disabled:opacity-50 transition-colors"
-            >
-              Save
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowNewForm(false); setNewName(""); }}
-              className="text-xs text-slate-500 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-          </form>
-        ) : (
-          <button
-            onClick={() => setShowNewForm(true)}
-            className="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs text-slate-500 ring-1 ring-white/10 hover:text-white hover:ring-white/20 transition-all bg-slate-800/60"
-          >
-            <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            New view
-          </button>
-        )}
       </div>
 
-      {/* ── Unsaved changes strip ── */}
+      {/* New view */}
+      {showNewForm ? (
+        <form onSubmit={handleCreate} className="mt-1.5 flex items-center gap-1.5">
+          <input
+            autoFocus
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="View name…"
+            className="min-w-0 flex-1 rounded-md bg-surface-inset px-2 py-1 text-xs text-text placeholder-text-muted ring-1 ring-accent focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={saving || !newName.trim()}
+            className="shrink-0 rounded-md bg-accent-bg px-2 py-1 text-xs font-semibold text-accent-active hover:bg-accent-bg/70 disabled:opacity-50 transition-colors"
+          >
+            Save
+          </button>
+          <button type="button" onClick={() => { setShowNewForm(false); setNewName(""); }} className="shrink-0 text-xs text-text-muted hover:text-text transition-colors">
+            Cancel
+          </button>
+        </form>
+      ) : (
+        <button
+          onClick={() => setShowNewForm(true)}
+          className="mt-1.5 flex items-center gap-1 text-xs text-text-muted hover:text-text transition-colors"
+        >
+          <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          New view
+        </button>
+      )}
+
+      {/* Unsaved changes */}
       {isModified && activeView && !showSaveAsNew && (
-        <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 ring-1 ring-amber-500/20 px-3 py-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-          <p className="text-xs text-amber-300 flex-1">
-            Unsaved changes to <span className="font-semibold">"{activeView.name}"</span>
-          </p>
-          <button
-            onClick={handleSaveToView}
-            disabled={saving}
-            className="text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-50"
-          >
-            Update view
-          </button>
-          <span className="text-slate-600 text-xs">·</span>
-          <button
-            onClick={() => setShowSaveAsNew(true)}
-            className="text-xs text-slate-400 hover:text-white transition-colors"
-          >
-            Save as new
-          </button>
-          <span className="text-slate-600 text-xs">·</span>
-          <button
-            onClick={() => { onSelect(activeViewId); }}
-            className="text-xs text-slate-500 hover:text-white transition-colors"
-          >
-            Discard
-          </button>
+        <div className="mt-2 rounded-lg bg-warning-bg px-2.5 py-2">
+          <p className="text-xs text-warning-text">Unsaved changes to <span className="font-semibold">"{activeView.name}"</span></p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <button onClick={handleSaveToView} disabled={saving} className="text-xs font-semibold text-warning-text hover:opacity-80 disabled:opacity-50">Update</button>
+            <span className="text-text-muted text-xs">·</span>
+            <button onClick={() => setShowSaveAsNew(true)} className="text-xs text-text-muted hover:text-text">Save as new</button>
+            <span className="text-text-muted text-xs">·</span>
+            <button onClick={() => onSelect(activeViewId)} className="text-xs text-text-muted hover:text-text">Discard</button>
+          </div>
         </div>
       )}
 
-      {/* Save as new inline form (from unsaved changes strip) */}
       {isModified && showSaveAsNew && (
-        <form onSubmit={handleSaveAsNew} className="flex items-center gap-2 rounded-lg bg-slate-800/60 ring-1 ring-white/10 px-3 py-2">
+        <form onSubmit={handleSaveAsNew} className="mt-2 flex items-center gap-1.5 rounded-lg bg-surface-inset px-2.5 py-2">
           <input
             autoFocus
             value={saveAsNewName}
             onChange={(e) => setSaveAsNewName(e.target.value)}
             placeholder="New view name…"
-            className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-xs text-text placeholder-text-muted focus:outline-none"
           />
-          <button
-            type="submit"
-            disabled={saving || !saveAsNewName.trim()}
-            className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 disabled:opacity-50 transition-colors"
-          >
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => { setShowSaveAsNew(false); setSaveAsNewName(""); }}
-            className="text-xs text-slate-500 hover:text-white transition-colors"
-          >
-            Cancel
-          </button>
+          <button type="submit" disabled={saving || !saveAsNewName.trim()} className="shrink-0 text-xs font-semibold text-accent hover:text-accent-hover disabled:opacity-50">Save</button>
+          <button type="button" onClick={() => { setShowSaveAsNew(false); setSaveAsNewName(""); }} className="shrink-0 text-xs text-text-muted hover:text-text">Cancel</button>
         </form>
       )}
     </div>
