@@ -1171,6 +1171,25 @@ export interface UnreadCount {
   count: number;
 }
 
+// ── Club dashboard aggregate (B2) ─────────────────────────────────────────────
+
+/** One "waiting on you" item from GET /clubs/me/dashboard. `kind` identifies
+ *  which part of the app it belongs to, which is what lets the sidebar count
+ *  them per section without a request per section. */
+export interface DashboardItem {
+  kind: "approval" | "deal" | "offer" | "sale";
+  id: string;
+  player_name: string | null;
+  club_name: string | null;
+  amount: number | null;
+  reason: string;
+  link: string;
+}
+
+export interface DashboardResponse {
+  waiting_on_you: DashboardItem[];
+}
+
 export interface NotificationPreferenceItem {
   type: string;
   enabled: boolean;

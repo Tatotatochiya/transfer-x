@@ -8,9 +8,24 @@ import Avatar from "../ui/Avatar";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import Icon from "./Icon";
 import type { IconName } from "./Icon";
-import type { UnreadCount, UserType } from "../../types/api";
+import { countByKind, useClubDashboard } from "../../hooks/useClubDashboard";
+import type { DashboardItem, UnreadCount, UserType } from "../../types/api";
 
 const ROLE_LABEL: Record<IdentityRole, string> = { CLUB: "Club", AGENT: "Agent", PLAYER: "Player" };
+
+/**
+ * Which nav destination each B2 `kind` belongs to.
+ *
+ * Keyed by route rather than label so a renamed nav item can't silently drop
+ * its badge. Sales map to "My Auctions" (`/sales/mine`) rather than the public
+ * listings browse — a sale needing your attention is always one you're selling.
+ */
+const WAITING_ROUTE: Record<DashboardItem["kind"], string> = {
+  offer:    "/offers/received",
+  deal:     "/deals",
+  sale:     "/sales/mine",
+  approval: "/club/approvals",
+};
 
 interface NavItem {
   label: string;
@@ -168,7 +183,7 @@ function NotificationNavItem() {
   );
 }
 
-function SidebarLink({ item }: { item: NavItem }) {
+function SidebarLink({ item, waiting = 0 }: { item: NavItem; waiting?: number }) {
   return (
     <NavLink
       to={item.to}
@@ -191,6 +206,18 @@ function SidebarLink({ item }: { item: NavItem }) {
           <span className={isActive ? "text-accent font-semibold" : "text-text-secondary"}>
             {item.label}
           </span>
+          {/* A count, not a bare dot: TOKENS/CLAUDE.md rule 10 says colour is
+              never the only carrier of meaning, and the number is its own
+              label. Same danger red the Notifications badge already uses, so
+              "red in the nav" keeps meaning exactly one thing. */}
+          {waiting > 0 && (
+            <span
+              className="ml-auto flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger px-1 text-[9px] font-bold text-white leading-none"
+              aria-label={`${waiting} waiting on you`}
+            >
+              {waiting > 99 ? "99+" : waiting}
+            </span>
+          )}
         </>
       )}
     </NavLink>
@@ -214,6 +241,18 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const navGroups = getNavGroups(userType)
     .map((g) => ({ ...g, items: g.items.filter(itemVisible) }))
     .filter((g) => g.items.length > 0);
+
+  // B2: one aggregate call, counted per section. Club accounts only — agents
+  // and player accounts have no club dashboard, and asking for one 403s.
+  const { data: dashboard } = useClubDashboard(isAuthenticated && userType === "CLUB");
+  const waitingByRoute = (() => {
+    const byKind = countByKind(dashboard?.waiting_on_you);
+    const byRoute: Record<string, number> = {};
+    for (const [kind, route] of Object.entries(WAITING_ROUTE)) {
+      byRoute[route] = byKind[kind as DashboardItem["kind"]];
+    }
+    return byRoute;
+  })();
 
   // Only meaningfully "traps" below 1024px, where the aside is the
   // off-canvas drawer — on desktop the aside is always open/persistent, so
@@ -268,7 +307,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 </p>
                 <div className="space-y-0.5">
                   {group.items.map((item) => (
-                    <SidebarLink key={item.to} item={item} />
+                    <SidebarLink key={item.to} item={item} waiting={waitingByRoute[item.to] ?? 0} />
                   ))}
                 </div>
               </div>
