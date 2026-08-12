@@ -28,6 +28,14 @@ does not, and it is expensive to retrofit.
 **Question:** is the light theme a replacement, or does dark remain available as a preference?
 **Default if unanswered:** **replacement.** No dark mode. Reintroducing it later is a contained
 piece of work if the tokens are semantic, which they are.
+**Decided (Phase 1, 2026-08-10):** the default was *not* taken — dark survives as a preference.
+`index.css` carries a full dark set overriding all 50 tokens, and `context/ThemeContext.tsx`
+persists the choice. Light remains the designed default: `TOKENS.md` specifies light only, and
+the dark values are derived from the app's pre-redesign slate/emerald palette rather than
+specified by the handoff. A Light/Dark control was added to Account Settings on 2026-08-12; until
+then the mechanism had no UI and could only be switched from the console. **`prefers-color-scheme`
+is deliberately not honoured** — dark has never been reviewed screen-by-screen against this spec,
+so nothing should route a user there without them choosing it. Revisit once it has been.
 
 ## Blocking mid-project
 
