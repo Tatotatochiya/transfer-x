@@ -6,6 +6,7 @@ import type { StaffInviteResponse, TeamResponse } from "../../types/api";
 import type { StaffRole } from "../../types/enums";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
@@ -147,7 +148,7 @@ export default function TeamPage() {
     <div>
       <button
         onClick={() => navigate("/club")}
-        className="mb-6 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+        className="mb-6 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
       >
         ← Back to My Club
       </button>
@@ -157,27 +158,27 @@ export default function TeamPage() {
         subtitle="Invite staff, set their roles, and manage who can act for your club"
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-6">
           {/* ── Active staff ── */}
-          <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
-            <div className="border-b border-white/[0.06] px-5 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <Card noPadding>
+            <div className="border-b border-rule px-5 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 Staff ({staff.length})
               </p>
             </div>
             {staff.length === 0 ? (
-              <p className="px-5 py-6 text-sm text-slate-500">
+              <p className="px-5 py-6 text-sm text-text-muted">
                 No staff yet — invite your sporting director, managers, scouts, or read-only
                 board members from the panel on the right.
               </p>
             ) : (
-              <div className="divide-y divide-white/[0.04]">
+              <div className="divide-y divide-rule-faint">
                 {staff.map((member) => (
                   <div key={member.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-white">{member.email}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className="truncate text-sm font-medium text-text">{member.email}</p>
+                      <p className="mt-0.5 text-xs text-text-muted">
                         Joined {formatDateTime(member.created_at)}
                       </p>
                     </div>
@@ -190,7 +191,7 @@ export default function TeamPage() {
                         roleMutation.mutate({ staffId: member.id, role: e.target.value as StaffRole })
                       }
                       disabled={roleMutation.isPending}
-                      className="rounded-lg bg-slate-800 px-2 py-1.5 text-xs text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                      className="rounded-lg bg-surface-inset px-2 py-1.5 text-xs text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
                     >
                       {ROLE_ORDER.map((r) => (
                         <option key={r} value={r}>{ROLE_INFO[r].label}</option>
@@ -202,30 +203,30 @@ export default function TeamPage() {
                       onClick={() => handleRemove(member.id, member.email)}
                       loading={removeMutation.isPending}
                     >
-                      <span className="text-red-400">Remove</span>
+                      <span className="text-danger-text">Remove</span>
                     </Button>
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </Card>
 
           {/* ── Pending invitations ── */}
-          <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
-            <div className="border-b border-white/[0.06] px-5 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <Card noPadding>
+            <div className="border-b border-rule px-5 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 Pending invitations ({invitations.length})
               </p>
             </div>
             {invitations.length === 0 ? (
-              <p className="px-5 py-6 text-sm text-slate-500">No pending invitations.</p>
+              <p className="px-5 py-6 text-sm text-text-muted">No pending invitations.</p>
             ) : (
-              <div className="divide-y divide-white/[0.04]">
+              <div className="divide-y divide-rule-faint">
                 {invitations.map((inv) => (
                   <div key={inv.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-white">{inv.email}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className="truncate text-sm font-medium text-text">{inv.email}</p>
+                      <p className="mt-0.5 text-xs text-text-muted">
                         Expires {formatDateTime(inv.expires_at)}
                       </p>
                     </div>
@@ -236,70 +237,70 @@ export default function TeamPage() {
                       onClick={() => revokeMutation.mutate(inv.id)}
                       loading={revokeMutation.isPending}
                     >
-                      <span className="text-red-400">Revoke</span>
+                      <span className="text-danger-text">Revoke</span>
                     </Button>
                   </div>
                 ))}
               </div>
             )}
             {invitations.length > 0 && (
-              <p className="border-t border-white/[0.06] px-5 py-2.5 text-[11px] text-slate-600">
+              <p className="border-t border-rule px-5 py-2.5 text-[11px] text-text-muted">
                 For security, an invitation link is shown only once, when it's created. If a
                 link is lost, revoke the invitation and send a new one.
               </p>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* ── Invite panel ── */}
         <div className="space-y-4 h-fit lg:sticky lg:top-6">
-          <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] px-5 py-5">
-            <p className="mb-4 text-sm font-semibold text-white">Invite a team member</p>
+          <Card>
+            <p className="mb-4 text-sm font-semibold text-text">Invite a team member</p>
             <form onSubmit={handleInvite} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">Email</label>
+                <label className="mb-1.5 block text-xs font-medium text-text-muted">Email</label>
                 <input
                   type="email"
                   required
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder="scout@yourclub.com"
-                  className="w-full rounded-lg bg-slate-950 px-3 py-2 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">Role</label>
+                <label className="mb-1.5 block text-xs font-medium text-text-muted">Role</label>
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as StaffRole)}
-                  className="w-full rounded-lg bg-slate-950 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
                 >
                   {ROLE_ORDER.map((r) => (
                     <option key={r} value={r}>{ROLE_INFO[r].label}</option>
                   ))}
                 </select>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                <p className="mt-2 text-xs leading-relaxed text-text-muted">
                   {ROLE_INFO[inviteRole].description}
                 </p>
               </div>
-              {inviteError && <p className="text-sm text-red-400">{inviteError}</p>}
+              {inviteError && <p className="text-sm text-danger-text">{inviteError}</p>}
               <Button type="submit" variant="primary" size="sm" loading={inviteMutation.isPending}>
                 Send invitation
               </Button>
             </form>
-          </div>
+          </Card>
 
           {lastInvite && (
-            <div className="rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/30 px-5 py-4">
-              <p className="text-sm font-semibold text-emerald-300">
+            <div className="rounded-xl bg-success/10 ring-1 ring-success/30 px-5 py-4">
+              <p className="text-sm font-semibold text-success-text">
                 Invitation created for {lastInvite.email}
               </p>
-              <p className="mt-1 text-xs text-emerald-200/70">
+              <p className="mt-1 text-xs text-success-text/70">
                 An email has been sent if email delivery is configured. This link is shown
                 once — copy it now if you want to share it yourself.
               </p>
               <div className="mt-3 flex items-center gap-2">
-                <code className="min-w-0 flex-1 truncate rounded bg-slate-950/60 px-2 py-1.5 text-[11px] text-slate-300">
+                <code className="min-w-0 flex-1 truncate rounded bg-surface-inset px-2 py-1.5 text-[11px] text-text-secondary">
                   {lastInvite.url}
                 </code>
                 <Button variant="secondary" size="sm" onClick={() => copyAcceptUrl(lastInvite.url)}>

@@ -20,14 +20,14 @@ const EVENT_LABELS: Record<OfferEventType, string> = {
 };
 
 const EVENT_COLOURS: Record<OfferEventType, string> = {
-  CREATED:   "text-slate-400",
-  SENT:      "text-sky-400",
-  COUNTERED: "text-amber-400",
-  ACCEPTED:  "text-emerald-400",
-  REJECTED:  "text-red-400",
-  WITHDRAWN: "text-slate-400",
-  EXPIRED:   "text-slate-400",
-  MESSAGE:   "text-slate-400",
+  CREATED:   "text-text-muted",
+  SENT:      "text-accent",
+  COUNTERED: "text-warning-text",
+  ACCEPTED:  "text-success-text",
+  REJECTED:  "text-danger-text",
+  WITHDRAWN: "text-text-muted",
+  EXPIRED:   "text-text-muted",
+  MESSAGE:   "text-text-muted",
 };
 
 // ── Thread item types ─────────────────────────────────────────────────────────
@@ -65,17 +65,17 @@ function MessageBubble({
       <div
         className={`max-w-xs rounded-2xl px-4 py-2.5 text-sm ${
           isMine
-            ? "bg-emerald-500/20 text-white"
-            : "bg-slate-800 text-slate-200"
+            ? "bg-success text-white"
+            : "bg-surface-inset text-text"
         }`}
       >
         {!isMine && msg.sender_club && (
-          <p className="mb-1 text-xs font-semibold text-slate-400">
+          <p className="mb-1 text-xs font-semibold text-text-muted">
             {msg.sender_club.name}
           </p>
         )}
         <p>{msg.body}</p>
-        <p className="mt-1 text-right text-[10px] text-slate-500">
+        <p className={`mt-1 text-right text-[10px] ${isMine ? "text-white/70" : "text-text-muted"}`}>
           {formatDateTime(msg.created_at)}
         </p>
       </div>
@@ -84,17 +84,17 @@ function MessageBubble({
 }
 
 function EventRow({ evt }: { evt: OfferEvent }) {
-  const colour = EVENT_COLOURS[evt.event_type] ?? "text-slate-400";
+  const colour = EVENT_COLOURS[evt.event_type] ?? "text-text-muted";
   return (
     <div className="flex items-center gap-3 py-1">
-      <div className="h-px flex-1 bg-white/[0.06]" />
+      <div className="h-px flex-1 bg-rule" />
       <span className={`text-xs font-medium ${colour}`}>
         {EVENT_LABELS[evt.event_type] ?? evt.event_type}
-        <span className="ml-2 text-slate-500 font-normal">
+        <span className="ml-2 text-text-muted font-normal">
           {formatDateTime(evt.created_at)}
         </span>
       </span>
-      <div className="h-px flex-1 bg-white/[0.06]" />
+      <div className="h-px flex-1 bg-rule" />
     </div>
   );
 }
@@ -144,7 +144,7 @@ export default function OfferThread({
     <div className="space-y-3">
       {/* Thread items */}
       {items.length === 0 ? (
-        <p className="text-center text-xs text-slate-500 py-4">
+        <p className="text-center text-xs text-text-muted py-4">
           No messages yet.
         </p>
       ) : (
@@ -171,7 +171,7 @@ export default function OfferThread({
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Write a message…"
-            className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+            className="flex-1 rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
           />
           <Button
             type="submit"
@@ -183,7 +183,7 @@ export default function OfferThread({
           </Button>
         </form>
       )}
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-danger-text">{error}</p>}
     </div>
   );
 }

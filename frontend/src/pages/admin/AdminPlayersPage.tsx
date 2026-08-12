@@ -11,12 +11,12 @@ import { positionVariant } from "../../lib/badges";
 import type { PlayerPosition } from "../../types/enums";
 
 const POSITIONS = ["GK", "DEF", "MID", "FWD"];
-const STATUSES  = ["CONTRACTED", "FREE_AGENT"];
+const STATUSES  = ["CONTRACTED", "EXTERNAL", "FREE_AGENT"];
 
 const VISIBILITY_STYLE: Record<string, string> = {
-  PUBLIC:     "text-emerald-400",
-  CLUBS_ONLY: "text-sky-400",
-  PRIVATE:    "text-slate-500",
+  PUBLIC:     "text-success-text",
+  CLUBS_ONLY: "text-accent",
+  PRIVATE:    "text-text-muted",
 };
 
 export default function AdminPlayersPage() {
@@ -59,8 +59,8 @@ export default function AdminPlayersPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Players</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <h1 className="text-2xl font-bold text-text">Players</h1>
+        <p className="mt-1 text-sm text-text-muted">
           All players — no visibility filter {data ? `· ${data.total} total` : ""}
         </p>
       </div>
@@ -72,12 +72,12 @@ export default function AdminPlayersPage() {
           placeholder="Search name…"
           value={search}
           onChange={(e) => handleFilter("search", e.target.value)}
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-amber-500 w-48"
+          className="rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill w-48"
         />
         <select
           value={position}
           onChange={(e) => handleFilter("position", e.target.value)}
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
         >
           <option value="">All positions</option>
           {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -85,7 +85,7 @@ export default function AdminPlayersPage() {
         <select
           value={status}
           onChange={(e) => handleFilter("status", e.target.value)}
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
         >
           <option value="">All statuses</option>
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -100,10 +100,10 @@ export default function AdminPlayersPage() {
 
       {data && (
         <>
-          <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.08]">
+          <div className="overflow-x-auto rounded-xl ring-1 ring-border">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.08] text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-rule bg-surface-header text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Pos</th>
                   <th className="px-4 py-3">Status</th>
@@ -112,41 +112,45 @@ export default function AdminPlayersPage() {
                   <th className="px-4 py-3">Age</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-rule-faint">
                 {data.items.map((p) => (
                   <tr
                     key={p.id}
                     onClick={() => navigate(`/admin/players/${p.id}`)}
-                    className="cursor-pointer bg-slate-900 hover:bg-slate-800/40 transition-colors"
+                    className="cursor-pointer bg-surface hover:bg-surface-inset transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-white">{p.name}</td>
+                    <td className="px-4 py-3 font-medium text-text">{p.name}</td>
                     <td className="px-4 py-3">
                       {p.position ? (
                         <Badge variant={positionVariant(p.position as PlayerPosition)}>
                           {p.position}
                         </Badge>
-                      ) : <span className="text-slate-500">—</span>}
+                      ) : <span className="text-text-muted">—</span>}
                     </td>
                     <td className="px-4 py-3">
+                      {/* Admin sees the three real states, not the buyer-facing
+                          collapse of EXTERNAL into "Contracted" (ADR 0003). */}
                       <Badge variant={p.status === "FREE_AGENT" ? "warning" : "info"}>
-                        {p.status === "FREE_AGENT" ? "Free Agent" : "Contracted"}
+                        {p.status === "FREE_AGENT" ? "Free Agent"
+                          : p.status === "EXTERNAL" ? "External"
+                          : "Contracted"}
                       </Badge>
                     </td>
-                    <td className={`px-4 py-3 text-xs font-medium ${VISIBILITY_STYLE[p.visibility] ?? "text-slate-400"}`}>
+                    <td className={`px-4 py-3 text-xs font-medium ${VISIBILITY_STYLE[p.visibility] ?? "text-text-muted"}`}>
                       {p.visibility}
                     </td>
                     <td className="px-4 py-3 text-xs">
                       {p.current_club ? (
-                        <span className="font-medium text-white">{p.current_club.name}</span>
+                        <span className="font-medium text-text">{p.current_club.name}</span>
                       ) : p.world_team ? (
-                        <span className="text-slate-500" title="Vendor world team (no TransferX club)">{p.world_team.name} <span className="text-slate-600">(world)</span></span>
+                        <span className="text-text-muted" title="Vendor world team (no TransferX club)">{p.world_team.name} <span className="text-text-muted">(world)</span></span>
                       ) : p.team_name ? (
-                        <span className="text-slate-500">{p.team_name}</span>
+                        <span className="text-text-muted">{p.team_name}</span>
                       ) : (
-                        <span className="text-slate-600">—</span>
+                        <span className="text-text-muted">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-400">{p.age ?? "—"}</td>
+                    <td className="px-4 py-3 text-text-muted">{p.age ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

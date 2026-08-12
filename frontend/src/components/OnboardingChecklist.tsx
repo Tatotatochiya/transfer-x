@@ -89,44 +89,44 @@ function ChecklistShell({
   }
 
   return (
-    <div className="mb-6 rounded-xl bg-slate-900 ring-1 ring-emerald-500/20 overflow-hidden">
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3">
+    <div className="mb-6 rounded-xl bg-surface ring-1 ring-success/20 overflow-hidden">
+      <div className="flex items-center justify-between border-b border-rule px-5 py-3">
         <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/15">
-            <Icon name="bolt" className="h-3.5 w-3.5 text-emerald-400" />
+          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-success/15">
+            <Icon name="bolt" className="h-3.5 w-3.5 text-success-text" />
           </span>
-          <p className="text-sm font-semibold text-white">{title}</p>
-          <span className="text-xs text-slate-500">
+          <p className="text-sm font-semibold text-text">{title}</p>
+          <span className="text-xs text-text-muted">
             {doneCount}/{steps.length}
           </span>
         </div>
         <button
           onClick={dismiss}
-          className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          className="text-xs text-text-muted hover:text-text-secondary transition-colors"
         >
           Dismiss
         </button>
       </div>
-      <div className="divide-y divide-white/[0.03]">
+      <div className="divide-y divide-rule-faint">
         {steps.map((step) => (
           <button
             key={step.id}
             onClick={() => open(step)}
-            className="flex w-full items-center gap-3 px-5 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
+            className="flex w-full items-center gap-3 px-5 py-2.5 text-left transition-colors hover:bg-surface-inset"
           >
             <span
               className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ring-1 ${
                 step.done
-                  ? "bg-emerald-500/20 ring-emerald-500/40 text-emerald-400"
-                  : "bg-slate-800 ring-white/10 text-transparent"
+                  ? "bg-success/20 ring-success/40 text-success-text"
+                  : "bg-surface-inset ring-input-border text-transparent"
               }`}
             >
               <Icon name="check" className="h-3 w-3" />
             </span>
-            <span className={`text-sm ${step.done ? "text-slate-500 line-through" : "text-slate-200"}`}>
+            <span className={`text-sm ${step.done ? "text-text-muted line-through" : "text-text-secondary"}`}>
               {step.label}
             </span>
-            {!step.done && <span className="ml-auto text-xs text-slate-600">→</span>}
+            {!step.done && <span className="ml-auto text-xs text-text-muted">→</span>}
           </button>
         ))}
       </div>

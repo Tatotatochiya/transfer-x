@@ -16,8 +16,6 @@ interface NavItem {
   label: string;
   to: string;
   icon: IconName;
-  iconColor: string;  // e.g. "text-sky-400"
-  iconBg: string;     // e.g. "bg-sky-500/15"
   end?: boolean;      // exact match for active state (React Router NavLink `end`)
   // TRA-151: capability-gated items (server matrix via useClubCapabilities)
   gate?: "TEAM_MANAGE" | "APPROVALS";
@@ -35,7 +33,7 @@ const ADMIN_GROUP: NavGroup = {
   authRequired: true,
   superuserOnly: true,
   items: [
-    { label: "Admin Panel", to: "/admin", icon: "settings", iconColor: "text-amber-400", iconBg: "bg-amber-500/15" },
+    { label: "Admin Panel", to: "/admin", icon: "settings" },
   ],
 };
 
@@ -46,16 +44,16 @@ function getNavGroups(userType: UserType | null): NavGroup[] {
         title: "Agency",
         authRequired: true,
         items: [
-          { label: "Pipeline",     to: "/agent/pipeline",  icon: "layout-dashboard", iconColor: "text-emerald-400", iconBg: "bg-emerald-500/15", end: true },
-          { label: "My Roster",   to: "/agent/dashboard", icon: "briefcase",        iconColor: "text-sky-400",     iconBg: "bg-sky-500/15",    end: true },
-          { label: "Agent Profile", to: "/agent/profile", icon: "user",             iconColor: "text-indigo-400",  iconBg: "bg-indigo-500/15" },
+          { label: "Pipeline",     to: "/agent/pipeline",  icon: "layout-dashboard", end: true },
+          { label: "My Roster",   to: "/agent/dashboard", icon: "briefcase",        end: true },
+          { label: "Agent Profile", to: "/agent/profile", icon: "user" },
         ],
       },
       {
         title: "Market",
         items: [
-          { label: "Browse Players", to: "/players/market", icon: "crosshair",        iconColor: "text-slate-400",  iconBg: "bg-slate-500/15" },
-          { label: "Transfers",      to: "/transfers",      icon: "arrow-right-left", iconColor: "text-purple-400", iconBg: "bg-purple-500/15" },
+          { label: "Browse Players", to: "/players/market", icon: "crosshair" },
+          { label: "Transfers",      to: "/transfers",      icon: "arrow-right-left" },
         ],
       },
       ADMIN_GROUP,
@@ -67,15 +65,15 @@ function getNavGroups(userType: UserType | null): NavGroup[] {
       {
         title: "Market",
         items: [
-          { label: "Browse Players", to: "/players/market", icon: "users",            iconColor: "text-sky-400",    iconBg: "bg-sky-500/15" },
-          { label: "Transfers",      to: "/transfers",      icon: "arrow-right-left", iconColor: "text-purple-400", iconBg: "bg-purple-500/15" },
+          { label: "Browse Players", to: "/players/market", icon: "users" },
+          { label: "Transfers",      to: "/transfers",      icon: "arrow-right-left" },
         ],
       },
       {
         title: "My Profile",
         authRequired: true,
         items: [
-          { label: "My Profile", to: "/player/profile", icon: "user", iconColor: "text-indigo-400", iconBg: "bg-indigo-500/15", end: true },
+          { label: "My Profile", to: "/player/profile", icon: "user", end: true },
         ],
       },
       ADMIN_GROUP,
@@ -87,37 +85,37 @@ function getNavGroups(userType: UserType | null): NavGroup[] {
     {
       title: "Market",
       items: [
-        { label: "Browse Players", to: "/players/market", icon: "users",            iconColor: "text-sky-400",    iconBg: "bg-sky-500/15" },
-        { label: "Listings",       to: "/sales",          icon: "tag",              iconColor: "text-amber-400",  iconBg: "bg-amber-500/15", end: true },
-        { label: "Transfers",      to: "/transfers",      icon: "arrow-right-left", iconColor: "text-purple-400", iconBg: "bg-purple-500/15" },
+        { label: "Browse Players", to: "/players/market", icon: "users" },
+        { label: "Listings",       to: "/sales",          icon: "tag", end: true },
+        { label: "Transfers",      to: "/transfers",      icon: "arrow-right-left" },
       ],
     },
     {
       title: "My Deals",
       authRequired: true,
       items: [
-        { label: "Auctions",    to: "/sales/mine",      icon: "gavel", iconColor: "text-orange-400",  iconBg: "bg-orange-500/15" },
-        { label: "Inbox",       to: "/offers/received", icon: "inbox", iconColor: "text-emerald-400", iconBg: "bg-emerald-500/15" },
-        { label: "Sent Offers", to: "/offers/sent",     icon: "send",  iconColor: "text-teal-400",    iconBg: "bg-teal-500/15" },
-        { label: "Deals",       to: "/deals",           icon: "tag",   iconColor: "text-violet-400",  iconBg: "bg-violet-500/15" },
+        { label: "Auctions",    to: "/sales/mine",      icon: "gavel" },
+        { label: "Inbox",       to: "/offers/received", icon: "inbox" },
+        { label: "Sent Offers", to: "/offers/sent",     icon: "send" },
+        { label: "Deals",       to: "/deals",           icon: "tag" },
       ],
     },
     {
       title: "Club",
       authRequired: true,
       items: [
-        { label: "War Room",  to: "/dashboard",      icon: "layout-dashboard", iconColor: "text-blue-400",   iconBg: "bg-blue-500/15" },
-        { label: "My Club",   to: "/club",           icon: "shield",           iconColor: "text-indigo-400", iconBg: "bg-indigo-500/15", end: true },
-        { label: "Finance",   to: "/club/finance",   icon: "wallet",           iconColor: "text-green-400",  iconBg: "bg-green-500/15" },
-        { label: "Team",      to: "/club/team",      icon: "users",            iconColor: "text-rose-400",   iconBg: "bg-rose-500/15", gate: "TEAM_MANAGE" },
-        { label: "Approvals", to: "/club/approvals", icon: "check",            iconColor: "text-amber-400",  iconBg: "bg-amber-500/15", gate: "APPROVALS" },
+        { label: "War Room",  to: "/dashboard",      icon: "layout-dashboard" },
+        { label: "My Club",   to: "/club",           icon: "shield", end: true },
+        { label: "Finance",   to: "/club/finance",   icon: "wallet" },
+        { label: "Team",      to: "/club/team",      icon: "users", gate: "TEAM_MANAGE" },
+        { label: "Approvals", to: "/club/approvals", icon: "check", gate: "APPROVALS" },
       ],
     },
     {
       title: "Scouting",
       authRequired: true,
       items: [
-        { label: "Shortlists", to: "/scouting/shortlists", icon: "list", iconColor: "text-cyan-400", iconBg: "bg-cyan-500/15" },
+        { label: "Shortlists", to: "/scouting/shortlists", icon: "list" },
       ],
     },
     ADMIN_GROUP,
@@ -185,8 +183,8 @@ function SidebarLink({ item }: { item: NavItem }) {
         <>
           <div
             className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors ${
-              isActive ? item.iconBg : "bg-surface-inset"
-            } ${item.iconColor}`}
+              isActive ? "bg-accent-bg text-accent" : "bg-surface-inset text-text-muted"
+            }`}
           >
             <Icon name={item.icon} className="h-4 w-4" />
           </div>

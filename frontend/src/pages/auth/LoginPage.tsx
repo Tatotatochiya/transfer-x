@@ -37,29 +37,29 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-      <div className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-page px-4">
+      <div className="w-full max-w-[400px]">
         {/* Logo */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/20">
-            <Icon name="bolt" className="h-7 w-7 text-emerald-400" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent-bg">
+            <Icon name="bolt" className="h-7 w-7 text-accent" />
           </div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400">TransferX</p>
-          <h1 className="mt-2 text-2xl font-semibold text-white">Sign in</h1>
-          <p className="mt-1 text-sm text-slate-500">Welcome back. Please enter your credentials.</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent">TransferX</p>
+          <h1 className="mt-2 text-2xl font-semibold text-text">Sign in</h1>
+          <p className="mt-1 text-sm text-text-muted">Welcome back. Please enter your credentials.</p>
         </div>
 
         {/* Card */}
-        <div className="rounded-xl bg-slate-900 p-8 ring-1 ring-white/[0.08]">
+        <div className="rounded-xl bg-surface p-8 ring-1 ring-border">
           {error && (
-            <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-400 ring-1 ring-red-500/30">
+            <div className="mb-4 rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-slate-300">
+              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-text-secondary">
                 Email
               </label>
               <input
@@ -69,13 +69,13 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+                className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                 placeholder="you@club.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-slate-300">
+              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-text-secondary">
                 Password
               </label>
               <input
@@ -85,7 +85,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+                className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                 placeholder="••••••••"
               />
             </div>
@@ -102,9 +102,9 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-sm text-slate-500">
+        <p className="mt-6 text-center text-sm text-text-muted">
           New to TransferX?{" "}
-          <Link to="/register" className="text-emerald-400 hover:underline">
+          <Link to="/register" className="text-accent hover:underline">
             Create an account
           </Link>
         </p>

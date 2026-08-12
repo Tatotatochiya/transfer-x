@@ -71,11 +71,11 @@ const AgentRosterImportPage     = lazy(() => import("./pages/agent/AgentRosterIm
 const PlayerProfilePage         = lazy(() => import("./pages/player/PlayerProfilePage"));
 
 const NotFoundPage = () => (
-  <div className="flex min-h-screen items-center justify-center bg-slate-950">
+  <div className="flex min-h-screen items-center justify-center bg-page">
     <div className="text-center">
-      <p className="text-5xl font-bold text-slate-700">404</p>
-      <p className="mt-3 text-slate-400">Page not found.</p>
-      <a href="/" className="mt-4 inline-block text-emerald-400 hover:underline text-sm">
+      <p className="text-5xl font-bold text-text-muted">404</p>
+      <p className="mt-3 text-text-muted">Page not found.</p>
+      <a href="/" className="mt-4 inline-block text-accent hover:underline text-sm">
         Go home
       </a>
     </div>
@@ -98,7 +98,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 const LoadingScreen = () => (
-  <div className="flex min-h-screen items-center justify-center bg-slate-950">
+  <div className="flex min-h-screen items-center justify-center bg-page">
     <Spinner size="lg" />
   </div>
 );
@@ -164,7 +164,7 @@ export default function App() {
       <BrowserRouter>
         <GlobalSetup />
         <CompareBar />
-        <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950"><Spinner size="lg" /></div>}>
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-page"><Spinner size="lg" /></div>}>
         <Routes>
           {/* ── Auth (no shell) ── */}
           <Route path="/login"    element={<LoginPage />} />

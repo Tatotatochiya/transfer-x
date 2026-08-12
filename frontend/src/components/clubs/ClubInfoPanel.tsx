@@ -31,20 +31,20 @@ export default function ClubInfoPanel({
   ].filter(Boolean) as { icon: string; label: string; value: string }[];
 
   return (
-    <div className="rounded-xl bg-slate-900/60 ring-1 ring-white/[0.06] px-5 py-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Club Info</p>
+    <div className="rounded-xl bg-surface ring-1 ring-border px-5 py-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Club Info</p>
       <div className="space-y-2">
         {items.map((item) => (
           <div key={item.label} className="flex items-center justify-between gap-4">
-            <span className="flex items-center gap-2 text-sm text-slate-400">
+            <span className="flex items-center gap-2 text-sm text-text-muted">
               <span>{item.icon}</span>
               {item.label}
             </span>
-            <span className="text-sm font-medium text-white text-right">{item.value}</span>
+            <span className="text-sm font-medium text-text text-right">{item.value}</span>
           </div>
         ))}
         <div className="flex items-center justify-between gap-4 pt-1">
-          <span className="flex items-center gap-2 text-sm text-slate-400">
+          <span className="flex items-center gap-2 text-sm text-text-muted">
             <span>🔖</span>
             Role
           </span>

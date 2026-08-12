@@ -102,7 +102,7 @@ export default function ClubDetailPage() {
 
   if (isError || !club) {
     return (
-      <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
         Club not found.{" "}
         <button onClick={() => navigate(-1)} className="underline">Go back</button>
       </div>
@@ -133,42 +133,42 @@ export default function ClubDetailPage() {
       {/* Back */}
       <button
         onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+        className="mb-6 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
       >
         ← Back
       </button>
 
       {/* ── Header ── */}
       <div className="mb-6 flex items-start gap-5">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-slate-800 overflow-hidden ring-1 ring-white/[0.08]">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-surface-inset overflow-hidden ring-1 ring-border">
           {club.crest_url ? (
             <img src={club.crest_url} alt={club.name} loading="lazy" className="h-full w-full object-contain p-2" />
           ) : (
-            <span className="text-3xl font-bold text-slate-500">{club.name[0]?.toUpperCase()}</span>
+            <span className="text-3xl font-bold text-text-muted">{club.name[0]?.toUpperCase()}</span>
           )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-white">{club.name}</h1>
+            <h1 className="text-2xl font-bold text-text">{club.name}</h1>
             {club.verified && <VerifiedBadge />}
           </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-400">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-muted">
             {club.league_name && <span>{club.league_name}</span>}
             {club.city && (
               <>
-                {club.league_name && <span className="text-slate-700">·</span>}
+                {club.league_name && <span className="text-text-muted">·</span>}
                 <span>{club.city}</span>
               </>
             )}
             {club.country && (
               <>
-                {(club.league_name || club.city) && <span className="text-slate-700">·</span>}
+                {(club.league_name || club.city) && <span className="text-text-muted">·</span>}
                 <span>{club.country}</span>
               </>
             )}
           </div>
           {squadData && (
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-text-muted">
               {squadData.total} player{squadData.total !== 1 ? "s" : ""} in squad
             </p>
           )}
@@ -176,27 +176,27 @@ export default function ClubDetailPage() {
       </div>
 
       {/* ── Two-column layout ── */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_260px]">
         {/* Main content */}
         <div>
           {/* Tabs */}
-          <div className="mb-6 flex gap-1 rounded-xl bg-slate-800/50 p-1 w-fit">
+          <div className="mb-6 flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl bg-surface-inset p-1">
             {tabs.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-                  tab === t.id ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-white"
+                  tab === t.id ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
                 }`}
               >
                 {t.label}
                 {t.id === "squad" && squadData && (
-                  <span className="ml-1.5 rounded-full bg-slate-600 px-1.5 py-0.5 text-xs text-slate-300">
+                  <span className="ml-1.5 rounded-full bg-surface px-1.5 py-0.5 text-xs text-text-secondary">
                     {squadData.total}
                   </span>
                 )}
                 {t.id === "listings" && (listingsCount ?? 0) > 0 && (
-                  <span className="ml-1.5 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-xs text-emerald-400">
+                  <span className="ml-1.5 rounded-full bg-success/15 px-1.5 py-0.5 text-xs text-success-text">
                     {listingsCount}
                   </span>
                 )}

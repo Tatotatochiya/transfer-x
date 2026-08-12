@@ -10,9 +10,9 @@ import type { Paginated, Player, TokenResponse, User } from "../../types/api";
 type ActorType = "CLUB" | "AGENT" | "PLAYER";
 
 const INPUT_CLS =
-  "w-full rounded-lg bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors";
+  "w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors";
 
-const LABEL_CLS = "mb-1.5 block text-sm font-medium text-slate-300";
+const LABEL_CLS = "mb-1.5 block text-sm font-medium text-text-secondary";
 
 interface TypeCardProps {
   type: ActorType;
@@ -30,12 +30,12 @@ function TypeCard({ icon, title, description, selected, onSelect }: TypeCardProp
       onClick={onSelect}
       className={`flex flex-col items-start gap-1 rounded-xl p-4 text-left ring-1 transition-all ${
         selected
-          ? "bg-emerald-500/10 ring-emerald-500 text-white"
-          : "bg-slate-800 ring-white/10 text-slate-400 hover:ring-white/20 hover:text-white"
+          ? "bg-accent-bg ring-accent text-text"
+          : "bg-surface ring-input-border text-text-muted hover:ring-accent hover:text-text"
       }`}
     >
-      <Icon name={icon} className={`h-5 w-5 mb-1 ${selected ? "text-emerald-400" : ""}`} />
-      <span className="text-sm font-semibold text-white">{title}</span>
+      <Icon name={icon} className={`h-5 w-5 mb-1 ${selected ? "text-accent" : ""}`} />
+      <span className="text-sm font-semibold text-text">{title}</span>
       <span className="text-xs leading-snug">{description}</span>
     </button>
   );
@@ -140,21 +140,23 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-page px-4 py-12">
+      {/* Wider than the 400px auth archetype — the three-column role
+          selector genuinely needs the room; cramping it wasn't worth it. */}
       <div className="w-full max-w-lg">
         {/* Logo */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/20">
-            <Icon name="bolt" className="h-7 w-7 text-emerald-400" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent-bg">
+            <Icon name="bolt" className="h-7 w-7 text-accent" />
           </div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400">TransferX</p>
-          <h1 className="mt-2 text-2xl font-semibold text-white">Create an account</h1>
-          <p className="mt-1 text-sm text-slate-500">Choose your role to get started.</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent">TransferX</p>
+          <h1 className="mt-2 text-2xl font-semibold text-text">Create an account</h1>
+          <p className="mt-1 text-sm text-text-muted">Choose your role to get started.</p>
         </div>
 
-        <div className="rounded-xl bg-slate-900 p-8 ring-1 ring-white/[0.08]">
+        <div className="rounded-xl bg-surface p-8 ring-1 ring-border">
           {error && (
-            <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-400 ring-1 ring-red-500/30">
+            <div className="mb-4 rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
               {error}
             </div>
           )}
@@ -224,7 +226,7 @@ export default function RegisterPage() {
             {actorType === "CLUB" && (
               <div>
                 <label htmlFor="club_name" className={LABEL_CLS}>
-                  Club name <span className="text-slate-500">(optional)</span>
+                  Club name <span className="text-text-muted">(optional)</span>
                 </label>
                 <input
                   id="club_name"
@@ -278,7 +280,7 @@ export default function RegisterPage() {
                 </div>
                 <div>
                   <label htmlFor="licence_no" className={LABEL_CLS}>
-                    FIFA licence no. <span className="text-slate-500">(optional)</span>
+                    FIFA licence no. <span className="text-text-muted">(optional)</span>
                   </label>
                   <input
                     id="licence_no"
@@ -297,15 +299,15 @@ export default function RegisterPage() {
               <div>
                 <label className={LABEL_CLS}>Find your player record</label>
                 {selectedPlayer ? (
-                  <div className="flex items-center justify-between rounded-lg bg-emerald-500/10 px-4 py-3 ring-1 ring-emerald-500/30">
+                  <div className="flex items-center justify-between rounded-lg bg-accent-bg px-4 py-3 ring-1 ring-accent">
                     <div>
-                      <p className="text-sm font-medium text-white">{selectedPlayer.name}</p>
-                      <p className="text-xs text-slate-400">{selectedPlayer.position ?? "Unknown position"}</p>
+                      <p className="text-sm font-medium text-text">{selectedPlayer.name}</p>
+                      <p className="text-xs text-text-muted">{selectedPlayer.position ?? "Unknown position"}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => { setSelectedPlayer(null); setPlayerSearch(""); }}
-                      className="text-xs text-slate-400 hover:text-white transition-colors"
+                      className="text-xs text-text-muted hover:text-text transition-colors"
                     >
                       Change
                     </button>
@@ -320,22 +322,22 @@ export default function RegisterPage() {
                       placeholder="Search by name…"
                     />
                     {(searching || searchResults.length > 0) && (
-                      <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg bg-slate-800 py-1 ring-1 ring-white/10 shadow-xl">
+                      <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg bg-surface py-1 ring-1 ring-border shadow-xl">
                         {searching ? (
-                          <p className="px-4 py-2 text-xs text-slate-400">Searching…</p>
+                          <p className="px-4 py-2 text-xs text-text-muted">Searching…</p>
                         ) : searchResults.length === 0 ? (
-                          <p className="px-4 py-2 text-xs text-slate-400">No players found</p>
+                          <p className="px-4 py-2 text-xs text-text-muted">No players found</p>
                         ) : (
                           searchResults.map((p) => (
                             <button
                               key={p.id}
                               type="button"
                               onClick={() => { setSelectedPlayer(p); setSearchResults([]); }}
-                              className="w-full px-4 py-2.5 text-left text-sm hover:bg-white/5 transition-colors"
+                              className="w-full px-4 py-2.5 text-left text-sm hover:bg-surface-inset transition-colors"
                             >
-                              <span className="font-medium text-white">{p.name}</span>
+                              <span className="font-medium text-text">{p.name}</span>
                               {p.position && (
-                                <span className="ml-2 text-xs text-slate-400">{p.position}</span>
+                                <span className="ml-2 text-xs text-text-muted">{p.position}</span>
                               )}
                             </button>
                           ))
@@ -344,7 +346,7 @@ export default function RegisterPage() {
                     )}
                   </div>
                 )}
-                <p className="mt-1.5 text-xs text-slate-500">
+                <p className="mt-1.5 text-xs text-text-muted">
                   Your account will be linked to this player record.
                 </p>
               </div>
@@ -356,9 +358,9 @@ export default function RegisterPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-sm text-slate-500">
+        <p className="mt-6 text-center text-sm text-text-muted">
           Already have an account?{" "}
-          <Link to="/login" className="text-emerald-400 hover:underline">
+          <Link to="/login" className="text-accent hover:underline">
             Sign in
           </Link>
         </p>

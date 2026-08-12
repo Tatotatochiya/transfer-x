@@ -1,317 +1,353 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { ActiveDealStub, FairValueSignal, Player, PlayerDetail } from "../../types/api";
-import Badge from "../ui/Badge";
-import FairValueBadge from "./FairValueBadge";
-import FormBadge from "./FormBadge";
 import { formatCurrency } from "../../lib/utils";
 
-const POSITION_ORDER = ["GK", "DEF", "MID", "FWD"];
+const POSITION_TARGETS = [
+  { pos: "GK", min: 2, label: "Goalkeepers" },
+  { pos: "DEF", min: 4, label: "Defenders" },
+  { pos: "MID", min: 4, label: "Midfielders" },
+  { pos: "FWD", min: 3, label: "Forwards" },
+];
 
 const POSITION_COLOUR: Record<string, string> = {
-  GK: "bg-amber-500/20 text-amber-300",
-  DEF: "bg-blue-500/20 text-blue-300",
-  MID: "bg-emerald-500/20 text-emerald-300",
-  FWD: "bg-red-500/20 text-red-300",
+  GK: "bg-pos-gk-bg text-pos-gk-text",
+  DEF: "bg-pos-def-bg text-pos-def-text",
+  MID: "bg-pos-mid-bg text-pos-mid-text",
+  FWD: "bg-pos-fwd-bg text-pos-fwd-text",
 };
 
-// Accept both Player (world teams) and PlayerDetail (registered clubs, which adds active_contract + active_deal)
+type SquadPlayer = Player & { active_contract?: PlayerDetail["active_contract"]; active_deal?: ActiveDealStub | null };
+
 interface Props {
-  players: (Player & { active_contract?: PlayerDetail["active_contract"]; active_deal?: ActiveDealStub | null })[];
+  players: SquadPlayer[];
   showContractDetails?: boolean;
-  /** Map of player_id → form_score for displaying form badges */
   formScores?: Record<string, { score: number; trend: number | null }>;
-  /** Map of player_id → fair-value signal (TRA-92). Market-facing, same as the
-   * public player profile — never gated behind showContractDetails. */
   fairValues?: Record<string, FairValueSignal>;
-  /** When provided, shows an interactive toggle for each player's open_to_offers flag */
   onToggleOpenToOffers?: (playerId: string, next: boolean) => void;
-  /** Set of player IDs currently being toggled (shows loading state) */
   togglingIds?: Set<string>;
-  /** When provided, renders an editable Valuation cell */
   onSetValuation?: (playerId: string, value: number | null) => void;
+  /** Player IDs with an open listing right now — drives the "Listed" chip and flag. */
+  listedPlayerIds?: Set<string>;
 }
 
-function PositionBreakdown({ players }: { players: PlayerDetail[] }) {
-  const counts = POSITION_ORDER.reduce<Record<string, number>>((acc, pos) => {
-    acc[pos] = players.filter((p) => p.position === pos).length;
-    return acc;
-  }, {});
-  const total = players.length;
+type ChipKey = "all" | "risk" | "listed" | "open";
+
+function monthsUntil(iso: string): number {
+  return (new Date(iso).getTime() - Date.now()) / (30 * 86_400_000);
+}
+
+// ── Player row ────────────────────────────────────────────────────────────────
+
+function PlayerRow({
+  player, showContractDetails, formScore, fairValue, isListed,
+  onToggleOpenToOffers, toggling, onSetValuation,
+}: {
+  player: SquadPlayer;
+  showContractDetails: boolean;
+  formScore?: { score: number; trend: number | null };
+  fairValue?: FairValueSignal;
+  isListed: boolean;
+  onToggleOpenToOffers?: (playerId: string, next: boolean) => void;
+  toggling?: boolean;
+  onSetValuation?: (playerId: string, value: number | null) => void;
+}) {
+  const [editingValuation, setEditingValuation] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const contractEnd = player.active_contract?.end_date;
+  const contractMonths = contractEnd ? monthsUntil(contractEnd) : null;
+  const contractColour = contractMonths == null ? "text-text-muted"
+    : contractMonths < 6 ? "text-danger-text"
+    : contractMonths < 12 ? "text-warning-text"
+    : "text-text-secondary";
+
+  // Prefer the fair-value model (real, ~30% coverage today) over the legacy
+  // vendor market_value field (currently 0% populated — enrichment is a
+  // documented no-op with no source configured) — same source order as B6's
+  // contract-cliff value-at-risk (ADR 0002), applied here too since the model
+  // figure was being computed and passed in but never actually displayed.
+  const market = (fairValue ? Number(fairValue.fair_value) : null) ?? player.market_value ?? null;
+  const valuation = player.active_contract?.club_valuation ?? null;
+  const pct = market && valuation ? ((valuation - market) / market) * 100 : null;
+
+  const flag = player.active_deal?.status === "IN_PROGRESS"
+    ? { label: "Transfer pending", colour: "text-warning-text" }
+    : isListed
+    ? { label: "Listed", colour: "text-accent" }
+    : player.open_to_offers
+    ? { label: "Open to offers", colour: "text-success-text" }
+    : null;
+
+  function commitValuation() {
+    if (!onSetValuation) return;
+    const parsed = draft.trim() === "" ? null : Number(draft.replace(/[^0-9.]/g, ""));
+    onSetValuation(player.id, parsed != null && !isNaN(parsed) ? parsed : null);
+    setEditingValuation(false);
+  }
 
   return (
-    <div className="mb-5 flex flex-wrap items-center gap-4 rounded-xl bg-slate-800/60 px-5 py-3">
-      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-        Squad ({total})
-      </span>
-      {POSITION_ORDER.map((pos) => (
-        <span key={pos} className="flex items-center gap-1.5 text-sm">
-          <span className={`rounded px-1.5 py-0.5 text-xs font-bold ${POSITION_COLOUR[pos]}`}>
-            {pos}
-          </span>
-          <span className="text-white">{counts[pos]}</span>
-        </span>
-      ))}
+    <div className="rounded-xl bg-surface ring-1 ring-border px-5 py-3.5">
+      <div className="flex flex-wrap items-center gap-[18px]">
+        {/* Avatar */}
+        <div className="shrink-0">
+          {player.photo_url ? (
+            <img src={player.photo_url} alt={player.name} loading="lazy" className="h-[38px] w-[38px] rounded-full object-cover ring-1 ring-border" />
+          ) : (
+            <div className={`flex h-[38px] w-[38px] items-center justify-center rounded-full text-sm font-bold ${player.position ? POSITION_COLOUR[player.position] : "bg-surface-inset text-text-muted"}`}>
+              {player.name[0]?.toUpperCase()}
+            </div>
+          )}
+        </div>
+
+        {/* Identity */}
+        <div className="flex-1 basis-[170px] min-w-0">
+          <Link to={`/players/market/${player.id}`} className="text-[15px] font-semibold text-text hover:text-accent transition-colors">
+            {player.name}
+          </Link>
+          <p className="text-xs text-text-muted">
+            {[player.age ? `${player.age}y` : null, player.nationality].filter(Boolean).join(" · ") || "—"}
+          </p>
+        </div>
+
+        {/* Contract */}
+        {showContractDetails && (
+          <div className="basis-[120px] shrink">
+            <p className="text-[11px] text-text-muted">Contract ends</p>
+            <p className={`text-sm font-semibold ${contractColour}`}>
+              {contractEnd ? new Date(contractEnd).toLocaleDateString("en-GB", { month: "short", year: "numeric" }) : "—"}
+            </p>
+          </div>
+        )}
+
+        {/* Wage */}
+        {showContractDetails && (
+          <div className="basis-[90px] shrink">
+            <p className="text-[11px] text-text-muted">Wage / wk</p>
+            <p className="text-sm font-semibold text-text">
+              {player.active_contract?.wage_weekly ? formatCurrency(player.active_contract.wage_weekly) : "—"}
+            </p>
+          </div>
+        )}
+
+        {/* Value */}
+        {showContractDetails && (
+          <div className="hidden md:block flex-1 basis-[190px] min-w-[150px]">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] text-text-muted">
+                Model vs your valuation{fairValue ? ` · ${fairValue.confidence.toLowerCase()} conf.` : ""}
+              </p>
+              {pct != null && (
+                <span className={`text-xs font-semibold ${pct >= 0 ? "text-success-text" : "text-danger-text"}`}>
+                  {pct >= 0 ? "+" : ""}{pct.toFixed(0)}%
+                </span>
+              )}
+            </div>
+            <div className="mt-1 flex h-1.5 w-full overflow-hidden rounded-full bg-border-quiet">
+              {market != null && valuation != null && (
+                <>
+                  <div className="h-full bg-text-muted" style={{ width: `${Math.min(100, (Math.min(market, valuation) / Math.max(market, valuation)) * 100)}%` }} />
+                  <div className={`h-full ${valuation >= market ? "bg-success" : "bg-danger"}`} style={{ width: `${Math.min(100, (Math.abs(valuation - market) / Math.max(market, valuation)) * 100)}%` }} />
+                </>
+              )}
+            </div>
+            {onSetValuation ? (
+              editingValuation ? (
+                <input
+                  autoFocus type="text" value={draft} onChange={(e) => setDraft(e.target.value)}
+                  onBlur={commitValuation}
+                  onKeyDown={(e) => { if (e.key === "Enter") commitValuation(); if (e.key === "Escape") setEditingValuation(false); }}
+                  placeholder="Set valuation"
+                  className="mt-1 w-full rounded bg-surface-inset px-1.5 py-0.5 text-xs text-text ring-1 ring-accent focus:outline-none"
+                />
+              ) : (
+                <button
+                  onClick={() => { setEditingValuation(true); setDraft(valuation != null ? String(valuation) : ""); }}
+                  className="mt-1 text-xs text-text-muted hover:text-accent transition-colors"
+                >
+                  {market != null ? formatCurrency(market) : "—"} model · {valuation != null ? formatCurrency(valuation) : "set"} yours
+                </button>
+              )
+            ) : (
+              <p className="mt-1 text-xs text-text-muted">
+                {market != null ? formatCurrency(market) : "—"} model · {valuation != null ? formatCurrency(valuation) : "—"} yours
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Flag / open-to-offers toggle */}
+        <div className="flex shrink-0 basis-[110px] justify-end">
+          {onToggleOpenToOffers ? (
+            <button
+              disabled={toggling || player.active_deal?.status === "IN_PROGRESS"}
+              title={player.active_deal?.status === "IN_PROGRESS" ? "Cannot change while a transfer is in progress" : undefined}
+              onClick={() => onToggleOpenToOffers(player.id, !player.open_to_offers)}
+              className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ${player.open_to_offers ? "bg-success" : "bg-border"}`}
+              aria-label={player.open_to_offers ? "Disable open to offers" : "Enable open to offers"}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${player.open_to_offers ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+            </button>
+          ) : flag ? (
+            <span className={`text-xs font-semibold ${flag.colour}`}>{flag.label}</span>
+          ) : (
+            <span className="text-xs text-text-muted">—</span>
+          )}
+        </div>
+      </div>
+
+      {/* Form score, shown as a secondary line to avoid crowding the primary row */}
+      {formScore != null && (
+        <p className="mt-1.5 text-[11px] text-text-muted">Form {formScore.score.toFixed(0)}{formScore.trend != null && (formScore.trend > 0 ? " ↑" : formScore.trend < 0 ? " ↓" : "")}</p>
+      )}
     </div>
   );
 }
 
-export default function SquadTable({ players, showContractDetails = false, formScores, fairValues, onToggleOpenToOffers, togglingIds, onSetValuation }: Props) {
-  const [editingValuationId, setEditingValuationId] = useState<string | null>(null);
-  const [valuationDraft, setValuationDraft] = useState("");
+// ── Position group ────────────────────────────────────────────────────────────
 
-  function startEditValuation(playerId: string, current: number | null) {
-    setEditingValuationId(playerId);
-    setValuationDraft(current != null ? String(current) : "");
-  }
+function PositionGroup({
+  pos, label, min, total, players, ...rowProps
+}: {
+  pos: string; label: string; min: number; total: number; players: SquadPlayer[];
+} & Omit<Parameters<typeof PlayerRow>[0], "player" | "isListed" | "toggling" | "formScore" | "fairValue">
+  & { listedPlayerIds: Set<string>; formScores?: Record<string, { score: number; trend: number | null }>; fairValues?: Record<string, FairValueSignal>; togglingIds?: Set<string> }) {
+  // total is the whole squad's count for this position, independent of the
+  // active filter chip — depth coverage shouldn't flip to "priority gap"
+  // just because a filter (e.g. "Contract risk") happens to hide everyone.
+  const covered = total >= min;
 
-  function commitValuation(playerId: string) {
-    if (!onSetValuation) return;
-    const trimmed = valuationDraft.trim();
-    const parsed = trimmed === "" ? null : Number(trimmed.replace(/[^0-9.]/g, ""));
-    onSetValuation(playerId, parsed != null && !isNaN(parsed) ? parsed : null);
-    setEditingValuationId(null);
-  }
+  return (
+    <div className="mb-[22px]">
+      <div className="mb-2.5 flex items-center gap-2.5">
+        <h3 className="text-[15px] font-bold text-text">{label}</h3>
+        <span className={`text-[13px] font-semibold ${covered ? "text-success-text" : "text-danger-text"}`}>
+          {total} of {min} minimum — {covered ? "covered" : "priority gap"}
+        </span>
+      </div>
+      {players.length === 0 ? (
+        <p className="text-sm text-text-muted">
+          {total === 0 ? `No ${label.toLowerCase()} in the squad.` : `No ${label.toLowerCase()} match this filter.`}
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {players.map((p) => (
+            <PlayerRow
+              key={p.id}
+              player={p}
+              showContractDetails={rowProps.showContractDetails}
+              formScore={rowProps.formScores?.[p.id]}
+              fairValue={rowProps.fairValues?.[p.id]}
+              isListed={rowProps.listedPlayerIds.has(p.id)}
+              onToggleOpenToOffers={rowProps.onToggleOpenToOffers}
+              toggling={rowProps.togglingIds?.has(p.id)}
+              onSetValuation={rowProps.onSetValuation}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+export default function SquadTable({
+  players, showContractDetails = false, formScores, fairValues,
+  onToggleOpenToOffers, togglingIds, onSetValuation, listedPlayerIds,
+}: Props) {
+  const [chip, setChip] = useState<ChipKey>("all");
+  const listed = listedPlayerIds ?? new Set<string>();
 
   if (players.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-slate-500">No players in squad.</p>
-    );
+    return <p className="py-8 text-center text-sm text-text-muted">No players in squad.</p>;
   }
 
-  // Group by position for visual separation
-  const groups = POSITION_ORDER.map((pos) => ({
-    pos,
-    players: players.filter((p) => p.position === pos),
-  })).filter((g) => g.players.length > 0);
+  const counts = {
+    all: players.length,
+    risk: players.filter((p) => p.active_contract?.end_date && monthsUntil(p.active_contract.end_date) < 12).length,
+    listed: players.filter((p) => listed.has(p.id)).length,
+    open: players.filter((p) => p.open_to_offers).length,
+  };
 
-  // Catch-all for players without a position
-  const unpositioned = players.filter((p) => !p.position);
-  if (unpositioned.length > 0) groups.push({ pos: "—", players: unpositioned });
+  const filtered = players.filter((p) => {
+    if (chip === "risk") return p.active_contract?.end_date && monthsUntil(p.active_contract.end_date) < 12;
+    if (chip === "listed") return listed.has(p.id);
+    if (chip === "open") return p.open_to_offers;
+    return true;
+  });
+
+  const groups = POSITION_TARGETS.map((t) => ({
+    ...t,
+    total: players.filter((p) => p.position === t.pos).length,
+    players: filtered.filter((p) => p.position === t.pos),
+  }));
+  const unpositioned = filtered.filter((p) => !p.position);
+
+  const chips: { key: ChipKey; label: string }[] = [
+    { key: "all", label: `All ${counts.all}` },
+    { key: "risk", label: `Contract risk ${counts.risk}` },
+    { key: "listed", label: `Listed ${counts.listed}` },
+    { key: "open", label: `Open to offers ${counts.open}` },
+  ];
 
   return (
     <div>
-      <PositionBreakdown players={players} />
-
-      <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.06]">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-800 text-xs font-semibold uppercase tracking-wider text-slate-500">
-              <th className="px-4 py-3 text-left">Pos</th>
-              <th className="px-4 py-3 text-left">Player</th>
-              <th className="px-4 py-3 text-left">Age</th>
-              <th className="px-4 py-3 text-left">Nationality</th>
-              <th className="px-4 py-3 text-left">Status</th>
-              {formScores && <th className="px-4 py-3 text-center">Form</th>}
-              {fairValues && <th className="px-4 py-3 text-left">Fair Value</th>}
-              {onToggleOpenToOffers && (
-                <th className="px-4 py-3 text-center">Open to offers</th>
-              )}
-              {showContractDetails && (
-                <>
-                  <th className="px-4 py-3 text-right">Wage / wk</th>
-                  <th className="px-4 py-3 text-left">Contract ends</th>
-                  <th className="px-4 py-3 text-right">Mkt Value</th>
-                  <th className="px-4 py-3 text-right">Valuation</th>
-                </>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {groups.map(({ pos, players: group }) =>
-              group.map((player, idx) => (
-                <tr
-                  key={player.id}
-                  className={`border-b border-slate-800/60 transition-colors hover:bg-slate-800/40 ${
-                    idx === 0 && pos !== "—" ? "border-t-2 border-t-slate-700" : ""
-                  }`}
-                >
-                  {/* Position */}
-                  <td className="px-4 py-3">
-                    {player.position ? (
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-xs font-bold ${
-                          POSITION_COLOUR[player.position] ?? "bg-slate-700 text-slate-300"
-                        }`}
-                      >
-                        {player.position}
-                      </span>
-                    ) : (
-                      <span className="text-slate-500">—</span>
-                    )}
-                  </td>
-
-                  {/* Name + photo */}
-                  <td className="px-4 py-3">
-                    <Link
-                      to={`/players/market/${player.id}`}
-                      className="flex items-center gap-2.5 font-medium text-white hover:text-emerald-400 transition-colors"
-                    >
-                      {player.photo_url ? (
-                        <img
-                          loading="lazy"
-                          src={player.photo_url}
-                          alt={player.name}
-                          className="h-7 w-7 rounded-full object-cover ring-1 ring-white/10"
-                        />
-                      ) : (
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-slate-400">
-                          {player.name[0]?.toUpperCase()}
-                        </div>
-                      )}
-                      {player.name}
-                    </Link>
-                    {player.open_to_offers && !onToggleOpenToOffers && (
-                      <span className="ml-9 mt-0.5 block text-xs text-emerald-400">
-                        Open to offers
-                      </span>
-                    )}
-                  </td>
-
-                  {/* Age */}
-                  <td className="px-4 py-3 text-slate-300">{player.age ?? "—"}</td>
-
-                  {/* Nationality */}
-                  <td className="px-4 py-3 text-slate-400">{player.nationality ?? "—"}</td>
-
-                  {/* Status — vendor players have status=FREE_AGENT in DB but display as Contracted when team affiliation is set */}
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1">
-                      {(player.current_club || player.world_team || player.team_name) ? (
-                        <Badge variant="info">Contracted</Badge>
-                      ) : (
-                        <Badge variant={player.status === "FREE_AGENT" ? "warning" : "info"}>
-                          {player.status === "FREE_AGENT" ? "Free Agent" : "Contracted"}
-                        </Badge>
-                      )}
-                      {player.active_deal?.status === "IN_PROGRESS" && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400 ring-1 ring-amber-500/30 w-fit">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                          Transfer pending
-                        </span>
-                      )}
-                      {player.active_deal?.status === "COMPLETED" && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 ring-1 ring-emerald-500/20 w-fit">
-                          Transferred
-                        </span>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* Form score */}
-                  {formScores && (
-                    <td className="px-4 py-3 text-center">
-                      {formScores[player.id] != null ? (
-                        <FormBadge
-                          score={formScores[player.id].score}
-                          trend={formScores[player.id].trend}
-                        />
-                      ) : (
-                        <span className="text-xs text-slate-600">—</span>
-                      )}
-                    </td>
-                  )}
-
-                  {/* Fair value (TRA-92) — market-facing model estimate */}
-                  {fairValues && (
-                    <td className="px-4 py-3">
-                      {fairValues[player.id] ? (
-                        <FairValueBadge signal={fairValues[player.id]} compact />
-                      ) : (
-                        <span className="text-xs text-slate-600">—</span>
-                      )}
-                    </td>
-                  )}
-
-                  {/* Open to offers toggle (owner view) */}
-                  {onToggleOpenToOffers && (
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        disabled={togglingIds?.has(player.id) || player.active_deal?.status === "IN_PROGRESS"}
-                        title={player.active_deal?.status === "IN_PROGRESS" ? "Cannot change while a transfer deal is in progress" : undefined}
-                        onClick={() => onToggleOpenToOffers(player.id, !player.open_to_offers)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50 ${
-                          player.open_to_offers ? "bg-emerald-500" : "bg-slate-600"
-                        }`}
-                        aria-label={player.open_to_offers ? "Disable open to offers" : "Enable open to offers"}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow ring-0 transition-transform ${
-                            player.open_to_offers ? "translate-x-4" : "translate-x-0"
-                          }`}
-                        />
-                      </button>
-                    </td>
-                  )}
-
-                  {/* Contract details (owner view) */}
-                  {showContractDetails && (
-                    <>
-                      <td className="px-4 py-3 text-right text-slate-300">
-                        {player.active_contract?.wage_weekly
-                          ? formatCurrency(player.active_contract.wage_weekly)
-                          : <span className="text-slate-600">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-slate-400">
-                        {player.active_contract?.end_date
-                          ? new Date(player.active_contract.end_date).toLocaleDateString("en-GB", {
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : <span className="text-slate-600">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm font-semibold tabular-nums text-slate-300">
-                        {player.market_value != null
-                          ? formatCurrency(player.market_value)
-                          : <span className="text-slate-600 font-normal">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {onSetValuation && player.active_contract ? (
-                          editingValuationId === player.id ? (
-                            <input
-                              autoFocus
-                              type="text"
-                              value={valuationDraft}
-                              onChange={(e) => setValuationDraft(e.target.value)}
-                              onBlur={() => commitValuation(player.id)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") commitValuation(player.id);
-                                if (e.key === "Escape") setEditingValuationId(null);
-                              }}
-                              placeholder="e.g. 5000000"
-                              className="w-28 rounded bg-slate-800 px-2 py-1 text-right text-xs text-white ring-1 ring-emerald-500/50 focus:outline-none"
-                            />
-                          ) : (
-                            <button
-                              onClick={() => startEditValuation(player.id, player.active_contract?.club_valuation ?? null)}
-                              className="group text-right"
-                              title="Click to set valuation"
-                            >
-                              {player.active_contract.club_valuation != null ? (
-                                <span className="text-slate-300 group-hover:text-emerald-400 transition-colors">
-                                  {formatCurrency(player.active_contract.club_valuation)}
-                                </span>
-                              ) : (
-                                <span className="text-slate-600 group-hover:text-slate-400 transition-colors">
-                                  Set value
-                                </span>
-                              )}
-                            </button>
-                          )
-                        ) : (
-                          player.active_contract?.club_valuation != null
-                            ? <span className="text-slate-300">{formatCurrency(player.active_contract.club_valuation)}</span>
-                            : <span className="text-slate-600">—</span>
-                        )}
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          {chips.map((c) => (
+            <button
+              key={c.key}
+              onClick={() => setChip(c.key)}
+              className={`rounded-lg px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
+                chip === c.key ? "bg-ink text-white" : "bg-surface text-text-secondary ring-1 ring-input-border hover:ring-accent"
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <span className="text-[13px] text-text-muted">Sorted by contract risk</span>
       </div>
+
+      {groups.map((g) => (
+        <PositionGroup
+          key={g.pos}
+          pos={g.pos}
+          label={g.label}
+          min={g.min}
+          total={g.total}
+          players={[...g.players].sort((a, b) => {
+            const am = a.active_contract?.end_date ? monthsUntil(a.active_contract.end_date) : Infinity;
+            const bm = b.active_contract?.end_date ? monthsUntil(b.active_contract.end_date) : Infinity;
+            return am - bm;
+          })}
+          showContractDetails={showContractDetails}
+          formScores={formScores}
+          fairValues={fairValues}
+          onToggleOpenToOffers={onToggleOpenToOffers}
+          togglingIds={togglingIds}
+          onSetValuation={onSetValuation}
+          listedPlayerIds={listed}
+        />
+      ))}
+
+      {unpositioned.length > 0 && (
+        <PositionGroup
+          pos="—"
+          label="Unpositioned"
+          min={0}
+          total={players.filter((p) => !p.position).length}
+          players={unpositioned}
+          showContractDetails={showContractDetails}
+          formScores={formScores}
+          fairValues={fairValues}
+          onToggleOpenToOffers={onToggleOpenToOffers}
+          togglingIds={togglingIds}
+          onSetValuation={onSetValuation}
+          listedPlayerIds={listed}
+        />
+      )}
     </div>
   );
 }

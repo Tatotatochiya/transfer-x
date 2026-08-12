@@ -27,22 +27,22 @@ function StatusBadge({ short, long }: { short: string; long: string | null }) {
 
   if (isLive) {
     return (
-      <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-400 ring-1 ring-red-500/30">
-        <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
+      <span className="flex items-center gap-1 rounded-full bg-danger/15 px-2 py-0.5 text-[10px] font-bold text-danger-text ring-1 ring-danger/30">
+        <span className="h-1.5 w-1.5 rounded-full bg-danger animate-pulse" />
         {short}
       </span>
     );
   }
   if (isFinished) {
     return (
-      <span className="rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-bold text-slate-400">
+      <span className="rounded-full bg-text-muted/15 px-2 py-0.5 text-[10px] font-bold text-text-muted">
         {short}
       </span>
     );
   }
   // Not started / postponed / cancelled
   return (
-    <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-white/[0.06]">
+    <span className="rounded-full bg-surface-inset px-2 py-0.5 text-[10px] font-medium text-text-muted ring-1 ring-border">
       {short === "NS" ? "—" : short}
     </span>
   );
@@ -83,13 +83,13 @@ function TeamBadge({
       {crest ? (
         <img src={crest} alt={name} className="h-6 w-6 shrink-0 object-contain" />
       ) : (
-        <div className="h-6 w-6 shrink-0 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-400">
+        <div className="h-6 w-6 shrink-0 rounded-full bg-surface-inset flex items-center justify-center text-[10px] font-bold text-text-muted">
           {name[0]?.toUpperCase()}
         </div>
       )}
       <span
-        className={`truncate text-sm font-medium transition-colors group-hover:text-sky-400 ${
-          isHighlighted ? "text-white" : "text-slate-400"
+        className={`truncate text-sm font-medium transition-colors group-hover:text-accent ${
+          isHighlighted ? "text-text" : "text-text-muted"
         }`}
       >
         {name}
@@ -121,9 +121,9 @@ function FixtureRow({
   const leagueName = fixture.league_id ? (LEAGUE_NAMES[String(fixture.league_id)] ?? fixture.league_name ?? "") : fixture.league_name ?? "";
 
   return (
-    <div className="rounded-xl bg-slate-800/50 px-4 py-3 ring-1 ring-white/[0.05] hover:ring-white/10 transition-all">
+    <div className="rounded-xl bg-surface-inset px-4 py-3 ring-1 ring-border hover:ring-input-border transition-all">
       {/* Meta row */}
-      <div className="mb-2 flex items-center justify-between text-[11px] text-slate-500">
+      <div className="mb-2 flex items-center justify-between text-[11px] text-text-muted">
         <span>{leagueName}{fixture.round ? ` · ${fixture.round}` : ""}</span>
         <span>{dateStr}{timeStr ? ` · ${timeStr}` : ""}</span>
       </div>
@@ -141,11 +141,11 @@ function FixtureRow({
         {/* Score / status */}
         <div className="flex flex-col items-center gap-0.5">
           {isFinished && fixture.home_goals != null && fixture.away_goals != null ? (
-            <span className="text-lg font-bold tabular-nums text-white">
+            <span className="text-lg font-bold tabular-nums text-text">
               {fixture.home_goals} – {fixture.away_goals}
             </span>
           ) : (
-            <span className="text-lg font-bold text-slate-600">vs</span>
+            <span className="text-lg font-bold text-text-muted">vs</span>
           )}
           <StatusBadge short={fixture.status_short} long={fixture.status_long} />
         </div>
@@ -160,7 +160,7 @@ function FixtureRow({
       </div>
 
       {fixture.venue_name && (
-        <p className="mt-2 text-center text-[10px] text-slate-600">{fixture.venue_name}</p>
+        <p className="mt-2 text-center text-[10px] text-text-muted">{fixture.venue_name}</p>
       )}
     </div>
   );
@@ -192,7 +192,7 @@ export default function FixturesPanel({ vendorTeamId }: Props) {
 
   if (isError || !fixtures) {
     return (
-      <div className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400 ring-1 ring-red-500/20">
+      <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
         Could not load fixtures.
       </div>
     );
@@ -200,7 +200,7 @@ export default function FixturesPanel({ vendorTeamId }: Props) {
 
   if (fixtures.length === 0) {
     return (
-      <div className="rounded-xl bg-slate-800/40 px-4 py-4 text-sm text-slate-500 ring-1 ring-white/[0.06]">
+      <div className="rounded-xl bg-surface-inset px-4 py-4 text-sm text-text-muted ring-1 ring-border">
         No fixture data available.
       </div>
     );
@@ -225,7 +225,7 @@ export default function FixturesPanel({ vendorTeamId }: Props) {
     <div className="space-y-6">
       {past.length > 0 && (
         <div>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
             Recent Results
           </p>
           <div className="space-y-2">
@@ -238,7 +238,7 @@ export default function FixturesPanel({ vendorTeamId }: Props) {
 
       {upcoming.length > 0 && (
         <div>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
             Upcoming
           </p>
           <div className="space-y-2">

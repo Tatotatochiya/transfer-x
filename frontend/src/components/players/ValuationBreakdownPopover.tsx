@@ -43,7 +43,7 @@ export default function ValuationBreakdownPopover({ signal }: { signal: FairValu
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
         title="How this estimate is built"
         aria-label="Valuation breakdown"
-        className="rounded p-0.5 text-slate-600 hover:text-slate-300 transition-colors"
+        className="rounded p-0.5 text-text-muted hover:text-text-secondary transition-colors"
       >
         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -51,29 +51,29 @@ export default function ValuationBreakdownPopover({ signal }: { signal: FairValu
       </button>
 
       {open && (
-        <div className="absolute right-0 top-6 z-50 w-72 rounded-xl bg-slate-900 p-4 shadow-xl ring-1 ring-white/[0.12]">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <div className="absolute right-0 top-6 z-50 w-72 rounded-xl bg-surface p-4 shadow-xl ring-1 ring-border">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
             Top drivers
           </p>
           <div className="space-y-1.5">
             {topDrivers.map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-2 text-xs">
-                <span className="text-slate-400 truncate">{row.label}</span>
-                <span className="shrink-0 tabular-nums text-slate-300">
-                  {row.value} <span className="text-slate-600">·</span>{" "}
+                <span className="text-text-muted truncate">{row.label}</span>
+                <span className="shrink-0 tabular-nums text-text-secondary">
+                  {row.value} <span className="text-text-muted">·</span>{" "}
                   <span className="font-semibold">{Number(row.contribution).toFixed(1)}</span>
                 </span>
               </div>
             ))}
           </div>
 
-          <div className="mt-3 space-y-1 border-t border-white/[0.06] pt-2.5 text-xs text-slate-400">
+          <div className="mt-3 space-y-1 border-t border-rule pt-2.5 text-xs text-text-muted">
             <p>{ageLine(signal)}</p>
             <p>League tier {signal.league_tier}</p>
             <p>{confidenceLine(signal)}</p>
           </div>
 
-          <p className="mt-3 border-t border-white/[0.06] pt-2.5 text-[10px] leading-relaxed text-slate-600">
+          <p className="mt-3 border-t border-rule pt-2.5 text-[10px] leading-relaxed text-text-muted">
             Model {signal.model_version} · as of {formatDate(signal.as_of)} ·{" "}
             Model estimate — not an official valuation.
           </p>

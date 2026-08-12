@@ -52,8 +52,8 @@ export default function SaleListPage() {
             onClick={() => handleTypeChange(t.value)}
             className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
               saleType === t.value
-                ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30"
-                : "bg-slate-800 text-slate-400 hover:text-white"
+                ? "bg-success/15 text-success-text ring-1 ring-success/30"
+                : "bg-surface-inset text-text-muted hover:text-text"
             }`}
           >
             {t.label}
@@ -64,7 +64,7 @@ export default function SaleListPage() {
       {isLoading && <ListSkeleton count={8} />}
 
       {isError && (
-        <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+        <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
           Failed to load listings. Please try again.
         </div>
       )}

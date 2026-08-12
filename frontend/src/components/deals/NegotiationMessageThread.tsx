@@ -9,24 +9,14 @@ import { useToast } from "../../context/ToastContext";
 interface NegotiationMessageThreadProps {
   negotiationId: string;
   thread: NegotiationThread;
-  /** Tailwind colour stem matching the surrounding panel, e.g. "purple" or "amber". */
+  /** Kept for call-site compatibility; every accent now renders on the same
+   * token palette so the thread matches whichever panel it sits in. */
   accent?: "purple" | "amber";
 }
-
-const ACCENT_RING: Record<string, string> = {
-  purple: "focus:ring-purple-500",
-  amber: "focus:ring-amber-500",
-};
-
-const ACCENT_BUTTON: Record<string, string> = {
-  purple: "bg-purple-500 hover:bg-purple-400",
-  amber: "bg-amber-500 hover:bg-amber-400",
-};
 
 export default function NegotiationMessageThread({
   negotiationId,
   thread,
-  accent = "purple",
 }: NegotiationMessageThreadProps) {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
@@ -62,24 +52,24 @@ export default function NegotiationMessageThread({
   }
 
   return (
-    <div className="mt-3 border-t border-white/[0.08] pt-3">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Messages</p>
+    <div className="mt-3 border-t border-rule pt-3">
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Messages</p>
 
       <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
         {isLoading ? (
-          <p className="text-xs text-slate-600">Loading…</p>
+          <p className="text-xs text-text-muted">Loading…</p>
         ) : messages.length === 0 ? (
-          <p className="text-xs text-slate-600 italic">No messages yet.</p>
+          <p className="text-xs text-text-muted italic">No messages yet.</p>
         ) : (
           messages.map((m) => {
             const isMine = m.sender_user_id === user?.id;
             return (
-              <div key={m.id} className={`rounded-lg px-3 py-2 text-xs ${isMine ? "bg-white/[0.06]" : "bg-slate-800/60"}`}>
+              <div key={m.id} className={`rounded-lg px-3 py-2 text-xs ${isMine ? "bg-accent-bg" : "bg-surface-inset"}`}>
                 <div className="mb-0.5 flex items-center justify-between gap-2">
-                  <span className="font-semibold text-slate-300">{m.sender_label ?? "Unknown"}</span>
-                  <span className="text-slate-600">{formatDateTime(m.created_at)}</span>
+                  <span className="font-semibold text-text-secondary">{m.sender_label ?? "Unknown"}</span>
+                  <span className="text-text-muted">{formatDateTime(m.created_at)}</span>
                 </div>
-                <p className="text-slate-200 whitespace-pre-wrap break-words">{m.body}</p>
+                <p className="text-text whitespace-pre-wrap break-words">{m.body}</p>
               </div>
             );
           })
@@ -92,12 +82,12 @@ export default function NegotiationMessageThread({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Write a message…"
-          className={`flex-1 rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none ${ACCENT_RING[accent]}`}
+          className="flex-1 rounded-lg bg-surface px-3 py-1.5 text-xs text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
         />
         <button
           type="submit"
           disabled={mutation.isPending || !body.trim()}
-          className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors disabled:opacity-50 ${ACCENT_BUTTON[accent]}`}
+          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
         >
           Send
         </button>

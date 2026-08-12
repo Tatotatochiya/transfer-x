@@ -50,10 +50,10 @@ export function useToast() {
 // ── Toast container ────────────────────────────────────────────────────────────
 
 const variantStyles: Record<ToastVariant, string> = {
-  success: "bg-emerald-500/10 ring-emerald-500/30 text-emerald-300",
-  error:   "bg-red-500/10 ring-red-500/30 text-red-300",
-  warning: "bg-amber-500/10 ring-amber-500/30 text-amber-300",
-  info:    "bg-slate-700/80 ring-white/10 text-slate-200",
+  success: "bg-success/10 ring-success/30 text-success-text",
+  error:   "bg-danger/10 ring-danger/30 text-danger-text",
+  warning: "bg-warning-fill/10 ring-warning-fill/30 text-warning-text",
+  info:    "bg-surface ring-border text-text-secondary",
 };
 
 const variantIcon: Record<ToastVariant, string> = {

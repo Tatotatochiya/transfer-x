@@ -4,11 +4,11 @@ import type { PlayerInjury } from "../../types/api";
 import Spinner from "../ui/Spinner";
 
 const INJURY_SEVERITY: Record<string, { cls: string; label: string }> = {
-  default: { cls: "bg-amber-500/10 text-amber-400 ring-amber-500/20", label: "" },
-  muscle:  { cls: "bg-orange-500/10 text-orange-400 ring-orange-500/20", label: "" },
-  knee:    { cls: "bg-red-500/10 text-red-400 ring-red-500/20", label: "" },
-  ankle:   { cls: "bg-red-500/10 text-red-400 ring-red-500/20", label: "" },
-  hamstring: { cls: "bg-orange-500/10 text-orange-400 ring-orange-500/20", label: "" },
+  default: { cls: "bg-warning-fill/10 text-warning-text ring-warning-fill/20", label: "" },
+  muscle:  { cls: "bg-warning-fill/10 text-warning-text ring-warning-fill/20", label: "" },
+  knee:    { cls: "bg-danger/10 text-danger-text ring-danger/20", label: "" },
+  ankle:   { cls: "bg-danger/10 text-danger-text ring-danger/20", label: "" },
+  hamstring: { cls: "bg-warning-fill/10 text-warning-text ring-warning-fill/20", label: "" },
 };
 
 function injuryStyle(type: string | null) {
@@ -28,11 +28,11 @@ function InjuryRow({ inj }: { inj: PlayerInjury }) {
   const style = injuryStyle(inj.injury_type);
 
   return (
-    <div className="grid grid-cols-[56px_1fr] gap-3 py-3 border-b border-white/[0.04] last:border-0">
+    <div className="grid grid-cols-[56px_1fr] gap-3 py-3 border-b border-rule-faint last:border-0">
       {/* Date */}
       <div className="text-right">
-        {year && <p className="text-sm font-bold text-white tabular-nums">{year}</p>}
-        {month && <p className="text-[11px] text-slate-500">{month}</p>}
+        {year && <p className="text-sm font-bold text-text tabular-nums">{year}</p>}
+        {month && <p className="text-[11px] text-text-muted">{month}</p>}
       </div>
 
       {/* Injury detail */}
@@ -44,12 +44,12 @@ function InjuryRow({ inj }: { inj: PlayerInjury }) {
             </span>
           )}
           {inj.games_absent != null && (
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-text-muted">
               {inj.games_absent} game{inj.games_absent !== 1 ? "s" : ""} missed
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-slate-500">
+        <div className="flex items-center gap-2 text-[11px] text-text-muted">
           {inj.league_name && <span>{inj.league_name}</span>}
           {inj.league_name && inj.season && <span>·</span>}
           {inj.season && <span>Season {inj.season}</span>}
@@ -77,7 +77,7 @@ export default function InjuryHistoryPanel({ playerId }: Props) {
 
   if (isError) {
     return (
-      <div className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400 ring-1 ring-red-500/20">
+      <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
         Could not load injury history.
       </div>
     );
@@ -85,7 +85,7 @@ export default function InjuryHistoryPanel({ playerId }: Props) {
 
   if (!injuries || injuries.length === 0) {
     return (
-      <div className="rounded-xl bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400 ring-1 ring-emerald-500/20">
+      <div className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success-text ring-1 ring-success/20">
         No injury history on record.
       </div>
     );
@@ -96,9 +96,9 @@ export default function InjuryHistoryPanel({ playerId }: Props) {
   return (
     <div>
       <div className="mb-3 flex items-center gap-3">
-        <span className="text-xs text-slate-500">{injuries.length} recorded</span>
+        <span className="text-xs text-text-muted">{injuries.length} recorded</span>
         {totalGames > 0 && (
-          <span className="text-xs text-slate-500">· {totalGames} games missed total</span>
+          <span className="text-xs text-text-muted">· {totalGames} games missed total</span>
         )}
       </div>
       {injuries.map((inj, i) => (

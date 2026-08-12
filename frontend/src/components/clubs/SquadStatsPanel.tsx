@@ -57,42 +57,42 @@ export default function SquadStatsPanel({ players }: { players: PlayerDetail[] }
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Goals",       value: totalGoals,       colour: "text-emerald-400" },
-          { label: "Assists",     value: totalAssists,     colour: "text-blue-400" },
-          { label: "Appearances", value: totalApps,        colour: "text-white" },
-          { label: "Avg Rating",  value: avgRating ?? "—", colour: "text-amber-400" },
+          { label: "Goals",       value: totalGoals,       colour: "text-success-text" },
+          { label: "Assists",     value: totalAssists,     colour: "text-accent" },
+          { label: "Appearances", value: totalApps,        colour: "text-text" },
+          { label: "Avg Rating",  value: avgRating ?? "—", colour: "text-warning-text" },
         ].map(({ label, value, colour }) => (
-          <div key={label} className="flex flex-col items-center rounded-xl bg-slate-800/70 px-4 py-4">
+          <div key={label} className="flex flex-col items-center rounded-xl bg-surface-inset px-4 py-4">
             <span className={`text-2xl font-bold tabular-nums ${colour}`}>{value}</span>
-            <span className="mt-1 text-xs text-slate-500">{label}</span>
+            <span className="mt-1 text-xs text-text-muted">{label}</span>
           </div>
         ))}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {topScorers.length > 0 && (
-          <div className="rounded-xl bg-slate-800/40 px-4 py-3 ring-1 ring-white/[0.06]">
+          <div className="rounded-xl bg-surface-quiet px-4 py-3 ring-1 ring-border">
             <SectionHeader title="Top Scorers" />
             <div className="mt-2 space-y-1">
               {topScorers.map((p, i) => (
                 <Link
                   key={p.id}
                   to={`/players/market/${p.id}`}
-                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-slate-700/50 transition-colors group"
+                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-surface-inset transition-colors group"
                 >
-                  <span className="w-4 shrink-0 text-xs font-bold text-slate-600 tabular-nums">{i + 1}</span>
+                  <span className="w-4 shrink-0 text-xs font-bold text-text-muted tabular-nums">{i + 1}</span>
                   {p.photo_url ? (
-                    <img src={p.photo_url} alt={p.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/10" />
+                    <img src={p.photo_url} alt={p.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-border" />
                   ) : (
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-slate-400">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
                       {p.name[0]?.toUpperCase()}
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white group-hover:text-emerald-400 transition-colors">{p.name}</p>
-                    {p.position && <p className="text-xs text-slate-600">{p.position}</p>}
+                    <p className="truncate text-sm font-medium text-text group-hover:text-accent transition-colors">{p.name}</p>
+                    {p.position && <p className="text-xs text-text-muted">{p.position}</p>}
                   </div>
-                  <span className="shrink-0 text-sm font-bold text-emerald-400 tabular-nums">
+                  <span className="shrink-0 text-sm font-bold text-success-text tabular-nums">
                     {allStats[p.id]?.goals}g
                   </span>
                 </Link>
@@ -102,28 +102,28 @@ export default function SquadStatsPanel({ players }: { players: PlayerDetail[] }
         )}
 
         {topAssisters.length > 0 && (
-          <div className="rounded-xl bg-slate-800/40 px-4 py-3 ring-1 ring-white/[0.06]">
+          <div className="rounded-xl bg-surface-quiet px-4 py-3 ring-1 ring-border">
             <SectionHeader title="Top Assisters" />
             <div className="mt-2 space-y-1">
               {topAssisters.map((p, i) => (
                 <Link
                   key={p.id}
                   to={`/players/market/${p.id}`}
-                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-slate-700/50 transition-colors group"
+                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-surface-inset transition-colors group"
                 >
-                  <span className="w-4 shrink-0 text-xs font-bold text-slate-600 tabular-nums">{i + 1}</span>
+                  <span className="w-4 shrink-0 text-xs font-bold text-text-muted tabular-nums">{i + 1}</span>
                   {p.photo_url ? (
-                    <img src={p.photo_url} alt={p.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/10" />
+                    <img src={p.photo_url} alt={p.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-border" />
                   ) : (
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-slate-400">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
                       {p.name[0]?.toUpperCase()}
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white group-hover:text-emerald-400 transition-colors">{p.name}</p>
-                    {p.position && <p className="text-xs text-slate-600">{p.position}</p>}
+                    <p className="truncate text-sm font-medium text-text group-hover:text-accent transition-colors">{p.name}</p>
+                    {p.position && <p className="text-xs text-text-muted">{p.position}</p>}
                   </div>
-                  <span className="shrink-0 text-sm font-bold text-blue-400 tabular-nums">
+                  <span className="shrink-0 text-sm font-bold text-accent tabular-nums">
                     {allStats[p.id]?.assists}a
                   </span>
                 </Link>
@@ -134,7 +134,7 @@ export default function SquadStatsPanel({ players }: { players: PlayerDetail[] }
       </div>
 
       {statsArr.length === 0 && (
-        <p className="py-4 text-center text-sm text-slate-500">No statistics available for this squad.</p>
+        <p className="py-4 text-center text-sm text-text-muted">No statistics available for this squad.</p>
       )}
     </div>
   );

@@ -58,6 +58,9 @@
   --color-warning-text: var(--warning-text);
   --color-warning-text-alt: var(--warning-text-alt);
   --color-warning-fill: var(--warning-fill);
+  --color-warning-bg: var(--warning-bg);
+
+  --color-diff-changed-bg: var(--diff-changed-bg);
 
   --color-pos-gk-text: var(--pos-gk-text);
   --color-pos-gk-bg: var(--pos-gk-bg);
@@ -130,6 +133,11 @@
   --warning-text: #7a4a00;
   --warning-text-alt: #865100;
   --warning-fill: #d29923;
+  --warning-bg: #fdf6e7;
+
+  /* Deal room terms-diff — changed-row tint (SCREENS.md "Deal room"; not in
+     TOKENS.md's own colour table, added per CLAUDE.md rule 1) */
+  --diff-changed-bg: #fff8f7;
 
   /* Position colours */
   --pos-gk-text: #7a4a00;
@@ -198,6 +206,9 @@
   --warning-text: #fbbf24;
   --warning-text-alt: #fcd34d;
   --warning-fill: #d97706;
+  --warning-bg: #2e2410;
+
+  --diff-changed-bg: #241a17;
 
   --pos-gk-text: #fbbf24;
   --pos-gk-bg: #422b06;

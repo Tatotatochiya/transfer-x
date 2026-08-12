@@ -9,9 +9,9 @@ import Badge from "../ui/Badge";
 import Spinner from "../ui/Spinner";
 
 function FormPip({ score }: { score: number | null }) {
-  if (score == null) return <span className="text-xs text-slate-600">—</span>;
+  if (score == null) return <span className="text-xs text-text-muted">—</span>;
   const colour =
-    score >= 75 ? "text-emerald-400" : score >= 60 ? "text-green-400" : score >= 40 ? "text-amber-400" : "text-red-400";
+    score >= 75 ? "text-success-text" : score >= 60 ? "text-success-text-alt" : score >= 40 ? "text-warning-text" : "text-danger-text";
   return <span className={`text-xs font-bold tabular-nums ${colour}`}>{score.toFixed(1)}</span>;
 }
 
@@ -29,11 +29,11 @@ function FilterChips({ filters }: { filters: NLParsedFilters }) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-xs text-slate-500 italic">"{filters.interpreted_as}"</span>
+      <span className="text-xs text-text-muted italic">"{filters.interpreted_as}"</span>
       {chips.map((c) => (
         <span
           key={c}
-          className="rounded-md bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-400 ring-1 ring-violet-500/20"
+          className="rounded-md bg-role-agent-text/10 px-2 py-0.5 text-xs font-medium text-role-agent-text ring-1 ring-role-agent-text/20"
         >
           {c}
         </span>
@@ -47,11 +47,11 @@ function PlayerRow({ player }: { player: NLPlayerSearchResult }) {
     <li>
       <Link
         to={`/market/players/${player.player_id}`}
-        className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition-colors"
+        className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-inset transition-colors"
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-white truncate">{player.name}</span>
+            <span className="text-sm font-semibold text-text truncate">{player.name}</span>
             {player.position && (
               <Badge variant={positionVariant(player.position as PlayerPosition)}>
                 {player.position}
@@ -61,7 +61,7 @@ function PlayerRow({ player }: { player: NLPlayerSearchResult }) {
               <Badge variant="success">open</Badge>
             )}
           </div>
-          <p className="text-xs text-slate-500 truncate">
+          <p className="text-xs text-text-muted truncate">
             {[player.current_club, player.nationality, player.age ? `${player.age}y` : null]
               .filter(Boolean)
               .join(" · ")}
@@ -85,10 +85,10 @@ export function NLPlayerSearch() {
   }
 
   return (
-    <div className="mb-4 rounded-xl bg-slate-900 ring-1 ring-violet-500/20">
+    <div className="mb-4 rounded-xl bg-surface ring-1 ring-role-agent-text/20">
       <div className="px-4 pt-3 pb-2">
-        <p className="text-sm font-semibold text-white">✦ AI Player Search</p>
-        <p className="text-xs text-slate-500">Describe what you're looking for in plain English</p>
+        <p className="text-sm font-semibold text-text">✦ AI Player Search</p>
+        <p className="text-xs text-text-muted">Describe what you're looking for in plain English</p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex gap-2 px-4 pb-3">
@@ -97,12 +97,12 @@ export function NLPlayerSearch() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='e.g. "young left-back with good form" or "experienced goalkeeper"'
-          className="min-w-0 flex-1 rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-violet-500/50"
+          className="min-w-0 flex-1 rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-role-agent-text/50"
         />
         <button
           type="submit"
           disabled={!query.trim() || isPending}
-          className="shrink-0 rounded-lg bg-violet-500/15 px-4 py-2 text-xs font-semibold text-violet-400 ring-1 ring-violet-500/30 hover:bg-violet-500/25 disabled:opacity-40 transition-colors"
+          className="shrink-0 rounded-lg bg-role-agent-text/15 px-4 py-2 text-xs font-semibold text-role-agent-text ring-1 ring-role-agent-text/30 hover:bg-role-agent-text/25 disabled:opacity-40 transition-colors"
         >
           {isPending ? <Spinner size="sm" /> : "Search"}
         </button>
@@ -110,7 +110,7 @@ export function NLPlayerSearch() {
           <button
             type="button"
             onClick={() => { reset(); setQuery(""); }}
-            className="shrink-0 text-xs text-slate-600 hover:text-slate-400 transition-colors"
+            className="shrink-0 text-xs text-text-muted hover:text-text-secondary transition-colors"
           >
             Clear
           </button>
@@ -118,35 +118,35 @@ export function NLPlayerSearch() {
       </form>
 
       {isPending && (
-        <div className="flex items-center gap-2 border-t border-white/[0.06] px-4 py-3 text-xs text-slate-400">
+        <div className="flex items-center gap-2 border-t border-rule px-4 py-3 text-xs text-text-muted">
           <Spinner size="sm" />
           Parsing query and searching…
         </div>
       )}
 
       {error && !isPending && (
-        <p className="border-t border-white/[0.06] px-4 py-3 text-xs text-red-400">
+        <p className="border-t border-rule px-4 py-3 text-xs text-danger-text">
           {(error as { response?: { data?: { detail?: string } } }).response?.data?.detail ??
             "Search failed. Please try again."}
         </p>
       )}
 
       {data && !isPending && (
-        <div className="border-t border-white/[0.06]">
+        <div className="border-t border-rule">
           <div className="px-4 py-2">
             <FilterChips filters={data.filters} />
           </div>
 
           {data.players.length === 0 ? (
-            <p className="px-4 py-3 text-xs text-slate-500">No players matched these filters.</p>
+            <p className="px-4 py-3 text-xs text-text-muted">No players matched these filters.</p>
           ) : (
             <>
-              <ul className="divide-y divide-white/[0.04]">
+              <ul className="divide-y divide-rule-faint">
                 {data.players.map((p) => (
                   <PlayerRow key={p.player_id} player={p} />
                 ))}
               </ul>
-              <p className="px-4 py-2 text-xs text-slate-600">
+              <p className="px-4 py-2 text-xs text-text-muted">
                 {data.total} player{data.total !== 1 ? "s" : ""} found
               </p>
             </>

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { AgentNegotiation, Club, Deal, FairValueSignal } from "../../types/api";
+import type { AgentNegotiation, Club, Deal, DealTermsVersion, FairValueSignal, TermsDiff } from "../../types/api";
+import type { DealStage } from "../../types/enums";
 import { useAuthStore } from "../../store/auth";
 import FairValueBadge from "../../components/players/FairValueBadge";
 import Badge from "../../components/ui/Badge";
@@ -12,6 +13,7 @@ import ClubLink from "../../components/ui/ClubLink";
 import CurrencyInput from "../../components/ui/CurrencyInput";
 import Metric from "../../components/ui/Metric";
 import Panel from "../../components/ui/Panel";
+import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import Spinner from "../../components/ui/Spinner";
 import StageTracker from "../../components/deals/StageTracker";
 import NegotiationMessageThread from "../../components/deals/NegotiationMessageThread";
@@ -20,6 +22,19 @@ import { dealStatusVariant, dealStageLabel } from "../../lib/badges";
 import { formatCurrency, formatDate, formatWage, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
+
+const STAGE_SEQ: DealStage[] = [
+  "AGREEMENT", "AGENT_NEGOTIATION", "PERSONAL_TERMS", "PAPERWORK", "CONFIRMED", "COMPLETED",
+];
+
+function nextStage(stage: DealStage): DealStage {
+  const idx = STAGE_SEQ.indexOf(stage);
+  return idx >= 0 && idx < STAGE_SEQ.length - 1 ? STAGE_SEQ[idx + 1] : stage;
+}
+
+function daysSince(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+}
 
 // ── Note form ─────────────────────────────────────────────────────────────────
 
@@ -55,12 +70,12 @@ function NoteForm({ dealId }: { dealId: string }) {
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder="Add a note…"
-        className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+        className="flex-1 rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
       />
       <Button type="submit" variant="secondary" size="sm" loading={mutation.isPending}>
         Add
       </Button>
-      {error && <p className="text-xs text-red-400 self-center">{error}</p>}
+      {error && <p className="text-xs text-danger-text self-center">{error}</p>}
     </form>
   );
 }
@@ -69,9 +84,9 @@ function NoteForm({ dealId }: { dealId: string }) {
 
 function AgreementChip({ label, status }: { label: string; status: string }) {
   const color =
-    status === "AGREED"   ? "bg-emerald-500/20 text-emerald-400 ring-emerald-500/30" :
-    status === "DECLINED" ? "bg-red-500/20 text-red-400 ring-red-500/30"             :
-                            "bg-slate-700 text-slate-400 ring-white/10";
+    status === "AGREED"   ? "bg-success/15 text-success-text ring-success/30" :
+    status === "DECLINED" ? "bg-danger/15 text-danger-text ring-danger/30"     :
+                             "bg-surface-inset text-text-muted ring-border";
   return (
     <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${color}`}>
       {label}: {status}
@@ -83,7 +98,7 @@ function AgreementChip({ label, status }: { label: string; status: string }) {
 
 interface AgentNegWorkspaceProps {
   dealId: string;
-  negotiation: import("../../types/api").AgentNegotiation | null;
+  negotiation: AgentNegotiation | null;
   agentCanAdvance: boolean;
   onAdvance: () => void;
   advancePending: boolean;
@@ -135,77 +150,77 @@ function AgentNegotiationWorkspace({
   return (
     <div className="mb-6">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-purple-400">
+        <p className="text-xs font-semibold uppercase tracking-wider text-role-agent-text">
           Negotiation Workspace
         </p>
         <AgreementChip label="Club" status={negotiation?.club_agreement ?? "PENDING"} />
       </div>
 
-      <div className="rounded-xl bg-purple-500/[0.05] px-5 py-4 ring-1 ring-purple-500/20">
-        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-purple-400">
+      <div className="rounded-xl bg-role-agent-bg px-5 py-4 ring-1 ring-role-agent-text/20">
+        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-role-agent-text">
           Club side — Commission
         </p>
         {editing ? (
           <div className="space-y-2">
-            <label className="block text-xs text-slate-400">Commission % <span className="text-slate-600">(decimal, e.g. 0.05 = 5%)</span></label>
+            <label className="block text-xs text-text-muted">Commission % <span className="text-text-muted/70">(decimal, e.g. 0.05 = 5%)</span></label>
             <input
               type="number" step="0.001"
               value={draft.commission_pct}
               onChange={(e) => setDraft((d) => ({ ...d, commission_pct: e.target.value }))}
-              className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
+              className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             />
-            <label className="block text-xs text-slate-400 pt-1">Commission amount (€)</label>
+            <label className="block text-xs text-text-muted pt-1">Commission amount (€)</label>
             <CurrencyInput
               value={draft.commission_amount}
               onChange={(v) => setDraft((d) => ({ ...d, commission_amount: v }))}
-              className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
+              className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             />
-            <label className="block text-xs text-slate-400 pt-1">Paid by</label>
+            <label className="block text-xs text-text-muted pt-1">Paid by</label>
             <select
               value={draft.commission_payer}
               onChange={(e) => setDraft((d) => ({ ...d, commission_payer: e.target.value }))}
-              className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
+              className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             >
               <option value="BUYER">Buying club</option>
               <option value="SELLER">Selling club</option>
               <option value="PLAYER">Player</option>
             </select>
-            <label className="block text-xs text-slate-400 pt-1">Additional conditions</label>
+            <label className="block text-xs text-text-muted pt-1">Additional conditions</label>
             <textarea
               rows={2}
               value={draft.additional_conditions}
               onChange={(e) => setDraft((d) => ({ ...d, additional_conditions: e.target.value }))}
-              className="w-full resize-none rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-purple-500"
+              className="w-full resize-none rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             />
           </div>
         ) : (
           <dl className="space-y-1.5 text-sm">
             {negotiation?.commission_pct != null && (
-              <><dt className="text-slate-500">Commission</dt><dd className="text-white">{(negotiation.commission_pct * 100).toFixed(2)}%</dd></>
+              <><dt className="text-text-muted">Commission</dt><dd className="text-text">{(negotiation.commission_pct * 100).toFixed(2)}%</dd></>
             )}
             {negotiation?.commission_amount != null && (
-              <><dt className="text-slate-500">Amount</dt><dd className="text-white">{formatCurrency(negotiation.commission_amount)}</dd></>
+              <><dt className="text-text-muted">Amount</dt><dd className="text-text">{formatCurrency(negotiation.commission_amount)}</dd></>
             )}
             {negotiation?.commission_payer && (
-              <><dt className="text-slate-500">Paid by</dt><dd className="text-white capitalize">{negotiation.commission_payer.toLowerCase()}</dd></>
+              <><dt className="text-text-muted">Paid by</dt><dd className="text-text capitalize">{negotiation.commission_payer.toLowerCase()}</dd></>
             )}
             {negotiation?.additional_conditions && (
-              <><dt className="text-slate-500">Conditions</dt><dd className="text-white text-xs">{negotiation.additional_conditions}</dd></>
+              <><dt className="text-text-muted">Conditions</dt><dd className="text-text text-xs">{negotiation.additional_conditions}</dd></>
             )}
             {!negotiation?.commission_pct && !negotiation?.commission_amount && (
-              <p className="text-xs text-slate-600 italic">No commission terms set yet.</p>
+              <p className="text-xs text-text-muted italic">No commission terms set yet.</p>
             )}
           </dl>
         )}
         <div className="mt-3">
           {clubAgreed ? (
-            <span className="text-xs font-semibold text-emerald-400">✓ Club has agreed</span>
+            <span className="text-xs font-semibold text-success-text">✓ Club has agreed</span>
           ) : (
-            <span className="text-xs text-slate-500">Awaiting club agreement</span>
+            <span className="text-xs text-text-muted">Awaiting club agreement</span>
           )}
         </div>
         {negotiation && (
-          <NegotiationMessageThread negotiationId={negotiation.id} thread="CLUB_SIDE" accent="purple" />
+          <NegotiationMessageThread negotiationId={negotiation.id} thread="CLUB_SIDE" />
         )}
       </div>
 
@@ -243,7 +258,7 @@ function AgentNegotiationWorkspace({
 
         <div className="flex items-center gap-3">
           {!agentCanAdvance && (
-            <p className="text-xs text-slate-500">Awaiting club agreement on commission.</p>
+            <p className="text-xs text-text-muted">Awaiting club agreement on commission.</p>
           )}
           <Button
             variant="primary"
@@ -268,7 +283,7 @@ function CommissionProposalView({
   canRespond = true,
 }: {
   dealId: string;
-  negotiation: import("../../types/api").AgentNegotiation | null;
+  negotiation: AgentNegotiation | null;
   canRespond?: boolean;
 }) {
   const queryClient = useQueryClient();
@@ -290,27 +305,27 @@ function CommissionProposalView({
   const isPending = negotiation.club_agreement === "PENDING";
 
   return (
-    <div className="mb-6 rounded-xl bg-purple-500/[0.07] px-5 py-4 ring-1 ring-purple-500/20">
-      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-purple-400">
+    <div className="mb-6 rounded-xl bg-role-agent-bg px-5 py-4 ring-1 ring-role-agent-text/20">
+      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-role-agent-text">
         Agent Commission Proposal
       </p>
       <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
         {negotiation.commission_pct != null && (
-          <><dt className="text-slate-400">Commission</dt><dd className="font-semibold text-white">{(negotiation.commission_pct * 100).toFixed(2)}%</dd></>
+          <><dt className="text-text-muted">Commission</dt><dd className="font-semibold text-text">{(negotiation.commission_pct * 100).toFixed(2)}%</dd></>
         )}
         {negotiation.commission_amount != null && (
-          <><dt className="text-slate-400">Amount</dt><dd className="font-semibold text-white">{formatCurrency(negotiation.commission_amount)}</dd></>
+          <><dt className="text-text-muted">Amount</dt><dd className="font-semibold text-text">{formatCurrency(negotiation.commission_amount)}</dd></>
         )}
         {negotiation.commission_payer && (
-          <><dt className="text-slate-400">Paid by</dt><dd className="text-white capitalize">{negotiation.commission_payer.toLowerCase()}</dd></>
+          <><dt className="text-text-muted">Paid by</dt><dd className="text-text capitalize">{negotiation.commission_payer.toLowerCase()}</dd></>
         )}
         {negotiation.additional_conditions && (
-          <><dt className="col-span-2 text-slate-400">Conditions</dt><dd className="col-span-2 text-sm text-white">{negotiation.additional_conditions}</dd></>
+          <><dt className="col-span-2 text-text-muted">Conditions</dt><dd className="col-span-2 text-sm text-text">{negotiation.additional_conditions}</dd></>
         )}
       </dl>
 
       {isPending && !canRespond ? (
-        <p className="mt-4 text-sm text-slate-400">Awaiting a decision from your club.</p>
+        <p className="mt-4 text-sm text-text-muted">Awaiting a decision from your club.</p>
       ) : isPending ? (
         <div className="mt-4 flex gap-2">
           <Button
@@ -331,11 +346,11 @@ function CommissionProposalView({
           </Button>
         </div>
       ) : (
-        <p className={`mt-4 text-sm font-semibold ${negotiation.club_agreement === "AGREED" ? "text-emerald-400" : "text-red-400"}`}>
+        <p className={`mt-4 text-sm font-semibold ${negotiation.club_agreement === "AGREED" ? "text-success-text" : "text-danger-text"}`}>
           {negotiation.club_agreement === "AGREED" ? "✓ You accepted this proposal" : "✗ You declined this proposal"}
         </p>
       )}
-      <NegotiationMessageThread negotiationId={negotiation.id} thread="CLUB_SIDE" accent="purple" />
+      <NegotiationMessageThread negotiationId={negotiation.id} thread="CLUB_SIDE" />
     </div>
   );
 }
@@ -368,28 +383,28 @@ function SetPersonalTermsForm({ dealId }: { dealId: string }) {
     <Panel title="Set Personal Terms">
       <div className="space-y-2">
         <div>
-          <label className="mb-1 block text-xs text-slate-400">Weekly wage (€)</label>
+          <label className="mb-1 block text-xs text-text-muted">Weekly wage (€)</label>
           <CurrencyInput
             value={wageWeekly}
             onChange={setWageWeekly}
-            className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+            className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-slate-400">Signing bonus (€)</label>
+          <label className="mb-1 block text-xs text-text-muted">Signing bonus (€)</label>
           <CurrencyInput
             value={signingBonus}
             onChange={setSigningBonus}
-            className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+            className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-slate-400">Contract length (years)</label>
+          <label className="mb-1 block text-xs text-text-muted">Contract length (years)</label>
           <input
             type="number" min={1} max={10}
             value={lengthYears}
             onChange={(e) => setLengthYears(e.target.value)}
-            className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+            className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
           />
         </div>
         <Button
@@ -409,9 +424,9 @@ function SetPersonalTermsForm({ dealId }: { dealId: string }) {
 // ── Medical check (TRA-61) ──────────────────────────────────────────────────
 
 const MEDICAL_STATUS_STYLE: Record<string, string> = {
-  PASSED:  "text-emerald-400",
-  FAILED:  "text-red-400",
-  PENDING: "text-amber-400",
+  PASSED:  "text-success-text",
+  FAILED:  "text-danger-text",
+  PENDING: "text-warning-text",
 };
 
 function MedicalCheckPanel({
@@ -453,21 +468,21 @@ function MedicalCheckPanel({
         <>
           {medicalCheck ? (
             <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-              <dt className="text-slate-500">Status</dt>
-              <dd className={`font-semibold ${MEDICAL_STATUS_STYLE[medicalCheck.status] ?? "text-slate-300"}`}>
+              <dt className="text-text-muted">Status</dt>
+              <dd className={`font-semibold ${MEDICAL_STATUS_STYLE[medicalCheck.status] ?? "text-text-secondary"}`}>
                 {medicalCheck.status}
               </dd>
               {medicalCheck.notes && (
-                <><dt className="text-slate-500">Notes</dt><dd className="text-white">{medicalCheck.notes}</dd></>
+                <><dt className="text-text-muted">Notes</dt><dd className="text-text">{medicalCheck.notes}</dd></>
               )}
-              <dt className="text-slate-500">Last updated</dt>
-              <dd className="text-slate-400">{formatDate(medicalCheck.updated_at)}</dd>
+              <dt className="text-text-muted">Last updated</dt>
+              <dd className="text-text-muted">{formatDate(medicalCheck.updated_at)}</dd>
             </dl>
           ) : (
-            <p className="text-sm text-slate-500 pb-1">Not yet requested — doesn't block progression.</p>
+            <p className="text-sm text-text-muted pb-1">Not yet requested — doesn't block progression.</p>
           )}
           {medicalCheck?.status === "FAILED" && (
-            <p className="mt-2 text-xs text-red-400/80">Blocks Paperwork → Confirmed until changed.</p>
+            <p className="mt-2 text-xs text-danger-text/80">Blocks Paperwork → Confirmed until changed.</p>
           )}
           {isStaff && (
             <button
@@ -476,7 +491,7 @@ function MedicalCheckPanel({
                 setNotesDraft(medicalCheck?.notes ?? "");
                 setEditing(true);
               }}
-              className="mt-2 text-xs text-slate-500 hover:text-emerald-400 transition-colors"
+              className="mt-2 text-xs text-text-muted hover:text-accent transition-colors"
             >
               {medicalCheck ? "Update →" : "Record medical check"}
             </button>
@@ -485,11 +500,11 @@ function MedicalCheckPanel({
       ) : (
         <div className="space-y-2">
           <div>
-            <label className="mb-1 block text-xs text-slate-400">Status</label>
+            <label className="mb-1 block text-xs text-text-muted">Status</label>
             <select
               value={statusDraft}
               onChange={(e) => setStatusDraft(e.target.value as "PENDING" | "PASSED" | "FAILED")}
-              className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+              className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             >
               <option value="PENDING">Pending</option>
               <option value="PASSED">Passed</option>
@@ -497,13 +512,13 @@ function MedicalCheckPanel({
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-slate-400">Notes</label>
+            <label className="mb-1 block text-xs text-text-muted">Notes</label>
             <textarea
               value={notesDraft}
               onChange={(e) => setNotesDraft(e.target.value)}
               rows={3}
               placeholder="Optional notes…"
-              className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+              className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
             />
           </div>
           <div className="flex items-center gap-3">
@@ -515,6 +530,260 @@ function MedicalCheckPanel({
         </div>
       )}
     </Panel>
+  );
+}
+
+// ── Blocked-on header ─────────────────────────────────────────────────────────
+
+const BLOCKER_LABEL: Partial<Record<DealStage, string>> = {
+  AGREEMENT: "Club terms",
+  AGENT_NEGOTIATION: "Agent commission",
+  PERSONAL_TERMS: "Player consent",
+  PAPERWORK: "TransferX paperwork",
+  CONFIRMED: "Execution",
+};
+
+function DealRoomHeader({ deal }: { deal: Deal }) {
+  const isOpen = deal.status === "IN_PROGRESS" || deal.status === "PENDING_COMPLETION";
+  const blocker = isOpen ? BLOCKER_LABEL[deal.stage] : undefined;
+  const idleDays = daysSince(deal.updated_at);
+
+  return (
+    <div className="mb-6 rounded-xl bg-surface px-6 py-5 ring-1 ring-border">
+      <div className="mb-4 flex items-center justify-between">
+        {blocker ? (
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Blocked on</p>
+            <p className="text-[22px] font-bold text-warning-text">{blocker}</p>
+            {idleDays > 0 && (
+              <p className="mt-0.5 text-xs text-text-muted">{idleDays} day{idleDays === 1 ? "" : "s"} without movement</p>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Deal Progress</p>
+        )}
+        <Badge variant={dealStatusVariant(deal.status)}>
+          {deal.status.replace(/_/g, " ")}
+        </Badge>
+      </div>
+      <StageTracker stage={deal.stage} status={deal.status} />
+    </div>
+  );
+}
+
+// ── Three lanes ───────────────────────────────────────────────────────────────
+
+type LaneStatus = "done" | "blocking" | "pending";
+
+function Lane({ status, title, description, metricLabel, metricValue }: {
+  status: LaneStatus; title: string; description: string; metricLabel: string; metricValue: string;
+}) {
+  const stripClass = status === "done" ? "bg-success" : status === "blocking" ? "bg-warning-fill" : "bg-border";
+  const overlineClass = status === "done" ? "text-success-text" : status === "blocking" ? "text-warning-text" : "text-text-muted";
+  const overlineLabel = status === "done" ? "Agreed" : status === "blocking" ? "Blocking" : "Not started";
+
+  return (
+    <div className="relative overflow-hidden rounded-xl bg-surface px-4 pb-3.5 pt-4 ring-1 ring-border">
+      <div className={`absolute inset-x-0 top-0 h-1 ${stripClass}`} />
+      <p className={`text-[11px] font-bold uppercase tracking-wider ${overlineClass}`}>{overlineLabel}</p>
+      <p className="mt-1 text-[15px] font-bold text-text">{title}</p>
+      <p className="mt-1 text-xs leading-snug text-text-muted">{description}</p>
+      <div className="mt-3 flex items-center justify-between border-t border-rule pt-2.5">
+        <span className="text-[11px] text-text-muted">{metricLabel}</span>
+        <span className="text-sm font-bold text-text">{metricValue}</span>
+      </div>
+    </div>
+  );
+}
+
+function laneStatus(deal: Deal, stage: DealStage): LaneStatus {
+  const dealIdx = STAGE_SEQ.indexOf(deal.stage);
+  const laneIdx = STAGE_SEQ.indexOf(stage);
+  if (dealIdx > laneIdx) return "done";
+  if (dealIdx === laneIdx) return "blocking";
+  return "pending";
+}
+
+function ThreeLanes({ deal, negotiation }: { deal: Deal; negotiation: AgentNegotiation | undefined }) {
+  const clubStatus: LaneStatus = deal.stage === "AGREEMENT" ? "blocking" : "done";
+  // deal.commission_agent_id is only set once commission is finalized — a
+  // negotiation in flight (still being proposed) is an equally real signal
+  // that this deal has an agent, so either one shows the lane.
+  const hasAgent = deal.commission_agent_id != null || negotiation != null;
+  const agentStatus = laneStatus(deal, "AGENT_NEGOTIATION");
+  const personalStatus = laneStatus(deal, "PERSONAL_TERMS");
+
+  const commissionPct = deal.agent_commission_pct ?? negotiation?.commission_pct ?? null;
+
+  return (
+    <div className="mb-6 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
+      <Lane
+        status={clubStatus}
+        title="Club to club"
+        description={clubStatus === "blocking" ? "Finalising fee and deal structure between clubs." : "Fee and structure agreed between clubs."}
+        metricLabel="Agreed fee"
+        metricValue={formatCurrency(deal.agreed_fee)}
+      />
+      {hasAgent && (
+        <Lane
+          status={agentStatus}
+          title="Agent commission"
+          description={
+            agentStatus === "pending" ? "Not yet started." :
+            agentStatus === "blocking" ? "Agent and club negotiating commission terms." :
+            "Commission terms agreed."
+          }
+          metricLabel="Commission"
+          metricValue={commissionPct != null ? `${(commissionPct * 100).toFixed(1)}%` : "—"}
+        />
+      )}
+      <Lane
+        status={personalStatus}
+        title="Personal terms"
+        description={
+          personalStatus === "pending" ? "Not yet started." :
+          personalStatus === "blocking" ? "Awaiting player consent." :
+          "Personal terms confirmed."
+        }
+        metricLabel="Wage"
+        metricValue={deal.personal_terms?.wage_weekly != null ? formatWage(deal.personal_terms.wage_weekly) : "—"}
+      />
+    </div>
+  );
+}
+
+// ── Terms diff — the spine of the screen ──────────────────────────────────────
+
+const TERMS_FIELD_LABELS: Record<string, string> = {
+  agreed_fee: "Agreed fee",
+  agreed_wage_weekly: "Weekly wage",
+  deal_type: "Deal type",
+  loan_start: "Loan start",
+  loan_end: "Loan end",
+  loan_fee: "Loan fee",
+  option_to_buy: "Option to buy",
+  obligation_to_buy: "Obligation to buy",
+  obligation_conditions: "Obligation conditions",
+  sell_on_pct: "Sell-on %",
+};
+
+const CURRENCY_FIELDS = new Set(["agreed_fee", "agreed_wage_weekly", "loan_fee", "option_to_buy"]);
+
+function formatTermValue(field: string, value: unknown): string {
+  if (value == null || value === "") return "—";
+  if (field === "sell_on_pct") return `${(Number(value) * 100).toFixed(1)}%`;
+  if (CURRENCY_FIELDS.has(field)) return formatCurrency(Number(value));
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
+}
+
+interface DiffRow { field: string; oldValue: unknown; newValue: unknown }
+
+function TermsDiffSpine({ dealId, isBuyer }: { dealId: string; isBuyer: boolean }) {
+  const { data: versions = [], isLoading } = useQuery<DealTermsVersion[]>({
+    queryKey: ["deals", dealId, "versions"],
+    queryFn: () => api.get<DealTermsVersion[]>(`/deals/${dealId}/versions`).then((r) => r.data),
+  });
+
+  const { data: diff } = useQuery<TermsDiff>({
+    queryKey: ["deals", dealId, "versions", "diff"],
+    queryFn: () => api.get<TermsDiff>(`/deals/${dealId}/versions/diff`).then((r) => r.data),
+    enabled: versions.length >= 2,
+  });
+
+  if (isLoading) return null;
+  if (versions.length === 0 || !diff || diff.changes.length === 0) return null;
+
+  const latest = [...versions].sort((a, b) => b.version_number - a.version_number)[0];
+  const unchangedCount = Math.max(0, Object.keys(latest.terms_snapshot ?? {}).length - diff.changes.length);
+
+  const rows: DiffRow[] = diff.changes.map((c) => ({ field: c.field, oldValue: c.old_value, newValue: c.new_value }));
+
+  // DECISIONS.md item 5: no present-value model exists — nominal difference
+  // only, never an invented discount rate. "Effect on you" only applies to
+  // currency fields; everything else has no clean monetary framing.
+  function effect(row: DiffRow): { text: string; className: string } {
+    if (!CURRENCY_FIELDS.has(row.field)) return { text: "—", className: "text-text-muted" };
+    const oldN = Number(row.oldValue ?? 0);
+    const newN = Number(row.newValue ?? 0);
+    const delta = newN - oldN;
+    if (delta === 0) return { text: "No change", className: "text-text-muted" };
+    // A higher fee/wage/loan-fee/option is worse for the buyer, better for the seller.
+    const worseForMe = isBuyer ? delta > 0 : delta < 0;
+    const magnitude = formatCurrency(Math.abs(delta));
+    return {
+      text: `${worseForMe ? "−" : "+"}${magnitude}`,
+      className: worseForMe ? "text-danger-text" : "text-success-text",
+    };
+  }
+
+  const netDelta = rows
+    .filter((r) => CURRENCY_FIELDS.has(r.field))
+    .reduce((sum, r) => {
+      const delta = Number(r.newValue ?? 0) - Number(r.oldValue ?? 0);
+      return sum + (isBuyer ? -delta : delta);
+    }, 0);
+
+  const columns: ResponsiveColumn<DiffRow>[] = [
+    { key: "term", header: "Term", priority: 1, render: (r) => (
+      <span className="font-medium text-text">{TERMS_FIELD_LABELS[r.field] ?? r.field}</span>
+    ) },
+    { key: "old", header: `Agreed (v${(latest.version_number - 1)})`, priority: 3, render: (r) => (
+      <span className="text-text-muted line-through">{formatTermValue(r.field, r.oldValue)}</span>
+    ) },
+    { key: "new", header: `Proposed (v${latest.version_number})`, priority: 2, render: (r) => (
+      <span className="font-bold text-text">{formatTermValue(r.field, r.newValue)}</span>
+    ) },
+    { key: "effect", header: "Effect on you", priority: 4, className: "text-right", render: (r) => {
+      const e = effect(r);
+      return <span className={`font-semibold ${e.className}`}>{e.text}</span>;
+    } },
+  ];
+
+  return (
+    <Card noPadding className="mb-6">
+      <div className="border-b border-rule px-5 py-4">
+        <p className="text-sm font-bold text-text">
+          Terms — version {latest.version_number} proposed by {latest.changed_by_label ?? "the deal"}
+        </p>
+        <p className="mt-0.5 text-xs text-text-muted">
+          {diff.changes.length} term{diff.changes.length === 1 ? "" : "s"} changed
+          {unchangedCount > 0 && ` · ${unchangedCount} unchanged`}
+          {" · sent "}{formatDate(latest.created_at)}
+        </p>
+      </div>
+      <div className="p-5">
+        <ResponsiveTable
+          columns={columns}
+          rows={rows}
+          rowKey={(r) => r.field}
+          renderCard={(r) => {
+            const e = effect(r);
+            return (
+              <div className="px-4 py-3">
+                <p className="text-sm font-semibold text-text">{TERMS_FIELD_LABELS[r.field] ?? r.field}</p>
+                <div className="mt-1 flex items-center justify-between text-sm">
+                  <span className="text-text-muted line-through">{formatTermValue(r.field, r.oldValue)}</span>
+                  <span className="font-bold text-text">{formatTermValue(r.field, r.newValue)}</span>
+                </div>
+                <p className={`mt-0.5 text-right text-xs font-semibold ${e.className}`}>{e.text}</p>
+              </div>
+            );
+          }}
+        />
+      </div>
+      {netDelta !== 0 && (
+        <div className="border-t border-rule px-5 py-3">
+          <p className="text-xs text-text-muted">
+            Net change against version {latest.version_number - 1}:{" "}
+            <span className={netDelta < 0 ? "text-danger-text font-semibold" : "text-success-text font-semibold"}>
+              {netDelta < 0 ? "−" : "+"}{formatCurrency(Math.abs(netDelta))}
+            </span>{" "}
+            to you over the life of the deal.
+          </p>
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -669,7 +938,7 @@ export default function DealDetailPage() {
 
   if (isError || !deal) {
     return (
-      <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
         Deal not found.{" "}
         <button onClick={() => navigate(-1)} className="underline">
           Go back
@@ -710,33 +979,28 @@ export default function DealDetailPage() {
   const advanceError =
     advanceMutation.isError ? getApiError(advanceMutation.error, "Failed.") : null;
 
+  const viewerSide = isBuyer ? "buyer" : isSeller ? "seller" : null;
+  const myClubName = isBuyer ? deal.buyer_club?.name : isSeller ? deal.seller_club?.name : undefined;
+  const theirClubName = isBuyer ? deal.seller_club?.name : isSeller ? deal.buyer_club?.name : undefined;
+
   return (
     <div>
       <button
         onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+        className="mb-6 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
       >
         ← Back to deals
       </button>
 
-      {/* Stage tracker */}
-      <div className="mb-6 rounded-xl bg-slate-900 px-6 py-5 ring-1 ring-white/[0.08]">
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Deal Progress
-          </p>
-          <Badge variant={dealStatusVariant(deal.status)}>
-            {deal.status.replace(/_/g, " ")}
-          </Badge>
-        </div>
-        <StageTracker stage={deal.stage} status={deal.status} />
-      </div>
+      <DealRoomHeader deal={deal} />
+
+      <ThreeLanes deal={deal} negotiation={negotiation} />
 
       {/* PAPERWORK banner */}
       {atPaperwork && isParty && deal.status === "IN_PROGRESS" && (
-        <div className="mb-6 rounded-xl bg-sky-500/10 px-5 py-4 text-sm text-sky-300 ring-1 ring-sky-500/20">
+        <div className="mb-6 rounded-xl bg-accent-bg px-5 py-4 text-sm text-accent-active ring-1 ring-accent/20">
           <p className="font-semibold mb-1">TransferX is handling the paperwork</p>
-          <p className="text-sky-400/80">
+          <p className="text-accent-active/80">
             Our team is processing the documentation. You'll be notified when it's ready for confirmation.
           </p>
         </div>
@@ -744,9 +1008,9 @@ export default function DealDetailPage() {
 
       {/* CONFIRMED / Ready to Execute banner */}
       {atConfirmed && isParty && deal.status === "IN_PROGRESS" && (
-        <div className="mb-6 rounded-xl bg-emerald-500/10 px-5 py-4 text-sm text-emerald-300 ring-1 ring-emerald-500/20">
+        <div className="mb-6 rounded-xl bg-success/10 px-5 py-4 text-sm text-success-text ring-1 ring-success/20">
           <p className="font-semibold mb-1">Documents verified — ready to execute</p>
-          <p className="text-emerald-400/80">
+          <p className="text-success-text/80">
             TransferX has processed all documentation. Use the <strong>Execute Transfer</strong> button to complete the deal and register the player.
           </p>
         </div>
@@ -754,9 +1018,9 @@ export default function DealDetailPage() {
 
       {/* AGENT_NEGOTIATION banner — clubs only; agent gets a dedicated panel below */}
       {atAgentNegotiation && isParty && !isAgent && !isPlayer && deal.status === "IN_PROGRESS" && (
-        <div className="mb-6 rounded-xl bg-purple-500/10 px-5 py-4 text-sm text-purple-300 ring-1 ring-purple-500/20">
+        <div className="mb-6 rounded-xl bg-role-agent-bg px-5 py-4 text-sm text-role-agent-text ring-1 ring-role-agent-text/20">
           <p className="font-semibold mb-1">Agent negotiation in progress</p>
-          <p className="text-purple-400/80">
+          <p className="text-role-agent-text/80">
             The mandated agent is negotiating commission terms with the buying club. Personal terms follow once this stage is agreed.
           </p>
         </div>
@@ -784,9 +1048,9 @@ export default function DealDetailPage() {
 
       {/* PERSONAL_TERMS banner */}
       {atPersonalTerms && isParty && deal.status === "IN_PROGRESS" && (
-        <div className="mb-6 rounded-xl bg-amber-500/10 px-5 py-4 text-sm text-amber-300 ring-1 ring-amber-500/20">
+        <div className="mb-6 rounded-xl bg-warning-bg px-5 py-4 text-sm text-warning-text ring-1 ring-warning-fill/20">
           <p className="font-semibold mb-1">Awaiting player consent on personal terms</p>
-          <p className="text-amber-400/80">
+          <p className="text-warning-text/80">
             The agent has proposed personal contract terms. The deal will advance once the player confirms acceptance.
           </p>
         </div>
@@ -794,9 +1058,9 @@ export default function DealDetailPage() {
 
       {/* Auction deal banner */}
       {deal.is_auction_deal && isParty && deal.status === "IN_PROGRESS" && (
-        <div className="mb-6 rounded-xl bg-amber-500/10 px-5 py-4 text-sm text-amber-300 ring-1 ring-amber-500/20">
+        <div className="mb-6 rounded-xl bg-warning-bg px-5 py-4 text-sm text-warning-text ring-1 ring-warning-fill/20">
           <p className="font-semibold mb-1">Auction deal</p>
-          <p className="text-amber-400/80">
+          <p className="text-warning-text/80">
             This deal was created from an auction result. Stage advancement is handled by TransferX staff.
           </p>
         </div>
@@ -804,10 +1068,10 @@ export default function DealDetailPage() {
 
       {/* Completed banner */}
       {deal.status === "COMPLETED" && (
-        <div className="mb-6 rounded-xl bg-emerald-500/10 px-5 py-4 text-sm text-emerald-300 ring-1 ring-emerald-500/20">
+        <div className="mb-6 rounded-xl bg-success/10 px-5 py-4 text-sm text-success-text ring-1 ring-success/20">
           <p className="font-semibold">Transfer completed</p>
           {deal.completed_at && (
-            <p className="text-emerald-400/80 mt-1">
+            <p className="text-success-text/80 mt-1">
               Completed on {formatDate(deal.completed_at)}
             </p>
           )}
@@ -816,43 +1080,45 @@ export default function DealDetailPage() {
 
       {/* Collapsed banner */}
       {deal.status === "COLLAPSED" && (
-        <div className="mb-6 rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-300 ring-1 ring-red-500/20">
+        <div className="mb-6 rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
           <p className="font-semibold">Deal collapsed</p>
-          <p className="text-red-400/80 mt-1">This transfer has fallen through.</p>
+          <p className="text-danger-text/80 mt-1">This transfer has fallen through.</p>
         </div>
       )}
+
+      {id && <TermsDiffSpine dealId={id} isBuyer={isBuyer} />}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* ── Left: info ── */}
         <div className="lg:col-span-1 space-y-4">
           {/* Player */}
           <Card>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
               Player
             </p>
             <button
               onClick={() =>
                 deal.player_id && navigate(`/players/market/${deal.player_id}`)
               }
-              className="text-lg font-semibold text-white hover:text-emerald-400 transition-colors text-left"
+              className="text-lg font-semibold text-text hover:text-accent transition-colors text-left"
             >
               {deal.player?.name ?? "Unknown"}
             </button>
             {deal.player?.position && (
-              <p className="text-xs text-slate-500 mt-0.5">{deal.player.position}</p>
+              <p className="text-xs text-text-muted mt-0.5">{deal.player.position}</p>
             )}
           </Card>
 
           {/* Terms */}
           <Card>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
               Agreed Terms
             </p>
             <div className="space-y-2">
               <Metric label="Transfer fee" value={formatCurrency(deal.agreed_fee)} />
               {/* Fair-value signal vs agreed fee (TRA-92) — never for a player identity */}
               {!isPlayer && fairValue && (
-                <div className="border-b border-white/[0.06] pb-2">
+                <div className="border-b border-rule pb-2">
                   <FairValueBadge signal={fairValue} referenceLabel="Agreed fee" />
                 </div>
               )}
@@ -883,7 +1149,7 @@ export default function DealDetailPage() {
               <Metric label="Stage" value={dealStageLabel(deal.stage)} />
               <Metric label="Created" value={formatDate(deal.created_at)} />
               {deal.is_auction_deal && (
-                <p className="mt-1 text-xs text-amber-400/70 border-t border-white/[0.06] pt-2">
+                <p className="mt-1 text-xs text-warning-text/80 border-t border-rule pt-2">
                   Auction deal
                 </p>
               )}
@@ -893,7 +1159,7 @@ export default function DealDetailPage() {
           {/* Actions */}
           {isParty && isActive && (
             <Card>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
                 Actions
               </p>
               <div className="space-y-2">
@@ -909,12 +1175,12 @@ export default function DealDetailPage() {
                   </Button>
                 )}
                 {advanceError && (
-                  <p className="text-xs text-red-400">{advanceError}</p>
+                  <p className="text-xs text-danger-text">{advanceError}</p>
                 )}
                 {clubCanCollapse && !showCollapsePanel && (
                   <button
                     onClick={() => setShowCollapsePanel(true)}
-                    className="w-full rounded-lg px-3 py-2 text-sm text-slate-500 hover:text-red-400 hover:bg-red-500/[0.06] ring-1 ring-white/[0.06] hover:ring-red-500/20 transition-colors"
+                    className="w-full rounded-lg px-3 py-2 text-sm text-text-muted hover:text-danger-text hover:bg-danger-bg ring-1 ring-border hover:ring-danger-border transition-colors"
                   >
                     Collapse deal…
                   </button>
@@ -923,24 +1189,24 @@ export default function DealDetailPage() {
 
               {/* Inline collapse confirmation panel */}
               {clubCanCollapse && showCollapsePanel && (
-                <div className="mt-3 rounded-lg bg-red-500/[0.06] ring-1 ring-red-500/20 px-4 py-4 space-y-3">
+                <div className="mt-3 rounded-lg bg-danger-bg ring-1 ring-danger-border px-4 py-4 space-y-3">
                   <div className="flex items-start gap-2">
-                    <svg className="h-4 w-4 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <svg className="h-4 w-4 text-danger-text shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                     </svg>
                     <div>
-                      <p className="text-sm font-semibold text-red-400">Collapse this deal?</p>
-                      <p className="text-xs text-slate-400 mt-0.5">This cannot be undone. The transfer will fall through and reserved budget will be released.</p>
+                      <p className="text-sm font-semibold text-danger-text">Collapse this deal?</p>
+                      <p className="text-xs text-text-muted mt-0.5">This cannot be undone. The transfer will fall through and reserved budget will be released.</p>
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs text-slate-400">Reason (optional)</label>
+                    <label className="mb-1.5 block text-xs text-text-muted">Reason (optional)</label>
                     <textarea
                       rows={2}
                       value={collapseReason}
                       onChange={(e) => setCollapseReason(e.target.value)}
                       placeholder="e.g. Clubs could not agree on fee"
-                      className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-red-500/50 resize-none transition-colors"
+                      className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-danger resize-none transition-colors"
                     />
                   </div>
                   <div className="flex gap-2">
@@ -975,7 +1241,7 @@ export default function DealDetailPage() {
               {editingDealStructure ? (
                 <div className="space-y-3">
                   <div>
-                    <label className="mb-1 block text-xs text-slate-400">Transfer type</label>
+                    <label className="mb-1 block text-xs text-text-muted">Transfer type</label>
                     <div className="flex gap-2">
                       {(["PERMANENT", "LOAN"] as const).map((t) => (
                         <button
@@ -984,8 +1250,8 @@ export default function DealDetailPage() {
                           onClick={() => setDealDraft((d) => ({ ...d, deal_type: t }))}
                           className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 transition-colors ${
                             dealDraft.deal_type === t
-                              ? "bg-emerald-500/20 text-emerald-400 ring-emerald-500/40"
-                              : "bg-slate-800 text-slate-400 ring-white/10 hover:text-white"
+                              ? "bg-accent-bg text-accent-active ring-accent/40"
+                              : "bg-surface-inset text-text-muted ring-border hover:text-text"
                           }`}
                         >
                           {t === "PERMANENT" ? "Permanent" : "Loan"}
@@ -996,24 +1262,24 @@ export default function DealDetailPage() {
                   {dealDraft.deal_type === "LOAN" && (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="mb-1 block text-xs text-slate-400">Loan start</label>
-                        <input type="date" value={dealDraft.loan_start} onChange={(e) => setDealDraft((d) => ({ ...d, loan_start: e.target.value }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                        <label className="mb-1 block text-xs text-text-muted">Loan start</label>
+                        <input type="date" value={dealDraft.loan_start} onChange={(e) => setDealDraft((d) => ({ ...d, loan_start: e.target.value }))} className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent" />
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs text-slate-400">Loan end</label>
-                        <input type="date" value={dealDraft.loan_end} onChange={(e) => setDealDraft((d) => ({ ...d, loan_end: e.target.value }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                        <label className="mb-1 block text-xs text-text-muted">Loan end</label>
+                        <input type="date" value={dealDraft.loan_end} onChange={(e) => setDealDraft((d) => ({ ...d, loan_end: e.target.value }))} className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent" />
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs text-slate-400">Loan fee (€)</label>
-                        <CurrencyInput value={dealDraft.loan_fee} onChange={(v) => setDealDraft((d) => ({ ...d, loan_fee: v }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                        <label className="mb-1 block text-xs text-text-muted">Loan fee (€)</label>
+                        <CurrencyInput value={dealDraft.loan_fee} onChange={(v) => setDealDraft((d) => ({ ...d, loan_fee: v }))} className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent" />
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs text-slate-400">Option to buy (€)</label>
-                        <CurrencyInput value={dealDraft.option_to_buy} onChange={(v) => setDealDraft((d) => ({ ...d, option_to_buy: v }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                        <label className="mb-1 block text-xs text-text-muted">Option to buy (€)</label>
+                        <CurrencyInput value={dealDraft.option_to_buy} onChange={(v) => setDealDraft((d) => ({ ...d, option_to_buy: v }))} className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent" />
                       </div>
                       <div className="col-span-2">
-                        <label className="mb-1 block text-xs text-slate-400">Sell-on % (decimal, e.g. 0.05 = 5%)</label>
-                        <input type="number" step="0.01" min={0} max={1} value={dealDraft.sell_on_pct} onChange={(e) => setDealDraft((d) => ({ ...d, sell_on_pct: e.target.value }))} className="w-full rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500" />
+                        <label className="mb-1 block text-xs text-text-muted">Sell-on % (decimal, e.g. 0.05 = 5%)</label>
+                        <input type="number" step="0.01" min={0} max={1} value={dealDraft.sell_on_pct} onChange={(e) => setDealDraft((d) => ({ ...d, sell_on_pct: e.target.value }))} className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent" />
                       </div>
                     </div>
                   )}
@@ -1042,25 +1308,25 @@ export default function DealDetailPage() {
               ) : (
                 <>
                   <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                    <dt className="text-slate-500">Type</dt>
-                    <dd className="text-white">{deal.deal_type === "LOAN" ? "Loan" : "Permanent"}</dd>
+                    <dt className="text-text-muted">Type</dt>
+                    <dd className="text-text">{deal.deal_type === "LOAN" ? "Loan" : "Permanent"}</dd>
                     {deal.loan_start && (
-                      <><dt className="text-slate-500">Loan start</dt><dd className="text-white">{formatDate(deal.loan_start)}</dd></>
+                      <><dt className="text-text-muted">Loan start</dt><dd className="text-text">{formatDate(deal.loan_start)}</dd></>
                     )}
                     {deal.loan_end && (
-                      <><dt className="text-slate-500">Loan end</dt><dd className="text-white">{formatDate(deal.loan_end)}</dd></>
+                      <><dt className="text-text-muted">Loan end</dt><dd className="text-text">{formatDate(deal.loan_end)}</dd></>
                     )}
                     {deal.loan_fee != null && (
-                      <><dt className="text-slate-500">Loan fee</dt><dd className="text-white">{formatCurrency(deal.loan_fee)}</dd></>
+                      <><dt className="text-text-muted">Loan fee</dt><dd className="text-text">{formatCurrency(deal.loan_fee)}</dd></>
                     )}
                     {deal.option_to_buy != null && (
-                      <><dt className="text-slate-500">Option to buy</dt><dd className="text-white">{formatCurrency(deal.option_to_buy)}</dd></>
+                      <><dt className="text-text-muted">Option to buy</dt><dd className="text-text">{formatCurrency(deal.option_to_buy)}</dd></>
                     )}
                     {deal.obligation_to_buy && (
-                      <><dt className="text-slate-500">Obligation to buy</dt><dd className="text-amber-300">Yes{deal.obligation_conditions ? ` — ${deal.obligation_conditions}` : ""}</dd></>
+                      <><dt className="text-text-muted">Obligation to buy</dt><dd className="text-warning-text">Yes{deal.obligation_conditions ? ` — ${deal.obligation_conditions}` : ""}</dd></>
                     )}
                     {deal.sell_on_pct != null && (
-                      <><dt className="text-slate-500">Sell-on %</dt><dd className="text-white">{(deal.sell_on_pct * 100).toFixed(1)}%</dd></>
+                      <><dt className="text-text-muted">Sell-on %</dt><dd className="text-text">{(deal.sell_on_pct * 100).toFixed(1)}%</dd></>
                     )}
                   </dl>
                   {canEditDealStructure && (
@@ -1076,7 +1342,7 @@ export default function DealDetailPage() {
                         });
                         setEditingDealStructure(true);
                       }}
-                      className="mt-3 text-xs text-slate-500 hover:text-emerald-400 transition-colors"
+                      className="mt-3 text-xs text-text-muted hover:text-accent transition-colors"
                     >
                       Edit deal structure →
                     </button>
@@ -1092,23 +1358,23 @@ export default function DealDetailPage() {
               {deal.clauses.length > 0 && (
                 <div className="space-y-2 mb-3">
                   {deal.clauses.map((c) => (
-                    <div key={c.id} className="rounded-lg bg-slate-800/60 px-3 py-2.5 flex items-center justify-between gap-3">
+                    <div key={c.id} className="rounded-lg bg-surface-inset px-3 py-2.5 flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-slate-300 capitalize">
+                        <p className="text-xs font-semibold text-text-secondary capitalize">
                           {c.clause_type.toLowerCase()} clause
                         </p>
-                        <p className="text-xs text-slate-500 truncate">{c.trigger_description}</p>
+                        <p className="text-xs text-text-muted truncate">{c.trigger_description}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-white">{formatCurrency(c.amount)}</p>
+                        <p className="text-sm font-semibold text-text">{formatCurrency(c.amount)}</p>
                         {c.cap != null && (
-                          <p className="text-[10px] text-slate-500">cap {formatCurrency(c.cap)}</p>
+                          <p className="text-[10px] text-text-muted">cap {formatCurrency(c.cap)}</p>
                         )}
                       </div>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-                        c.status === "PAID"      ? "bg-emerald-500/20 text-emerald-400" :
-                        c.status === "TRIGGERED" ? "bg-amber-500/20 text-amber-400"    :
-                                                    "bg-slate-700 text-slate-400"
+                        c.status === "PAID"      ? "bg-success/15 text-success-text" :
+                        c.status === "TRIGGERED" ? "bg-warning-fill/15 text-warning-text"    :
+                                                    "bg-surface-inset text-text-muted"
                       }`}>{c.status}</span>
                     </div>
                   ))}
@@ -1117,20 +1383,20 @@ export default function DealDetailPage() {
               {canEditDealStructure && !addingClause && (
                 <button
                   onClick={() => setAddingClause(true)}
-                  className="text-xs text-slate-500 hover:text-emerald-400 transition-colors"
+                  className="text-xs text-text-muted hover:text-accent transition-colors"
                 >
                   + Add clause
                 </button>
               )}
               {addingClause && (
-                <div className="rounded-lg bg-slate-800/60 px-4 py-3 ring-1 ring-white/[0.06] space-y-2">
+                <div className="rounded-lg bg-surface-inset px-4 py-3 ring-1 ring-border space-y-2">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="mb-1 block text-xs text-slate-400">Type</label>
+                      <label className="mb-1 block text-xs text-text-muted">Type</label>
                       <select
                         value={clauseDraft.clause_type}
                         onChange={(e) => setClauseDraft((d) => ({ ...d, clause_type: e.target.value }))}
-                        className="w-full rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                        className="w-full rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
                       >
                         {["APPEARANCES", "GOALS", "PROMOTION", "RESALE", "OTHER"].map((t) => (
                           <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>
@@ -1138,30 +1404,30 @@ export default function DealDetailPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-slate-400">Amount (€)</label>
+                      <label className="mb-1 block text-xs text-text-muted">Amount (€)</label>
                       <CurrencyInput
                         value={clauseDraft.amount}
                         onChange={(v) => setClauseDraft((d) => ({ ...d, amount: v }))}
-                        className="w-full rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                        className="w-full rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-slate-400">Trigger description</label>
+                    <label className="mb-1 block text-xs text-text-muted">Trigger description</label>
                     <input
                       type="text"
                       value={clauseDraft.trigger_description}
                       onChange={(e) => setClauseDraft((d) => ({ ...d, trigger_description: e.target.value }))}
                       placeholder="e.g. Player makes 10+ appearances"
-                      className="w-full rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                      className="w-full rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-slate-400">Cap (€, optional)</label>
+                    <label className="mb-1 block text-xs text-text-muted">Cap (€, optional)</label>
                     <CurrencyInput
                       value={clauseDraft.cap}
                       onChange={(v) => setClauseDraft((d) => ({ ...d, cap: v }))}
-                      className="w-full rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                      className="w-full rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
                     />
                   </div>
                   <div className="flex gap-2 pt-1">
@@ -1193,9 +1459,9 @@ export default function DealDetailPage() {
                 <div className="space-y-1.5 mb-3">
                   {deal.instalments.map((inst) => (
                     <div key={inst.id} className="flex items-center justify-between text-sm">
-                      <span className="text-slate-400">{formatDate(inst.due_date)}</span>
-                      <span className="font-semibold text-white">{formatCurrency(inst.amount)}</span>
-                      <span className={inst.paid ? "text-emerald-400 text-xs" : "text-slate-500 text-xs"}>
+                      <span className="text-text-muted">{formatDate(inst.due_date)}</span>
+                      <span className="font-semibold text-text">{formatCurrency(inst.amount)}</span>
+                      <span className={inst.paid ? "text-success-text text-xs" : "text-text-muted text-xs"}>
                         {inst.paid ? `Paid ${inst.paid_at ? formatDate(inst.paid_at) : ""}` : "Pending"}
                       </span>
                     </div>
@@ -1212,7 +1478,7 @@ export default function DealDetailPage() {
                     );
                     setEditingInstalments(true);
                   }}
-                  className="text-xs text-slate-500 hover:text-emerald-400 transition-colors"
+                  className="text-xs text-text-muted hover:text-accent transition-colors"
                 >
                   {deal.instalments.length > 0 ? "Edit schedule →" : "Set payment schedule"}
                 </button>
@@ -1225,32 +1491,32 @@ export default function DealDetailPage() {
                         type="date"
                         value={row.due_date}
                         onChange={(e) => setInstalmentRows((rows) => rows.map((r, j) => j === i ? { ...r, due_date: e.target.value } : r))}
-                        className="flex-1 rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                        className="flex-1 rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
                       />
                       <CurrencyInput
                         placeholder="Amount (€)"
                         value={row.amount}
                         onChange={(v) => setInstalmentRows((rows) => rows.map((r, j) => j === i ? { ...r, amount: v } : r))}
-                        className="flex-1 rounded-lg bg-slate-800 px-2.5 py-1.5 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500"
+                        className="flex-1 rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
                       />
                       <button
                         onClick={() => setInstalmentRows((rows) => rows.filter((_, j) => j !== i))}
-                        className="px-1 text-slate-500 hover:text-red-400 transition-colors text-xs"
+                        className="px-1 text-text-muted hover:text-danger-text transition-colors text-xs"
                         title="Remove"
                       >
                         ✕
                       </button>
                     </div>
                   ))}
-                  <div className="text-xs text-slate-500 pt-1">
-                    Total: <span className="text-white font-semibold">{formatCurrency(instalmentRows.reduce((s, r) => s + (Number(r.amount) || 0), 0))}</span>
+                  <div className="text-xs text-text-muted pt-1">
+                    Total: <span className="text-text font-semibold">{formatCurrency(instalmentRows.reduce((s, r) => s + (Number(r.amount) || 0), 0))}</span>
                     {" / "}
-                    <span className="text-slate-400">{formatCurrency(deal.agreed_fee)} agreed fee</span>
+                    <span className="text-text-secondary">{formatCurrency(deal.agreed_fee)} agreed fee</span>
                   </div>
                   <div className="flex items-center gap-3 flex-wrap pt-1">
                     <button
                       onClick={() => setInstalmentRows((rows) => [...rows, { due_date: "", amount: "" }])}
-                      className="text-xs text-slate-500 hover:text-emerald-400 transition-colors"
+                      className="text-xs text-text-muted hover:text-accent transition-colors"
                     >
                       + Add instalment
                     </button>
@@ -1277,13 +1543,13 @@ export default function DealDetailPage() {
             <Panel title="Agent Commission">
               <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 {deal.agent_commission_pct != null && (
-                  <><dt className="text-slate-500">Commission %</dt><dd className="text-white">{(deal.agent_commission_pct * 100).toFixed(2)}%</dd></>
+                  <><dt className="text-text-muted">Commission %</dt><dd className="text-text">{(deal.agent_commission_pct * 100).toFixed(2)}%</dd></>
                 )}
                 {deal.agent_commission_amount != null && (
-                  <><dt className="text-slate-500">Commission amount</dt><dd className="text-white">{formatCurrency(deal.agent_commission_amount)}</dd></>
+                  <><dt className="text-text-muted">Commission amount</dt><dd className="text-text">{formatCurrency(deal.agent_commission_amount)}</dd></>
                 )}
                 {deal.commission_payer && (
-                  <><dt className="text-slate-500">Paid by</dt><dd className="text-white capitalize">{deal.commission_payer.toLowerCase()}</dd></>
+                  <><dt className="text-text-muted">Paid by</dt><dd className="text-text capitalize">{deal.commission_payer.toLowerCase()}</dd></>
                 )}
               </dl>
             </Panel>
@@ -1294,24 +1560,24 @@ export default function DealDetailPage() {
             <Panel title="Personal Terms">
               <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 {deal.personal_terms.wage_weekly != null && (
-                  <><dt className="text-slate-500">Proposed wage</dt><dd className="text-white">{formatWage(deal.personal_terms.wage_weekly)}</dd></>
+                  <><dt className="text-text-muted">Proposed wage</dt><dd className="text-text">{formatWage(deal.personal_terms.wage_weekly)}</dd></>
                 )}
                 {deal.personal_terms.signing_bonus != null && (
-                  <><dt className="text-slate-500">Signing bonus</dt><dd className="text-white">{formatCurrency(deal.personal_terms.signing_bonus)}</dd></>
+                  <><dt className="text-text-muted">Signing bonus</dt><dd className="text-text">{formatCurrency(deal.personal_terms.signing_bonus)}</dd></>
                 )}
                 {deal.personal_terms.length_years != null && (
-                  <><dt className="text-slate-500">Contract length</dt><dd className="text-white">{deal.personal_terms.length_years} yr{deal.personal_terms.length_years !== 1 ? "s" : ""}</dd></>
+                  <><dt className="text-text-muted">Contract length</dt><dd className="text-text">{deal.personal_terms.length_years} yr{deal.personal_terms.length_years !== 1 ? "s" : ""}</dd></>
                 )}
-                <dt className="text-slate-500">Player consent</dt>
+                <dt className="text-text-muted">Player consent</dt>
                 <dd className={
-                  deal.personal_terms.player_consent === "AGREED"   ? "text-emerald-400 font-semibold" :
-                  deal.personal_terms.player_consent === "DECLINED" ? "text-red-400 font-semibold"     :
-                                                                        "text-amber-400"
+                  deal.personal_terms.player_consent === "AGREED"   ? "text-success-text font-semibold" :
+                  deal.personal_terms.player_consent === "DECLINED" ? "text-danger-text font-semibold"     :
+                                                                        "text-warning-text"
                 }>{deal.personal_terms.player_consent}</dd>
               </dl>
               {isAgent && deal.personal_terms.player_consent === "PENDING" && !deal.personal_terms.player_has_account && (
                 <div className="mt-3">
-                  <p className="mb-1.5 text-[11px] text-slate-500">
+                  <p className="mb-1.5 text-[11px] text-text-muted">
                     Player has no account yet — you may respond on their behalf
                   </p>
                   <div className="flex items-center gap-2">
@@ -1344,23 +1610,23 @@ export default function DealDetailPage() {
 
           <Panel title="Deal Notes">
             {deal.deal_notes.length === 0 ? (
-              <p className="text-sm text-slate-500 pb-2">No notes yet.</p>
+              <p className="text-sm text-text-muted pb-2">No notes yet.</p>
             ) : (
               <div className="space-y-3 mb-4">
                 {deal.deal_notes.map((note) => (
                   <div
                     key={note.id}
-                    className="rounded-lg bg-slate-800/60 px-4 py-3"
+                    className="rounded-lg bg-surface-inset px-4 py-3"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs font-semibold text-slate-400">
+                      <p className="text-xs font-semibold text-text-secondary">
                         {note.author_club?.name ?? "System"}
                       </p>
-                      <p className="text-[10px] text-slate-500">
+                      <p className="text-[10px] text-text-muted">
                         {formatDate(note.created_at)}
                       </p>
                     </div>
-                    <p className="text-sm text-slate-300">{note.body}</p>
+                    <p className="text-sm text-text-secondary">{note.body}</p>
                   </div>
                 ))}
               </div>
@@ -1374,37 +1640,27 @@ export default function DealDetailPage() {
         </div>
       </div>
 
-      {/* Deal room: comments, version history, attachments (TRA-81/82) */}
+      {/* Deal room: message rail + documents (TRA-81/82) */}
       {(isParty || isAgent || isPlayer) && id && (
         <DealRoomPanel
           dealId={id}
           canWrite={!isParty || canDealWrite}
-          viewerSide={isBuyer ? "buyer" : isSeller ? "seller" : null}
+          viewerSide={viewerSide}
+          negotiationId={atAgentNegotiation && negotiation ? negotiation.id : null}
+          myClubName={myClubName}
+          theirClubName={theirClubName}
         />
       )}
     </div>
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-import type { DealStage } from "../../types/enums";
-
-const STAGE_SEQ: DealStage[] = [
-  "AGREEMENT", "AGENT_NEGOTIATION", "PERSONAL_TERMS", "PAPERWORK", "CONFIRMED", "COMPLETED",
-];
-
-function nextStage(stage: DealStage): DealStage {
-  const idx = STAGE_SEQ.indexOf(stage);
-  return idx >= 0 && idx < STAGE_SEQ.length - 1 ? STAGE_SEQ[idx + 1] : stage;
-}
-
 // ── Deal timeline (real audit log — visible to every deal participant) ────────
 
-const AUDIT_DOT: Record<string, "emerald" | "sky" | "red"> = {
-  DEAL_CREATED: "emerald",
-  DEAL_COMPLETED: "emerald",
-  DEAL_COLLAPSED: "red",
+const AUDIT_DOT: Record<string, "success" | "accent" | "danger"> = {
+  DEAL_CREATED: "success",
+  DEAL_COMPLETED: "success",
+  DEAL_COLLAPSED: "danger",
 };
 
 function DealTimeline({ dealId }: { dealId: string }) {
@@ -1413,32 +1669,32 @@ function DealTimeline({ dealId }: { dealId: string }) {
     queryFn: () => api.get(`/deals/${dealId}/audit-log`).then((r) => r.data),
   });
 
-  const dotClass: Record<"emerald" | "sky" | "red", string> = {
-    emerald: "bg-emerald-500",
-    sky:     "bg-sky-500",
-    red:     "bg-red-500",
+  const dotClass: Record<"success" | "accent" | "danger", string> = {
+    success: "bg-success",
+    accent:  "bg-accent",
+    danger:  "bg-danger",
   };
 
   if (isLoading) {
     return <Spinner size="sm" />;
   }
   if (events.length === 0) {
-    return <p className="text-sm text-slate-500">No activity yet.</p>;
+    return <p className="text-sm text-text-muted">No activity yet.</p>;
   }
 
   return (
     <div className="relative pl-4">
       {/* Vertical line */}
-      <div className="absolute left-[7px] top-2 bottom-2 w-px bg-white/[0.06]" />
+      <div className="absolute left-[7px] top-2 bottom-2 w-px bg-rule" />
 
       <div className="space-y-5">
         {events.map((ev) => (
           <div key={ev.id} className="relative flex gap-3">
-            <div className={`mt-1 h-3 w-3 shrink-0 rounded-full ring-2 ring-slate-900 ${dotClass[AUDIT_DOT[ev.action] ?? "sky"]}`} />
+            <div className={`mt-1 h-3 w-3 shrink-0 rounded-full ring-2 ring-surface ${dotClass[AUDIT_DOT[ev.action] ?? "accent"]}`} />
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
-                <span className="text-sm font-medium text-white">{ev.description ?? ev.action}</span>
-                <span className="text-[10px] text-slate-500 shrink-0">
+                <span className="text-sm font-medium text-text">{ev.description ?? ev.action}</span>
+                <span className="text-[10px] text-text-muted shrink-0">
                   {new Date(ev.created_at).toLocaleString("en-GB", {
                     day: "numeric", month: "short", year: "numeric",
                     hour: "2-digit", minute: "2-digit",
@@ -1446,7 +1702,7 @@ function DealTimeline({ dealId }: { dealId: string }) {
                 </span>
               </div>
               {ev.actor_label && (
-                <p className="mt-0.5 text-xs text-slate-400">{ev.actor_label}</p>
+                <p className="mt-0.5 text-xs text-text-muted">{ev.actor_label}</p>
               )}
             </div>
           </div>

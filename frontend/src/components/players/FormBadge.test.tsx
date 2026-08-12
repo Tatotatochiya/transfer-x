@@ -34,19 +34,19 @@ describe("FormBadge", () => {
     expect(container.textContent).not.toMatch(/[↑↓→]/);
   });
 
-  it("applies emerald colour for score >= 75", () => {
+  it("applies success colour for score >= 75", () => {
     const { container } = render(<FormBadge score={80} />);
-    expect(container.firstChild).toHaveClass("bg-emerald-500/20");
+    expect(container.firstChild).toHaveClass("bg-success/20");
   });
 
-  it("applies amber colour for score 35–54", () => {
+  it("applies warning colour for score 35–54", () => {
     const { container } = render(<FormBadge score={45} />);
-    expect(container.firstChild).toHaveClass("bg-amber-500/20");
+    expect(container.firstChild).toHaveClass("bg-warning-fill/20");
   });
 
-  it("applies red colour for score < 35", () => {
+  it("applies danger colour for score < 35", () => {
     const { container } = render(<FormBadge score={20} />);
-    expect(container.firstChild).toHaveClass("bg-red-500/20");
+    expect(container.firstChild).toHaveClass("bg-danger/20");
   });
 
   it("renders md size with larger padding", () => {

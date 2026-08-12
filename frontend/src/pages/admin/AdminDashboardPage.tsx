@@ -10,20 +10,20 @@ import { formatDateTime, getApiError } from "../../lib/utils";
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
 function StatCard({
-  label, value, accent = "text-white", sub, onClick,
+  label, value, accent = "text-text", sub, onClick,
 }: {
   label: string; value: number; accent?: string; sub?: string; onClick?: () => void;
 }) {
   return (
     <div
       onClick={onClick}
-      className={`rounded-xl bg-slate-900 ring-1 ring-white/[0.08] px-6 py-5 ${
-        onClick ? "cursor-pointer hover:ring-white/[0.18] transition-all" : ""
+      className={`rounded-xl bg-surface ring-1 ring-border px-6 py-5 ${
+        onClick ? "cursor-pointer hover:ring-input-border transition-all" : ""
       }`}
     >
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">{label}</p>
       <p className={`mt-2 text-3xl font-bold ${accent}`}>{value.toLocaleString()}</p>
-      {sub && <p className="mt-1 text-xs text-slate-500">{sub}</p>}
+      {sub && <p className="mt-1 text-xs text-text-muted">{sub}</p>}
     </div>
   );
 }
@@ -32,15 +32,15 @@ function StatCard({
 
 function PipelineBar({ byStage }: { byStage: Record<string, number> }) {
   const stages = [
-    { key: "AGREEMENT",  label: "Agreement",  color: "bg-amber-500" },
-    { key: "PAPERWORK",  label: "Paperwork",  color: "bg-sky-500"   },
-    { key: "CONFIRMED",  label: "Confirmed",  color: "bg-emerald-500" },
+    { key: "AGREEMENT",  label: "Agreement",  color: "bg-warning-fill" },
+    { key: "PAPERWORK",  label: "Paperwork",  color: "bg-accent"       },
+    { key: "CONFIRMED",  label: "Confirmed",  color: "bg-success"      },
   ];
   const total = stages.reduce((s, st) => s + (byStage[st.key] ?? 0), 0);
 
   return (
-    <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] px-6 py-5">
-      <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+    <div className="rounded-xl bg-surface ring-1 ring-border px-6 py-5">
+      <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">
         Active Deals by Stage
       </p>
       <div className="flex gap-4">
@@ -50,10 +50,10 @@ function PipelineBar({ byStage }: { byStage: Record<string, number> }) {
           return (
             <div key={key} className="flex-1">
               <div className="mb-1.5 flex items-end justify-between">
-                <span className="text-xs text-slate-400">{label}</span>
-                <span className="text-lg font-bold text-white">{count}</span>
+                <span className="text-xs text-text-muted">{label}</span>
+                <span className="text-lg font-bold text-text">{count}</span>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-slate-800">
+              <div className="h-1.5 w-full rounded-full bg-border">
                 <div
                   className={`h-1.5 rounded-full ${color} transition-all`}
                   style={{ width: `${pct}%` }}
@@ -96,29 +96,29 @@ function NeedsAttentionPanel({ byStage }: { byStage: Record<string, number> }) {
 
   if (stalled.length === 0 && confirmedCount === 0) {
     return (
-      <div className="rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20 px-6 py-4">
-        <p className="text-sm font-semibold text-emerald-400">All clear — no items need attention</p>
+      <div className="rounded-xl bg-success/10 ring-1 ring-success/20 px-6 py-4">
+        <p className="text-sm font-semibold text-success-text">All clear — no items need attention</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
-      <div className="border-b border-white/[0.06] px-6 py-3">
-        <p className="text-sm font-semibold text-amber-400">Needs Attention</p>
+    <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
+      <div className="border-b border-rule px-6 py-3">
+        <p className="text-sm font-semibold text-warning-text">Needs Attention</p>
       </div>
-      <div className="divide-y divide-white/[0.04]">
+      <div className="divide-y divide-rule-faint">
         {confirmedCount > 0 && (
           <div className="flex items-center justify-between px-6 py-3">
             <div>
-              <p className="text-sm text-white">
+              <p className="text-sm text-text">
                 {confirmedCount} deal{confirmedCount !== 1 ? "s" : ""} ready to execute
               </p>
-              <p className="mt-0.5 text-xs text-slate-500">Waiting for final transfer execution</p>
+              <p className="mt-0.5 text-xs text-text-muted">Waiting for final transfer execution</p>
             </div>
             <button
               onClick={() => navigate("/admin/deals")}
-              className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+              className="text-xs text-success-text hover:text-success-text-alt transition-colors"
             >
               View →
             </button>
@@ -129,17 +129,17 @@ function NeedsAttentionPanel({ byStage }: { byStage: Record<string, number> }) {
           return (
             <div key={d.id} className="flex items-center justify-between px-6 py-3">
               <div>
-                <p className="text-sm text-white">
+                <p className="text-sm text-text">
                   {d.player?.name ?? "Unknown"} — stuck in{" "}
-                  <span className="text-amber-400">{d.stage}</span>
+                  <span className="text-warning-text">{d.stage}</span>
                 </p>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-0.5 text-xs text-text-muted">
                   {d.buyer_club?.name ?? "?"} ↔ {d.seller_club?.name ?? "?"} · {ageDays}d without update
                 </p>
               </div>
               <Link
                 to={`/deals/${d.id}`}
-                className="text-xs text-sky-400 hover:text-sky-300 transition-colors"
+                className="text-xs text-accent hover:text-accent-hover transition-colors"
               >
                 Open →
               </Link>
@@ -154,10 +154,10 @@ function NeedsAttentionPanel({ byStage }: { byStage: Record<string, number> }) {
 // ── Activity feed ─────────────────────────────────────────────────────────────
 
 const EVENT_COLORS: Record<string, string> = {
-  DEAL_COMPLETED: "bg-emerald-500",
-  DEAL_COLLAPSED: "bg-red-500",
-  SALE_CREATED:   "bg-sky-500",
-  USER_JOINED:    "bg-violet-500",
+  DEAL_COMPLETED: "bg-success",
+  DEAL_COLLAPSED: "bg-danger",
+  SALE_CREATED:   "bg-accent",
+  USER_JOINED:    "bg-role-agent-text",
 };
 
 const EVENT_ICONS: Record<string, string> = {
@@ -175,19 +175,19 @@ function ActivityFeed() {
   });
 
   return (
-    <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
-      <div className="border-b border-white/[0.06] px-6 py-3">
-        <p className="text-sm font-semibold text-white">Recent Activity</p>
-        <p className="mt-0.5 text-xs text-slate-500">Last 30 days</p>
+    <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
+      <div className="border-b border-rule px-6 py-3">
+        <p className="text-sm font-semibold text-text">Recent Activity</p>
+        <p className="mt-0.5 text-xs text-text-muted">Last 30 days</p>
       </div>
       {isLoading ? (
         <div className="flex justify-center py-8"><Spinner /></div>
       ) : items.length === 0 ? (
-        <p className="px-6 py-8 text-center text-sm text-slate-600">No recent activity</p>
+        <p className="px-6 py-8 text-center text-sm text-text-muted">No recent activity</p>
       ) : (
-        <div className="divide-y divide-white/[0.04] max-h-96 overflow-y-auto">
+        <div className="divide-y divide-rule-faint max-h-96 overflow-y-auto">
           {items.map((item, i) => {
-            const dot = EVENT_COLORS[item.event_type] ?? "bg-slate-500";
+            const dot = EVENT_COLORS[item.event_type] ?? "bg-text-muted";
             const icon = EVENT_ICONS[item.event_type] ?? "·";
             const content = (
               <div className="flex items-start gap-3 px-6 py-3">
@@ -195,13 +195,13 @@ function ActivityFeed() {
                   {icon}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-slate-200">{item.message}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">{formatDateTime(item.occurred_at)}</p>
+                  <p className="text-sm text-text-secondary">{item.message}</p>
+                  <p className="mt-0.5 text-xs text-text-muted">{formatDateTime(item.occurred_at)}</p>
                 </div>
               </div>
             );
             return item.link ? (
-              <Link key={i} to={item.link} className="block hover:bg-slate-800/40 transition-colors">
+              <Link key={i} to={item.link} className="block hover:bg-surface-inset transition-colors">
                 {content}
               </Link>
             ) : (
@@ -235,43 +235,43 @@ function BroadcastPanel() {
   });
 
   return (
-    <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] overflow-hidden">
+    <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-6 py-4 text-left"
       >
         <div>
-          <p className="text-sm font-semibold text-white">Broadcast Notification</p>
-          <p className="mt-0.5 text-xs text-slate-500">Send a system message to all active users</p>
+          <p className="text-sm font-semibold text-text">Broadcast Notification</p>
+          <p className="mt-0.5 text-xs text-text-muted">Send a system message to all active users</p>
         </div>
-        <span className="text-slate-500 text-sm">{open ? "▲" : "▼"}</span>
+        <span className="text-text-muted text-sm">{open ? "▲" : "▼"}</span>
       </button>
 
       {open && (
-        <div className="border-t border-white/[0.06] px-6 py-4">
+        <div className="border-t border-rule px-6 py-4">
           <form
             onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
             className="space-y-3"
           >
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Message</label>
+              <label className="mb-1 block text-xs text-text-muted">Message</label>
               <textarea
                 required
                 rows={3}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="e.g. Scheduled maintenance tonight at 10pm UTC"
-                className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-amber-500 resize-none"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill resize-none"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Link <span className="text-slate-600">(optional)</span></label>
+              <label className="mb-1 block text-xs text-text-muted">Link <span className="text-text-muted">(optional)</span></label>
               <input
                 type="text"
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
                 placeholder="/transfers or https://..."
-                className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-600 ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
             <div className="flex items-center gap-3">
@@ -285,12 +285,12 @@ function BroadcastPanel() {
                 Send to all users
               </Button>
               {mutation.isSuccess && (
-                <p className="text-xs text-emerald-400">
+                <p className="text-xs text-success-text">
                   Sent to {(mutation.data as { recipients: number }).recipients} users.
                 </p>
               )}
               {mutation.isError && (
-                <p className="text-xs text-red-400">{getApiError(mutation.error, "Failed to send.")}</p>
+                <p className="text-xs text-danger-text">{getApiError(mutation.error, "Failed to send.")}</p>
               )}
             </div>
           </form>
@@ -317,7 +317,7 @@ export default function AdminDashboardPage() {
 
   if (isError || !stats) {
     return (
-      <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
         Failed to load system stats.
       </div>
     );
@@ -326,8 +326,8 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-400">System overview — refreshes every 30s</p>
+        <h1 className="text-2xl font-bold text-text">Admin Dashboard</h1>
+        <p className="mt-1 text-sm text-text-muted">System overview — refreshes every 30s</p>
       </div>
 
       {/* Row 1 — entity counts */}
@@ -342,19 +342,19 @@ export default function AdminDashboardPage() {
         <StatCard
           label="Active Sales"
           value={stats.active_sales}
-          accent={stats.active_sales > 0 ? "text-emerald-400" : "text-white"}
+          accent={stats.active_sales > 0 ? "text-success-text" : "text-text"}
           onClick={() => navigate("/admin/sales")}
         />
         <StatCard
           label="Open Offers"
           value={stats.open_offers}
-          accent={stats.open_offers > 0 ? "text-sky-400" : "text-white"}
+          accent={stats.open_offers > 0 ? "text-accent" : "text-text"}
           onClick={() => navigate("/admin/offers")}
         />
         <StatCard
           label="Active Deals"
           value={stats.active_deals}
-          accent={stats.active_deals > 0 ? "text-amber-400" : "text-white"}
+          accent={stats.active_deals > 0 ? "text-warning-text" : "text-text"}
           sub={`${stats.deals_by_stage["CONFIRMED"] ?? 0} ready to execute`}
           onClick={() => navigate("/admin/deals")}
         />
@@ -372,8 +372,8 @@ export default function AdminDashboardPage() {
         <div className="space-y-4">
           <BroadcastPanel />
           {/* Quick actions */}
-          <div className="rounded-xl bg-slate-900 ring-1 ring-white/[0.08] px-6 py-5">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <div className="rounded-xl bg-surface ring-1 ring-border px-6 py-5">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">
               Quick Actions
             </p>
             <div className="flex flex-wrap gap-2">
@@ -387,7 +387,7 @@ export default function AdminDashboardPage() {
                 <button
                   key={to}
                   onClick={() => navigate(to)}
-                  className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-300 ring-1 ring-white/10 hover:bg-slate-700 hover:text-white transition-colors"
+                  className="rounded-lg bg-surface-inset px-3 py-1.5 text-sm text-text-secondary ring-1 ring-input-border hover:bg-border hover:text-text transition-colors"
                 >
                   {label}
                 </button>

@@ -64,8 +64,8 @@ export default function AddToShortlistButton({ playerId, size = "default" }: Pro
         title="Add to shortlist"
         className={`flex items-center gap-1.5 rounded-lg ring-1 transition-colors ${
           isCompact
-            ? "p-1.5 bg-slate-800/80 ring-white/10 hover:bg-slate-700 hover:ring-white/20 text-slate-400 hover:text-white"
-            : "px-3 py-2 bg-slate-800 ring-white/10 hover:bg-slate-700 text-sm font-medium text-slate-300 hover:text-white"
+            ? "p-1.5 bg-surface-inset ring-input-border hover:bg-border hover:ring-input-border text-text-muted hover:text-text"
+            : "px-3 py-2 bg-surface-inset ring-input-border hover:bg-border text-sm font-medium text-text-secondary hover:text-text"
         }`}
       >
         {/* Bookmark icon */}
@@ -76,21 +76,21 @@ export default function AddToShortlistButton({ playerId, size = "default" }: Pro
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1.5 w-52 rounded-xl bg-slate-800 py-1.5 shadow-xl ring-1 ring-white/[0.08]">
-          <p className="px-3 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+        <div className="absolute right-0 top-full z-50 mt-1.5 w-52 rounded-xl bg-surface py-1.5 shadow-xl ring-1 ring-border">
+          <p className="px-3 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
             Add to shortlist
           </p>
 
           {isLoading && (
-            <p className="px-3 py-2 text-xs text-slate-500">Loading…</p>
+            <p className="px-3 py-2 text-xs text-text-muted">Loading…</p>
           )}
 
           {!isLoading && shortlists?.length === 0 && (
             <div className="px-3 py-2">
-              <p className="text-xs text-slate-500">No shortlists yet.</p>
+              <p className="text-xs text-text-muted">No shortlists yet.</p>
               <button
                 onClick={() => { setOpen(false); navigate("/scouting/shortlists"); }}
-                className="mt-1 text-xs text-emerald-400 hover:underline"
+                className="mt-1 text-xs text-accent hover:underline"
               >
                 Create one →
               </button>
@@ -106,12 +106,12 @@ export default function AddToShortlistButton({ playerId, size = "default" }: Pro
                     key={sl.id}
                     onClick={() => addMutation.mutate(sl.id)}
                     disabled={addMutation.isPending}
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-700/60 transition-colors disabled:opacity-50"
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-surface-inset transition-colors disabled:opacity-50"
                   >
-                    <span className={justAdded ? "text-emerald-400" : "text-slate-300"}>{sl.name}</span>
-                    <span className="text-xs text-slate-600">{sl.item_count}</span>
+                    <span className={justAdded ? "text-success-text" : "text-text-secondary"}>{sl.name}</span>
+                    <span className="text-xs text-text-muted">{sl.item_count}</span>
                     {justAdded && (
-                      <svg className="ml-1 h-3.5 w-3.5 text-emerald-400" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <svg className="ml-1 h-3.5 w-3.5 text-success-text" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
@@ -121,10 +121,10 @@ export default function AddToShortlistButton({ playerId, size = "default" }: Pro
             </div>
           )}
 
-          <div className="mt-1 border-t border-white/[0.06] px-3 pt-1.5 pb-1">
+          <div className="mt-1 border-t border-rule px-3 pt-1.5 pb-1">
             <button
               onClick={() => { setOpen(false); navigate("/scouting/shortlists"); }}
-              className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              className="text-xs text-text-muted hover:text-text-secondary transition-colors"
             >
               Manage shortlists →
             </button>

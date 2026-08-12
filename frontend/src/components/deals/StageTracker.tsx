@@ -34,73 +34,56 @@ export default function StageTracker({ stage, status }: StageTrackerProps) {
   const isCollapsed = status === "COLLAPSED";
 
   return (
-    <div className="flex items-center gap-0">
-      {STAGES.map((s, idx) => {
-        const isPast    = idx < currentIdx;
-        const isCurrent = idx === currentIdx && !isCollapsed;
-        const isFuture  = idx > currentIdx;
+    <>
+      {/* Mobile: compact step count + progress bar */}
+      <div className="sm:hidden">
+        <p className="text-sm font-semibold text-text">
+          Step {currentIdx + 1} of {STAGES.length} · {isCollapsed ? "Collapsed" : STAGE_LABELS[stage]}
+        </p>
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-border-quiet">
+          <div
+            className={`h-full ${isCollapsed ? "bg-text-muted" : "bg-success-dot"}`}
+            style={{ width: `${((currentIdx + 1) / STAGES.length) * 100}%` }}
+          />
+        </div>
+      </div>
 
-        const circleClass = isCollapsed
-          ? "bg-slate-800 text-slate-600 ring-1 ring-white/10"
-          : isPast
-          ? "bg-emerald-500 text-white"
-          : isCurrent
-          ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/50"
-          : "bg-slate-800 text-slate-500 ring-1 ring-white/10";
+      {/* Tablet/desktop: six-pill row */}
+      <div className="hidden sm:flex items-center gap-0">
+        {STAGES.map((s, idx) => {
+          const isPast    = idx < currentIdx;
+          const isCurrent = idx === currentIdx && !isCollapsed;
+          const isFuture  = idx > currentIdx;
 
-        const labelClass = isCollapsed
-          ? "text-slate-600"
-          : isPast
-          ? "text-slate-300"
-          : isCurrent
-          ? "text-white font-semibold"
-          : "text-slate-500";
+          const pillClass = isCollapsed
+            ? "text-text-muted"
+            : isPast
+            ? "text-text-secondary"
+            : isCurrent
+            ? "bg-accent-bg-strong text-accent-active font-semibold"
+            : "text-text-muted";
 
-        return (
-          <div key={s} className="flex flex-1 items-center">
-            {/* Step */}
-            <div className="flex flex-col items-center gap-1.5 shrink-0">
-              <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors ${circleClass}`}
-              >
-                {isPast && !isCollapsed ? (
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2.5}
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4.5 12.75l6 6 9-13.5"
-                    />
-                  </svg>
-                ) : (
-                  idx + 1
-                )}
-              </div>
-              <span className={`text-[11px] text-center ${labelClass}`}>
-                {isFuture && !isCollapsed ? (
-                  <span className="opacity-50">{STAGE_LABELS[s]}</span>
-                ) : (
-                  STAGE_LABELS[s]
-                )}
+          const dotClass = isCollapsed
+            ? "bg-input-border"
+            : isPast
+            ? "bg-success-dot"
+            : isCurrent
+            ? "bg-accent"
+            : "bg-input-border";
+
+          return (
+            <div key={s} className="flex flex-1 items-center">
+              <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-[11px] py-[5px] text-xs ${pillClass}`}>
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} />
+                {STAGE_LABELS[s]}
               </span>
+              {idx < STAGES.length - 1 && (
+                <div className="mx-3 h-px min-w-[12px] flex-1 bg-border" />
+              )}
             </div>
-
-            {/* Connector line */}
-            {idx < STAGES.length - 1 && (
-              <div
-                className={`h-px flex-1 mx-1 transition-colors ${
-                  isPast && !isCollapsed ? "bg-emerald-500/50" : "bg-white/[0.08]"
-                }`}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </>
   );
 }

@@ -72,26 +72,26 @@ export default function ClubListPage() {
           placeholder="Search clubs…"
           value={search}
           onChange={(e) => handleFilter("search", e.target.value)}
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors w-48"
+          className="rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors w-48"
         />
         <input
           type="text"
           placeholder="Country…"
           value={country}
           onChange={(e) => handleFilter("country", e.target.value)}
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors w-36"
+          className="rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors w-36"
         />
         <input
           type="text"
           placeholder="League…"
           value={league}
           onChange={(e) => handleFilter("league", e.target.value)}
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors w-40"
+          className="rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors w-40"
         />
         <select
           value={sort}
           onChange={(e) => { setSort(e.target.value); setPage(1); }}
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 transition-colors"
+          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
         >
           {SORT_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -106,7 +106,7 @@ export default function ClubListPage() {
       )}
 
       {isError && (
-        <div className="rounded-xl bg-red-500/10 px-5 py-4 text-sm text-red-400 ring-1 ring-red-500/30">
+        <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
           Failed to load clubs.
         </div>
       )}
@@ -117,31 +117,31 @@ export default function ClubListPage() {
 
       {data && data.items.length > 0 && (
         <>
-          <p className="mb-4 text-xs text-slate-500">{data.total} club{data.total !== 1 ? "s" : ""}</p>
+          <p className="mb-4 text-xs text-text-muted">{data.total} club{data.total !== 1 ? "s" : ""}</p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {data.items.map((club) => (
               <div
                 key={club.id}
                 onMouseEnter={() => prefetchClub(club.id)}
                 onClick={() => navigate(`/clubs/${club.id}`)}
-                className="cursor-pointer rounded-xl bg-slate-900 ring-1 ring-white/[0.08] hover:ring-white/[0.18] hover:-translate-y-0.5 transition-all duration-200 px-5 py-4"
+                className="cursor-pointer rounded-xl bg-surface ring-1 ring-border hover:ring-input-border hover:-translate-y-0.5 transition-all duration-200 px-5 py-4"
               >
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-800 overflow-hidden">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-surface-inset overflow-hidden">
                   {club.crest_url ? (
                     <img src={club.crest_url} alt={club.name} loading="lazy" className="h-full w-full object-contain p-1" />
                   ) : (
-                    <span className="text-xl font-bold text-slate-500">
+                    <span className="text-xl font-bold text-text-muted">
                       {club.name[0]?.toUpperCase()}
                     </span>
                   )}
                 </div>
-                <p className="flex items-center gap-1 font-semibold text-white truncate">
+                <p className="flex items-center gap-1 font-semibold text-text truncate">
                   <span className="truncate">{club.name}</span>
                   {club.verified && (
-                    <Icon name="check" className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+                    <Icon name="check" className="h-3.5 w-3.5 shrink-0 text-accent" />
                   )}
                 </p>
-                <p className="mt-0.5 text-xs text-slate-400 truncate">
+                <p className="mt-0.5 text-xs text-text-muted truncate">
                   {[club.league_name, club.country].filter(Boolean).join(" · ") || "—"}
                 </p>
               </div>

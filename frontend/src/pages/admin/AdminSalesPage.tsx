@@ -11,10 +11,10 @@ import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
 
 const STATUSES = ["OPEN", "CLOSED", "CANCELLED", "SOLD"];
 
-const STATUS_VARIANT: Record<string, "success" | "info" | "warning" | "neutral" | "error"> = {
+const STATUS_VARIANT: Record<string, "success" | "info" | "warning" | "neutral" | "danger"> = {
   OPEN:      "success",
   CLOSED:    "neutral",
-  CANCELLED: "error",
+  CANCELLED: "danger",
   SOLD:      "info",
 };
 
@@ -55,13 +55,13 @@ export default function AdminSalesPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Sales</h1>
-          <p className="mt-1 text-sm text-slate-400">{data ? `${data.total} total` : ""}</p>
+          <h1 className="text-2xl font-bold text-text">Sales</h1>
+          <p className="mt-1 text-sm text-text-muted">{data ? `${data.total} total` : ""}</p>
         </div>
         <select
           value={status}
           onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-amber-500"
+          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
         >
           <option value="">All statuses</option>
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -73,7 +73,7 @@ export default function AdminSalesPage() {
       </div>
 
       {cancelMutation.isError && (
-        <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-2 text-xs text-red-400 ring-1 ring-red-500/20">
+        <div className="mb-4 rounded-lg bg-danger-bg px-4 py-2 text-xs text-danger-text ring-1 ring-danger-border">
           {getApiError(cancelMutation.error, "Cancel failed.")}
         </div>
       )}
@@ -82,10 +82,10 @@ export default function AdminSalesPage() {
 
       {data && (
         <>
-          <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.08]">
+          <div className="overflow-x-auto rounded-xl ring-1 ring-border">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.08] text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-rule bg-surface-header text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
                   <th className="px-4 py-3">Player</th>
                   <th className="px-4 py-3">Seller</th>
                   <th className="px-4 py-3">Type</th>
@@ -95,15 +95,15 @@ export default function AdminSalesPage() {
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-rule-faint">
                 {data.items.map((s) => (
                   <tr
                     key={s.id}
                     onClick={() => navigate(`/sales/${s.id}`)}
-                    className="cursor-pointer bg-slate-900 hover:bg-slate-800/40 transition-colors"
+                    className="cursor-pointer bg-surface hover:bg-surface-inset transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-white">{s.player?.name ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">{s.seller_club?.name ?? "—"}</td>
+                    <td className="px-4 py-3 font-medium text-text">{s.player?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-text-muted text-xs">{s.seller_club?.name ?? "—"}</td>
                     <td className="px-4 py-3">
                       <Badge variant={s.sale_type === "AUCTION" ? "warning" : "info"}>
                         {s.sale_type}
@@ -112,18 +112,18 @@ export default function AdminSalesPage() {
                     <td className="px-4 py-3">
                       <Badge variant={STATUS_VARIANT[s.status] ?? "neutral"}>{s.status}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">
+                    <td className="px-4 py-3 text-text-muted text-xs">
                       {s.sale_type === "AUCTION"
                         ? `Reserve: ${s.reserve_price != null ? formatCurrency(s.reserve_price) : "—"}`
                         : s.asking_price != null ? formatCurrency(s.asking_price) : "—"}
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{formatDate(s.created_at)}</td>
+                    <td className="px-4 py-3 text-xs text-text-muted">{formatDate(s.created_at)}</td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       {s.status === "OPEN" && (
                         <button
                           disabled={cancelMutation.isPending}
                           onClick={() => cancelMutation.mutate(s.id)}
-                          className="rounded bg-red-500/10 px-2 py-1 text-xs text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40"
+                          className="rounded bg-danger/10 px-2 py-1 text-xs text-danger-text hover:bg-danger/20 transition-colors disabled:opacity-40"
                         >
                           Cancel
                         </button>

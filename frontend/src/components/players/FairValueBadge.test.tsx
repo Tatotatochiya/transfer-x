@@ -74,11 +74,11 @@ describe("FairValueBadge", () => {
   });
 
   const bandCases: Array<[ValuationBand, number, RegExp, string]> = [
-    ["WELL_BELOW", -30.0, /−30% well below model/, "text-emerald-500"],
-    ["BELOW", -19.4, /−19% below model/, "text-emerald-400"],
-    ["IN_LINE", 2.0, /\+2% in line with model/, "text-slate-400"],
-    ["ABOVE", 20.3, /\+20% above model/, "text-amber-400"],
-    ["WELL_ABOVE", 45.0, /\+45% well above model/, "text-rose-400"],
+    ["WELL_BELOW", -30.0, /−30% well below model/, "text-success-text"],
+    ["BELOW", -19.4, /−19% below model/, "text-success-text-alt"],
+    ["IN_LINE", 2.0, /\+2% in line with model/, "text-text-muted"],
+    ["ABOVE", 20.3, /\+20% above model/, "text-warning-text"],
+    ["WELL_ABOVE", 45.0, /\+45% well above model/, "text-danger-text"],
   ];
 
   bandCases.forEach(([band, pct, phrase, colour]) => {
@@ -97,8 +97,8 @@ describe("FairValueBadge", () => {
     );
     expect(screen.getByText(/Low confidence/)).toBeInTheDocument();
     const el = screen.getByText(/\+45% well above model/);
-    expect(el).toHaveClass("text-slate-500");
-    expect(el).not.toHaveClass("text-rose-400");
+    expect(el).toHaveClass("text-text-muted");
+    expect(el).not.toHaveClass("text-danger-text");
   });
 
   it("compact renders one pill with model value and divergence pct", () => {

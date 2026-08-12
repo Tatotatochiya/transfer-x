@@ -12,18 +12,18 @@ function TeamChip({
   crest: string | null;
   label: string;
 }) {
-  if (!name) return <span className="text-slate-600 text-xs">{label}: —</span>;
+  if (!name) return <span className="text-text-muted text-xs">{label}: —</span>;
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[10px] text-slate-500 uppercase tracking-wide">{label}</span>
+      <span className="text-[10px] text-text-muted uppercase tracking-wide">{label}</span>
       {crest ? (
         <img src={crest} alt={name} className="h-4 w-4 object-contain shrink-0" />
       ) : (
-        <div className="h-4 w-4 rounded-full bg-slate-700 flex items-center justify-center text-[9px] font-bold text-slate-400 shrink-0">
+        <div className="h-4 w-4 rounded-full bg-surface-inset flex items-center justify-center text-[9px] font-bold text-text-muted shrink-0">
           {name[0]?.toUpperCase()}
         </div>
       )}
-      <span className="text-sm font-medium text-white truncate">{name}</span>
+      <span className="text-sm font-medium text-text truncate">{name}</span>
     </div>
   );
 }
@@ -36,22 +36,22 @@ function TransferRow({ t }: { t: PlayerTransfer }) {
 
   const isLoan = t.transfer_type?.toLowerCase().includes("loan");
   const typeCls = isLoan
-    ? "bg-amber-500/10 text-amber-400 ring-amber-500/20"
-    : "bg-sky-500/10 text-sky-400 ring-sky-500/20";
+    ? "bg-warning-fill/10 text-warning-text ring-warning-fill/20"
+    : "bg-accent/10 text-accent ring-accent/20";
 
   return (
-    <div className="grid grid-cols-[56px_1fr] gap-3 py-3 border-b border-white/[0.04] last:border-0">
+    <div className="grid grid-cols-[56px_1fr] gap-3 py-3 border-b border-rule-faint last:border-0">
       {/* Date */}
       <div className="text-right">
-        {year && <p className="text-sm font-bold text-white tabular-nums">{year}</p>}
-        {month && <p className="text-[11px] text-slate-500">{month}</p>}
+        {year && <p className="text-sm font-bold text-text tabular-nums">{year}</p>}
+        {month && <p className="text-[11px] text-text-muted">{month}</p>}
       </div>
 
       {/* Transfer detail */}
       <div className="min-w-0 space-y-1.5">
         <div className="flex items-center gap-2 flex-wrap">
           <TeamChip name={t.team_out_name} crest={t.team_out_crest_url} label="From" />
-          <span className="text-slate-600">→</span>
+          <span className="text-text-muted">→</span>
           <TeamChip name={t.team_in_name} crest={t.team_in_crest_url} label="To" />
         </div>
         <div className="flex items-center gap-2">
@@ -61,10 +61,10 @@ function TransferRow({ t }: { t: PlayerTransfer }) {
             </span>
           )}
           {t.fee_display && (
-            <span className="text-xs font-medium text-emerald-400">{t.fee_display}</span>
+            <span className="text-xs font-medium text-success-text">{t.fee_display}</span>
           )}
           {!t.fee_display && !isLoan && (
-            <span className="text-[11px] text-slate-600">Fee undisclosed</span>
+            <span className="text-[11px] text-text-muted">Fee undisclosed</span>
           )}
         </div>
       </div>
@@ -90,7 +90,7 @@ export default function CareerHistoryPanel({ playerId }: Props) {
 
   if (isError) {
     return (
-      <div className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400 ring-1 ring-red-500/20">
+      <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
         Could not load transfer history.
       </div>
     );
@@ -98,7 +98,7 @@ export default function CareerHistoryPanel({ playerId }: Props) {
 
   if (!transfers || transfers.length === 0) {
     return (
-      <div className="rounded-xl bg-slate-800/40 px-4 py-3 text-sm text-slate-500 ring-1 ring-white/[0.06]">
+      <div className="rounded-xl bg-surface-inset px-4 py-3 text-sm text-text-muted ring-1 ring-border">
         No transfer history available.
       </div>
     );

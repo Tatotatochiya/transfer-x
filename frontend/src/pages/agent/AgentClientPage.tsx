@@ -20,15 +20,15 @@ const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {
 };
 
 const CLIENT_STATUS_COLORS: Record<ClientStatus, string> = {
-  ACTIVE:             "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30",
-  SEEKING_MOVE:       "bg-sky-500/15 text-sky-400 ring-sky-500/30",
-  LOAN_AVAILABLE:     "bg-purple-500/15 text-purple-400 ring-purple-500/30",
-  CONTRACT_EXTENSION: "bg-amber-500/15 text-amber-400 ring-amber-500/30",
-  UNAVAILABLE:        "bg-slate-700 text-slate-400 ring-white/10",
+  ACTIVE:             "bg-success/15 text-success-text ring-success/30",
+  SEEKING_MOVE:       "bg-accent/15 text-accent ring-accent/30",
+  LOAN_AVAILABLE:     "bg-role-agent-bg text-role-agent-text ring-role-agent-text/30",
+  CONTRACT_EXTENSION: "bg-warning-fill/15 text-warning-text ring-warning-fill/30",
+  UNAVAILABLE:        "bg-text-muted/15 text-text-muted ring-text-muted/30",
 };
 
-const INPUT = "w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 placeholder-slate-500";
-const LABEL = "mb-1.5 block text-xs font-medium text-slate-400";
+const INPUT = "w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent placeholder-text-muted";
+const LABEL = "mb-1.5 block text-xs font-medium text-text-secondary";
 
 export default function AgentClientPage() {
   const { mandateId } = useParams<{ mandateId: string }>();
@@ -129,7 +129,7 @@ export default function AgentClientPage() {
       {/* Back link */}
       <button
         onClick={() => navigate("/agent/dashboard")}
-        className="mb-4 flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+        className="mb-4 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
       >
         <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -147,48 +147,48 @@ export default function AgentClientPage() {
         {/* Left: player info + mandate */}
         <div className="space-y-4">
           <Card>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
               Player
             </p>
             <div className="space-y-2 text-sm">
               {client.player_age != null && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Age</span>
-                  <span className="text-white">{client.player_age}</span>
+                  <span className="text-text-muted">Age</span>
+                  <span className="text-text">{client.player_age}</span>
                 </div>
               )}
               {client.player_nationality && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Nationality</span>
-                  <span className="text-white">{client.player_nationality}</span>
+                  <span className="text-text-muted">Nationality</span>
+                  <span className="text-text">{client.player_nationality}</span>
                 </div>
               )}
               {client.player_club_name && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Club</span>
-                  <span className="text-white">{client.player_club_name}</span>
+                  <span className="text-text-muted">Club</span>
+                  <span className="text-text">{client.player_club_name}</span>
                 </div>
               )}
               {client.contract_expiry && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Contract expires</span>
+                  <span className="text-text-muted">Contract expires</span>
                   <span className={`font-medium ${
                     daysUntilExpiry != null && daysUntilExpiry < 180
-                      ? "text-amber-400"
-                      : "text-white"
+                      ? "text-warning-text"
+                      : "text-text"
                   }`}>
                     {client.contract_expiry}
                     {daysUntilExpiry != null && daysUntilExpiry > 0 && (
-                      <span className="ml-1 text-xs text-slate-500">({daysUntilExpiry}d)</span>
+                      <span className="ml-1 text-xs text-text-muted">({daysUntilExpiry}d)</span>
                     )}
                   </span>
                 </div>
               )}
             </div>
-            <div className="mt-3 border-t border-white/[0.06] pt-3">
+            <div className="mt-3 border-t border-rule pt-3">
               <Link
                 to={`/players/market/${client.player_id}`}
-                className="text-xs text-emerald-400 hover:underline"
+                className="text-xs text-accent hover:underline"
               >
                 View market profile →
               </Link>
@@ -196,40 +196,40 @@ export default function AgentClientPage() {
           </Card>
 
           <Card>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
               Mandate
             </p>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-slate-500">Type</span>
+                <span className="text-text-muted">Type</span>
                 <span>
                   {client.exclusive
                     ? <Badge variant="success">Exclusive</Badge>
-                    : <span className="text-slate-400">Non-exclusive</span>}
+                    : <span className="text-text-muted">Non-exclusive</span>}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Status</span>
+                <span className="text-text-muted">Status</span>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${CLIENT_STATUS_COLORS[clientStatus]}`}>
                   {CLIENT_STATUS_LABELS[clientStatus]}
                 </span>
               </div>
               {client.start_date && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Start</span>
-                  <span className="text-white">{client.start_date}</span>
+                  <span className="text-text-muted">Start</span>
+                  <span className="text-text">{client.start_date}</span>
                 </div>
               )}
               {client.end_date && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">End</span>
-                  <span className="text-white">{client.end_date}</span>
+                  <span className="text-text-muted">End</span>
+                  <span className="text-text">{client.end_date}</span>
                 </div>
               )}
               {client.territory && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Territory</span>
-                  <span className="text-white">{client.territory}</span>
+                  <span className="text-text-muted">Territory</span>
+                  <span className="text-text">{client.territory}</span>
                 </div>
               )}
             </div>
@@ -237,24 +237,24 @@ export default function AgentClientPage() {
 
           {/* Alert history (TRA-135) */}
           <Card>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
               Recent Alerts
             </p>
             {alerts.length === 0 ? (
-              <p className="text-sm text-slate-500">No alerts for this client yet.</p>
+              <p className="text-sm text-text-muted">No alerts for this client yet.</p>
             ) : (
               <div className="space-y-2">
                 {alerts.slice(0, 10).map((alert) => (
-                  <div key={alert.id} className="flex items-start gap-2.5 rounded-lg bg-slate-800/60 px-3 py-2">
+                  <div key={alert.id} className="flex items-start gap-2.5 rounded-lg bg-surface-inset px-3 py-2">
                     <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${ALERT_SEVERITY_DOT[alert.severity]}`} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
                           {ALERT_TYPE_LABELS[alert.alert_type]}
                         </span>
-                        <span className="shrink-0 text-[10px] text-slate-600">{formatDateTime(alert.created_at)}</span>
+                        <span className="shrink-0 text-[10px] text-text-muted">{formatDateTime(alert.created_at)}</span>
                       </div>
-                      <p className="mt-0.5 text-xs text-slate-300">{alert.message}</p>
+                      <p className="mt-0.5 text-xs text-text-secondary">{alert.message}</p>
                     </div>
                   </div>
                 ))}
@@ -266,7 +266,7 @@ export default function AgentClientPage() {
         {/* Right: private notes (agent-only) */}
         <div>
           <Card>
-            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">
               Private notes
             </p>
             <div className="space-y-4">
@@ -282,7 +282,7 @@ export default function AgentClientPage() {
                       className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium ring-1 transition-all ${
                         clientStatus === s
                           ? CLIENT_STATUS_COLORS[s] + " ring-1"
-                          : "bg-slate-800 ring-white/10 text-slate-400 hover:text-white hover:ring-white/20"
+                          : "bg-surface-inset ring-input-border text-text-muted hover:text-text hover:ring-accent"
                       }`}
                     >
                       {clientStatus === s && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
@@ -343,8 +343,8 @@ export default function AgentClientPage() {
               </div>
 
               {/* Mandate dates/territory */}
-              <div className="border-t border-white/[0.06] pt-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <div className="border-t border-rule pt-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
                   Mandate settings
                 </p>
                 <div className="grid grid-cols-2 gap-3">
@@ -380,16 +380,16 @@ export default function AgentClientPage() {
               </div>
 
               {/* Alert preferences (TRA-135) */}
-              <div className="border-t border-white/[0.06] pt-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <div className="border-t border-rule pt-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
                   Alert preferences
                 </p>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-slate-300">Contract expiry</p>
+                      <p className="text-xs font-medium text-text-secondary">Contract expiry</p>
                       <div className="mt-1 flex items-center gap-1.5">
-                        <span className="text-[11px] text-slate-500">Alert within</span>
+                        <span className="text-[11px] text-text-muted">Alert within</span>
                         <input
                           type="number"
                           min={1}
@@ -397,16 +397,16 @@ export default function AgentClientPage() {
                           value={alertContractExpiryMonths}
                           disabled={!alertContractExpiryEnabled}
                           onChange={(e) => { setAlertContractExpiryMonths(e.target.value); setDirty(true); }}
-                          className="w-14 rounded bg-slate-800 px-1.5 py-0.5 text-xs text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 disabled:opacity-50"
+                          className="w-14 rounded bg-surface px-1.5 py-0.5 text-xs text-text ring-1 ring-input-border focus:outline-none focus:ring-accent disabled:opacity-50"
                         />
-                        <span className="text-[11px] text-slate-500">months of expiry</span>
+                        <span className="text-[11px] text-text-muted">months of expiry</span>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => { setAlertContractExpiryEnabled((v) => !v); setDirty(true); }}
                       className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
-                        alertContractExpiryEnabled ? "bg-emerald-500" : "bg-slate-600"
+                        alertContractExpiryEnabled ? "bg-success" : "bg-border"
                       }`}
                     >
                       <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
@@ -417,9 +417,9 @@ export default function AgentClientPage() {
 
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-slate-300">Valuation change</p>
+                      <p className="text-xs font-medium text-text-secondary">Valuation change</p>
                       <div className="mt-1 flex items-center gap-1.5">
-                        <span className="text-[11px] text-slate-500">Alert on moves over</span>
+                        <span className="text-[11px] text-text-muted">Alert on moves over</span>
                         <input
                           type="number"
                           min={1}
@@ -427,16 +427,16 @@ export default function AgentClientPage() {
                           value={alertValuationChangePct}
                           disabled={!alertValuationChangeEnabled}
                           onChange={(e) => { setAlertValuationChangePct(e.target.value); setDirty(true); }}
-                          className="w-14 rounded bg-slate-800 px-1.5 py-0.5 text-xs text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-500 disabled:opacity-50"
+                          className="w-14 rounded bg-surface px-1.5 py-0.5 text-xs text-text ring-1 ring-input-border focus:outline-none focus:ring-accent disabled:opacity-50"
                         />
-                        <span className="text-[11px] text-slate-500">%</span>
+                        <span className="text-[11px] text-text-muted">%</span>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => { setAlertValuationChangeEnabled((v) => !v); setDirty(true); }}
                       className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
-                        alertValuationChangeEnabled ? "bg-emerald-500" : "bg-slate-600"
+                        alertValuationChangeEnabled ? "bg-success" : "bg-border"
                       }`}
                     >
                       <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
@@ -446,12 +446,12 @@ export default function AgentClientPage() {
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-medium text-slate-300">Club interest</p>
+                    <p className="text-xs font-medium text-text-secondary">Club interest</p>
                     <button
                       type="button"
                       onClick={() => { setAlertClubInterestEnabled((v) => !v); setDirty(true); }}
                       className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
-                        alertClubInterestEnabled ? "bg-emerald-500" : "bg-slate-600"
+                        alertClubInterestEnabled ? "bg-success" : "bg-border"
                       }`}
                     >
                       <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
@@ -473,7 +473,7 @@ export default function AgentClientPage() {
                 </Button>
               )}
               {saveMutation.isError && (
-                <p className="text-xs text-red-400">Failed to save. Please try again.</p>
+                <p className="text-xs text-danger-text">Failed to save. Please try again.</p>
               )}
             </div>
           </Card>
