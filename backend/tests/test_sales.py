@@ -868,3 +868,48 @@ async def test_sale_embed_null_for_ineligible_player(client: AsyncClient, seller
     )
     data = (await client.get(f"/sales/{sale['id']}", headers=_auth_headers(buyer))).json()
     assert data["fair_value_signal"] is None
+
+
+# ── B1: whose_move ────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_sale_whose_move_neither_with_no_bids(client: AsyncClient, seller: dict):
+    headers = _auth_headers(seller)
+    player = await _create_player(client, headers)
+    sale = await _create_sale(client, headers, player["id"])
+
+    resp = await client.get(f"/sales/{sale['id']}", headers=headers)
+    assert resp.json()["whose_move"] == "neither"
+
+
+@pytest.mark.asyncio
+async def test_sale_whose_move_your_when_bid_placed_and_closing_soon(
+    client: AsyncClient, seller: dict, buyer: dict, db
+):
+    from datetime import datetime, timedelta, timezone
+
+    from app.clubs.models import ClubFinance
+    from sqlalchemy import select
+
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    deadline = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+    sale = await _create_sale(client, sel_headers, player["id"], deadline=deadline)
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.transfer_budget_total = Decimal("100000000")
+    await db.commit()
+
+    bid_resp = await client.post(f"/sales/{sale['id']}/bids", json={"amount": 5_500_000}, headers=buy_headers)
+    assert bid_resp.status_code == 201, bid_resp.text
+
+    seller_view = await client.get(f"/sales/{sale['id']}", headers=sel_headers)
+    assert seller_view.json()["whose_move"] == "your"
+
+    # Non-seller viewers never see this — bid_count/reserve figures are seller/staff-only (TRA-139),
+    # so a null bid_count falls through to "neither" the same way the frontend's rule does.
+    buyer_view = await client.get(f"/sales/{sale['id']}", headers=buy_headers)
+    assert buyer_view.json()["whose_move"] == "neither"

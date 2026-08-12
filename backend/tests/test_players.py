@@ -1,5 +1,7 @@
 """Player endpoint tests — M2."""
 
+import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -232,3 +234,134 @@ async def test_deactivate_already_inactive_contract(client: AsyncClient, auth_he
         f"/players/{player['id']}/contracts/{contract['id']}", headers=auth_headers
     )
     assert resp.status_code == 400
+
+
+# ── B3: sort by value (fair value vs. nominal market value) ────────────────
+
+
+async def _set_market_value(db, player_id: str, value):
+    from sqlalchemy import select
+
+    from app.players.models import Player
+
+    result = await db.execute(select(Player).where(Player.id == uuid.UUID(player_id)))
+    p = result.scalar_one()
+    p.market_value = value
+    await db.commit()
+
+
+async def _seed_market_valuation(db, player_id: str, fair_value):
+    from decimal import Decimal
+
+    from app.valuation.constants import ValuationConfidence
+    from app.valuation.models import PlayerValuation
+
+    db.add(PlayerValuation(
+        player_id=uuid.UUID(player_id),
+        fair_value=fair_value,
+        fair_value_low=fair_value,
+        fair_value_high=fair_value,
+        performance_score=Decimal("50"),
+        confidence=ValuationConfidence.HIGH,
+        model_version="test",
+        league_tier=1,
+        age_factor=Decimal("1.0"),
+    ))
+    await db.commit()
+
+
+async def test_market_sort_by_value_ranks_most_undervalued_first(client: AsyncClient, auth_headers: dict, db):
+    from decimal import Decimal
+
+    undervalued = await _create_player(client, auth_headers, "Undervalued Star", position="MID")
+    overpriced = await _create_player(client, auth_headers, "Overpriced Player", position="MID")
+    unvalued = await _create_player(client, auth_headers, "No Valuation Player", position="MID")
+
+    await _set_market_value(db, undervalued["id"], Decimal("1000000"))
+    await _seed_market_valuation(db, undervalued["id"], Decimal("10000000"))  # fair value >> market value
+
+    await _set_market_value(db, overpriced["id"], Decimal("10000000"))
+    await _seed_market_valuation(db, overpriced["id"], Decimal("1000000"))  # fair value << market value
+
+    resp = await client.get(
+        "/players/market?sort_by=value&sort_dir=desc&position=MID&page_size=50", headers=auth_headers
+    )
+    assert resp.status_code == 200
+    ids = [p["id"] for p in resp.json()["items"]]
+
+    assert ids.index(undervalued["id"]) < ids.index(overpriced["id"])
+    # No valuation at all sorts last regardless of direction — same nullslast
+    # handling every other /players/market sort already gets.
+    assert ids.index(overpriced["id"]) < ids.index(unvalued["id"])
+
+
+# ── B4: wage fit ─────────────────────────────────────────────────────────────
+
+
+async def _set_player_wage(db, player_id: str, wage_weekly) -> None:
+    from sqlalchemy import select
+
+    from app.players.models import Player
+
+    result = await db.execute(select(Player).where(Player.id == uuid.UUID(player_id)))
+    p = result.scalar_one()
+    p.wage_weekly = wage_weekly
+    await db.commit()
+
+
+async def _set_wage_budget(db, weekly_total) -> None:
+    from sqlalchemy import select
+
+    from app.clubs.models import ClubFinance
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.wage_budget_total_weekly = weekly_total
+    await db.commit()
+
+
+async def test_market_wage_fit_null_for_anonymous(client: AsyncClient, auth_headers: dict, db):
+    from decimal import Decimal
+
+    player = await _create_player(client, auth_headers, "Wage Player Anon")
+    await _set_player_wage(db, player["id"], Decimal("50000"))
+
+    resp = await client.get("/players/market")  # no auth
+    item = next(p for p in resp.json()["items"] if p["id"] == player["id"])
+    assert item["wage_fit"] is None
+
+
+async def test_market_wage_fit_true_when_within_wage_room(client: AsyncClient, auth_headers: dict, db):
+    from decimal import Decimal
+
+    await _set_wage_budget(db, Decimal("200000"))
+    player = await _create_player(client, auth_headers, "Wage Player Fits")
+    await _set_player_wage(db, player["id"], Decimal("50000"))
+
+    resp = await client.get("/players/market", headers=auth_headers)
+    item = next(p for p in resp.json()["items"] if p["id"] == player["id"])
+    assert item["wage_fit"]["fits"] is True
+    assert float(item["wage_fit"]["wage_room_after"]) == 150_000.0
+
+
+async def test_market_wage_fit_false_when_exceeds_wage_room(client: AsyncClient, auth_headers: dict, db):
+    from decimal import Decimal
+
+    await _set_wage_budget(db, Decimal("30000"))
+    player = await _create_player(client, auth_headers, "Wage Player Over Budget")
+    await _set_player_wage(db, player["id"], Decimal("50000"))
+
+    detail = await client.get(f"/players/market/{player['id']}", headers=auth_headers)
+    wage_fit = detail.json()["wage_fit"]
+    assert wage_fit["fits"] is False
+    assert float(wage_fit["wage_room_after"]) == -20_000.0
+
+
+async def test_market_wage_fit_null_without_player_wage_figure(client: AsyncClient, auth_headers: dict, db):
+    from decimal import Decimal
+
+    await _set_wage_budget(db, Decimal("200000"))
+    player = await _create_player(client, auth_headers, "Wage Player No Figure")
+
+    detail = await client.get(f"/players/market/{player['id']}", headers=auth_headers)
+    assert detail.json()["wage_fit"] is None

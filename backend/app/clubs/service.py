@@ -18,6 +18,7 @@ from app.clubs.models import (
     PlayerSearchView,
     StaffRole,
 )
+from app.clubs.schemas import CommitmentItem
 
 
 async def create_club(
@@ -531,3 +532,82 @@ async def commit_budget(
     finance.wage_committed_weekly += wage_weekly
     await db.flush()
     return finance
+
+
+async def get_commitments(db: AsyncSession, club_id: uuid.UUID) -> list[CommitmentItem]:
+    """B5: row-level attribution of this club's transfer_reserved/committed and
+    wage_reserved_weekly/committed_weekly ClubFinance totals — replacing
+    FinancePage.tsx's CommitmentsTable client reconstruction, which its own
+    code comment admits misses sale bids and all wage commitments and isn't
+    guaranteed to sum to the real totals.
+
+    Walks every real source of reserve_budget/commit_budget (not a parallel
+    query path): offers this club sent (still SENT/COUNTERED → reserved),
+    active bids this club placed (→ reserved), and deals in progress with
+    this club as buyer (→ committed, net of any instalments already paid).
+    Local imports avoid a circular import — offers/deals/sales all import
+    `clubs` at module level already.
+    """
+    from sqlalchemy.orm import selectinload
+
+    from app.deals import service as deals_service
+    from app.deals.models import DealStatus
+    from app.offers import service as offers_service
+    from app.offers.models import OfferStatus
+    from app.sales.models import Bid, BidStatus, Sale
+
+    items: list[CommitmentItem] = []
+
+    offers, _ = await offers_service.list_offers(
+        db, club_id=club_id, direction="sent", page=1, page_size=200
+    )
+    for o in offers:
+        if o.status not in (OfferStatus.SENT, OfferStatus.COUNTERED):
+            continue
+        items.append(CommitmentItem(
+            kind="offer",
+            id=o.id,
+            player_name=o.player.name if o.player else None,
+            transfer_amount=o.fee_amount or Decimal("0"),
+            wage_weekly_amount=o.wage_weekly,
+            status="reserved",
+            releases_when="Offer withdrawn, rejected, or resolved",
+            link=f"/offers/{o.id}",
+        ))
+
+    bid_result = await db.execute(
+        select(Bid)
+        .where(Bid.buyer_club_id == club_id, Bid.status == BidStatus.ACTIVE)
+        .options(selectinload(Bid.sale).selectinload(Sale.player))
+    )
+    for b in bid_result.scalars():
+        items.append(CommitmentItem(
+            kind="bid",
+            id=b.id,
+            player_name=b.sale.player.name if b.sale and b.sale.player else None,
+            transfer_amount=b.reserved_transfer_amount,
+            wage_weekly_amount=b.reserved_wage_weekly or None,
+            status="reserved",
+            releases_when="Outbid, sale closes, or bid withdrawn",
+            link=f"/sales/{b.sale_id}",
+        ))
+
+    deals, _ = await deals_service.list_deals(db, club_id=club_id, page=1, page_size=200)
+    for d in deals:
+        if d.status not in (DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION):
+            continue
+        if d.buyer_club_id != club_id:
+            continue  # committed budget is a buyer-side concept
+        paid = sum((i.amount for i in (d.instalments or []) if i.paid), Decimal("0"))
+        items.append(CommitmentItem(
+            kind="deal",
+            id=d.id,
+            player_name=d.player.name if d.player else None,
+            transfer_amount=max(Decimal("0"), d.agreed_fee - paid),
+            wage_weekly_amount=d.agreed_wage_weekly,
+            status="committed",
+            releases_when="Deal completes or collapses",
+            link=f"/deals/{d.id}",
+        ))
+
+    return items

@@ -5,6 +5,7 @@ from decimal import Decimal
 from pydantic import BaseModel, model_validator
 
 from app.agents.models import AgreementStatus, CommissionPayer, NegotiationStatus  # noqa: F401 (re-exported)
+from app.common.schemas import WhoseMove
 from app.deals.models import ClauseStatus, ClauseType, DealStage, DealStatus, DealType, MedicalStatus
 
 
@@ -275,4 +276,6 @@ class DealResponse(BaseModel):
     sla_escalated_at: datetime | None = None
     player: PlayerSummary | None = None
     deal_notes: list[DealNoteResponse] = []
+    # B1
+    whose_move: WhoseMove | None = None
     model_config = {"from_attributes": True}

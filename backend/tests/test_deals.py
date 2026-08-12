@@ -1,6 +1,7 @@
 """M4 — Deal lifecycle tests."""
 
 import uuid
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -1012,3 +1013,60 @@ async def test_clause_addition_is_audited(client: AsyncClient, buyer: dict, sell
 # NOTE: Concurrent-completion overspend guard is NOT tested here.
 # It requires two parallel DB sessions against a real Postgres instance;
 # SQLite ignores SELECT FOR UPDATE so the test would be a false pass.
+
+
+# ── B1: whose_move ────────────────────────────────────────────────────────────
+
+
+async def _set_deal(db, deal_id: str, **fields) -> None:
+    from sqlalchemy import select
+
+    from app.deals.models import Deal
+
+    result = await db.execute(select(Deal).where(Deal.id == uuid.UUID(deal_id)))
+    deal = result.scalar_one()
+    for key, value in fields.items():
+        setattr(deal, key, value)
+    await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_deal_whose_move_confirmed_is_your_move(client: AsyncClient, buyer: dict, seller: dict, db):
+    from app.deals.models import DealStage
+
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    await _set_deal(db, deal["id"], stage=DealStage.CONFIRMED)
+
+    resp = await client.get(f"/deals/{deal['id']}", headers=_auth_headers(buyer))
+    assert resp.json()["whose_move"] == "your"
+
+
+@pytest.mark.asyncio
+async def test_deal_whose_move_agent_negotiation_uses_72h_proxy(client: AsyncClient, buyer: dict, seller: dict, db):
+    from app.deals.models import DealStage
+
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+
+    await _set_deal(
+        db, deal["id"], stage=DealStage.AGENT_NEGOTIATION, updated_at=datetime.now(timezone.utc)
+    )
+    fresh = await client.get(f"/deals/{deal['id']}", headers=_auth_headers(buyer))
+    assert fresh.json()["whose_move"] == "their"
+
+    await _set_deal(
+        db, deal["id"], updated_at=datetime.now(timezone.utc) - timedelta(hours=73)
+    )
+    stale = await client.get(f"/deals/{deal['id']}", headers=_auth_headers(buyer))
+    assert stale.json()["whose_move"] == "your"
+
+
+@pytest.mark.asyncio
+async def test_deal_whose_move_neither_when_terminal(client: AsyncClient, buyer: dict, seller: dict, db):
+    from app.deals.models import DealStage, DealStatus
+
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    # Even a stage that would otherwise read "your move" is overridden by a terminal status.
+    await _set_deal(db, deal["id"], stage=DealStage.CONFIRMED, status=DealStatus.COLLAPSED)
+
+    resp = await client.get(f"/deals/{deal['id']}", headers=_auth_headers(buyer))
+    assert resp.json()["whose_move"] == "neither"

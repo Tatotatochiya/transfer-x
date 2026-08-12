@@ -11,8 +11,12 @@ from sqlalchemy.orm import selectinload
 from app import clubs as clubs_module
 from app.clubs.models import ClubFinance
 from app.common.filters import apply_date_range
+from app.common.schemas import WhoseMove
 from app.deals.models import Deal, DealStage, DealStatus
 from app.sales.models import Bid, BidStatus, Sale, SaleEvent, SaleEventType, SaleStatus, SaleType
+
+# B1: matches AUCTION_CLOSING_SOON_HOURS in frontend/src/lib/whoseMove.ts.
+_AUCTION_CLOSING_SOON_HOURS = 48
 
 
 # ── Sale CRUD ─────────────────────────────────────────────────────────────────
@@ -210,6 +214,25 @@ def is_reserve_met(sale: Sale) -> bool:
     return best >= sale.reserve_price
 
 
+def compute_sale_whose_move(
+    *, bid_count: int | None, reserve_met: bool, deadline: datetime | None
+) -> WhoseMove:
+    """B1: mirrors saleWhoseMove() in frontend/src/lib/whoseMove.ts exactly.
+    Inherently seller-side: bid_count is only ever non-null for the seller or
+    staff (TRA-139), so a non-seller viewer's null bid_count already falls
+    through to NEITHER, same as the frontend's `!sale.bid_count` check.
+    """
+    if not bid_count:
+        return WhoseMove.NEITHER
+    if reserve_met and deadline is not None:
+        if deadline.tzinfo is None:  # SQLite drops tzinfo
+            deadline = deadline.replace(tzinfo=timezone.utc)
+        hours_until_close = (deadline - datetime.now(timezone.utc)).total_seconds() / 3600
+        if 0 <= hours_until_close <= _AUCTION_CLOSING_SOON_HOURS:
+            return WhoseMove.YOUR
+    return WhoseMove.NEITHER
+
+
 # ── Bid placement (concurrency-safe) ─────────────────────────────────────────
 
 
@@ -246,7 +269,10 @@ async def place_bid(
         raise ValueError("Cannot bid on your own sale")
 
     # Check deadline
-    if sale.deadline and datetime.now(timezone.utc) > sale.deadline:
+    deadline = sale.deadline
+    if deadline is not None and deadline.tzinfo is None:  # SQLite drops tzinfo
+        deadline = deadline.replace(tzinfo=timezone.utc)
+    if deadline and datetime.now(timezone.utc) > deadline:
         sale.status = SaleStatus.EXPIRED
         db.add(SaleEvent(sale_id=sale.id, event_type=SaleEventType.SALE_EXPIRED))
         await db.flush()
@@ -435,6 +461,64 @@ async def accept_bid(
     db.add(deal)
     await db.flush()
     return deal
+
+
+async def close_sale_after_offer_accepted(
+    db: AsyncSession, sale_id: uuid.UUID, *, actor_club_id: uuid.UUID
+) -> None:
+    """Close a listing because a direct offer made against it was accepted.
+
+    Mirrors accept_bid's own closing block. Without this, the auction path
+    (accept a bid) closed the listing but the OPEN_TO_OFFERS path (accept an
+    offer made against the listing) left it OPEN forever — the player kept
+    showing as "Listed" while their deal was already in progress, which the
+    app's own deal banner states is impossible.
+
+    Any still-active bids are released and their bidders notified, the same way
+    losing bidders are handled in accept_bid — a listing can carry both bids and
+    linked offers, and closing it must not strand a bidder's reserved budget.
+    """
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
+    result = await db.execute(
+        select(Sale)
+        .where(Sale.id == sale_id)
+        .with_for_update()
+        .options(selectinload(Sale.bids))
+    )
+    sale = result.scalar_one_or_none()
+    if sale is None or sale.status != SaleStatus.OPEN:
+        return
+
+    for bid in sale.bids:
+        if bid.status != BidStatus.ACTIVE:
+            continue
+        bid.status = BidStatus.REJECTED
+        await clubs_module.service.release_budget(
+            db,
+            club_id=bid.buyer_club_id,
+            transfer_amount=bid.reserved_transfer_amount,
+            wage_weekly=bid.reserved_wage_weekly,
+        )
+        await notif_service.notify_club(
+            db,
+            bid.buyer_club_id,
+            type=NotificationType.OUTBID,
+            message="Your bid was not accepted — this sale has closed",
+            link=f"/sales/{sale.id}",
+            related_player_id=sale.player_id,
+        )
+
+    sale.status = SaleStatus.CLOSED
+    db.add(
+        SaleEvent(
+            sale_id=sale.id,
+            event_type=SaleEventType.SALE_CLOSED,
+            actor_club_id=actor_club_id,
+        )
+    )
+    await db.flush()
 
 
 # ── Background job: close expired sales ──────────────────────────────────────

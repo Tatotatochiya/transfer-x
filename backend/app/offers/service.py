@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app import clubs as clubs_module
 from app.audit import service as audit_service
 from app.common.filters import apply_date_range
+from app.common.schemas import WhoseMove
 from app.deals.models import Deal, DealStage, DealStatus
 from app.offers.models import Offer, OfferEvent, OfferEventType, OfferMessage, OfferStatus
 
@@ -20,6 +21,13 @@ _TERMINAL = {OfferStatus.ACCEPTED, OfferStatus.REJECTED, OfferStatus.WITHDRAWN, 
 
 def _is_terminal(status: OfferStatus) -> bool:
     return status in _TERMINAL
+
+
+def compute_offer_whose_move(offer: Offer, viewer_club_id: uuid.UUID | None) -> WhoseMove:
+    """B1: mirrors offerWhoseMove() in frontend/src/lib/whoseMove.ts exactly."""
+    if _is_terminal(offer.status):
+        return WhoseMove.NEITHER
+    return WhoseMove.THEIR if offer.last_actor_club_id == viewer_club_id else WhoseMove.YOUR
 
 
 def _add_ons_total(add_ons: dict | None) -> Decimal:
@@ -357,6 +365,10 @@ async def accept_offer(
     ))
 
     deal = Deal(
+        # Carry the originating listing onto the deal: _reopen_sale_after_collapse
+        # keys off deal.sale_id, so without this an offer-originated deal could
+        # never re-list its sale if it collapsed.
+        sale_id=offer.sale_id,
         offer_id=offer.id,
         buyer_club_id=offer.from_club_id,
         seller_club_id=offer.to_club_id,
@@ -387,6 +399,16 @@ async def accept_offer(
     # pending offer for them is moot. Reject those, release their reservations,
     # and tell the rival buyers, instead of leaving them locked up for days.
     await reject_offers_for_player(db, offer.player_id, exclude_offer_id=offer.id)
+
+    # ...and so is the listing the offer was made against, for the same reason.
+    # accept_bid already closes the sale on the auction path; this is the
+    # equivalent for a direct offer accepted against a listing.
+    if offer.sale_id is not None:
+        from app.sales import service as sales_service
+
+        await sales_service.close_sale_after_offer_accepted(
+            db, offer.sale_id, actor_club_id=actor_club_id
+        )
 
     # TRA-125: if the player has an active mandate, pull the agent in immediately.
     await maybe_invite_agent_for_deal(db, deal)

@@ -24,6 +24,7 @@ from app.clubs.schemas import (
     ClubStaffInvitationResponse,
     ClubStaffMemberResponse,
     ClubUpdateRequest,
+    CommitmentsResponse,
     PlayerSearchViewCreateRequest,
     PlayerSearchViewResponse,
     PlayerSearchViewUpdateRequest,
@@ -523,6 +524,25 @@ class ExpiringContractItem(BaseModel):
     days_remaining: int
 
 
+# B6: matches SquadRail.tsx's existing window boundaries so a later frontend
+# migration onto this endpoint is a like-for-like swap.
+_CONTRACT_CLIFF_WINDOWS = [
+    ("Under 6 months", 0, 183),
+    ("6–12 months", 183, 365),
+    ("12–24 months", 365, 730),
+]
+
+
+class ContractCliffWindow(BaseModel):
+    label: str
+    count: int
+    value_at_risk: Decimal
+
+
+class ContractCliffResponse(BaseModel):
+    windows: list[ContractCliffWindow]
+
+
 @router.get("/me/expiring-contracts", response_model=list[ExpiringContractItem])
 async def get_expiring_contracts(
     within_days: int = Query(default=180, ge=30, le=365),
@@ -562,3 +582,86 @@ async def get_expiring_contracts(
         )
         for player, contract in rows
     ]
+
+
+# ── Commitment breakdown ──────────────────────────────────────────────────────
+
+
+@router.get("/me/commitments", response_model=CommitmentsResponse)
+async def get_commitments(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """B5: row-level attribution of this club's committed/reserved budget."""
+    club = await clubs_service.get_club_for_user(db, current_user.id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+
+    items = await clubs_service.get_commitments(db, club.id)
+    finance = club.finance
+    return CommitmentsResponse(
+        items=items,
+        total_transfer_reserved=finance.transfer_reserved,
+        total_wage_reserved_weekly=finance.wage_reserved_weekly,
+        total_transfer_committed=finance.transfer_committed,
+        total_wage_committed_weekly=finance.wage_committed_weekly,
+    )
+
+
+# ── Contract cliff (windowed) ─────────────────────────────────────────────────
+
+
+@router.get("/me/contract-cliff", response_model=ContractCliffResponse)
+async def get_contract_cliff(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """B6: windowed expiry aggregation with value-at-risk per window — a
+    separate endpoint alongside (not replacing) /me/expiring-contracts, whose
+    bare-array response shape is already consumed by DashboardPage.tsx and
+    must not change. value_at_risk uses each player's latest fair-value model
+    valuation where one exists, falling back to the legacy Player.market_value
+    field only for players not yet covered by the model.
+    """
+    from app.players.models import Contract, Player
+    from app.valuation import service as valuation_service
+
+    club = await clubs_service.get_club_for_user(db, current_user.id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+
+    today = date.today()
+    cutoff = today + timedelta(days=_CONTRACT_CLIFF_WINDOWS[-1][2])
+
+    result = await db.execute(
+        select(Player, Contract)
+        .join(Contract, Contract.player_id == Player.id)
+        .where(
+            Player.current_club_id == club.id,
+            Contract.is_active == True,  # noqa: E712
+            Contract.end_date.is_not(None),
+            Contract.end_date <= cutoff,
+        )
+    )
+    rows = result.all()
+    valuations = await valuation_service.get_latest_valuations(db, [player.id for player, _ in rows])
+
+    windows = []
+    for label, start_days, end_days in _CONTRACT_CLIFF_WINDOWS:
+        window_rows = [
+            (player, contract)
+            for player, contract in rows
+            if start_days <= (contract.end_date - today).days < end_days
+        ]
+        value_at_risk = Decimal("0")
+        for player, _contract in window_rows:
+            valuation = valuations.get(player.id)
+            if valuation is not None:
+                value_at_risk += valuation.fair_value
+            elif player.market_value is not None:
+                value_at_risk += player.market_value
+        windows.append(
+            ContractCliffWindow(label=label, count=len(window_rows), value_at_risk=value_at_risk)
+        )
+
+    return ContractCliffResponse(windows=windows)
