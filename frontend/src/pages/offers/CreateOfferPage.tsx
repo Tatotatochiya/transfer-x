@@ -20,6 +20,7 @@ export default function CreateOfferPage() {
   const playerId = searchParams.get("player_id") ?? "";
   const saleId   = searchParams.get("sale_id")   ?? "";
 
+  const [feeType, setFeeType] = useState<"fee" | "none">("fee");
   const [fee, setFee]         = useState("");
   const [wage, setWage]       = useState("");
   const [years, setYears]     = useState("");
@@ -83,7 +84,13 @@ export default function CreateOfferPage() {
     if (player?.current_club?.id) body.to_club_id = player.current_club.id;
 
     const parsedFee = parseFloat(fee);
-    if (fee && !isNaN(parsedFee)) body.fee_amount = parsedFee;
+    if (feeType === "fee") {
+      if (!fee || isNaN(parsedFee)) {
+        setError("Enter a transfer fee, or choose “No fee” if this is a free transfer, loan, or swap.");
+        return;
+      }
+      body.fee_amount = parsedFee;
+    }
 
     const parsedWage = parseFloat(wage);
     if (wage && !isNaN(parsedWage)) body.wage_weekly = parsedWage;
@@ -181,22 +188,49 @@ export default function CreateOfferPage() {
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Transfer fee */}
+          {/* Transfer fee — deliberately a choice, not an optional box. A
+              fee-less offer is legitimate (free transfer, loan, swap), but an
+              empty field used to mean the same thing as one, so "I forgot to
+              type a number" and "there is genuinely no fee" were
+              indistinguishable to the club receiving it. */}
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
-              Transfer fee <span className="text-text-muted font-normal">(optional)</span>
+              Transfer fee
             </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
-                £
-              </span>
-              <CurrencyInput
-                value={fee}
-                onChange={setFee}
-                placeholder="e.g. 25,000,000"
-                className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
-              />
+            <div className="inline-flex rounded-lg bg-surface-inset p-0.5 ring-1 ring-border mb-2.5">
+              {([["fee", "Transfer fee"], ["none", "No fee"]] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFeeType(value)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                    feeType === value
+                      ? "bg-surface text-text shadow-sm"
+                      : "text-text-muted hover:text-text-secondary"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
+            {feeType === "fee" ? (
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
+                  £
+                </span>
+                <CurrencyInput
+                  value={fee}
+                  onChange={setFee}
+                  placeholder="e.g. 25,000,000"
+                  className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                />
+              </div>
+            ) : (
+              <p className="text-xs text-text-muted">
+                No transfer fee — a free transfer, loan, or swap. The receiving club sees this
+                as a deliberate term, not a blank field.
+              </p>
+            )}
           </div>
 
           {/* Weekly wage */}
