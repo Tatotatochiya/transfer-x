@@ -1,6 +1,6 @@
 ---
 title: "Demo Readiness Audit — Investors & Prospective Clients"
-last_updated: 2026-08-08
+last_updated: 2026-08-12
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -68,6 +68,7 @@ Every finding below was checked directly against the running stack. Where a find
 | C2 | The entire demo dataset exists only in a local Docker volume, with no snapshot or seed script | **Critical** | ✅ | — |
 | C3 | Anyone can claim any player's identity via open registration | **Critical** | — | ✅ |
 | C4 | Daily background jobs never run if the API restarts within 24h; valuations are a month stale | **Critical** | ✅ | ✅ |
+| C5 | 7,825 contracted professionals displayed as free agents — and were signable for £0 | **Critical** | ✅ | ✅ |
 | H1 | List pages render a convincing "no data" empty state when the backend is down | **High** | ✅ | ✅ |
 | H2 | Admin Health page has three dead links (guaranteed 404) | **High** | ✅ | — |
 | H3 | No row locks on offer accept, deal completion, or instalment payment | **High** | — | ✅ |
@@ -75,6 +76,7 @@ Every finding below was checked directly against the running stack. Where a find
 | H5 | Verification status gates nothing — it is a decorative badge | **High** | — | ✅ |
 | H6 | No password reset flow of any kind | **High** | — | ✅ |
 | H7 | Deal stages can deadlock, requiring superuser intervention to unstick | **High** | ✅ | ✅ |
+| H8 | Refreshing or deep-linking any market page silently downgrades you to the anonymous view | **High** | ✅ | ✅ |
 | M1 | Two Accept-bid affordances on one page; one has no confirmation and no capability check | **Medium** | ✅ | ✅ |
 | M2 | "Rumors coming soon" placeholder on the public transfers page | **Medium** | ✅ | — |
 | M3 | `console.error` on every failed login; `console.log` at module scope in production | **Medium** | ✅ | — |
@@ -195,6 +197,28 @@ Critically, the vendor sync on 2026-08-08 imported roughly **12,000 fresh stat s
 
 ---
 
+### C5. Contracted professionals were shown as free agents — and could be signed for nothing
+
+**Blocks demo and pilot. Found 2026-08-11 (after the original audit), now fixed — see [ADR 0003](./architecture/decisions/0003-player-status-distinguishes-external-clubs.md).**
+
+`PlayerStatus` had only two values, and `normalize_player_status` derived it from the presence of a **TransferX** contract alone. Every vendor-imported player — i.e. essentially the whole catalogue — therefore stored as `FREE_AGENT`:
+
+- **7,830 of 7,914** players were `FREE_AGENT`.
+- **7,825** of those had a real-world club recorded (`team_name` / `world_team_id`).
+- **5** were genuinely unattached.
+
+Lamine Yamal rendered as *"MID · Free agent"* while simultaneously browsable under Barcelona. The badge used the **green `success`** variant, so the UI actively framed 7,825 contracted professionals as opportunities.
+
+The severe part was not the label. `create_free_agent_deal` gated solely on `status != FREE_AGENT`, and its own docstring describes the path as *"no seller, no fee, no offer/bid negotiation pipeline."* With no transfer windows configured, `is_transfer_allowed()` returns `True`. **Any club user with `MARKET_WRITE` could sign Yamal, Haaland, or any of ~7,824 other contracted players for £0, instantly, with no counterparty and no approval.**
+
+This was partially known and repeatedly worked around: `scouting/service.py` carried a display-layer override for exactly this, and at least three frontend components had equivalent guards. All of them patched read paths; none fixed the stored value, and none protected the write path.
+
+Why the original audit missed it: the two spot-checks that would have caught it point away from each other. Browsing the market shows correct club names (the frontend overrides were doing their job), and the free-agent signing endpoint looks correct in isolation — its guard is genuinely right, given a trustworthy `status`. The defect only appears when you ask what `status` actually contains.
+
+**Resolution:** third enum value `EXTERNAL`, migration `0063` backfilling by the same rule the service now uses, defence-in-depth rejection on the signing path, and the compensating overrides deleted rather than duplicated. Verified: 7,825 `EXTERNAL` / 84 `CONTRACTED` / 5 `FREE_AGENT`, zero contradictions; 435 backend tests passing including three new regression tests.
+
+---
+
 ## High findings
 
 ### H1. List pages show a convincing "no data" state when the backend is down
@@ -280,6 +304,29 @@ Several states have no self-service escape:
 - **Personal-terms edit loop** — every edit resets consent to `PENDING`, so an agent repeatedly tweaking terms forces the player to re-consent each time.
 
 **Demo implication:** have a superuser session logged in and ready throughout the demo. **Product implication:** at least the dangling-mandate case is a genuine defect rather than a policy choice, and the silent-agent case argues for extending the existing `deal_sla` concept to individual stages — which is itself currently inert (see C4).
+
+### H8. Refreshing or deep-linking a market page silently downgrades you to the anonymous view
+
+**Blocks demo and pilot.**
+
+`store/auth.ts` keeps `accessToken` **in memory only** — just the refresh token is persisted (`localStorage`), and `isBootstrapping` covers the window where the app trades it for a fresh access token. `ProtectedRoute` waits for that window to close (`App.tsx:107-108` — `if (isBootstrapping) return <LoadingScreen />`). **`PublicRoute` does not**: it is `<AppShell>{children}</AppShell>` and nothing more (`App.tsx:96-98`).
+
+So on a hard load of a public route, the page mounts and fires its queries while `accessToken` is still `null`. The request reaches a `get_optional_user` endpoint with no `Authorization` header, and the server correctly answers as if for an anonymous visitor. Nothing errors; the page just quietly renders less.
+
+Verified against a running stack, same sale, same user, authenticated vs. anonymous:
+
+| Field | Authenticated | On hard reload |
+|---|---|---|
+| `fair_value_signal` | present | **null** |
+| `bid_count` | 0 | **null** |
+
+`reserve_price` and `best_bid` come from the same `viewer_club_id` gate in `_enrich_sale_response` (TRA-139), so a seller refreshing their own auction loses their reserve price and the bidding figures too.
+
+Ten routes are affected — the entire market browse surface: `/players/market`, `/players/market/:id`, `/sales`, `/sales/:id`, `/clubs`, `/clubs/:id`, `/world/teams/:id`, `/transfers`, `/compare`.
+
+**Demo implication:** never refresh the page mid-demo, and never paste a market link into a fresh tab — both produce a visibly poorer product than clicking to the same screen. This is easy to hit by accident and hard to explain in the moment.
+
+**Recommendation:** gate `PublicRoute` on `isBootstrapping` the same way `ProtectedRoute` does, but only when a refresh token exists — an anonymous visitor with no token must not be made to wait. Contained fix in `App.tsx`.
 
 ---
 

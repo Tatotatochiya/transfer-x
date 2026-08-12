@@ -1,6 +1,6 @@
 ---
 title: "TransferX Product Specification"
-last_updated: 2026-08-10
+last_updated: 2026-08-11
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -128,6 +128,7 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 - [`design_handoff_transferx/README.md`](./design_handoff_transferx/README.md) — overview, the four-tier hierarchy, the "whose move" rule, and what's in the package
 - [`design_handoff_transferx/CLAUDE.md`](./design_handoff_transferx/CLAUDE.md) — non-negotiables for any session working on this
 - [`design_handoff_transferx/BASELINE.md`](./design_handoff_transferx/BASELINE.md) — test baseline recorded before this work started; every phase's "done" is measured against this, not against "fully green"
+- [`design_handoff_transferx/SESSIONS.md`](./design_handoff_transferx/SESSIONS.md) — the 13 frontend phases plus the parallel backend track (B1–B7); see [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) for current, verified status of both — frontend Phases 0–12 and backend B1–B6 are built (not yet merged to `main`); B7 deferred
 
 ### Tracking documents
 *Root-level documents that track ongoing state rather than belonging to one area — see [`README.md#tracking-documents`](./README.md#tracking-documents) for the full explanation.*
