@@ -4,7 +4,9 @@ from decimal import Decimal
 
 from pydantic import BaseModel, field_validator
 
+from app.common.schemas import WhoseMove
 from app.offers.models import OfferEventType, OfferStatus
+from app.players.schemas import ActiveDealStub
 
 
 class ClubSummary(BaseModel):
@@ -110,4 +112,12 @@ class OfferResponse(BaseModel):
     to_club: ClubSummary | None = None
     messages: list[OfferMessageResponse] = []
     events: list[OfferEventResponse] = []
+    # B1: set explicitly after model_validate() by the router — needs the
+    # viewer's own club id, which isn't an attribute of the Offer row itself.
+    whose_move: WhoseMove | None = None
+    # The deal this offer produced, on the list and detail endpoints. `status`
+    # above stays truthful about the *offer* — it really was accepted — but that
+    # is not what became of the transfer, and ACCEPTED renders green whether the
+    # deal completed or collapsed at personal terms. Readers need both facts.
+    deal: ActiveDealStub | None = None
     model_config = {"from_attributes": True}

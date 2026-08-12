@@ -608,3 +608,211 @@ async def test_list_received_offers(client: AsyncClient, buyer: dict, seller: di
     resp = await client.get("/offers/received", headers=sel_headers)
     assert resp.status_code == 200
     assert resp.json()["total"] == 1
+
+
+# ── B1: whose_move ────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_offer_whose_move_your_and_their(client: AsyncClient, buyer: dict, seller: dict, db):
+    await _give_budget(db)
+    buy_headers = _auth_headers(buyer)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_offer(client, buy_headers, player["id"], seller_club_id)
+
+    # Buyer just sent it — that's their own last action, so it's the seller's move.
+    mine = (await client.get(f"/offers/{offer['id']}", headers=buy_headers)).json()
+    assert mine["whose_move"] == "their"
+    theirs = (await client.get(f"/offers/{offer['id']}", headers=sel_headers)).json()
+    assert theirs["whose_move"] == "your"
+
+
+@pytest.mark.asyncio
+async def test_offer_whose_move_neither_when_terminal(client: AsyncClient, buyer: dict, seller: dict, db):
+    await _give_budget(db)
+    buy_headers = _auth_headers(buyer)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_offer(client, buy_headers, player["id"], seller_club_id)
+    resp = await client.post(f"/offers/{offer['id']}/reject", headers=sel_headers)
+    assert resp.status_code == 200
+    assert resp.json()["whose_move"] == "neither"
+
+    refetched = (await client.get(f"/offers/{offer['id']}", headers=buy_headers)).json()
+    assert refetched["whose_move"] == "neither"
+
+
+# ── Accepting an offer made against a listing closes that listing ────────────
+
+
+async def _create_open_to_offers_sale(
+    client: AsyncClient, seller_headers: dict, player_id: str, asking: float = 5_000_000
+) -> dict:
+    resp = await client.post(
+        "/sales",
+        json={"player_id": player_id, "sale_type": "OPEN_TO_OFFERS", "asking_price": asking},
+        headers=seller_headers,
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+@pytest.mark.asyncio
+async def test_accepting_offer_on_listing_closes_the_listing(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """The auction path (accept_bid) always closed the sale; the OPEN_TO_OFFERS
+    path did not, leaving the player listed while their deal was in progress."""
+    await _give_budget(db)
+    buy_headers = _auth_headers(buyer)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    sale = await _create_open_to_offers_sale(client, sel_headers, player["id"])
+
+    offer_resp = await client.post(
+        "/offers",
+        json={
+            "player_id": player["id"],
+            "to_club_id": seller_club_id,
+            "sale_id": sale["id"],
+            "fee_amount": 5_000_000,
+        },
+        headers=buy_headers,
+    )
+    assert offer_resp.status_code == 201, offer_resp.text
+
+    deal = await client.post(f"/offers/{offer_resp.json()['id']}/accept", headers=sel_headers)
+    assert deal.status_code == 200, deal.text
+
+    refetched_sale = (await client.get(f"/sales/{sale['id']}", headers=sel_headers)).json()
+    assert refetched_sale["status"] == "CLOSED"
+    # The deal must carry the originating listing, or a later collapse can
+    # never re-list it (deals/service.py::_reopen_sale_after_collapse).
+    assert deal.json()["sale_id"] == sale["id"]
+
+
+@pytest.mark.asyncio
+async def test_closed_listing_reports_the_deal_that_resolved_it(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """A resolved listing must say what resolved it. `status` alone cannot
+    distinguish sold from withdrawn or expired-unsold, and the order book shows
+    only inactive rows in every one of those cases."""
+    await _give_budget(db)
+    buy_headers = _auth_headers(buyer)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    sale = await _create_open_to_offers_sale(client, sel_headers, player["id"])
+
+    # while the listing is still open there is nothing to explain
+    still_open = (await client.get(f"/sales/{sale['id']}", headers=sel_headers)).json()
+    assert still_open["status"] == "OPEN"
+    assert still_open["active_deal"] is None
+
+    offer_resp = await client.post(
+        "/offers",
+        json={
+            "player_id": player["id"],
+            "to_club_id": seller_club_id,
+            "sale_id": sale["id"],
+            "fee_amount": 5_000_000,
+        },
+        headers=buy_headers,
+    )
+    deal = (await client.post(f"/offers/{offer_resp.json()['id']}/accept", headers=sel_headers)).json()
+
+    resolved = (await client.get(f"/sales/{sale['id']}", headers=sel_headers)).json()
+    assert resolved["status"] == "CLOSED"
+    assert resolved["active_deal"] is not None
+    assert resolved["active_deal"]["id"] == deal["id"]
+    assert resolved["active_deal"]["status"] == "IN_PROGRESS"
+
+
+@pytest.mark.asyncio
+async def test_accepted_offer_carries_the_deals_outcome(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """`Offer.status` stays ACCEPTED after the deal collapses — truthfully, since
+    the offer really was accepted. The embedded deal is what tells a reader the
+    transfer is dead, on both the detail and the list endpoint."""
+    await _give_budget(db)
+    buy_headers = _auth_headers(buyer)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_offer(client, buy_headers, player["id"], seller_club_id)
+
+    # before acceptance there is no deal to report
+    pre = (await client.get(f"/offers/{offer['id']}", headers=buy_headers)).json()
+    assert pre["deal"] is None
+
+    deal = (await client.post(f"/offers/{offer['id']}/accept", headers=sel_headers)).json()
+    accepted = (await client.get(f"/offers/{offer['id']}", headers=buy_headers)).json()
+    assert accepted["status"] == "ACCEPTED"
+    assert accepted["deal"]["id"] == deal["id"]
+    assert accepted["deal"]["status"] == "IN_PROGRESS"
+
+    await client.post(f"/deals/{deal['id']}/collapse", headers=sel_headers)
+
+    after = (await client.get(f"/offers/{offer['id']}", headers=buy_headers)).json()
+    assert after["status"] == "ACCEPTED", "the offer's own history must not be rewritten"
+    assert after["deal"]["status"] == "COLLAPSED"
+
+    # and the same fact must reach the list view, which is where it was missing
+    sent = (await client.get("/offers/sent", headers=buy_headers)).json()
+    row = next(o for o in sent["items"] if o["id"] == offer["id"])
+    assert row["deal"]["status"] == "COLLAPSED"
+
+
+@pytest.mark.asyncio
+async def test_collapsing_offer_originated_deal_reopens_the_listing(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    await _give_budget(db)
+    buy_headers = _auth_headers(buyer)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    sale = await _create_open_to_offers_sale(client, sel_headers, player["id"])
+
+    offer_resp = await client.post(
+        "/offers",
+        json={
+            "player_id": player["id"],
+            "to_club_id": seller_club_id,
+            "sale_id": sale["id"],
+            "fee_amount": 5_000_000,
+        },
+        headers=buy_headers,
+    )
+    deal = (await client.post(f"/offers/{offer_resp.json()['id']}/accept", headers=sel_headers)).json()
+
+    collapse = await client.post(f"/deals/{deal['id']}/collapse", headers=sel_headers)
+    assert collapse.status_code == 200, collapse.text
+
+    reopened = (await client.get(f"/sales/{sale['id']}", headers=sel_headers)).json()
+    assert reopened["status"] == "OPEN"
+
+
+@pytest.mark.asyncio
+async def test_accepting_standalone_offer_leaves_no_sale_link(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Offers not made against a listing must be unaffected by the close logic."""
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_offer(client, _auth_headers(buyer), player["id"], seller_club_id)
+    deal = await client.post(f"/offers/{offer['id']}/accept", headers=sel_headers)
+    assert deal.status_code == 200, deal.text
+    assert deal.json()["sale_id"] is None

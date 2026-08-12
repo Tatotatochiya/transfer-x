@@ -8,14 +8,14 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import ClubLink from "../../components/ui/ClubLink";
 import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
-import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
 import Pagination from "../../components/ui/Pagination";
+import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import { ListSkeleton } from "../../components/ui/Skeleton";
-import { offerStatusVariant } from "../../lib/badges";
+import { offerOutcome } from "../../lib/badges";
 import { formatCurrency, formatDate } from "../../lib/utils";
 
-const TABS: { label: string; value: OfferStatus | "" }[] = [
+const CHIPS: { label: string; value: OfferStatus | "" }[] = [
   { label: "All",       value: "" },
   { label: "Sent",      value: "SENT" },
   { label: "Countered", value: "COUNTERED" },
@@ -45,7 +45,7 @@ export default function SentOffersPage() {
         .then((r) => r.data),
   });
 
-  function handleTabChange(val: OfferStatus | "") {
+  function handleChipChange(val: OfferStatus | "") {
     setStatusFilter(val);
     setPage(1);
   }
@@ -54,6 +54,32 @@ export default function SentOffersPage() {
     setDateRange(range);
     setPage(1);
   }
+
+  const columns: ResponsiveColumn<Offer>[] = [
+    { key: "player", header: "Player", priority: 1, render: (o) => (
+      <span className="font-medium text-text">
+        {o.player?.name ?? "—"}
+        {o.player?.position && <span className="ml-2 text-xs text-text-muted">{o.player.position}</span>}
+      </span>
+    ) },
+    { key: "to", header: "To", priority: 3, render: (o) => <ClubLink id={o.to_club?.id} name={o.to_club?.name} /> },
+    { key: "fee", header: "Fee", priority: 2, className: "text-right", render: (o) => (
+      <span className="font-bold text-text">{o.fee_amount != null ? formatCurrency(o.fee_amount) : "TBD"}</span>
+    ) },
+    { key: "status", header: "Status", priority: 4, render: (o) => {
+      const outcome = offerOutcome(o.status, o.deal);
+      return (
+        <div className="flex flex-col gap-0.5">
+          <Badge variant={outcome.variant}>{outcome.label}</Badge>
+          {o.status === "COUNTERED" && <span className="text-[10px] text-warning-text">Response needed</span>}
+          {outcome.note && <span className="text-[10px] text-text-muted">{outcome.note}</span>}
+        </div>
+      );
+    } },
+    { key: "activity", header: "Last activity", priority: 5, className: "text-right", render: (o) => (
+      <span className="text-xs text-text-muted">{formatDate(o.last_action_at)}</span>
+    ) },
+  ];
 
   return (
     <div>
@@ -67,19 +93,18 @@ export default function SentOffersPage() {
         }
       />
 
-      {/* Tabs */}
       <div className="mb-4 flex flex-wrap gap-2">
-        {TABS.map((tab) => (
+        {CHIPS.map((c) => (
           <button
-            key={tab.value}
-            onClick={() => handleTabChange(tab.value)}
-            className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-              statusFilter === tab.value
-                ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30"
-                : "bg-slate-800 text-slate-400 hover:text-white"
+            key={c.value}
+            onClick={() => handleChipChange(c.value)}
+            className={`rounded-lg px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
+              statusFilter === c.value
+                ? "bg-ink text-white"
+                : "bg-surface text-text-secondary ring-1 ring-input-border hover:ring-accent"
             }`}
           >
-            {tab.label}
+            {c.label}
           </button>
         ))}
       </div>
@@ -88,77 +113,46 @@ export default function SentOffersPage() {
         <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
       </div>
 
-      {isLoading && <ListSkeleton count={6} />}
-
-      {data && data.items.length === 0 && (
-        <EmptyState
-          title="No sent offers"
-          body="Browse the player market to make offers."
-          action={{ label: "Browse players", to: "/players/market" }}
-        />
-      )}
-
-      {data && data.items.length > 0 && (
+      {isLoading ? (
+        <ListSkeleton count={6} />
+      ) : (
         <>
-          <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.08]">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/[0.08]">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Player</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">To</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400">Fee</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Last activity</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04]">
-                {data.items.map((offer) => (
-                  <tr
-                    key={offer.id}
-                    onClick={() => navigate(`/offers/${offer.id}`)}
-                    className={`cursor-pointer transition-colors ${
-                      offer.status === "COUNTERED"
-                        ? "bg-amber-500/[0.04] hover:bg-amber-500/[0.08]"
-                        : "bg-slate-900 hover:bg-slate-800/60"
-                    }`}
-                  >
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-white">{offer.player?.name ?? "—"}</p>
-                      {offer.player?.position && (
-                        <p className="text-xs text-slate-500">{offer.player.position}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-slate-300">
-                      <ClubLink id={offer.to_club?.id} name={offer.to_club?.name} />
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">
-                      {offer.fee_amount != null ? formatCurrency(offer.fee_amount) : "TBD"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-0.5">
-                        <Badge variant={offerStatusVariant(offer.status)}>
-                          {offer.status}
-                        </Badge>
-                        {offer.status === "COUNTERED" && (
-                          <span className="text-[10px] text-amber-400/70">Response needed</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">
-                      {formatDate(offer.last_action_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <Pagination
-            page={data.page}
-            total={data.total}
-            pageSize={data.page_size}
-            onChange={setPage}
+          <ResponsiveTable
+            columns={columns}
+            rows={data?.items ?? []}
+            rowKey={(o) => o.id}
+            onRowClick={(o) => navigate(`/offers/${o.id}`)}
+            emptyTitle="No sent offers"
+            emptyBody="Browse the player market to make offers."
+            renderCard={(o) => {
+              const outcome = offerOutcome(o.status, o.deal);
+              return (
+                <div className="px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-text">
+                      {o.player?.name ?? "—"}
+                      {o.player?.position && <span className="ml-1.5 text-xs text-text-muted">{o.player.position}</span>}
+                    </span>
+                    <span className="text-sm font-bold text-text">{o.fee_amount != null ? formatCurrency(o.fee_amount) : "TBD"}</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-text-muted">{o.to_club?.name ?? "?"}</p>
+                  <div className="mt-1 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant={outcome.variant}>{outcome.label}</Badge>
+                      {outcome.note && <span className="text-[10px] text-text-muted">{outcome.note}</span>}
+                    </div>
+                    <span className="text-xs text-text-muted">{formatDate(o.last_action_at)}</span>
+                  </div>
+                </div>
+              );
+            }}
           />
+
+          {data && data.total > data.page_size && (
+            <div className="mt-6">
+              <Pagination page={data.page} total={data.total} pageSize={data.page_size} onChange={setPage} />
+            </div>
+          )}
         </>
       )}
     </div>

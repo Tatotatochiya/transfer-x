@@ -4,6 +4,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, field_validator
 
+from app.common.schemas import WhoseMove
+from app.players.schemas import ActiveDealStub
 from app.sales.models import BidStatus, SaleStatus, SaleType
 from app.valuation.schemas import ValuationResponse
 
@@ -66,6 +68,13 @@ class SaleResponse(BaseModel):
     # player-account/anonymous viewers and ineligible players (D6). Divergence
     # only for FIXED_PRICE (D7 — never against reserve_price or any bid figure).
     fair_value_signal: ValuationResponse | None = None
+    # B1
+    whose_move: WhoseMove = WhoseMove.NEITHER
+    # Populated on the detail endpoint only, like fair_value_signal. Answers the
+    # question a resolved listing otherwise leaves open — *why* is this closed?
+    # Player-scoped (not sale-scoped) on purpose: it stays correct for listings
+    # closed before deals began carrying sale_id.
+    active_deal: ActiveDealStub | None = None
 
     model_config = {"from_attributes": True}
 

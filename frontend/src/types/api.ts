@@ -402,7 +402,10 @@ export interface Player {
 
 export interface ActiveDealStub {
   id: string;
-  status: "IN_PROGRESS" | "COMPLETED";
+  // Any deal status. The player endpoint only ever returns IN_PROGRESS or
+  // COMPLETED, but the offer embed deliberately includes COLLAPSED — that is
+  // the whole point of it.
+  status: DealStatus;
   stage: string | null;
   buyer_club: ClubMinimal | null;
   seller_club: ClubMinimal | null;
@@ -452,6 +455,9 @@ export interface Sale {
   // TRA-91 fair-value signal — null for player-account/anonymous viewers and
   // ineligible players; divergence only present on FIXED_PRICE listings
   fair_value_signal?: FairValueSignal | null;
+  // Detail endpoint only, and only once the listing is no longer OPEN — explains
+  // what resolved it. Null when nothing did (withdrawn, expired unsold).
+  active_deal?: ActiveDealStub | null;
 }
 
 // ── Fair-value signal (TRA-91/92) ─────────────────────────────────────────────
@@ -563,6 +569,9 @@ export interface Offer {
   to_club: ClubSummary | null;
   messages: OfferMessage[];
   events: OfferEvent[];
+  // The deal this offer produced (list + detail endpoints). `status` above stays
+  // truthful about the offer; this says what became of the transfer.
+  deal?: ActiveDealStub | null;
 }
 
 // ── Deals ─────────────────────────────────────────────────────────────────────

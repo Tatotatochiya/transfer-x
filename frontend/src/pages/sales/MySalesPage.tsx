@@ -10,11 +10,11 @@ import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../compone
 import PageHeader from "../../components/ui/PageHeader";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import Pagination from "../../components/ui/Pagination";
+import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import EmptyState from "../../components/ui/EmptyState";
-import { saleStatusVariant, saleTypeLabel, saleTypeVariant } from "../../lib/badges";
+import { saleStatusLabel, saleStatusVariant, saleTypeLabel, saleTypeVariant } from "../../lib/badges";
 import { formatCurrency, formatDeadline } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
-import { ListSkeleton } from "../../components/ui/Skeleton";
 import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 
 const STATUS_TABS: { label: string; value: SaleStatus | "" }[] = [
@@ -26,11 +26,11 @@ const STATUS_TABS: { label: string; value: SaleStatus | "" }[] = [
 
 function DeadlineCell({ deadline }: { deadline: string | null }) {
   const result = useDeadlineCountdown(deadline);
-  if (!deadline) return <span className="text-slate-500">—</span>;
+  if (!deadline) return <span className="text-text-muted">—</span>;
   const colour =
-    result.state === "danger"  ? "text-red-400" :
-    result.state === "warning" ? "text-amber-400" :
-    result.state === "expired" ? "text-slate-500" : "text-slate-300";
+    result.state === "danger"  ? "text-danger-text" :
+    result.state === "warning" ? "text-warning-text" :
+    result.state === "expired" ? "text-text-muted" : "text-text-secondary";
   return (
     <span className={`tabular-nums text-xs font-medium ${colour}`}>
       {result.state === "expired" ? "Expired" : result.label}
@@ -112,8 +112,8 @@ export default function MySalesPage() {
             onClick={() => handleTabChange(tab.value)}
             className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
               statusFilter === tab.value
-                ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30"
-                : "bg-slate-800 text-slate-400 hover:text-white"
+                ? "bg-success/15 text-success-text ring-1 ring-success/30"
+                : "bg-surface-inset text-text-muted hover:text-text"
             }`}
           >
             {tab.label}
@@ -125,9 +125,7 @@ export default function MySalesPage() {
         <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
       </div>
 
-      {isLoading && <ListSkeleton count={5} />}
-
-      {data && data.items.length === 0 && (
+      {data && data.items.length === 0 && !isLoading && (
         <EmptyState
           title="No listings"
           body="You haven't listed any players yet."
@@ -135,89 +133,88 @@ export default function MySalesPage() {
         />
       )}
 
-      {data && data.items.length > 0 && (
+      {(isLoading || (data && data.items.length > 0)) && (
         <>
-          <div className="overflow-x-auto rounded-xl ring-1 ring-white/[0.08]">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/[0.08]">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Player</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Status</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400">Price / Best bid</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Deadline</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400">Bids</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04]">
-                {data.items.map((sale) => (
-                  <tr
-                    key={sale.id}
-                    className="bg-slate-900 hover:bg-slate-800/60 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/sales/${sale.id}`)}
-                  >
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-white">{sale.player?.name ?? "—"}</p>
-                      {sale.player?.position && (
-                        <p className="text-xs text-slate-500">{sale.player.position}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={saleTypeVariant(sale.sale_type)}>
-                        {saleTypeLabel(sale.sale_type)}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={saleStatusVariant(sale.status)}>{sale.status}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">
-                      {sale.best_bid != null
-                        ? formatCurrency(sale.best_bid)
-                        : sale.asking_price != null
-                        ? formatCurrency(sale.asking_price)
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <DeadlineCell deadline={sale.deadline} />
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-400">
-                      {sale.sale_type === "AUCTION" ? sale.bid_count : "—"}
-                    </td>
-                    <td
-                      className="px-4 py-3 text-right"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {sale.status === "OPEN" && (
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          loading={
-                            withdrawMutation.isPending &&
-                            withdrawMutation.variables === sale.id
+          <ResponsiveTable
+            columns={[
+              {
+                key: "player", header: "Player", priority: 1, render: (sale) => (
+                  <>
+                    <p className="font-medium text-text">{sale.player?.name ?? "—"}</p>
+                    {sale.player?.position && (
+                      <p className="text-xs text-text-muted">{sale.player.position}</p>
+                    )}
+                  </>
+                ),
+              },
+              {
+                key: "type", header: "Type", priority: 4, render: (sale) => (
+                  <Badge variant={sale.status === "OPEN" ? saleTypeVariant(sale.sale_type) : "neutral"}>
+                    {saleTypeLabel(sale.sale_type)}
+                  </Badge>
+                ),
+              },
+              {
+                key: "status", header: "Status", priority: 3, render: (sale) => (
+                  <Badge variant={saleStatusVariant(sale.status)}>{saleStatusLabel(sale.status)}</Badge>
+                ),
+              },
+              {
+                key: "price", header: "Price / Best bid", priority: 2, className: "text-right", render: (sale) => (
+                  <span className="font-semibold text-text tabular-nums">
+                    {sale.best_bid != null
+                      ? formatCurrency(sale.best_bid)
+                      : sale.asking_price != null
+                      ? formatCurrency(sale.asking_price)
+                      : "—"}
+                  </span>
+                ),
+              },
+              {
+                key: "deadline", header: "Deadline", priority: 5, render: (sale) => <DeadlineCell deadline={sale.deadline} />,
+              },
+              {
+                key: "bids", header: "Bids", priority: 6, className: "text-right", render: (sale) => (
+                  <span className="text-text-muted">{sale.sale_type === "AUCTION" ? sale.bid_count : "—"}</span>
+                ),
+              },
+              {
+                key: "actions", header: "", render: (sale) =>
+                  sale.status === "OPEN" ? (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        loading={
+                          withdrawMutation.isPending &&
+                          withdrawMutation.variables === sale.id
+                        }
+                        onClick={async () => {
+                          if (await confirm({ message: `Withdraw listing for ${sale.player?.name}?`, confirmLabel: "Withdraw", variant: "danger" })) {
+                            withdrawMutation.mutate(sale.id);
                           }
-                          onClick={async () => {
-                            if (await confirm({ message: `Withdraw listing for ${sale.player?.name}?`, confirmLabel: "Withdraw", variant: "danger" })) {
-                              withdrawMutation.mutate(sale.id);
-                            }
-                          }}
-                        >
-                          Withdraw
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <Pagination
-            page={data.page}
-            total={data.total}
-            pageSize={data.page_size}
-            onChange={setPage}
+                        }}
+                      >
+                        Withdraw
+                      </Button>
+                    </div>
+                  ) : null,
+              },
+            ] satisfies ResponsiveColumn<Sale>[]}
+            rows={data?.items ?? []}
+            rowKey={(sale) => sale.id}
+            loading={isLoading}
+            onRowClick={(sale) => navigate(`/sales/${sale.id}`)}
           />
+
+          {data && (
+            <Pagination
+              page={data.page}
+              total={data.total}
+              pageSize={data.page_size}
+              onChange={setPage}
+            />
+          )}
         </>
       )}
     </div>
