@@ -118,16 +118,73 @@ def _fee_summary(fee: Decimal | None) -> str:
     return f"£{fee:,.0f}" if fee is not None else "no fee"
 
 
+def _buyer_is_masked(offer, viewer_club_id: uuid.UUID | None) -> bool:
+    """Should this viewer be kept from knowing who the buying club is?
+
+    Anonymity ends at acceptance — that is the bargain the buyer strikes: stay
+    undisclosed while the seller decides, be named the moment they agree. An
+    offer that is rejected, withdrawn or left to expire therefore stays
+    anonymous permanently, which is the point: interest that came to nothing
+    was never disclosed.
+
+    Administrators are not special-cased here because they never reach this
+    path — `admin/router.py` validates `OfferResponse` straight off the ORM row,
+    so staff already see the real club. If that ever changes, it has to opt out
+    of masking explicitly rather than inherit it by accident.
+    """
+    if not offer.is_anonymous:
+        return False
+    if offer.status == OfferStatus.ACCEPTED:   # revealed on acceptance
+        return False
+    return str(viewer_club_id) != str(offer.from_club_id)   # the buyer sees themselves
+
+
+def _mask_buyer(resp: OfferResponse, offer) -> OfferResponse:
+    """Strip every field that would identify the buying club.
+
+    The name is the obvious one; the ids matter just as much, because anyone
+    holding `from_club_id` can read the club straight off `GET /clubs/{id}`.
+    `to_club_id` and the seller's own actions are left alone — only the buyer
+    is being concealed, and the seller already knows themselves.
+    """
+    buyer_id = str(offer.from_club_id)
+    resp.from_club = None
+    resp.from_club_id = None
+    resp.buyer_league_name = offer.from_club.league_name if offer.from_club else None
+
+    if str(resp.last_actor_club_id) == buyer_id:
+        resp.last_actor_club_id = None
+
+    for message in resp.messages:
+        if str(message.sender_club_id) == buyer_id:
+            message.sender_club_id = None
+            message.sender_club = None
+
+    for event in resp.events:
+        if str(event.actor_club_id) == buyer_id:
+            event.actor_club_id = None
+
+    return resp
+
+
 def _offer_response(offer, viewer_club_id: uuid.UUID, deal=None) -> OfferResponse:
     """B1: whose_move is relative to the viewer's own club, so it can't be a
     plain model_validate() attribute — set it explicitly here instead. `deal` is
-    likewise passed in rather than looked up, so list endpoints can batch."""
+    likewise passed in rather than looked up, so list endpoints can batch.
+
+    This is also the single chokepoint where an anonymous buyer is masked. Doing
+    it here rather than per-endpoint is deliberate: the identity leaks through
+    five separate fields, and a display-layer guard that misses one makes the
+    anonymity fake while looking correct (the failure mode ADR 0003 documents).
+    """
     resp = OfferResponse.model_validate(offer)
     resp.whose_move = service.compute_offer_whose_move(offer, viewer_club_id)
     if deal is not None:
         from app.players.schemas import ActiveDealStub
 
         resp.deal = ActiveDealStub.model_validate(deal)
+    if _buyer_is_masked(offer, viewer_club_id):
+        resp = _mask_buyer(resp, offer)
     return resp
 
 
@@ -315,6 +372,7 @@ async def create_offer(
             contract_end_date=body.contract_end_date,
             add_ons=body.add_ons,
             expires_at=body.expires_at,
+            is_anonymous=body.is_anonymous,
         )
         await _db_notify_offer(
             db, offer,

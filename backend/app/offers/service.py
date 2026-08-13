@@ -143,6 +143,7 @@ async def create_offer(
     contract_end_date=None,
     add_ons: dict | None = None,
     expires_at: datetime | None = None,
+    is_anonymous: bool = False,
 ) -> Offer:
     """Create and immediately send an offer. Reserves budget from from_club."""
     if to_club_id and to_club_id == from_club_id:
@@ -165,6 +166,7 @@ async def create_offer(
         expires_at=exp,
         reserved_transfer_amount=Decimal("0"),
         last_actor_club_id=from_club_id,  # buyer sent it → seller's turn
+        is_anonymous=is_anonymous,
     )
 
     # Reserve budget immediately on send — fee plus any monetary add-ons.
@@ -634,6 +636,32 @@ async def get_offer_competition(
     def _sort_key(o: Offer):
         return (o.status not in _active, -float(o.fee_amount or 0))
 
+    def _entry_club(offer: Offer) -> "OrderBookClubSummary | None":
+        """The order book names every club competing for a player, which is
+        exactly what an anonymous buyer is paying to avoid — mask them here too,
+        or the identity withheld on the offer itself leaks straight out of the
+        competition panel beside it. Anonymity ends at acceptance, and a club
+        always sees its own entry."""
+        if offer.from_club is None:
+            return None
+        anonymous = (
+            offer.is_anonymous
+            and offer.status != OfferStatus.ACCEPTED
+            and (my_club_id is None or str(offer.from_club_id) != str(my_club_id))
+        )
+        if anonymous:
+            league = offer.from_club.league_name
+            return OrderBookClubSummary(
+                id=None,
+                name=f"A {league} club" if league else "An undisclosed club",
+                crest_url=None,
+            )
+        return OrderBookClubSummary(
+            id=offer.from_club.id,
+            name=offer.from_club.name,
+            crest_url=getattr(offer.from_club, "crest_url", None),
+        )
+
     entries: list[OrderBookEntry] = []
     rank = 1
     for offer in sorted(all_offers, key=_sort_key):
@@ -642,11 +670,7 @@ async def get_offer_competition(
             rank=rank if is_active else 0,
             kind="offer",
             id=offer.id,
-            club=OrderBookClubSummary(
-                id=offer.from_club.id,
-                name=offer.from_club.name,
-                crest_url=getattr(offer.from_club, "crest_url", None),
-            ) if offer.from_club else None,
+            club=_entry_club(offer),
             fee_amount=offer.fee_amount,
             wage_weekly=offer.wage_weekly,
             status=offer.status.value,

@@ -11,6 +11,7 @@ import Pagination from "../../components/ui/Pagination";
 import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import { ListSkeleton } from "../../components/ui/Skeleton";
 import { offerOutcome } from "../../lib/badges";
+import { buyerLabel, isBuyerMasked } from "../../lib/buyerIdentity";
 import { offerWhoseMove } from "../../lib/whoseMove";
 import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 import { formatCurrency, formatDate } from "../../lib/utils";
@@ -98,8 +99,13 @@ function YourMoveRow({
             )}
           </p>
           <p className="text-[13px] text-text-muted">
-            {offer.from_club?.name ?? "?"} · {offer.status === "COUNTERED" ? "countered your terms" : "sent an offer"}
+            {buyerLabel(offer)} · {offer.status === "COUNTERED" ? "countered your terms" : "sent an offer"}
           </p>
+          {isBuyerMasked(offer) && (
+            <p className="mt-0.5 text-[12px] text-text-muted">
+              Anonymous — revealed if you accept
+            </p>
+          )}
           {/* Deciding on an offer without knowing another club is also bidding
               is the seller losing their strongest card. */}
           {rivalCount > 0 && (
@@ -317,7 +323,7 @@ function InboxSection({
               </span>
             </div>
             <p className="mt-0.5 text-xs text-text-muted">
-              {g.offers.map((r) => r.offer.from_club?.name ?? "?").join(" · ")}
+              {g.offers.map((r) => buyerLabel(r.offer)).join(" · ")}
               {g.offers.length > 1 && (
                 <span className="ml-1.5 font-bold text-warning-text">{g.offers.length} clubs</span>
               )}
@@ -424,10 +430,10 @@ export default function OfferInboxPage() {
     ) },
     { key: "club", header: "Club", priority: 3, render: (g) =>
       g.offers.length === 1 ? (
-        <ClubLink id={g.best.offer.from_club?.id} name={g.best.offer.from_club?.name} />
+        <ClubLink id={g.best.offer.from_club?.id} name={buyerLabel(g.best.offer)} />
       ) : (
         <span className="text-text-secondary">
-          {g.offers.map((r) => r.offer.from_club?.name ?? "?").join(" · ")}
+          {g.offers.map((r) => buyerLabel(r.offer)).join(" · ")}
         </span>
       )
     },

@@ -1,5 +1,6 @@
 """M4 — Offer negotiation tests."""
 
+import json
 from decimal import Decimal
 
 import pytest
@@ -891,3 +892,150 @@ async def test_no_fee_offer_does_not_escalate_for_approval(
     )
     assert resp.status_code == 201, resp.text
     assert resp.json()["fee_amount"] is None
+
+
+# ── Anonymous buying club ─────────────────────────────────────────────────────
+#
+# A buyer can approach without disclosing who they are; the seller sees only
+# their league until the offer is accepted. The identity leaks through more
+# than the club name -- ids resolve straight off GET /clubs/{id} -- so these
+# tests assert on the *absence of the buyer's club id anywhere in the payload*,
+# not merely on the name being hidden.
+
+
+async def _make_anonymous_offer(client: AsyncClient, buy_headers, sel_headers, player_id, seller_club_id):
+    resp = await client.post(
+        "/offers",
+        json={
+            "player_id": player_id,
+            "to_club_id": seller_club_id,
+            "fee_amount": 5_000_000,
+            "is_anonymous": True,
+        },
+        headers=buy_headers,
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+@pytest.mark.asyncio
+async def test_seller_cannot_identify_an_anonymous_buyer(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    await _give_budget(db)
+    buy_headers, sel_headers = _auth_headers(buyer), _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    buyer_club_id = (await client.get("/clubs/me", headers=buy_headers)).json()["id"]
+
+    offer = await _make_anonymous_offer(client, buy_headers, sel_headers, player["id"], seller_club_id)
+
+    seen = (await client.get(f"/offers/{offer['id']}", headers=sel_headers)).json()
+    assert seen["is_anonymous"] is True, "the seller must know they face an undisclosed club"
+    assert seen["from_club"] is None
+    assert seen["from_club_id"] is None
+
+    # The decisive check: the buyer's club id must not appear anywhere in the
+    # payload -- not in last_actor_club_id, an event actor, or a message sender.
+    assert buyer_club_id not in json.dumps(seen), "buyer club id leaked into the response"
+
+
+@pytest.mark.asyncio
+async def test_anonymous_buyer_still_sees_their_own_identity(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    await _give_budget(db)
+    buy_headers, sel_headers = _auth_headers(buyer), _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_anonymous_offer(client, buy_headers, sel_headers, player["id"], seller_club_id)
+
+    mine = (await client.get(f"/offers/{offer['id']}", headers=buy_headers)).json()
+    assert mine["from_club"] is not None
+    assert mine["from_club_id"] is not None
+
+
+@pytest.mark.asyncio
+async def test_anonymous_buyer_is_revealed_once_the_offer_is_accepted(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """The bargain: undisclosed while the seller decides, named the moment
+    they agree."""
+    await _give_budget(db)
+    buy_headers, sel_headers = _auth_headers(buyer), _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    buyer_club_id = (await client.get("/clubs/me", headers=buy_headers)).json()["id"]
+
+    offer = await _make_anonymous_offer(client, buy_headers, sel_headers, player["id"], seller_club_id)
+
+    before = (await client.get(f"/offers/{offer['id']}", headers=sel_headers)).json()
+    assert before["from_club_id"] is None
+
+    accepted = await client.post(f"/offers/{offer['id']}/accept", headers=sel_headers)
+    assert accepted.status_code == 200, accepted.text
+
+    after = (await client.get(f"/offers/{offer['id']}", headers=sel_headers)).json()
+    assert after["from_club_id"] == buyer_club_id
+    assert after["from_club"] is not None
+
+
+@pytest.mark.asyncio
+async def test_rejected_anonymous_offer_stays_anonymous_forever(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Interest that came to nothing was never disclosed -- that is the point
+    of anonymity, not a gap in the reveal."""
+    await _give_budget(db)
+    buy_headers, sel_headers = _auth_headers(buyer), _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    buyer_club_id = (await client.get("/clubs/me", headers=buy_headers)).json()["id"]
+
+    offer = await _make_anonymous_offer(client, buy_headers, sel_headers, player["id"], seller_club_id)
+    rejected = await client.post(f"/offers/{offer['id']}/reject", headers=sel_headers)
+    assert rejected.status_code == 200, rejected.text
+
+    seen = (await client.get(f"/offers/{offer['id']}", headers=sel_headers)).json()
+    assert seen["from_club_id"] is None
+    assert buyer_club_id not in json.dumps(seen)
+
+
+@pytest.mark.asyncio
+async def test_order_book_masks_an_anonymous_rival(
+    client: AsyncClient, buyer: dict, seller: dict, third_club: dict, db
+):
+    """The competition panel names every club bidding for a player, which is
+    exactly what the buyer is paying to avoid -- masking the offer alone would
+    leak the identity straight out of the panel beside it."""
+    await _give_budget(db)
+    buy_headers, sel_headers = _auth_headers(buyer), _auth_headers(seller)
+    third_headers = _auth_headers(third_club)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    buyer_club_id = (await client.get("/clubs/me", headers=buy_headers)).json()["id"]
+
+    await _make_anonymous_offer(client, buy_headers, sel_headers, player["id"], seller_club_id)
+    await _make_offer(client, third_headers, player["id"], seller_club_id, fee=4_000_000)
+
+    book = (await client.get(f"/offers/competition/{player['id']}", headers=sel_headers)).json()
+    assert buyer_club_id not in json.dumps(book), "anonymous buyer leaked via the order book"
+    names = [e["club"]["name"] for e in book["entries"] if e.get("club")]
+    assert any(n.startswith("A ") or n == "An undisclosed club" for n in names), names
+
+
+@pytest.mark.asyncio
+async def test_offers_are_identified_by_default(client: AsyncClient, buyer: dict, seller: dict, db):
+    """Anonymity is opt-in; nothing about the existing flow changes unless the
+    buyer asks for it."""
+    await _give_budget(db)
+    buy_headers, sel_headers = _auth_headers(buyer), _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_offer(client, buy_headers, player["id"], seller_club_id)
+    seen = (await client.get(f"/offers/{offer['id']}", headers=sel_headers)).json()
+    assert seen["is_anonymous"] is False
+    assert seen["from_club"] is not None
+    assert seen["from_club_id"] is not None

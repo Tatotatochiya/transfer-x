@@ -15,6 +15,7 @@ import OfferThread from "../../components/offers/OfferThread";
 import SellerOrderBook from "../../components/sales/SellerOrderBook";
 import BuyerOrderBook from "../../components/sales/BuyerOrderBook";
 import { offerOutcome, offerStatusLabel } from "../../lib/badges";
+import { buyerLabel, isBuyerMasked } from "../../lib/buyerIdentity";
 import { formatCurrency, formatDate, formatWage, getApiError } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
@@ -194,7 +195,7 @@ export default function OfferDetailPage() {
   const canMessage  = isParty && isActive && canMarketWrite;
 
   const waitingFor = !isMyTurn && isActive && isParty
-    ? (isBuyer ? offer.to_club?.name : offer.from_club?.name) ?? "other party"
+    ? (isBuyer ? offer.to_club?.name ?? "other party" : buyerLabel(offer, "other party"))
     : null;
 
   const mutError =
@@ -244,7 +245,21 @@ export default function OfferDetailPage() {
       <Card>
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Parties</p>
         <div className="space-y-2">
-          <Metric label="Buying club"  valueNode={<ClubLink id={offer.from_club?.id} name={offer.from_club?.name} />} />
+          <Metric
+            label="Buying club"
+            valueNode={
+              isBuyerMasked(offer) ? (
+                <span className="text-text">
+                  {buyerLabel(offer)}
+                  <span className="ml-2 rounded-full bg-surface-inset px-2 py-0.5 text-[11px] font-semibold text-text-muted ring-1 ring-border">
+                    Anonymous
+                  </span>
+                </span>
+              ) : (
+                <ClubLink id={offer.from_club?.id} name={offer.from_club?.name} />
+              )
+            }
+          />
           <Metric label="Selling club" valueNode={<ClubLink id={offer.to_club?.id}   name={offer.to_club?.name} />} />
           <Metric label="Date"         value={formatDate(offer.created_at)} />
         </div>

@@ -552,7 +552,9 @@ export interface Offer {
   id: string;
   player_id: string;
   sale_id: string | null;
-  from_club_id: string;
+  /** Null when the buying club is anonymous and hasn't been revealed to you —
+   *  the id is withheld along with the name, since it resolves via /clubs/{id}. */
+  from_club_id: string | null;
   to_club_id: string | null;
   last_actor_club_id: string | null;
   fee_amount: number | null;
@@ -572,6 +574,12 @@ export interface Offer {
   // The deal this offer produced (list + detail endpoints). `status` above stays
   // truthful about the offer; this says what became of the transfer.
   deal?: ActiveDealStub | null;
+  /** Both parties always know an offer is anonymous — only the identity is
+   *  withheld, never the fact of it. */
+  is_anonymous: boolean;
+  /** Set only while the buyer is masked from you: the one thing you're told
+   *  about them. */
+  buyer_league_name: string | null;
 }
 
 // ── Deals ─────────────────────────────────────────────────────────────────────

@@ -27,6 +27,7 @@ import { ScoutReportPanel } from "../../components/ai/ScoutReportPanel";
 import { dealWhoseMove, offerWhoseMove, saleWhoseMove } from "../../lib/whoseMove";
 import WaitingOnYouBand, { type WaitingItem } from "../../components/dashboard/WaitingOnYouBand";
 import { useClubDashboard } from "../../hooks/useClubDashboard";
+import { buyerLabel } from "../../lib/buyerIdentity";
 import type { DashboardItem } from "../../types/api";
 
 // B2 returns the situation in `reason`; the button verb comes from the kind.
@@ -281,7 +282,7 @@ export default function DashboardPage() {
   const offerRows = offers.slice(0, 3).map((o) => ({
     key: o.id, onClick: () => navigate(`/offers/${o.id}`),
     name: o.player?.name ?? "—",
-    sub: o.from_club_id === myClubId ? `to ${o.to_club?.name ?? "—"}` : `from ${o.from_club?.name ?? "—"}`,
+    sub: o.from_club_id === myClubId ? `to ${o.to_club?.name ?? "—"}` : `from ${buyerLabel(o, "—")}`,
     value: o.fee_amount != null ? formatCurrency(o.fee_amount) : "TBD",
     move: offerWhoseMove(o, myClubId),
   }));

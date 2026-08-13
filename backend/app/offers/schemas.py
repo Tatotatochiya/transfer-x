@@ -35,6 +35,9 @@ class OfferCreateRequest(BaseModel):
     contract_end_date: date | None = None
     add_ons: dict = {}
     expires_at: datetime | None = None
+    # Approach without disclosing the buying club; the seller sees only the
+    # league until they accept.
+    is_anonymous: bool = False
 
     @field_validator("fee_amount", "wage_weekly", mode="before")
     @classmethod
@@ -95,7 +98,10 @@ class OfferResponse(BaseModel):
     id: uuid.UUID
     player_id: uuid.UUID
     sale_id: uuid.UUID | None
-    from_club_id: uuid.UUID
+    # Nullable because an anonymous buyer is masked out of their own offer for
+    # everyone but themselves and staff. The *id* has to go too, not just the
+    # name — anyone holding it could read the club straight off GET /clubs/{id}.
+    from_club_id: uuid.UUID | None
     to_club_id: uuid.UUID | None
     last_actor_club_id: uuid.UUID | None
     fee_amount: Decimal | None
@@ -120,4 +126,11 @@ class OfferResponse(BaseModel):
     # is not what became of the transfer, and ACCEPTED renders green whether the
     # deal completed or collapsed at personal terms. Readers need both facts.
     deal: ActiveDealStub | None = None
+    # Both parties always see *that* an offer is anonymous — a seller has to
+    # know they are dealing with an undisclosed club, even before they know
+    # which one. Only the identity is withheld, never the fact.
+    is_anonymous: bool = False
+    # Populated only while the buyer is actually masked from this viewer: the
+    # one thing they do get told about the counterparty.
+    buyer_league_name: str | None = None
     model_config = {"from_attributes": True}

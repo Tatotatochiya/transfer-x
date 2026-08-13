@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import JSON, DateTime, Date, ForeignKey, Integer, Numeric, String, Text, Uuid, func
+from sqlalchemy import JSON, Boolean, DateTime, Date, ForeignKey, Integer, Numeric, String, Text, Uuid, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -68,6 +68,15 @@ class Offer(Base):
     )
     last_actor_club_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("clubs.id", ondelete="SET NULL"), nullable=True
+    )
+    # The buying club approached without disclosing who they are — the seller
+    # sees only their league until the offer is accepted. Stored on the offer,
+    # not the club, because it is a per-approach decision: a club may be open
+    # about one target and discreet about another. Masking is applied when the
+    # response is built (offers/router.py::_mask_buyer), never in the frontend
+    # — the row itself always holds the real club.
+    is_anonymous: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false", default=False
     )
     last_action_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False

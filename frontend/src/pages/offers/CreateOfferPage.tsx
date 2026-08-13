@@ -25,6 +25,7 @@ export default function CreateOfferPage() {
   const [wage, setWage]       = useState("");
   const [years, setYears]     = useState("");
   const [endDate, setEndDate] = useState("");
+  const [anonymous, setAnonymous] = useState(false);
   const [error, setError]     = useState<string | null>(null);
 
   // Load player info for display
@@ -99,6 +100,7 @@ export default function CreateOfferPage() {
     if (years && !isNaN(parsedYears)) body.contract_years = parsedYears;
 
     if (endDate) body.contract_end_date = endDate;
+    if (anonymous) body.is_anonymous = true;
 
     mutation.mutate(body);
   }
@@ -279,6 +281,30 @@ export default function CreateOfferPage() {
               onChange={(e) => setEndDate(e.target.value)}
               className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
             />
+          </div>
+
+          {/* Approach anonymously. Deliberately spells out when the reveal
+              happens — a buyer choosing this needs to know it isn't permanent,
+              and a buyer who assumed it was would be badly surprised. */}
+          <div className="rounded-lg bg-surface-inset px-4 py-3 ring-1 ring-border">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={anonymous}
+                onChange={(e) => setAnonymous(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-accent"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-text-secondary">
+                  Approach anonymously
+                </span>
+                <span className="mt-0.5 block text-xs text-text-muted">
+                  {player?.current_club?.name ?? "The selling club"} sees only your league until
+                  they accept — accepting reveals you. If they reject or it expires, you're never
+                  named.
+                </span>
+              </span>
+            </label>
           </div>
 
           {error && <p className="text-sm text-danger-text">{error}</p>}

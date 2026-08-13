@@ -140,7 +140,10 @@ class DealStubResponse(BaseModel):
 # ── Order book schemas ────────────────────────────────────────────────────────
 
 class OrderBookClubSummary(BaseModel):
-    id: uuid.UUID
+    # Null when the club is deliberately undisclosed (an anonymous buyer) —
+    # there is genuinely no id to hand over, and inventing a placeholder would
+    # hand back something that looks resolvable but isn't.
+    id: uuid.UUID | None = None
     name: str
     crest_url: str | None = None
     model_config = {"from_attributes": True}
