@@ -1,6 +1,6 @@
 ---
 title: "Demo Readiness Audit — Investors & Prospective Clients"
-last_updated: 2026-08-12
+last_updated: 2026-08-13
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -53,7 +53,7 @@ Every finding below was checked directly against the running stack. Where a find
 
 - Backend test suite: `pytest tests/` → **403 passed, 0 failed** (5m36s).
 - Frontend test suite: `vitest run` → **96 passed, 23 failed** (9 files); every failure traced to root cause.
-- TypeScript: `tsc --noEmit` → **clean, exit 0**.
+- TypeScript: `tsc --noEmit` → clean, exit 0. ~~Recorded as evidence at the time.~~ **Void — see [H9](#h9-the-frontend-type-check-has-been-passing-without-checking-anything).** That command resolves a project-references stub with `"files": []` and checks nothing. The correct invocation, `tsc -b --noEmit`, reports 47 errors and did so on this same commit.
 - Migrations: `alembic current` → **0059, at head**. No pending migrations.
 - API logs: no errors, exceptions, or 500s in 60 minutes of runtime.
 - Database queried directly for deals, sales, offers, valuations, transfer windows, finance schema.
@@ -77,6 +77,7 @@ Every finding below was checked directly against the running stack. Where a find
 | H6 | No password reset flow of any kind | **High** | — | ✅ |
 | H7 | Deal stages can deadlock, requiring superuser intervention to unstick | **High** | ✅ | ✅ |
 | H8 | Refreshing or deep-linking any market page silently downgrades you to the anonymous view | **High** | ✅ | ✅ |
+| H9 | The frontend type check has been passing without checking anything; 47 real errors were hidden | **High** | — | ✅ |
 | M1 | Two Accept-bid affordances on one page; one has no confirmation and no capability check | **Medium** | ✅ | ✅ |
 | M2 | "Rumors coming soon" placeholder on the public transfers page | **Medium** | ✅ | — |
 | M3 | `console.error` on every failed login; `console.log` at module scope in production | **Medium** | ✅ | — |
@@ -327,6 +328,28 @@ Ten routes are affected — the entire market browse surface: `/players/market`,
 **Demo implication:** never refresh the page mid-demo, and never paste a market link into a fresh tab — both produce a visibly poorer product than clicking to the same screen. This is easy to hit by accident and hard to explain in the moment.
 
 **Recommendation:** gate `PublicRoute` on `isBootstrapping` the same way `ProtectedRoute` does, but only when a refresh token exists — an anonymous visitor with no token must not be made to wait. Contained fix in `App.tsx`.
+
+### H9. The frontend type check has been passing without checking anything
+
+**Blocks pilot.** Found 2026-08-13 while verifying a commit split, not by an audit sweep.
+
+`npx tsc --noEmit` — the command used to verify "types are clean" throughout this project's sessions — resolves the **root** `frontend/tsconfig.json`, which is a project-references stub:
+
+```json
+{ "files": [], "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }] }
+```
+
+With `"files": []` and no `-b`, TypeScript type-checks an empty file set and exits `0`. It has never once inspected `src/`. The project's own build script gets this right — `package.json` runs `tsc -b && vite build` — so **CI and production builds were never fooled**; only the ad-hoc verification command was.
+
+Run correctly (`npx tsc -b --noEmit`), the codebase reports **47 errors**. Verified as pre-existing by stashing all working changes and re-running against clean history: still 47. They fall into roughly three groups:
+
+- **Unused declarations** (`TS6133`, ~14) — dead imports and variables. Harmless, mechanical to clear.
+- **Test-fixture drift** (`TS2740`/`TS2550`, ~6) — `PlayerCard.test.tsx` and `StatsPanel.test.tsx` build fixtures missing fields the real types now require, and `PlayerFilters.test.tsx` calls `Array.prototype.at` against an ES2021 lib target.
+- **Real type mismatches in app code** (`TS2322`/`TS2339`, ~25) — the ones that matter. `AdminPlayerDetailPage` reads `Player.contracts`, which does not exist on that type; `AdminDealsPage` reads `AdminDeal.updated_at`, likewise; several admin/club pages pass an `Element` where a `string` is required. These are places where the code and its types genuinely disagree, and where the compiler would have objected all along.
+
+**Implication beyond the errors themselves:** every "tsc clean" claim made in this project's session summaries and commit messages before 2026-08-13 was produced by this command and is therefore void as evidence. It was never a false claim about the *build* — `tsc -b` is what ships — but it was not the check it was believed to be. Correcting the record matters more than the 47 errors do.
+
+**Recommendation:** use `npx tsc -b --noEmit` everywhere the old command appears, then triage the 47 as deliberate separate work — the ~25 real mismatches first, since those indicate code and types actually disagreeing. Consider adding the correct invocation to CI so the check cannot silently no-op again.
 
 ---
 

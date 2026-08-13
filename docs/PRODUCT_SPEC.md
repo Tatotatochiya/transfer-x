@@ -1,6 +1,6 @@
 ---
 title: "TransferX Product Specification"
-last_updated: 2026-08-11
+last_updated: 2026-08-13
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -30,7 +30,7 @@ Out of scope: implementation detail (see `architecture/` and `engineering/`), da
   - [Operations](#operations)
   - [Security & Compliance](#security--compliance)
   - [Feature specs](#feature-specs)
-  - [UI redesign](#ui-redesign-in-progress)
+  - [UI redesign](#ui-redesign-shipped)
   - [Tracking documents](#tracking-documents)
 - [System diagram](#system-diagram)
 - [Related documents](#related-documents)
@@ -47,10 +47,10 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 |---|---|---|
 | Backend | FastAPI (Python), SQLAlchemy async, PostgreSQL | [`architecture/backend-architecture.md`](./architecture/backend-architecture.md) |
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS v4 | [`architecture/frontend-architecture.md`](./architecture/frontend-architecture.md) |
-| Database migrations | 61 (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
+| Database migrations | 66 files, head at `0064` (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
 | User types | Club (owner + 4 staff roles), Agent, Player, Admin | [`product/personas.md`](./product/personas.md) |
 | Deal stages | AGREEMENT → AGENT_NEGOTIATION → PERSONAL_TERMS → PAPERWORK → CONFIRMED → COMPLETED (or COLLAPSED) | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
-| Production deployment | Not yet configured | [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md) |
+| Deployed environment | Railway — live, at migration `0064`; not a formally promoted staging or production environment | [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md) |
 
 > **TODO:** Keep this table in sync as the product evolves. It should always reflect *current, verified* state — if you're not sure a row is still accurate, check the code before trusting it.
 
@@ -122,13 +122,13 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 - [`feature_spec/injury-availability-risk-profile.md`](./feature_spec/injury-availability-risk-profile.md) — injury-availability risk profile (no ticket yet)
 - [`feature_spec/club-team-roles-and-onboarding.md`](./feature_spec/club-team-roles-and-onboarding.md) — club team accounts, roles & onboarding (TRA-151/146/152/86 + two proposed) — **implemented 2026-07-10**
 
-### UI redesign (in progress)
-*Full frontend visual redesign — light theme with dark mode as a togglable preference, a four-tier information hierarchy, and a server-derived "whose move" state on every negotiation row. In progress on branch `redesign/ui-light-theme`.*
+### UI redesign (shipped)
+*Full frontend visual redesign — light theme with dark mode as a togglable preference (Account Settings), a four-tier information hierarchy, and a server-derived "whose move" state on every negotiation row. **Merged to `main` and deployed 2026-08-13**; the `redesign/ui-light-theme` branch is a full ancestor of `main`.*
 
 - [`design_handoff_transferx/README.md`](./design_handoff_transferx/README.md) — overview, the four-tier hierarchy, the "whose move" rule, and what's in the package
 - [`design_handoff_transferx/CLAUDE.md`](./design_handoff_transferx/CLAUDE.md) — non-negotiables for any session working on this
 - [`design_handoff_transferx/BASELINE.md`](./design_handoff_transferx/BASELINE.md) — test baseline recorded before this work started; every phase's "done" is measured against this, not against "fully green"
-- [`design_handoff_transferx/SESSIONS.md`](./design_handoff_transferx/SESSIONS.md) — the 13 frontend phases plus the parallel backend track (B1–B7); see [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) for current, verified status of both — frontend Phases 0–12 and backend B1–B6 are built (not yet merged to `main`); B7 deferred
+- [`design_handoff_transferx/SESSIONS.md`](./design_handoff_transferx/SESSIONS.md) — the 13 frontend phases plus the parallel backend track (B1–B7); see [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) for current, verified status of both — frontend Phases 0–12 and backend B1–B6 are shipped on `main`; B7 (present-value effect) remains deferred per `DECISIONS.md` item 5
 
 ### Tracking documents
 *Root-level documents that track ongoing state rather than belonging to one area — see [`README.md#tracking-documents`](./README.md#tracking-documents) for the full explanation.*
