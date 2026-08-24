@@ -8,6 +8,7 @@ import {
   offerOutcome,
   dealStatusVariant,
   dealStageLabel,
+  dealTypeLabel,
 } from "./badges";
 
 describe("positionVariant", () => {
@@ -57,6 +58,19 @@ describe("dealStageLabel", () => {
   it("PAPERWORK → Paperwork", () => expect(dealStageLabel("PAPERWORK")).toBe("Paperwork"));
   it("CONFIRMED → Confirmed", () => expect(dealStageLabel("CONFIRMED")).toBe("Confirmed"));
   it("COMPLETED → Completed", () => expect(dealStageLabel("COMPLETED")).toBe("Completed"));
+});
+
+describe("dealTypeLabel", () => {
+  it("PERMANENT → Permanent", () => expect(dealTypeLabel("PERMANENT")).toBe("Permanent"));
+  it("LOAN → Loan", () => expect(dealTypeLabel("LOAN")).toBe("Loan"));
+  // The two the frontend union used to omit: every free-agent signing rendered
+  // as "Permanent" because the old ternary treated anything non-LOAN as one.
+  it("FREE_TRANSFER → Free transfer, never Permanent", () => {
+    expect(dealTypeLabel("FREE_TRANSFER")).toBe("Free transfer");
+  });
+  it("PRE_CONTRACT → Pre-contract, never Permanent", () => {
+    expect(dealTypeLabel("PRE_CONTRACT")).toBe("Pre-contract");
+  });
 });
 
 describe("offerOutcome", () => {

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { AgentNegotiation, Club, Deal, DealTermsVersion, FairValueSignal, TermsDiff } from "../../types/api";
-import type { DealStage } from "../../types/enums";
+import type { DealStage, DealType } from "../../types/enums";
 import { useAuthStore } from "../../store/auth";
 import FairValueBadge from "../../components/players/FairValueBadge";
 import Badge from "../../components/ui/Badge";
@@ -18,7 +18,7 @@ import Spinner from "../../components/ui/Spinner";
 import StageTracker from "../../components/deals/StageTracker";
 import NegotiationMessageThread from "../../components/deals/NegotiationMessageThread";
 import DealRoomPanel from "../../components/deals/DealRoomPanel";
-import { dealStatusVariant, dealStageLabel } from "../../lib/badges";
+import { dealStatusVariant, dealStageLabel, dealTypeLabel } from "../../lib/badges";
 import { formatCurrency, formatDate, formatWage, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
@@ -674,6 +674,8 @@ function formatTermValue(field: string, value: unknown): string {
   if (field === "sell_on_pct") return `${(Number(value) * 100).toFixed(1)}%`;
   if (CURRENCY_FIELDS.has(field)) return formatCurrency(Number(value));
   if (typeof value === "boolean") return value ? "Yes" : "No";
+  // Without this the diff spine prints the raw enum ("FREE_TRANSFER").
+  if (field === "deal_type") return dealTypeLabel(value as DealType);
   return String(value);
 }
 
@@ -1145,7 +1147,7 @@ export default function DealDetailPage() {
                   />
                 }
               />
-              <Metric label="Type" value={deal.deal_type === "LOAN" ? "Loan" : "Permanent"} />
+              <Metric label="Type" value={dealTypeLabel(deal.deal_type)} />
               <Metric label="Stage" value={dealStageLabel(deal.stage)} />
               <Metric label="Created" value={formatDate(deal.created_at)} />
               {deal.is_auction_deal && (
@@ -1242,22 +1244,30 @@ export default function DealDetailPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="mb-1 block text-xs text-text-muted">Transfer type</label>
-                    <div className="flex gap-2">
-                      {(["PERMANENT", "LOAN"] as const).map((t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => setDealDraft((d) => ({ ...d, deal_type: t }))}
-                          className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 transition-colors ${
-                            dealDraft.deal_type === t
-                              ? "bg-accent-bg text-accent-active ring-accent/40"
-                              : "bg-surface-inset text-text-muted ring-border hover:text-text"
-                          }`}
-                        >
-                          {t === "PERMANENT" ? "Permanent" : "Loan"}
-                        </button>
-                      ))}
-                    </div>
+                    {/* FREE_TRANSFER and PRE_CONTRACT are derived by the signing
+                        paths, not chosen — offering a two-way toggle for them
+                        rendered with neither option selected, and retyping one
+                        would contradict how the deal was created. */}
+                    {dealDraft.deal_type === "PERMANENT" || dealDraft.deal_type === "LOAN" ? (
+                      <div className="flex gap-2">
+                        {(["PERMANENT", "LOAN"] as const).map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setDealDraft((d) => ({ ...d, deal_type: t }))}
+                            className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 transition-colors ${
+                              dealDraft.deal_type === t
+                                ? "bg-accent-bg text-accent-active ring-accent/40"
+                                : "bg-surface-inset text-text-muted ring-border hover:text-text"
+                            }`}
+                          >
+                            {dealTypeLabel(t)}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-text">{dealTypeLabel(dealDraft.deal_type as DealType)}</p>
+                    )}
                   </div>
                   {dealDraft.deal_type === "LOAN" && (
                     <div className="grid grid-cols-2 gap-3">
@@ -1309,7 +1319,7 @@ export default function DealDetailPage() {
                 <>
                   <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                     <dt className="text-text-muted">Type</dt>
-                    <dd className="text-text">{deal.deal_type === "LOAN" ? "Loan" : "Permanent"}</dd>
+                    <dd className="text-text">{dealTypeLabel(deal.deal_type)}</dd>
                     {deal.loan_start && (
                       <><dt className="text-text-muted">Loan start</dt><dd className="text-text">{formatDate(deal.loan_start)}</dd></>
                     )}

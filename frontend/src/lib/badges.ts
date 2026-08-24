@@ -3,6 +3,7 @@ import type {
   BidStatus,
   DealStage,
   DealStatus,
+  DealType,
   OfferStatus,
   PlayerPosition,
   PlayerStatus,
@@ -174,6 +175,16 @@ export function dealStageLabel(s: DealStage): string {
     COMPLETED:          "Completed",
   };
   return map[s] ?? s;
+}
+
+export function dealTypeLabel(t: DealType): string {
+  const map: Record<DealType, string> = {
+    PERMANENT:      "Permanent",
+    LOAN:           "Loan",
+    FREE_TRANSFER:  "Free transfer",
+    PRE_CONTRACT:   "Pre-contract",
+  };
+  return map[t] ?? t;
 }
 
 // ── TRA-134/135: client-roster alerts ─────────────────────────────────────────

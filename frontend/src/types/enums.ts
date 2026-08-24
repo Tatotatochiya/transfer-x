@@ -43,7 +43,11 @@ export type DealStage =
   | "CONFIRMED"
   | "COMPLETED";
 
-export type DealType = "PERMANENT" | "LOAN";
+// Mirrors backend `DealType` (app/deals/models.py). FREE_TRANSFER and
+// PRE_CONTRACT are never offered — they are created by the free-agent and
+// pre-contract signing paths (players/service.py) — but they reach the client
+// on any deal response, so the union has to carry them.
+export type DealType = "PERMANENT" | "LOAN" | "FREE_TRANSFER" | "PRE_CONTRACT";
 export type ClauseType = "APPEARANCES" | "GOALS" | "PROMOTION" | "RESALE" | "OTHER";
 export type ClauseStatus = "PENDING" | "TRIGGERED" | "PAID";
 export type MedicalStatus = "PENDING" | "PASSED" | "FAILED";
