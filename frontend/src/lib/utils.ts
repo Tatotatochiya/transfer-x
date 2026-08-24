@@ -10,6 +10,18 @@ export function formatCurrency(value: number | null | undefined): string {
   return symbol + Math.round(value).toLocaleString("en-GB");
 }
 
+/** Short form for narrow cells — `£52.0m`, `£450k`. Full precision (see
+ *  `formatCurrency`) is unbreakable text and overflows a flex cell. */
+export function formatCompactCurrency(value: number | null | undefined): string {
+  if (value == null) return "—";
+  const symbol = CURRENCY_SYMBOLS[usePreferencesStore.getState().currency];
+  const n = Math.abs(value);
+  const sign = value < 0 ? "-" : "";
+  if (n >= 1_000_000) return `${sign}${symbol}${(n / 1_000_000).toFixed(1)}m`;
+  if (n >= 1_000) return `${sign}${symbol}${Math.round(n / 1_000)}k`;
+  return `${sign}${symbol}${Math.round(n)}`;
+}
+
 export function formatWage(value: number | null | undefined): string {
   if (value == null) return "—";
   const symbol = CURRENCY_SYMBOLS[usePreferencesStore.getState().currency];

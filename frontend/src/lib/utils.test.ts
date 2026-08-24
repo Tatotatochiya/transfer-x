@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   formatCurrency,
+  formatCompactCurrency,
   formatWage,
   formatDate,
   formatDeadline,
@@ -27,6 +28,31 @@ describe("formatCurrency", () => {
 
   it("handles zero", () => {
     expect(formatCurrency(0)).toBe("£0");
+  });
+});
+
+describe("formatCompactCurrency", () => {
+  it("shortens millions to one decimal place", () => {
+    expect(formatCompactCurrency(52_000_000)).toBe("£52.0m");
+    expect(formatCompactCurrency(66_500_000)).toBe("£66.5m");
+  });
+
+  it("shortens thousands to a whole number", () => {
+    expect(formatCompactCurrency(450_000)).toBe("£450k");
+  });
+
+  it("leaves values under a thousand alone rather than showing £0k", () => {
+    expect(formatCompactCurrency(750)).toBe("£750");
+    expect(formatCompactCurrency(0)).toBe("£0");
+  });
+
+  it("keeps the sign on negatives", () => {
+    expect(formatCompactCurrency(-2_500_000)).toBe("-£2.5m");
+  });
+
+  it("returns — for null and undefined", () => {
+    expect(formatCompactCurrency(null)).toBe("—");
+    expect(formatCompactCurrency(undefined)).toBe("—");
   });
 });
 

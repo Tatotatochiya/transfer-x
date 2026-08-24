@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { ActiveDealStub, FairValueSignal, Player, PlayerDetail } from "../../types/api";
-import { formatCurrency } from "../../lib/utils";
+import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
 
 const POSITION_TARGETS = [
   { pos: "GK", min: 2, label: "Goalkeepers" },
@@ -37,6 +37,16 @@ function monthsUntil(iso: string): number {
   return (new Date(iso).getTime() - Date.now()) / (30 * 86_400_000);
 }
 
+// Ports the server's divergence banding (`backend/app/valuation/constants.py`)
+// so a gap computed here lands where the API would have put it: −10..+10 is in
+// line, ≤ −25 or ≥ +30 is a wide gap. Keep the two in step.
+function valuationGap(pct: number): "in-line" | "notable" | "wide" {
+  const p = Math.round(pct * 10) / 10; // the server bands the 1dp-rounded pct
+  if (p <= -25 || p >= 30) return "wide";
+  if (p <= -10 || p >= 10) return "notable";
+  return "in-line";
+}
+
 // ── Player row ────────────────────────────────────────────────────────────────
 
 function PlayerRow({
@@ -70,6 +80,12 @@ function PlayerRow({
   const market = (fairValue ? Number(fairValue.fair_value) : null) ?? player.market_value ?? null;
   const valuation = player.active_contract?.club_valuation ?? null;
   const pct = market && valuation ? ((valuation - market) / market) * 100 : null;
+  // Only a real gap is worth pixels; narrowing here also keeps the JSX free of
+  // non-null assertions.
+  const gap =
+    pct != null && valuationGap(pct) !== "in-line"
+      ? { pct, wide: valuationGap(pct) === "wide" }
+      : null;
 
   const flag = player.active_deal?.status === "IN_PROGRESS"
     ? { label: "Transfer pending", colour: "text-warning-text" }
@@ -130,48 +146,104 @@ function PlayerRow({
           </div>
         )}
 
-        {/* Value */}
+        {/* Valuation — two aligned rows, the model's figure always on top and the
+            club's own beneath it, so the figures line up as a column you can
+            scan down the squad. Replaced a uniform three-line widget that spent
+            most of its space on the rows with the least to say: `club_valuation`
+            is only ever set by hand, so a row nobody had valued still rendered
+            an empty comparison bar and a "set yours" hint.
+
+            The model row renders even when there is no model figure, because
+            that absence is itself information rather than a hole —
+            `valuation/service.py:51` refuses a row for a player under 450
+            minutes, with no position, or with no vendor stats, "never a made-up
+            number", so a dash here reads as fringe/injured/new rather than as a
+            bug. The 14px/600 weight goes to whichever figure is the club's best
+            answer — its own valuation where one exists, the model's otherwise —
+            so the cell always carries exactly one value-sized figure like the
+            Contract and Wage cells beside it.
+
+            Colour tracks the *size* of the gap, not its direction: for a player
+            you already own, carrying him above or below the model are both
+            merely facts, and D5's copy rule is that the model never renders a
+            verdict. */}
         {showContractDetails && (
-          <div className="hidden md:block flex-1 basis-[190px] min-w-[150px]">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] text-text-muted">
-                Model vs your valuation{fairValue ? ` · ${fairValue.confidence.toLowerCase()} conf.` : ""}
-              </p>
-              {pct != null && (
-                <span className={`text-xs font-semibold ${pct >= 0 ? "text-success-text" : "text-danger-text"}`}>
-                  {pct >= 0 ? "+" : ""}{pct.toFixed(0)}%
+          <div className="hidden md:block basis-[170px] shrink">
+            {/* Model — always present, dash and all. */}
+            <div className="flex items-baseline gap-x-1.5">
+              <span className="w-[38px] shrink-0 text-[13px] text-text-muted">model</span>
+              {market != null ? (
+                <span
+                  className={`tabular-nums ${valuation == null ? "text-sm font-semibold text-text" : "text-[13px] text-text-secondary"}`}
+                  title={fairValue ? `${formatCurrency(market)} · ${fairValue.confidence.toLowerCase()} confidence · range ${formatCompactCurrency(fairValue.fair_value_low)}–${formatCompactCurrency(fairValue.fair_value_high)}` : formatCurrency(market)}
+                >
+                  {formatCompactCurrency(market)}
+                </span>
+              ) : (
+                <span
+                  className="text-[13px] text-text-muted"
+                  title="No model valuation. The model needs a position, vendor stats and 450+ minutes played, and never estimates without them."
+                >
+                  —
                 </span>
               )}
             </div>
-            <div className="mt-1 flex h-1.5 w-full overflow-hidden rounded-full bg-border-quiet">
-              {market != null && valuation != null && (
-                <>
-                  <div className="h-full bg-text-muted" style={{ width: `${Math.min(100, (Math.min(market, valuation) / Math.max(market, valuation)) * 100)}%` }} />
-                  <div className={`h-full ${valuation >= market ? "bg-success" : "bg-danger"}`} style={{ width: `${Math.min(100, (Math.abs(valuation - market) / Math.max(market, valuation)) * 100)}%` }} />
-                </>
-              )}
-            </div>
-            {onSetValuation ? (
-              editingValuation ? (
-                <input
-                  autoFocus type="text" value={draft} onChange={(e) => setDraft(e.target.value)}
-                  onBlur={commitValuation}
-                  onKeyDown={(e) => { if (e.key === "Enter") commitValuation(); if (e.key === "Escape") setEditingValuation(false); }}
-                  placeholder="Set valuation"
-                  className="mt-1 w-full rounded bg-surface-inset px-1.5 py-0.5 text-xs text-text ring-1 ring-accent focus:outline-none"
-                />
-              ) : (
-                <button
-                  onClick={() => { setEditingValuation(true); setDraft(valuation != null ? String(valuation) : ""); }}
-                  className="mt-1 text-xs text-text-muted hover:text-accent transition-colors"
-                >
-                  {market != null ? formatCurrency(market) : "—"} model · {valuation != null ? formatCurrency(valuation) : "set"} yours
-                </button>
-              )
+
+            {/* The club's own. */}
+            {editingValuation ? (
+              <input
+                autoFocus type="text" inputMode="numeric" value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={commitValuation}
+                onKeyDown={(e) => { if (e.key === "Enter") commitValuation(); if (e.key === "Escape") setEditingValuation(false); }}
+                placeholder={market != null ? formatCompactCurrency(market) : "Amount"}
+                className="mt-0.5 w-full rounded bg-surface-inset px-1.5 py-1 text-[13px] text-text ring-1 ring-accent focus:outline-none"
+              />
+            ) : valuation == null ? (
+              <div className="flex items-baseline gap-x-1.5">
+                <span className="w-[38px] shrink-0 text-[13px] text-text-muted">yours</span>
+                {onSetValuation ? (
+                  // Deliberately the same weight as the edit affordance below
+                  // rather than a full button: a 44px button (rule 6) would add
+                  // 26px to the *majority* of rows, and it would be the only
+                  // rule-6-compliant control in a table whose open-to-offers
+                  // toggle is 20×36px. The negative margin buys hit area
+                  // without costing row height. Touch targets here need a
+                  // table-wide decision, not one compliant outlier.
+                  <button
+                    onClick={() => { setEditingValuation(true); setDraft(""); }}
+                    title={market != null ? `Set your valuation — the model says ${formatCurrency(market)}` : "Set your valuation"}
+                    className="-my-1 rounded px-1.5 py-1 text-[13px] font-semibold text-accent underline decoration-dotted decoration-1 underline-offset-[3px] transition-colors hover:bg-surface-inset"
+                  >
+                    + set
+                  </button>
+                ) : (
+                  <span className="text-[13px] text-text-muted">—</span>
+                )}
+              </div>
             ) : (
-              <p className="mt-1 text-xs text-text-muted">
-                {market != null ? formatCurrency(market) : "—"} model · {valuation != null ? formatCurrency(valuation) : "—"} yours
-              </p>
+              <div className="flex flex-wrap items-baseline gap-x-1.5">
+                <span className="w-[38px] shrink-0 text-[13px] text-text-muted">yours</span>
+                {onSetValuation ? (
+                  <button
+                    onClick={() => { setEditingValuation(true); setDraft(String(valuation)); }}
+                    title={`Edit — currently ${formatCurrency(valuation)}`}
+                    className="text-sm font-semibold text-text underline decoration-dotted decoration-1 underline-offset-[3px] transition-colors hover:text-accent"
+                  >
+                    {formatCompactCurrency(valuation)}
+                  </button>
+                ) : (
+                  <span className="text-sm font-semibold text-text tabular-nums">{formatCompactCurrency(valuation)}</span>
+                )}
+                {gap && (
+                  <span
+                    className={`text-[13px] font-semibold tabular-nums ${gap.wide ? "text-warning-text" : "text-text-secondary"}`}
+                    title={`Your valuation is ${Math.abs(Math.round(gap.pct))}% ${gap.pct >= 0 ? "above" : "below"} the model${fairValue ? ` (${fairValue.confidence.toLowerCase()} confidence)` : ""}`}
+                  >
+                    {gap.pct >= 0 ? "▲" : "▼"} {Math.abs(Math.round(gap.pct))}%
+                  </span>
+                )}
+              </div>
             )}
           </div>
         )}
