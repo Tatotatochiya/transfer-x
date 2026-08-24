@@ -12,7 +12,7 @@ from app import clubs as clubs_module
 from app.audit import service as audit_service
 from app.common.filters import apply_date_range
 from app.common.schemas import WhoseMove
-from app.deals.models import Deal, DealStage, DealStatus
+from app.deals.models import Deal, DealStage, DealStatus, DealType
 from app.offers.models import Offer, OfferEvent, OfferEventType, OfferMessage, OfferStatus
 
 _OFFER_EXPIRY_DAYS = 7
@@ -46,6 +46,128 @@ def _add_ons_total(add_ons: dict | None) -> Decimal:
         if isinstance(value, (int, float, Decimal)):
             total += Decimal(str(value))
     return total
+
+
+def _reservation(
+    *,
+    deal_type: DealType,
+    fee_amount: Decimal | None,
+    loan_fee: Decimal | None,
+    add_ons: dict | None,
+    wage_weekly: Decimal | None,
+    wage_split_pct: Decimal | None,
+) -> tuple[Decimal, Decimal]:
+    """What a buying club must have free to hold this offer: (transfer, weekly wage).
+
+    Two things this centralises that were previously wrong or absent:
+
+    A loan's money is `loan_fee`, not `fee_amount` — the two are mutually
+    exclusive and validation enforces that — so reserving against `fee_amount`
+    would reserve nothing at all for a loan.
+
+    **Wage has never been reserved by any offer path.** `reserve_budget` has
+    accepted a `wage_weekly` argument with a real affordability check behind it
+    (`clubs/service.py:414`) since it was written, and not one of the six budget
+    calls in this module ever passed one — so a club could commit to wages it
+    had no room for and only find out at completion, when `_complete_deal` adds
+    the wage regardless. That is a permanent-transfer bug that loans merely
+    surfaced; it is fixed here for every offer type.
+
+    For a loan the buyer carries only their agreed share, so a loan with no fee
+    still costs real budget. A null split means the loanee pays all of it.
+    """
+    if deal_type == DealType.LOAN:
+        transfer = (loan_fee or Decimal("0")) + _add_ons_total(add_ons)
+        share = wage_split_pct if wage_split_pct is not None else Decimal("1")
+        wage = (wage_weekly or Decimal("0")) * share
+    else:
+        transfer = (fee_amount or Decimal("0")) + _add_ons_total(add_ons)
+        wage = wage_weekly or Decimal("0")
+    return transfer, wage.quantize(Decimal("0.01"))
+
+
+def _offer_reservation(offer: Offer, **overrides) -> tuple[Decimal, Decimal]:
+    """`_reservation` for an existing offer, with named fields overridden."""
+    fields = {
+        "deal_type": offer.deal_type,
+        "fee_amount": offer.fee_amount,
+        "loan_fee": offer.loan_fee,
+        "add_ons": offer.add_ons,
+        "wage_weekly": offer.wage_weekly,
+        "wage_split_pct": offer.wage_split_pct,
+    }
+    fields.update({k: v for k, v in overrides.items() if v is not None})
+    return _reservation(**fields)
+
+
+_MAX_LOAN_MONTHS = 18
+
+
+async def validate_offer_terms(
+    db: AsyncSession,
+    *,
+    player_id: uuid.UUID,
+    deal_type: DealType,
+    fee_amount: Decimal | None,
+    loan_start: date | None,
+    loan_end: date | None,
+    loan_fee: Decimal | None,
+    wage_split_pct: Decimal | None,
+    option_to_buy: Decimal | None,
+    obligation_to_buy: bool,
+    recall_allowed: bool,
+) -> None:
+    """Re-check the loan rules the request schema already checked.
+
+    Deliberately duplicated rather than trusted from the schema layer: every
+    other money guard in this module is enforced here too, and `create_offer`
+    is callable from paths that never see an `OfferCreateRequest`.
+    """
+    if deal_type not in (DealType.PERMANENT, DealType.LOAN):
+        raise ValueError(
+            f"An offer may only be PERMANENT or LOAN, not {deal_type.value} — "
+            "free transfers and pre-contracts are created by the signing paths, not offered"
+        )
+
+    if deal_type == DealType.PERMANENT:
+        if any(v is not None for v in (loan_start, loan_end, loan_fee, wage_split_pct, option_to_buy)):
+            raise ValueError("Loan terms are not valid on a permanent offer")
+        if obligation_to_buy or recall_allowed:
+            raise ValueError("Loan terms are not valid on a permanent offer")
+        return
+
+    # ── LOAN ────────────────────────────────────────────────────────────────
+    if fee_amount is not None:
+        raise ValueError("A loan's money is its loan fee — leave the transfer fee empty")
+    if loan_start is None or loan_end is None:
+        raise ValueError("A loan needs both a start and an end date")
+    if loan_end <= loan_start:
+        raise ValueError("A loan must end after it starts")
+    if loan_end > loan_start + timedelta(days=_MAX_LOAN_MONTHS * 31):
+        raise ValueError(f"A loan may not run longer than {_MAX_LOAN_MONTHS} months")
+    if wage_split_pct is not None and not (Decimal("0") <= wage_split_pct <= Decimal("1")):
+        raise ValueError("Wage split must be between 0 and 1 — it is a fraction, not a percentage")
+    if obligation_to_buy and option_to_buy is None:
+        raise ValueError("An obligation to buy needs a price — set the option-to-buy amount")
+
+    # You cannot loan a player past the point you control him. Without this the
+    # phase-3 return path would find an expired parent contract and correctly,
+    # but very surprisingly, make him a free agent.
+    from app.players.models import Contract
+
+    parent_end = (
+        await db.execute(
+            select(Contract.end_date).where(
+                Contract.player_id == player_id,
+                Contract.is_active == True,  # noqa: E712
+            )
+        )
+    ).scalar_one_or_none()
+    if parent_end is not None and loan_end > parent_end:
+        raise ValueError(
+            f"The loan ends {loan_end}, after the player's contract expires "
+            f"({parent_end}) — shorten the loan or extend the contract first"
+        )
 
 
 def _load_options():
@@ -144,10 +266,32 @@ async def create_offer(
     add_ons: dict | None = None,
     expires_at: datetime | None = None,
     is_anonymous: bool = False,
+    deal_type: DealType = DealType.PERMANENT,
+    loan_start: date | None = None,
+    loan_end: date | None = None,
+    loan_fee: Decimal | None = None,
+    wage_split_pct: Decimal | None = None,
+    option_to_buy: Decimal | None = None,
+    obligation_to_buy: bool = False,
+    recall_allowed: bool = False,
 ) -> Offer:
     """Create and immediately send an offer. Reserves budget from from_club."""
     if to_club_id and to_club_id == from_club_id:
         raise ValueError("Cannot make an offer to your own club")
+
+    await validate_offer_terms(
+        db,
+        player_id=player_id,
+        deal_type=deal_type,
+        fee_amount=fee_amount,
+        loan_start=loan_start,
+        loan_end=loan_end,
+        loan_fee=loan_fee,
+        wage_split_pct=wage_split_pct,
+        option_to_buy=option_to_buy,
+        obligation_to_buy=obligation_to_buy,
+        recall_allowed=recall_allowed,
+    )
 
     now = datetime.now(timezone.utc)
     exp = expires_at or (now + timedelta(days=_OFFER_EXPIRY_DAYS))
@@ -165,17 +309,34 @@ async def create_offer(
         status=OfferStatus.SENT,
         expires_at=exp,
         reserved_transfer_amount=Decimal("0"),
+        reserved_wage_weekly=Decimal("0"),
         last_actor_club_id=from_club_id,  # buyer sent it → seller's turn
         is_anonymous=is_anonymous,
+        deal_type=deal_type,
+        loan_start=loan_start,
+        loan_end=loan_end,
+        loan_fee=loan_fee,
+        wage_split_pct=wage_split_pct,
+        option_to_buy=option_to_buy,
+        obligation_to_buy=obligation_to_buy,
+        recall_allowed=recall_allowed,
     )
 
-    # Reserve budget immediately on send — fee plus any monetary add-ons.
-    reserve = (fee_amount or Decimal("0")) + _add_ons_total(add_ons)
-    if reserve > 0:
+    # Reserve budget immediately on send — transfer and wage both, see _reservation.
+    reserve, wage_reserve = _reservation(
+        deal_type=deal_type,
+        fee_amount=fee_amount,
+        loan_fee=loan_fee,
+        add_ons=add_ons,
+        wage_weekly=wage_weekly,
+        wage_split_pct=wage_split_pct,
+    )
+    if reserve > 0 or wage_reserve > 0:
         await clubs_module.service.reserve_budget(
-            db, club_id=from_club_id, transfer_amount=reserve
+            db, club_id=from_club_id, transfer_amount=reserve, wage_weekly=wage_reserve
         )
         offer.reserved_transfer_amount = reserve
+        offer.reserved_wage_weekly = wage_reserve
 
     db.add(offer)
     await db.flush()
@@ -215,6 +376,11 @@ async def counter_offer(
     contract_end_date=None,
     add_ons: dict | None = None,
     expires_at: datetime | None = None,
+    loan_start: date | None = None,
+    loan_end: date | None = None,
+    loan_fee: Decimal | None = None,
+    wage_split_pct: Decimal | None = None,
+    option_to_buy: Decimal | None = None,
 ) -> Offer:
     """Counter an offer with new terms. Either party can counter."""
     _check_not_expired(offer)
@@ -230,27 +396,57 @@ async def counter_offer(
     # If from_club counters (buyer raises their offer), adjust reservation.
     # Item 3: add_ons now counts toward the reservation too, so recompute
     # whenever either the fee or the add_ons change, not just the fee.
-    if actor_club_id == offer.from_club_id and (fee_amount is not None or add_ons is not None):
+    # A wage or loan-fee change moves the reservation as well, so those count too.
+    if actor_club_id == offer.from_club_id and any(
+        v is not None for v in (fee_amount, add_ons, wage_weekly, loan_fee, wage_split_pct)
+    ):
         old_reserve = offer.reserved_transfer_amount
-        effective_fee = fee_amount if fee_amount is not None else (offer.fee_amount or Decimal("0"))
-        effective_add_ons = add_ons if add_ons is not None else offer.add_ons
-        new_reserve = effective_fee + _add_ons_total(effective_add_ons)
+        old_wage_reserve = offer.reserved_wage_weekly
+        new_reserve, new_wage_reserve = _offer_reservation(
+            offer,
+            fee_amount=fee_amount,
+            add_ons=add_ons,
+            wage_weekly=wage_weekly,
+            loan_fee=loan_fee,
+            wage_split_pct=wage_split_pct,
+        )
         delta = new_reserve - old_reserve
-        if delta > 0:
+        wage_delta = new_wage_reserve - old_wage_reserve
+        # Take the increases first so an insufficient-budget failure aborts
+        # before anything has been given back.
+        if delta > 0 or wage_delta > 0:
             await clubs_module.service.reserve_budget(
-                db, club_id=actor_club_id, transfer_amount=delta
+                db,
+                club_id=actor_club_id,
+                transfer_amount=max(Decimal("0"), delta),
+                wage_weekly=max(Decimal("0"), wage_delta),
             )
-        elif delta < 0:
+        if delta < 0 or wage_delta < 0:
             await clubs_module.service.release_budget(
-                db, club_id=actor_club_id, transfer_amount=-delta
+                db,
+                club_id=actor_club_id,
+                transfer_amount=max(Decimal("0"), -delta),
+                wage_weekly=max(Decimal("0"), -wage_delta),
             )
         offer.reserved_transfer_amount = new_reserve
+        offer.reserved_wage_weekly = new_wage_reserve
 
-    # Update terms
+    # Update terms. `deal_type` is deliberately absent: countering a loan with
+    # a permanent offer is a different proposal, not a counter.
     if fee_amount is not None:
         offer.fee_amount = fee_amount
     if wage_weekly is not None:
         offer.wage_weekly = wage_weekly
+    if loan_fee is not None:
+        offer.loan_fee = loan_fee
+    if wage_split_pct is not None:
+        offer.wage_split_pct = wage_split_pct
+    if loan_start is not None:
+        offer.loan_start = loan_start
+    if loan_end is not None:
+        offer.loan_end = loan_end
+    if option_to_buy is not None:
+        offer.option_to_buy = option_to_buy
     if contract_years is not None:
         offer.contract_years = contract_years
     if contract_end_date is not None:
@@ -280,6 +476,7 @@ async def improve_own_offer(
     fee_amount: Decimal | None = None,
     wage_weekly: Decimal | None = None,
     add_ons: dict | None = None,
+    loan_fee: Decimal | None = None,
 ) -> Offer:
     """Let the buyer sweeten their own pending offer while waiting for a reply.
 
@@ -297,24 +494,37 @@ async def improve_own_offer(
 
     new_fee = fee_amount if fee_amount is not None else (offer.fee_amount or Decimal("0"))
     new_wage = wage_weekly if wage_weekly is not None else (offer.wage_weekly or Decimal("0"))
+    new_loan_fee = loan_fee if loan_fee is not None else offer.loan_fee
     new_add_ons = dict(offer.add_ons or {})
     if add_ons:
         new_add_ons.update(add_ons)
 
     old_reserve = offer.reserved_transfer_amount
-    new_reserve = new_fee + _add_ons_total(new_add_ons)
-    if new_reserve < old_reserve or new_wage < (offer.wage_weekly or Decimal("0")):
+    old_wage_reserve = offer.reserved_wage_weekly
+    new_reserve, new_wage_reserve = _offer_reservation(
+        offer,
+        fee_amount=new_fee,
+        loan_fee=new_loan_fee,
+        add_ons=new_add_ons,
+        wage_weekly=new_wage,
+    )
+    # Compare what the seller actually receives, not the raw wage: on a loan the
+    # buyer's cost is their agreed share, so the share is what may only go up.
+    if new_reserve < old_reserve or new_wage_reserve < old_wage_reserve:
         raise ValueError("Improving an offer can only raise its value, not lower it")
 
     delta = new_reserve - old_reserve
-    if delta > 0:
+    wage_delta = new_wage_reserve - old_wage_reserve
+    if delta > 0 or wage_delta > 0:
         await clubs_module.service.reserve_budget(
-            db, club_id=actor_club_id, transfer_amount=delta
+            db, club_id=actor_club_id, transfer_amount=delta, wage_weekly=wage_delta
         )
     offer.reserved_transfer_amount = new_reserve
+    offer.reserved_wage_weekly = new_wage_reserve
 
     offer.fee_amount = new_fee
     offer.wage_weekly = new_wage
+    offer.loan_fee = new_loan_fee
     offer.add_ons = new_add_ons
     db.add(OfferEvent(
         offer_id=offer.id,
@@ -350,13 +560,19 @@ async def accept_offer(
         if player is None or owning_club_id != offer.to_club_id:
             raise ValueError("Receiving club does not currently own this player")
 
-    # Commit the reserved budget from buyer
-    reserved = offer.reserved_transfer_amount
-    if reserved > 0:
+    # Commit the reserved budget from buyer — transfer and wage together, or
+    # the wage would stay stuck in `reserved` with nothing left to release it.
+    reserved = offer.reserved_transfer_amount or Decimal("0")
+    wage_reserved = offer.reserved_wage_weekly or Decimal("0")
+    if reserved > 0 or wage_reserved > 0:
         await clubs_module.service.commit_budget(
-            db, club_id=offer.from_club_id, transfer_amount=reserved
+            db,
+            club_id=offer.from_club_id,
+            transfer_amount=reserved,
+            wage_weekly=wage_reserved,
         )
         offer.reserved_transfer_amount = Decimal("0")
+        offer.reserved_wage_weekly = Decimal("0")
 
     offer.status = OfferStatus.ACCEPTED
     db.add(OfferEvent(
@@ -375,10 +591,26 @@ async def accept_offer(
         buyer_club_id=offer.from_club_id,
         seller_club_id=offer.to_club_id,
         player_id=offer.player_id,
-        agreed_fee=offer.fee_amount or Decimal("0"),
+        # `agreed_fee` is "the transfer money for this deal, whatever its type",
+        # so a loan's fee goes here as well as into `loan_fee`. The duplication
+        # is deliberate: collapse_deal releases against agreed_fee, approvals
+        # threshold against it, and commission is a share of it — all of which
+        # would silently read zero for a loan otherwise. `_complete_deal`
+        # already prefers loan_fee when set, and now resolves to the same number.
+        agreed_fee=(
+            offer.loan_fee if offer.deal_type == DealType.LOAN else offer.fee_amount
+        ) or Decimal("0"),
         agreed_wage_weekly=offer.wage_weekly,
         status=DealStatus.IN_PROGRESS,
         stage=DealStage.AGREEMENT,
+        deal_type=offer.deal_type,
+        loan_start=offer.loan_start,
+        loan_end=offer.loan_end,
+        loan_fee=offer.loan_fee,
+        wage_split_pct=offer.wage_split_pct,
+        option_to_buy=offer.option_to_buy,
+        obligation_to_buy=offer.obligation_to_buy,
+        recall_allowed=offer.recall_allowed,
     )
     db.add(deal)
     await db.flush()
@@ -776,9 +1008,14 @@ def _require_turn(offer: Offer, actor_club_id: uuid.UUID) -> None:
 
 
 async def _release_offer_budget(db: AsyncSession, offer: Offer) -> None:
-    reserved = offer.reserved_transfer_amount
-    if reserved and reserved > 0:
+    reserved = offer.reserved_transfer_amount or Decimal("0")
+    wage_reserved = offer.reserved_wage_weekly or Decimal("0")
+    if reserved > 0 or wage_reserved > 0:
         await clubs_module.service.release_budget(
-            db, club_id=offer.from_club_id, transfer_amount=reserved
+            db,
+            club_id=offer.from_club_id,
+            transfer_amount=reserved,
+            wage_weekly=wage_reserved,
         )
         offer.reserved_transfer_amount = Decimal("0")
+        offer.reserved_wage_weekly = Decimal("0")

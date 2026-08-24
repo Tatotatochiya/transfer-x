@@ -373,6 +373,14 @@ async def create_offer(
             add_ons=body.add_ons,
             expires_at=body.expires_at,
             is_anonymous=body.is_anonymous,
+            deal_type=body.deal_type,
+            loan_start=body.loan_start,
+            loan_end=body.loan_end,
+            loan_fee=body.loan_fee,
+            wage_split_pct=body.wage_split_pct,
+            option_to_buy=body.option_to_buy,
+            obligation_to_buy=body.obligation_to_buy,
+            recall_allowed=body.recall_allowed,
         )
         await _db_notify_offer(
             db, offer,
@@ -416,6 +424,11 @@ async def counter_offer(
             contract_end_date=body.contract_end_date,
             add_ons=body.add_ons,
             expires_at=body.expires_at,
+            loan_start=body.loan_start,
+            loan_end=body.loan_end,
+            loan_fee=body.loan_fee,
+            wage_split_pct=body.wage_split_pct,
+            option_to_buy=body.option_to_buy,
         )
         other_club_id = offer.to_club_id if offer.from_club_id == club.id else offer.from_club_id
         await _db_notify_offer(

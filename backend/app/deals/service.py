@@ -681,6 +681,23 @@ async def staff_collapse(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UU
 
 async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
     """Execute the transfer: settle finance for both clubs, then swap the contract."""
+    # Everything below permanently transfers the player: it deactivates the
+    # seller's contract, creates one for the buyer, credits the full fee, and
+    # releases the seller's whole wage commitment. For a LOAN every one of
+    # those is wrong, and the result is irreversible — the parent club would be
+    # left with no contract and no claim on a player they still own.
+    #
+    # Phase 1 of feature_spec/loan-transfers.md puts the type on the offer and
+    # carries it here; phase 2 branches this function. Until then a loan can be
+    # proposed, negotiated and agreed, but must not execute. Remove this guard
+    # in the same commit that adds the branch.
+    if deal.deal_type == DealType.LOAN:
+        raise ValueError(
+            "Loan deals cannot be completed yet — the loan execution path "
+            "(feature_spec/loan-transfers.md phase 2) is not built. Completing "
+            "this deal would transfer the player permanently."
+        )
+
     now = datetime.now(timezone.utc)
     deal.status = DealStatus.COMPLETED
     deal.completed_at = now

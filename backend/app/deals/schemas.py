@@ -247,6 +247,8 @@ class DealResponse(BaseModel):
     loan_start: date | None = None
     loan_end: date | None = None
     loan_fee: Decimal | None = None
+    wage_split_pct: Decimal | None = None
+    recall_allowed: bool = False
     option_to_buy: Decimal | None = None
     obligation_to_buy: bool = False
     obligation_conditions: str | None = None

@@ -177,6 +177,8 @@ async def _build_deal_response(db: AsyncSession, deal, *, caller_user_type: str 
         loan_start=deal.loan_start,
         loan_end=deal.loan_end,
         loan_fee=deal.loan_fee,
+        wage_split_pct=deal.wage_split_pct,
+        recall_allowed=deal.recall_allowed,
         option_to_buy=deal.option_to_buy,
         obligation_to_buy=deal.obligation_to_buy,
         obligation_conditions=deal.obligation_conditions,

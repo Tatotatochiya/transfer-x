@@ -1,6 +1,6 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import JSON, Boolean, DateTime, Date, ForeignKey, Integer, Numeric, String, Text, Uuid, func
@@ -8,6 +8,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.deals.models import DealType
 
 
 class OfferStatus(str, enum.Enum):
@@ -53,6 +54,35 @@ class Offer(Base):
     contract_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
     contract_end_date: Mapped[datetime | None] = mapped_column(Date, nullable=True)
     add_ons: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    # Loan terms (feature_spec/loan-transfers.md phase 1). The type is fixed at
+    # approach time and is deliberately NOT counterable: countering a loan with
+    # a permanent offer is a different proposal, and letting it mutate would
+    # make the deal's own audit trail incoherent. Only PERMANENT and LOAN are
+    # accepted here — FREE_TRANSFER and PRE_CONTRACT are derived by the signing
+    # paths in players/service.py, never offered.
+    deal_type: Mapped[DealType] = mapped_column(
+        SAEnum(DealType, name="dealtype"),
+        nullable=False,
+        default=DealType.PERMANENT,
+        server_default="PERMANENT",
+    )
+    loan_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    loan_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # A loan's money lives here, not in fee_amount — the two are mutually
+    # exclusive and validation enforces it.
+    loan_fee: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    # The loanee's share of the player's wage, 0.0–1.0. Null means the same as
+    # 1.0 for a loan (loanee pays all) and is meaningless for a permanent.
+    # A fraction, matching sell_on_pct and agent_commission_pct — see the
+    # house gotcha that commission_pct is a fraction, not a percentage.
+    wage_split_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
+    option_to_buy: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    obligation_to_buy: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    recall_allowed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     status: Mapped[OfferStatus] = mapped_column(
         SAEnum(OfferStatus, name="offerstatus"),
         nullable=False,
@@ -62,6 +92,12 @@ class Offer(Base):
     # reserved_transfer_amount tracks what has been reserved in buyer's budget
     reserved_transfer_amount: Mapped[Decimal] = mapped_column(
         Numeric(15, 2), nullable=False, default=Decimal("0")
+    )
+    # The wage half of the same reservation. Needed because releasing on
+    # withdrawal has to give back exactly what was taken, and for a loan the
+    # figure is a share of the wage rather than the whole of it.
+    reserved_wage_weekly: Mapped[Decimal] = mapped_column(
+        Numeric(15, 2), nullable=False, default=Decimal("0"), server_default="0"
     )
     expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True

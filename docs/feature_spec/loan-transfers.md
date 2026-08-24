@@ -389,11 +389,27 @@ Each phase is independently shippable and leaves the app coherent.
 
 | Phase | Content | Why this order |
 |---|---|---|
-| **0** | Frontend `DealType` enum drift (gap 3) | One line each, fixes a live mislabel, zero dependencies. Ship today. |
-| **1** | `deal_type` on `Offer` + copy it in `accept_offer` + wage reservation for all offers (gaps 2, 4) | Makes the existing model honest before adding to it. No loan mechanics yet — a `LOAN` offer at this point still completes as a permanent transfer, so **do not expose the UI toggle until phase 3.** |
+| **0 — shipped 2026-08-24** | Frontend `DealType` enum drift (gap 3) | One line each, fixes a live mislabel, zero dependencies. Ship today. |
+| **1 — shipped 2026-08-24** | `deal_type` on `Offer` + copy it in `accept_offer` + wage reservation for all offers (gaps 2, 4) | Makes the existing model honest before adding to it. No loan mechanics yet — a `LOAN` offer at this point still completes as a permanent transfer, so **do not expose the UI toggle until phase 3.** |
 | **2** | `player_loans` table, `_complete_deal` branch, `get_owning_club_id` (gaps 5, 6, 7) | The mechanics. Loans now execute correctly but only end manually. |
 | **3** | Expiry job, return path, recall, notifications (gap 8) + the Create Offer UI | The loan now runs to term on its own. Safe to expose. |
 | **4** | Option to buy, obligation to buy (D7) | Genuinely optional; a loan is complete and useful without it. |
+
+## Deviations from spec (phases 0–1, 2026-08-24)
+
+Recorded before the phases were marked shipped, per this folder's [README](./README.md) rule that a spec must not be left silently wrong.
+
+1. **`Offer.reserved_wage_weekly` was added and is not in the [data model](#offers--new-columns) above.** Reserving wage is only safe if the amount reserved is also recorded — otherwise withdrawing an offer cannot release exactly what was taken, and for a loan the figure is a share of the wage rather than the whole of it. The spec's column list was incomplete.
+
+2. **`agreed_fee` mirrors `loan_fee` on a loan deal.** Not specified either way. Leaving `agreed_fee` at zero would have made `collapse_deal` release nothing, D7 approval thresholds test against zero, and agent commission compute from zero — three existing consumers reading the wrong number. `_complete_deal` already preferred `loan_fee`, so both resolve identically.
+
+3. **`_complete_deal` raises for a `LOAN` until phase 2.** A phase-1 safety guard the spec did not call for. The spec's own phasing note says a loan "still completes as a permanent transfer" at this point and relies on the UI not exposing the toggle — but the API is reachable regardless, and that outcome is irreversible: the parent club would be left with no contract and no claim on a player they still own. Blocking exactly the irreversible step, and nothing else, was judged better than relying on the absence of a button.
+
+4. **`DealResponse` gained `wage_split_pct` and `recall_allowed`.** Implied by the new columns; the spec's API section did not list them.
+
+5. **`deal_type` was made non-counterable**, which the spec's API section already stated for `PATCH /offers/{id}/counter`. Noted here only because loan *terms* were made counterable at the same time — the spec left that ambiguous, and without it a seller could not negotiate a loan at all.
+
+**Found during phase 1, not fixed, not loan-specific:** when the *seller* counters at a higher fee, the buyer's reservation is never recomputed — `counter_offer` adjusts it only when the buyer is the actor. Accepting a raised counter therefore commits the original, lower figure while the deal records the higher `agreed_fee`. Pre-existing, and the wage reservation added here inherits the same asymmetry. Left alone deliberately: refusing an acceptance the buyer can no longer afford is a product decision, not a bug fix.
 
 ## Open questions for sign-off
 

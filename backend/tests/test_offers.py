@@ -1039,3 +1039,362 @@ async def test_offers_are_identified_by_default(client: AsyncClient, buyer: dict
     assert seen["is_anonymous"] is False
     assert seen["from_club"] is not None
     assert seen["from_club_id"] is not None
+
+
+# ── Loan offers (feature_spec/loan-transfers.md phase 1) ─────────────────────
+
+
+async def _give_wage_budget(db, weekly: Decimal = Decimal("500000")):
+    from sqlalchemy import select
+
+    from app.clubs.models import ClubFinance
+
+    result = await db.execute(select(ClubFinance))
+    for f in result.scalars():
+        f.wage_budget_total_weekly = weekly
+    await db.commit()
+
+
+async def _contract(db, player_id: str, club_id: str, end_date, wage=Decimal("90000")):
+    """Give the player an active contract, so he has a parent club to be loaned from."""
+    import uuid as uuid_mod
+
+    from app.players.models import Contract
+
+    db.add(Contract(
+        player_id=uuid_mod.UUID(player_id),
+        club_id=uuid_mod.UUID(club_id),
+        end_date=end_date,
+        wage_weekly=wage,
+        is_active=True,
+    ))
+    await db.commit()
+
+
+def _loan_body(player_id: str, to_club_id: str, **over) -> dict:
+    from datetime import date
+
+    body = {
+        "player_id": player_id,
+        "to_club_id": to_club_id,
+        "deal_type": "LOAN",
+        "loan_start": str(date(2026, 9, 1)),
+        "loan_end": str(date(2027, 5, 31)),
+        "loan_fee": 2_000_000,
+        "wage_weekly": 90_000,
+        "wage_split_pct": 0.6,
+    }
+    body.update(over)
+    return body
+
+
+async def _finance(db, club_id: str):
+    import uuid as uuid_mod
+
+    from sqlalchemy import select
+
+    from app.clubs.models import ClubFinance
+
+    return (
+        await db.execute(
+            select(ClubFinance).where(ClubFinance.club_id == uuid_mod.UUID(club_id))
+        )
+    ).scalar_one()
+
+
+@pytest.mark.asyncio
+async def test_loan_offer_reserves_loan_fee_and_wage_share(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """A loan's money is loan_fee, not fee_amount, and the buyer carries only
+    their agreed share of the wage: 60% of 90k, not the whole 90k."""
+    from datetime import date
+
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    sel_headers, buy_headers = _auth_headers(seller), _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club = (await client.get("/clubs/me", headers=sel_headers)).json()
+    buyer_club = (await client.get("/clubs/me", headers=buy_headers)).json()
+    await _contract(db, player["id"], seller_club["id"], date(2028, 6, 30))
+
+    resp = await client.post(
+        "/offers", json=_loan_body(player["id"], seller_club["id"]), headers=buy_headers
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["deal_type"] == "LOAN"
+
+    fin = await _finance(db, buyer_club["id"])
+    await db.refresh(fin)
+    assert fin.transfer_reserved == Decimal("2000000.00")
+    assert fin.wage_reserved_weekly == Decimal("54000.00")
+
+
+@pytest.mark.asyncio
+async def test_permanent_offer_now_reserves_wage_too(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """The half of this that predates loans: reserve_budget has always taken a
+    wage_weekly argument and no offer path ever passed one."""
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    sel_headers, buy_headers = _auth_headers(seller), _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club = (await client.get("/clubs/me", headers=sel_headers)).json()
+    buyer_club = (await client.get("/clubs/me", headers=buy_headers)).json()
+
+    resp = await client.post(
+        "/offers",
+        json={
+            "player_id": player["id"], "to_club_id": seller_club["id"],
+            "fee_amount": 5_000_000, "wage_weekly": 80_000,
+        },
+        headers=buy_headers,
+    )
+    assert resp.status_code == 201, resp.text
+
+    fin = await _finance(db, buyer_club["id"])
+    await db.refresh(fin)
+    assert fin.transfer_reserved == Decimal("5000000.00")
+    assert fin.wage_reserved_weekly == Decimal("80000.00")
+
+
+@pytest.mark.asyncio
+async def test_offer_refused_when_wage_budget_is_short(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """The affordability check inside reserve_budget existed all along and could
+    never fire, because no caller passed a wage."""
+    await _give_budget(db)
+    await _give_wage_budget(db, Decimal("10000"))
+    sel_headers, buy_headers = _auth_headers(seller), _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club = (await client.get("/clubs/me", headers=sel_headers)).json()
+
+    resp = await client.post(
+        "/offers",
+        json={
+            "player_id": player["id"], "to_club_id": seller_club["id"],
+            "fee_amount": 1_000_000, "wage_weekly": 80_000,
+        },
+        headers=buy_headers,
+    )
+    assert resp.status_code == 400, resp.text
+    assert "wage" in resp.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_withdrawing_a_loan_offer_releases_both_reservations(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    from datetime import date
+
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    sel_headers, buy_headers = _auth_headers(seller), _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club = (await client.get("/clubs/me", headers=sel_headers)).json()
+    buyer_club = (await client.get("/clubs/me", headers=buy_headers)).json()
+    await _contract(db, player["id"], seller_club["id"], date(2028, 6, 30))
+
+    offer = (await client.post(
+        "/offers", json=_loan_body(player["id"], seller_club["id"]), headers=buy_headers
+    )).json()
+    resp = await client.post("/offers/" + offer["id"] + "/withdraw", headers=buy_headers)
+    assert resp.status_code == 200, resp.text
+
+    fin = await _finance(db, buyer_club["id"])
+    await db.refresh(fin)
+    assert fin.transfer_reserved == Decimal("0.00")
+    assert fin.wage_reserved_weekly == Decimal("0.00")
+
+
+@pytest.mark.asyncio
+async def test_accepting_a_loan_offer_carries_the_terms_onto_the_deal(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """The drift this closes: accept_offer built a Deal without deal_type, so
+    every offer-originated deal was PERMANENT regardless of what was agreed."""
+    from datetime import date
+
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    sel_headers, buy_headers = _auth_headers(seller), _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club = (await client.get("/clubs/me", headers=sel_headers)).json()
+    await _contract(db, player["id"], seller_club["id"], date(2028, 6, 30))
+
+    offer = (await client.post(
+        "/offers", json=_loan_body(player["id"], seller_club["id"]), headers=buy_headers
+    )).json()
+    resp = await client.post("/offers/" + offer["id"] + "/accept", headers=sel_headers)
+    assert resp.status_code == 200, resp.text
+
+    # The accept endpoint returns a deliberate stub; full terms come from the
+    # deal endpoint the deal room actually reads.
+    stub = resp.json()
+    assert stub["deal_type"] == "LOAN"
+    # agreed_fee mirrors the loan fee so collapse/approvals/commission, which
+    # all read agreed_fee, don't silently see zero for a loan.
+    assert Decimal(str(stub["agreed_fee"])) == Decimal("2000000.00")
+
+    deal = (await client.get("/deals/" + stub["id"], headers=sel_headers)).json()
+    assert Decimal(str(deal["loan_fee"])) == Decimal("2000000.00")
+    assert Decimal(str(deal["wage_split_pct"])) == Decimal("0.6000")
+    assert deal["loan_start"] == "2026-09-01"
+    assert deal["loan_end"] == "2027-05-31"
+
+
+@pytest.mark.asyncio
+async def test_permanent_offer_still_produces_a_permanent_deal(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    sel_headers, buy_headers = _auth_headers(seller), _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club = (await client.get("/clubs/me", headers=sel_headers)).json()
+
+    offer = await _make_offer(client, buy_headers, player["id"], seller_club["id"])
+    resp = await client.post("/offers/" + offer["id"] + "/accept", headers=sel_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["deal_type"] == "PERMANENT"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "override,expected",
+    [
+        ({"loan_start": None, "loan_end": None}, "start and an end"),
+        ({"loan_end": "2026-08-01"}, "end after it starts"),
+        ({"loan_end": "2029-09-01"}, "longer than 18 months"),
+        ({"fee_amount": 1_000_000}, "leave the transfer fee empty"),
+        ({"wage_split_pct": 1.5}, "between 0 and 1"),
+        ({"obligation_to_buy": True}, "obligation to buy needs a price"),
+    ],
+)
+async def test_loan_offer_validation(
+    client: AsyncClient, buyer: dict, seller: dict, db, override, expected
+):
+    from datetime import date
+
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    sel_headers, buy_headers = _auth_headers(seller), _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club = (await client.get("/clubs/me", headers=sel_headers)).json()
+    await _contract(db, player["id"], seller_club["id"], date(2030, 6, 30))
+
+    resp = await client.post(
+        "/offers",
+        json=_loan_body(player["id"], seller_club["id"], **override),
+        headers=buy_headers,
+    )
+    assert resp.status_code in (400, 422), resp.text
+    assert expected in resp.text
+
+
+@pytest.mark.asyncio
+async def test_loan_cannot_outlast_the_parent_contract(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """You cannot loan a player past the point you control him. Without this the
+    phase-3 return path would find an expired contract and make him a free agent."""
+    from datetime import date
+
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    sel_headers, buy_headers = _auth_headers(seller), _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club = (await client.get("/clubs/me", headers=sel_headers)).json()
+    await _contract(db, player["id"], seller_club["id"], date(2027, 1, 31))
+
+    resp = await client.post(
+        "/offers", json=_loan_body(player["id"], seller_club["id"]), headers=buy_headers
+    )
+    assert resp.status_code == 400, resp.text
+    assert "2027-01-31" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_permanent_offer_rejects_loan_terms(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    await _give_budget(db)
+    sel_headers, buy_headers = _auth_headers(seller), _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club = (await client.get("/clubs/me", headers=sel_headers)).json()
+
+    resp = await client.post(
+        "/offers",
+        json={
+            "player_id": player["id"], "to_club_id": seller_club["id"],
+            "fee_amount": 5_000_000, "loan_fee": 1_000_000,
+        },
+        headers=buy_headers,
+    )
+    assert resp.status_code == 400, resp.text
+    assert "not valid on a permanent offer" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_derived_deal_types_cannot_be_offered(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """FREE_TRANSFER and PRE_CONTRACT are created by the signing paths, never proposed."""
+    await _give_budget(db)
+    sel_headers, buy_headers = _auth_headers(seller), _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club = (await client.get("/clubs/me", headers=sel_headers)).json()
+
+    for bad in ("FREE_TRANSFER", "PRE_CONTRACT"):
+        resp = await client.post(
+            "/offers",
+            json={
+                "player_id": player["id"], "to_club_id": seller_club["id"],
+                "fee_amount": 1_000_000, "deal_type": bad,
+            },
+            headers=buy_headers,
+        )
+        assert resp.status_code == 422, resp.text
+
+
+@pytest.mark.asyncio
+async def test_loan_deal_cannot_be_completed_yet(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Phase 1 guard. _complete_deal still executes a permanent transfer, which
+    for a loan is irreversible: it would leave the parent with no contract and
+    no claim on a player they still own. Remove with the phase-2 branch."""
+    from datetime import date
+
+    from app.deals.models import DealType
+    from app.deals.service import _complete_deal
+
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    sel_headers, buy_headers = _auth_headers(seller), _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club = (await client.get("/clubs/me", headers=sel_headers)).json()
+    await _contract(db, player["id"], seller_club["id"], date(2028, 6, 30))
+
+    offer = (await client.post(
+        "/offers", json=_loan_body(player["id"], seller_club["id"]), headers=buy_headers
+    )).json()
+    deal_id = (await client.post(
+        "/offers/" + offer["id"] + "/accept", headers=sel_headers
+    )).json()["id"]
+
+    import uuid as uuid_mod
+
+    from sqlalchemy import select
+
+    from app.deals.models import Deal
+
+    deal = (
+        await db.execute(select(Deal).where(Deal.id == uuid_mod.UUID(deal_id)))
+    ).scalar_one()
+    assert deal.deal_type == DealType.LOAN
+
+    with pytest.raises(ValueError, match="cannot be completed yet"):
+        await _complete_deal(db, deal)

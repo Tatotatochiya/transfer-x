@@ -94,6 +94,13 @@ class Deal(Base):
     loan_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     loan_end: Mapped[date | None] = mapped_column(Date, nullable=True)
     loan_fee: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    # The loanee's share of the wage, 0.0–1.0 (a fraction, like sell_on_pct).
+    # Carried from the offer so the deal records what was actually agreed
+    # rather than re-deriving it. Null on a permanent deal.
+    wage_split_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
+    # Whether the parent club may end the loan early. A plain boolean in v1 —
+    # appearance-conditional recalls belong on DealClause if ever wanted.
+    recall_allowed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     option_to_buy: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
     obligation_to_buy: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     obligation_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)

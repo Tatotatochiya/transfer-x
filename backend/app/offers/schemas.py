@@ -5,6 +5,7 @@ from decimal import Decimal
 from pydantic import BaseModel, field_validator
 
 from app.common.schemas import WhoseMove
+from app.deals.models import DealType
 from app.offers.models import OfferEventType, OfferStatus
 from app.players.schemas import ActiveDealStub
 
@@ -38,12 +39,31 @@ class OfferCreateRequest(BaseModel):
     # Approach without disclosing the buying club; the seller sees only the
     # league until they accept.
     is_anonymous: bool = False
+    # Loan terms. Only PERMANENT and LOAN are offerable — FREE_TRANSFER and
+    # PRE_CONTRACT are derived by the signing paths, never proposed by a club.
+    # The full cross-field rules live in offers/service.validate_offer_terms,
+    # which runs on every path including those that never see this schema.
+    deal_type: DealType = DealType.PERMANENT
+    loan_start: date | None = None
+    loan_end: date | None = None
+    loan_fee: Decimal | None = None
+    wage_split_pct: Decimal | None = None
+    option_to_buy: Decimal | None = None
+    obligation_to_buy: bool = False
+    recall_allowed: bool = False
 
-    @field_validator("fee_amount", "wage_weekly", mode="before")
+    @field_validator("fee_amount", "wage_weekly", "loan_fee", "option_to_buy", mode="before")
     @classmethod
     def non_negative(cls, v):
         if v is not None and v < 0:
             raise ValueError("must be non-negative")
+        return v
+
+    @field_validator("deal_type")
+    @classmethod
+    def offerable_type(cls, v):
+        if v not in (DealType.PERMANENT, DealType.LOAN):
+            raise ValueError("An offer may only be PERMANENT or LOAN")
         return v
 
 
@@ -54,6 +74,14 @@ class OfferCounterRequest(BaseModel):
     contract_end_date: date | None = None
     add_ons: dict | None = None
     expires_at: datetime | None = None
+    # Loan terms are negotiable; `deal_type` deliberately is not. Countering a
+    # loan with a permanent offer is a different proposal, and allowing the
+    # swap would make the deal's own audit trail incoherent.
+    loan_start: date | None = None
+    loan_end: date | None = None
+    loan_fee: Decimal | None = None
+    wage_split_pct: Decimal | None = None
+    option_to_buy: Decimal | None = None
 
 
 class OfferImproveRequest(BaseModel):
@@ -109,6 +137,14 @@ class OfferResponse(BaseModel):
     contract_years: int | None
     contract_end_date: date | None
     add_ons: dict
+    deal_type: DealType
+    loan_start: date | None = None
+    loan_end: date | None = None
+    loan_fee: Decimal | None = None
+    wage_split_pct: Decimal | None = None
+    option_to_buy: Decimal | None = None
+    obligation_to_buy: bool = False
+    recall_allowed: bool = False
     status: OfferStatus
     expires_at: datetime | None
     last_action_at: datetime
