@@ -66,7 +66,7 @@ function StandingFiguresTier({ myClub, squadCount, squadNote, windowStatus }: {
     : "Closed";
 
   return (
-    <div className="mb-[18px] grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+    <div className="mb-[18px] grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
       <FigureCard
         label="Transfer budget free"
         value={formatCurrency(transferFree)}

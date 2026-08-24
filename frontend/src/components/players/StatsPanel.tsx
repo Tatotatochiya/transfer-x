@@ -126,7 +126,7 @@ function CoreGrid({ s }: { s: PlayerStats }) {
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatBox label="Goals"   value={s.goals}       accent="emerald" />
         <StatBox label="Assists" value={s.assists}      accent="blue" />
         <StatBox label="Apps"    value={s.appearances}  accent="slate"

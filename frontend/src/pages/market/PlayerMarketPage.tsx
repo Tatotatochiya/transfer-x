@@ -311,7 +311,7 @@ export default function PlayerMarketPage() {
       </div>
 
       {isClub && myClub?.finance && (
-        <div className="mb-5 grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+        <div className="mb-5 grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
           <Card tier={2}>
             <p className="text-xs font-semibold text-text-secondary">Budget free</p>
             <p className="mt-1.5 text-[28px] font-bold text-text">{formatCurrency(Number(myClub.finance.transfer_remaining))}</p>
@@ -401,7 +401,7 @@ export default function PlayerMarketPage() {
           {data && data.items.length > 0 && (
             <>
               {view === "grid" && (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-4">
                   {players.map((player) => (
                     <PlayerCard
                       key={player.id}

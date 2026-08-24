@@ -364,7 +364,7 @@ export default function MyClubPage() {
                 />
               ) : (
                 <>
-                  <div className="mb-5 grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+                  <div className="mb-5 grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
                     <FigureCard label="Contracts < 12mo" value={String(contractsUnder12mo)} warn={contractsUnder12mo > 0} />
                     <FigureCard label="Listed" value={String(listedPlayerIds.size)} />
                     <FigureCard label="Average age" value={averageAge != null ? averageAge.toFixed(1) : "—"} />

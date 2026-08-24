@@ -191,7 +191,7 @@ export default function AgentDashboardPage() {
 
       <WaitingOnYouBand items={waitingItems} />
 
-      <div className="mb-[18px] grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+      <div className="mb-[18px] grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
         <FigureCard label="Active deals" value={String(pipeline?.deals_in_progress ?? 0)} />
         <FigureCard label="Completed (90d)" value={String(pipeline?.deals_completed_this_window ?? 0)} />
         <FigureCard

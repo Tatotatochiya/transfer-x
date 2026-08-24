@@ -98,7 +98,10 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
 
       {/* Footer row */}
       <div className="mt-2.5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
+        {/* min-w-0 + wrap: a flex item's default min-width is its content, so
+            without these the badge group pushes the actions out of the card
+            on a narrow screen instead of shrinking. */}
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           {/* Status */}
           {(player.current_club || player.world_team || player.team_name) ? (
             <Badge variant="info" className="!text-[13px] !px-1.5 !py-0">Contracted</Badge>
@@ -132,7 +135,7 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
           )}
         </div>
 
-        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
           {formScore != null && (
             <FormBadge score={formScore} trend={formTrend} size="sm" />
           )}
