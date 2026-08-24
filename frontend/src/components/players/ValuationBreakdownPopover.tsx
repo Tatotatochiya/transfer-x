@@ -73,7 +73,7 @@ export default function ValuationBreakdownPopover({ signal }: { signal: FairValu
             <p>{confidenceLine(signal)}</p>
           </div>
 
-          <p className="mt-3 border-t border-rule pt-2.5 text-[10px] leading-relaxed text-text-muted">
+          <p className="mt-3 border-t border-rule pt-2.5 text-[13px] leading-relaxed text-text-muted">
             Model {signal.model_version} · as of {formatDate(signal.as_of)} ·{" "}
             Model estimate — not an official valuation.
           </p>

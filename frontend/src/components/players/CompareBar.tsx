@@ -16,7 +16,7 @@ function PlayerSlot({ id, onRemove }: { id: string; onRemove: () => void }) {
       {player?.photo_url ? (
         <img src={player.photo_url} alt={player.name} className="h-6 w-6 shrink-0 rounded-full object-cover" />
       ) : (
-        <div className="h-6 w-6 shrink-0 rounded-full bg-white/15 flex items-center justify-center text-[10px] font-bold text-white/80">
+        <div className="h-6 w-6 shrink-0 rounded-full bg-white/15 flex items-center justify-center text-[11px] font-bold text-white/80">
           {player?.name[0]?.toUpperCase() ?? "?"}
         </div>
       )}

@@ -160,13 +160,13 @@ function CommentThread({
           />
           {participants.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span className="self-center text-[10px] text-text-muted">Mention:</span>
+              <span className="self-center text-[13px] text-text-muted">Mention:</span>
               {participants.map((p) => (
                 <button
                   key={p.user_id}
                   type="button"
                   onClick={() => toggleMention(p)}
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition-colors ${
+                  className={`rounded-full px-2 py-0.5 text-[13px] font-medium ring-1 transition-colors ${
                     mentions.some((m) => m.user_id === p.user_id)
                       ? "bg-accent-bg text-accent-active ring-accent"
                       : "bg-surface-inset text-text-muted ring-input-border hover:text-text"
@@ -252,7 +252,7 @@ function DocumentsTab({
                 <p className="flex items-center gap-1.5 truncate text-[13px] font-medium text-text">
                   {a.filename}
                   {a.audience !== "SHARED" && (
-                    <span className="shrink-0 rounded-full bg-warning-bg px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-warning-text">
+                    <span className="shrink-0 rounded-full bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-warning-text">
                       Private
                     </span>
                   )}

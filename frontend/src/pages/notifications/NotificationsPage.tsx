@@ -154,7 +154,7 @@ function NotificationRow({
           <span className={`text-xs font-semibold ${colour}`}>
             {TYPE_LABELS[notification.type] ?? notification.type}
           </span>
-          <span className="text-[10px] text-text-muted">
+          <span className="text-[13px] text-text-muted">
             {formatDateTime(notification.created_at)}
           </span>
         </div>

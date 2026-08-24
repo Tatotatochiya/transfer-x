@@ -1368,10 +1368,10 @@ export default function DealDetailPage() {
                       <div className="text-right shrink-0">
                         <p className="text-sm font-semibold text-text">{formatCurrency(c.amount)}</p>
                         {c.cap != null && (
-                          <p className="text-[10px] text-text-muted">cap {formatCurrency(c.cap)}</p>
+                          <p className="text-[13px] text-text-muted">cap {formatCurrency(c.cap)}</p>
                         )}
                       </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded font-semibold ${
                         c.status === "PAID"      ? "bg-success/15 text-success-text" :
                         c.status === "TRIGGERED" ? "bg-warning-fill/15 text-warning-text"    :
                                                     "bg-surface-inset text-text-muted"
@@ -1622,7 +1622,7 @@ export default function DealDetailPage() {
                       <p className="text-xs font-semibold text-text-secondary">
                         {note.author_club?.name ?? "System"}
                       </p>
-                      <p className="text-[10px] text-text-muted">
+                      <p className="text-[13px] text-text-muted">
                         {formatDate(note.created_at)}
                       </p>
                     </div>
@@ -1694,7 +1694,7 @@ function DealTimeline({ dealId }: { dealId: string }) {
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
                 <span className="text-sm font-medium text-text">{ev.description ?? ev.action}</span>
-                <span className="text-[10px] text-text-muted shrink-0">
+                <span className="text-[13px] text-text-muted shrink-0">
                   {new Date(ev.created_at).toLocaleString("en-GB", {
                     day: "numeric", month: "short", year: "numeric",
                     hour: "2-digit", minute: "2-digit",

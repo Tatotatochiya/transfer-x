@@ -71,8 +71,8 @@ export default function SentOffersPage() {
       return (
         <div className="flex flex-col gap-0.5">
           <Badge variant={outcome.variant}>{outcome.label}</Badge>
-          {o.status === "COUNTERED" && <span className="text-[10px] text-warning-text">Response needed</span>}
-          {outcome.note && <span className="text-[10px] text-text-muted">{outcome.note}</span>}
+          {o.status === "COUNTERED" && <span className="text-[13px] text-warning-text">Response needed</span>}
+          {outcome.note && <span className="text-[13px] text-text-muted">{outcome.note}</span>}
         </div>
       );
     } },
@@ -139,7 +139,7 @@ export default function SentOffersPage() {
                   <div className="mt-1 flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <Badge variant={outcome.variant}>{outcome.label}</Badge>
-                      {outcome.note && <span className="text-[10px] text-text-muted">{outcome.note}</span>}
+                      {outcome.note && <span className="text-[13px] text-text-muted">{outcome.note}</span>}
                     </div>
                     <span className="text-xs text-text-muted">{formatDate(o.last_action_at)}</span>
                   </div>

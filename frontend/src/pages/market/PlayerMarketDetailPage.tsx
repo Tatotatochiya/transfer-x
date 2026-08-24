@@ -53,7 +53,7 @@ function ValuationCard({ player, isAuthenticated }: { player: Player; isAuthenti
       <div className="flex items-center justify-between mb-2">
         <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Market Value</p>
         {player.valuation_source && (
-          <span className="text-[10px] font-semibold text-text-muted bg-surface px-1.5 py-0.5 rounded">
+          <span className="text-[13px] font-semibold text-text-muted bg-surface px-1.5 py-0.5 rounded">
             {SOURCE_LABEL[player.valuation_source] ?? player.valuation_source}
           </span>
         )}
@@ -73,7 +73,7 @@ function ValuationCard({ player, isAuthenticated }: { player: Player; isAuthenti
       )}
 
       {player.valuation_as_of && (
-        <p className="text-[10px] text-text-muted mt-1">
+        <p className="text-[13px] text-text-muted mt-1">
           As of {formatDate(player.valuation_as_of)}
         </p>
       )}
@@ -285,7 +285,7 @@ function ContractSidebar({
 
           {contract.notes && isMyPlayer && (
             <div className="mt-2 rounded-lg bg-surface px-3 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted mb-0.5">Notes</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted mb-0.5">Notes</p>
               <p className="text-xs text-text-secondary">{contract.notes}</p>
             </div>
           )}
@@ -467,16 +467,16 @@ function AgentRepresentationCard({ playerId }: { playerId: string }) {
           </label>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <p className="text-[10px] text-text-muted mb-1">Start date</p>
+              <p className="text-[13px] text-text-muted mb-1">Start date</p>
               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={INPUT} />
             </div>
             <div>
-              <p className="text-[10px] text-text-muted mb-1">End date</p>
+              <p className="text-[13px] text-text-muted mb-1">End date</p>
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={INPUT} />
             </div>
           </div>
           <div>
-            <p className="text-[10px] text-text-muted mb-1">Territory (optional)</p>
+            <p className="text-[13px] text-text-muted mb-1">Territory (optional)</p>
             <input
               type="text"
               value={territory}
@@ -770,7 +770,7 @@ export default function PlayerMarketDetailPage() {
                     {clubCrest ? (
                       <img src={clubCrest} alt={clubName} loading="lazy" className="h-4 w-4 object-contain" />
                     ) : (
-                      <span className="h-4 w-4 rounded-full bg-surface-inset flex items-center justify-center text-[9px] font-bold text-text-muted">
+                      <span className="h-4 w-4 rounded-full bg-surface-inset flex items-center justify-center text-[11px] font-bold text-text-muted">
                         {clubName[0]?.toUpperCase()}
                       </span>
                     )}

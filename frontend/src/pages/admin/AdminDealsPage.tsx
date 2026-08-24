@@ -115,7 +115,7 @@ function PipelineCard({
       <div className="flex items-center gap-2">
         <Badge variant={STATUS_VARIANT[deal.status] ?? "neutral"}>{deal.status.replace("_", " ")}</Badge>
         {isStale && (
-          <span className="rounded-full bg-warning-fill/15 px-2 py-0.5 text-[10px] font-semibold text-warning-text ring-1 ring-warning-fill/30">
+          <span className="rounded-full bg-warning-fill/15 px-2 py-0.5 text-[13px] font-semibold text-warning-text ring-1 ring-warning-fill/30">
             {ageDays}d stale
           </span>
         )}

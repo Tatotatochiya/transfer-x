@@ -75,7 +75,7 @@ function MessageBubble({
           </p>
         )}
         <p>{msg.body}</p>
-        <p className={`mt-1 text-right text-[10px] ${isMine ? "text-white/70" : "text-text-muted"}`}>
+        <p className={`mt-1 text-right text-[13px] ${isMine ? "text-white/70" : "text-text-muted"}`}>
           {formatDateTime(msg.created_at)}
         </p>
       </div>

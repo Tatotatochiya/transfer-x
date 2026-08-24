@@ -108,7 +108,7 @@ function TrendChart({ data }: { data: DailyCount[] }) {
           />
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-text-muted">
+      <div className="mt-1 flex justify-between text-[13px] text-text-muted">
         <span>{data[0]?.date}</span>
         <span>{data[data.length - 1]?.date}</span>
       </div>

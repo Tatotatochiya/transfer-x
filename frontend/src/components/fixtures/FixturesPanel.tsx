@@ -27,7 +27,7 @@ function StatusBadge({ short, long }: { short: string; long: string | null }) {
 
   if (isLive) {
     return (
-      <span className="flex items-center gap-1 rounded-full bg-danger/15 px-2 py-0.5 text-[10px] font-bold text-danger-text ring-1 ring-danger/30">
+      <span className="flex items-center gap-1 rounded-full bg-danger/15 px-2 py-0.5 text-[11px] font-bold text-danger-text ring-1 ring-danger/30">
         <span className="h-1.5 w-1.5 rounded-full bg-danger animate-pulse" />
         {short}
       </span>
@@ -35,14 +35,14 @@ function StatusBadge({ short, long }: { short: string; long: string | null }) {
   }
   if (isFinished) {
     return (
-      <span className="rounded-full bg-text-muted/15 px-2 py-0.5 text-[10px] font-bold text-text-muted">
+      <span className="rounded-full bg-text-muted/15 px-2 py-0.5 text-[11px] font-bold text-text-muted">
         {short}
       </span>
     );
   }
   // Not started / postponed / cancelled
   return (
-    <span className="rounded-full bg-surface-inset px-2 py-0.5 text-[10px] font-medium text-text-muted ring-1 ring-border">
+    <span className="rounded-full bg-surface-inset px-2 py-0.5 text-[11px] font-medium text-text-muted ring-1 ring-border">
       {short === "NS" ? "—" : short}
     </span>
   );
@@ -83,7 +83,7 @@ function TeamBadge({
       {crest ? (
         <img src={crest} alt={name} className="h-6 w-6 shrink-0 object-contain" />
       ) : (
-        <div className="h-6 w-6 shrink-0 rounded-full bg-surface-inset flex items-center justify-center text-[10px] font-bold text-text-muted">
+        <div className="h-6 w-6 shrink-0 rounded-full bg-surface-inset flex items-center justify-center text-[11px] font-bold text-text-muted">
           {name[0]?.toUpperCase()}
         </div>
       )}
@@ -160,7 +160,7 @@ function FixtureRow({
       </div>
 
       {fixture.venue_name && (
-        <p className="mt-2 text-center text-[10px] text-text-muted">{fixture.venue_name}</p>
+        <p className="mt-2 text-center text-[13px] text-text-muted">{fixture.venue_name}</p>
       )}
     </div>
   );

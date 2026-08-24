@@ -64,7 +64,7 @@ function TransferRow({ t }: { t: TransferActivity }) {
         {t.player?.position && (
           <Badge
             variant={positionVariant(t.player.position as PlayerPosition)}
-            className="ml-2 text-[10px]"
+            className="ml-2 text-[11px]"
           >
             {t.player.position}
           </Badge>
@@ -237,7 +237,7 @@ function TopTransferRow({ t, rank }: { t: TransferActivity; rank: number }) {
           <span className="text-sm text-text-muted">Unknown</span>
         )}
         {t.player?.position && (
-          <Badge variant={positionVariant(t.player.position as PlayerPosition)} className="ml-1.5 text-[10px]">
+          <Badge variant={positionVariant(t.player.position as PlayerPosition)} className="ml-1.5 text-[11px]">
             {t.player.position}
           </Badge>
         )}

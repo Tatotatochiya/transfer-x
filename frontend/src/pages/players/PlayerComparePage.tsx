@@ -82,7 +82,7 @@ function PlayerHeader({ player, form }: { player: PlayerDetail; form: PlayerForm
 function SectionRow({ label, colour }: { label: string; colour: string }) {
   return (
     <tr>
-      <td colSpan={3} className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider ${colour} bg-surface-inset`}>
+      <td colSpan={3} className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider ${colour} bg-surface-inset`}>
         {label}
       </td>
     </tr>

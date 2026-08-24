@@ -191,7 +191,7 @@ function ActivityFeed() {
             const icon = EVENT_ICONS[item.event_type] ?? "·";
             const content = (
               <div className="flex items-start gap-3 px-6 py-3">
-                <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${dot}`}>
+                <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${dot}`}>
                   {icon}
                 </div>
                 <div className="min-w-0 flex-1">

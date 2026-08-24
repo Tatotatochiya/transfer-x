@@ -66,7 +66,7 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 truncate text-base font-semibold text-text">
               {player.name}
-              {player.position && <Badge variant={positionVariant(player.position)} className="!text-[10px]">{player.position}</Badge>}
+              {player.position && <Badge variant={positionVariant(player.position)} className="!text-[11px]">{player.position}</Badge>}
             </p>
             <p className="truncate text-[13px] text-text-muted">
               <ClubLink id={player.current_club?.id} worldTeamId={player.world_team?.id} name={player.current_club?.name ?? player.world_team?.name ?? player.team_name} fallback="Free Agent" />
@@ -147,7 +147,7 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
           {player.open_to_offers && (
             <span className="flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 ring-1 ring-success/30" title="Open to offers">
               <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[9px] font-semibold text-success-text">Open</span>
+              <span className="text-[13px] font-semibold text-success-text">Open</span>
             </span>
           )}
         </div>

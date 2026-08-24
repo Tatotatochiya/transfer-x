@@ -65,7 +65,7 @@ export default function AdminLayout() {
 
       <aside className="hidden lg:block w-44 shrink-0">
         <div className="sticky top-6">
-          <p className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-widest text-text-muted">
+          <p className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-widest text-text-muted">
             Admin Panel
           </p>
           <nav className="space-y-0.5">
@@ -89,8 +89,8 @@ export default function AdminLayout() {
           </nav>
 
           <div className="mt-6 rounded-lg bg-warning-fill/10 px-3 py-2 ring-1 ring-warning-fill/20">
-            <p className="text-[10px] font-semibold text-warning-text">SUPERUSER MODE</p>
-            <p className="mt-0.5 text-[10px] text-text-muted">{user.email}</p>
+            <p className="text-[11px] font-semibold text-warning-text">SUPERUSER MODE</p>
+            <p className="mt-0.5 text-[13px] text-text-muted">{user.email}</p>
           </div>
         </div>
       </aside>

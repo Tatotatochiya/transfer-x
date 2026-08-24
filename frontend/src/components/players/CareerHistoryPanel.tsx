@@ -15,11 +15,11 @@ function TeamChip({
   if (!name) return <span className="text-text-muted text-xs">{label}: —</span>;
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[10px] text-text-muted uppercase tracking-wide">{label}</span>
+      <span className="text-[11px] text-text-muted uppercase tracking-wide">{label}</span>
       {crest ? (
         <img src={crest} alt={name} className="h-4 w-4 object-contain shrink-0" />
       ) : (
-        <div className="h-4 w-4 rounded-full bg-surface-inset flex items-center justify-center text-[9px] font-bold text-text-muted shrink-0">
+        <div className="h-4 w-4 rounded-full bg-surface-inset flex items-center justify-center text-[11px] font-bold text-text-muted shrink-0">
           {name[0]?.toUpperCase()}
         </div>
       )}
@@ -56,7 +56,7 @@ function TransferRow({ t }: { t: PlayerTransfer }) {
         </div>
         <div className="flex items-center gap-2">
           {t.transfer_type && (
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${typeCls}`}>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${typeCls}`}>
               {t.transfer_type}
             </span>
           )}

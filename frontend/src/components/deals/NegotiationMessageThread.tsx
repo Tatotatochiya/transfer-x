@@ -53,7 +53,7 @@ export default function NegotiationMessageThread({
 
   return (
     <div className="mt-3 border-t border-rule pt-3">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Messages</p>
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Messages</p>
 
       <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
         {isLoading ? (

@@ -39,7 +39,7 @@ export default function ClubLink({
       {crestUrl ? (
         <img src={crestUrl} alt="" loading="lazy" className="h-4 w-4 shrink-0 object-contain" />
       ) : (
-        <span className="h-4 w-4 shrink-0 rounded-full bg-surface-inset flex items-center justify-center text-[9px] font-bold text-text-muted">
+        <span className="h-4 w-4 shrink-0 rounded-full bg-surface-inset flex items-center justify-center text-[11px] font-bold text-text-muted">
           {name[0]?.toUpperCase()}
         </span>
       )}

@@ -31,7 +31,7 @@ function ScoreRing({ score }: { score: number }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-xl font-black text-text leading-none">{score}</span>
-          <span className="text-[9px] text-text-muted leading-none mt-0.5">/ 100</span>
+          <span className="text-[11px] text-text-muted leading-none mt-0.5">/ 100</span>
         </div>
       </div>
       <div>
@@ -102,7 +102,7 @@ export function PlayerFitCard({ playerId }: PlayerFitCardProps) {
           {/* Strengths */}
           {data.strengths.length > 0 && (
             <div className="px-4 py-3">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-success-text">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-success-text">
                 Strengths
               </p>
               <ul className="space-y-1.5">
@@ -119,7 +119,7 @@ export function PlayerFitCard({ playerId }: PlayerFitCardProps) {
           {/* Concerns */}
           {data.concerns.length > 0 && (
             <div className="px-4 py-3">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-warning-text">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-warning-text">
                 Concerns
               </p>
               <ul className="space-y-1.5">

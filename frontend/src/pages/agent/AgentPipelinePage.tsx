@@ -63,7 +63,7 @@ function DealCard({ item, stageKey }: { item: PipelineDealItem; stageKey: StageK
             )}
           </p>
           {item.action_required && (
-            <span className="shrink-0 rounded-full bg-danger/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-danger-text">
+            <span className="shrink-0 rounded-full bg-danger/20 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-danger-text">
               Action needed
             </span>
           )}
@@ -77,7 +77,7 @@ function DealCard({ item, stageKey }: { item: PipelineDealItem; stageKey: StageK
           </p>
         )}
         {item.commission_amount != null && (
-          <p className="text-[10px] text-success-text tabular-nums mt-0.5">
+          <p className="text-[13px] text-success-text tabular-nums mt-0.5">
             Commission: {formatCurrency(item.commission_amount)}
           </p>
         )}
@@ -137,7 +137,7 @@ function CommissionRow({
         {commission.window_label ?? "—"}
       </td>
       <td className="px-4 py-3">
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${COMMISSION_STATUS_COLORS[commission.status]}`}>
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${COMMISSION_STATUS_COLORS[commission.status]}`}>
           {commission.status}
         </span>
       </td>
@@ -146,7 +146,7 @@ function CommissionRow({
           <button
             onClick={() => onAdvance(commission.id, next)}
             disabled={advancing}
-            className="rounded-lg bg-surface-inset px-2.5 py-1 text-[10px] font-medium text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-40"
+            className="rounded-lg bg-surface-inset px-2.5 py-1 text-[13px] font-medium text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-40"
           >
             {NEXT_STATUS_LABEL[commission.status]}
           </button>
@@ -231,13 +231,13 @@ function CommissionsTab() {
           <table className="w-full text-sm">
             <thead className="bg-surface-header">
               <tr>
-                <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-text-muted">Deal</th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-text-muted">Amount</th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-text-muted">%</th>
-                <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Payer</th>
-                <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Window</th>
-                <th className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Status</th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-text-muted">Action</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">Deal</th>
+                <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Amount</th>
+                <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">%</th>
+                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Payer</th>
+                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Window</th>
+                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Status</th>
+                <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -379,7 +379,7 @@ export default function AgentPipelinePage() {
                       {label}
                     </p>
                     {colItems.length > 0 && (
-                      <span className="rounded-full bg-text-muted/15 px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-text-muted">
+                      <span className="rounded-full bg-text-muted/15 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-text-muted">
                         {colItems.length}
                       </span>
                     )}
@@ -387,7 +387,7 @@ export default function AgentPipelinePage() {
                   <div className="space-y-2">
                     {colItems.length === 0 ? (
                       <div className="rounded-xl border border-dashed border-border px-3 py-5 text-center">
-                        <p className="text-[10px] text-text-muted">—</p>
+                        <p className="text-[13px] text-text-muted">—</p>
                       </div>
                     ) : (
                       colItems.map((item) => (
@@ -422,7 +422,7 @@ export default function AgentPipelinePage() {
                         <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" title="New messages" />
                       )}
                       {item.action_required && (
-                        <span className="shrink-0 rounded-full bg-danger/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-danger-text">
+                        <span className="shrink-0 rounded-full bg-danger/20 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-danger-text">
                           Action needed
                         </span>
                       )}

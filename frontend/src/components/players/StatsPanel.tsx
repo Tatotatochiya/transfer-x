@@ -53,8 +53,8 @@ function StatBox({
       <span className={`text-2xl font-bold tabular-nums leading-none ${cls.value}`}>
         {value != null && value !== "" ? value : <span className="text-text-muted">—</span>}
       </span>
-      {sub && <span className="mt-0.5 text-[10px] text-text-muted">{sub}</span>}
-      <span className="mt-1 text-[11px] text-text-muted text-center leading-tight">{label}</span>
+      {sub && <span className="mt-0.5 text-[13px] text-text-muted">{sub}</span>}
+      <span className="mt-1 text-[13px] text-text-muted text-center leading-tight">{label}</span>
     </div>
   );
 }
@@ -152,7 +152,7 @@ function CoreGrid({ s }: { s: PlayerStats }) {
             </div>
           )}
           {starterPct != null && (
-            <div className="mt-1 flex justify-between text-[10px] text-text-muted">
+            <div className="mt-1 flex justify-between text-[13px] text-text-muted">
               <span>Starter {starterPct}%</span>
               <span>Sub {100 - starterPct}%</span>
             </div>
@@ -323,7 +323,7 @@ export default function StatsPanel({ stats, form, position }: Props) {
               {primary.league_id ? (LEAGUE_NAMES[primary.league_id] ?? primary.team_name ?? "—") : (primary.team_name ?? "—")}
             </span>
             {primary.position_played && (
-              <span className="rounded-full bg-surface-inset px-2 py-0.5 text-[10px] font-bold text-text-secondary">
+              <span className="rounded-full bg-surface-inset px-2 py-0.5 text-[11px] font-bold text-text-secondary">
                 {primary.position_played}
               </span>
             )}

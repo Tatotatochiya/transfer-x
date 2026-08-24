@@ -249,10 +249,10 @@ export default function AgentClientPage() {
                     <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${ALERT_SEVERITY_DOT[alert.severity]}`} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
                           {ALERT_TYPE_LABELS[alert.alert_type]}
                         </span>
-                        <span className="shrink-0 text-[10px] text-text-muted">{formatDateTime(alert.created_at)}</span>
+                        <span className="shrink-0 text-[13px] text-text-muted">{formatDateTime(alert.created_at)}</span>
                       </div>
                       <p className="mt-0.5 text-xs text-text-secondary">{alert.message}</p>
                     </div>

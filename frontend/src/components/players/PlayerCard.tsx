@@ -71,7 +71,7 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
               {player.name}
             </p>
             {player.position && (
-              <Badge variant={positionVariant(player.position)} className="shrink-0 !text-[10px] !px-1.5 !py-0">
+              <Badge variant={positionVariant(player.position)} className="shrink-0 !text-[11px] !px-1.5 !py-0">
                 {player.position}
               </Badge>
             )}
@@ -101,16 +101,16 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
         <div className="flex items-center gap-1.5">
           {/* Status */}
           {(player.current_club || player.world_team || player.team_name) ? (
-            <Badge variant="info" className="!text-[10px] !px-1.5 !py-0">Contracted</Badge>
+            <Badge variant="info" className="!text-[13px] !px-1.5 !py-0">Contracted</Badge>
           ) : (
-            <Badge variant={playerStatusVariant(player.status)} className="!text-[10px] !px-1.5 !py-0">
+            <Badge variant={playerStatusVariant(player.status)} className="!text-[13px] !px-1.5 !py-0">
               {playerStatusLabel(player.status)}
             </Badge>
           )}
 
           {/* Market value chip */}
           {player.market_value != null && (
-            <span className="text-[10px] font-semibold text-accent tabular-nums">
+            <span className="text-[13px] font-semibold text-accent tabular-nums">
               {new Intl.NumberFormat("en-GB", {
                 style: "currency",
                 currency: player.market_value_currency ?? "EUR",
@@ -127,7 +127,7 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
           {player.open_to_offers && (
             <span className="flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 ring-1 ring-success/30">
               <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[9px] font-semibold text-success-text">Open</span>
+              <span className="text-[13px] font-semibold text-success-text">Open</span>
             </span>
           )}
         </div>

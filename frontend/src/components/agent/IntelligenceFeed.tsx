@@ -26,7 +26,7 @@ function AlertRow({ alert }: { alert: ClientAlert }) {
         <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${ALERT_SEVERITY_DOT[alert.severity]}`} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
               {ALERT_TYPE_LABELS[alert.alert_type]}
             </span>
             <span className="shrink-0 text-[11px] text-text-muted">{formatDateTime(alert.created_at)}</span>
@@ -69,7 +69,7 @@ export default function IntelligenceFeed() {
           Client Intelligence
         </p>
         {unreadCount > 0 && (
-          <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent">
+          <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[13px] font-bold text-accent">
             {unreadCount} new
           </span>
         )}

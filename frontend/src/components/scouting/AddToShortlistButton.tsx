@@ -77,7 +77,7 @@ export default function AddToShortlistButton({ playerId, size = "default" }: Pro
 
       {open && (
         <div className="absolute right-0 top-full z-50 mt-1.5 w-52 rounded-xl bg-surface py-1.5 shadow-xl ring-1 ring-border">
-          <p className="px-3 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+          <p className="px-3 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
             Add to shortlist
           </p>
 

@@ -25,11 +25,11 @@ function AssessmentRow({ a }: { a: ShortlistPlayerAssessment }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-text">{a.name}</span>
           {a.addresses_gap && (
-            <span className="rounded-md bg-role-agent-text/10 px-1.5 py-0.5 text-[10px] font-semibold text-role-agent-text ring-1 ring-role-agent-text/20">
+            <span className="rounded-md bg-role-agent-text/10 px-1.5 py-0.5 text-[13px] font-semibold text-role-agent-text ring-1 ring-role-agent-text/20">
               fills gap
             </span>
           )}
-          <span className="text-[10px] text-text-muted">{p.label}</span>
+          <span className="text-[13px] text-text-muted">{p.label}</span>
         </div>
         <p className="mt-0.5 text-xs text-text-muted leading-snug">{a.reason}</p>
       </div>
@@ -114,7 +114,7 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
             <div className="flex flex-wrap gap-6 px-4 py-3">
               {data.top_picks.length > 0 && (
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-role-agent-text">
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-widest text-role-agent-text">
                     Top picks
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -131,7 +131,7 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
               )}
               {data.missing_positions.length > 0 && (
                 <div>
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-warning-text">
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-widest text-warning-text">
                     Still needed
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -152,7 +152,7 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
           {/* Per-player assessments */}
           {data.player_assessments.length > 0 && (
             <div>
-              <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-text-muted">
+              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-widest text-text-muted">
                 Player assessments
               </p>
               <ul className="divide-y divide-rule-faint">

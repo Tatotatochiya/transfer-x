@@ -169,7 +169,7 @@ function NotificationNavItem() {
           >
             <Icon name="bell" className="h-4 w-4" />
             {count > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger px-1 text-[9px] font-bold text-white leading-none">
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger px-1 text-[11px] font-bold text-white leading-none">
                 {count > 99 ? "99+" : count}
               </span>
             )}
@@ -212,7 +212,7 @@ function SidebarLink({ item, waiting = 0 }: { item: NavItem; waiting?: number })
               "red in the nav" keeps meaning exactly one thing. */}
           {waiting > 0 && (
             <span
-              className="ml-auto flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger px-1 text-[9px] font-bold text-white leading-none"
+              className="ml-auto flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger px-1 text-[11px] font-bold text-white leading-none"
               aria-label={`${waiting} waiting on you`}
             >
               {waiting > 99 ? "99+" : waiting}
@@ -351,7 +351,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                     </span>
                   )}
                   {identity.isSuperuser && (
-                    <span className="rounded px-1.5 py-px text-[9px] font-bold uppercase tracking-wider bg-danger/15 text-danger-text">
+                    <span className="rounded px-1.5 py-px text-[11px] font-bold uppercase tracking-wider bg-danger/15 text-danger-text">
                       Staff
                     </span>
                   )}

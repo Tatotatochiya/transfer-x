@@ -80,7 +80,7 @@ export default function GlobalSearch() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
         </svg>
         <span className="hidden sm:inline">Search…</span>
-        <kbd className="hidden sm:inline rounded bg-surface-inset px-1.5 py-0.5 text-[10px] font-mono text-text-muted">⌘K</kbd>
+        <kbd className="hidden sm:inline rounded bg-surface-inset px-1.5 py-0.5 text-[11px] font-mono text-text-muted">⌘K</kbd>
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} size="xl" className="overflow-hidden">
@@ -102,7 +102,7 @@ export default function GlobalSearch() {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
             </svg>
           )}
-          <kbd className="rounded bg-surface-inset px-1.5 py-0.5 text-[10px] font-mono text-text-muted">Esc</kbd>
+          <kbd className="rounded bg-surface-inset px-1.5 py-0.5 text-[11px] font-mono text-text-muted">Esc</kbd>
         </div>
 
         {/* Results */}
@@ -118,7 +118,7 @@ export default function GlobalSearch() {
           {/* Players */}
           {(data?.players.length ?? 0) > 0 && (
             <div>
-              <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Players</p>
+              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Players</p>
               {data!.players.map((p) => (
                 <button
                   key={p.id}
@@ -139,7 +139,7 @@ export default function GlobalSearch() {
                     </p>
                   </div>
                   {p.position && (
-                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${positionColour[p.position] ?? "bg-surface-inset text-text-muted"}`}>
+                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold ${positionColour[p.position] ?? "bg-surface-inset text-text-muted"}`}>
                       {p.position}
                     </span>
                   )}
@@ -151,7 +151,7 @@ export default function GlobalSearch() {
           {/* Clubs */}
           {(data?.clubs.length ?? 0) > 0 && (
             <div>
-              <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Clubs</p>
+              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Clubs</p>
               {data!.clubs.map((c) => (
                 <button
                   key={c.id}

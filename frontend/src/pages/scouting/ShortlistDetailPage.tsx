@@ -144,7 +144,7 @@ function AddPlayerForm({
                     </p>
                   </div>
                   {p.position && (
-                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${positionColour[p.position] ?? "bg-surface-inset text-text-muted"}`}>
+                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold ${positionColour[p.position] ?? "bg-surface-inset text-text-muted"}`}>
                       {p.position}
                     </span>
                   )}
