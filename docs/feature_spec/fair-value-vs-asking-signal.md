@@ -379,9 +379,9 @@ All endpoints require authentication. **`user_type == PLAYER` receives 403 on al
 
 **Sale detail embed** — `GET /sales/{id}` response gains `fair_value_signal: {…} | null`:
 
-- `FIXED_PRICE` with `asking_price`: full signal **with** divergence vs `asking_price`.
-- `OPEN_TO_OFFERS` with `asking_price`: full signal **with** divergence vs `asking_price`. *(Amended 2026-08-24 — originally "without divergence". Reversed with the product owner: that exclusion was semantic, not confidentiality, and an `OPEN_TO_OFFERS` asking price is already published on the listing exactly as a fixed price is. D7's exclusion is narrower than it was being read — it names auctions, whose seller-side numbers are the hidden ones.)*
-- `AUCTION`: signal **without** divergence (D7 — never against `reserve_price` or any bid figure). The only excluded listing type.
+- `FIXED_PRICE` or `OPEN_TO_OFFERS` **with** `asking_price` set: full signal **with** divergence vs `asking_price`. *(`OPEN_TO_OFFERS` amended 2026-08-24 — originally "without divergence". Reversed with the product owner: that exclusion was semantic, not confidentiality, and an `OPEN_TO_OFFERS` asking price is already published on the listing exactly as a fixed price is. D7's exclusion is narrower than it was being read — it names auctions, whose seller-side numbers are the hidden ones.)*
+- `FIXED_PRICE` or `OPEN_TO_OFFERS` **without** `asking_price` set: full signal **with** divergence vs the legacy `Player.market_value`, same fallback as the batch above. *(Added 2026-08-24 — `asking_price` is optional at creation for every sale type; nothing before this required a club to set one outside `AUCTION`'s deadline requirement, so a listing with none set was a reachable gap, not a hypothetical: this same player's row in the market list could already show a divergence via `market_value` while his own sale page showed none.)* No divergence at all when `market_value` is also unset.
+- `AUCTION`: signal **without** divergence, regardless of `market_value` (D7 — never against `reserve_price` or any bid figure). The only excluded listing type.
 - `null` when: player ineligible, **or the viewer is a PLAYER account** (field-scope it exactly like commission fields are scoped out of `_build_deal_response`).
 
 **Deal room** — no backend change: the frontend calls the single GET with `reference_price = <agreed fee>` for club/agent/staff viewers only.

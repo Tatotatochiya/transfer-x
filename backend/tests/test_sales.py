@@ -857,6 +857,93 @@ async def test_auction_sale_embeds_signal_without_divergence(
     assert "7000000" not in str(signal)
 
 
+async def _set_market_value(db, player_id: str, value: int) -> None:
+    import uuid as uuid_mod
+
+    from sqlalchemy import select
+
+    from app.players.models import Player
+
+    row = (
+        await db.execute(select(Player).where(Player.id == uuid_mod.UUID(player_id)))
+    ).scalar_one()
+    row.market_value = Decimal(str(value))
+    await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_fixed_price_sale_falls_back_to_market_value_when_asking_unset(
+    client: AsyncClient, seller: dict, buyer: dict, db
+):
+    """`asking_price` is optional at creation for every sale type — CreateSalePage
+    never requires it outside AUCTION's deadline — so a FIXED_PRICE listing with
+    none set is a reachable state, not a hypothetical. Same fallback order as
+    the batch (`get_reference_prices`): without this, a player's row in the
+    market list could show a divergence via market_value while this same
+    player's own sale page showed none at all."""
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    await _seed_valuation(client, db, player["id"])
+    await _set_market_value(db, player["id"], 80_000_000)
+    sale = await _create_sale(
+        client, sel_headers, player["id"], sale_type="FIXED_PRICE", asking_price=None,
+    )
+
+    data = (await client.get(f"/sales/{sale['id']}", headers=_auth_headers(buyer))).json()
+    signal = data["fair_value_signal"]
+    assert signal is not None
+    assert signal["divergence"] is not None
+    assert float(signal["divergence"]["reference_price"]) == 80_000_000
+    assert signal["divergence"]["band"] == "ABOVE"
+
+
+@pytest.mark.asyncio
+async def test_open_to_offers_sale_falls_back_to_market_value_when_asking_unset(
+    client: AsyncClient, seller: dict, buyer: dict, db
+):
+    """Same fallback as FIXED_PRICE above — the rule is "any non-auction
+    listing", not one sale type, matching the batch and D7's own scope."""
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    await _seed_valuation(client, db, player["id"])
+    await _set_market_value(db, player["id"], 40_000_000)
+    sale = await _create_sale(
+        client, sel_headers, player["id"], sale_type="OPEN_TO_OFFERS", asking_price=None,
+    )
+
+    data = (await client.get(f"/sales/{sale['id']}", headers=_auth_headers(buyer))).json()
+    signal = data["fair_value_signal"]
+    assert signal is not None
+    assert signal["divergence"] is not None
+    assert float(signal["divergence"]["reference_price"]) == 40_000_000
+
+
+@pytest.mark.asyncio
+async def test_auction_sale_never_falls_back_to_market_value(
+    client: AsyncClient, seller: dict, buyer: dict, db
+):
+    """D7 is a hard exclusion, not just "no asking_price set" — an auction must
+    stay divergence-free even when the player has a market_value that would
+    otherwise satisfy the same fallback FIXED_PRICE/OPEN_TO_OFFERS just got."""
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    await _seed_valuation(client, db, player["id"])
+    await _set_market_value(db, player["id"], 80_000_000)
+
+    resp = await client.post(
+        "/sales",
+        json={"player_id": player["id"], "sale_type": "AUCTION", "asking_price": 5_000_000},
+        headers=sel_headers,
+    )
+    assert resp.status_code == 201, resp.text
+    sale_id = resp.json()["id"]
+
+    data = (await client.get(f"/sales/{sale_id}", headers=_auth_headers(buyer))).json()
+    signal = data["fair_value_signal"]
+    assert signal is not None
+    assert signal["divergence"] is None
+
+
 @pytest.mark.asyncio
 async def test_sale_embed_null_for_player_account_and_anonymous(
     client: AsyncClient, seller: dict, db

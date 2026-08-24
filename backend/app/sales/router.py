@@ -148,17 +148,27 @@ async def get_sale(
 
     # TRA-91: fair-value signal embed. Null for player-account and anonymous
     # viewers (D6 — the /valuation endpoints require the same). Divergence vs
-    # asking_price on any listing type that publishes one; never vs reserve/bids
-    # on auctions (D7), whose only seller-side numbers are both hidden.
+    # asking_price on any listing type that publishes one, falling back to the
+    # legacy Player.market_value when this specific listing didn't set one —
+    # asking_price is optional at creation for every type (CreateSalePage never
+    # requires it outside AUCTION's deadline), so a FIXED_PRICE or OPEN_TO_OFFERS
+    # sale with none set is a reachable state, not a hypothetical. Same fallback
+    # order as the batch (`get_reference_prices`), so a player's row in the
+    # market list and this same player's sale page can't disagree. Never vs
+    # reserve/bids on auctions (D7), whose only seller-side numbers are hidden.
     from app.auth.models import UserType
     from app.valuation import service as valuation_service
 
     if current_user is not None and current_user.user_type != UserType.PLAYER:
         valuation_row = await valuation_service.get_latest_valuation(db, sale.player_id)
         if valuation_row is not None:
-            reference = (
-                None if sale.sale_type == SaleType.AUCTION else sale.asking_price
-            )
+            reference = None
+            if sale.sale_type != SaleType.AUCTION:
+                reference = (
+                    sale.asking_price
+                    if sale.asking_price is not None
+                    else sale.player.market_value
+                )
             resp.fair_value_signal = valuation_service.build_valuation_response(
                 valuation_row, reference_price=reference
             )
