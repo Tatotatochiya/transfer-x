@@ -521,7 +521,130 @@ async def test_batch_returns_only_eligible_and_visible(
     assert resp.status_code == 200, resp.text
     valuations = resp.json()["valuations"]
     assert set(valuations.keys()) == {eligible["id"]}
-    assert valuations[eligible["id"]]["divergence"] is None  # batch never carries divergence
+    # No open listing and no market_value, so there is nothing to diverge against.
+    assert valuations[eligible["id"]]["divergence"] is None
+
+
+async def _valued_player(client: AsyncClient, headers: dict, admin: dict, db, name: str) -> dict:
+    player = await _create_player(client, headers, name=name)
+    await _add_stats(db, player["id"])
+    await _recompute(client, admin, player["id"])
+    return player
+
+
+async def _list_for_sale(db, client, headers, player_id: str, sale_type, asking) -> None:
+    from decimal import Decimal
+
+    from app.sales.models import Sale, SaleStatus
+
+    club_id = (await client.get("/clubs/me", headers=headers)).json()["id"]
+    db.add(
+        Sale(
+            player_id=uuid.UUID(player_id),
+            seller_club_id=uuid.UUID(club_id),
+            sale_type=sale_type,
+            asking_price=Decimal(str(asking)),
+            min_increment=Decimal("500000"),
+            status=SaleStatus.OPEN,
+        )
+    )
+    await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_batch_diverges_against_open_fixed_price_asking(
+    client: AsyncClient, club: dict, admin: dict, db
+):
+    """The batch had no reference price at all, so `divergence` was always null
+    and the market list's value sort and under-fair-value counter read empty."""
+    from app.sales.models import SaleType
+
+    headers = _auth_headers(club)
+    player = await _valued_player(client, headers, admin, db, "Listed Player")
+    fair_value = float(
+        (await client.get(f"/valuation/players/{player['id']}", headers=headers)).json()[
+            "fair_value"
+        ]
+    )
+    asking = fair_value * 1.5  # decisively WELL_ABOVE
+
+    await _list_for_sale(db, client, headers, player["id"], SaleType.FIXED_PRICE, asking)
+
+    resp = await client.get(f"/valuation/players?ids={player['id']}", headers=headers)
+    assert resp.status_code == 200, resp.text
+    divergence = resp.json()["valuations"][player["id"]]["divergence"]
+    assert divergence is not None
+    assert float(divergence["reference_price"]) == pytest.approx(asking, rel=1e-6)
+    assert divergence["pct"] == pytest.approx(50.0, abs=0.2)
+    assert divergence["band"] == DivergenceBand.WELL_ABOVE.value
+
+
+@pytest.mark.asyncio
+async def test_batch_diverges_against_open_to_offers_asking(
+    client: AsyncClient, club: dict, admin: dict, db
+):
+    """An OPEN_TO_OFFERS asking price is published on the listing like a fixed
+    price is, so it is a valid reference. AUCTION is the only exclusion (D7)."""
+    from app.sales.models import SaleType
+
+    headers = _auth_headers(club)
+    player = await _valued_player(client, headers, admin, db, "Open To Offers Player")
+    fair_value = float(
+        (await client.get(f"/valuation/players/{player['id']}", headers=headers)).json()[
+            "fair_value"
+        ]
+    )
+    asking = fair_value * 0.6  # decisively WELL_BELOW
+
+    await _list_for_sale(db, client, headers, player["id"], SaleType.OPEN_TO_OFFERS, asking)
+
+    resp = await client.get(f"/valuation/players?ids={player['id']}", headers=headers)
+    divergence = resp.json()["valuations"][player["id"]]["divergence"]
+    assert divergence is not None
+    assert float(divergence["reference_price"]) == pytest.approx(asking, rel=1e-6)
+    assert divergence["band"] == DivergenceBand.WELL_BELOW.value
+
+
+@pytest.mark.asyncio
+async def test_batch_never_diverges_against_an_auction(
+    client: AsyncClient, club: dict, admin: dict, db
+):
+    """D7: an auction's starting price is not a reference price — the one listing
+    type excluded. The batch must not surface a divergence the sale detail
+    endpoint deliberately withholds."""
+    from app.sales.models import SaleType
+
+    headers = _auth_headers(club)
+    player = await _valued_player(client, headers, admin, db, "Auctioned Player")
+    await _list_for_sale(db, client, headers, player["id"], SaleType.AUCTION, 90_000_000)
+
+    resp = await client.get(f"/valuation/players?ids={player['id']}", headers=headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["valuations"][player["id"]]["divergence"] is None
+
+
+@pytest.mark.asyncio
+async def test_batch_falls_back_to_market_value(
+    client: AsyncClient, club: dict, admin: dict, db
+):
+    """No listing: the legacy `Player.market_value` is the reference. It is 0%
+    populated in this build, which is why the fixture has to set it by hand."""
+    from decimal import Decimal
+
+    from app.players.models import Player
+
+    headers = _auth_headers(club)
+    player = await _valued_player(client, headers, admin, db, "Unlisted Player")
+    row = (
+        await db.execute(select(Player).where(Player.id == uuid.UUID(player["id"])))
+    ).scalar_one()
+    row.market_value = Decimal("40000000")
+    await db.commit()
+
+    resp = await client.get(f"/valuation/players?ids={player['id']}", headers=headers)
+    divergence = resp.json()["valuations"][player["id"]]["divergence"]
+    assert divergence is not None
+    assert float(divergence["reference_price"]) == pytest.approx(40_000_000)
 
 
 @pytest.mark.asyncio

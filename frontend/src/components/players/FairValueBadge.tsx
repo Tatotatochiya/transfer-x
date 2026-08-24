@@ -12,7 +12,7 @@ interface Props {
 }
 
 // D5 copy rules: only these phrases, always "model" — never a verdict.
-const BAND_PHRASE: Record<ValuationBand, string> = {
+export const BAND_PHRASE: Record<ValuationBand, string> = {
   WELL_BELOW: "Well below model",
   BELOW: "Below model",
   IN_LINE: "In line with model",
@@ -20,7 +20,7 @@ const BAND_PHRASE: Record<ValuationBand, string> = {
   WELL_ABOVE: "Well above model",
 };
 
-const BAND_COLOUR: Record<ValuationBand, string> = {
+export const BAND_COLOUR: Record<ValuationBand, string> = {
   WELL_BELOW: "text-success-text",
   BELOW: "text-success-text-alt",
   IN_LINE: "text-text-muted",

@@ -371,15 +371,17 @@ All endpoints require authentication. **`user_type == PLAYER` receives 403 on al
 - 404 when the player has no valuation (ineligible) or is not visible to the caller.
 - `breakdown` lists every weighted feature, ordered by contribution descending — this drives the UI popover.
 
-**`GET /valuation/players?ids=<uuid,uuid,…>`** (cap 50, else 422) → 200 with `{"valuations": {"<player_id>": {…same shape, no divergence…}}}`. Ineligible/invisible players are silently omitted — the market grid must not error because one card lacks data.
+**`GET /valuation/players?ids=<uuid,uuid,…>`** (cap 50, else 422) → 200 with `{"valuations": {"<player_id>": {…same shape…}}}`. Ineligible/invisible players are silently omitted — the market grid must not error because one card lacks data.
+
+**Amended 2026-08-24 — the batch does carry divergence.** As originally specified it never did, because a batch cannot take a `reference_price` query arg. But `PlayerMarketPage` was built to read `divergence` from it in three places, so its value sort, its under-fair-value counter and the whole "asking vs fair value" cell in `PlayerListRow` were permanently empty. The server now resolves a reference price per player instead, under exactly the per-sale-type rule the detail embed below applies: an **open non-auction listing's** `asking_price`, else the legacy `Player.market_value`, else none (and so no divergence). D6 and D7 are untouched — auctions are excluded by the same rule, and a batch must never surface what the detail endpoint withholds. One extra query per batch, never one per player.
 
 **`POST /valuation/players/{player_id}/recompute`** — staff only (`get_current_superuser`), synchronously recomputes and returns the fresh valuation. Log at INFO; no deal-audit event (the audit log is deal-scoped; `inputs_json` + `computed_at` + `model_version` already give the required trail — this satisfies the engineering-standards auditability question deliberately, not by omission).
 
 **Sale detail embed** — `GET /sales/{id}` response gains `fair_value_signal: {…} | null`:
 
 - `FIXED_PRICE` with `asking_price`: full signal **with** divergence vs `asking_price`.
-- `AUCTION`: signal **without** divergence (D7 — never against `reserve_price` or any bid figure).
-- `OPEN_TO_OFFERS`: signal without divergence.
+- `OPEN_TO_OFFERS` with `asking_price`: full signal **with** divergence vs `asking_price`. *(Amended 2026-08-24 — originally "without divergence". Reversed with the product owner: that exclusion was semantic, not confidentiality, and an `OPEN_TO_OFFERS` asking price is already published on the listing exactly as a fixed price is. D7's exclusion is narrower than it was being read — it names auctions, whose seller-side numbers are the hidden ones.)*
+- `AUCTION`: signal **without** divergence (D7 — never against `reserve_price` or any bid figure). The only excluded listing type.
 - `null` when: player ineligible, **or the viewer is a PLAYER account** (field-scope it exactly like commission fields are scoped out of `_build_deal_response`).
 
 **Deal room** — no backend change: the frontend calls the single GET with `reference_price = <agreed fee>` for club/agent/staff viewers only.
@@ -421,7 +423,7 @@ House design system: dark theme (`bg-slate-950` body, `bg-slate-900` cards), eme
 |---|---|
 | `PlayerCard` (market grid) | Compact badge row when a signal exists for that player. Grid pages fetch via the **batch endpoint** (one call per page of cards, not per card). |
 | `PlayerMarketDetailPage` | Full strip near the valuation/market-value area; fair value + range only (no reference price on a profile). |
-| `SaleDetailPage` | Full strip from the embedded `fair_value_signal`; divergence appears only for `FIXED_PRICE` (D7). |
+| `SaleDetailPage` | Full strip from the embedded `fair_value_signal`; divergence appears for `FIXED_PRICE` and `OPEN_TO_OFFERS`, never for `AUCTION` (D7). |
 | `DealDetailPage` (deal room) | One line in/near the Terms card: full strip with `reference_price = agreed fee`, `referenceLabel="Agreed fee"`. Rendered only for club/agent/staff identities (server 403s player accounts anyway — the UI simply must not fire the call for a player identity, using the existing `useIdentity` hook). |
 
 ### States

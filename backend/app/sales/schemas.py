@@ -66,7 +66,8 @@ class SaleResponse(BaseModel):
     reserve_met: bool = False
     # TRA-91 fair-value signal — populated on the detail endpoint only; null for
     # player-account/anonymous viewers and ineligible players (D6). Divergence
-    # only for FIXED_PRICE (D7 — never against reserve_price or any bid figure).
+    # on any listing that publishes an asking price, never on an AUCTION
+    # (D7 — never against reserve_price or any bid figure).
     fair_value_signal: ValuationResponse | None = None
     # B1
     whose_move: WhoseMove = WhoseMove.NEITHER

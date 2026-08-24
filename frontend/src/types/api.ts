@@ -453,7 +453,8 @@ export interface Sale {
   minimum_next_bid: number | null;
   reserve_met: boolean;
   // TRA-91 fair-value signal — null for player-account/anonymous viewers and
-  // ineligible players; divergence only present on FIXED_PRICE listings
+  // ineligible players; divergence present on FIXED_PRICE and OPEN_TO_OFFERS,
+  // never on AUCTION (D7)
   fair_value_signal?: FairValueSignal | null;
   // Detail endpoint only, and only once the listing is no longer OPEN — explains
   // what resolved it. Null when nothing did (withdrawn, expired unsold).

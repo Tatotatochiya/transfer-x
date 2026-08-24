@@ -66,12 +66,20 @@ async def batch_valuations(
         return ValuationBatchResponse(valuations={})
 
     result = await db.execute(select(Player).where(Player.id.in_(player_ids)))
-    visible_ids = [p.id for p in result.scalars().all() if _is_visible(p, current_user)]
+    visible = [p for p in result.scalars().all() if _is_visible(p, current_user)]
 
-    rows = await service.get_latest_valuations(db, visible_ids)
+    rows = await service.get_latest_valuations(db, [p.id for p in visible])
+    # Without a reference price `build_valuation_response` returns no divergence
+    # at all, which is what every batch consumer was silently getting: the market
+    # list's "best value first" sort and its under-fair-value counter both read
+    # `divergence` and both were dead. One extra query for the whole page, never
+    # one per row.
+    references = await service.get_reference_prices(db, visible)
     return ValuationBatchResponse(
         valuations={
-            str(player_id): service.build_valuation_response(row)
+            str(player_id): service.build_valuation_response(
+                row, reference_price=references.get(player_id)
+            )
             for player_id, row in rows.items()
         }
     )

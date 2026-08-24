@@ -805,6 +805,29 @@ async def test_fixed_price_sale_embeds_signal_with_divergence(
 
 
 @pytest.mark.asyncio
+async def test_open_to_offers_sale_embeds_signal_with_divergence(
+    client: AsyncClient, seller: dict, buyer: dict, db
+):
+    """An OPEN_TO_OFFERS asking price is seller-stated and already public on the
+    listing, so it is a valid reference. Only AUCTION is excluded (D7), whose
+    seller-side numbers — reserve and bids — are the hidden ones."""
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    await _seed_valuation(client, db, player["id"])
+    sale = await _create_sale(
+        client, sel_headers, player["id"],
+        sale_type="OPEN_TO_OFFERS", asking_price=80_000_000,
+    )
+
+    data = (await client.get(f"/sales/{sale['id']}", headers=_auth_headers(buyer))).json()
+    signal = data["fair_value_signal"]
+    assert signal is not None
+    assert signal["divergence"] is not None
+    assert float(signal["divergence"]["reference_price"]) == 80_000_000
+    assert signal["divergence"]["band"] == "ABOVE"
+
+
+@pytest.mark.asyncio
 async def test_auction_sale_embeds_signal_without_divergence(
     client: AsyncClient, seller: dict, buyer: dict, db
 ):

@@ -147,8 +147,9 @@ async def get_sale(
     resp = _enrich_sale_response(sale, viewer_club_id=viewer_club_id, is_staff=is_staff)
 
     # TRA-91: fair-value signal embed. Null for player-account and anonymous
-    # viewers (D6 — the /valuation endpoints require the same). Divergence only
-    # vs asking_price on FIXED_PRICE; never vs reserve/bids on auctions (D7).
+    # viewers (D6 — the /valuation endpoints require the same). Divergence vs
+    # asking_price on any listing type that publishes one; never vs reserve/bids
+    # on auctions (D7), whose only seller-side numbers are both hidden.
     from app.auth.models import UserType
     from app.valuation import service as valuation_service
 
@@ -156,7 +157,7 @@ async def get_sale(
         valuation_row = await valuation_service.get_latest_valuation(db, sale.player_id)
         if valuation_row is not None:
             reference = (
-                sale.asking_price if sale.sale_type == SaleType.FIXED_PRICE else None
+                None if sale.sale_type == SaleType.AUCTION else sale.asking_price
             )
             resp.fair_value_signal = valuation_service.build_valuation_response(
                 valuation_row, reference_price=reference

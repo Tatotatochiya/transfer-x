@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.players.models import Player
+from app.sales.models import Sale, SaleStatus, SaleType
 from app.valuation import engine
 from app.valuation.constants import CURRENCY, MIN_MINUTES, MODEL_VERSION
 from app.valuation.features import BoxScoreFeatureProvider, FeatureSet
@@ -118,6 +119,46 @@ async def get_latest_valuations(
     result = await db.execute(select(latest).where(subq.c.rn == 1))
     rows = result.scalars().all()
     return {row.player_id: row for row in rows}
+
+
+async def get_reference_prices(
+    db: AsyncSession, players: list[Player]
+) -> dict[uuid.UUID, Decimal]:
+    """Asking price per player, in one query — the batch equivalent of the
+    single-player endpoint's `reference_price` param, which a batch cannot take
+    as a query arg.
+
+    Source order matches `sales/router.py`: an open listing's asking price, else
+    the legacy `Player.market_value`. Auctions are excluded — D7 forbids
+    diverging against a starting price or a reserve, and a batch must never
+    surface what the detail endpoint withholds. Players with neither are simply
+    absent, so their response carries no divergence at all rather than one
+    measured against a number nobody asked for.
+    """
+    if not players:
+        return {}
+    ids = [uuid.UUID(str(p.id)) for p in players]
+    result = await db.execute(
+        select(Sale.player_id, Sale.asking_price)
+        .where(
+            Sale.player_id.in_(ids),
+            Sale.status == SaleStatus.OPEN,
+            Sale.sale_type != SaleType.AUCTION,
+            Sale.asking_price.is_not(None),
+        )
+        .order_by(Sale.created_at)  # deterministic if a player somehow has two
+    )
+    asking = {row.player_id: row.asking_price for row in result}
+
+    references: dict[uuid.UUID, Decimal] = {}
+    for player in players:
+        pid = uuid.UUID(str(player.id))
+        reference = asking.get(pid)
+        if reference is None:
+            reference = player.market_value
+        if reference is not None:
+            references[pid] = reference
+    return references
 
 
 async def compute_all_valuations(db: AsyncSession) -> dict[str, int]:

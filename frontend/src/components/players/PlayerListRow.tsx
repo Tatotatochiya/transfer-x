@@ -8,7 +8,8 @@ import FormBadge from "./FormBadge";
 import { positionVariant, playerStatusVariant, playerStatusLabel } from "../../lib/badges";
 import AddToShortlistButton from "../scouting/AddToShortlistButton";
 import { useCompare } from "../../context/CompareContext";
-import { formatCurrency } from "../../lib/utils";
+import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
+import { BAND_COLOUR, BAND_PHRASE } from "./FairValueBadge";
 
 interface PlayerListRowProps {
   player: Player;
@@ -19,24 +20,18 @@ interface PlayerListRowProps {
   canAct?: boolean;
 }
 
-// Signal wording is always plain language, never a bare number — SCREENS.md.
-function valueSignal(signal: FairValueSignal | null | undefined): { text: string; colour: string } | null {
-  if (!signal?.divergence) return null;
-  const pct = Math.round(Math.abs(signal.divergence.pct));
-  if (signal.divergence.band === "IN_LINE") return { text: "In line with fair value", colour: "text-text-secondary" };
-  const under = signal.divergence.pct < 0;
-  return {
-    text: `${pct}% ${under ? "under" : "over"} fair value`,
-    colour: under ? "text-success-text" : "text-danger-text",
-  };
-}
-
 export default function PlayerListRow({ player, formScore, formTrend, fairValueSignal, canAct = true }: PlayerListRowProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toggle, has } = useCompare();
   const comparing = has(player.id);
-  const signal = valueSignal(fairValueSignal);
+  // The server resolves the reference price (an open fixed-price listing's
+  // asking price, else the legacy market_value — D7 excludes auctions), so it
+  // arrives on the divergence. `market_value` is the fallback for a player with
+  // an asking price but no model row to diverge from.
+  const divergence = fairValueSignal?.divergence ?? null;
+  const asking = divergence?.reference_price ?? player.market_value ?? null;
+  const bargain = divergence?.band === "WELL_BELOW" || divergence?.band === "BELOW";
 
   function prefetch() {
     queryClient.prefetchQuery({
@@ -55,7 +50,7 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
       onMouseEnter={prefetch}
       onClick={() => navigate(`/players/market/${player.id}`)}
       className={`cursor-pointer rounded-[14px] bg-surface ring-1 px-5 py-4 transition-all hover:ring-accent ${
-        signal && signal.colour === "text-success-text" ? "ring-success/25" : "ring-border"
+        bargain ? "ring-success/25" : "ring-border"
       }`}
     >
       <div className="flex flex-wrap items-center gap-5">
@@ -80,25 +75,58 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
           </div>
         </div>
 
-        {/* Value signal */}
-        <div className="flex-1 basis-[200px] min-w-[160px]">
-          <p className="text-[11px] text-text-muted">Asking vs fair value</p>
-          {signal ? (
-            <>
-              <p className={`text-sm font-semibold ${signal.colour}`}>{signal.text}</p>
-              <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-border-quiet">
-                <div className={`h-full ${signal.colour === "text-success-text" ? "bg-success" : signal.colour === "text-danger-text" ? "bg-danger" : "bg-text-muted"}`} style={{ width: "50%" }} />
-              </div>
-              <p className="mt-1 text-[11px] text-text-muted">
-                {player.market_value != null && `${formatCurrency(player.market_value)} asking`}
-                {player.market_value != null && fairValueSignal && " · "}
-                {fairValueSignal && `${formatCurrency(fairValueSignal.fair_value)} fair`}
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-text-muted">
-              {player.market_value != null ? `${formatCurrency(player.market_value)} asking` : "No signal"}
-            </p>
+        {/* Value — the model leads, because it is the figure a row actually has:
+            ~30% of players carry a model valuation and 0% carry the legacy
+            `market_value` this cell used to label "asking", so "Asking vs fair
+            value" compared a number that usually exists against one that never
+            does, and bailed entirely when the second was missing. Same two
+            aligned rows as the squad table, and the 14px/600 weight goes to
+            whichever figure answers "what would he cost" — the asking price
+            where there is one, the model otherwise.
+
+            The asking row is simply absent when there is none, unlike the
+            squad's "yours": you cannot set another club's price, so an empty
+            row would be inert rather than an invitation.
+
+            Colour is directional here, the opposite call from the squad cell's
+            magnitude banding — this is someone else's asking price and you are
+            the buyer, so below-model is genuinely good news. That is what
+            BAND_COLOUR already encodes, shared with the grid view's badge
+            rather than re-derived (the private version this replaced also broke
+            D5's copy rule by saying "fair value" instead of "model"). */}
+        <div className="basis-[170px] shrink">
+          <div className="flex items-baseline gap-x-1.5">
+            <span className="w-[46px] shrink-0 text-[13px] text-text-muted">model</span>
+            {fairValueSignal ? (
+              <span
+                className={`tabular-nums ${asking == null ? "text-sm font-semibold text-text" : "text-[13px] text-text-secondary"}`}
+                title={`${formatCurrency(fairValueSignal.fair_value)} · ${fairValueSignal.confidence.toLowerCase()} confidence · range ${formatCompactCurrency(fairValueSignal.fair_value_low)}–${formatCompactCurrency(fairValueSignal.fair_value_high)}`}
+              >
+                {formatCompactCurrency(fairValueSignal.fair_value)}
+              </span>
+            ) : (
+              <span
+                className="text-[13px] text-text-muted"
+                title="No model valuation. The model needs a position, vendor stats and 450+ minutes played, and never estimates without them."
+              >
+                —
+              </span>
+            )}
+          </div>
+
+          {asking != null && (
+            <div className="flex flex-wrap items-baseline gap-x-1.5">
+              <span className="w-[46px] shrink-0 text-[13px] text-text-muted">asking</span>
+              <span className="text-sm font-semibold text-text tabular-nums">{formatCompactCurrency(asking)}</span>
+              {divergence && (
+                <span
+                  className={`text-[13px] font-semibold tabular-nums ${BAND_COLOUR[divergence.band]}`}
+                  title={`${BAND_PHRASE[divergence.band]} — the asking price is ${Math.abs(Math.round(divergence.pct))}% ${divergence.pct >= 0 ? "above" : "below"} the model`}
+                >
+                  {divergence.pct >= 0 ? "▲" : "▼"} {Math.abs(Math.round(divergence.pct))}%
+                </span>
+              )}
+            </div>
           )}
         </div>
 
