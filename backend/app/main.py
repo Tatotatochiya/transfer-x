@@ -17,6 +17,7 @@ from app.config import settings
 from app.database import AsyncSessionLocal
 from app.deals import router as deals_router
 from app.deals import room_router as deal_room_router
+from app.loans import router as loans_router
 from app.notifications import router as notifications_router
 from app.offers import router as offers_router
 from app.players import router as players_router
@@ -89,6 +90,25 @@ async def _enrichment_sync_job() -> None:
                 await sync_all_players(db)
         except Exception:
             logger.exception("Error in enrichment sync job")
+
+
+async def _loan_lifecycle_job() -> None:
+    """Return loans that have reached their end date, and warn on those about
+    to. Without this a loan has no way to end on its own — which is why the
+    loan UI was held back until this shipped."""
+    from app.loans import service as loans_service
+
+    async with AsyncSessionLocal() as db:
+        try:
+            async with db.begin():
+                result = await loans_service.process_due_loans(db)
+            if result["returned"] or result["ending_soon_warned"]:
+                logger.info(
+                    "Loan lifecycle: %s returned, %s warned",
+                    result["returned"], result["ending_soon_warned"],
+                )
+        except Exception:
+            logger.exception("Error in loan lifecycle job")
 
 
 async def _valuation_compute_job() -> None:
@@ -207,6 +227,10 @@ async def lifespan(app: FastAPI):
         _deal_sla_job, "interval", hours=24, id="deal_sla",
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
     )
+    _scheduler.add_job(
+        _loan_lifecycle_job, "interval", hours=24, id="loan_lifecycle",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+    )
     _scheduler.start()
     logger.info("APScheduler started")
     yield
@@ -258,6 +282,7 @@ app.include_router(sales_router.router, prefix="")
 app.include_router(offers_router.router, prefix="")
 app.include_router(deals_router.router, prefix="")
 app.include_router(deal_room_router.router, prefix="")
+app.include_router(loans_router.router, prefix="")
 app.include_router(scouting_router.router)
 app.include_router(notifications_router.router)
 app.include_router(stats_router.router)

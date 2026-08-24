@@ -8,7 +8,7 @@ import Card from "../../components/ui/Card";
 import CurrencyInput from "../../components/ui/CurrencyInput";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
-import { getApiError } from "../../lib/utils";
+import { formatCurrency, getApiError } from "../../lib/utils";
 import { useAuthStore } from "../../store/auth";
 import TransferWindowBanner from "../../components/transfers/TransferWindowBanner";
 
@@ -20,8 +20,19 @@ export default function CreateOfferPage() {
   const playerId = searchParams.get("player_id") ?? "";
   const saleId   = searchParams.get("sale_id")   ?? "";
 
+  const [dealType, setDealType] = useState<"PERMANENT" | "LOAN">("PERMANENT");
   const [feeType, setFeeType] = useState<"fee" | "none">("fee");
   const [fee, setFee]         = useState("");
+  // Loan terms. Held separately from the permanent fields rather than reusing
+  // them, because a loan's money is loan_fee and the server rejects an offer
+  // that carries both.
+  const [loanStart, setLoanStart]   = useState("");
+  const [loanEnd, setLoanEnd]       = useState("");
+  const [loanFee, setLoanFee]       = useState("");
+  const [wageSplit, setWageSplit]   = useState("100");
+  const [optionToBuy, setOptionToBuy] = useState("");
+  const [obligation, setObligation] = useState(false);
+  const [recallAllowed, setRecallAllowed] = useState(false);
   const [wage, setWage]       = useState("");
   const [years, setYears]     = useState("");
   const [endDate, setEndDate] = useState("");
@@ -81,16 +92,54 @@ export default function CreateOfferPage() {
 
     if (saleId) body.sale_id = saleId;
 
-    // Automatically address the offer to the player's current club
-    if (player?.current_club?.id) body.to_club_id = player.current_club.id;
+    // Address the offer to whoever actually owns him. During a loan the
+    // *loanee* holds the registration and so appears as current_club, but they
+    // cannot accept — the server rejects an offer naming a club that does not
+    // own the player, so this would fail only at acceptance.
+    const owningClubId =
+      player?.active_loan?.parent_club?.id ?? player?.current_club?.id;
+    if (owningClubId) body.to_club_id = owningClubId;
 
-    const parsedFee = parseFloat(fee);
-    if (feeType === "fee") {
-      if (!fee || isNaN(parsedFee)) {
-        setError("Enter a transfer fee, or choose “No fee” if this is a free transfer, loan, or swap.");
+    if (dealType === "LOAN") {
+      body.deal_type = "LOAN";
+      if (!loanStart || !loanEnd) {
+        setError("A loan needs both a start and an end date.");
         return;
       }
-      body.fee_amount = parsedFee;
+      if (loanEnd <= loanStart) {
+        setError("The loan must end after it starts.");
+        return;
+      }
+      body.loan_start = loanStart;
+      body.loan_end = loanEnd;
+      const parsedLoanFee = parseFloat(loanFee);
+      if (loanFee && !isNaN(parsedLoanFee)) body.loan_fee = parsedLoanFee;
+      const parsedSplit = parseFloat(wageSplit);
+      if (isNaN(parsedSplit) || parsedSplit < 0 || parsedSplit > 100) {
+        setError("The wage split must be between 0 and 100%.");
+        return;
+      }
+      // The API takes a fraction, matching sell_on_pct and commission_pct.
+      body.wage_split_pct = parsedSplit / 100;
+      const parsedOption = parseFloat(optionToBuy);
+      if (optionToBuy && !isNaN(parsedOption)) body.option_to_buy = parsedOption;
+      if (obligation) {
+        if (!optionToBuy || isNaN(parsedOption)) {
+          setError("An obligation to buy needs a price — set the option-to-buy amount.");
+          return;
+        }
+        body.obligation_to_buy = true;
+      }
+      if (recallAllowed) body.recall_allowed = true;
+    } else {
+      const parsedFee = parseFloat(fee);
+      if (feeType === "fee") {
+        if (!fee || isNaN(parsedFee)) {
+          setError("Enter a transfer fee, or choose “No fee” if this is a free transfer or a swap.");
+          return;
+        }
+        body.fee_amount = parsedFee;
+      }
     }
 
     const parsedWage = parseFloat(wage);
@@ -104,6 +153,15 @@ export default function CreateOfferPage() {
 
     mutation.mutate(body);
   }
+
+  // The wage box lives below the loan block, so the share is derived rather
+  // than duplicated — clubs agree a percentage but budget in pounds.
+  const parsedWageForSplit = wage && !isNaN(parseFloat(wage)) ? parseFloat(wage) : null;
+  const parsedSplitPct = wageSplit && !isNaN(parseFloat(wageSplit)) ? parseFloat(wageSplit) : null;
+  const wageShareWeekly =
+    parsedWageForSplit != null && parsedSplitPct != null
+      ? Math.round(parsedWageForSplit * (parsedSplitPct / 100))
+      : null;
 
   const isLoading = playerLoading || checkLoading;
 
@@ -190,50 +248,215 @@ export default function CreateOfferPage() {
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Transfer fee — deliberately a choice, not an optional box. A
-              fee-less offer is legitimate (free transfer, loan, swap), but an
-              empty field used to mean the same thing as one, so "I forgot to
-              type a number" and "there is genuinely no fee" were
-              indistinguishable to the club receiving it. */}
+          {/* What kind of deal. This is the first decision, not a detail: it
+              changes what the rest of the form even asks for, and it cannot be
+              changed after the seller accepts — countering a loan with a
+              permanent offer is a different proposal, so the server refuses to
+              swap it. */}
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
-              Transfer fee
+              What are you proposing?
             </label>
-            <div className="inline-flex rounded-lg bg-surface-inset p-0.5 ring-1 ring-border mb-2.5">
-              {([["fee", "Transfer fee"], ["none", "No fee"]] as const).map(([value, label]) => (
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                ["PERMANENT", "Permanent transfer", "He joins you outright."],
+                ["LOAN", "Loan", "He plays for you for a fixed spell, then goes back."],
+              ] as const).map(([value, label, hint]) => (
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setFeeType(value)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    feeType === value
-                      ? "bg-surface text-text shadow-sm"
-                      : "text-text-muted hover:text-text-secondary"
+                  onClick={() => setDealType(value)}
+                  className={`rounded-lg px-3.5 py-2.5 text-left ring-1 transition-colors ${
+                    dealType === value
+                      ? "bg-accent-bg text-accent-active ring-accent/40"
+                      : "bg-surface-inset text-text-secondary ring-border hover:ring-input-border"
                   }`}
                 >
-                  {label}
+                  <span className="block text-sm font-semibold">{label}</span>
+                  <span className="mt-0.5 block text-[13px] text-text-muted">{hint}</span>
                 </button>
               ))}
             </div>
-            {feeType === "fee" ? (
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
-                  £
-                </span>
-                <CurrencyInput
-                  value={fee}
-                  onChange={setFee}
-                  placeholder="e.g. 25,000,000"
-                  className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
-                />
-              </div>
-            ) : (
-              <p className="text-xs text-text-muted">
-                No transfer fee — a free transfer, loan, or swap. The receiving club sees this
-                as a deliberate term, not a blank field.
-              </p>
-            )}
           </div>
+
+          {dealType === "LOAN" ? (
+            <>
+              {/* Dates. Both required — a loan with no end is a transfer. */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                    Loan starts
+                  </label>
+                  <input
+                    type="date"
+                    value={loanStart}
+                    onChange={(e) => setLoanStart(e.target.value)}
+                    className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                    Loan ends
+                  </label>
+                  <input
+                    type="date"
+                    value={loanEnd}
+                    onChange={(e) => setLoanEnd(e.target.value)}
+                    className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                  />
+                  <p className="mt-1 text-[13px] text-text-muted">
+                    Cannot run past his contract with his current club, or past 18 months.
+                  </p>
+                </div>
+              </div>
+
+              {/* Loan fee */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                  Loan fee <span className="font-normal text-text-muted">(optional)</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">£</span>
+                  <CurrencyInput
+                    value={loanFee}
+                    onChange={setLoanFee}
+                    placeholder="e.g. 2,000,000"
+                    className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                  />
+                </div>
+                <p className="mt-1 text-[13px] text-text-muted">
+                  Paid to his club for the spell. Many loans have none — the wage is the cost.
+                </p>
+              </div>
+
+              {/* Wage split. A percentage is what clubs agree, but they budget
+                  in pounds, so the weekly figure is shown live rather than left
+                  as an arithmetic exercise. */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                  Share of his wage you pay
+                </label>
+                <div className="relative max-w-[160px]">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={wageSplit}
+                    onChange={(e) => setWageSplit(e.target.value)}
+                    className="w-full rounded-lg bg-surface px-3 py-2.5 pr-8 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">%</span>
+                </div>
+                <p className="mt-1 text-[13px] text-text-muted">
+                  {wageShareWeekly != null && parsedWageForSplit != null ? (
+                    <>
+                      You pay <span className="font-semibold text-text-secondary">{formatCurrency(wageShareWeekly)}/wk</span>
+                      {/* At 100% there is no remainder, and saying "his club keeps
+                          the rest" of nothing reads as an error. */}
+                      {wageShareWeekly >= parsedWageForSplit ? (
+                        <> — the whole of his wage.</>
+                      ) : (
+                        <>
+                          {" "}of {formatCurrency(parsedWageForSplit)} — his club keeps{" "}
+                          {formatCurrency(parsedWageForSplit - wageShareWeekly)}/wk.
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    "Enter a weekly wage below to see what your share costs."
+                  )}
+                </p>
+              </div>
+
+              {/* Option / obligation */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                  Option to buy <span className="font-normal text-text-muted">(optional)</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">£</span>
+                  <CurrencyInput
+                    value={optionToBuy}
+                    onChange={setOptionToBuy}
+                    placeholder="e.g. 18,000,000"
+                    className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                  />
+                </div>
+                <label className="mt-2.5 flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={obligation}
+                    disabled={!optionToBuy}
+                    onChange={(e) => setObligation(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded accent-accent disabled:opacity-40"
+                  />
+                  <span className={`text-[13px] ${optionToBuy ? "text-text-secondary" : "text-text-muted"}`}>
+                    Make it an <span className="font-semibold">obligation</span> — you must buy him at
+                    that price when the loan ends, not merely may.
+                    {!optionToBuy && " Set a price first."}
+                  </span>
+                </label>
+              </div>
+
+              <label className="flex items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={recallAllowed}
+                  onChange={(e) => setRecallAllowed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded accent-accent"
+                />
+                <span className="text-[13px] text-text-secondary">
+                  His club may <span className="font-semibold">recall him early</span>. Without this the
+                  loan runs to its end date whatever happens.
+                </span>
+              </label>
+            </>
+          ) : (
+            /* Transfer fee — deliberately a choice, not an optional box. A
+               fee-less offer is legitimate (free transfer, swap), but an
+               empty field used to mean the same thing as one, so "I forgot to
+               type a number" and "there is genuinely no fee" were
+               indistinguishable to the club receiving it. */
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                Transfer fee
+              </label>
+              <div className="inline-flex rounded-lg bg-surface-inset p-0.5 ring-1 ring-border mb-2.5">
+                {([["fee", "Transfer fee"], ["none", "No fee"]] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFeeType(value)}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                      feeType === value
+                        ? "bg-surface text-text shadow-sm"
+                        : "text-text-muted hover:text-text-secondary"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {feeType === "fee" ? (
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
+                    £
+                  </span>
+                  <CurrencyInput
+                    value={fee}
+                    onChange={setFee}
+                    placeholder="e.g. 25,000,000"
+                    className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                  />
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted">
+                  No transfer fee — a free transfer or a swap. The receiving club sees this
+                  as a deliberate term, not a blank field.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Weekly wage */}
           <div>

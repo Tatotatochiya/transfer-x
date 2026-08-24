@@ -1,6 +1,6 @@
 ---
 title: "Feature Spec: Loan Transfers"
-last_updated: 2026-08-24
+last_updated: 2026-08-25
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -392,7 +392,7 @@ Each phase is independently shippable and leaves the app coherent.
 | **0 — shipped 2026-08-24** | Frontend `DealType` enum drift (gap 3) | One line each, fixes a live mislabel, zero dependencies. Ship today. |
 | **1 — shipped 2026-08-24** | `deal_type` on `Offer` + copy it in `accept_offer` + wage reservation for all offers (gaps 2, 4) | Makes the existing model honest before adding to it. No loan mechanics yet — a `LOAN` offer at this point still completes as a permanent transfer, so **do not expose the UI toggle until phase 3.** |
 | **2 — shipped 2026-08-24** | `player_loans` table, `_complete_deal` branch, `get_owning_club_id` (gaps 5, 6, 7) | The mechanics. Loans now execute correctly but only end manually. |
-| **3** | Expiry job, return path, recall, notifications (gap 8) + the Create Offer UI | The loan now runs to term on its own. Safe to expose. |
+| **3 — shipped 2026-08-25** | Expiry job, return path, recall, notifications (gap 8), the loan read endpoints, and **all four UI surfaces** | The loan now runs to term on its own. Safe to expose. Scope widened from the Create Offer UI alone — see the phase 3 deviations. |
 | **4** | Option to buy, obligation to buy (D7) | Genuinely optional; a loan is complete and useful without it. |
 
 ## Deviations from spec (phases 0–1, 2026-08-24)
@@ -414,6 +414,20 @@ Recorded before the phases were marked shipped, per this folder's [README](./REA
 6. **`loanee_wage_share`** — the absolute weekly figure the loanee took on, stored rather than recomputed from `wage_split_pct`. The split is a fraction of the *agreed* wage, which need not equal the parent contract's wage; unwinding has to give back exactly what was taken.
 7. **`LoanEndReason`** is a Python enum stored in a `varchar(30)`, not a database enum. The spec listed the reasons but not the type. A string column avoids a second enum migration for what is a label, not a state — `status` carries the state.
 8. **`end_loan` takes `restore_parent`.** The spec described the return as one path; in practice the "not going home" cases (parent sold, loanee bought) must *not* restore the parent, because the caller creates the new owner's contract immediately after and two active contracts is a state `normalize_player_status` cannot represent.
+
+**Phase 3 deviations (2026-08-25):**
+
+9. **Phase 3's UI scope was under-specified and has been widened.** The phase table named only the Create Offer UI, but the [UI section](#ui) always called for four surfaces and three were unassigned to any phase. All four shipped together: shipping an offer form for a feature the rest of the app cannot display would have been incoherent.
+
+10. **`GET /clubs/me/loans`, `GET /loans/{id}` and `POST /loans/{id}/recall` were needed before any UI could exist.** The spec listed them under [API](#api) without tying them to a phase; nothing could render "out on loan" until a loan was readable.
+
+11. **`PlayerDetailResponse` gained `active_loan`**, which the spec did not anticipate. It is needed for correctness, not decoration: during a loan `current_club` is the loanee, so `CreateOfferPage` — which addresses an offer to `player.current_club.id` — would have sent every approach to a club that **cannot accept it**, since `accept_offer` rejects an offer naming a club that does not own the player. The offer form now addresses `active_loan.parent_club` instead. A loan is public knowledge in football, so the field is not viewer-gated.
+
+12. **`ending_soon_notified_at`** (migration `0068`) marks the two-week warning on the loan itself. The first implementation inferred it by comparing a notification's `created_at` against the loan's — two independently-defaulted timestamps, which under SQLite is a datetime-vs-string comparison that never matched, so the job re-warned every single day. Caught by its own test.
+
+13. **`GET /clubs/me/loans` defaults to ACTIVE only.** Not specified; the squad views that consume it only care about live loans, and returning ended ones by default would make "out on loan" grow forever.
+
+14. **The deal room's `deal_type` is now fully read-only**, completing what phase 0 began (it had only made the derived types read-only). The type comes from the offer, and mutating it after acceptance is the original defect this whole spec exists to fix.
 
 **Found during phase 1, not fixed, not loan-specific:** when the *seller* counters at a higher fee, the buyer's reservation is never recomputed — `counter_offer` adjusts it only when the buyer is the actor. Accepting a raised counter therefore commits the original, lower figure while the deal records the higher `agreed_fee`. Pre-existing, and the wage reservation added here inherits the same asymmetry. Left alone deliberately: refusing an acceptance the buyer can no longer afford is a product decision, not a bug fix.
 

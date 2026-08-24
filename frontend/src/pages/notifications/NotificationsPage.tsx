@@ -43,6 +43,10 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   CLIENT_ALERT:               "Client alert",
   STAFF_INVITATION:           "Team member joined",
   APPROVAL_REQUESTED:         "Approval requested",
+  LOAN_STARTED:               "Loan started",
+  LOAN_ENDING_SOON:           "Loan ending soon",
+  LOAN_ENDED:                 "Loan ended",
+  LOAN_RECALLED:              "Player recalled",
   APPROVAL_DECIDED:           "Approval decided",
 };
 
@@ -77,6 +81,10 @@ const TYPE_COLOURS: Record<NotificationType, string> = {
   CLIENT_ALERT:             "text-accent",
   STAFF_INVITATION:         "text-role-club-text",
   APPROVAL_REQUESTED:       "text-warning-text",
+  LOAN_STARTED:             "text-accent",
+  LOAN_ENDING_SOON:         "text-warning-text",
+  LOAN_ENDED:               "text-text-secondary",
+  LOAN_RECALLED:            "text-warning-text",
   APPROVAL_DECIDED:         "text-success-text",
 };
 

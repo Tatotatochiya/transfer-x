@@ -413,9 +413,19 @@ export interface ActiveDealStub {
   completed_at: string | null;
 }
 
+export interface ActiveLoanStub {
+  id: string;
+  end_date: string;
+  parent_club: { id: string; name: string } | null;
+  loanee_club: { id: string; name: string } | null;
+}
+
 export interface PlayerDetail extends Player {
   active_contract: Contract | null;
   active_deal: ActiveDealStub | null;
+  // During a loan `current_club` is the loanee. `active_loan.parent_club`
+  // is who actually owns him, and who an approach must be addressed to.
+  active_loan: ActiveLoanStub | null;
   is_verified_player: boolean;
 }
 
@@ -1461,4 +1471,34 @@ export interface AuditEvent {
   description: string | null;
   payload_json: Record<string, unknown> | null;
   created_at: string;
+}
+
+// ── Loans (feature_spec/loan-transfers.md) ────────────────────────────────────
+
+export type LoanStatus = "ACTIVE" | "COMPLETED" | "RECALLED" | "CONVERTED";
+
+export interface Loan {
+  id: string;
+  player_id: string;
+  deal_id: string;
+  parent_club_id: string;
+  loanee_club_id: string;
+  start_date: string;
+  end_date: string;
+  loan_fee: number | null;
+  wage_split_pct: number | null;
+  loanee_wage_share: number;
+  option_to_buy: number | null;
+  obligation_to_buy: boolean;
+  recall_allowed: boolean;
+  status: LoanStatus;
+  ended_at: string | null;
+  end_reason: string | null;
+  created_at: string;
+  player: { id: string; name: string; position: string | null; photo_url: string | null } | null;
+  parent_club: { id: string; name: string; crest_url: string | null } | null;
+  loanee_club: { id: string; name: string; crest_url: string | null } | null;
+  // Which side the caller is on: "out" = we own him and he is away,
+  // "in" = we borrowed him. Server-derived so no consumer re-compares club ids.
+  direction: "out" | "in" | null;
 }

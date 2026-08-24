@@ -119,10 +119,28 @@ class ActiveDealStub(BaseModel):
     completed_at: datetime | None = None
 
 
+class ActiveLoanStub(BaseModel):
+    """Minimal loan info embedded in player detail.
+
+    Public on purpose: a loan is public knowledge in football, and a club
+    browsing the market needs it for a practical reason — during a loan
+    `current_club` is the *loanee*, so an offer addressed there can never be
+    accepted. `parent_club` is who actually owns him and who an approach must
+    be sent to.
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    end_date: date
+    parent_club: ClubMinimal | None = None
+    loanee_club: ClubMinimal | None = None
+
+
 class PlayerDetailResponse(PlayerResponse):
-    """Player detail — adds active contract and deal state."""
+    """Player detail — adds active contract, deal and loan state."""
     active_contract: ContractResponse | None = None
     active_deal: ActiveDealStub | None = None
+    active_loan: ActiveLoanStub | None = None
     is_verified_player: bool = False
 
 

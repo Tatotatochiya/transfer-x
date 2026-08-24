@@ -14,6 +14,7 @@ from app.players import service as players_service
 from app.players.models import PlayerPosition, PlayerStatus, PlayerVisibility
 from app.players.schemas import (
     ActiveDealStub,
+    ActiveLoanStub,
     ContractCreateRequest,
     ContractResponse,
     PlayerCreateRequest,
@@ -139,6 +140,31 @@ async def player_market_detail(
     deal = await deals_service.get_active_deal_for_player(db, player_id)
     if deal:
         data.active_deal = ActiveDealStub.model_validate(deal)
+
+    # A loan is public knowledge, and practically necessary here: during one
+    # `current_club` is the loanee, so a club that addressed an approach there
+    # would have it rejected at acceptance for naming a club that does not own
+    # the player. `parent_club` is who to approach.
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    from app.loans.models import LoanStatus, PlayerLoan
+
+    loan = (
+        await db.execute(
+            select(PlayerLoan)
+            .where(
+                PlayerLoan.player_id == player_id,
+                PlayerLoan.status == LoanStatus.ACTIVE,
+            )
+            .options(
+                selectinload(PlayerLoan.parent_club),
+                selectinload(PlayerLoan.loanee_club),
+            )
+        )
+    ).scalars().first()
+    if loan:
+        data.active_loan = ActiveLoanStub.model_validate(loan)
 
     data.is_verified_player = await players_service.is_player_verified(db, player_id)
 

@@ -781,6 +781,23 @@ export default function PlayerMarketDetailPage() {
                     />
                   </div>
                 )}
+
+                {/* A loan is public knowledge, and it changes who an approach
+                    goes to: the club shown above holds his registration, but
+                    the parent club owns him and is the one who can sell. */}
+                {player.active_loan && (
+                  <p className="mt-1 text-[13px] text-accent">
+                    On loan at {player.active_loan.loanee_club?.name ?? "another club"} until{" "}
+                    {new Date(player.active_loan.end_date).toLocaleDateString("en-GB", {
+                      month: "long", year: "numeric",
+                    })}
+                    {player.active_loan.parent_club?.name && (
+                      <span className="text-text-muted">
+                        {" "}· owned by {player.active_loan.parent_club.name}
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
 
               {/* Actions */}

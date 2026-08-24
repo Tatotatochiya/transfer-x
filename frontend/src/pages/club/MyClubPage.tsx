@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { Club, FairValueSignal, Paginated, PlayerDetail, PlayerForm, Sale } from "../../types/api";
+import type { Club, FairValueSignal, Loan, Paginated, PlayerDetail, PlayerForm, Sale } from "../../types/api";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import Card from "../../components/ui/Card";
@@ -10,6 +10,7 @@ import EmptyState from "../../components/ui/EmptyState";
 import Spinner from "../../components/ui/Spinner";
 import SaleCard from "../../components/sales/SaleCard";
 import SquadTable from "../../components/players/SquadTable";
+import LoansPanel from "../../components/players/LoansPanel";
 import SquadRail from "../../components/clubs/SquadRail";
 import ClubInfoPanel from "../../components/clubs/ClubInfoPanel";
 import FinanceSummaryPanel from "../../components/clubs/FinanceSummaryPanel";
@@ -153,6 +154,25 @@ export default function MyClubPage() {
   }
 
   // ── Open to offers toggle (optimistic) ───────────────────────────────────
+
+  // Players we have borrowed. They are in the squad (we hold their
+  // registration) but we do not own them, so the row must not offer to list
+  // or sell them — the server already refuses.
+  const { data: loansIn = [] } = useQuery<Loan[]>({
+    queryKey: ["clubs", "me", "loans", "in"],
+    queryFn: () => api.get<Loan[]>("/clubs/me/loans?direction=in").then((r) => r.data),
+    staleTime: 60_000,
+  });
+  const loanedIn = useMemo(
+    () =>
+      new Map(
+        loansIn.map((l) => [
+          l.player_id,
+          { endDate: l.end_date, parentClubName: l.parent_club?.name ?? null },
+        ]),
+      ),
+    [loansIn],
+  );
 
   const squadQueryKey = ["clubs", club?.id, "squad"] as const;
 
@@ -382,9 +402,14 @@ export default function MyClubPage() {
                     onToggleOpenToOffers={canMarketWrite ? toggleOpenToOffers : undefined}
                     onSetValuation={canMarketWrite ? setValuation : undefined}
                     listedPlayerIds={listedPlayerIds}
+                    loanedIn={loanedIn}
                   />
                 </>
               )}
+              {/* Outside the empty-squad branch on purpose: a club can have
+                  every player out on loan and an otherwise empty squad, and
+                  that is exactly when it most needs to see them. */}
+              {!squadLoading && <LoansPanel canAct={canMarketWrite} />}
             </>
           )}
 

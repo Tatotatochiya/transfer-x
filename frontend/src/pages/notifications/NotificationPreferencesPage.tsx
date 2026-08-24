@@ -55,6 +55,10 @@ const TYPE_LABELS: Record<string, string> = {
   CLIENT_ALERT: "Client alert (contract expiry, valuation change, club interest)",
   STAFF_INVITATION: "A team member accepts your invitation",
   APPROVAL_REQUESTED: "A spending approval needs your decision",
+  LOAN_STARTED: "A loan you agreed has started",
+  LOAN_ENDING_SOON: "A loan is ending within two weeks",
+  LOAN_ENDED: "A loan has ended and the player has returned",
+  LOAN_RECALLED: "A parent club has recalled their player early",
   APPROVAL_DECIDED: "Your spending request is decided",
 };
 
@@ -90,6 +94,10 @@ const TYPE_GROUPS: { label: string; types: string[] }[] = [
   {
     label: "Team & approvals",
     types: ["STAFF_INVITATION", "APPROVAL_REQUESTED", "APPROVAL_DECIDED"],
+  },
+  {
+    label: "Loans",
+    types: ["LOAN_STARTED", "LOAN_ENDING_SOON", "LOAN_ENDED", "LOAN_RECALLED"],
   },
 ];
 

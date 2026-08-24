@@ -93,6 +93,7 @@ async def _finance(db, club_id: str):
 async def _run_loan_to_completion(
     client: AsyncClient, db, parent: dict, loanee: dict,
     *, loan_end=date(2027, 5, 31), split=0.6, fee=2_000_000, wage=Decimal("90000"),
+    recall_allowed=False,
 ):
     """Offer -> accept -> force-complete as staff. Returns (player, deal_id, loan)."""
     from app.auth.models import User
@@ -112,6 +113,7 @@ async def _run_loan_to_completion(
             "deal_type": "LOAN",
             "loan_start": str(date(2026, 9, 1)), "loan_end": str(loan_end),
             "loan_fee": fee, "wage_weekly": float(wage), "wage_split_pct": split,
+            "recall_allowed": recall_allowed,
         },
         headers=l_headers,
     )).json()
@@ -463,3 +465,198 @@ async def test_a_loan_does_not_trigger_a_previous_owners_sell_on(
         )
     ).scalars().all()
     assert sell_on_notes == []
+
+
+# ── Phase 3: endpoints, recall, expiry job ───────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_list_my_loans_shows_direction_for_each_side(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    """The same row means different things to the two clubs — one is missing a
+    player, the other has borrowed one — so the server says which."""
+    player, _, _ = await _run_loan_to_completion(client, db, parent, loanee)
+
+    out = (await client.get("/clubs/me/loans", headers=_auth_headers(parent))).json()
+    assert len(out) == 1
+    assert out[0]["direction"] == "out"
+    assert out[0]["player"]["name"] == player["name"]
+
+    inn = (await client.get("/clubs/me/loans", headers=_auth_headers(loanee))).json()
+    assert len(inn) == 1
+    assert inn[0]["direction"] == "in"
+
+
+@pytest.mark.asyncio
+async def test_list_my_loans_filters_by_direction(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    await _run_loan_to_completion(client, db, parent, loanee)
+    p = _auth_headers(parent)
+    assert len((await client.get("/clubs/me/loans?direction=out", headers=p)).json()) == 1
+    assert len((await client.get("/clubs/me/loans?direction=in", headers=p)).json()) == 0
+
+
+@pytest.mark.asyncio
+async def test_a_third_club_cannot_see_the_loan(
+    client: AsyncClient, parent: dict, loanee: dict, outsider: dict, db
+):
+    """404 rather than 403: whether a loan exists is not a third club's to learn."""
+    _, _, loan = await _run_loan_to_completion(client, db, parent, loanee)
+
+    resp = await client.get(f"/loans/{loan.id}", headers=_auth_headers(outsider))
+    assert resp.status_code == 404
+    assert (await client.get("/clubs/me/loans", headers=_auth_headers(outsider))).json() == []
+
+
+@pytest.mark.asyncio
+async def test_recall_returns_the_player_to_the_parent(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    from app.players.models import Contract, Player
+
+    player, _, loan = await _run_loan_to_completion(
+        client, db, parent, loanee, recall_allowed=True
+    )
+    parent_club = await _club_id(client, _auth_headers(parent))
+
+    resp = await client.post(f"/loans/{loan.id}/recall", headers=_auth_headers(parent))
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "RECALLED"
+
+    row = (
+        await db.execute(select(Player).where(Player.id == uuid_mod.UUID(player["id"])))
+    ).scalar_one()
+    await db.refresh(row)
+    assert str(row.current_club_id) == parent_club
+
+    active = (
+        await db.execute(
+            select(Contract).where(
+                Contract.player_id == uuid_mod.UUID(player["id"]),
+                Contract.is_active == True,  # noqa: E712
+            )
+        )
+    ).scalars().all()
+    assert len(active) == 1
+    assert str(active[0].club_id) == parent_club
+
+
+@pytest.mark.asyncio
+async def test_the_loanee_cannot_recall(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    _, _, loan = await _run_loan_to_completion(
+        client, db, parent, loanee, recall_allowed=True
+    )
+    resp = await client.post(f"/loans/{loan.id}/recall", headers=_auth_headers(loanee))
+    assert resp.status_code == 403, resp.text
+    assert "parent club" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_recall_refused_when_the_terms_did_not_allow_it(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    _, _, loan = await _run_loan_to_completion(client, db, parent, loanee)  # default False
+    resp = await client.post(f"/loans/{loan.id}/recall", headers=_auth_headers(parent))
+    assert resp.status_code == 400, resp.text
+    assert "without a recall option" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_expiry_job_returns_a_loan_that_has_run_its_term(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    from app.loans import service as loans_service
+    from app.loans.models import PlayerLoan
+    from app.players.models import Player
+
+    player, _, loan = await _run_loan_to_completion(client, db, parent, loanee)
+    parent_club = await _club_id(client, _auth_headers(parent))
+    loanee_club = await _club_id(client, _auth_headers(loanee))
+
+    loan.end_date = date.today() - timedelta(days=1)
+    await db.commit()
+
+    result = await loans_service.process_due_loans(db)
+    await db.commit()
+    assert result["returned"] == 1
+
+    refreshed = (
+        await db.execute(select(PlayerLoan).where(PlayerLoan.id == loan.id))
+    ).scalar_one()
+    await db.refresh(refreshed)
+    assert refreshed.status.value == "COMPLETED"
+    assert refreshed.end_reason == "EXPIRED"
+
+    row = (
+        await db.execute(select(Player).where(Player.id == uuid_mod.UUID(player["id"])))
+    ).scalar_one()
+    await db.refresh(row)
+    assert str(row.current_club_id) == parent_club
+
+    lf = await _finance(db, loanee_club)
+    pf = await _finance(db, parent_club)
+    await db.refresh(lf)
+    await db.refresh(pf)
+    assert lf.wage_reserved_weekly == Decimal("0.00")
+    assert pf.wage_reserved_weekly == Decimal("90000.00")
+
+
+@pytest.mark.asyncio
+async def test_expiry_job_leaves_a_loan_that_is_still_running(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    from app.loans import service as loans_service
+
+    _, _, loan = await _run_loan_to_completion(client, db, parent, loanee)
+    result = await loans_service.process_due_loans(db)
+    assert result["returned"] == 0
+    assert loan.status.value == "ACTIVE"
+
+
+@pytest.mark.asyncio
+async def test_ending_soon_warns_once_not_every_day(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    """Without the guard the job re-warns both clubs daily for two weeks."""
+    from app.loans import service as loans_service
+    from app.notifications.models import Notification, NotificationType
+
+    _, _, loan = await _run_loan_to_completion(client, db, parent, loanee)
+    loan.end_date = date.today() + timedelta(days=7)
+    await db.commit()
+
+    first = await loans_service.process_due_loans(db)
+    await db.commit()
+    assert first["ending_soon_warned"] == 1
+
+    second = await loans_service.process_due_loans(db)
+    await db.commit()
+    assert second["ending_soon_warned"] == 0
+
+    notes = (
+        await db.execute(
+            select(Notification).where(
+                Notification.type == NotificationType.LOAN_ENDING_SOON
+            )
+        )
+    ).scalars().all()
+    assert len(notes) == 2  # one per club, once
+
+
+@pytest.mark.asyncio
+async def test_both_clubs_are_told_when_a_loan_starts(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    from app.notifications.models import Notification, NotificationType
+
+    await _run_loan_to_completion(client, db, parent, loanee)
+    notes = (
+        await db.execute(
+            select(Notification).where(Notification.type == NotificationType.LOAN_STARTED)
+        )
+    ).scalars().all()
+    assert len(notes) == 2

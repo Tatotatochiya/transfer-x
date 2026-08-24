@@ -84,6 +84,10 @@ export type NotificationType =
   | "CLIENT_ALERT"
   | "STAFF_INVITATION"
   | "APPROVAL_REQUESTED"
+  | "LOAN_STARTED"
+  | "LOAN_ENDING_SOON"
+  | "LOAN_ENDED"
+  | "LOAN_RECALLED"
   | "APPROVAL_DECIDED";
 
 // TRA-151 — club roles & capabilities (server matrix is the only truth; the

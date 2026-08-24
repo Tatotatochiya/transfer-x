@@ -1244,30 +1244,16 @@ export default function DealDetailPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="mb-1 block text-xs text-text-muted">Transfer type</label>
-                    {/* FREE_TRANSFER and PRE_CONTRACT are derived by the signing
-                        paths, not chosen — offering a two-way toggle for them
-                        rendered with neither option selected, and retyping one
-                        would contradict how the deal was created. */}
-                    {dealDraft.deal_type === "PERMANENT" || dealDraft.deal_type === "LOAN" ? (
-                      <div className="flex gap-2">
-                        {(["PERMANENT", "LOAN"] as const).map((t) => (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() => setDealDraft((d) => ({ ...d, deal_type: t }))}
-                            className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 transition-colors ${
-                              dealDraft.deal_type === t
-                                ? "bg-accent-bg text-accent-active ring-accent/40"
-                                : "bg-surface-inset text-text-muted ring-border hover:text-text"
-                            }`}
-                          >
-                            {dealTypeLabel(t)}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-text">{dealTypeLabel(dealDraft.deal_type as DealType)}</p>
-                    )}
+                    {/* Read-only. The type is fixed when the offer is made and
+                        carried onto the deal on acceptance — retyping it here
+                        is the defect that motivated the loan work: the seller
+                        agreed to one kind of deal and was then asked to run
+                        another. FREE_TRANSFER and PRE_CONTRACT were never
+                        choosable anyway; they are derived by the signing paths. */}
+                    <p className="text-sm text-text">{dealTypeLabel(dealDraft.deal_type as DealType)}</p>
+                    <p className="mt-0.5 text-[13px] text-text-muted">
+                      Set when the offer was made. To change it, withdraw and re-approach.
+                    </p>
                   </div>
                   {dealDraft.deal_type === "LOAN" && (
                     <div className="grid grid-cols-2 gap-3">

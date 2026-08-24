@@ -29,6 +29,11 @@ interface Props {
   onSetValuation?: (playerId: string, value: number | null) => void;
   /** Player IDs with an open listing right now — drives the "Listed" chip and flag. */
   listedPlayerIds?: Set<string>;
+  /** Loans where this club is the *loanee*, keyed by player id. These players
+   *  hold our registration and appear in the squad, but we do not own them:
+   *  the server already refuses to let us list or sell them, and the row
+   *  should not offer to either. */
+  loanedIn?: Map<string, { endDate: string; parentClubName: string | null }>;
 }
 
 type ChipKey = "all" | "risk" | "listed" | "open";
@@ -50,7 +55,7 @@ function valuationGap(pct: number): "in-line" | "notable" | "wide" {
 // ── Player row ────────────────────────────────────────────────────────────────
 
 function PlayerRow({
-  player, showContractDetails, formScore, fairValue, isListed,
+  player, showContractDetails, formScore, fairValue, isListed, loan,
   onToggleOpenToOffers, toggling, onSetValuation,
 }: {
   player: SquadPlayer;
@@ -58,6 +63,7 @@ function PlayerRow({
   formScore?: { score: number; trend: number | null };
   fairValue?: FairValueSignal;
   isListed: boolean;
+  loan?: { endDate: string; parentClubName: string | null };
   onToggleOpenToOffers?: (playerId: string, next: boolean) => void;
   toggling?: boolean;
   onSetValuation?: (playerId: string, value: number | null) => void;
@@ -87,7 +93,9 @@ function PlayerRow({
       ? { pct, wide: valuationGap(pct) === "wide" }
       : null;
 
-  const flag = player.active_deal?.status === "IN_PROGRESS"
+  const flag = loan
+    ? { label: "On loan", colour: "text-accent" }
+    : player.active_deal?.status === "IN_PROGRESS"
     ? { label: "Transfer pending", colour: "text-warning-text" }
     : isListed
     ? { label: "Listed", colour: "text-accent" }
@@ -250,7 +258,14 @@ function PlayerRow({
 
         {/* Flag / open-to-offers toggle */}
         <div className="flex shrink-0 basis-[110px] justify-end">
-          {onToggleOpenToOffers ? (
+          {loan ? (
+            <span
+              className="text-xs font-semibold text-accent"
+              title={`On loan${loan.parentClubName ? ` from ${loan.parentClubName}` : ""} until ${new Date(loan.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}. He is not ours to sell.`}
+            >
+              On loan
+            </span>
+          ) : onToggleOpenToOffers ? (
             <button
               disabled={toggling || player.active_deal?.status === "IN_PROGRESS"}
               title={player.active_deal?.status === "IN_PROGRESS" ? "Cannot change while a transfer is in progress" : undefined}
@@ -282,8 +297,8 @@ function PositionGroup({
   pos, label, min, total, players, ...rowProps
 }: {
   pos: string; label: string; min: number; total: number; players: SquadPlayer[];
-} & Omit<Parameters<typeof PlayerRow>[0], "player" | "isListed" | "toggling" | "formScore" | "fairValue">
-  & { listedPlayerIds: Set<string>; formScores?: Record<string, { score: number; trend: number | null }>; fairValues?: Record<string, FairValueSignal>; togglingIds?: Set<string> }) {
+} & Omit<Parameters<typeof PlayerRow>[0], "player" | "isListed" | "toggling" | "formScore" | "fairValue" | "loan">
+  & { listedPlayerIds: Set<string>; formScores?: Record<string, { score: number; trend: number | null }>; fairValues?: Record<string, FairValueSignal>; togglingIds?: Set<string>; loanedIn?: Map<string, { endDate: string; parentClubName: string | null }> }) {
   // total is the whole squad's count for this position, independent of the
   // active filter chip — depth coverage shouldn't flip to "priority gap"
   // just because a filter (e.g. "Contract risk") happens to hide everyone.
@@ -311,6 +326,7 @@ function PositionGroup({
               formScore={rowProps.formScores?.[p.id]}
               fairValue={rowProps.fairValues?.[p.id]}
               isListed={rowProps.listedPlayerIds.has(p.id)}
+              loan={rowProps.loanedIn?.get(p.id)}
               onToggleOpenToOffers={rowProps.onToggleOpenToOffers}
               toggling={rowProps.togglingIds?.has(p.id)}
               onSetValuation={rowProps.onSetValuation}
@@ -326,7 +342,7 @@ function PositionGroup({
 
 export default function SquadTable({
   players, showContractDetails = false, formScores, fairValues,
-  onToggleOpenToOffers, togglingIds, onSetValuation, listedPlayerIds,
+  onToggleOpenToOffers, togglingIds, onSetValuation, listedPlayerIds, loanedIn,
 }: Props) {
   const [chip, setChip] = useState<ChipKey>("all");
   const listed = listedPlayerIds ?? new Set<string>();
@@ -401,6 +417,7 @@ export default function SquadTable({
           togglingIds={togglingIds}
           onSetValuation={onSetValuation}
           listedPlayerIds={listed}
+          loanedIn={loanedIn}
         />
       ))}
 
@@ -418,6 +435,7 @@ export default function SquadTable({
           togglingIds={togglingIds}
           onSetValuation={onSetValuation}
           listedPlayerIds={listed}
+          loanedIn={loanedIn}
         />
       )}
     </div>

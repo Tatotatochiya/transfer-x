@@ -90,6 +90,11 @@ class PlayerLoan(Base):
         index=True,
     )
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set the first time the ending-soon warning goes out, so the daily job
+    # warns once rather than every day for the last fortnight.
+    ending_soon_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     end_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
