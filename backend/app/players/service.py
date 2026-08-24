@@ -105,7 +105,19 @@ async def get_owning_club_id(db: AsyncSession, player: Player) -> uuid.UUID | No
     set. Otherwise fall back to whichever club created the player record — the
     same fallback `update_my_club_player` already uses for a player with no
     contract row yet.
+
+    An active loan overrides both. During a loan the *loanee* holds the single
+    active contract, so `current_club_id` is theirs — but they do not own the
+    player and must not be able to list, sell, or accept an offer for him.
+    Without this check the club he is on loan at could sell him out from under
+    the club that owns him.
     """
+    from app.loans import service as loans_service
+
+    loan = await loans_service.get_active_loan(db, player.id)
+    if loan is not None:
+        return loan.parent_club_id
+
     if player.current_club_id is not None:
         return player.current_club_id
     if player.created_by_user_id is None:

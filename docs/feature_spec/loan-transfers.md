@@ -120,7 +120,7 @@ The cost is that `OfferCreateRequest` must reject `FREE_TRANSFER` and `PRE_CONTR
 - `MyClubPage` shows the player under an **"Out on loan"** group for the parent and in the normal squad for the loanee.
 
 ### D4 — Wage split is a single percentage, loanee's share, `0.0`–`1.0`
-**[SIGN-OFF]**
+**[DECIDED 2026-08-24 — percentage]**
 
 `wage_split_pct = 0.60` means the loanee pays 60% of the player's weekly wage and the parent keeps 40%. Default `1.00` (loanee pays all), which is the common case and matches today's implicit behaviour.
 
@@ -134,7 +134,7 @@ On send: `reserve_budget(transfer_amount = loan_fee + add_ons, wage_weekly = wag
 This also fixes gap 4's second half for **permanent** offers, which have never reserved wage budget either. That is a behaviour change to existing permanent offers and should land as its own commit with its own note — a club with a full wage bill will start being correctly refused offers it could previously send.
 
 ### D6 — Selling a player who is out on loan terminates the loan
-**[SIGN-OFF]**
+**[DECIDED 2026-08-24 — terminate]**
 
 If the parent club completes a permanent sale of a loaned-out player, the loan ends at the moment the sale completes and the player moves to the new owner.
 
@@ -391,7 +391,7 @@ Each phase is independently shippable and leaves the app coherent.
 |---|---|---|
 | **0 — shipped 2026-08-24** | Frontend `DealType` enum drift (gap 3) | One line each, fixes a live mislabel, zero dependencies. Ship today. |
 | **1 — shipped 2026-08-24** | `deal_type` on `Offer` + copy it in `accept_offer` + wage reservation for all offers (gaps 2, 4) | Makes the existing model honest before adding to it. No loan mechanics yet — a `LOAN` offer at this point still completes as a permanent transfer, so **do not expose the UI toggle until phase 3.** |
-| **2** | `player_loans` table, `_complete_deal` branch, `get_owning_club_id` (gaps 5, 6, 7) | The mechanics. Loans now execute correctly but only end manually. |
+| **2 — shipped 2026-08-24** | `player_loans` table, `_complete_deal` branch, `get_owning_club_id` (gaps 5, 6, 7) | The mechanics. Loans now execute correctly but only end manually. |
 | **3** | Expiry job, return path, recall, notifications (gap 8) + the Create Offer UI | The loan now runs to term on its own. Safe to expose. |
 | **4** | Option to buy, obligation to buy (D7) | Genuinely optional; a loan is complete and useful without it. |
 
@@ -408,6 +408,12 @@ Recorded before the phases were marked shipped, per this folder's [README](./REA
 4. **`DealResponse` gained `wage_split_pct` and `recall_allowed`.** Implied by the new columns; the spec's API section did not list them.
 
 5. **`deal_type` was made non-counterable**, which the spec's API section already stated for `PATCH /offers/{id}/counter`. Noted here only because loan *terms* were made counterable at the same time — the spec left that ambiguous, and without it a seller could not negotiate a loan at all.
+
+**Phase 2 additions not in the spec's data model:**
+
+6. **`loanee_wage_share`** — the absolute weekly figure the loanee took on, stored rather than recomputed from `wage_split_pct`. The split is a fraction of the *agreed* wage, which need not equal the parent contract's wage; unwinding has to give back exactly what was taken.
+7. **`LoanEndReason`** is a Python enum stored in a `varchar(30)`, not a database enum. The spec listed the reasons but not the type. A string column avoids a second enum migration for what is a label, not a state — `status` carries the state.
+8. **`end_loan` takes `restore_parent`.** The spec described the return as one path; in practice the "not going home" cases (parent sold, loanee bought) must *not* restore the parent, because the caller creates the new owner's contract immediately after and two active contracts is a state `normalize_player_status` cannot represent.
 
 **Found during phase 1, not fixed, not loan-specific:** when the *seller* counters at a higher fee, the buyer's reservation is never recomputed — `counter_offer` adjusts it only when the buyer is the actor. Accepting a raised counter therefore commits the original, lower figure while the deal records the higher `agreed_fee`. Pre-existing, and the wage reservation added here inherits the same asymmetry. Left alone deliberately: refusing an acceptance the buyer can no longer afford is a product decision, not a bug fix.
 

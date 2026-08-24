@@ -27,6 +27,8 @@ from app.deals.models import (
     MedicalStatus,
     PersonalTerms,
 )
+from app.loans import service as loans_service
+from app.loans.models import LoanEndReason
 from app.players import service as players_service
 from app.players.models import Contract, Player
 
@@ -681,21 +683,25 @@ async def staff_collapse(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UU
 
 async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
     """Execute the transfer: settle finance for both clubs, then swap the contract."""
-    # Everything below permanently transfers the player: it deactivates the
-    # seller's contract, creates one for the buyer, credits the full fee, and
-    # releases the seller's whole wage commitment. For a LOAN every one of
-    # those is wrong, and the result is irreversible — the parent club would be
-    # left with no contract and no claim on a player they still own.
-    #
-    # Phase 1 of feature_spec/loan-transfers.md puts the type on the offer and
-    # carries it here; phase 2 branches this function. Until then a loan can be
-    # proposed, negotiated and agreed, but must not execute. Remove this guard
-    # in the same commit that adds the branch.
+    # A LOAN moves the registration without moving ownership, so it takes its
+    # own path (feature_spec/loan-transfers.md phase 2). Everything in the
+    # permanent path below would be wrong for one, irreversibly: it deactivates
+    # the seller's contract for good, hands the player to the buyer, credits the
+    # full fee and releases the seller's whole wage commitment.
     if deal.deal_type == DealType.LOAN:
-        raise ValueError(
-            "Loan deals cannot be completed yet — the loan execution path "
-            "(feature_spec/loan-transfers.md phase 2) is not built. Completing "
-            "this deal would transfer the player permanently."
+        await _complete_loan_deal(db, deal)
+        return
+
+    # D6: the parent club may sell a player who is out on loan — realistic, and
+    # blocking it would make a loaned player unsellable for up to a year. The
+    # loan ends the moment the sale completes. This runs before the permanent
+    # path so the loanee's registration and wage are unwound first; the parent
+    # is not restored, because the buyer's contract is about to be created and
+    # two active contracts is a state normalize_player_status cannot represent.
+    active_loan = await loans_service.get_active_loan(db, deal.player_id)
+    if active_loan is not None:
+        await loans_service.end_loan(
+            db, active_loan, reason=LoanEndReason.PARENT_SOLD, restore_parent=False
         )
 
     now = datetime.now(timezone.utc)
@@ -838,6 +844,137 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
         select(_AgentCommission).where(_AgentCommission.deal_id == deal.id)
     )
     existing_commission = comm_result.scalar_one_or_none()
+    if existing_commission:
+        await confirm_commission(db, existing_commission)
+
+    await db.flush()
+
+
+async def _complete_loan_deal(db: AsyncSession, deal: Deal) -> None:
+    """Execute a loan: move the registration, leave ownership where it is.
+
+    The difference from the permanent path is the whole point of the feature.
+    The parent's contract is *suspended*, not ended, and its id is recorded on
+    the loan so the return restores the agreement they already had rather than
+    inventing a new one. The loanee gets a contract that expires on the loan's
+    end date, which makes them the club with the single active contract — so
+    `current_club_id` becomes the loanee and the player shows up in their squad
+    and their wage bill, while `get_owning_club_id` keeps answering the parent.
+
+    Wage: the loanee takes on their agreed share and the parent is relieved of
+    exactly that same amount, keeping the remainder. Relief is the share rather
+    than the parent's whole contract wage, because the parent goes on paying
+    their part for the duration.
+    """
+    now = datetime.now(timezone.utc)
+    deal.status = DealStatus.COMPLETED
+    deal.completed_at = now
+
+    player = (
+        await db.execute(select(Player).where(Player.id == deal.player_id))
+    ).scalar_one_or_none()
+    if player is None:
+        raise ValueError("Player not found")
+    if deal.seller_club_id is None:
+        raise ValueError("A loan needs a parent club")
+    if deal.loan_start is None or deal.loan_end is None:
+        raise ValueError("A loan deal must carry both loan dates")
+
+    fee = (deal.loan_fee if deal.loan_fee is not None else deal.agreed_fee) or Decimal("0")
+    split = deal.wage_split_pct if deal.wage_split_pct is not None else Decimal("1")
+    wage_share = ((deal.agreed_wage_weekly or Decimal("0")) * split).quantize(Decimal("0.01"))
+
+    # TRA-58: an instalment schedule drives transfer_spent from mark-paid instead.
+    inst_count = (
+        await db.execute(select(func.count()).where(DealInstalment.deal_id == deal.id))
+    ).scalar_one() or 0
+    has_instalments = inst_count > 0
+
+    # The parent's contract, captured before it is suspended.
+    parent_contract = (
+        await db.execute(
+            select(Contract).where(
+                Contract.player_id == deal.player_id,
+                Contract.club_id == deal.seller_club_id,
+                Contract.is_active == True,  # noqa: E712
+            )
+        )
+    ).scalars().first()
+
+    # Lock both finance rows in a deterministic order (sorted by club_id), the
+    # same deadlock guard the permanent path uses.
+    finances = {}
+    for cid in sorted([deal.buyer_club_id, deal.seller_club_id], key=str):
+        finances[cid] = await clubs_module.service.get_finance_for_update(db, cid)
+    loanee_fin = finances.get(deal.buyer_club_id)
+    parent_fin = finances.get(deal.seller_club_id)
+
+    # Loanee: fee committed -> spent; wage committed -> reserved for the term.
+    if loanee_fin:
+        if fee > 0:
+            loanee_fin.transfer_committed = max(
+                Decimal("0"), loanee_fin.transfer_committed - fee
+            )
+            if not has_instalments:
+                loanee_fin.transfer_spent += fee
+        if wage_share > 0:
+            loanee_fin.wage_committed_weekly = max(
+                Decimal("0"), loanee_fin.wage_committed_weekly - wage_share
+            )
+            loanee_fin.wage_reserved_weekly += wage_share
+
+    # Parent: banks the loan fee, and is relieved of the share the loanee took
+    # on — not the whole wage, which is what a permanent sale would release.
+    if parent_fin:
+        if fee > 0 and not has_instalments:
+            parent_fin.transfer_budget_total += fee
+        if wage_share > 0:
+            parent_fin.wage_reserved_weekly = max(
+                Decimal("0"), parent_fin.wage_reserved_weekly - wage_share
+            )
+
+    # Suspend the parent's contract. Deliberately not create_contract's
+    # deactivate-all: the id has to be captured first so the return can restore
+    # this exact row.
+    if parent_contract is not None:
+        parent_contract.is_active = False
+        await db.flush()
+
+    # No sell-on here, unlike the permanent path: a loan is not a resale, and
+    # triggering a previous owner's clause on one would be a real mispayment.
+
+    # The loanee's registration, ending when the loan does.
+    loanee_contract = await players_service.create_contract(
+        db,
+        player=player,
+        club_id=deal.buyer_club_id,
+        start_date=deal.loan_start,
+        end_date=deal.loan_end,
+        wage_weekly=deal.agreed_wage_weekly,
+        notes=f"Loan spell, returns {deal.loan_end}",
+    )
+
+    # The flag belongs to whoever holds him; the parent decides afresh on return.
+    player.open_to_offers = False
+
+    await loans_service.start_loan(
+        db,
+        deal=deal,
+        player=player,
+        parent_contract=parent_contract,
+        loanee_contract=loanee_contract,
+        loanee_wage_share=wage_share,
+    )
+
+    # TRA-132: confirm any pending commission, same as the permanent path.
+    from app.agents.models import AgentCommission as _AgentCommission
+    from app.agents.service import confirm_commission
+
+    existing_commission = (
+        await db.execute(
+            select(_AgentCommission).where(_AgentCommission.deal_id == deal.id)
+        )
+    ).scalar_one_or_none()
     if existing_commission:
         await confirm_commission(db, existing_commission)
 
