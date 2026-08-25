@@ -393,7 +393,7 @@ Each phase is independently shippable and leaves the app coherent.
 | **1 — shipped 2026-08-24** | `deal_type` on `Offer` + copy it in `accept_offer` + wage reservation for all offers (gaps 2, 4) | Makes the existing model honest before adding to it. No loan mechanics yet — a `LOAN` offer at this point still completes as a permanent transfer, so **do not expose the UI toggle until phase 3.** |
 | **2 — shipped 2026-08-24** | `player_loans` table, `_complete_deal` branch, `get_owning_club_id` (gaps 5, 6, 7) | The mechanics. Loans now execute correctly but only end manually. |
 | **3 — shipped 2026-08-25** | Expiry job, return path, recall, notifications (gap 8), the loan read endpoints, and **all four UI surfaces** | The loan now runs to term on its own. Safe to expose. Scope widened from the Create Offer UI alone — see the phase 3 deviations. |
-| **4** | Option to buy, obligation to buy (D7) | Genuinely optional; a loan is complete and useful without it. |
+| **4 — shipped 2026-08-25** | Option to buy, obligation to buy (D7) | Genuinely optional; a loan is complete and useful without it. |
 
 ## Deviations from spec (phases 0–1, 2026-08-24)
 
@@ -430,6 +430,18 @@ Recorded before the phases were marked shipped, per this folder's [README](./REA
 14. **The deal room's `deal_type` is now fully read-only**, completing what phase 0 began (it had only made the derived types read-only). The type comes from the offer, and mutating it after acceptance is the original defect this whole spec exists to fix.
 
 **Found during phase 1, not fixed, not loan-specific:** when the *seller* counters at a higher fee, the buyer's reservation is never recomputed — `counter_offer` adjusts it only when the buyer is the actor. Accepting a raised counter therefore commits the original, lower figure while the deal records the higher `agreed_fee`. Pre-existing, and the wage reservation added here inherits the same asymmetry. Left alone deliberately: refusing an acceptance the buyer can no longer afford is a product decision, not a bug fix.
+
+**Phase 4 deviations (2026-08-25):**
+
+15. **The loan stays `ACTIVE` while the conversion deal runs**, and is ended by that deal completing rather than by the trigger. The spec implied the loan converts at the moment an option is exercised. It cannot: the purchase is an ordinary deal taking days through budget, medical and paperwork, and ending the loan up front would deactivate the player's registration and leave him with **no active contract at all** for the whole of that period.
+
+16. **`conversion_deal_id`** (migration `0069`) links the loan to the deal it produced. It is the guard that stops the daily job creating a fresh deal for the same obligation on every run — the spec described the obligation firing at expiry without saying what prevents it firing again the next day.
+
+17. **`_complete_deal`'s loan hook is now reason-aware.** One code path serves both D6 and D7: if the completing deal's buyer *is* the loanee, they bought him (`OPTION_EXERCISED`, or `OBLIGATION` when it was one); otherwise the parent sold him to a third club (`PARENT_SOLD`). No extra state was needed to tell the two apart.
+
+18. **`LOAN_CONVERTED`** notification type, not anticipated by the spec. Both clubs need telling that a loan is becoming permanent, and reusing `LOAN_ENDED` would have said the opposite of what happened.
+
+19. **`LoansPanel` covers both directions.** Phase 3 built it for the parent only, per the spec's UI section, which put borrowed players in the squad table with a chip. That has nowhere to hang an "exercise option" action, so the panel gained an "On loan to us" group. An obligation shows *"Completes automatically"* rather than a button — implying a choice the club does not have would be wrong.
 
 ## Open questions for sign-off
 

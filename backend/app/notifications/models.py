@@ -48,6 +48,7 @@ class NotificationType(str, enum.Enum):
     LOAN_ENDING_SOON = "LOAN_ENDING_SOON"
     LOAN_ENDED = "LOAN_ENDED"
     LOAN_RECALLED = "LOAN_RECALLED"
+    LOAN_CONVERTED = "LOAN_CONVERTED"
 
 
 class Notification(Base):

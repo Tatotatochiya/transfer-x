@@ -96,6 +96,13 @@ class PlayerLoan(Base):
         DateTime(timezone=True), nullable=True
     )
     end_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # The permanent deal this loan turned into, whether the loanee exercised an
+    # option or an obligation crystallised at expiry. Set when the deal is
+    # created, not when it completes: it is what stops the daily job starting a
+    # second deal for the same obligation on its next run.
+    conversion_deal_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("deals.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

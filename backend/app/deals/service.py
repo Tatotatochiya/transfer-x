@@ -692,16 +692,31 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
         await _complete_loan_deal(db, deal)
         return
 
-    # D6: the parent club may sell a player who is out on loan — realistic, and
-    # blocking it would make a loaned player unsellable for up to a year. The
-    # loan ends the moment the sale completes. This runs before the permanent
-    # path so the loanee's registration and wage are unwound first; the parent
-    # is not restored, because the buyer's contract is about to be created and
-    # two active contracts is a state normalize_player_status cannot represent.
+    # A permanent deal completing for a player who is out on loan ends that
+    # loan, whichever of the two ways it happened:
+    #
+    #   - the *loanee* is the buyer: they bought him, via an option they
+    #     exercised or an obligation that crystallised at expiry (D7);
+    #   - anyone else is the buyer: the parent sold him out from under the loan
+    #     (D6) — realistic, and blocking it would make a loaned player
+    #     unsellable for up to a year.
+    #
+    # This runs before the permanent path so the loanee's registration and wage
+    # are unwound first, and the parent is deliberately not restored: the
+    # buyer's contract is about to be created, and two active contracts is a
+    # state normalize_player_status cannot represent.
     active_loan = await loans_service.get_active_loan(db, deal.player_id)
     if active_loan is not None:
+        if deal.buyer_club_id == active_loan.loanee_club_id:
+            reason = (
+                LoanEndReason.OBLIGATION
+                if active_loan.obligation_to_buy
+                else LoanEndReason.OPTION_EXERCISED
+            )
+        else:
+            reason = LoanEndReason.PARENT_SOLD
         await loans_service.end_loan(
-            db, active_loan, reason=LoanEndReason.PARENT_SOLD, restore_parent=False
+            db, active_loan, reason=reason, restore_parent=False
         )
 
     now = datetime.now(timezone.utc)

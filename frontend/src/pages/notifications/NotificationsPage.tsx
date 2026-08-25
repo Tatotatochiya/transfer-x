@@ -47,6 +47,7 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   LOAN_ENDING_SOON:           "Loan ending soon",
   LOAN_ENDED:                 "Loan ended",
   LOAN_RECALLED:              "Player recalled",
+  LOAN_CONVERTED:             "Loan becoming permanent",
   APPROVAL_DECIDED:           "Approval decided",
 };
 
@@ -85,6 +86,7 @@ const TYPE_COLOURS: Record<NotificationType, string> = {
   LOAN_ENDING_SOON:         "text-warning-text",
   LOAN_ENDED:               "text-text-secondary",
   LOAN_RECALLED:            "text-warning-text",
+  LOAN_CONVERTED:           "text-accent",
   APPROVAL_DECIDED:         "text-success-text",
 };
 

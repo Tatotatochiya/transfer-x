@@ -93,7 +93,7 @@ async def _finance(db, club_id: str):
 async def _run_loan_to_completion(
     client: AsyncClient, db, parent: dict, loanee: dict,
     *, loan_end=date(2027, 5, 31), split=0.6, fee=2_000_000, wage=Decimal("90000"),
-    recall_allowed=False,
+    recall_allowed=False, option_to_buy=None, obligation=False,
 ):
     """Offer -> accept -> force-complete as staff. Returns (player, deal_id, loan)."""
     from app.auth.models import User
@@ -114,6 +114,8 @@ async def _run_loan_to_completion(
             "loan_start": str(date(2026, 9, 1)), "loan_end": str(loan_end),
             "loan_fee": fee, "wage_weekly": float(wage), "wage_split_pct": split,
             "recall_allowed": recall_allowed,
+            **({"option_to_buy": option_to_buy} if option_to_buy else {}),
+            **({"obligation_to_buy": True} if obligation else {}),
         },
         headers=l_headers,
     )).json()
@@ -657,6 +659,283 @@ async def test_both_clubs_are_told_when_a_loan_starts(
     notes = (
         await db.execute(
             select(Notification).where(Notification.type == NotificationType.LOAN_STARTED)
+        )
+    ).scalars().all()
+    assert len(notes) == 2
+
+
+# ── Phase 4: option and obligation to buy ────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_exercising_an_option_creates_a_permanent_deal_and_leaves_the_loan_running(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    """The loan deliberately stays ACTIVE while the purchase runs. Ending it
+    here would deactivate his registration and leave him with no active
+    contract at all for however many days the deal takes."""
+    from app.deals.models import Deal, DealStatus, DealType
+    from app.loans.models import PlayerLoan
+    from app.players.models import Player
+
+    player, _, loan = await _run_loan_to_completion(
+        client, db, parent, loanee, option_to_buy=18_000_000
+    )
+    loanee_club = await _club_id(client, _auth_headers(loanee))
+    parent_club = await _club_id(client, _auth_headers(parent))
+
+    resp = await client.post(
+        f"/loans/{loan.id}/exercise-option", headers=_auth_headers(loanee)
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "ACTIVE"
+    assert body["conversion_deal_id"] is not None
+
+    deal = (
+        await db.execute(
+            select(Deal).where(Deal.id == uuid_mod.UUID(body["conversion_deal_id"]))
+        )
+    ).scalar_one()
+    assert deal.deal_type == DealType.PERMANENT
+    assert deal.status == DealStatus.IN_PROGRESS
+    assert str(deal.buyer_club_id) == loanee_club
+    assert str(deal.seller_club_id) == parent_club
+    assert deal.agreed_fee == Decimal("18000000.00")
+
+    # He is still registered at the loanee, under the loan, while it runs.
+    row = (
+        await db.execute(select(Player).where(Player.id == uuid_mod.UUID(player["id"])))
+    ).scalar_one()
+    await db.refresh(row)
+    assert str(row.current_club_id) == loanee_club
+
+
+@pytest.mark.asyncio
+async def test_completing_the_conversion_ends_the_loan_as_option_exercised(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    """Not PARENT_SOLD: the buyer is the loanee, so this is them buying him,
+    not the parent selling him to a third club."""
+    from app.deals import service as deals_service
+    from app.deals.models import Deal
+    from app.loans.models import PlayerLoan
+    from app.players.models import Contract, Player
+
+    player, _, loan = await _run_loan_to_completion(
+        client, db, parent, loanee, option_to_buy=18_000_000
+    )
+    loanee_club = await _club_id(client, _auth_headers(loanee))
+
+    body = (await client.post(
+        f"/loans/{loan.id}/exercise-option", headers=_auth_headers(loanee)
+    )).json()
+    deal = (
+        await db.execute(
+            select(Deal).where(Deal.id == uuid_mod.UUID(body["conversion_deal_id"]))
+        )
+    ).scalar_one()
+    await deals_service._complete_deal(db, deal)
+    await db.commit()
+
+    refreshed = (
+        await db.execute(select(PlayerLoan).where(PlayerLoan.id == loan.id))
+    ).scalar_one()
+    await db.refresh(refreshed)
+    assert refreshed.status.value == "CONVERTED"
+    assert refreshed.end_reason == "OPTION_EXERCISED"
+
+    row = (
+        await db.execute(select(Player).where(Player.id == uuid_mod.UUID(player["id"])))
+    ).scalar_one()
+    await db.refresh(row)
+    assert str(row.current_club_id) == loanee_club
+
+    active = (
+        await db.execute(
+            select(Contract).where(
+                Contract.player_id == uuid_mod.UUID(player["id"]),
+                Contract.is_active == True,  # noqa: E712
+            )
+        )
+    ).scalars().all()
+    assert len(active) == 1
+    assert str(active[0].club_id) == loanee_club
+
+
+@pytest.mark.asyncio
+async def test_only_the_loanee_can_exercise_the_option(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    _, _, loan = await _run_loan_to_completion(
+        client, db, parent, loanee, option_to_buy=18_000_000
+    )
+    resp = await client.post(
+        f"/loans/{loan.id}/exercise-option", headers=_auth_headers(parent)
+    )
+    assert resp.status_code == 403, resp.text
+    assert "on loan at" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_no_option_means_nothing_to_exercise(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    _, _, loan = await _run_loan_to_completion(client, db, parent, loanee)  # no option
+    resp = await client.post(
+        f"/loans/{loan.id}/exercise-option", headers=_auth_headers(loanee)
+    )
+    assert resp.status_code == 400, resp.text
+    assert "without an option to buy" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_an_option_cannot_be_exercised_twice(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    _, _, loan = await _run_loan_to_completion(
+        client, db, parent, loanee, option_to_buy=18_000_000
+    )
+    first = await client.post(
+        f"/loans/{loan.id}/exercise-option", headers=_auth_headers(loanee)
+    )
+    assert first.status_code == 200, first.text
+    second = await client.post(
+        f"/loans/{loan.id}/exercise-option", headers=_auth_headers(loanee)
+    )
+    assert second.status_code == 400, second.text
+    assert "already being made permanent" in second.text
+
+
+@pytest.mark.asyncio
+async def test_an_obligation_converts_at_expiry_instead_of_returning_him(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    """D7. The clubs already agreed he would be bought, so sending him home and
+    asking them to redo it as a fresh transfer would contradict the terms."""
+    from app.deals.models import Deal, DealStatus, DealType
+    from app.loans import service as loans_service
+    from app.loans.models import PlayerLoan
+    from app.players.models import Player
+
+    player, _, loan = await _run_loan_to_completion(
+        client, db, parent, loanee, option_to_buy=18_000_000, obligation=True
+    )
+    loanee_club = await _club_id(client, _auth_headers(loanee))
+
+    loan.end_date = date.today() - timedelta(days=1)
+    await db.commit()
+
+    result = await loans_service.process_due_loans(db)
+    await db.commit()
+    assert result["converted"] == 1
+    assert result["returned"] == 0  # he did NOT go home
+
+    refreshed = (
+        await db.execute(select(PlayerLoan).where(PlayerLoan.id == loan.id))
+    ).scalar_one()
+    await db.refresh(refreshed)
+    assert refreshed.status.value == "ACTIVE"  # ends when the deal completes
+    assert refreshed.conversion_deal_id is not None
+
+    deal = (
+        await db.execute(select(Deal).where(Deal.id == refreshed.conversion_deal_id))
+    ).scalar_one()
+    assert deal.deal_type == DealType.PERMANENT
+    assert deal.agreed_fee == Decimal("18000000.00")
+    assert str(deal.buyer_club_id) == loanee_club
+
+    # Still at the loanee while the purchase runs.
+    row = (
+        await db.execute(select(Player).where(Player.id == uuid_mod.UUID(player["id"])))
+    ).scalar_one()
+    await db.refresh(row)
+    assert str(row.current_club_id) == loanee_club
+
+
+@pytest.mark.asyncio
+async def test_the_expiry_job_does_not_start_a_second_conversion(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    """Without conversion_deal_id the job would create a fresh deal for the
+    same obligation on every daily run."""
+    from app.deals.models import Deal
+    from app.loans import service as loans_service
+
+    _, _, loan = await _run_loan_to_completion(
+        client, db, parent, loanee, option_to_buy=18_000_000, obligation=True
+    )
+    loan.end_date = date.today() - timedelta(days=1)
+    await db.commit()
+
+    first = await loans_service.process_due_loans(db)
+    await db.commit()
+    second = await loans_service.process_due_loans(db)
+    await db.commit()
+    assert first["converted"] == 1
+    assert second["converted"] == 0
+
+    deals = (
+        await db.execute(
+            select(Deal).where(Deal.player_id == uuid_mod.UUID(str(loan.player_id)))
+        )
+    ).scalars().all()
+    # the original LOAN deal plus exactly one conversion
+    assert len(deals) == 2
+
+
+@pytest.mark.asyncio
+async def test_an_option_without_an_obligation_is_never_automatic(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    """An option is a right, not a commitment: at expiry he goes home unless
+    the loanee actually took it."""
+    from app.loans import service as loans_service
+    from app.loans.models import PlayerLoan
+    from app.players.models import Player
+
+    player, _, loan = await _run_loan_to_completion(
+        client, db, parent, loanee, option_to_buy=18_000_000  # option, no obligation
+    )
+    parent_club = await _club_id(client, _auth_headers(parent))
+    loan.end_date = date.today() - timedelta(days=1)
+    await db.commit()
+
+    result = await loans_service.process_due_loans(db)
+    await db.commit()
+    assert result["converted"] == 0
+    assert result["returned"] == 1
+
+    refreshed = (
+        await db.execute(select(PlayerLoan).where(PlayerLoan.id == loan.id))
+    ).scalar_one()
+    await db.refresh(refreshed)
+    assert refreshed.status.value == "COMPLETED"
+    assert refreshed.conversion_deal_id is None
+
+    row = (
+        await db.execute(select(Player).where(Player.id == uuid_mod.UUID(player["id"])))
+    ).scalar_one()
+    await db.refresh(row)
+    assert str(row.current_club_id) == parent_club
+
+
+@pytest.mark.asyncio
+async def test_both_clubs_are_told_a_loan_is_becoming_permanent(
+    client: AsyncClient, parent: dict, loanee: dict, db
+):
+    from app.notifications.models import Notification, NotificationType
+
+    _, _, loan = await _run_loan_to_completion(
+        client, db, parent, loanee, option_to_buy=18_000_000
+    )
+    await client.post(f"/loans/{loan.id}/exercise-option", headers=_auth_headers(loanee))
+
+    notes = (
+        await db.execute(
+            select(Notification).where(
+                Notification.type == NotificationType.LOAN_CONVERTED
+            )
         )
     ).scalars().all()
     assert len(notes) == 2

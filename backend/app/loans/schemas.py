@@ -39,6 +39,9 @@ class LoanResponse(BaseModel):
     status: LoanStatus
     ended_at: datetime | None = None
     end_reason: str | None = None
+    # Set once the loan is being made permanent. Non-null means an option was
+    # exercised or an obligation crystallised, and that deal is now running.
+    conversion_deal_id: uuid.UUID | None = None
     created_at: datetime
 
     player: LoanPlayerSummary | None = None

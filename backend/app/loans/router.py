@@ -107,6 +107,49 @@ async def get_loan(
     return _to_response(loan, club.id)
 
 
+@router.post("/loans/{loan_id}/exercise-option", response_model=LoanResponse)
+async def exercise_option(
+    loan_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _write: User = Depends(_market_write),
+):
+    """The loanee buys the player before the loan runs out.
+
+    Creates an ordinary PERMANENT deal at the agreed option price and leaves
+    the loan ACTIVE while it runs — the player keeps playing for the club he is
+    already at, and the loan is ended by the deal completing. It still passes
+    the normal budget, medical and paperwork gates: the price was agreed, the
+    ability to pay it today was not.
+    """
+    loan = (
+        await db.execute(
+            select(PlayerLoan).where(PlayerLoan.id == loan_id).options(*_LOAN_OPTS)
+        )
+    ).scalar_one_or_none()
+    if loan is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan not found")
+
+    club = await _club_or_403(db, current_user)
+    if club.id not in (loan.parent_club_id, loan.loanee_club_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan not found")
+
+    try:
+        await service.exercise_option(db, loan, actor_club_id=club.id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    await db.commit()
+    loan = (
+        await db.execute(
+            select(PlayerLoan).where(PlayerLoan.id == loan_id).options(*_LOAN_OPTS)
+        )
+    ).scalar_one()
+    return _to_response(loan, club.id)
+
+
 @router.post("/loans/{loan_id}/recall", response_model=LoanResponse)
 async def recall(
     loan_id: uuid.UUID,

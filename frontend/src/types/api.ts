@@ -1494,6 +1494,9 @@ export interface Loan {
   status: LoanStatus;
   ended_at: string | null;
   end_reason: string | null;
+  // Non-null once the loan is being made permanent — an option was
+  // exercised or an obligation crystallised, and that deal is running.
+  conversion_deal_id: string | null;
   created_at: string;
   player: { id: string; name: string; position: string | null; photo_url: string | null } | null;
   parent_club: { id: string; name: string; crest_url: string | null } | null;

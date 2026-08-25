@@ -59,6 +59,7 @@ const TYPE_LABELS: Record<string, string> = {
   LOAN_ENDING_SOON: "A loan is ending within two weeks",
   LOAN_ENDED: "A loan has ended and the player has returned",
   LOAN_RECALLED: "A parent club has recalled their player early",
+  LOAN_CONVERTED: "A loan is turning into a permanent transfer",
   APPROVAL_DECIDED: "Your spending request is decided",
 };
 
@@ -97,7 +98,7 @@ const TYPE_GROUPS: { label: string; types: string[] }[] = [
   },
   {
     label: "Loans",
-    types: ["LOAN_STARTED", "LOAN_ENDING_SOON", "LOAN_ENDED", "LOAN_RECALLED"],
+    types: ["LOAN_STARTED", "LOAN_ENDING_SOON", "LOAN_ENDED", "LOAN_RECALLED", "LOAN_CONVERTED"],
   },
 ];
 

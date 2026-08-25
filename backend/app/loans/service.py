@@ -273,6 +273,113 @@ async def recall_player(
     return await end_loan(db, loan, reason=LoanEndReason.RECALLED)
 
 
+async def _start_conversion(db: AsyncSession, loan: PlayerLoan, *, player: Player):
+    """Create the permanent deal a loan turns into.
+
+    Shared by the two ways that happens — the loanee exercising an option, and
+    an obligation crystallising at expiry — because the mechanics are identical
+    and only the trigger differs.
+
+    The deal runs the ordinary flow: budget checks, medical, paperwork,
+    completion. It was already agreed in principle, so it needs no
+    re-negotiation, but it emphatically still needs the normal gates — a club
+    that cannot fund the option when it falls due should have the deal collapse
+    like any other, not have the platform move a player it has not paid for.
+
+    The loan deliberately stays ACTIVE while that deal runs. The player keeps
+    playing for the loanee under the loan he is already on, and the loan is
+    ended by `_complete_deal` when the purchase actually completes. Ending it
+    here would deactivate his registration and leave him with no active
+    contract at all for however many days the deal takes.
+    """
+    from app.deals.models import Deal, DealStage, DealStatus, DealType
+
+    fee = loan.option_to_buy or Decimal("0")
+
+    # The wage he is already on at the loanee is the natural starting point;
+    # personal terms can still move it in the deal room.
+    loanee_contract = None
+    if loan.loanee_contract_id is not None:
+        loanee_contract = (
+            await db.execute(select(Contract).where(Contract.id == loan.loanee_contract_id))
+        ).scalar_one_or_none()
+
+    deal = Deal(
+        buyer_club_id=loan.loanee_club_id,
+        seller_club_id=loan.parent_club_id,
+        player_id=loan.player_id,
+        agreed_fee=fee,
+        agreed_wage_weekly=loanee_contract.wage_weekly if loanee_contract else None,
+        deal_type=DealType.PERMANENT,
+        status=DealStatus.IN_PROGRESS,
+        stage=DealStage.AGREEMENT,
+    )
+    db.add(deal)
+    await db.flush()
+
+    # Reserve the fee against the buyer, exactly as accepting an offer would.
+    # Deliberately not silent on failure: an obligation the club cannot fund is
+    # a real event both sides need to see, not something to swallow.
+    if fee > 0:
+        await clubs_module.service.commit_budget(
+            db, club_id=loan.loanee_club_id, transfer_amount=fee
+        )
+
+    loan.conversion_deal_id = deal.id
+    await db.flush()
+
+    await audit_service.emit(
+        db,
+        entity_type="LOAN", entity_id=loan.id,
+        action="LOAN_CONVERSION_STARTED",
+        payload={
+            "deal_id": str(deal.id),
+            "fee": str(fee),
+            "obligation": loan.obligation_to_buy,
+        },
+        description=(
+            "Obligation to buy triggered at expiry"
+            if loan.obligation_to_buy
+            else "Option to buy exercised"
+        ),
+    )
+    await _notify_both_clubs(
+        db, loan,
+        type=NotificationType.LOAN_CONVERTED,
+        message=(
+            f"{player.name}'s loan is becoming permanent — "
+            f"{'obligation' if loan.obligation_to_buy else 'option'} triggered at "
+            f"{fee:,.0f}"
+        ),
+    )
+    return deal
+
+
+async def exercise_option(
+    db: AsyncSession, loan: PlayerLoan, *, actor_club_id: uuid.UUID
+):
+    """The loanee buys the player before the loan runs out.
+
+    Never automatic, unlike an obligation (D7): an option is a right, and
+    exercising it is a decision the club has to actually take.
+    """
+    if loan.loanee_club_id != actor_club_id:
+        raise PermissionError("Only the club he is on loan at can exercise the option")
+    if loan.status != LoanStatus.ACTIVE:
+        raise ValueError(f"Loan is already {loan.status.value}")
+    if loan.option_to_buy is None:
+        raise ValueError("This loan was agreed without an option to buy")
+    if loan.conversion_deal_id is not None:
+        raise ValueError("This loan is already being made permanent")
+    if loan.end_date < datetime.now(timezone.utc).date():
+        raise ValueError("The loan has already ended — the option can no longer be exercised")
+
+    player = (
+        await db.execute(select(Player).where(Player.id == loan.player_id))
+    ).scalar_one()
+    return await _start_conversion(db, loan, player=player)
+
+
 async def process_due_loans(db: AsyncSession) -> dict[str, int]:
     """Daily job: return loans that have reached their end date, and warn on
     those about to. An obligation to buy is phase 4 — until then such a loan
@@ -282,6 +389,7 @@ async def process_due_loans(db: AsyncSession) -> dict[str, int]:
     today = now.date()
     returned = 0
     warned = 0
+    converted = 0
 
     due = (
         await db.execute(
@@ -291,6 +399,21 @@ async def process_due_loans(db: AsyncSession) -> dict[str, int]:
         )
     ).scalars().all()
     for loan in due:
+        # An obligation to buy crystallises instead of returning him: the two
+        # clubs already agreed he would be bought, so sending him home and
+        # asking them to re-do it as a fresh transfer would contradict the
+        # terms. The loan stays ACTIVE while that deal runs and is ended by
+        # the deal completing — conversion_deal_id is what stops this job
+        # starting a second deal on tomorrow's run.
+        if loan.obligation_to_buy and loan.option_to_buy is not None:
+            if loan.conversion_deal_id is None:
+                player = (
+                    await db.execute(select(Player).where(Player.id == loan.player_id))
+                ).scalar_one_or_none()
+                if player is not None:
+                    await _start_conversion(db, loan, player=player)
+                    converted += 1
+            continue
         await end_loan(db, loan, reason=LoanEndReason.EXPIRED)
         returned += 1
 
@@ -323,4 +446,4 @@ async def process_due_loans(db: AsyncSession) -> dict[str, int]:
         loan.ending_soon_notified_at = now
         warned += 1
 
-    return {"returned": returned, "ending_soon_warned": warned}
+    return {"returned": returned, "ending_soon_warned": warned, "converted": converted}
