@@ -47,10 +47,11 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 |---|---|---|
 | Backend | FastAPI (Python), SQLAlchemy async, PostgreSQL | [`architecture/backend-architecture.md`](./architecture/backend-architecture.md) |
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS v4 | [`architecture/frontend-architecture.md`](./architecture/frontend-architecture.md) |
-| Database migrations | 66 files, head at `0064` (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
+| Database migrations | 71 files, head at `0069` (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
 | User types | Club (owner + 4 staff roles), Agent, Player, Admin | [`product/personas.md`](./product/personas.md) |
 | Deal stages | AGREEMENT → AGENT_NEGOTIATION → PERSONAL_TERMS → PAPERWORK → CONFIRMED → COMPLETED (or COLLAPSED) | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
-| Deployed environment | Railway — live, at migration `0064`; not a formally promoted staging or production environment | [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md) |
+| Deal types | PERMANENT, LOAN (both offerable); FREE_TRANSFER, PRE_CONTRACT (derived by the signing paths) | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
+| Deployed environment | Railway — live, at migration `0069`, with demo data covering all seven deal stages; not a formally promoted staging or production environment | [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md) |
 
 > **TODO:** Keep this table in sync as the product evolves. It should always reflect *current, verified* state — if you're not sure a row is still accurate, check the code before trusting it.
 

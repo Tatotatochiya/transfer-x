@@ -1,6 +1,6 @@
 ---
 title: "Session Handover"
-last_updated: 2026-08-14
+last_updated: 2026-08-25
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -22,57 +22,53 @@ This file is **overwritten**, not appended to, at the end of each session — ma
 
 ## Latest Session Summary
 
-**Session date:** 2026-08-14
+**Session date:** 2026-08-25
 
-**The working tree is clean and pushed.** This session's work landed as five commits, split along the lines the work actually divides into: the type-floor sweep, the three responsive/Safari defects, the squad valuation cell, then the two valuation-signal fixes made after them. Full detail per commit in [`CHANGELOG.md`](./CHANGELOG.md). `main` is level with `origin/main`.
+**The working tree is clean and pushed.** `main` is level with `origin/main`. Everything below is committed. Full per-change detail in [`CHANGELOG.md`](./CHANGELOG.md).
 
-Not committed, deliberately: three `claude-*.bat` launcher scripts in the repo root. They are per-machine Claude Code wrappers (one sets `DEEPSEEK_API_KEY`), not project code — either add them to `.gitignore` or move them outside the repo.
+Not committed, deliberately: three `claude-*.bat` launcher scripts in the repo root. They are per-machine Claude Code wrappers (one sets `DEEPSEEK_API_KEY`), not project code — either add them to `.gitignore` or move them outside the repo. Carried from the last session; still untracked.
 
 **Completed work:**
 
-Four device-reported UI defects, all pre-existing, all reproduced and verified in a headless browser against the running stack rather than by reading CSS. Full detail in [`CHANGELOG.md`](./CHANGELOG.md) and the two new [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) rows.
-
-- **Type below the design system's own floor in 88 places.** `design_handoff_transferx/CLAUDE.md` rule 5 sets an 11px minimum (uppercase overlines only) and a 13px body floor. 75 uses of `text-[10px]`, and 13 of `text-[9px]` that a first sweep missed because it grepped only for the former. Classified per site rather than swept: **52 → 11px** (non-prose tokens — overlines, `FT`/`NS` codes, position codes, avatar initials, `⌘K`, bare numerals in count pills), **36 → 13px** (anything read as words). Nothing renders below 11px now, verified by grepping every arbitrary size under 11.
-- **Tier-2 figure grids overflowed on tablet only.** `auto-fit minmax(180px, 1fr)` inside a shell whose padding steps at `md:`/`lg:` packs a **4th column into a container narrower than desktop's** between roughly 820–900px, and `formatCurrency` emits unbreakable full-precision values (`£128,500,000`). Raised to `minmax(230px, 1fr)` — the largest floor still yielding 4 columns at 1280px, so desktop and mobile are unchanged. Four grids fixed; two were at `minmax(150px)` and overflowed on a 375px phone too.
-- **Every tinted pill rendered solid on Safari < 16.2, hiding its own text.** Reported as two unrelated-looking symptoms — an empty grey `BOTH` badge on My Club, and Top Form as solid green blobs — which proved to be one root cause. Fixed once in `index.css`.
-- **Compare/Shortlist escaped the player card on a phone** — a regression introduced by the type lift, on top of a `grid-cols-2` layout untenable at 166px regardless.
-- Tier-1 mobile card built to `RESPONSIVE.md`'s spec (17px/700 name, 2-line clamp, 48px full-width button — the old 36px button also missed rule 6's 44px touch-target floor); Browse Players to 1 column below 640px.
-- **Loans & free-agent capability review** — investigation only, no code changed. See *Outstanding work*.
+- **Loan transfers, phases 0–4 — the feature is complete.** Five commits, one per phase. A loan is now chosen when the offer is made, executes as a loan (registration moves, ownership does not), runs to term on its own, and can turn permanent by option or obligation. Backend 499 tests pass. Spec, decisions log and per-phase deviations: [`feature_spec/loan-transfers.md`](./feature_spec/loan-transfers.md); the architecture call is [ADR 0005](./architecture/decisions/0005-loan-registration-separate-from-ownership.md).
+  - Phase 0 — `DealType` enum drift: the frontend union was missing `FREE_TRANSFER`/`PRE_CONTRACT`, so **every free-agent signing displayed as "Permanent"**, and the terms-diff spine printed the raw enum.
+  - Phase 1 — `deal_type` and loan terms on `Offer`, carried onto the `Deal`. Plus the wage-reservation hole below.
+  - Phase 2 — `player_loans`, the `_complete_deal` branch, and `get_owning_club_id` returning the parent.
+  - Phase 3 — expiry job, recall, notifications, read endpoints, and all four UI surfaces.
+  - Phase 4 — option to buy (exercised by the loanee) and obligation to buy (fires automatically at expiry).
+- **Offers now reserve wage budget.** Independent of loans and older: `reserve_budget` always took a `wage_weekly` argument with a real affordability check, and **none of the six budget calls in the offers module ever passed one**. A club could commit to wages it had no room for and only discover it at completion.
+- **Market fair-value signal fixed** (earlier in the session): the batch valuation endpoint never passed a `reference_price`, so `divergence` was null for all 7,914 players — which silently emptied the "asking vs fair value" cell, made the "Best value first" sort a no-op, and pinned the "Under fair value" counter to 0. Extended to `OPEN_TO_OFFERS` listings with the product owner, and to the `market_value` fallback on the sale-detail embed.
+- **Railway demo data.** All seven deal stages now live there, matching local. Required mirroring local's 16 agent mandates across first — Railway had none on Arsenal, and scenario `D3` needs a mandated Arsenal player. Credentials and gotchas: [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md).
+- **Docs**: ADR 0005; `PRODUCT_SPEC.md` current-state facts (migrations `0069`, deal types, Railway); `transfer-lifecycle.md` gained *Deal types* and *Loans* sections and its `COMPLETED` row corrected; `IMPLEMENTATION_STATUS.md` three new rows plus corrected test totals; `environments-and-deployment.md` a Railway demo section.
 
 **Important decisions:**
 
-- **The `color-mix()` fallback is fixed globally in CSS, not per component.** Tailwind v4 compiles `bg-success/20` as `background-color: var(--success)` **plus** an `@supports (color: color-mix(…))` block carrying the real tint. Without that support the fallback paints **fully opaque**, so any pill whose text comes from the same token disappears — `Badge` neutral is `#667085` on identical `#667085`, contrast **1.0:1**. A scan found **101 sites** with that pattern. The alternative considered and rejected was adding solid `-bg-badge` tokens and rewiring components: that is the design system's own pattern (`--danger-bg-badge` already exists), but it fixes 2 of 101 while leaving 99 on a different mechanism. One `@supports not (…)` block covering all 47 utilities in both themes was the better trade.
-- **That block emits `rgba()`, and is generated rather than hand-written.** Tailwind cannot emit `rgba()` itself — it only has `var(--token)`, and CSS cannot decompose a custom property into channels; the generator knows the hex. `rgba()` also beats a pre-blended solid: no assumption about what sits behind the pill, and overlays like `bg-ink/40` stay see-through instead of turning a modal scrim opaque. Generator checked in at `frontend/scripts/gen_color_mix_fallback.py`.
-- **Desktop and mobile were held byte-identical in every fix.** Each change is mobile- or tablet-scoped — `sm:` variants, or a grid floor chosen so 1280px still yields 4 columns. Verified by measurement at both ends, not assumed.
-- **`RESPONSIVE.md` has two different card specs and they are easy to conflate.** Table cards are 14px/600 identifier + 12–13px supporting + 64px min height; `ResponsiveTable`'s `DefaultCard` already matches that exactly and was **not** changed. The 17px/700 + 13px figures belong to the **tier-1** card only. An earlier claim in this session that mobile table cards were built smaller than spec was wrong, and is corrected here.
-- **The 720 `text-xs` (12px) uses were deliberately left alone.** 12px in a dense desktop table is defensible; a blanket lift needs a responsive step, not a find-and-replace. Note that `RESPONSIVE.md` line 150 explicitly says *"Do not scale type down"* and permits only three responsive roles — so a global mobile step would contradict the spec's letter and needs a real decision rather than a quiet change.
+- **A loan does not use a second active contract** ([ADR 0005](./architecture/decisions/0005-loan-registration-separate-from-ownership.md)). `normalize_player_status` resolves the active contract with `scalar_one_or_none()`, so two active rows *raise* rather than misbehave, and that assumption runs through the whole player model. The loanee holds the one active contract; a `player_loans` row answers ownership. Do not "simplify" this into two contracts.
+- **Wage split is a fraction, 0.0–1.0** (product owner, D4), matching `sell_on_pct` and `agent_commission_pct` rather than introducing a third convention.
+- **Selling a loaned-out player terminates the loan** (product owner, D6). Blocking the sale would make a loaned player unsellable for up to a year.
+- **`deal_type` is fixed at offer time and is not counterable.** Countering a loan with a permanent offer is a different proposal. The deal room shows it read-only — retyping it after acceptance was the original defect the whole spec exists to fix.
+- **`agreed_fee` mirrors `loan_fee` on a loan deal.** Deliberate duplication: `collapse_deal`, approval thresholds and agent commission all read `agreed_fee` and would otherwise see zero.
+- **Divergence is computed against any non-auction listing**, reversing spec line 382 with the product owner. D7's exclusion is about auctions, whose reserve and bids are hidden; an `OPEN_TO_OFFERS` asking price is already public.
 
 **Outstanding work:**
 
-- **Loans cannot be proposed, only retrofitted.** Migration `0029` (TRA-56) gave `Deal` `deal_type`, `loan_start/end/fee`, `option_to_buy`, `obligation_to_buy`, `obligation_conditions` and `sell_on_pct`, and the deal room negotiates them (PERMANENT/LOAN toggle, `deal_type` in the terms-diff set). But `Offer` has **none** of it, and **no code path anywhere constructs a `DealType.LOAN`** — all five `Deal()` sites create `PERMANENT`, `FREE_TRANSFER` or `PRE_CONTRACT`. A loan is therefore sent as a fee-less *permanent* offer and restructured after acceptance. `CreateOfferPage.tsx:232` admits it in its own copy ("No fee — a free transfer, **loan**, or swap"). Three consequences:
-  - **Money.** `offers/service.py:173` is `reserve = (fee_amount or 0) + add_ons_total`. A loan sent as "No fee" reserves **£0** and, being zero, sits below every approval threshold. The wage share — usually the entire cost of a loan — is never reserved at all. A season-long loan at £200k/wk is £8–10m of commitment with no reservation and no approval. Same root as the fee-less-offer bug fixed 2026-08-13, but structural rather than a crash.
-  - **Seller's view.** The order book ranks by fee, so a loan, a swap and a free transfer are indistinguishable in the one screen where a seller chooses between them.
-  - **Audit trail.** The deal's history shows it agreed as permanent, then mutated after acceptance.
-- **Free-agent signing is already shipped** — `POST /players/{id}/sign` → `create_free_agent_deal` (seller `NULL`, fee 0, `FREE_TRANSFER`), wired to Player Market Detail, alongside a Bosman `pre-contract` path with a 180-day legality window. A *represented* free agent already routes straight to `AGENT_NEGOTIATION` via `maybe_invite_agent_for_deal`. The only gap: an **unrepresented** free agent parks at `AGREEMENT` — a stage meaning "the two clubs agree a fee" when there is no seller and no fee — needing one meaningless click. Start those at `PERSONAL_TERMS` instead. **Do not skip `PERSONAL_TERMS` itself**: the comment at `deals/service.py:429` records that it used to jump straight to `PAPERWORK`, letting deals complete without the player ever consenting (TRA-60).
-- **`DealType` enum drift — one-line fix.** `frontend/src/types/enums.ts:46` declares `"PERMANENT" | "LOAN"` while the backend has four values, and `DealDetailPage.tsx:1148` renders `deal_type === "LOAN" ? "Loan" : "Permanent"`. **Every free-agent signing and every Bosman pre-contract currently displays as "Permanent"** in the deal room.
-- **81 of the 135 `text-[11px]` uses carry no `uppercase` class**, so they violate rule 5 exactly as the 10px ones did — including the "Amount" and "Deadline" labels inside the tier-1 card that was rebuilt this session. The natural next tranche.
-- **`RESPONSIVE.md` also specifies a 2-column tablet tier-2 grid** (a tidier 2×2 than the 3+1 that auto-fit now produces) and a 28px→24px mobile figure size. Neither was causing the overflow; both are visible layout changes, so both were left as decisions rather than made quietly.
-- **44 pre-existing TypeScript errors** (audit [H9](./DEMO_READINESS_AUDIT.md)) — 23 genuine mismatches in app code, 14 unused declarations, 5 test-fixture drift, 2 missing Node types. Untriaged. **This was recorded as 47 and that was a miscount**; corrected here, in the audit, and in `IMPLEMENTATION_STATUS.md`.
-- Everything the previous handover listed that this session did not touch: **audit [H8](./DEMO_READINESS_AUDIT.md)** (`PublicRoute` does not wait for token bootstrap), anonymity not covering auction bids, offering for an `EXTERNAL` player creating an unacceptable `to_club_id = null` offer, **C3** (close self-registration — still the oldest open decision), H1, H2, H3, demo generator scenarios M1–M4/S1–S2, the orphaned £15,000,001 committed budget on Liverpool's W. Fofana deal, and the unverified `deal_sla`/`expire_mandates` job bodies.
+- **`docker compose build frontend`** — the frontend container is a built image with no source mount, so `:5173` still serves a pre-loan bundle. None of this session's UI (nor the earlier redesign work) is visible there until rebuilt. All UI verification this session was done against a temporary Vite dev server on `:5174`.
+- **The seller-counter reservation gap.** When the *seller* counters at a higher fee, the buyer's reservation is never recomputed — `counter_offer` adjusts it only when the buyer is the actor — so accepting a raised counter commits the original, lower figure while the deal records the higher `agreed_fee`. Pre-existing; the wage reservation added this session inherits the same asymmetry. **Left deliberately: it needs a product call**, because refusing an acceptance the buyer can no longer afford is a behaviour change, not a bug fix.
+- `players/service.py`'s server-side `sort_by=value` orders by `fair_value - Player.market_value` and is dead, because `market_value` is 0% populated. Unused by the frontend today; B3's to fix.
+- The demo generator's catalogue lists twelve scenarios; only the six deal-stage ones (`D1`–`D6`) appear to be built. The four live-market (`M1`–`M4`) and two supporting (`S1`–`S2`) scenarios look unimplemented — confirm against `seed_demo.py` before relying on them.
+- 44 TypeScript errors and 16 frontend test failures, both long-standing baselines, still untriaged (audit `H9` / `M11`).
 
 **Risks:**
 
-- **The `color-mix` diagnosis rests on an unconfirmed device version.** It requires the iPad to be on iPadOS ≤ 16.1. The simulated reproduction matched *both* reported symptoms exactly, so confidence is high — but the version was asked for and never confirmed. If that iPad is on 17+, a real bug was fixed but it was not *the* bug, and the original symptom will still be there.
-- **The fallback block is generated and can go stale.** New `/opacity` utilities are not covered until `gen_color_mix_fallback.py` is re-run (`npx vite build` first — it reads the built CSS). A stale entry degrades to today's behaviour, not worse.
-- **The Docker frontend service is a production build.** None of this session's work is visible on a device until `docker compose build frontend`. The running container currently serves a build predating the `color-mix` fix.
-- **`npx tsc --noEmit` still checks nothing** — use `npx tsc -b --noEmit`. Still not in CI, so it can silently no-op again.
-- **Work is going directly to `main`**, with no PR review step.
-- Carried forward, all still true: **`commission_pct` is a fraction, not a percentage**; **`commissionpayer` is `BUYER`/`SELLER`/`PLAYER`**; **`app.clubs.service` must be imported explicitly in standalone scripts**; **every dev password is `password123`**, including on Railway; **deleting an offer row with raw SQL strands its budget reservation** — withdraw through the API instead.
+- **Railway does not auto-deploy on push.** It sat at `0064` for hours after `0065`–`0069` were pushed and only caught up on the next deploy. Anything that assumes "main is deployed" will be wrong sometimes — check `railway deployment list` and the live `alembic_version`.
+- **Every Railway account shares the password `password123`**, including the superuser. Fine for a demo nobody depends on; not fine the moment Railway's role is settled as anything more.
+- **Deleting loan rows with raw SQL strands budget**, exactly as deleting an offer row does. This bit twice this session — a manual cleanup left a club carrying a stale £54,000 wage reservation. Unwind through the API, or fix the finance rows in the same statement.
+- The loan return path is the **only** thing in the product that can turn a squad player into a free agent (when the parent contract expired mid-loan). Offer validation refuses a loan that outlasts the parent contract specifically to keep it unreachable — don't relax that rule without replacing the protection.
 
 **Recommended next task:**
 
-1. **`docker compose build frontend`, then re-check the iPad.** The frontend container is a built image with no source mount, so it still serves the pre-fix bundle — none of this session's UI work is visible on `:5173` until it is rebuilt. That also settles the unconfirmed iPadOS version question in *Risks*.
-2. **Then either** the **`DealType` enum drift** (one line, and free-agent deals are actively mislabelled in the deal room right now), **or scope loans onto the `Offer`** — `deal_type` plus loan fields on `Offer`, carried into the `Deal` on acceptance instead of defaulting to `PERMANENT`, with the reservation computing loan fee + wage share so approvals actually bite. The budget hole is the part that matters; the UI is the easy half.
+1. **`docker compose build frontend`, then look at the loan UI on a real device.** It is the only way to see any of this session's or the previous session's frontend work, and it also settles the unconfirmed iPadOS ≤ 16.1 assumption behind the `color-mix` fallback.
+2. **Then decide the seller-counter reservation question** — it is the one open item that is genuinely about money and genuinely blocked on a product call rather than on effort.
 
 ## Related documents
 
