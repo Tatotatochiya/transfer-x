@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text, Uuid, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, Text, Uuid, func, text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -73,6 +73,20 @@ class Sale(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    # A player has at most one live listing. The router checks first so the
+    # caller gets a readable 409, but a check-then-insert cannot stop two
+    # concurrent requests (a fast double-click) from both passing — this index
+    # is what actually guarantees it.
+    __table_args__ = (
+        Index(
+            "uq_sales_one_open_per_player",
+            "player_id",
+            unique=True,
+            postgresql_where=text("status = 'OPEN'"),
+            sqlite_where=text("status = 'OPEN'"),
+        ),
     )
 
     player: Mapped["app.players.models.Player"] = relationship(  # type: ignore[name-defined]

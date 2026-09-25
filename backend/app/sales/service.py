@@ -58,6 +58,15 @@ async def create_sale(
     return sale
 
 
+async def get_open_sale_for_player(db: AsyncSession, player_id: uuid.UUID) -> Sale | None:
+    """The player's live listing, if any. There is at most one — enforced by
+    the `uq_sales_one_open_per_player` partial unique index."""
+    result = await db.execute(
+        select(Sale).where(Sale.player_id == player_id, Sale.status == SaleStatus.OPEN)
+    )
+    return result.scalars().first()
+
+
 async def get_sale_by_id(db: AsyncSession, sale_id: uuid.UUID) -> Sale | None:
     result = await db.execute(
         select(Sale)

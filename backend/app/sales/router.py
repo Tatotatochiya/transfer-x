@@ -5,6 +5,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.approvals import service as approvals_service
@@ -245,6 +246,15 @@ async def create_sale(
             detail="This player already has a transfer deal in progress and cannot be listed for sale.",
         )
 
+    # A player has at most one live listing. Checked here for a readable error;
+    # the partial unique index uq_sales_one_open_per_player is the actual
+    # guarantee, because two concurrent requests can both pass this check.
+    if await service.get_open_sale_for_player(db, body.player_id) is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This player is already listed. Withdraw that listing before creating another.",
+        )
+
     try:
         sale = await service.create_sale(
             db,
@@ -262,6 +272,14 @@ async def create_sale(
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except IntegrityError:
+        # The race the check above cannot see: a concurrent request listed him
+        # between that check and this commit, and the unique index refused us.
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This player is already listed. Withdraw that listing before creating another.",
+        )
 
     sale = await service.get_sale_by_id(db, sale.id)
     return _enrich_sale_response(sale, viewer_club_id=club.id, is_staff=current_user.is_superuser)

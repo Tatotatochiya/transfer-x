@@ -1023,3 +1023,71 @@ async def test_sale_whose_move_your_when_bid_placed_and_closing_soon(
     # so a null bid_count falls through to "neither" the same way the frontend's rule does.
     buyer_view = await client.get(f"/sales/{sale['id']}", headers=buy_headers)
     assert buyer_view.json()["whose_move"] == "neither"
+
+
+# ── One open listing per player ──────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_a_player_cannot_be_listed_twice(client: AsyncClient, seller: dict):
+    """Latent while listing was a full-page form; not once it is two clicks
+    from the squad and the player page."""
+    headers = _auth_headers(seller)
+    player = await _create_player(client, headers)
+    await _create_sale(client, headers, player["id"], sale_type="OPEN_TO_OFFERS")
+
+    resp = await client.post(
+        "/sales",
+        json={"player_id": player["id"], "sale_type": "FIXED_PRICE", "asking_price": 20_000_000},
+        headers=headers,
+    )
+    assert resp.status_code == 409, resp.text
+    assert "already listed" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_a_withdrawn_listing_does_not_block_relisting(client: AsyncClient, seller: dict):
+    """The guard is on OPEN listings only — withdrawing and relisting at a new
+    price is the only way to reprice today, so it must keep working."""
+    headers = _auth_headers(seller)
+    player = await _create_player(client, headers)
+    sale = await _create_sale(client, headers, player["id"], sale_type="OPEN_TO_OFFERS")
+    resp = await client.post(f"/sales/{sale['id']}/withdraw", headers=headers)
+    assert resp.status_code == 200, resp.text
+
+    again = await client.post(
+        "/sales",
+        json={"player_id": player["id"], "sale_type": "OPEN_TO_OFFERS"},
+        headers=headers,
+    )
+    assert again.status_code == 201, again.text
+
+
+@pytest.mark.asyncio
+async def test_the_database_itself_refuses_a_second_open_listing(
+    client: AsyncClient, seller: dict, db
+):
+    """The router check cannot see a concurrent request that lands between its
+    SELECT and its INSERT. This asserts the index holds on its own, bypassing
+    the router entirely."""
+    import uuid as uuid_mod
+
+    from sqlalchemy.exc import IntegrityError
+
+    from app.sales.models import Sale, SaleStatus, SaleType
+
+    headers = _auth_headers(seller)
+    player = await _create_player(client, headers)
+    club_id = (await client.get("/clubs/me", headers=headers)).json()["id"]
+
+    for _ in range(2):
+        db.add(Sale(
+            player_id=uuid_mod.UUID(player["id"]),
+            seller_club_id=uuid_mod.UUID(club_id),
+            sale_type=SaleType.OPEN_TO_OFFERS,
+            min_increment=Decimal("500000"),
+            status=SaleStatus.OPEN,
+        ))
+    with pytest.raises(IntegrityError):
+        await db.commit()
+    await db.rollback()
