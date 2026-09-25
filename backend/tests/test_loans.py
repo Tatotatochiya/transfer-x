@@ -5,7 +5,7 @@ cover what happens when a loan deal actually completes: the registration moves,
 ownership does not, and the money lands on the right side of both books.
 """
 import uuid as uuid_mod
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -14,6 +14,13 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from tests.conftest import _auth_headers, _register
+
+
+def _today() -> date:
+    """The loan service's clock is UTC. A local date.today() runs a day ahead
+    of it for the hour after midnight in BST, and then "yesterday" is not yet
+    in the past."""
+    return datetime.now(timezone.utc).date()
 
 
 @pytest_asyncio.fixture
@@ -316,7 +323,7 @@ async def test_return_makes_a_free_agent_when_the_parent_contract_expired(
     parent_contract = (
         await db.execute(select(Contract).where(Contract.id == loan.parent_contract_id))
     ).scalar_one()
-    parent_contract.end_date = date.today() - timedelta(days=1)
+    parent_contract.end_date = _today() - timedelta(days=1)
     await db.commit()
 
     await loans_service.end_loan(db, loan, reason=LoanEndReason.EXPIRED)
@@ -579,7 +586,7 @@ async def test_expiry_job_returns_a_loan_that_has_run_its_term(
     parent_club = await _club_id(client, _auth_headers(parent))
     loanee_club = await _club_id(client, _auth_headers(loanee))
 
-    loan.end_date = date.today() - timedelta(days=1)
+    loan.end_date = _today() - timedelta(days=1)
     await db.commit()
 
     result = await loans_service.process_due_loans(db)
@@ -628,7 +635,7 @@ async def test_ending_soon_warns_once_not_every_day(
     from app.notifications.models import Notification, NotificationType
 
     _, _, loan = await _run_loan_to_completion(client, db, parent, loanee)
-    loan.end_date = date.today() + timedelta(days=7)
+    loan.end_date = _today() + timedelta(days=7)
     await db.commit()
 
     first = await loans_service.process_due_loans(db)
@@ -823,7 +830,7 @@ async def test_an_obligation_converts_at_expiry_instead_of_returning_him(
     )
     loanee_club = await _club_id(client, _auth_headers(loanee))
 
-    loan.end_date = date.today() - timedelta(days=1)
+    loan.end_date = _today() - timedelta(days=1)
     await db.commit()
 
     result = await loans_service.process_due_loans(db)
@@ -865,7 +872,7 @@ async def test_the_expiry_job_does_not_start_a_second_conversion(
     _, _, loan = await _run_loan_to_completion(
         client, db, parent, loanee, option_to_buy=18_000_000, obligation=True
     )
-    loan.end_date = date.today() - timedelta(days=1)
+    loan.end_date = _today() - timedelta(days=1)
     await db.commit()
 
     first = await loans_service.process_due_loans(db)
@@ -898,7 +905,7 @@ async def test_an_option_without_an_obligation_is_never_automatic(
         client, db, parent, loanee, option_to_buy=18_000_000  # option, no obligation
     )
     parent_club = await _club_id(client, _auth_headers(parent))
-    loan.end_date = date.today() - timedelta(days=1)
+    loan.end_date = _today() - timedelta(days=1)
     await db.commit()
 
     result = await loans_service.process_due_loans(db)
