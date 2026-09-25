@@ -1,6 +1,6 @@
 ---
 title: "Product Decisions"
-last_updated: 2026-07-04
+last_updated: 2026-09-25
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -19,6 +19,7 @@ In scope: product-level decisions (what to build, what not to build, scope trade
 
 - [0001 — Buying club proposes personal terms in non-mandated deals](./0001-buying-club-proposes-personal-terms.md)
 - [0002 — Personal terms are captured once, not duplicated across negotiation and consent](./0002-single-capture-point-for-personal-terms.md)
+- [0003 — A player is listed where he is, as Open to Offers, with the model as a hint](./0003-listing-a-player.md)
 
 > **TODO:** Add further decisions here as `NNNN-short-title.md`, following the short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
 

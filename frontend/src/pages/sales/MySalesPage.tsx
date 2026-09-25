@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
@@ -12,6 +12,7 @@ import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import Pagination from "../../components/ui/Pagination";
 import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import EmptyState from "../../components/ui/EmptyState";
+import ListPlayerModal from "../../components/sales/ListPlayerModal";
 import { saleStatusLabel, saleStatusVariant, saleTypeLabel, saleTypeVariant } from "../../lib/badges";
 import { formatCurrency, formatDeadline } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
@@ -46,6 +47,8 @@ export default function MySalesPage() {
   const [statusFilter, setStatusFilter] = useState<SaleStatus | "">("");
   const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page, setPage] = useState(1);
+  const [listOpen, setListOpen] = useState(false);
+  const closeListing = useCallback(() => setListOpen(false), []);
 
   // Need own club id to query sales
   const { data: myClub } = useQuery<Club>({
@@ -97,7 +100,7 @@ export default function MySalesPage() {
         subtitle="Sales and auctions you've created"
         actions={
           can("MARKET_WRITE") && (
-            <Button variant="primary" onClick={() => navigate("/sales/new")}>
+            <Button variant="primary" onClick={() => setListOpen(true)}>
               + New listing
             </Button>
           )
@@ -129,7 +132,7 @@ export default function MySalesPage() {
         <EmptyState
           title="No listings"
           body="You haven't listed any players yet."
-          action={{ label: "Create a listing", to: "/sales/new" }}
+          action={can("MARKET_WRITE") ? { label: "Create a listing", onClick: () => setListOpen(true) } : undefined}
         />
       )}
 
@@ -217,6 +220,8 @@ export default function MySalesPage() {
           )}
         </>
       )}
+
+      <ListPlayerModal open={listOpen} onClose={closeListing} />
     </div>
   );
 }

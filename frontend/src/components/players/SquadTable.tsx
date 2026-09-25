@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { ActiveDealStub, FairValueSignal, Player, PlayerDetail } from "../../types/api";
 import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
+import Button from "../ui/Button";
 
 const POSITION_TARGETS = [
   { pos: "GK", min: 2, label: "Goalkeepers" },
@@ -27,8 +28,13 @@ interface Props {
   onToggleOpenToOffers?: (playerId: string, next: boolean) => void;
   togglingIds?: Set<string>;
   onSetValuation?: (playerId: string, value: number | null) => void;
-  /** Player IDs with an open listing right now — drives the "Listed" chip and flag. */
-  listedPlayerIds?: Set<string>;
+  /** Open listings right now, player id → listing id — drives the "Listed"
+   *  chip and flag, and the row's link to the listing. */
+  openListings?: Map<string, string>;
+  /** When set, each row a writer sees gets a List action that calls this. */
+  onList?: (player: { id: string; name: string }) => void;
+  /** Why nothing can be listed right now (window closed) — disables List. */
+  listBlockedReason?: string | null;
   /** Loans where this club is the *loanee*, keyed by player id. These players
    *  hold our registration and appear in the squad, but we do not own them:
    *  the server already refuses to let us list or sell them, and the row
@@ -55,18 +61,20 @@ function valuationGap(pct: number): "in-line" | "notable" | "wide" {
 // ── Player row ────────────────────────────────────────────────────────────────
 
 function PlayerRow({
-  player, showContractDetails, formScore, fairValue, isListed, loan,
-  onToggleOpenToOffers, toggling, onSetValuation,
+  player, showContractDetails, formScore, fairValue, listingId, loan,
+  onToggleOpenToOffers, toggling, onSetValuation, onList, listBlockedReason,
 }: {
   player: SquadPlayer;
   showContractDetails: boolean;
   formScore?: { score: number; trend: number | null };
   fairValue?: FairValueSignal;
-  isListed: boolean;
+  listingId?: string;
   loan?: { endDate: string; parentClubName: string | null };
   onToggleOpenToOffers?: (playerId: string, next: boolean) => void;
   toggling?: boolean;
   onSetValuation?: (playerId: string, value: number | null) => void;
+  onList?: (player: { id: string; name: string }) => void;
+  listBlockedReason?: string | null;
 }) {
   const [editingValuation, setEditingValuation] = useState(false);
   const [draft, setDraft] = useState("");
@@ -97,7 +105,7 @@ function PlayerRow({
     ? { label: "On loan", colour: "text-accent" }
     : player.active_deal?.status === "IN_PROGRESS"
     ? { label: "Transfer pending", colour: "text-warning-text" }
-    : isListed
+    : listingId
     ? { label: "Listed", colour: "text-accent" }
     : player.open_to_offers
     ? { label: "Open to offers", colour: "text-success-text" }
@@ -256,8 +264,11 @@ function PlayerRow({
           </div>
         )}
 
-        {/* Flag / open-to-offers toggle */}
-        <div className="flex shrink-0 basis-[110px] justify-end">
+        {/* Flag / listing action + open-to-offers toggle. Below ~1440px the
+            row's columns overflow and this cell wraps to a line of its own;
+            ml-auto keeps it at the row's end there. On one line the identity
+            column's flex-1 takes the free space first, so it is a no-op. */}
+        <div className="ml-auto flex shrink-0 basis-[110px] items-center justify-end gap-3">
           {loan ? (
             <span
               className="text-xs font-semibold text-accent"
@@ -266,6 +277,32 @@ function PlayerRow({
               On loan
             </span>
           ) : onToggleOpenToOffers ? (
+            <>
+            {/* Listing from the row: the state that blocks it is what shows
+                instead — his live listing, or the deal already under way. */}
+            {onList && (
+              listingId ? (
+                <Link
+                  to={`/sales/${listingId}`}
+                  className="inline-flex min-h-11 items-center text-xs font-semibold text-accent hover:underline lg:min-h-0"
+                >
+                  Listed →
+                </Link>
+              ) : player.active_deal?.status === "IN_PROGRESS" ? (
+                <span className="text-xs font-semibold text-warning-text">Transfer pending</span>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="min-w-11 lg:min-w-0"
+                  disabled={!!listBlockedReason}
+                  title={listBlockedReason ?? `List ${player.name} for sale`}
+                  onClick={() => onList({ id: player.id, name: player.name })}
+                >
+                  List
+                </Button>
+              )
+            )}
             <button
               disabled={toggling || player.active_deal?.status === "IN_PROGRESS"}
               title={player.active_deal?.status === "IN_PROGRESS" ? "Cannot change while a transfer is in progress" : undefined}
@@ -275,6 +312,7 @@ function PlayerRow({
             >
               <span className={`pointer-events-none inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${player.open_to_offers ? "translate-x-[18px]" : "translate-x-0.5"}`} />
             </button>
+            </>
           ) : flag ? (
             <span className={`text-xs font-semibold ${flag.colour}`}>{flag.label}</span>
           ) : (
@@ -297,8 +335,8 @@ function PositionGroup({
   pos, label, min, total, players, ...rowProps
 }: {
   pos: string; label: string; min: number; total: number; players: SquadPlayer[];
-} & Omit<Parameters<typeof PlayerRow>[0], "player" | "isListed" | "toggling" | "formScore" | "fairValue" | "loan">
-  & { listedPlayerIds: Set<string>; formScores?: Record<string, { score: number; trend: number | null }>; fairValues?: Record<string, FairValueSignal>; togglingIds?: Set<string>; loanedIn?: Map<string, { endDate: string; parentClubName: string | null }> }) {
+} & Omit<Parameters<typeof PlayerRow>[0], "player" | "listingId" | "toggling" | "formScore" | "fairValue" | "loan">
+  & { openListings: Map<string, string>; formScores?: Record<string, { score: number; trend: number | null }>; fairValues?: Record<string, FairValueSignal>; togglingIds?: Set<string>; loanedIn?: Map<string, { endDate: string; parentClubName: string | null }> }) {
   // total is the whole squad's count for this position, independent of the
   // active filter chip — depth coverage shouldn't flip to "priority gap"
   // just because a filter (e.g. "Contract risk") happens to hide everyone.
@@ -325,11 +363,13 @@ function PositionGroup({
               showContractDetails={rowProps.showContractDetails}
               formScore={rowProps.formScores?.[p.id]}
               fairValue={rowProps.fairValues?.[p.id]}
-              isListed={rowProps.listedPlayerIds.has(p.id)}
+              listingId={rowProps.openListings.get(p.id)}
               loan={rowProps.loanedIn?.get(p.id)}
               onToggleOpenToOffers={rowProps.onToggleOpenToOffers}
               toggling={rowProps.togglingIds?.has(p.id)}
               onSetValuation={rowProps.onSetValuation}
+              onList={rowProps.onList}
+              listBlockedReason={rowProps.listBlockedReason}
             />
           ))}
         </div>
@@ -342,10 +382,10 @@ function PositionGroup({
 
 export default function SquadTable({
   players, showContractDetails = false, formScores, fairValues,
-  onToggleOpenToOffers, togglingIds, onSetValuation, listedPlayerIds, loanedIn,
+  onToggleOpenToOffers, togglingIds, onSetValuation, openListings, loanedIn, onList, listBlockedReason,
 }: Props) {
   const [chip, setChip] = useState<ChipKey>("all");
-  const listed = listedPlayerIds ?? new Set<string>();
+  const listed = openListings ?? new Map<string, string>();
 
   if (players.length === 0) {
     return <p className="py-8 text-center text-sm text-text-muted">No players in squad.</p>;
@@ -416,8 +456,10 @@ export default function SquadTable({
           onToggleOpenToOffers={onToggleOpenToOffers}
           togglingIds={togglingIds}
           onSetValuation={onSetValuation}
-          listedPlayerIds={listed}
+          openListings={listed}
           loanedIn={loanedIn}
+          onList={onList}
+          listBlockedReason={listBlockedReason}
         />
       ))}
 
@@ -434,8 +476,10 @@ export default function SquadTable({
           onToggleOpenToOffers={onToggleOpenToOffers}
           togglingIds={togglingIds}
           onSetValuation={onSetValuation}
-          listedPlayerIds={listed}
+          openListings={listed}
           loanedIn={loanedIn}
+          onList={onList}
+          listBlockedReason={listBlockedReason}
         />
       )}
     </div>

@@ -1,14 +1,15 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { Club, FairValueSignal, Loan, Paginated, PlayerDetail, PlayerForm, Sale } from "../../types/api";
+import type { Club, FairValueSignal, Loan, Paginated, PlayerDetail, PlayerForm } from "../../types/api";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import Card from "../../components/ui/Card";
 import EmptyState from "../../components/ui/EmptyState";
 import Spinner from "../../components/ui/Spinner";
 import SaleCard from "../../components/sales/SaleCard";
+import ListPlayerModal from "../../components/sales/ListPlayerModal";
 import SquadTable from "../../components/players/SquadTable";
 import LoansPanel from "../../components/players/LoansPanel";
 import SquadRail from "../../components/clubs/SquadRail";
@@ -21,6 +22,7 @@ import VerifiedBadge from "../../components/verification/VerifiedBadge";
 import RequestVerificationPanel from "../../components/verification/RequestVerificationPanel";
 import { formatCurrency, getApiError } from "../../lib/utils";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
+import { useListingClosedReason, useOpenListings } from "../../hooks/useListing";
 
 type Tab = "squad" | "stats" | "listings" | "fixtures";
 
@@ -99,18 +101,13 @@ export default function MyClubPage() {
   // Fetched unconditionally (not gated to the listings tab) — the squad tab's
   // "Listed" chip and per-row flag both need this to cross-reference players.
 
-  const { data: salesData, isLoading: salesLoading } = useQuery<Paginated<Sale>>({
-    queryKey: ["sales", { sellerClubId: club?.id, status: "OPEN" }],
-    queryFn: () =>
-      api.get<Paginated<Sale>>("/sales", { params: { seller_club_id: club!.id, status: "OPEN", page_size: 20 } })
-        .then((r) => r.data),
-    enabled: !!club?.id,
-  });
+  const { data: salesData, isLoading: salesLoading, byPlayer: openListings } = useOpenListings(club?.id);
+  const listClosedReason = useListingClosedReason(can("MARKET_WRITE"));
 
-  const listedPlayerIds = useMemo(
-    () => new Set((salesData?.items ?? []).map((s) => s.player_id)),
-    [salesData]
-  );
+  // Listing opens a modal over the page: with a player from his squad row, or
+  // with a picker from the Listings tab.
+  const [listing, setListing] = useState<{ player?: { id: string; name: string } } | null>(null);
+  const closeListing = useCallback(() => setListing(null), []);
 
   // ── Edit form ─────────────────────────────────────────────────────────────
 
@@ -386,13 +383,20 @@ export default function MyClubPage() {
                 <>
                   <div className="mb-5 grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
                     <FigureCard label="Contracts < 12mo" value={String(contractsUnder12mo)} warn={contractsUnder12mo > 0} />
-                    <FigureCard label="Listed" value={String(listedPlayerIds.size)} />
+                    <FigureCard label="Listed" value={String(openListings.size)} />
                     <FigureCard label="Average age" value={averageAge != null ? averageAge.toFixed(1) : "—"} />
                     <FigureCard label="Wage room" value={club.finance ? formatCurrency(Number(club.finance.wage_remaining_weekly)) : "—"} note="per week" />
                   </div>
 
                   {Object.keys(formScores).length > 0 && (
                     <TopPerformers players={players} formScores={formScores} />
+                  )}
+                  {/* The rows' List buttons are disabled with this as their
+                      tooltip; a tooltip never shows on touch, so say it once. */}
+                  {canMarketWrite && listClosedReason && (
+                    <p className="mb-3 text-[13px] text-text-secondary">
+                      {listClosedReason} Players can be listed again once it opens.
+                    </p>
                   )}
                   <SquadTable
                     players={players}
@@ -401,8 +405,12 @@ export default function MyClubPage() {
                     fairValues={fairValues}
                     onToggleOpenToOffers={canMarketWrite ? toggleOpenToOffers : undefined}
                     onSetValuation={canMarketWrite ? setValuation : undefined}
-                    listedPlayerIds={listedPlayerIds}
+                    openListings={openListings}
                     loanedIn={loanedIn}
+                    // Not until we know who is listed: the squad lands first,
+                    // and a listed player's row would offer List meanwhile.
+                    onList={canMarketWrite && salesData ? (player) => setListing({ player }) : undefined}
+                    listBlockedReason={listClosedReason}
                   />
                 </>
               )}
@@ -447,13 +455,7 @@ export default function MyClubPage() {
                 <EmptyState
                   title="No active listings"
                   body="You have no players currently listed for sale or auction."
-                  action={
-                    canMarketWrite ? (
-                      <Button variant="primary" onClick={() => navigate("/sales/new")}>
-                        Create listing
-                      </Button>
-                    ) : undefined
-                  }
+                  action={canMarketWrite ? { label: "Create listing", onClick: () => setListing({}) } : undefined}
                 />
               ) : (
                 <>
@@ -466,7 +468,7 @@ export default function MyClubPage() {
                         View all
                       </Button>
                       {canMarketWrite && (
-                        <Button variant="primary" size="sm" onClick={() => navigate("/sales/new")}>
+                        <Button variant="primary" size="sm" onClick={() => setListing({})}>
                           + New listing
                         </Button>
                       )}
@@ -495,6 +497,8 @@ export default function MyClubPage() {
           {canClubAdmin && <RequestVerificationPanel verified={club.verified} />}
         </div>
       </div>
+
+      <ListPlayerModal open={listing !== null} onClose={closeListing} player={listing?.player} />
     </div>
   );
 }

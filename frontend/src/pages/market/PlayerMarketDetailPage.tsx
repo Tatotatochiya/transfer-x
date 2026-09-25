@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { ActiveDealStub, Club, FairValueSignal, MandateResponse, OrderBook, Player, PlayerDetail, PlayerForm, PlayerStats } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
+import { useListingClosedReason, useOpenListings } from "../../hooks/useListing";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
@@ -19,6 +20,7 @@ import {
 } from "../../lib/badges";
 import { formatCurrency, formatDate, formatWage } from "../../lib/utils";
 import AddToShortlistButton from "../../components/scouting/AddToShortlistButton";
+import ListPlayerModal from "../../components/sales/ListPlayerModal";
 import { useCompare } from "../../context/CompareContext";
 import CareerHistoryPanel from "../../components/players/CareerHistoryPanel";
 import InjuryHistoryPanel from "../../components/players/InjuryHistoryPanel";
@@ -561,6 +563,16 @@ export default function PlayerMarketDetailPage() {
     refetchInterval: 300_000,
   });
 
+  // Listing from here. A player on loan *to* us is in our squad but not ours
+  // to sell; one we loaned out is not `isMyPlayer` at all (current_club is
+  // the loanee).
+  const canList = isMyPlayer && can("MARKET_WRITE") && !player?.active_loan;
+  const { byPlayer: openListings, isSuccess: listingsKnown } = useOpenListings(myClub?.id, canList);
+  const listingId = id ? openListings.get(id) : undefined;
+  const listClosedReason = useListingClosedReason(canList);
+  const [listOpen, setListOpen] = useState(false);
+  const closeListing = useCallback(() => setListOpen(false), []);
+
   const toggleOTOMutation = useMutation({
     mutationFn: (next: boolean) =>
       api.patch(`/clubs/me/players/${id}`, { open_to_offers: next }).then((r) => r.data),
@@ -833,6 +845,36 @@ export default function PlayerMarketDetailPage() {
                   </button>
                 )}
 
+                {/* Not until his listing state is known, or a listed player
+                    offers "List for sale" for a moment. */}
+                {canList && listingsKnown && (
+                  listingId ? (
+                    <Button variant="secondary" onClick={() => navigate(`/sales/${listingId}`)}>
+                      View listing
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="primary"
+                        disabled={player.active_deal?.status === "IN_PROGRESS" || !!listClosedReason}
+                        title={
+                          player.active_deal?.status === "IN_PROGRESS"
+                            ? "A transfer deal is already in progress for this player"
+                            : listClosedReason ?? undefined
+                        }
+                        onClick={() => setListOpen(true)}
+                      >
+                        List for sale
+                      </Button>
+                      {/* The deal case needs no line here: the deal banner
+                          below already says so. */}
+                      {listClosedReason && (
+                        <span className="text-[13px] text-text-muted">{listClosedReason}</span>
+                      )}
+                    </>
+                  )
+                )}
+
                 {!isMyPlayer && (
                   <>
                     <AddToShortlistButton playerId={player.id} />
@@ -995,6 +1037,10 @@ export default function PlayerMarketDetailPage() {
           )}
         </div>
       </div>
+
+      {canList && (
+        <ListPlayerModal open={listOpen} onClose={closeListing} player={{ id: player.id, name: player.name }} />
+      )}
     </div>
   );
 }
