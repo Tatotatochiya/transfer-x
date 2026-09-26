@@ -108,6 +108,7 @@ async def start_loan(
         loanee_wage_share=loanee_wage_share,
         option_to_buy=deal.option_to_buy,
         obligation_to_buy=deal.obligation_to_buy,
+        obligation_conditions=deal.obligation_conditions if deal.obligation_to_buy else None,
         recall_allowed=deal.recall_allowed,
         status=LoanStatus.ACTIVE,
     )
@@ -347,9 +348,7 @@ async def _start_conversion(db: AsyncSession, loan: PlayerLoan, *, player: Playe
     # promoted"), so the purchase starts either way and the notice says what
     # it was conditional on: the clubs confirm it by running the deal, or
     # collapse it if the conditions were not met.
-    conditions = (
-        await db.execute(select(Deal.obligation_conditions).where(Deal.id == loan.deal_id))
-    ).scalar_one_or_none() if loan.obligation_to_buy else None
+    conditions = loan.obligation_conditions if loan.obligation_to_buy else None
     message = (
         f"{player.name}'s loan is becoming permanent — "
         f"{'obligation' if loan.obligation_to_buy else 'option'} triggered at "

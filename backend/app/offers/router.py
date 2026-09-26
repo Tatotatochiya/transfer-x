@@ -499,6 +499,10 @@ async def counter_offer(
             obligation_to_buy=body.obligation_to_buy,
             recall_allowed=body.recall_allowed,
             obligation_conditions=body.obligation_conditions,
+            # Sent as an explicit null, as opposed to left out: remove it.
+            remove_option_to_buy=(
+                "option_to_buy" in body.model_fields_set and body.option_to_buy is None
+            ),
         )
         other_club_id = offer.to_club_id if offer.from_club_id == club.id else offer.from_club_id
         await _db_notify_offer(

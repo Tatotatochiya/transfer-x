@@ -88,12 +88,19 @@ function CounterForm({
       if (loanStart && loanStart !== offer.loan_start) body.loan_start = loanStart;
       if (loanEnd && loanEnd !== offer.loan_end) body.loan_end = loanEnd;
       const parsedOption = parseFloat(option);
-      if (option && !isNaN(parsedOption) && parsedOption !== Number(offer.option_to_buy ?? NaN)) {
+      if (!option.trim() && offer.option_to_buy != null) {
+        // An explicit null removes the option — and the server drops any
+        // obligation and conditions with it, since an obligation needs a price.
+        body.option_to_buy = null;
+      } else if (option && !isNaN(parsedOption) && parsedOption !== Number(offer.option_to_buy ?? NaN)) {
         body.option_to_buy = parsedOption;
       }
-      if (obligation !== offer.obligation_to_buy) body.obligation_to_buy = obligation;
+      const keepsObligation = obligation && !!option.trim();
+      if (keepsObligation !== offer.obligation_to_buy && body.option_to_buy !== null) {
+        body.obligation_to_buy = keepsObligation;
+      }
       // "" clears them; the server also drops them when the obligation goes.
-      if (obligation && conditions.trim() !== (offer.obligation_conditions ?? "")) {
+      if (keepsObligation && conditions.trim() !== (offer.obligation_conditions ?? "")) {
         body.obligation_conditions = conditions.trim();
       }
       if (recall !== offer.recall_allowed) body.recall_allowed = recall;
@@ -143,7 +150,7 @@ function CounterForm({
             </div>
             <div>
               <label className="mb-1 block text-xs text-text-muted">Purchase price (£)</label>
-              <CurrencyInput value={option} onChange={setOption} placeholder="No option to buy" className={inputClass} />
+              <CurrencyInput value={option} onChange={setOption} placeholder="No option to buy — clear to remove" className={inputClass} />
             </div>
           </div>
           <label className="flex items-start gap-2.5">
@@ -159,7 +166,7 @@ function CounterForm({
               loan ends, rather than being the borrowing club's option.
             </span>
           </label>
-          {obligation && (
+          {obligation && option.trim() && (
             <div className="pl-6">
               <label className="mb-1 block text-xs text-text-muted">Obligation conditions (optional)</label>
               <textarea

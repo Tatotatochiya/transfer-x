@@ -87,11 +87,16 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
         className="rounded-full bg-surface-inset px-2 py-0.5 text-[13px] font-semibold text-text-secondary ring-1 ring-input-border"
         title={
           loan.obligation_to_buy
-            ? `Must be bought for ${formatCurrency(loan.option_to_buy)} when the loan ends`
+            ? `Must be bought for ${formatCurrency(loan.option_to_buy)} when the loan ends` +
+              (loan.obligation_conditions ? `, if: ${loan.obligation_conditions}` : "")
             : `May be bought for ${formatCurrency(loan.option_to_buy)}`
         }
       >
         {loan.obligation_to_buy ? "Obligation" : "Option"} {formatCurrency(loan.option_to_buy)}
+        {/* Tooltips never show on touch, so the condition is on the chip too. */}
+        {loan.obligation_to_buy && loan.obligation_conditions && (
+          <span className="font-normal text-text-muted"> · if {loan.obligation_conditions}</span>
+        )}
       </span>
     );
   }
@@ -280,7 +285,9 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
                       still has a choice. */}
                   {loan.obligation_to_buy && !loan.conversion_deal_id && (
                     <span className="text-[13px] text-text-muted">
-                      Completes automatically
+                      {loan.obligation_conditions
+                        ? "Purchase starts at the end date — collapse it if the conditions were not met"
+                        : "Purchase starts at the end date"}
                     </span>
                   )}
                 </div>

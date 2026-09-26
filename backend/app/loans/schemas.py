@@ -35,6 +35,7 @@ class LoanResponse(BaseModel):
     loanee_wage_share: Decimal
     option_to_buy: Decimal | None = None
     obligation_to_buy: bool = False
+    obligation_conditions: str | None = None
     recall_allowed: bool = False
     status: LoanStatus
     ended_at: datetime | None = None

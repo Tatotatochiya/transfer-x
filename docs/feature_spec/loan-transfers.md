@@ -462,6 +462,11 @@ Recorded before the phases were marked shipped, per this folder's [README](./REA
 
 27. **A deal's loan terms are locked; obligation conditions are agreed on the offer** (product owner, 2026-09-26). `PATCH /deals/{id}` let either club change `deal_type` and every loan term **alone**, with no validation. The frontend had hidden the type control, but the API still re-opened the original defect, and a changed `loan_fee` drifted from the `agreed_fee` and budget committed at acceptance. It now refuses the type and all loan terms ("agreed on the offer … collapse it and re-approach"), and refuses a sell-on on a loan. Sell-on stays editable on a permanent deal at `AGREEMENT`; the editor had only shown it inside the loan block, which is backwards. The deal room shows every loan term read-only, including the wage share in pounds and the recall clause, which it never showed before. `obligation_conditions` moved onto the offer (migration `0072`): it is collected with the obligation, counterable (`""` clears it, and dropping the obligation clears it too), carried onto the deal, and refused without an obligation. **A conditional obligation still converts at expiry.** The platform cannot evaluate "if promoted", so the purchase deal starts either way and the notice names the conditions, for the clubs to collapse the deal if they were not met. The loan's "Out on loan / On loan to us" panel does not show the conditions yet.
 
+29. **Small follow-ups (2026-09-26).**
+    - A counter can now **remove** a purchase option: an explicit `"option_to_buy": null`, as opposed to leaving the field out, removes the option and with it any obligation and conditions.
+    - The loan row copies `obligation_conditions` from its deal (migration `0073`, backfilled), so the loans panel shows them. The panel's "Completes automatically" became "Purchase starts at the end date": the purchase still passes budget, medical and paperwork.
+    - `get_offer_by_id` uses `populate_existing`. The routers re-read an offer they had just changed in the same session and got the cached pre-change copy, so a counter's response showed the negotiation without the counter.
+
 ## Open questions for sign-off
 
 1. **D4** — wage split as a percentage, or an absolute weekly figure?

@@ -251,8 +251,15 @@ def _load_options():
 
 
 async def get_offer_by_id(db: AsyncSession, offer_id: uuid.UUID) -> Offer | None:
+    # populate_existing: the routers re-read an offer they have just changed in
+    # this same session, and without it the identity map hands back the copy
+    # already loaded — with its events and messages as they were *before* the
+    # change, so a counter's response showed the negotiation without the counter.
     result = await db.execute(
-        select(Offer).where(Offer.id == offer_id).options(*_load_options())
+        select(Offer)
+        .where(Offer.id == offer_id)
+        .options(*_load_options())
+        .execution_options(populate_existing=True)
     )
     return result.scalar_one_or_none()
 
@@ -524,6 +531,7 @@ async def counter_offer(
     obligation_to_buy: bool | None = None,
     recall_allowed: bool | None = None,
     obligation_conditions: str | None = None,
+    remove_option_to_buy: bool = False,
 ) -> Offer:
     """Counter an offer with new terms. Either party can counter.
 
@@ -559,6 +567,11 @@ async def counter_offer(
         ),
     }
     changes = {k: v for k, v in changes.items() if v is not None}
+    # Removing the option removes the obligation it priced: an obligation
+    # needs a price, and one with none is not a term either club can hold.
+    if remove_option_to_buy:
+        changes.pop("option_to_buy", None)
+        changes["obligation_to_buy"] = False
     # Dropping the obligation drops what it was conditional on.
     if changes.get("obligation_to_buy") is False and offer.obligation_conditions:
         changes["obligation_conditions"] = ""
@@ -575,7 +588,7 @@ async def counter_offer(
         loan_end=_merged("loan_end"),
         loan_fee=_merged("loan_fee"),
         wage_split_pct=_merged("wage_split_pct"),
-        option_to_buy=_merged("option_to_buy"),
+        option_to_buy=None if remove_option_to_buy else _merged("option_to_buy"),
         obligation_to_buy=bool(_merged("obligation_to_buy")),
         recall_allowed=bool(_merged("recall_allowed")),
         obligation_conditions=_merged("obligation_conditions") or None,
@@ -635,8 +648,10 @@ async def counter_offer(
         offer.loan_end = loan_end
     if option_to_buy is not None:
         offer.option_to_buy = option_to_buy
-    if obligation_to_buy is not None:
-        offer.obligation_to_buy = obligation_to_buy
+    if remove_option_to_buy:
+        offer.option_to_buy = None
+    if "obligation_to_buy" in changes:
+        offer.obligation_to_buy = changes["obligation_to_buy"]
     if recall_allowed is not None:
         offer.recall_allowed = recall_allowed
     if "obligation_conditions" in changes:
@@ -661,7 +676,8 @@ async def counter_offer(
         payload={
             "fee_amount": str(fee_amount) if fee_amount else None,
             "changes": {
-                k: v if isinstance(v, bool) else str(v) for k, v in changes.items()
+                **{k: v if isinstance(v, bool) else str(v) for k, v in changes.items()},
+                **({"option_to_buy": None} if remove_option_to_buy else {}),
             },
         },
     ))

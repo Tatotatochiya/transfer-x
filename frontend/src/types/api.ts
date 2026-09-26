@@ -1511,6 +1511,7 @@ export interface Loan {
   loanee_wage_share: number;
   option_to_buy: number | null;
   obligation_to_buy: boolean;
+  obligation_conditions: string | null;
   recall_allowed: boolean;
   status: LoanStatus;
   ended_at: string | null;
