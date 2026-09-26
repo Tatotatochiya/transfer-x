@@ -367,6 +367,7 @@ async def create_offer(
             recall_allowed=body.recall_allowed,
             no_fee_reason=body.no_fee_reason,
             obligation_conditions=body.obligation_conditions,
+            sale_id=body.sale_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

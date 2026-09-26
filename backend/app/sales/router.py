@@ -19,7 +19,7 @@ from app.deps import get_buyer_user, get_current_user, get_optional_user, get_se
 from app.notifications import service as notif_service
 from app.notifications.models import NotificationType
 from app.sales import service
-from app.sales.models import Bid, BidStatus, Sale, SaleStatus, SaleType
+from app.sales.models import Bid, BidStatus, ListingAvailability, Sale, SaleStatus, SaleType
 from app.transfer_window import service as window_service
 from app.ws.manager import manager as ws_manager
 from app.sales.schemas import (
@@ -80,6 +80,7 @@ def _enrich_sale_response(
         player_id=sale.player_id,
         seller_club_id=sale.seller_club_id,
         sale_type=sale.sale_type,
+        availability=sale.availability,
         asking_price=sale.asking_price,
         reserve_price=sale.reserve_price if is_seller_or_staff else None,
         min_increment=sale.min_increment,
@@ -105,6 +106,7 @@ def _enrich_sale_response(
 async def list_sales(
     status: SaleStatus | None = None,
     sale_type: SaleType | None = None,
+    available_for: ListingAvailability | None = None,
     seller_club_id: uuid.UUID | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
@@ -123,6 +125,7 @@ async def list_sales(
         date_to=date_to,
         page=page,
         page_size=page_size,
+        available_for=available_for,
     )
     return Paginated(
         items=[
@@ -266,6 +269,7 @@ async def create_sale(
             min_increment=body.min_increment,
             deadline=body.deadline,
             notes=body.notes,
+            availability=body.availability,
         )
         await db.commit()
         await db.refresh(sale)

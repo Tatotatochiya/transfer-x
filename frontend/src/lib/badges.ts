@@ -4,6 +4,7 @@ import type {
   DealStage,
   DealStatus,
   DealType,
+  ListingAvailability,
   OfferStatus,
   PlayerPosition,
   PlayerStatus,
@@ -64,6 +65,14 @@ export function saleTypeLabel(t: SaleType): string {
     FIXED_PRICE:    "Fixed Price",
   };
   return map[t];
+}
+
+/** Null for a transfer-only listing: that is what every listing was before
+ *  loans could be listed, so it needs no badge. */
+export function availabilityLabel(a: ListingAvailability | undefined): string | null {
+  if (a === "LOAN") return "Loan only";
+  if (a === "EITHER") return "Transfer or loan";
+  return null;
 }
 
 export function saleStatusVariant(s: SaleStatus): BadgeVariant {

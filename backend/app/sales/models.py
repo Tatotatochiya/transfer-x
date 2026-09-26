@@ -16,6 +16,15 @@ class SaleType(str, enum.Enum):
     FIXED_PRICE = "FIXED_PRICE"
 
 
+class ListingAvailability(str, enum.Enum):
+    """What the selling club will consider for this player — separate from
+    `SaleType`, which is *how* offers arrive. A loan cannot be auctioned, so
+    this is not a fourth sale type."""
+    TRANSFER = "TRANSFER"
+    LOAN = "LOAN"
+    EITHER = "EITHER"
+
+
 class SaleStatus(str, enum.Enum):
     OPEN = "OPEN"
     CLOSED = "CLOSED"
@@ -54,6 +63,13 @@ class Sale(Base):
     )
     sale_type: Mapped[SaleType] = mapped_column(
         SAEnum(SaleType, name="saletype"), nullable=False, index=True
+    )
+    availability: Mapped[ListingAvailability] = mapped_column(
+        SAEnum(ListingAvailability, name="listingavailability"),
+        nullable=False,
+        default=ListingAvailability.TRANSFER,
+        server_default="TRANSFER",
+        index=True,
     )
     asking_price: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
     reserve_price: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)

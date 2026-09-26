@@ -29,6 +29,7 @@ import type {
   ValuationConfidence,
   ValuationSource,
   WageSource,
+  ListingAvailability,
 } from "./enums";
 
 // ── Shared ────────────────────────────────────────────────────────────────────
@@ -447,6 +448,7 @@ export interface Sale {
   player_id: string;
   seller_club_id: string;
   sale_type: SaleType;
+  availability: ListingAvailability;
   asking_price: number | null;
   reserve_price: number | null;
   min_increment: number;

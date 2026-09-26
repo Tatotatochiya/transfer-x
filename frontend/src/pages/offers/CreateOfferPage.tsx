@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { Offer, PlayerDetail } from "../../types/api";
+import type { Offer, PlayerDetail, Sale } from "../../types/api";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import CurrencyInput from "../../components/ui/CurrencyInput";
@@ -48,6 +48,23 @@ export default function CreateOfferPage() {
       api.get<PlayerDetail>(`/players/market/${playerId}`).then((r) => r.data),
     enabled: !!playerId,
   });
+
+  // Made from a listing: the listing says what its club will consider, and an
+  // offer it does not invite is refused by the server — so only offer those.
+  const { data: sale } = useQuery<Sale>({
+    queryKey: ["sales", saleId],
+    queryFn: () => api.get<Sale>(`/sales/${saleId}`).then((r) => r.data),
+    enabled: !!saleId,
+  });
+  const blockedType = (t: "PERMANENT" | "LOAN"): string | null => {
+    if (!sale) return null;
+    if (t === "LOAN" && sale.availability === "TRANSFER") return "Listed for a transfer only";
+    if (t === "PERMANENT" && sale.availability === "LOAN") return "Listed for loan only";
+    return null;
+  };
+  useEffect(() => {
+    if (sale?.availability === "LOAN") setDealType("LOAN");
+  }, [sale?.availability]);
 
   // Check whether the club already has an active offer for this player
   const { data: activeOffer, isLoading: checkLoading } = useQuery<Offer | null>({
@@ -264,22 +281,27 @@ export default function CreateOfferPage() {
               {([
                 ["PERMANENT", "Permanent transfer", "He joins you outright."],
                 ["LOAN", "Loan", "He plays for you for a fixed spell, then goes back."],
-              ] as const).map(([value, label, hint]) => (
-                <button
-                  key={value}
-                  type="button"
-                  // An error about the other form's fields no longer applies.
-                  onClick={() => { setDealType(value); setError(null); }}
-                  className={`rounded-lg px-3.5 py-2.5 text-left ring-1 transition-colors ${
-                    dealType === value
-                      ? "bg-accent-bg text-accent-active ring-accent/40"
-                      : "bg-surface-inset text-text-secondary ring-border hover:ring-input-border"
-                  }`}
-                >
-                  <span className="block text-sm font-semibold">{label}</span>
-                  <span className="mt-0.5 block text-[13px] text-text-muted">{hint}</span>
-                </button>
-              ))}
+              ] as const).map(([value, label, hint]) => {
+                const blocked = blockedType(value);
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    disabled={!!blocked}
+                    // An error about the other form's fields no longer applies.
+                    onClick={() => { setDealType(value); setError(null); }}
+                    className={`rounded-lg px-3.5 py-2.5 text-left ring-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                      dealType === value
+                        ? "bg-accent-bg text-accent-active ring-accent/40"
+                        : "bg-surface-inset text-text-secondary ring-border hover:ring-input-border"
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold">{label}</span>
+                    {/* The reason as text, not a tooltip — touch never shows one. */}
+                    <span className="mt-0.5 block text-[13px] text-text-muted">{blocked ?? hint}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

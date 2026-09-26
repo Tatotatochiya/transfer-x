@@ -4,7 +4,7 @@ import api from "../../lib/api";
 import type { Sale } from "../../types/api";
 import Badge from "../ui/Badge";
 import ClubLink from "../ui/ClubLink";
-import { saleStatusLabel, saleStatusVariant, saleTypeLabel, saleTypeVariant } from "../../lib/badges";
+import { availabilityLabel, saleStatusLabel, saleStatusVariant, saleTypeLabel, saleTypeVariant } from "../../lib/badges";
 import { formatCurrency, formatDeadline } from "../../lib/utils";
 
 interface SaleCardProps {
@@ -51,6 +51,9 @@ export default function SaleCard({ sale }: SaleCardProps) {
           <Badge variant={sale.status === "OPEN" ? saleTypeVariant(sale.sale_type) : "neutral"}>
             {saleTypeLabel(sale.sale_type)}
           </Badge>
+          {availabilityLabel(sale.availability) && (
+            <Badge variant={sale.status === "OPEN" ? "info" : "neutral"}>{availabilityLabel(sale.availability)}</Badge>
+          )}
           <Badge variant={saleStatusVariant(sale.status)}>{saleStatusLabel(sale.status)}</Badge>
         </div>
       </div>
@@ -62,7 +65,9 @@ export default function SaleCard({ sale }: SaleCardProps) {
             ? formatCurrency(sale.best_bid)
             : sale.asking_price
             ? formatCurrency(sale.asking_price)
-            : "Price TBD"}
+            : sale.availability === "LOAN"
+            ? "Loan terms open"
+            : "Open to offers"}
         </span>
         {deadline && (
           <span className={`text-xs font-medium ${deadlineColour}`}>

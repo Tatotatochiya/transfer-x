@@ -13,13 +13,52 @@ from app.clubs.models import ClubFinance
 from app.common.filters import apply_date_range
 from app.common.schemas import WhoseMove
 from app.deals.models import Deal, DealStage, DealStatus, DealType
-from app.sales.models import Bid, BidStatus, Sale, SaleEvent, SaleEventType, SaleStatus, SaleType
+from app.sales.models import (
+    Bid, BidStatus, ListingAvailability, Sale, SaleEvent, SaleEventType, SaleStatus, SaleType,
+)
 
 # B1: matches AUCTION_CLOSING_SOON_HOURS in frontend/src/lib/whoseMove.ts.
 _AUCTION_CLOSING_SOON_HOURS = 48
 
 
 # ── Sale CRUD ─────────────────────────────────────────────────────────────────
+
+
+def validate_listing_terms(
+    *, sale_type: SaleType, availability: ListingAvailability, asking_price: Decimal | None
+) -> None:
+    """What a listing may offer.
+
+    An auction sells to the highest bidder, so it is transfer-only. A fixed
+    price is a transfer price; a fixed-price listing may also welcome loan
+    approaches ("either") but cannot be loan-only. A loan-only listing is open
+    to offers and carries **no asking price**: a figure on it would read as the
+    player's price — to buyers, and to the fair-value signal, which compares an
+    asking price against the model's valuation of the player.
+    """
+    if availability == ListingAvailability.TRANSFER:
+        return
+    if sale_type == SaleType.AUCTION:
+        raise ValueError("An auction is for a transfer — list him open to offers to consider loans")
+    if availability == ListingAvailability.LOAN:
+        if sale_type != SaleType.OPEN_TO_OFFERS:
+            raise ValueError("A loan-only listing is open to offers — a fixed price is a transfer price")
+        if asking_price is not None:
+            raise ValueError(
+                "A loan-only listing has no asking price — clubs propose the loan fee and wage share"
+            )
+
+
+def check_offer_matches_listing(sale: Sale, *, is_loan: bool) -> None:
+    """An offer made against a listing must be one the listing invites.
+    Otherwise a loan offer could be accepted against a sale listing and close
+    it — the seller wanted to sell and got a loan instead."""
+    if sale.status != SaleStatus.OPEN:
+        raise ValueError("This listing is no longer open")
+    if is_loan and sale.availability == ListingAvailability.TRANSFER:
+        raise ValueError("This player is listed for a transfer only — his club is not considering loans")
+    if not is_loan and sale.availability == ListingAvailability.LOAN:
+        raise ValueError("This player is listed for loan only — make a loan offer instead")
 
 
 async def create_sale(
@@ -33,11 +72,14 @@ async def create_sale(
     min_increment: Decimal = Decimal("500000"),
     deadline: datetime | None = None,
     notes: str | None = None,
+    availability: ListingAvailability = ListingAvailability.TRANSFER,
 ) -> Sale:
+    validate_listing_terms(sale_type=sale_type, availability=availability, asking_price=asking_price)
     sale = Sale(
         player_id=player_id,
         seller_club_id=seller_club_id,
         sale_type=sale_type,
+        availability=availability,
         asking_price=asking_price,
         reserve_price=reserve_price,
         min_increment=min_increment,
@@ -90,7 +132,10 @@ async def list_sales(
     date_to: date | None = None,
     page: int = 1,
     page_size: int = 30,
+    available_for: ListingAvailability | None = None,
 ) -> tuple[list[Sale], int]:
+    """`available_for=LOAN` means "a club could loan him" — loan-only listings
+    and those open to either. Likewise TRANSFER. EITHER matches EITHER only."""
     from sqlalchemy import func
 
     q = select(Sale).options(
@@ -102,6 +147,10 @@ async def list_sales(
         q = q.where(Sale.status == status)
     if sale_type:
         q = q.where(Sale.sale_type == sale_type)
+    if available_for in (ListingAvailability.LOAN, ListingAvailability.TRANSFER):
+        q = q.where(Sale.availability.in_([available_for, ListingAvailability.EITHER]))
+    elif available_for == ListingAvailability.EITHER:
+        q = q.where(Sale.availability == ListingAvailability.EITHER)
     if seller_club_id:
         q = q.where(Sale.seller_club_id == seller_club_id)
     q = apply_date_range(q, Sale.created_at, date_from, date_to)

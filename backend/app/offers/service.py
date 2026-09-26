@@ -345,6 +345,7 @@ async def check_new_offer(
     recall_allowed: bool,
     no_fee_reason: str | None,
     obligation_conditions: str | None = None,
+    sale_id: uuid.UUID | None = None,
 ) -> None:
     """Every rule a new offer's terms must pass. Separate from `create_offer`
     so the router can run it before capturing a spending approval — otherwise
@@ -377,6 +378,16 @@ async def check_new_offer(
     )
     if deal_type == DealType.LOAN:
         await loan_wage_basis(db, player_id)
+
+    # Made against a listing: it must be that player's listing, and the kind
+    # of deal the listing invites.
+    if sale_id is not None:
+        from app.sales import service as sales_service
+
+        sale = await sales_service.get_sale_by_id(db, sale_id)
+        if sale is None or sale.player_id != player_id:
+            raise ValueError("That listing is not for this player")
+        sales_service.check_offer_matches_listing(sale, is_loan=deal_type == DealType.LOAN)
 
 
 async def create_offer(
@@ -427,6 +438,7 @@ async def create_offer(
         recall_allowed=recall_allowed,
         no_fee_reason=no_fee_reason,
         obligation_conditions=obligation_conditions,
+        sale_id=sale_id,
     )
     reason = (no_fee_reason or "").strip()
     obligation_conditions = (obligation_conditions or "").strip() or None

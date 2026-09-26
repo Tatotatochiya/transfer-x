@@ -20,6 +20,7 @@ import {
   saleStatusLabel,
   saleStatusVariant,
   saleTypeLabel,
+  availabilityLabel,
   saleTypeVariant,
 } from "../../lib/badges";
 import { formatCurrency, getApiError } from "../../lib/utils";
@@ -165,6 +166,9 @@ export default function SaleDetailPage() {
             <Badge variant={isOpen ? saleTypeVariant(sale.sale_type) : "neutral"}>
               {saleTypeLabel(sale.sale_type)}
             </Badge>
+            {availabilityLabel(sale.availability) && (
+              <Badge variant={isOpen ? "info" : "neutral"}>{availabilityLabel(sale.availability)}</Badge>
+            )}
           </div>
         </div>
         {sale.seller_club && (
@@ -272,7 +276,7 @@ export default function SaleDetailPage() {
       {sale.sale_type === "OPEN_TO_OFFERS" && isBuyer && canMarketWrite && (
         <div className="border-t border-rule pt-3">
           <Button variant="primary" onClick={() => navigate(`/offers/new?player_id=${sale.player_id}&sale_id=${sale.id}`)}>
-            Make Offer
+            {sale.availability === "LOAN" ? "Make a loan offer" : "Make Offer"}
           </Button>
         </div>
       )}

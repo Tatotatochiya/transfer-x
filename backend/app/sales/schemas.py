@@ -6,7 +6,7 @@ from pydantic import BaseModel, field_validator
 
 from app.common.schemas import WhoseMove
 from app.players.schemas import ActiveDealStub
-from app.sales.models import BidStatus, SaleStatus, SaleType
+from app.sales.models import BidStatus, ListingAvailability, SaleStatus, SaleType
 from app.valuation.schemas import ValuationResponse
 
 
@@ -15,6 +15,9 @@ from app.valuation.schemas import ValuationResponse
 class SaleCreateRequest(BaseModel):
     player_id: uuid.UUID
     sale_type: SaleType
+    # What the club will consider — transfer, loan, or either. Rules in
+    # sales/service.validate_listing_terms.
+    availability: ListingAvailability = ListingAvailability.TRANSFER
     asking_price: Decimal | None = None
     reserve_price: Decimal | None = None
     min_increment: Decimal = Decimal("500000")
@@ -49,6 +52,7 @@ class SaleResponse(BaseModel):
     player_id: uuid.UUID
     seller_club_id: uuid.UUID
     sale_type: SaleType
+    availability: ListingAvailability = ListingAvailability.TRANSFER
     asking_price: Decimal | None
     reserve_price: Decimal | None
     min_increment: Decimal
