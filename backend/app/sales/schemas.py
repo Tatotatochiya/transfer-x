@@ -158,6 +158,10 @@ class OrderBookEntry(BaseModel):
     club: OrderBookClubSummary | None = None
     fee_amount: Decimal | None
     wage_weekly: Decimal | None = None
+    # Offers only: a loan's money is its loan fee, and the two must not be
+    # read as the same figure. Bids are always permanent and leave these unset.
+    deal_type: str | None = None
+    loan_fee: Decimal | None = None
     status: str
     is_countered: bool
     is_active: bool

@@ -12,7 +12,7 @@ from app import clubs as clubs_module
 from app.clubs.models import ClubFinance
 from app.common.filters import apply_date_range
 from app.common.schemas import WhoseMove
-from app.deals.models import Deal, DealStage, DealStatus
+from app.deals.models import Deal, DealStage, DealStatus, DealType
 from app.sales.models import Bid, BidStatus, Sale, SaleEvent, SaleEventType, SaleStatus, SaleType
 
 # B1: matches AUCTION_CLOSING_SOON_HOURS in frontend/src/lib/whoseMove.ts.
@@ -737,36 +737,16 @@ async def get_order_book(
         active_offers = [o for o in all_offers if o.status in _active_statuses]
         active_count = len(active_offers)
 
-        def offer_sort_key(o):
-            return (o.status not in _active_statuses, -float(o.fee_amount or 0))
-
-        entries = []
-        rank = 1
-        for offer in sorted(all_offers, key=offer_sort_key):
-            is_active = offer.status in _active_statuses
-            is_countered = offer.status == OfferStatus.COUNTERED
-            entry = OrderBookEntry(
-                rank=rank if is_active else 0,
-                kind="offer",
-                id=offer.id,
-                club=OrderBookClubSummary(
-                    id=offer.from_club.id,
-                    name=offer.from_club.name,
-                    crest_url=getattr(offer.from_club, "crest_url", None),
-                ) if offer.from_club else None,
-                fee_amount=offer.fee_amount,
-                wage_weekly=offer.wage_weekly,
-                status=offer.status.value,
-                is_countered=is_countered,
-                is_active=is_active,
-                last_action_at=offer.last_action_at,
-            )
-            entries.append(entry)
-            if is_active:
-                rank += 1
+        # Shared with the player-scoped competition view, including its
+        # anonymous-buyer mask — this copy used to build its own rows and named
+        # an anonymous buyer to the seller of the very listing they bid on.
+        entries = offers_svc.order_book_entries(all_offers, my_club_id)
 
         if is_seller:
-            best = max((o.fee_amount for o in active_offers if o.fee_amount), default=None)
+            best = max(
+                (o.fee_amount for o in active_offers if o.fee_amount and o.deal_type != DealType.LOAN),
+                default=None,
+            )
             reserve_met = (
                 sale.reserve_price is not None
                 and best is not None
@@ -777,6 +757,7 @@ async def get_order_book(
                 parts.append(f"Best {_fmt_millions(best)}")
             if sale.reserve_price is not None:
                 parts.append("Reserve: Met" if reserve_met else "Reserve: Not met")
+            parts.extend(offers_svc.loan_summary_parts(active_offers))
             return OrderBookResponse(
                 sale_id=sale.id,
                 role="seller",

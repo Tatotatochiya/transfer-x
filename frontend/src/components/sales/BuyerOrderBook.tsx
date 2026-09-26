@@ -4,6 +4,7 @@ import type { OrderBook } from "../../types/api";
 import type { SaleType } from "../../types/enums";
 import Spinner from "../ui/Spinner";
 import { formatCurrency } from "../../lib/utils";
+import { offerHeadline } from "../../lib/offerTerms";
 
 interface Props {
   saleId?: string;
@@ -124,7 +125,7 @@ export default function BuyerOrderBook({ saleId, playerId, saleType }: Props) {
               </span>
               <div className="text-right">
                 <p className="text-sm font-bold text-text tabular-nums">
-                  {ob.your_entry.fee_amount != null ? formatCurrency(ob.your_entry.fee_amount) : "TBD"}
+                  {offerHeadline(ob.your_entry)}
                 </p>
                 {ob.your_entry.wage_weekly != null && (
                   <p className="text-xs text-text-muted tabular-nums">

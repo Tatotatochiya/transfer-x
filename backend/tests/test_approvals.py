@@ -397,3 +397,158 @@ async def test_policy_endpoint_is_team_manage_only(client: AsyncClient, db, buye
     assert Decimal(data["approval_threshold"]) == Decimal("1000000")
     resp = await client.get("/clubs/me/approval-policy", headers=_auth_headers(buyer))
     assert Decimal(resp.json()["approval_threshold"]) == Decimal("1000000")
+
+
+# ── Loans and anonymity through the approval path ────────────────────────────
+
+
+async def _loanable_player(client: AsyncClient, db, seller: dict, name: str) -> tuple[str, str]:
+    """A seller-owned player under contract, so a loan can be validated against
+    his parent contract. Returns (player_id, seller_club_id)."""
+    from datetime import date
+
+    from tests.test_offers import _contract, _give_wage_budget
+
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    player = await client.post(
+        "/players", json={"name": name, "position": "MID"}, headers=_auth_headers(seller)
+    )
+    assert player.status_code == 201, player.text
+    seller_club_id = await _get_club_id(client, _auth_headers(seller))
+    await _contract(db, player.json()["id"], seller_club_id, date(2028, 6, 30))
+    return player.json()["id"], seller_club_id
+
+
+@pytest.mark.asyncio
+async def test_loan_with_obligation_is_escalated_and_replayed_as_a_loan(
+    client: AsyncClient, db, buyer: dict, seller: dict
+):
+    """A loan carries no transfer fee, so the threshold used to see £0 and let
+    it through. The commitment is the loan fee plus the obligation price — and
+    the approved replay must create the same loan, not a permanent offer."""
+    from tests.test_offers import _loan_body
+
+    player_id, seller_club_id = await _loanable_player(client, db, seller, "Loan Approval")
+    await _set_threshold(client, buyer, 10_000_000)
+    manager = await _create_staff(client, db, _auth_headers(buyer), "appr_loan_mgr@test.com", "MANAGER")
+
+    body = _loan_body(
+        player_id, seller_club_id, option_to_buy=18_000_000, obligation_to_buy=True,
+        recall_allowed=True,
+    )
+    resp = await client.post("/offers", json=body, headers=_auth_headers(manager))
+    assert resp.status_code == 202, resp.text
+    approval_id = resp.json()["approval_id"]
+
+    pending = await client.get("/clubs/me/approvals", headers=_auth_headers(buyer))
+    row = next(a for a in pending.json() if a["id"] == approval_id)
+    assert Decimal(str(row["amount"])) == Decimal("20000000")  # £2m fee + £18m obligation
+    assert "loan" in row["summary"] and "obligation to buy" in row["summary"]
+
+    resp = await client.post(f"/clubs/me/approvals/{approval_id}/approve", headers=_auth_headers(buyer))
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "APPROVED_EXECUTED"
+
+    offer = (await client.get("/offers/sent", headers=_auth_headers(buyer))).json()["items"][0]
+    assert offer["deal_type"] == "LOAN"
+    assert offer["fee_amount"] is None
+    assert Decimal(str(offer["loan_fee"])) == Decimal("2000000")
+    assert Decimal(str(offer["option_to_buy"])) == Decimal("18000000")
+    assert offer["obligation_to_buy"] is True
+    assert offer["recall_allowed"] is True
+    assert Decimal(str(offer["wage_split_pct"])) == Decimal("0.6")
+    assert offer["loan_end"] == "2027-05-31"
+
+
+@pytest.mark.asyncio
+async def test_loan_option_alone_is_not_counted(client: AsyncClient, db, buyer: dict, seller: dict):
+    """An option is a right, not a commitment: a £2m loan with an £18m option
+    stays under a £10m threshold and executes directly."""
+    from tests.test_offers import _loan_body
+
+    player_id, seller_club_id = await _loanable_player(client, db, seller, "Loan Option")
+    await _set_threshold(client, buyer, 10_000_000)
+    manager = await _create_staff(client, db, _auth_headers(buyer), "appr_opt_mgr@test.com", "MANAGER")
+
+    body = _loan_body(player_id, seller_club_id, option_to_buy=18_000_000)
+    resp = await client.post("/offers", json=body, headers=_auth_headers(manager))
+    assert resp.status_code == 201, resp.text
+
+
+@pytest.mark.asyncio
+async def test_seller_manager_accepting_a_loan_obligation_is_escalated(
+    client: AsyncClient, db, buyer: dict, seller: dict
+):
+    """Agreeing to an obligation is agreeing to sell at that price."""
+    from tests.test_offers import _loan_body
+
+    player_id, seller_club_id = await _loanable_player(client, db, seller, "Loan Accept")
+    body = _loan_body(player_id, seller_club_id, option_to_buy=18_000_000, obligation_to_buy=True)
+    offer = await client.post("/offers", json=body, headers=_auth_headers(buyer))
+    assert offer.status_code == 201, offer.text
+
+    await _set_threshold(client, seller, 10_000_000)
+    sel_manager = await _create_staff(client, db, _auth_headers(seller), "appr_loan_sel@test.com", "MANAGER")
+    resp = await client.post(f"/offers/{offer.json()['id']}/accept", headers=_auth_headers(sel_manager))
+    assert resp.status_code == 202, resp.text
+
+
+@pytest.mark.asyncio
+async def test_approved_anonymous_offer_stays_anonymous(
+    client: AsyncClient, db, buyer: dict, seller: dict
+):
+    """The replay used to drop is_anonymous, so approving an anonymous offer
+    sent it to the seller with the buyer named."""
+    await _give_budget(db)
+    await _set_threshold(client, buyer, 5_000_000)
+    manager = await _create_staff(client, db, _auth_headers(buyer), "appr_anon_mgr@test.com", "MANAGER")
+    player = await client.post(
+        "/players", json={"name": "Anon Target", "position": "MID"}, headers=_auth_headers(seller)
+    )
+    seller_club_id = await _get_club_id(client, _auth_headers(seller))
+    buyer_club_id = await _get_club_id(client, _auth_headers(buyer))
+
+    resp = await client.post(
+        "/offers",
+        json={
+            "player_id": player.json()["id"], "to_club_id": seller_club_id,
+            "fee_amount": 8_000_000, "is_anonymous": True,
+        },
+        headers=_auth_headers(manager),
+    )
+    assert resp.status_code == 202, resp.text
+    resp = await client.post(
+        f"/clubs/me/approvals/{resp.json()['approval_id']}/approve", headers=_auth_headers(buyer)
+    )
+    assert resp.json()["status"] == "APPROVED_EXECUTED"
+
+    received = await client.get("/offers/received", headers=_auth_headers(seller))
+    assert received.json()["items"][0]["is_anonymous"] is True
+    assert buyer_club_id not in received.text
+
+
+@pytest.mark.asyncio
+async def test_approved_fee_less_offer_replays_without_crashing(
+    client: AsyncClient, db, buyer: dict, seller: dict
+):
+    """A fee-less offer's payload stored the string "None" as its fee, and the
+    replay's Decimal("None") raised — so approving one could never execute."""
+    await _give_budget(db)
+    await _set_threshold(client, buyer, 0)
+    manager = await _create_staff(client, db, _auth_headers(buyer), "appr_nofee_mgr@test.com", "MANAGER")
+    player = await client.post(
+        "/players", json={"name": "No Fee Target", "position": "MID"}, headers=_auth_headers(seller)
+    )
+    seller_club_id = await _get_club_id(client, _auth_headers(seller))
+
+    resp = await client.post(
+        "/offers",
+        json={"player_id": player.json()["id"], "to_club_id": seller_club_id},
+        headers=_auth_headers(manager),
+    )
+    assert resp.status_code == 202, resp.text
+    resp = await client.post(
+        f"/clubs/me/approvals/{resp.json()['approval_id']}/approve", headers=_auth_headers(buyer)
+    )
+    assert resp.json()["status"] == "APPROVED_EXECUTED", resp.text

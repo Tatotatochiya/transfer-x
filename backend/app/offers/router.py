@@ -15,6 +15,7 @@ from app.auth.models import User
 from app.clubs import service as clubs_service
 from app.common.schemas import Paginated
 from app.database import get_db
+from app.deals.models import DealType
 from app.clubs.capabilities import Capability, require_club_capability
 from app.deps import get_buyer_user, get_current_user, get_optional_user
 from app.notifications import service as notif_service
@@ -116,6 +117,26 @@ def _fee_summary(fee: Decimal | None) -> str:
     it raised for *every* caller, not just the MANAGER role that check targets.
     """
     return f"£{fee:,.0f}" if fee is not None else "no fee"
+
+
+def _terms_summary(
+    *,
+    deal_type: DealType,
+    fee_amount: Decimal | None,
+    loan_fee: Decimal | None,
+    option_to_buy: Decimal | None,
+    obligation_to_buy: bool,
+) -> str:
+    """What an approver is being asked to sign off. A loan has to say it is a
+    loan and name any purchase clause — "no fee" alone would describe an
+    obligation to buy at £18m as costing nothing."""
+    if deal_type != DealType.LOAN:
+        return _fee_summary(fee_amount)
+    parts = [f"loan, {_fee_summary(loan_fee)} loan fee" if loan_fee else "loan, no loan fee"]
+    if option_to_buy is not None:
+        kind = "obligation" if obligation_to_buy else "option"
+        parts.append(f"{kind} to buy at £{option_to_buy:,.0f}")
+    return ", ".join(parts)
 
 
 def _buyer_is_masked(offer, viewer_club_id: uuid.UUID | None) -> bool:
@@ -333,24 +354,44 @@ async def create_offer(
     from app.players import service as players_service
     _player = await players_service.get_player_by_id(db, body.player_id)
     _pname = _player.name if _player else "a player"
+    _terms = dict(
+        deal_type=body.deal_type,
+        fee_amount=body.fee_amount,
+        loan_fee=body.loan_fee,
+        option_to_buy=body.option_to_buy,
+        obligation_to_buy=body.obligation_to_buy,
+    )
     approval = await approvals_service.maybe_capture(
         db,
         current_user=current_user,
         club=club,
         action_type=ApprovalActionType.CREATE_OFFER,
-        amount=body.fee_amount,
+        amount=service.approval_amount(**_terms),
+        # Everything the offer is, so the approved replay creates this offer
+        # and not a permanent, named one: before the loan terms and the
+        # anonymity flag were carried here, approving an anonymous offer sent
+        # it with the buyer named.
         payload={
             "player_id": str(body.player_id),
             "to_club_id": str(body.to_club_id) if body.to_club_id else None,
             "sale_id": str(body.sale_id) if body.sale_id else None,
-            "fee_amount": str(body.fee_amount),
+            "fee_amount": str(body.fee_amount) if body.fee_amount is not None else None,
             "wage_weekly": str(body.wage_weekly) if body.wage_weekly else None,
             "contract_years": body.contract_years,
             "contract_end_date": body.contract_end_date.isoformat() if body.contract_end_date else None,
             "add_ons": body.add_ons,
             "expires_at": body.expires_at.isoformat() if body.expires_at else None,
+            "is_anonymous": body.is_anonymous,
+            "deal_type": body.deal_type.value,
+            "loan_start": body.loan_start.isoformat() if body.loan_start else None,
+            "loan_end": body.loan_end.isoformat() if body.loan_end else None,
+            "loan_fee": str(body.loan_fee) if body.loan_fee is not None else None,
+            "wage_split_pct": str(body.wage_split_pct) if body.wage_split_pct is not None else None,
+            "option_to_buy": str(body.option_to_buy) if body.option_to_buy is not None else None,
+            "obligation_to_buy": body.obligation_to_buy,
+            "recall_allowed": body.recall_allowed,
         },
-        summary=f"Offer for {_pname} — {_fee_summary(body.fee_amount)}",
+        summary=f"Offer for {_pname} — {_terms_summary(**_terms)}",
     )
     if approval is not None:
         await db.commit()
@@ -429,6 +470,8 @@ async def counter_offer(
             loan_fee=body.loan_fee,
             wage_split_pct=body.wage_split_pct,
             option_to_buy=body.option_to_buy,
+            obligation_to_buy=body.obligation_to_buy,
+            recall_allowed=body.recall_allowed,
         )
         other_club_id = offer.to_club_id if offer.from_club_id == club.id else offer.from_club_id
         await _db_notify_offer(
@@ -467,6 +510,7 @@ async def improve_offer(
             fee_amount=body.fee_amount,
             wage_weekly=body.wage_weekly,
             add_ons=body.add_ons,
+            loan_fee=body.loan_fee,
         )
         await _db_notify_offer(
             db, offer,
@@ -502,14 +546,21 @@ async def accept_offer(
     from app.players import service as players_service
     _player = await players_service.get_player_by_id(db, offer.player_id)
     _pname = _player.name if _player else "a player"
+    _terms = dict(
+        deal_type=offer.deal_type,
+        fee_amount=offer.fee_amount,
+        loan_fee=offer.loan_fee,
+        option_to_buy=offer.option_to_buy,
+        obligation_to_buy=offer.obligation_to_buy,
+    )
     approval = await approvals_service.maybe_capture(
         db,
         current_user=current_user,
         club=club,
         action_type=ApprovalActionType.ACCEPT_OFFER,
-        amount=offer.fee_amount,
+        amount=service.approval_amount(**_terms),
         payload={"offer_id": str(offer_id)},
-        summary=f"Accept offer for {_pname} — {_fee_summary(offer.fee_amount)}",
+        summary=f"Accept offer for {_pname} — {_terms_summary(**_terms)}",
     )
     if approval is not None:
         await db.commit()

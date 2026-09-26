@@ -573,6 +573,18 @@ export interface Offer {
   contract_years: number | null;
   contract_end_date: string | null;
   add_ons: Record<string, unknown>;
+  /** Fixed when the offer is made and not counterable. A loan's money is
+   *  `loan_fee`, never `fee_amount` — read them through lib/offerTerms. */
+  deal_type: "PERMANENT" | "LOAN";
+  loan_start: string | null;
+  loan_end: string | null;
+  loan_fee: number | null;
+  /** A fraction, 0–1, of the player's wage the borrowing club pays. Null
+   *  means all of it. */
+  wage_split_pct: number | null;
+  option_to_buy: number | null;
+  obligation_to_buy: boolean;
+  recall_allowed: boolean;
   status: OfferStatus;
   expires_at: string | null;
   last_action_at: string;
@@ -1280,6 +1292,9 @@ export interface OrderBookEntry {
   club: OrderBookClubSummary | null;
   fee_amount: number | null;
   wage_weekly: number | null;
+  /** Offers only; bids leave these unset. */
+  deal_type?: "PERMANENT" | "LOAN" | null;
+  loan_fee?: number | null;
   status: string;
   is_countered: boolean;
   is_active: boolean;

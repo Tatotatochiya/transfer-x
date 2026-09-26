@@ -273,20 +273,40 @@ async def _execute(db: AsyncSession, approval: PendingApproval) -> None:
         if active_deal and active_deal.status == "IN_PROGRESS":
             raise ValueError("This player already has a transfer deal in progress")
 
+        from app.deals.models import DealType
+
+        def _dec(key: str) -> Decimal | None:
+            # Payloads captured before this was fixed stored a missing fee as
+            # the string "None", which Decimal() cannot parse.
+            value = payload.get(key)
+            return Decimal(value) if value not in (None, "None") else None
+
+        def _day(key: str):
+            value = payload.get(key)
+            return datetime.fromisoformat(value).date() if value else None
+
         offer = await offers_service.create_offer(
             db,
             player_id=player_id,
             from_club_id=club_id,
             to_club_id=uuid.UUID(payload["to_club_id"]) if payload.get("to_club_id") else None,
             sale_id=uuid.UUID(payload["sale_id"]) if payload.get("sale_id") else None,
-            fee_amount=Decimal(payload["fee_amount"]),
-            wage_weekly=Decimal(payload["wage_weekly"]) if payload.get("wage_weekly") else None,
+            fee_amount=_dec("fee_amount"),
+            wage_weekly=_dec("wage_weekly"),
             contract_years=payload.get("contract_years"),
-            contract_end_date=datetime.fromisoformat(payload["contract_end_date"]).date()
-            if payload.get("contract_end_date") else None,
+            contract_end_date=_day("contract_end_date"),
             add_ons=payload.get("add_ons"),
             expires_at=datetime.fromisoformat(payload["expires_at"])
             if payload.get("expires_at") else None,
+            is_anonymous=payload.get("is_anonymous", False),
+            deal_type=DealType(payload.get("deal_type", DealType.PERMANENT.value)),
+            loan_start=_day("loan_start"),
+            loan_end=_day("loan_end"),
+            loan_fee=_dec("loan_fee"),
+            wage_split_pct=_dec("wage_split_pct"),
+            option_to_buy=_dec("option_to_buy"),
+            obligation_to_buy=payload.get("obligation_to_buy", False),
+            recall_allowed=payload.get("recall_allowed", False),
         )
         if offer.to_club_id:
             await notify_club(

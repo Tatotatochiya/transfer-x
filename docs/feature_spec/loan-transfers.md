@@ -1,6 +1,6 @@
 ---
 title: "Feature Spec: Loan Transfers"
-last_updated: 2026-08-25
+last_updated: 2026-09-26
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -209,7 +209,7 @@ The other loan fields already exist (TRA-56).
 
 ### Validation rules
 
-Enforced in `OfferCreateRequest`/`OfferCounterRequest` **and** re-checked in `offers/service.py`, per the house pattern of never trusting the schema layer alone:
+Enforced in `OfferCreateRequest`/`OfferCounterRequest` **and** re-checked in `offers/service.py`, per the house pattern of never trusting the schema layer alone. (Until 2026-09-26 this was true of new offers only: a counter was never validated, so it could give a loan a transfer fee or a 500% wage split. See deviation 20.)
 
 | Rule | Applies to |
 |---|---|
@@ -442,6 +442,16 @@ Recorded before the phases were marked shipped, per this folder's [README](./REA
 18. **`LOAN_CONVERTED`** notification type, not anticipated by the spec. Both clubs need telling that a loan is becoming permanent, and reusing `LOAN_ENDED` would have said the opposite of what happened.
 
 19. **`LoansPanel` covers both directions.** Phase 3 built it for the parent only, per the spec's UI section, which put borrowed players in the squad table with a chip. That has nowhere to hang an "exercise option" action, so the panel gained an "On loan to us" group. An obligation shows *"Completes automatically"* rather than a button — implying a choice the club does not have would be wrong.
+
+**Seller-side review fixes (2026-09-26):** found by reviewing the feature from the selling club's side, which phases 0–4 never exposed to a UI.
+
+20. **Counters are validated like new offers.** `counter_offer` never called `validate_offer_terms`, so a counter could set `fee_amount` on a loan, a wage split outside 0–1, dates past 18 months or past the parent contract, or negative money. It now validates the merged terms. `obligation_to_buy` and `recall_allowed` became counterable (`null` = unchanged), since they are the terms a seller most wants to negotiate. The counter's audit event records every changed term, where it previously recorded only a fee a loan does not have.
+
+21. **Loans go through D7 spending approval.** The threshold was tested against `fee_amount`, which a loan never carries, so every loan passed however much it committed the club to. A loan's approval amount is its **loan fee plus the purchase price when there is an obligation**: an obligation is a sale agreed now and paid later. An **option is not counted**, because it is a right the club may never use. That is a judgement call, and it means exercising an option is currently not approval-gated at all (`POST /loans/{id}/exercise-option` checks `MARKET_WRITE` only). That gap is still open.
+
+22. **The seller can see and counter a loan.** The frontend `Offer` type carried none of the loan fields, so the seller's offer page, inbox and order book showed a loan as having no fee and often "No terms". They now show the period, loan fee, wage share in pounds, purchase clause (an obligation flagged as binding), and recall, and the counter form negotiates loan terms. Order books rank permanent offers by fee and list loans after them, so a loan is never ranked as a low transfer bid.
+
+23. **Improving a loan no longer gives it a £0 transfer fee.** `improve_own_offer` fell back to `fee_amount or 0` for every offer type.
 
 ## Open questions for sign-off
 

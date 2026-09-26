@@ -20,6 +20,7 @@ import { formatCurrency, formatDate, formatWage, getApiError } from "../../lib/u
 import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useToast } from "../../context/ToastContext";
+import { isLoan, loanPeriod, offerHeadline, purchaseClause, wageSharePct } from "../../lib/offerTerms";
 
 // ── Counter form ─────────────────────────────────────────────────────────────
 
@@ -31,9 +32,21 @@ function CounterForm({
   onSuccess: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [fee, setFee] = useState(String(offer.fee_amount ?? ""));
-  const [wage, setWage] = useState(String(offer.wage_weekly ?? ""));
+  const loan = isLoan(offer);
+  // Number(): money arrives Decimal-serialised ("90000.00"), which the input
+  // would otherwise display with its trailing zeros.
+  const [fee, setFee] = useState(offer.fee_amount != null ? String(Number(offer.fee_amount)) : "");
+  const [wage, setWage] = useState(offer.wage_weekly != null ? String(Number(offer.wage_weekly)) : "");
   const [years, setYears] = useState(String(offer.contract_years ?? ""));
+  // Loan terms — the counter negotiates the loan, never converts it into a
+  // permanent offer (deal_type is fixed at offer time).
+  const [loanFee, setLoanFee] = useState(offer.loan_fee != null ? String(Number(offer.loan_fee)) : "");
+  const [split, setSplit] = useState(String(wageSharePct(offer)));
+  const [loanStart, setLoanStart] = useState(offer.loan_start ?? "");
+  const [loanEnd, setLoanEnd] = useState(offer.loan_end ?? "");
+  const [option, setOption] = useState(offer.option_to_buy != null ? String(Number(offer.option_to_buy)) : "");
+  const [obligation, setObligation] = useState(offer.obligation_to_buy);
+  const [recall, setRecall] = useState(offer.recall_allowed);
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -59,35 +72,119 @@ function CounterForm({
     e.preventDefault();
     setError(null);
     const body: Record<string, unknown> = {};
-    const parsedFee = parseFloat(fee);
-    if (fee && !isNaN(parsedFee)) body.fee_amount = parsedFee;
     const parsedWage = parseFloat(wage);
     if (wage && !isNaN(parsedWage)) body.wage_weekly = parsedWage;
-    const parsedYears = parseInt(years);
-    if (years && !isNaN(parsedYears)) body.contract_years = parsedYears;
+
+    if (loan) {
+      // Only what changed, so the counter's audit entry names the terms that
+      // actually moved rather than restating the whole loan.
+      const parsedFee = parseFloat(loanFee);
+      if (loanFee && !isNaN(parsedFee) && parsedFee !== Number(offer.loan_fee ?? NaN)) body.loan_fee = parsedFee;
+      const parsedSplit = parseFloat(split);
+      if (isNaN(parsedSplit) || parsedSplit < 0 || parsedSplit > 100) {
+        setError("The wage share must be between 0 and 100%.");
+        return;
+      }
+      if (parsedSplit !== wageSharePct(offer)) body.wage_split_pct = parsedSplit / 100;
+      if (loanStart && loanStart !== offer.loan_start) body.loan_start = loanStart;
+      if (loanEnd && loanEnd !== offer.loan_end) body.loan_end = loanEnd;
+      const parsedOption = parseFloat(option);
+      if (option && !isNaN(parsedOption) && parsedOption !== Number(offer.option_to_buy ?? NaN)) {
+        body.option_to_buy = parsedOption;
+      }
+      if (obligation !== offer.obligation_to_buy) body.obligation_to_buy = obligation;
+      if (recall !== offer.recall_allowed) body.recall_allowed = recall;
+    } else {
+      const parsedFee = parseFloat(fee);
+      if (fee && !isNaN(parsedFee)) body.fee_amount = parsedFee;
+      const parsedYears = parseInt(years);
+      if (years && !isNaN(parsedYears)) body.contract_years = parsedYears;
+    }
+
+    if (Object.keys(body).length === 0) {
+      setError("Change at least one term to counter.");
+      return;
+    }
     mutation.mutate(body);
   }
 
+  const inputClass =
+    "w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3 pt-3 border-t border-rule">
-      <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Counter Offer</p>
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <label className="mb-1 block text-xs text-text-muted">Fee (£)</label>
-          <CurrencyInput value={fee} onChange={setFee} placeholder="Transfer fee"
-            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors" />
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+        {loan ? "Counter the loan terms" : "Counter Offer"}
+      </p>
+      {loan ? (
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs text-text-muted">Loan starts</label>
+              <input type="date" value={loanStart} onChange={(e) => setLoanStart(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-text-muted">Loan ends</label>
+              <input type="date" value={loanEnd} onChange={(e) => setLoanEnd(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-text-muted">Loan fee (£)</label>
+              <CurrencyInput value={loanFee} onChange={setLoanFee} placeholder="0 for none" className={inputClass} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-text-muted">Borrowing club pays (% of wage)</label>
+              <input type="number" min={0} max={100} value={split} onChange={(e) => setSplit(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-text-muted">Wage basis (£/wk)</label>
+              <CurrencyInput value={wage} onChange={setWage} placeholder="Weekly wage" className={inputClass} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-text-muted">Purchase price (£)</label>
+              <CurrencyInput value={option} onChange={setOption} placeholder="No option to buy" className={inputClass} />
+            </div>
+          </div>
+          <label className="flex items-start gap-2.5">
+            <input
+              type="checkbox"
+              checked={obligation}
+              disabled={!option}
+              onChange={(e) => setObligation(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded accent-accent disabled:opacity-40"
+            />
+            <span className="text-[13px] text-text-secondary">
+              <span className="font-semibold">Obligation</span> — the purchase happens at that price when the
+              loan ends, rather than being the borrowing club's option.
+            </span>
+          </label>
+          <label className="flex items-start gap-2.5">
+            <input
+              type="checkbox"
+              checked={recall}
+              onChange={(e) => setRecall(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded accent-accent"
+            />
+            <span className="text-[13px] text-text-secondary">
+              His club may <span className="font-semibold">recall him early</span>.
+            </span>
+          </label>
+        </>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="mb-1 block text-xs text-text-muted">Fee (£)</label>
+            <CurrencyInput value={fee} onChange={setFee} placeholder="Transfer fee" className={inputClass} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-text-muted">Wage/wk (£)</label>
+            <CurrencyInput value={wage} onChange={setWage} placeholder="Weekly wage" className={inputClass} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-text-muted">Contract yrs</label>
+            <input type="number" min="1" max="10" step="1" value={years} onChange={(e) => setYears(e.target.value)} placeholder="Years" className={inputClass} />
+          </div>
         </div>
-        <div>
-          <label className="mb-1 block text-xs text-text-muted">Wage/wk (£)</label>
-          <CurrencyInput value={wage} onChange={setWage} placeholder="Weekly wage"
-            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors" />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-text-muted">Contract yrs</label>
-          <input type="number" min="1" max="10" step="1" value={years} onChange={(e) => setYears(e.target.value)} placeholder="Years"
-            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors" />
-        </div>
-      </div>
+      )}
       {error && <p className="text-xs text-danger-text">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}>Submit counter</Button>
@@ -95,6 +192,69 @@ function CounterForm({
       </div>
     </form>
   );
+}
+
+// ── Terms ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Everything the offer actually proposes. A loan is shown as a loan — its
+ * period, fee, wage share and clauses — because the seller accepts exactly
+ * this, and an obligation to buy is a sale agreed today. Before this the card
+ * read only fee_amount, so a loan showed no fee and often "No terms".
+ */
+function OfferTerms({ offer }: { offer: Offer }) {
+  if (!isLoan(offer)) {
+    return (
+      <div className="space-y-2">
+        <Metric label="Transfer fee" value={offerHeadline(offer)} />
+        {offer.wage_weekly != null && <Metric label="Wage" value={formatWage(offer.wage_weekly)} />}
+        {offer.contract_years != null && <Metric label="Contract" value={`${offer.contract_years} years`} />}
+        {offer.contract_end_date != null && <Metric label="Ends" value={formatDate(offer.contract_end_date)} />}
+      </div>
+    );
+  }
+
+  const pct = wageSharePct(offer);
+  const wage = offer.wage_weekly != null ? Number(offer.wage_weekly) : null;
+  const clause = purchaseClause(offer);
+  return (
+    <div className="space-y-2">
+      <Metric label="Period" value={loanPeriod(offer)} />
+      <Metric
+        label="Loan fee"
+        value={offer.loan_fee != null && Number(offer.loan_fee) > 0 ? formatCurrency(offer.loan_fee) : "None"}
+      />
+      <Metric
+        label="Wage share"
+        value={
+          wage != null
+            ? `${pct}% — ${formatWage(Math.round(wage * pct / 100))} of ${formatWage(wage)}`
+            : `${pct}% of his wage`
+        }
+      />
+      <Metric label="Purchase" value={clause ?? "None — he returns at the end"} />
+      <Metric label="Early recall" value={offer.recall_allowed ? "His club may recall him" : "Not allowed"} />
+      {offer.obligation_to_buy && clause && (
+        <p className="rounded-lg bg-warning-bg px-3 py-2 text-[13px] text-warning-text ring-1 ring-warning-fill/25">
+          Binding: when the loan ends he transfers permanently at {formatCurrency(offer.option_to_buy)}.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** The accept confirmation says what is being agreed. For a loan with an
+ *  obligation that includes a sale, which "Accept this offer?" never said. */
+function acceptMessage(offer: Offer): string {
+  if (!isLoan(offer)) return "Accept this offer and create a deal?";
+  const buyer = buyerLabel(offer, "the borrowing club");
+  const lines = [`Loan ${offer.player?.name ?? "the player"} to ${buyer}, ${loanPeriod(offer)}.`];
+  if (offer.obligation_to_buy && offer.option_to_buy != null) {
+    lines.push(`This includes an obligation: he transfers permanently for ${formatCurrency(offer.option_to_buy)} when the loan ends.`);
+  } else if (offer.option_to_buy != null) {
+    lines.push(`${buyer} may buy him for ${formatCurrency(offer.option_to_buy)} during the loan.`);
+  }
+  return lines.join(" ");
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -267,16 +427,11 @@ export default function OfferDetailPage() {
 
       {/* Terms */}
       <Card>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Terms</p>
-        <div className="space-y-2">
-          {offer.fee_amount != null && <Metric label="Transfer fee" value={formatCurrency(offer.fee_amount)} />}
-          {offer.wage_weekly != null && <Metric label="Wage"         value={formatWage(offer.wage_weekly)} />}
-          {offer.contract_years != null && <Metric label="Contract"  value={`${offer.contract_years} years`} />}
-          {offer.contract_end_date != null && <Metric label="Ends"   value={formatDate(offer.contract_end_date)} />}
-          {offer.fee_amount == null && offer.wage_weekly == null && (
-            <p className="text-sm text-text-muted">No terms specified yet.</p>
-          )}
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Terms</p>
+          <Badge variant={isLoan(offer) ? "info" : "neutral"}>{isLoan(offer) ? "Loan" : "Permanent transfer"}</Badge>
         </div>
+        <OfferTerms offer={offer} />
       </Card>
 
       {/* Actions */}
@@ -302,7 +457,7 @@ export default function OfferDetailPage() {
               <>
                 <Button variant="primary" size="sm" className="w-full" loading={acceptMutation.isPending}
                   onClick={async () => {
-                    if (await confirm({ title: "Accept offer", message: "Accept this offer and create a deal?", confirmLabel: "Accept" })) {
+                    if (await confirm({ title: isLoan(offer) ? "Accept loan" : "Accept offer", message: acceptMessage(offer), confirmLabel: "Accept" })) {
                       acceptMutation.mutate();
                     }
                   }}>

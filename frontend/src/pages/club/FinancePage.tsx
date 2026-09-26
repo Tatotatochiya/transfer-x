@@ -11,6 +11,7 @@ import Spinner from "../../components/ui/Spinner";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useToast } from "../../context/ToastContext";
 import { formatCurrency, formatWage, getApiError } from "../../lib/utils";
+import { isLoan } from "../../lib/offerTerms";
 
 // ── Budget card — four-segment bar (spent / committed / reserved / free) ─────
 
@@ -165,7 +166,7 @@ function ApprovalPolicyCard() {
 interface CommitmentRow {
   key: string;
   name: string;
-  type: "Deal" | "Offer";
+  type: "Deal" | "Offer" | "Loan offer";
   amount: number;
   releasesWhen: string;
   onClick: () => void;
@@ -200,12 +201,13 @@ function CommitmentsTable({ clubId }: { clubId: string }) {
         onClick: () => navigate(`/deals/${d.id}`),
       }));
     const offerRows: CommitmentRow[] = (offers?.items ?? [])
-      .filter((o) => (o.status === "SENT" || o.status === "COUNTERED") && o.fee_amount != null)
+      // A loan's reserved money is its loan fee, not fee_amount.
+      .filter((o) => (o.status === "SENT" || o.status === "COUNTERED") && (isLoan(o) ? o.loan_fee : o.fee_amount) != null)
       .map((o) => ({
         key: `offer-${o.id}`,
         name: o.player?.name ?? "Offer",
-        type: "Offer",
-        amount: Number(o.fee_amount),
+        type: isLoan(o) ? "Loan offer" : "Offer",
+        amount: Number(isLoan(o) ? o.loan_fee : o.fee_amount),
         releasesWhen: "Offer resolves",
         onClick: () => navigate(`/offers/${o.id}`),
       }));

@@ -82,6 +82,16 @@ class OfferCounterRequest(BaseModel):
     loan_fee: Decimal | None = None
     wage_split_pct: Decimal | None = None
     option_to_buy: Decimal | None = None
+    # None leaves the clause as it is; true/false sets it.
+    obligation_to_buy: bool | None = None
+    recall_allowed: bool | None = None
+
+    @field_validator("fee_amount", "wage_weekly", "loan_fee", "option_to_buy", mode="before")
+    @classmethod
+    def non_negative(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("must be non-negative")
+        return v
 
 
 class OfferImproveRequest(BaseModel):
@@ -89,6 +99,7 @@ class OfferImproveRequest(BaseModel):
     fee_amount: Decimal | None = None
     wage_weekly: Decimal | None = None
     add_ons: dict | None = None
+    loan_fee: Decimal | None = None
 
 
 class OfferMessageRequest(BaseModel):
