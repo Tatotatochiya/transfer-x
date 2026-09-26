@@ -46,6 +46,7 @@ function CounterForm({
   const [loanEnd, setLoanEnd] = useState(offer.loan_end ?? "");
   const [option, setOption] = useState(offer.option_to_buy != null ? String(Number(offer.option_to_buy)) : "");
   const [obligation, setObligation] = useState(offer.obligation_to_buy);
+  const [conditions, setConditions] = useState(offer.obligation_conditions ?? "");
   const [recall, setRecall] = useState(offer.recall_allowed);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,6 +92,10 @@ function CounterForm({
         body.option_to_buy = parsedOption;
       }
       if (obligation !== offer.obligation_to_buy) body.obligation_to_buy = obligation;
+      // "" clears them; the server also drops them when the obligation goes.
+      if (obligation && conditions.trim() !== (offer.obligation_conditions ?? "")) {
+        body.obligation_conditions = conditions.trim();
+      }
       if (recall !== offer.recall_allowed) body.recall_allowed = recall;
     } else {
       const parsedFee = parseFloat(fee);
@@ -154,6 +159,19 @@ function CounterForm({
               loan ends, rather than being the borrowing club's option.
             </span>
           </label>
+          {obligation && (
+            <div className="pl-6">
+              <label className="mb-1 block text-xs text-text-muted">Obligation conditions (optional)</label>
+              <textarea
+                value={conditions}
+                onChange={(e) => setConditions(e.target.value)}
+                rows={2}
+                maxLength={1000}
+                placeholder="e.g. If promoted, or 20 league games"
+                className={`${inputClass} resize-none`}
+              />
+            </div>
+          )}
           <label className="flex items-start gap-2.5">
             <input
               type="checkbox"
@@ -230,10 +248,14 @@ function OfferTerms({ offer }: { offer: Offer }) {
         }
       />
       <Metric label="Purchase" value={clause ?? "None — he returns at the end"} />
+      {offer.obligation_to_buy && offer.obligation_conditions && (
+        <Metric label="Conditional on" value={offer.obligation_conditions} />
+      )}
       <Metric label="Early recall" value={offer.recall_allowed ? "His club may recall him" : "Not allowed"} />
       {offer.obligation_to_buy && clause && (
         <p className="rounded-lg bg-warning-bg px-3 py-2 text-[13px] text-warning-text ring-1 ring-warning-fill/25">
-          Binding: when the loan ends he transfers permanently at {formatCurrency(offer.option_to_buy)}.
+          Binding: when the loan ends he transfers permanently at {formatCurrency(offer.option_to_buy)}
+          {offer.obligation_conditions ? ", if the conditions above are met" : ""}.
         </p>
       )}
     </div>
@@ -247,7 +269,10 @@ function acceptMessage(offer: Offer): string {
   const buyer = buyerLabel(offer, "the borrowing club");
   const lines = [`Loan ${offer.player?.name ?? "the player"} to ${buyer}, ${loanPeriod(offer)}.`];
   if (offer.obligation_to_buy && offer.option_to_buy != null) {
-    lines.push(`This includes an obligation: he transfers permanently for ${formatCurrency(offer.option_to_buy)} when the loan ends.`);
+    lines.push(
+      `This includes an obligation: he transfers permanently for ${formatCurrency(offer.option_to_buy)} when the loan ends` +
+        (offer.obligation_conditions ? `, conditional on: ${offer.obligation_conditions}.` : "."),
+    );
   } else if (offer.option_to_buy != null) {
     lines.push(`${buyer} may buy him for ${formatCurrency(offer.option_to_buy)} during the loan.`);
   }

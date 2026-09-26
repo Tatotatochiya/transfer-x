@@ -807,11 +807,9 @@ export default function DealDetailPage() {
 
   // Deal builder state (TRA-59)
   const [editingDealStructure, setEditingDealStructure] = useState(false);
-  const [dealDraft, setDealDraft] = useState({
-    deal_type: "PERMANENT",
-    loan_start: "", loan_end: "", loan_fee: "",
-    option_to_buy: "", sell_on_pct: "",
-  });
+  // Only a permanent deal's sell-on is editable here; the type and loan terms
+  // were agreed on the offer.
+  const [dealDraft, setDealDraft] = useState({ sell_on_pct: "" });
   const [addingClause, setAddingClause] = useState(false);
   const [clauseDraft, setClauseDraft] = useState({
     clause_type: "APPEARANCES", trigger_description: "", amount: "", cap: "",
@@ -1237,63 +1235,91 @@ export default function DealDetailPage() {
         {/* ── Right: builder panels + notes + timeline ── */}
         <div className="lg:col-span-2 space-y-4">
 
-          {/* Deal Structure (TRA-56/59) — editable in AGREEMENT stage */}
-          {(canEditDealStructure || deal.deal_type === "LOAN") && (
+          {/* Deal Structure (TRA-56/59). The type and every loan term were
+              agreed on the offer and are fixed here — the server refuses to
+              change them. Editing them after acceptance re-opened the original
+              loan defect (one deal agreed, another run) and let the loan fee
+              drift from the budget committed at acceptance. Only a permanent
+              deal's sell-on stays editable, at AGREEMENT. */}
+          {(canEditDealStructure || deal.deal_type === "LOAN" || deal.sell_on_pct != null) && (
             <Panel title="Deal Structure">
-              {editingDealStructure ? (
-                <div className="space-y-3">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <dt className="text-text-muted">Type</dt>
+                <dd className="text-text">{dealTypeLabel(deal.deal_type)}</dd>
+                {deal.deal_type === "LOAN" && (
+                  <>
+                    <dt className="text-text-muted">Period</dt>
+                    <dd className="text-text">{formatDate(deal.loan_start)} – {formatDate(deal.loan_end)}</dd>
+                    <dt className="text-text-muted">Loan fee</dt>
+                    <dd className="text-text">
+                      {deal.loan_fee != null && Number(deal.loan_fee) > 0 ? formatCurrency(deal.loan_fee) : "None"}
+                    </dd>
+                    <dt className="text-text-muted">Wage share</dt>
+                    <dd className="text-text">
+                      {(() => {
+                        const pct = Math.round(Number(deal.wage_split_pct ?? 1) * 100);
+                        const wage = deal.agreed_wage_weekly != null ? Number(deal.agreed_wage_weekly) : null;
+                        return wage != null
+                          ? `${pct}% — ${formatCurrency(Math.round(wage * pct / 100))}/wk of ${formatCurrency(wage)}/wk`
+                          : `${pct}% of his wage`;
+                      })()}
+                    </dd>
+                    <dt className="text-text-muted">Purchase</dt>
+                    <dd className={deal.obligation_to_buy ? "text-warning-text" : "text-text"}>
+                      {deal.option_to_buy != null
+                        ? `${deal.obligation_to_buy ? "Obligation" : "Option"} to buy at ${formatCurrency(deal.option_to_buy)}`
+                        : "None — he returns at the end"}
+                    </dd>
+                    {deal.obligation_to_buy && deal.obligation_conditions && (
+                      <>
+                        <dt className="text-text-muted">Conditional on</dt>
+                        <dd className="text-text">{deal.obligation_conditions}</dd>
+                      </>
+                    )}
+                    <dt className="text-text-muted">Early recall</dt>
+                    <dd className="text-text">{deal.recall_allowed ? "His club may recall him" : "Not allowed"}</dd>
+                  </>
+                )}
+                {deal.deal_type !== "LOAN" && !editingDealStructure && deal.sell_on_pct != null && (
+                  <>
+                    <dt className="text-text-muted">Sell-on</dt>
+                    <dd className="text-text">{(Number(deal.sell_on_pct) * 100).toFixed(1)}%</dd>
+                  </>
+                )}
+              </dl>
+
+              {deal.deal_type === "LOAN" ? (
+                <p className="mt-3 text-[13px] text-text-muted">
+                  Agreed on the offer and fixed for this deal. To change them, collapse the deal and
+                  re-approach.
+                </p>
+              ) : editingDealStructure ? (
+                <div className="mt-3 space-y-3">
                   <div>
-                    <label className="mb-1 block text-xs text-text-muted">Transfer type</label>
-                    {/* Read-only. The type is fixed when the offer is made and
-                        carried onto the deal on acceptance — retyping it here
-                        is the defect that motivated the loan work: the seller
-                        agreed to one kind of deal and was then asked to run
-                        another. FREE_TRANSFER and PRE_CONTRACT were never
-                        choosable anyway; they are derived by the signing paths. */}
-                    <p className="text-sm text-text">{dealTypeLabel(dealDraft.deal_type as DealType)}</p>
+                    <label className="mb-1 block text-xs text-text-muted">Sell-on (%)</label>
+                    <input
+                      type="number" step="0.5" min={0} max={100}
+                      value={dealDraft.sell_on_pct}
+                      onChange={(e) => setDealDraft({ sell_on_pct: e.target.value })}
+                      className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+                    />
                     <p className="mt-0.5 text-[13px] text-text-muted">
-                      Set when the offer was made. To change it, withdraw and re-approach.
+                      Share of any future fee his club receives if you sell him on.
                     </p>
                   </div>
-                  {dealDraft.deal_type === "LOAN" && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="mb-1 block text-xs text-text-muted">Loan start</label>
-                        <input type="date" value={dealDraft.loan_start} onChange={(e) => setDealDraft((d) => ({ ...d, loan_start: e.target.value }))} className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent" />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs text-text-muted">Loan end</label>
-                        <input type="date" value={dealDraft.loan_end} onChange={(e) => setDealDraft((d) => ({ ...d, loan_end: e.target.value }))} className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent" />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs text-text-muted">Loan fee (€)</label>
-                        <CurrencyInput value={dealDraft.loan_fee} onChange={(v) => setDealDraft((d) => ({ ...d, loan_fee: v }))} className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent" />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs text-text-muted">Option to buy (€)</label>
-                        <CurrencyInput value={dealDraft.option_to_buy} onChange={(v) => setDealDraft((d) => ({ ...d, option_to_buy: v }))} className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent" />
-                      </div>
-                      <div className="col-span-2">
-                        <label className="mb-1 block text-xs text-text-muted">Sell-on % (decimal, e.g. 0.05 = 5%)</label>
-                        <input type="number" step="0.01" min={0} max={1} value={dealDraft.sell_on_pct} onChange={(e) => setDealDraft((d) => ({ ...d, sell_on_pct: e.target.value }))} className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent" />
-                      </div>
-                    </div>
-                  )}
                   <div className="flex gap-2 pt-1">
                     <Button
                       variant="primary"
                       size="sm"
                       loading={updateDealMutation.isPending}
                       onClick={() => {
-                        const payload: Record<string, unknown> = { deal_type: dealDraft.deal_type };
-                        if (dealDraft.deal_type === "LOAN") {
-                          if (dealDraft.loan_start)   payload.loan_start   = dealDraft.loan_start;
-                          if (dealDraft.loan_end)     payload.loan_end     = dealDraft.loan_end;
-                          if (dealDraft.loan_fee)     payload.loan_fee     = Number(dealDraft.loan_fee);
-                          if (dealDraft.option_to_buy) payload.option_to_buy = Number(dealDraft.option_to_buy);
-                          if (dealDraft.sell_on_pct)  payload.sell_on_pct  = Number(dealDraft.sell_on_pct);
+                        const pct = parseFloat(dealDraft.sell_on_pct);
+                        if (isNaN(pct) || pct < 0 || pct > 100) {
+                          addToast("Sell-on must be between 0 and 100%.", "error");
+                          return;
                         }
-                        updateDealMutation.mutate(payload);
+                        // The API takes a fraction, like wage_split_pct.
+                        updateDealMutation.mutate({ sell_on_pct: pct / 100 });
                       }}
                     >
                       Save
@@ -1302,48 +1328,19 @@ export default function DealDetailPage() {
                   </div>
                 </div>
               ) : (
-                <>
-                  <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                    <dt className="text-text-muted">Type</dt>
-                    <dd className="text-text">{dealTypeLabel(deal.deal_type)}</dd>
-                    {deal.loan_start && (
-                      <><dt className="text-text-muted">Loan start</dt><dd className="text-text">{formatDate(deal.loan_start)}</dd></>
-                    )}
-                    {deal.loan_end && (
-                      <><dt className="text-text-muted">Loan end</dt><dd className="text-text">{formatDate(deal.loan_end)}</dd></>
-                    )}
-                    {deal.loan_fee != null && (
-                      <><dt className="text-text-muted">Loan fee</dt><dd className="text-text">{formatCurrency(deal.loan_fee)}</dd></>
-                    )}
-                    {deal.option_to_buy != null && (
-                      <><dt className="text-text-muted">Option to buy</dt><dd className="text-text">{formatCurrency(deal.option_to_buy)}</dd></>
-                    )}
-                    {deal.obligation_to_buy && (
-                      <><dt className="text-text-muted">Obligation to buy</dt><dd className="text-warning-text">Yes{deal.obligation_conditions ? ` — ${deal.obligation_conditions}` : ""}</dd></>
-                    )}
-                    {deal.sell_on_pct != null && (
-                      <><dt className="text-text-muted">Sell-on %</dt><dd className="text-text">{(deal.sell_on_pct * 100).toFixed(1)}%</dd></>
-                    )}
-                  </dl>
-                  {canEditDealStructure && (
-                    <button
-                      onClick={() => {
-                        setDealDraft({
-                          deal_type: deal.deal_type ?? "PERMANENT",
-                          loan_start: deal.loan_start ?? "",
-                          loan_end: deal.loan_end ?? "",
-                          loan_fee: deal.loan_fee != null ? String(deal.loan_fee) : "",
-                          option_to_buy: deal.option_to_buy != null ? String(deal.option_to_buy) : "",
-                          sell_on_pct: deal.sell_on_pct != null ? String(deal.sell_on_pct) : "",
-                        });
-                        setEditingDealStructure(true);
-                      }}
-                      className="mt-3 text-xs text-text-muted hover:text-accent transition-colors"
-                    >
-                      Edit deal structure →
-                    </button>
-                  )}
-                </>
+                canEditDealStructure && (
+                  <button
+                    onClick={() => {
+                      setDealDraft({
+                        sell_on_pct: deal.sell_on_pct != null ? String(Number(deal.sell_on_pct) * 100) : "",
+                      });
+                      setEditingDealStructure(true);
+                    }}
+                    className="mt-3 text-xs text-text-muted hover:text-accent transition-colors"
+                  >
+                    {deal.sell_on_pct != null ? "Edit sell-on →" : "Add a sell-on →"}
+                  </button>
+                )
               )}
             </Panel>
           )}

@@ -33,6 +33,7 @@ export default function CreateOfferPage() {
   const [wageSplit, setWageSplit]   = useState("100");
   const [optionToBuy, setOptionToBuy] = useState("");
   const [obligation, setObligation] = useState(false);
+  const [conditions, setConditions] = useState("");
   const [recallAllowed, setRecallAllowed] = useState(false);
   const [wage, setWage]       = useState("");
   const [years, setYears]     = useState("");
@@ -130,6 +131,7 @@ export default function CreateOfferPage() {
           return;
         }
         body.obligation_to_buy = true;
+        if (conditions.trim()) body.obligation_conditions = conditions.trim();
       }
       if (recallAllowed) body.recall_allowed = true;
     } else {
@@ -386,6 +388,25 @@ export default function CreateOfferPage() {
                     {!optionToBuy && " Set a price first."}
                   </span>
                 </label>
+                {obligation && (
+                  <div className="mt-2.5 pl-6">
+                    <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
+                      Conditions <span className="font-normal text-text-muted">(optional)</span>
+                    </label>
+                    <textarea
+                      value={conditions}
+                      onChange={(e) => setConditions(e.target.value)}
+                      rows={2}
+                      maxLength={1000}
+                      placeholder="e.g. If we are promoted, or he plays 20 league games"
+                      className="w-full resize-none rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                    />
+                    <p className="mt-1 text-[13px] text-text-muted">
+                      The platform cannot check these. At the end of the loan the purchase starts
+                      either way, and either club can collapse it if they were not met.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <label className="flex items-start gap-2.5">

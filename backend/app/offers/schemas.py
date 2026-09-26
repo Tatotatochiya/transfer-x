@@ -51,6 +51,7 @@ class OfferCreateRequest(BaseModel):
     option_to_buy: Decimal | None = None
     obligation_to_buy: bool = False
     recall_allowed: bool = False
+    obligation_conditions: str | None = Field(None, max_length=1000)
     # Required when a permanent offer's fee is £0; posted to the thread.
     no_fee_reason: str | None = Field(None, max_length=500)
 
@@ -87,6 +88,7 @@ class OfferCounterRequest(BaseModel):
     # None leaves the clause as it is; true/false sets it.
     obligation_to_buy: bool | None = None
     recall_allowed: bool | None = None
+    obligation_conditions: str | None = Field(None, max_length=1000)
 
     @field_validator("fee_amount", "wage_weekly", "loan_fee", "option_to_buy", mode="before")
     @classmethod
@@ -158,6 +160,7 @@ class OfferResponse(BaseModel):
     option_to_buy: Decimal | None = None
     obligation_to_buy: bool = False
     recall_allowed: bool = False
+    obligation_conditions: str | None = None
     status: OfferStatus
     expires_at: datetime | None
     last_action_at: datetime

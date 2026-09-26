@@ -343,15 +343,21 @@ async def _start_conversion(db: AsyncSession, loan: PlayerLoan, *, player: Playe
             else "Option to buy exercised"
         ),
     )
-    await _notify_both_clubs(
-        db, loan,
-        type=NotificationType.LOAN_CONVERTED,
-        message=(
-            f"{player.name}'s loan is becoming permanent — "
-            f"{'obligation' if loan.obligation_to_buy else 'option'} triggered at "
-            f"{fee:,.0f}"
-        ),
+    # An obligation's conditions cannot be checked by the platform ("if
+    # promoted"), so the purchase starts either way and the notice says what
+    # it was conditional on: the clubs confirm it by running the deal, or
+    # collapse it if the conditions were not met.
+    conditions = (
+        await db.execute(select(Deal.obligation_conditions).where(Deal.id == loan.deal_id))
+    ).scalar_one_or_none() if loan.obligation_to_buy else None
+    message = (
+        f"{player.name}'s loan is becoming permanent — "
+        f"{'obligation' if loan.obligation_to_buy else 'option'} triggered at "
+        f"{fee:,.0f}"
     )
+    if conditions:
+        message += f". Conditional on: {conditions} — collapse the deal if that was not met"
+    await _notify_both_clubs(db, loan, type=NotificationType.LOAN_CONVERTED, message=message)
     return deal
 
 

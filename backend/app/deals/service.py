@@ -1245,6 +1245,12 @@ def _require_party(
 # ── TRA-56: loan deal update ──────────────────────────────────────────────────
 
 
+_TERMS_AGREED_ON_THE_OFFER = {
+    "deal_type", "loan_start", "loan_end", "loan_fee",
+    "option_to_buy", "obligation_to_buy", "obligation_conditions",
+}
+
+
 async def update_deal(
     db: AsyncSession,
     deal: Deal,
@@ -1254,12 +1260,31 @@ async def update_deal(
     updates: dict,
     actor_user_id: uuid.UUID | None = None,
 ) -> Deal:
-    """Update loan/sell-on fields while deal is still in AGREEMENT stage."""
+    """Update the sell-on percentage while the deal is still at AGREEMENT.
+
+    The deal's type and loan terms are **not** editable here. They were agreed
+    on the offer — negotiated through its counters, and for a loan approved
+    against the club's spending threshold — and accepting it is what created
+    this deal. Either club could previously change them alone, with no
+    validation, which re-opened the original loan defect (the seller agrees to
+    one deal and is then asked to run another) and let `loan_fee` drift from
+    the `agreed_fee` and budget committed at acceptance. To change them, the
+    clubs collapse the deal and re-approach.
+    """
     if deal.status != DealStatus.IN_PROGRESS:
         raise ValueError("Only IN_PROGRESS deals can be updated")
     if deal.stage != DealStage.AGREEMENT:
         raise ValueError("Deal terms can only be updated at AGREEMENT stage")
     _require_party(deal, actor_club_id, is_staff)
+
+    locked = sorted(set(updates) & _TERMS_AGREED_ON_THE_OFFER)
+    if locked:
+        raise ValueError(
+            f"{', '.join(locked)} {'was' if len(locked) == 1 else 'were'} agreed on the offer "
+            "and cannot be changed on the deal — collapse it and re-approach to change them"
+        )
+    if "sell_on_pct" in updates and deal.deal_type == DealType.LOAN:
+        raise ValueError("A loan pays no sell-on — the player is not being sold")
 
     # TRA-81: capture a pre-edit baseline version the first time this deal's terms are touched.
     from app.deals.room_service import create_terms_version, list_terms_versions

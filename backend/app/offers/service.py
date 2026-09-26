@@ -141,6 +141,7 @@ async def validate_offer_terms(
     option_to_buy: Decimal | None,
     obligation_to_buy: bool,
     recall_allowed: bool,
+    obligation_conditions: str | None = None,
 ) -> None:
     """Re-check the loan rules the request schema already checked.
 
@@ -157,7 +158,7 @@ async def validate_offer_terms(
     if deal_type == DealType.PERMANENT:
         if any(v is not None for v in (loan_start, loan_end, loan_fee, wage_split_pct, option_to_buy)):
             raise ValueError("Loan terms are not valid on a permanent offer")
-        if obligation_to_buy or recall_allowed:
+        if obligation_to_buy or recall_allowed or obligation_conditions:
             raise ValueError("Loan terms are not valid on a permanent offer")
         # A missing fee used to be offered as "No fee — a free transfer or a
         # swap". Neither holds: an out-of-contract player is signed through the
@@ -183,6 +184,8 @@ async def validate_offer_terms(
         raise ValueError("Wage split must be between 0 and 1 — it is a fraction, not a percentage")
     if obligation_to_buy and option_to_buy is None:
         raise ValueError("An obligation to buy needs a price — set the option-to-buy amount")
+    if obligation_conditions and not obligation_to_buy:
+        raise ValueError("Conditions apply to an obligation to buy — make it an obligation, or remove them")
 
     # You cannot loan a player past the point you control him. Without this the
     # phase-3 return path would find an expired parent contract and correctly,
@@ -334,10 +337,12 @@ async def check_new_offer(
     obligation_to_buy: bool,
     recall_allowed: bool,
     no_fee_reason: str | None,
+    obligation_conditions: str | None = None,
 ) -> None:
     """Every rule a new offer's terms must pass. Separate from `create_offer`
     so the router can run it before capturing a spending approval — otherwise
     an invalid offer is queued for an approver and only fails once approved."""
+    obligation_conditions = (obligation_conditions or "").strip() or None
     reject_client_loan_wage(deal_type, wage_weekly)
     if (
         deal_type == DealType.PERMANENT
@@ -361,6 +366,7 @@ async def check_new_offer(
         option_to_buy=option_to_buy,
         obligation_to_buy=obligation_to_buy,
         recall_allowed=recall_allowed,
+        obligation_conditions=obligation_conditions,
     )
     if deal_type == DealType.LOAN:
         await loan_wage_basis(db, player_id)
@@ -389,6 +395,7 @@ async def create_offer(
     obligation_to_buy: bool = False,
     recall_allowed: bool = False,
     no_fee_reason: str | None = None,
+    obligation_conditions: str | None = None,
 ) -> Offer:
     """Create and immediately send an offer. Reserves budget from from_club.
 
@@ -412,8 +419,10 @@ async def create_offer(
         obligation_to_buy=obligation_to_buy,
         recall_allowed=recall_allowed,
         no_fee_reason=no_fee_reason,
+        obligation_conditions=obligation_conditions,
     )
     reason = (no_fee_reason or "").strip()
+    obligation_conditions = (obligation_conditions or "").strip() or None
 
     if deal_type == DealType.LOAN:
         wage_weekly = await loan_wage_basis(db, player_id)
@@ -445,6 +454,7 @@ async def create_offer(
         option_to_buy=option_to_buy,
         obligation_to_buy=obligation_to_buy,
         recall_allowed=recall_allowed,
+        obligation_conditions=obligation_conditions,
     )
 
     # Reserve budget immediately on send — transfer and wage both, see _reservation.
@@ -513,6 +523,7 @@ async def counter_offer(
     option_to_buy: Decimal | None = None,
     obligation_to_buy: bool | None = None,
     recall_allowed: bool | None = None,
+    obligation_conditions: str | None = None,
 ) -> Offer:
     """Counter an offer with new terms. Either party can counter.
 
@@ -542,8 +553,15 @@ async def counter_offer(
         "option_to_buy": option_to_buy,
         "obligation_to_buy": obligation_to_buy,
         "recall_allowed": recall_allowed,
+        # "" clears the conditions; None leaves them as they are.
+        "obligation_conditions": (
+            (obligation_conditions.strip() or "") if obligation_conditions is not None else None
+        ),
     }
     changes = {k: v for k, v in changes.items() if v is not None}
+    # Dropping the obligation drops what it was conditional on.
+    if changes.get("obligation_to_buy") is False and offer.obligation_conditions:
+        changes["obligation_conditions"] = ""
 
     def _merged(field: str):
         return changes.get(field, getattr(offer, field))
@@ -560,6 +578,7 @@ async def counter_offer(
         option_to_buy=_merged("option_to_buy"),
         obligation_to_buy=bool(_merged("obligation_to_buy")),
         recall_allowed=bool(_merged("recall_allowed")),
+        obligation_conditions=_merged("obligation_conditions") or None,
     )
 
     # If from_club counters (buyer raises their offer), adjust reservation.
@@ -620,6 +639,8 @@ async def counter_offer(
         offer.obligation_to_buy = obligation_to_buy
     if recall_allowed is not None:
         offer.recall_allowed = recall_allowed
+    if "obligation_conditions" in changes:
+        offer.obligation_conditions = changes["obligation_conditions"] or None
     if contract_years is not None:
         offer.contract_years = contract_years
     if contract_end_date is not None:
@@ -823,6 +844,7 @@ async def accept_offer(
         wage_split_pct=offer.wage_split_pct,
         option_to_buy=offer.option_to_buy,
         obligation_to_buy=offer.obligation_to_buy,
+        obligation_conditions=offer.obligation_conditions,
         recall_allowed=offer.recall_allowed,
     )
     db.add(deal)

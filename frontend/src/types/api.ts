@@ -584,6 +584,9 @@ export interface Offer {
   wage_split_pct: number | null;
   option_to_buy: number | null;
   obligation_to_buy: boolean;
+  /** What an obligation depends on ("if promoted"). Free text, agreed here and
+   *  carried onto the deal. */
+  obligation_conditions: string | null;
   recall_allowed: boolean;
   status: OfferStatus;
   expires_at: string | null;
@@ -773,6 +776,9 @@ export interface Deal {
   option_to_buy: number | null;
   obligation_to_buy: boolean;
   obligation_conditions: string | null;
+  /** Loan only: fraction 0–1 of his wage the borrowing club pays. */
+  wage_split_pct: number | null;
+  recall_allowed: boolean;
   // TRA-57
   sell_on_pct: number | null;
   clauses: DealClause[];

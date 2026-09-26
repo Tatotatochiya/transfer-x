@@ -366,6 +366,7 @@ async def create_offer(
             obligation_to_buy=body.obligation_to_buy,
             recall_allowed=body.recall_allowed,
             no_fee_reason=body.no_fee_reason,
+            obligation_conditions=body.obligation_conditions,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -412,6 +413,7 @@ async def create_offer(
             "obligation_to_buy": body.obligation_to_buy,
             "recall_allowed": body.recall_allowed,
             "no_fee_reason": body.no_fee_reason,
+            "obligation_conditions": body.obligation_conditions,
         },
         summary=f"Offer for {_pname} — {_terms_summary(**_terms)}",
     )
@@ -445,6 +447,7 @@ async def create_offer(
             obligation_to_buy=body.obligation_to_buy,
             recall_allowed=body.recall_allowed,
             no_fee_reason=body.no_fee_reason,
+            obligation_conditions=body.obligation_conditions,
         )
         await _db_notify_offer(
             db, offer,
@@ -495,6 +498,7 @@ async def counter_offer(
             option_to_buy=body.option_to_buy,
             obligation_to_buy=body.obligation_to_buy,
             recall_allowed=body.recall_allowed,
+            obligation_conditions=body.obligation_conditions,
         )
         other_club_id = offer.to_club_id if offer.from_club_id == club.id else offer.from_club_id
         await _db_notify_offer(
