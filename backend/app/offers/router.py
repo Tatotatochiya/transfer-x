@@ -349,6 +349,27 @@ async def create_offer(
             detail="This player already has a transfer deal in progress. New offers cannot be made at this time.",
         )
 
+    # The offer's own terms too, before any approval is captured: an approver
+    # should never be asked to sign off an offer that could not be sent.
+    try:
+        await service.check_new_offer(
+            db,
+            player_id=body.player_id,
+            deal_type=body.deal_type,
+            fee_amount=body.fee_amount,
+            wage_weekly=body.wage_weekly,
+            loan_start=body.loan_start,
+            loan_end=body.loan_end,
+            loan_fee=body.loan_fee,
+            wage_split_pct=body.wage_split_pct,
+            option_to_buy=body.option_to_buy,
+            obligation_to_buy=body.obligation_to_buy,
+            recall_allowed=body.recall_allowed,
+            no_fee_reason=body.no_fee_reason,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
     # Phase 5 (D7): a MANAGER's offer at/above the club threshold is captured
     # as a pending approval after the guards above — nothing executed yet.
     from app.players import service as players_service
@@ -390,6 +411,7 @@ async def create_offer(
             "option_to_buy": str(body.option_to_buy) if body.option_to_buy is not None else None,
             "obligation_to_buy": body.obligation_to_buy,
             "recall_allowed": body.recall_allowed,
+            "no_fee_reason": body.no_fee_reason,
         },
         summary=f"Offer for {_pname} — {_terms_summary(**_terms)}",
     )
@@ -422,6 +444,7 @@ async def create_offer(
             option_to_buy=body.option_to_buy,
             obligation_to_buy=body.obligation_to_buy,
             recall_allowed=body.recall_allowed,
+            no_fee_reason=body.no_fee_reason,
         )
         await _db_notify_offer(
             db, offer,

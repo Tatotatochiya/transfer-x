@@ -307,6 +307,7 @@ async def _execute(db: AsyncSession, approval: PendingApproval) -> None:
             option_to_buy=_dec("option_to_buy"),
             obligation_to_buy=payload.get("obligation_to_buy", False),
             recall_allowed=payload.get("recall_allowed", False),
+            no_fee_reason=payload.get("no_fee_reason"),
         )
         if offer.to_club_id:
             await notify_club(
@@ -356,6 +357,24 @@ async def _execute(db: AsyncSession, approval: PendingApproval) -> None:
             link=f"/deals/{deal.id}",
             related_player_id=deal.player_id,
         )
+
+    elif approval.action_type == ApprovalActionType.EXERCISE_OPTION:
+        from app.loans import service as loans_service
+        from app.loans.models import PlayerLoan
+
+        loan = (
+            await db.execute(
+                select(PlayerLoan).where(PlayerLoan.id == uuid.UUID(payload["loan_id"]))
+            )
+        ).scalar_one_or_none()
+        if loan is None:
+            raise ValueError("The loan no longer exists")
+        # Re-validated fresh (D7): the loan may have ended, been recalled or
+        # already converted while the approval was pending.
+        try:
+            await loans_service.exercise_option(db, loan, actor_club_id=club_id)
+        except PermissionError as exc:
+            raise ValueError(str(exc)) from exc
 
     else:  # pragma: no cover — enum is exhaustive
         raise ValueError(f"Unknown approval action type {approval.action_type}")

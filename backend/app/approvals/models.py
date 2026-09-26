@@ -22,6 +22,7 @@ class ApprovalActionType(str, enum.Enum):
     CREATE_OFFER = "CREATE_OFFER"
     ACCEPT_OFFER = "ACCEPT_OFFER"
     ACCEPT_BID = "ACCEPT_BID"
+    EXERCISE_OPTION = "EXERCISE_OPTION"
 
 
 class ApprovalStatus(str, enum.Enum):

@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.common.schemas import WhoseMove
 from app.deals.models import DealType
@@ -51,6 +51,8 @@ class OfferCreateRequest(BaseModel):
     option_to_buy: Decimal | None = None
     obligation_to_buy: bool = False
     recall_allowed: bool = False
+    # Required when a permanent offer's fee is £0; posted to the thread.
+    no_fee_reason: str | None = Field(None, max_length=500)
 
     @field_validator("fee_amount", "wage_weekly", "loan_fee", "option_to_buy", mode="before")
     @classmethod

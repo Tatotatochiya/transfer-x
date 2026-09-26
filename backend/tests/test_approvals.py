@@ -529,11 +529,12 @@ async def test_approved_anonymous_offer_stays_anonymous(
 
 
 @pytest.mark.asyncio
-async def test_approved_fee_less_offer_replays_without_crashing(
+async def test_approved_zero_fee_offer_replays_without_crashing(
     client: AsyncClient, db, buyer: dict, seller: dict
 ):
-    """A fee-less offer's payload stored the string "None" as its fee, and the
-    replay's Decimal("None") raised — so approving one could never execute."""
+    """A missing fee was stored as the string "None", which the replay's
+    Decimal() could not parse. Fees are now always named, £0 included, and
+    older payloads are still read (see _dec in approvals/service.py)."""
     await _give_budget(db)
     await _set_threshold(client, buyer, 0)
     manager = await _create_staff(client, db, _auth_headers(buyer), "appr_nofee_mgr@test.com", "MANAGER")
@@ -544,7 +545,10 @@ async def test_approved_fee_less_offer_replays_without_crashing(
 
     resp = await client.post(
         "/offers",
-        json={"player_id": player.json()["id"], "to_club_id": seller_club_id},
+        json={
+            "player_id": player.json()["id"], "to_club_id": seller_club_id,
+            "fee_amount": 0, "no_fee_reason": "Release to clear wages",
+        },
         headers=_auth_headers(manager),
     )
     assert resp.status_code == 202, resp.text
@@ -552,3 +556,7 @@ async def test_approved_fee_less_offer_replays_without_crashing(
         f"/clubs/me/approvals/{resp.json()['approval_id']}/approve", headers=_auth_headers(buyer)
     )
     assert resp.json()["status"] == "APPROVED_EXECUTED", resp.text
+
+    # The reason survives the replay, as it must for the seller to read it.
+    received = (await client.get("/offers/received", headers=_auth_headers(seller))).json()["items"][0]
+    assert any("clear wages" in m["body"] for m in received["messages"])

@@ -104,7 +104,7 @@ export type ClubCapability =
   | "APPROVE_ACTIONS";
 
 // Phase 5 — spending-authority approvals
-export type ApprovalActionType = "PLACE_BID" | "CREATE_OFFER" | "ACCEPT_OFFER" | "ACCEPT_BID";
+export type ApprovalActionType = "PLACE_BID" | "CREATE_OFFER" | "ACCEPT_OFFER" | "ACCEPT_BID" | "EXERCISE_OPTION";
 export type ApprovalStatus =
   | "PENDING"
   | "APPROVED_EXECUTED"

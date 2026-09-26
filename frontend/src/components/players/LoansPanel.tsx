@@ -5,6 +5,7 @@ import api from "../../lib/api";
 import type { Loan } from "../../types/api";
 import Button from "../ui/Button";
 import { formatCurrency, getApiError } from "../../lib/utils";
+import { useToast } from "../../context/ToastContext";
 
 /** Loans this club is a party to, in both directions.
  *
@@ -21,6 +22,7 @@ import { formatCurrency, getApiError } from "../../lib/utils";
 export default function LoansPanel({ canAct }: { canAct: boolean }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
 
@@ -51,12 +53,21 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
 
   const exercise = useMutation({
     mutationFn: (loanId: string) =>
-      api.post<Loan>(`/loans/${loanId}/exercise-option`).then((r) => r.data),
-    onSuccess: (loan) => {
+      api.post<Loan | { status: "PENDING_APPROVAL"; approval_id: string }>(`/loans/${loanId}/exercise-option`)
+        .then((r) => r.data),
+    onSuccess: (result) => {
       invalidate();
+      setConfirming(null);
+      // 202: over the club's spending threshold, so an approver has to sign
+      // it off first (D7). Nothing has been bought yet.
+      if ("approval_id" in result) {
+        queryClient.invalidateQueries({ queryKey: ["clubs", "me", "approvals"] });
+        addToast("Sent for approval — the owner or Sporting Director must sign off the purchase.", "info");
+        return;
+      }
       // The purchase is an ordinary deal from here — budget, medical,
       // paperwork — so send them to it rather than implying it is done.
-      if (loan.conversion_deal_id) navigate(`/deals/${loan.conversion_deal_id}`);
+      if (result.conversion_deal_id) navigate(`/deals/${result.conversion_deal_id}`);
     },
     onError: (e) => setError(getApiError(e)),
   });

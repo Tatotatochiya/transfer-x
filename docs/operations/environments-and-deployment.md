@@ -69,7 +69,9 @@ Two things to know before re-running the seed there:
 
 One-off repair scripts that have been run locally but not yet on Railway. These are not Alembic migrations, so nothing runs them automatically on deploy — each has to be invoked deliberately after the corresponding code change is deployed. Delete a row once it has been run there.
 
-*(none outstanding)*
+| Script | Why | Run locally |
+|---|---|---|
+| `backend/scripts/backfill_contract_wages.py` | Every active contract had no wage, so after migration `0071`'s release a loan is refused ("His contract has no wage on record") on every player. Gives each such contract a plausible wage and adds it to the club's wage bill. Run `--dry-run` first. Like `seed_demo.py` it reads `settings.database_url`, so set `DATABASE_URL` to Railway's public URL. | 2026-09-26: 106 contracts; Arsenal +£1.58m/wk, Chelsea +£1.59m/wk, Liverpool +£1.19m/wk. A second run touched nothing. |
 
 `backend/scripts/repair_listings_left_open_after_offer_accepted.py` — deployed and run 2026-08-12. **Verified by direct read-only query against Railway's database, not by trusting the run's own report:** `alembic_version` is at `0063`; zero listings sit `OPEN` behind an `IN_PROGRESS`/`COMPLETED` deal. Worth recording precisely, since it corrects what this doc said before: Railway's data did **not** in fact contain the broken rows this script targets. Of Railway's 8 offers, only 2 were ever made against a listing, and both expired unaccepted — `accept_offer` (where the bug lived) was never invoked with a `sale_id` present there. The three deals that do exist are all from standalone offers, unrelated to this bug. So the repair was correctly a no-op on this environment; the assumption that Railway "carries the same broken rows local did" was untested at the time it was written and turned out to be wrong. Safe to run again regardless — idempotent, `--dry-run` reports what it would change without writing.
 

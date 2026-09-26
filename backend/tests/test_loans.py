@@ -119,7 +119,7 @@ async def _run_loan_to_completion(
             "player_id": player["id"], "to_club_id": parent_club,
             "deal_type": "LOAN",
             "loan_start": str(date(2026, 9, 1)), "loan_end": str(loan_end),
-            "loan_fee": fee, "wage_weekly": float(wage), "wage_split_pct": split,
+            "loan_fee": fee, "wage_split_pct": split,
             "recall_allowed": recall_allowed,
             **({"option_to_buy": option_to_buy} if option_to_buy else {}),
             **({"obligation_to_buy": True} if obligation else {}),
@@ -946,3 +946,82 @@ async def test_both_clubs_are_told_a_loan_is_becoming_permanent(
         )
     ).scalars().all()
     assert len(notes) == 2
+
+
+# ── Exercising an option is spending-approval gated (D7) ─────────────────────
+
+
+async def _loanee_manager_and_threshold(client: AsyncClient, db, loanee: dict, threshold: float) -> dict:
+    from tests.test_approvals import _set_threshold
+    from tests.test_capabilities import _create_staff
+
+    await _set_threshold(client, loanee, threshold)
+    return await _create_staff(client, db, _auth_headers(loanee), "loanee_mgr@test.com", "MANAGER")
+
+
+@pytest.mark.asyncio
+async def test_a_manager_exercising_an_option_over_the_threshold_needs_approval(
+    client: AsyncClient, db, parent: dict, loanee: dict
+):
+    """An option is not counted when the loan is approved — it is a right the
+    club may never use — so exercising it is where the £18m is committed, and
+    that is what the approver signs off."""
+    from app.loans.models import PlayerLoan
+
+    _, _, loan = await _run_loan_to_completion(client, db, parent, loanee, option_to_buy=18_000_000)
+    manager = await _loanee_manager_and_threshold(client, db, loanee, 10_000_000)
+
+    resp = await client.post(f"/loans/{loan.id}/exercise-option", headers=_auth_headers(manager))
+    assert resp.status_code == 202, resp.text
+    await db.refresh(loan)
+    assert loan.conversion_deal_id is None, "nothing may be bought before approval"
+
+    approvals = (await client.get("/clubs/me/approvals", headers=_auth_headers(loanee))).json()
+    row = next(a for a in approvals if a["id"] == resp.json()["approval_id"])
+    assert row["action_type"] == "EXERCISE_OPTION"
+    assert Decimal(str(row["amount"])) == Decimal("18000000")
+
+    done = await client.post(
+        f"/clubs/me/approvals/{row['id']}/approve", headers=_auth_headers(loanee)
+    )
+    assert done.json()["status"] == "APPROVED_EXECUTED", done.text
+    loan_id = loan.id
+    db.expire_all()
+    loan = (await db.execute(select(PlayerLoan).where(PlayerLoan.id == loan_id))).scalar_one()
+    assert loan.conversion_deal_id is not None
+
+
+@pytest.mark.asyncio
+async def test_an_option_that_cannot_be_exercised_is_refused_before_capture(
+    client: AsyncClient, db, parent: dict, loanee: dict
+):
+    """An approver should never be asked to sign off an option that could not
+    be exercised anyway."""
+    _, _, loan = await _run_loan_to_completion(client, db, parent, loanee)  # no option
+    manager = await _loanee_manager_and_threshold(client, db, loanee, 0)
+
+    resp = await client.post(f"/loans/{loan.id}/exercise-option", headers=_auth_headers(manager))
+    assert resp.status_code == 400, resp.text
+    approvals = (await client.get("/clubs/me/approvals", headers=_auth_headers(loanee))).json()
+    assert approvals == []
+
+
+@pytest.mark.asyncio
+async def test_an_approved_option_fails_soft_if_the_loan_ended_meanwhile(
+    client: AsyncClient, db, parent: dict, loanee: dict
+):
+    """Re-validated at execution: the loan was recalled while the approval sat pending."""
+    _, _, loan = await _run_loan_to_completion(
+        client, db, parent, loanee, option_to_buy=18_000_000, recall_allowed=True
+    )
+    manager = await _loanee_manager_and_threshold(client, db, loanee, 10_000_000)
+    resp = await client.post(f"/loans/{loan.id}/exercise-option", headers=_auth_headers(manager))
+    assert resp.status_code == 202, resp.text
+
+    recalled = await client.post(f"/loans/{loan.id}/recall", headers=_auth_headers(parent))
+    assert recalled.status_code == 200, recalled.text
+
+    done = await client.post(
+        f"/clubs/me/approvals/{resp.json()['approval_id']}/approve", headers=_auth_headers(loanee)
+    )
+    assert done.json()["status"] == "APPROVED_FAILED", done.text

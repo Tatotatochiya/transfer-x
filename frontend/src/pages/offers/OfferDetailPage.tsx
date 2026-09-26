@@ -72,8 +72,6 @@ function CounterForm({
     e.preventDefault();
     setError(null);
     const body: Record<string, unknown> = {};
-    const parsedWage = parseFloat(wage);
-    if (wage && !isNaN(parsedWage)) body.wage_weekly = parsedWage;
 
     if (loan) {
       // Only what changed, so the counter's audit entry names the terms that
@@ -97,6 +95,9 @@ function CounterForm({
     } else {
       const parsedFee = parseFloat(fee);
       if (fee && !isNaN(parsedFee)) body.fee_amount = parsedFee;
+      // A loan's wage is his contract wage, not a term to counter.
+      const parsedWage = parseFloat(wage);
+      if (wage && !isNaN(parsedWage)) body.wage_weekly = parsedWage;
       const parsedYears = parseInt(years);
       if (years && !isNaN(parsedYears)) body.contract_years = parsedYears;
     }
@@ -134,10 +135,6 @@ function CounterForm({
             <div>
               <label className="mb-1 block text-xs text-text-muted">Borrowing club pays (% of wage)</label>
               <input type="number" min={0} max={100} value={split} onChange={(e) => setSplit(e.target.value)} className={inputClass} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-text-muted">Wage basis (£/wk)</label>
-              <CurrencyInput value={wage} onChange={setWage} placeholder="Weekly wage" className={inputClass} />
             </div>
             <div>
               <label className="mb-1 block text-xs text-text-muted">Purchase price (£)</label>
