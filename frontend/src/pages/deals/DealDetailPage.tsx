@@ -357,6 +357,50 @@ function CommissionProposalView({
   );
 }
 
+// ── Personal terms banner ─────────────────────────────────────────────────────
+
+function PersonalTermsBanner({ deal, isBuyer }: { deal: Deal; isBuyer: boolean }) {
+  const terms = deal.personal_terms;
+  const buyerName = deal.buyer_club?.name ?? "The buying club";
+  const viaAgent = deal.commission_agent_id != null;
+
+  // A declined proposal collapses the deal (player_consent_to_terms), so an
+  // open deal is only ever waiting on a proposal, on consent, or on Advance.
+  let tone: "warning" | "success" = "warning";
+  let title: string;
+  let body: string;
+  if (!terms) {
+    title = "Personal terms needed";
+    body = viaAgent
+      ? "The player's agent proposes his personal terms. The deal moves on once the player accepts them."
+      : isBuyer
+        ? "Propose the player's personal terms below. The deal moves on once he accepts them."
+        : `Waiting for ${buyerName} to propose personal terms to the player.`;
+  } else if (terms.player_consent === "AGREED") {
+    tone = "success";
+    title = "The player accepted the personal terms";
+    body = "Advance to Paperwork to continue.";
+  } else {
+    title = "Awaiting the player's consent";
+    body = terms.player_has_account
+      ? "The terms have been sent to the player. The deal moves on once he accepts them."
+      : terms.agent_id
+        ? "The player has no TransferX account, so his agent responds on his behalf."
+        : "The player has no TransferX account or agent, so TransferX records his acceptance.";
+  }
+
+  const toneClass = {
+    warning: "bg-warning-bg text-warning-text ring-warning-fill/20",
+    success: "bg-success/10 text-success-text ring-success/20",
+  }[tone];
+  return (
+    <div className={`mb-6 rounded-xl px-5 py-4 text-sm ring-1 ${toneClass}`}>
+      <p className="font-semibold mb-1">{title}</p>
+      <p className="opacity-80">{body}</p>
+    </div>
+  );
+}
+
 // ── Set personal terms (ADR 0001) ──────────────────────────────────────────────
 
 function SetPersonalTermsForm({ dealId }: { dealId: string }) {
@@ -673,7 +717,11 @@ const BLOCKER_LABEL: Partial<Record<DealStage, string>> = {
 
 function DealRoomHeader({ deal }: { deal: Deal }) {
   const isOpen = deal.status === "IN_PROGRESS" || deal.status === "PENDING_COMPLETION";
-  const blocker = isOpen ? BLOCKER_LABEL[deal.stage] : undefined;
+  // Before any terms exist the deal is waiting on a proposal, not on the player.
+  const blocker = !isOpen ? undefined
+    : deal.stage === "PERSONAL_TERMS" && !deal.personal_terms ? "Personal terms proposal"
+    : deal.stage === "PERSONAL_TERMS" && deal.personal_terms?.player_consent === "AGREED" ? "Advance to paperwork"
+    : BLOCKER_LABEL[deal.stage];
   const idleDays = daysSince(deal.updated_at);
 
   return (
@@ -739,7 +787,10 @@ function ThreeLanes({ deal, negotiation }: { deal: Deal; negotiation: AgentNegot
   // that this deal has an agent, so either one shows the lane.
   const hasAgent = deal.commission_agent_id != null || negotiation != null;
   const agentStatus = laneStatus(deal, "AGENT_NEGOTIATION");
-  const personalStatus = laneStatus(deal, "PERSONAL_TERMS");
+  // Once the player has accepted, personal terms are agreed even though the
+  // deal waits at this stage for a club to press Advance.
+  const personalStatus = deal.stage === "PERSONAL_TERMS" && deal.personal_terms?.player_consent === "AGREED"
+    ? "done" : laneStatus(deal, "PERSONAL_TERMS");
 
   const commissionPct = deal.agent_commission_pct ?? negotiation?.commission_pct ?? null;
 
@@ -770,7 +821,10 @@ function ThreeLanes({ deal, negotiation }: { deal: Deal; negotiation: AgentNegot
         title="Personal terms"
         description={
           personalStatus === "pending" ? "Not yet started." :
-          personalStatus === "blocking" ? "Awaiting player consent." :
+          personalStatus === "blocking"
+            ? (!deal.personal_terms ? "Awaiting a proposal."
+              : deal.personal_terms.player_consent === "DECLINED" ? "Player declined."
+              : deal.personal_terms.player_consent === "AGREED" ? "Player accepted." : "Awaiting player consent.") :
           "Personal terms confirmed."
         }
         metricLabel="Wage"
@@ -1043,7 +1097,11 @@ export default function DealDetailPage() {
   // TRA-151 (D4): club-side deal writes need DEAL_WRITE — SCOUT/READONLY staff
   // keep full visibility but every mutating control below disappears for them.
   const canDealWrite       = can("DEAL_WRITE");
-  const clubCanAdvance     = isParty && !isAgent && isActive && !atPaperwork && !atAgentNegotiation && canDealWrite;
+  const terms              = deal.personal_terms;
+  // PERSONAL_TERMS moves on only once the player has consented; offering the
+  // button before that only earned a refusal from the server.
+  const clubCanAdvance     = isParty && !isAgent && isActive && !atPaperwork && !atAgentNegotiation && canDealWrite &&
+    (!atPersonalTerms || terms?.player_consent === "AGREED");
   // Agent can advance once the club has agreed commission (TRA-128) — personal
   // terms are a separate proposal + consent, at PERSONAL_TERMS.
   const agentCanAdvance    = isAgent && isActive && atAgentNegotiation &&
@@ -1051,7 +1109,7 @@ export default function DealDetailPage() {
   const clubCanCollapse       = isParty && isActive && canDealWrite;
   // Set personal terms (ADR 0001): the mandated agent if this deal went through
   // AGENT_NEGOTIATION, otherwise the buying club when there's no mandate at all.
-  const canSetPersonalTerms   = isActive && atPersonalTerms && !deal.personal_terms && (
+  const canSetPersonalTerms   = isActive && atPersonalTerms && !terms && (
     (isAgent && deal.commission_agent_id != null) ||
     (isBuyer && !isAgent && !isPlayer && deal.commission_agent_id == null && canDealWrite)
   );
@@ -1125,14 +1183,9 @@ export default function DealDetailPage() {
         />
       )}
 
-      {/* PERSONAL_TERMS banner */}
+      {/* PERSONAL_TERMS banner — says who the deal is waiting on right now. */}
       {atPersonalTerms && isParty && deal.status === "IN_PROGRESS" && (
-        <div className="mb-6 rounded-xl bg-warning-bg px-5 py-4 text-sm text-warning-text ring-1 ring-warning-fill/20">
-          <p className="font-semibold mb-1">Awaiting player consent on personal terms</p>
-          <p className="text-warning-text/80">
-            The agent has proposed personal contract terms. The deal will advance once the player confirms acceptance.
-          </p>
-        </div>
+        <PersonalTermsBanner deal={deal} isBuyer={isBuyer} />
       )}
 
       {/* Completed banner */}

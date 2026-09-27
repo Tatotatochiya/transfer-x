@@ -48,6 +48,11 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
     - A mandated player's agent was never brought in.
     - No "deal created" audit entry was written.
   - Checked live: Arsenal's direct offer was rejected when Chelsea's bid was accepted, the audit entry appeared, and Chelsea advanced the deal itself. (`backend/app/sales/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
+- **The deal page says who a deal at Personal Terms is waiting on.**
+  - It used to say "The agent has proposed personal contract terms" on every deal, including deals with no agent and no terms yet. Now it says who is needed: the buying club to propose terms, the player (or his agent) to accept them, or a club to advance once he has.
+  - The header and the personal-terms lane follow the same states.
+  - "Advance to Paperwork" appears only once the player has consented; before, the server refused the click.
+- **Personal terms could be proposed and consented to on a collapsed deal.** Both steps checked only the deal's stage, and a collapsed deal keeps its stage. Both now require the deal to be in progress. (`backend/app/deals/service.py`)
 - **The frontend test suite is green again:** 136 of 136, up from 120. The 16 failures were stale tests, not product bugs: player cards rendered without the compare context, and two label expectations predated their labels.
 
 ### Changed

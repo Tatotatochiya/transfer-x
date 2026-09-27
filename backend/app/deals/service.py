@@ -1365,6 +1365,10 @@ async def set_personal_terms(
     actor_user_id: uuid.UUID | None = None,
 ) -> PersonalTerms:
     """Create or replace the personal-terms record for a deal in PERSONAL_TERMS stage."""
+    # A collapsed deal keeps its stage, so the stage check alone let terms be
+    # proposed (and consented to) on a deal that had already fallen through.
+    if deal.status != DealStatus.IN_PROGRESS:
+        raise ValueError("This deal is no longer in progress")
     if deal.stage != DealStage.PERSONAL_TERMS:
         raise ValueError("Deal is not in PERSONAL_TERMS stage")
 
@@ -1400,6 +1404,8 @@ async def player_consent_to_terms(
     """Player agrees or declines personal terms. Decline collapses the deal."""
     from app.agents.models import AgreementStatus
 
+    if deal.status != DealStatus.IN_PROGRESS:
+        raise ValueError("This deal is no longer in progress")
     if deal.stage != DealStage.PERSONAL_TERMS:
         raise ValueError("Deal is not in PERSONAL_TERMS stage")
 
