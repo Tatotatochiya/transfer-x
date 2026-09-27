@@ -95,6 +95,8 @@ export type NotificationType =
   // Preference only — switches the daily "waiting on you" email.
   | "DAILY_DIGEST"
   | "DEAL_PAPERWORK"
+  | "ENQUIRY_RECEIVED"
+  | "ENQUIRY_REPLIED"
   | "APPROVAL_DECIDED";
 
 // TRA-151 — club roles & capabilities (server matrix is the only truth; the

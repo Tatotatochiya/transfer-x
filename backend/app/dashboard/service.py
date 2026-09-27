@@ -168,11 +168,37 @@ async def _sale_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[dateti
     return out
 
 
+async def _enquiry_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[datetime, DashboardItem]]:
+    """Open enquiries where the other club wrote last — someone is waiting for
+    an answer from this club."""
+    from app.enquiries import service as enquiries_service
+
+    out = []
+    for e in await enquiries_service.list_enquiries(db, club_id):
+        if enquiries_service.whose_move(e, club_id) != WhoseMove.YOUR:
+            continue
+        resp = enquiries_service.to_response(e, club_id, with_messages=False)
+        other = resp.asking_club if resp.role == "owning" else resp.owning_club
+        out.append((
+            e.updated_at,
+            DashboardItem(
+                kind="enquiry",
+                id=e.id,
+                player_name=resp.player_name,
+                club_name=other.name,
+                reason="Enquiry — awaiting your reply" if resp.role == "owning" else "Enquiry — they replied",
+                link=f"/enquiries/{e.id}",
+            ),
+        ))
+    return out
+
+
 async def get_dashboard(db: AsyncSession, *, club: Club, current_user: User) -> DashboardResponse:
     approval_pairs = await _approval_items(db, club.id, current_user)
     offer_pairs = await _offer_items(db, club.id)
     deal_pairs = await _deal_items(db, club.id)
     sale_pairs = await _sale_items(db, club.id)
+    enquiry_pairs = await _enquiry_items(db, club.id)
 
     # Priority order: approvals and confirmed deals block the single most
     # concrete next step; offers are still mid-negotiation; sales are only
@@ -183,5 +209,6 @@ async def get_dashboard(db: AsyncSession, *, club: Club, current_user: User) -> 
         + [item for _, item in sorted(deal_pairs, key=lambda p: p[0])]
         + [item for _, item in sorted(offer_pairs, key=lambda p: p[0])]
         + [item for _, item in sorted(sale_pairs, key=lambda p: p[0])]
+        + [item for _, item in sorted(enquiry_pairs, key=lambda p: p[0])]
     )
     return DashboardResponse(waiting_on_you=waiting_on_you)

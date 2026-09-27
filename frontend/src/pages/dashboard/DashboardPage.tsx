@@ -37,6 +37,7 @@ const WAITING_ACTION_LABEL: Record<DashboardItem["kind"], string> = {
   offer:    "Respond",
   deal:     "Open",
   sale:     "Review bids",
+  enquiry:  "Reply",
 };
 
 const WAITING_FALLBACK_TITLE: Record<DashboardItem["kind"], string> = {
@@ -44,6 +45,7 @@ const WAITING_FALLBACK_TITLE: Record<DashboardItem["kind"], string> = {
   offer:    "Offer",
   deal:     "Deal",
   sale:     "Listing",
+  enquiry:  "Enquiry",
 };
 import FigureCard from "../../components/dashboard/FigureCard";
 import WorkingPanel from "../../components/dashboard/WorkingPanel";

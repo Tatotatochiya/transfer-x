@@ -53,6 +53,8 @@ class NotificationType(str, enum.Enum):
     # No in-app notification is created with it (notifications/digest.py).
     DAILY_DIGEST = "DAILY_DIGEST"
     DEAL_PAPERWORK = "DEAL_PAPERWORK"
+    ENQUIRY_RECEIVED = "ENQUIRY_RECEIVED"
+    ENQUIRY_REPLIED = "ENQUIRY_REPLIED"
 
 
 class Notification(Base):

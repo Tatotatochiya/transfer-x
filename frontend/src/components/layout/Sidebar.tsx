@@ -25,6 +25,7 @@ const WAITING_ROUTE: Record<DashboardItem["kind"], string> = {
   deal:     "/deals",
   sale:     "/sales/mine",
   approval: "/club/approvals",
+  enquiry:  "/enquiries",
 };
 
 interface NavItem {
@@ -109,6 +110,7 @@ function getNavGroups(userType: UserType | null): NavGroup[] {
       items: [
         { label: "War Room",  to: "/dashboard", icon: "layout-dashboard" },
         { label: "Transfers in progress", to: "/deals", icon: "arrow-right-left" },
+        { label: "Enquiries", to: "/enquiries", icon: "message" },
       ],
     },
     {

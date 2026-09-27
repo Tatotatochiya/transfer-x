@@ -24,7 +24,7 @@ export function useClubDashboard(enabled: boolean) {
 
 /** Count of waiting items per `kind`, for the sidebar badges. */
 export function countByKind(items: DashboardItem[] | undefined): Record<DashboardItem["kind"], number> {
-  const counts: Record<DashboardItem["kind"], number> = { approval: 0, deal: 0, offer: 0, sale: 0 };
+  const counts: Record<DashboardItem["kind"], number> = { approval: 0, deal: 0, offer: 0, sale: 0, enquiry: 0 };
   for (const item of items ?? []) counts[item.kind] += 1;
   return counts;
 }

@@ -1248,8 +1248,34 @@ export interface UnreadCount {
 /** One "waiting on you" item from GET /clubs/me/dashboard. `kind` identifies
  *  which part of the app it belongs to, which is what lets the sidebar count
  *  them per section without a request per section. */
+// ── Enquiries ─────────────────────────────────────────────────────────────────
+
+/** A club in an enquiry. `id` is null (and `name` is "A {league} club") when
+ *  the asking club is anonymous and you are the owning club. */
+export interface EnquiryParty {
+  id: string | null;
+  name: string;
+}
+
+export interface Enquiry {
+  id: string;
+  player_id: string;
+  player_name: string | null;
+  status: "OPEN" | "CLOSED";
+  is_anonymous: boolean;
+  asking_club: EnquiryParty;
+  owning_club: EnquiryParty;
+  /** Which side you are on. */
+  role: "asking" | "owning";
+  whose_move: "your" | "their" | "neither";
+  created_at: string;
+  updated_at: string;
+  last_message: string | null;
+  messages: { id: string; body: string; created_at: string; side: "mine" | "theirs" }[];
+}
+
 export interface DashboardItem {
-  kind: "approval" | "deal" | "offer" | "sale";
+  kind: "approval" | "deal" | "offer" | "sale" | "enquiry";
   id: string;
   player_name: string | null;
   club_name: string | null;

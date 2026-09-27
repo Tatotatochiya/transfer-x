@@ -20,6 +20,7 @@ import {
 } from "../../lib/badges";
 import { formatCurrency, formatDate, formatWage } from "../../lib/utils";
 import AddToShortlistButton from "../../components/scouting/AddToShortlistButton";
+import AskAboutPlayerModal from "../../components/enquiries/AskAboutPlayerModal";
 import ListPlayerModal from "../../components/sales/ListPlayerModal";
 import { useCompare } from "../../context/CompareContext";
 import CareerHistoryPanel from "../../components/players/CareerHistoryPanel";
@@ -572,6 +573,8 @@ export default function PlayerMarketDetailPage() {
   const listClosedReason = useListingClosedReason(canList);
   const [listOpen, setListOpen] = useState(false);
   const closeListing = useCallback(() => setListOpen(false), []);
+  const [askOpen, setAskOpen] = useState(false);
+  const closeAsk = useCallback(() => setAskOpen(false), []);
 
   // Item 14: buyer meets the release clause, bypassing seller consent entirely.
   const releaseClauseMutation = useMutation({
@@ -865,6 +868,21 @@ export default function PlayerMarketDetailPage() {
                         {player.world_team?.name ?? player.team_name ?? "His club"} is not on TransferX, so an offer
                         could not be answered. Shortlist him to follow his form and contract.
                       </p>
+                    )}
+                    {/* Ask first: the informal step before an offer, committing
+                        nobody to anything. */}
+                    {isAuthenticated && !isAgent && can("MARKET_WRITE") && !isFreeAgentPlayer && !isOffPlatform && (
+                      <>
+                        <Button variant="secondary" onClick={() => setAskOpen(true)}>
+                          Ask about him
+                        </Button>
+                        <AskAboutPlayerModal
+                          open={askOpen}
+                          onClose={closeAsk}
+                          player={{ id: player.id, name: player.name }}
+                          ownerName={player.active_loan?.parent_club?.name ?? player.current_club?.name ?? "His club"}
+                        />
+                      </>
                     )}
                     {isAuthenticated && !isAgent && can("MARKET_WRITE") && !isFreeAgentPlayer && !isOffPlatform && (
                       <Button
