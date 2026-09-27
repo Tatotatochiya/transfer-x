@@ -41,6 +41,13 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Fixed
+- **Clubs can run a deal won at auction, as they can any other.**
+  - The deal page told both clubs that "Stage advancement is handled by TransferX staff" and hid the Advance button. The backend never required staff, so this was a UI block.
+  - Accepting a winning bid also skipped three steps that accepting an offer takes:
+    - Other clubs' pending offers for the player were left open, with their budget still reserved. They are now rejected, their budget released and those clubs notified.
+    - A mandated player's agent was never brought in.
+    - No "deal created" audit entry was written.
+  - Checked live: Arsenal's direct offer was rejected when Chelsea's bid was accepted, the audit entry appeared, and Chelsea advanced the deal itself. (`backend/app/sales/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 - **The frontend test suite is green again:** 136 of 136, up from 120. The 16 failures were stale tests, not product bugs: player cards rendered without the compare context, and two label expectations predated their labels.
 
 ### Changed

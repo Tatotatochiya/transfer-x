@@ -1043,7 +1043,7 @@ export default function DealDetailPage() {
   // TRA-151 (D4): club-side deal writes need DEAL_WRITE — SCOUT/READONLY staff
   // keep full visibility but every mutating control below disappears for them.
   const canDealWrite       = can("DEAL_WRITE");
-  const clubCanAdvance     = isParty && !isAgent && isActive && !atPaperwork && !atAgentNegotiation && !deal.is_auction_deal && canDealWrite;
+  const clubCanAdvance     = isParty && !isAgent && isActive && !atPaperwork && !atAgentNegotiation && canDealWrite;
   // Agent can advance once the club has agreed commission (TRA-128) — personal
   // terms are a separate proposal + consent, at PERSONAL_TERMS.
   const agentCanAdvance    = isAgent && isActive && atAgentNegotiation &&
@@ -1131,16 +1131,6 @@ export default function DealDetailPage() {
           <p className="font-semibold mb-1">Awaiting player consent on personal terms</p>
           <p className="text-warning-text/80">
             The agent has proposed personal contract terms. The deal will advance once the player confirms acceptance.
-          </p>
-        </div>
-      )}
-
-      {/* Auction deal banner */}
-      {deal.is_auction_deal && isParty && deal.status === "IN_PROGRESS" && (
-        <div className="mb-6 rounded-xl bg-warning-bg px-5 py-4 text-sm text-warning-text ring-1 ring-warning-fill/20">
-          <p className="font-semibold mb-1">Auction deal</p>
-          <p className="text-warning-text/80">
-            This deal was created from an auction result. Stage advancement is handled by TransferX staff.
           </p>
         </div>
       )}
