@@ -100,6 +100,31 @@ def _offer_reservation(offer: Offer, **overrides) -> tuple[Decimal, Decimal]:
     return _reservation(**fields)
 
 
+def approval_amount(
+    *,
+    deal_type: DealType,
+    fee_amount: Decimal | None,
+    loan_fee: Decimal | None,
+    option_to_buy: Decimal | None,
+    obligation_to_buy: bool,
+) -> Decimal | None:
+    """The figure a spending-approval threshold (D7) is tested against.
+
+    A permanent offer's is its transfer fee, as it always was. A loan carries no
+    `fee_amount` — validation forbids one — so testing that field let every loan
+    past the threshold, however much it committed the club to. A loan's
+    commitment is its loan fee plus, when it carries an obligation to buy, the
+    purchase price: an obligation is a sale agreed now and paid later. An option
+    is not counted, because it is a right the club may never use.
+    """
+    if deal_type == DealType.LOAN:
+        total = loan_fee or Decimal("0")
+        if obligation_to_buy and option_to_buy is not None:
+            total += option_to_buy
+        return total
+    return fee_amount
+
+
 _MAX_LOAN_MONTHS = 18
 
 
@@ -116,6 +141,7 @@ async def validate_offer_terms(
     option_to_buy: Decimal | None,
     obligation_to_buy: bool,
     recall_allowed: bool,
+    obligation_conditions: str | None = None,
 ) -> None:
     """Re-check the loan rules the request schema already checked.
 
@@ -132,8 +158,17 @@ async def validate_offer_terms(
     if deal_type == DealType.PERMANENT:
         if any(v is not None for v in (loan_start, loan_end, loan_fee, wage_split_pct, option_to_buy)):
             raise ValueError("Loan terms are not valid on a permanent offer")
-        if obligation_to_buy or recall_allowed:
+        if obligation_to_buy or recall_allowed or obligation_conditions:
             raise ValueError("Loan terms are not valid on a permanent offer")
+        # A missing fee used to be offered as "No fee — a free transfer or a
+        # swap". Neither holds: an out-of-contract player is signed through the
+        # free-agent and pre-contract paths, not offered for, and a swap cannot
+        # be recorded here at all. A contracted player's transfer always names
+        # a fee — £0 is allowed, with a reason (see create_offer).
+        if fee_amount is None:
+            raise ValueError(
+                "A permanent transfer needs a fee — enter £0 if his club is to release him for nothing"
+            )
         return
 
     # ── LOAN ────────────────────────────────────────────────────────────────
@@ -149,24 +184,59 @@ async def validate_offer_terms(
         raise ValueError("Wage split must be between 0 and 1 — it is a fraction, not a percentage")
     if obligation_to_buy and option_to_buy is None:
         raise ValueError("An obligation to buy needs a price — set the option-to-buy amount")
+    if obligation_conditions and not obligation_to_buy:
+        raise ValueError("Conditions apply to an obligation to buy — make it an obligation, or remove them")
 
     # You cannot loan a player past the point you control him. Without this the
     # phase-3 return path would find an expired parent contract and correctly,
     # but very surprisingly, make him a free agent.
-    from app.players.models import Contract
-
-    parent_end = (
-        await db.execute(
-            select(Contract.end_date).where(
-                Contract.player_id == player_id,
-                Contract.is_active == True,  # noqa: E712
-            )
-        )
-    ).scalar_one_or_none()
+    parent = await _parent_contract(db, player_id)
+    parent_end = parent.end_date if parent is not None else None
     if parent_end is not None and loan_end > parent_end:
         raise ValueError(
             f"The loan ends {loan_end}, after the player's contract expires "
             f"({parent_end}) — shorten the loan or extend the contract first"
+        )
+
+
+async def _parent_contract(db: AsyncSession, player_id: uuid.UUID):
+    """The player's active contract — the parent club's, before any loan."""
+    from app.players.models import Contract
+
+    return (
+        await db.execute(
+            select(Contract).where(
+                Contract.player_id == player_id,
+                Contract.is_active == True,  # noqa: E712
+            )
+        )
+    ).scalars().first()
+
+
+async def loan_wage_basis(db: AsyncSession, player_id: uuid.UUID) -> Decimal:
+    """The weekly wage a loan's split is a share of: the player's own contract.
+
+    The buyer used to type this, and the loan was then built on whatever they
+    typed — a blank meant the borrowing club paid £0, and a wrong figure became
+    the wage on his loan contract. It is the parent's contract wage, so it is
+    read from there. A contract with no wage on record refuses the loan rather
+    than proceeding on £0: the finance of every later step depends on it.
+    """
+    parent = await _parent_contract(db, player_id)
+    if parent is None or not parent.wage_weekly:
+        raise ValueError(
+            "His contract has no wage on record, so a loan's wage share cannot be worked out — "
+            "his club needs to record it first"
+        )
+    return parent.wage_weekly
+
+
+def reject_client_loan_wage(deal_type: DealType, wage_weekly: Decimal | None) -> None:
+    """A loan's wage is his contract wage, never a proposed figure. Clubs
+    negotiate the share (`wage_split_pct`), not the salary."""
+    if deal_type == DealType.LOAN and wage_weekly is not None:
+        raise ValueError(
+            "A loan's wage is his current contract wage — propose the share you pay, not a figure"
         )
 
 
@@ -181,8 +251,15 @@ def _load_options():
 
 
 async def get_offer_by_id(db: AsyncSession, offer_id: uuid.UUID) -> Offer | None:
+    # populate_existing: the routers re-read an offer they have just changed in
+    # this same session, and without it the identity map hands back the copy
+    # already loaded — with its events and messages as they were *before* the
+    # change, so a counter's response showed the negotiation without the counter.
     result = await db.execute(
-        select(Offer).where(Offer.id == offer_id).options(*_load_options())
+        select(Offer)
+        .where(Offer.id == offer_id)
+        .options(*_load_options())
+        .execution_options(populate_existing=True)
     )
     return result.scalar_one_or_none()
 
@@ -252,6 +329,67 @@ async def list_offers_for_sale(
     return list(result.scalars())
 
 
+async def check_new_offer(
+    db: AsyncSession,
+    *,
+    player_id: uuid.UUID,
+    deal_type: DealType,
+    fee_amount: Decimal | None,
+    wage_weekly: Decimal | None,
+    loan_start: date | None,
+    loan_end: date | None,
+    loan_fee: Decimal | None,
+    wage_split_pct: Decimal | None,
+    option_to_buy: Decimal | None,
+    obligation_to_buy: bool,
+    recall_allowed: bool,
+    no_fee_reason: str | None,
+    obligation_conditions: str | None = None,
+    sale_id: uuid.UUID | None = None,
+) -> None:
+    """Every rule a new offer's terms must pass. Separate from `create_offer`
+    so the router can run it before capturing a spending approval — otherwise
+    an invalid offer is queued for an approver and only fails once approved."""
+    obligation_conditions = (obligation_conditions or "").strip() or None
+    reject_client_loan_wage(deal_type, wage_weekly)
+    if (
+        deal_type == DealType.PERMANENT
+        and fee_amount is not None
+        and fee_amount == 0
+        and not (no_fee_reason or "").strip()
+    ):
+        raise ValueError(
+            "A £0 offer needs a reason the selling club can read — "
+            "for example, releasing him to clear his wages"
+        )
+    await validate_offer_terms(
+        db,
+        player_id=player_id,
+        deal_type=deal_type,
+        fee_amount=fee_amount,
+        loan_start=loan_start,
+        loan_end=loan_end,
+        loan_fee=loan_fee,
+        wage_split_pct=wage_split_pct,
+        option_to_buy=option_to_buy,
+        obligation_to_buy=obligation_to_buy,
+        recall_allowed=recall_allowed,
+        obligation_conditions=obligation_conditions,
+    )
+    if deal_type == DealType.LOAN:
+        await loan_wage_basis(db, player_id)
+
+    # Made against a listing: it must be that player's listing, and the kind
+    # of deal the listing invites.
+    if sale_id is not None:
+        from app.sales import service as sales_service
+
+        sale = await sales_service.get_sale_by_id(db, sale_id)
+        if sale is None or sale.player_id != player_id:
+            raise ValueError("That listing is not for this player")
+        sales_service.check_offer_matches_listing(sale, is_loan=deal_type == DealType.LOAN)
+
+
 async def create_offer(
     db: AsyncSession,
     *,
@@ -274,16 +412,23 @@ async def create_offer(
     option_to_buy: Decimal | None = None,
     obligation_to_buy: bool = False,
     recall_allowed: bool = False,
+    no_fee_reason: str | None = None,
+    obligation_conditions: str | None = None,
 ) -> Offer:
-    """Create and immediately send an offer. Reserves budget from from_club."""
+    """Create and immediately send an offer. Reserves budget from from_club.
+
+    `no_fee_reason` is required when a permanent offer's fee is £0, and is
+    posted as the offer's first message so the selling club reads why.
+    """
     if to_club_id and to_club_id == from_club_id:
         raise ValueError("Cannot make an offer to your own club")
 
-    await validate_offer_terms(
+    await check_new_offer(
         db,
         player_id=player_id,
         deal_type=deal_type,
         fee_amount=fee_amount,
+        wage_weekly=wage_weekly,
         loan_start=loan_start,
         loan_end=loan_end,
         loan_fee=loan_fee,
@@ -291,7 +436,15 @@ async def create_offer(
         option_to_buy=option_to_buy,
         obligation_to_buy=obligation_to_buy,
         recall_allowed=recall_allowed,
+        no_fee_reason=no_fee_reason,
+        obligation_conditions=obligation_conditions,
+        sale_id=sale_id,
     )
+    reason = (no_fee_reason or "").strip()
+    obligation_conditions = (obligation_conditions or "").strip() or None
+
+    if deal_type == DealType.LOAN:
+        wage_weekly = await loan_wage_basis(db, player_id)
 
     now = datetime.now(timezone.utc)
     exp = expires_at or (now + timedelta(days=_OFFER_EXPIRY_DAYS))
@@ -320,6 +473,7 @@ async def create_offer(
         option_to_buy=option_to_buy,
         obligation_to_buy=obligation_to_buy,
         recall_allowed=recall_allowed,
+        obligation_conditions=obligation_conditions,
     )
 
     # Reserve budget immediately on send — transfer and wage both, see _reservation.
@@ -362,6 +516,11 @@ async def create_offer(
         payload={"fee_amount": str(fee_amount) if fee_amount else None},
     ))
     await db.flush()
+
+    # Why a £0 offer names no fee, where the selling club reads everything
+    # else about the negotiation — and on the record.
+    if deal_type == DealType.PERMANENT and fee_amount == 0:
+        await add_message(db, offer, sender_club_id=from_club_id, body=f"Why £0: {reason}")
     return offer
 
 
@@ -381,8 +540,18 @@ async def counter_offer(
     loan_fee: Decimal | None = None,
     wage_split_pct: Decimal | None = None,
     option_to_buy: Decimal | None = None,
+    obligation_to_buy: bool | None = None,
+    recall_allowed: bool | None = None,
+    obligation_conditions: str | None = None,
+    remove_option_to_buy: bool = False,
 ) -> Offer:
-    """Counter an offer with new terms. Either party can counter."""
+    """Counter an offer with new terms. Either party can counter.
+
+    A term left as None is unchanged. The merged terms are validated exactly as
+    a new offer's are: before this, a counter was never validated at all, so it
+    could give a loan a transfer fee, a 500% wage split, or an end date past
+    the player's contract — none of which `create_offer` would have allowed.
+    """
     _check_not_expired(offer)
     if _is_terminal(offer.status):
         raise ValueError(f"Cannot counter an offer with status {offer.status}")
@@ -392,6 +561,50 @@ async def counter_offer(
     # Validate actor is a party to the offer
     _require_party(offer, actor_club_id)
     _require_turn(offer, actor_club_id)
+    reject_client_loan_wage(offer.deal_type, wage_weekly)
+
+    changes = {
+        "fee_amount": fee_amount,
+        "wage_weekly": wage_weekly,
+        "loan_start": loan_start,
+        "loan_end": loan_end,
+        "loan_fee": loan_fee,
+        "wage_split_pct": wage_split_pct,
+        "option_to_buy": option_to_buy,
+        "obligation_to_buy": obligation_to_buy,
+        "recall_allowed": recall_allowed,
+        # "" clears the conditions; None leaves them as they are.
+        "obligation_conditions": (
+            (obligation_conditions.strip() or "") if obligation_conditions is not None else None
+        ),
+    }
+    changes = {k: v for k, v in changes.items() if v is not None}
+    # Removing the option removes the obligation it priced: an obligation
+    # needs a price, and one with none is not a term either club can hold.
+    if remove_option_to_buy:
+        changes.pop("option_to_buy", None)
+        changes["obligation_to_buy"] = False
+    # Dropping the obligation drops what it was conditional on.
+    if changes.get("obligation_to_buy") is False and offer.obligation_conditions:
+        changes["obligation_conditions"] = ""
+
+    def _merged(field: str):
+        return changes.get(field, getattr(offer, field))
+
+    await validate_offer_terms(
+        db,
+        player_id=offer.player_id,
+        deal_type=offer.deal_type,
+        fee_amount=_merged("fee_amount"),
+        loan_start=_merged("loan_start"),
+        loan_end=_merged("loan_end"),
+        loan_fee=_merged("loan_fee"),
+        wage_split_pct=_merged("wage_split_pct"),
+        option_to_buy=None if remove_option_to_buy else _merged("option_to_buy"),
+        obligation_to_buy=bool(_merged("obligation_to_buy")),
+        recall_allowed=bool(_merged("recall_allowed")),
+        obligation_conditions=_merged("obligation_conditions") or None,
+    )
 
     # If from_club counters (buyer raises their offer), adjust reservation.
     # Item 3: add_ons now counts toward the reservation too, so recompute
@@ -447,6 +660,14 @@ async def counter_offer(
         offer.loan_end = loan_end
     if option_to_buy is not None:
         offer.option_to_buy = option_to_buy
+    if remove_option_to_buy:
+        offer.option_to_buy = None
+    if "obligation_to_buy" in changes:
+        offer.obligation_to_buy = changes["obligation_to_buy"]
+    if recall_allowed is not None:
+        offer.recall_allowed = recall_allowed
+    if "obligation_conditions" in changes:
+        offer.obligation_conditions = changes["obligation_conditions"] or None
     if contract_years is not None:
         offer.contract_years = contract_years
     if contract_end_date is not None:
@@ -462,7 +683,15 @@ async def counter_offer(
         offer_id=offer.id,
         event_type=OfferEventType.COUNTERED,
         actor_club_id=actor_club_id,
-        payload={"fee_amount": str(fee_amount) if fee_amount else None},
+        # Every term the counter changed, not just the fee — a loan counter
+        # changes no fee at all, and its audit entry used to record nothing.
+        payload={
+            "fee_amount": str(fee_amount) if fee_amount else None,
+            "changes": {
+                **{k: v if isinstance(v, bool) else str(v) for k, v in changes.items()},
+                **({"option_to_buy": None} if remove_option_to_buy else {}),
+            },
+        },
     ))
     await db.flush()
     return offer
@@ -491,8 +720,16 @@ async def improve_own_offer(
         raise ValueError(f"Cannot improve an offer with status {offer.status}")
     if actor_club_id != offer.from_club_id:
         raise ValueError("Only the buyer can improve their own offer")
+    reject_client_loan_wage(offer.deal_type, wage_weekly)
 
-    new_fee = fee_amount if fee_amount is not None else (offer.fee_amount or Decimal("0"))
+    if offer.deal_type == DealType.LOAN:
+        # A loan never carries a transfer fee. Falling back to `fee_amount or 0`
+        # here used to give every improved loan a £0 transfer fee.
+        if fee_amount is not None:
+            raise ValueError("A loan's money is its loan fee — raise the loan fee instead")
+        new_fee = None
+    else:
+        new_fee = fee_amount if fee_amount is not None else (offer.fee_amount or Decimal("0"))
     new_wage = wage_weekly if wage_weekly is not None else (offer.wage_weekly or Decimal("0"))
     new_loan_fee = loan_fee if loan_fee is not None else offer.loan_fee
     new_add_ons = dict(offer.add_ons or {})
@@ -530,7 +767,10 @@ async def improve_own_offer(
         offer_id=offer.id,
         event_type=OfferEventType.IMPROVED,
         actor_club_id=actor_club_id,
-        payload={"fee_amount": str(new_fee)},
+        payload={
+            "fee_amount": str(new_fee) if new_fee is not None else None,
+            "loan_fee": str(new_loan_fee) if new_loan_fee is not None else None,
+        },
     ))
     await db.flush()
     return offer
@@ -560,10 +800,32 @@ async def accept_offer(
         if player is None or owning_club_id != offer.to_club_id:
             raise ValueError("Receiving club does not currently own this player")
 
-    # Commit the reserved budget from buyer — transfer and wage together, or
-    # the wage would stay stuck in `reserved` with nothing left to release it.
+    # True the buyer's reservation up to the terms actually being accepted.
+    # A buyer's own counter already re-reserves, but a *seller's* counter does
+    # not — deliberately, since refusing a seller's counter because the buyer
+    # is short would tell the seller about the buyer's budget, and the buyer
+    # has not agreed to anything yet. So this is where it is squared: after a
+    # seller's counter the buyer is the one accepting, a shortfall is refused
+    # here and reported to them alone, and a lower counter gives back the
+    # difference. Before this, accepting a raised counter committed the old,
+    # lower figure while the deal recorded the higher agreed fee.
     reserved = offer.reserved_transfer_amount or Decimal("0")
     wage_reserved = offer.reserved_wage_weekly or Decimal("0")
+    target, wage_target = _offer_reservation(offer)
+    up, wage_up = max(Decimal("0"), target - reserved), max(Decimal("0"), wage_target - wage_reserved)
+    down, wage_down = max(Decimal("0"), reserved - target), max(Decimal("0"), wage_reserved - wage_target)
+    if up > 0 or wage_up > 0:
+        await clubs_module.service.reserve_budget(
+            db, club_id=offer.from_club_id, transfer_amount=up, wage_weekly=wage_up
+        )
+    if down > 0 or wage_down > 0:
+        await clubs_module.service.release_budget(
+            db, club_id=offer.from_club_id, transfer_amount=down, wage_weekly=wage_down
+        )
+    reserved, wage_reserved = target, wage_target
+
+    # Commit the reserved budget from buyer — transfer and wage together, or
+    # the wage would stay stuck in `reserved` with nothing left to release it.
     if reserved > 0 or wage_reserved > 0:
         await clubs_module.service.commit_budget(
             db,
@@ -610,6 +872,7 @@ async def accept_offer(
         wage_split_pct=offer.wage_split_pct,
         option_to_buy=offer.option_to_buy,
         obligation_to_buy=offer.obligation_to_buy,
+        obligation_conditions=offer.obligation_conditions,
         recall_allowed=offer.recall_allowed,
     )
     db.add(deal)
@@ -838,13 +1101,90 @@ async def add_message(
     return msg
 
 
+_ACTIVE_OFFER_STATUSES = {OfferStatus.SENT, OfferStatus.COUNTERED}
+
+
+def _order_book_club(offer: Offer, my_club_id: uuid.UUID | None):
+    """The order book names every club competing for a player, which is exactly
+    what an anonymous buyer is avoiding — mask them here too, or the identity
+    withheld on the offer itself leaks straight out of the panel beside it.
+    Anonymity ends at acceptance, and a club always sees its own entry."""
+    from app.sales.schemas import OrderBookClubSummary
+
+    if offer.from_club is None:
+        return None
+    anonymous = (
+        offer.is_anonymous
+        and offer.status != OfferStatus.ACCEPTED
+        and (my_club_id is None or str(offer.from_club_id) != str(my_club_id))
+    )
+    if anonymous:
+        league = offer.from_club.league_name
+        return OrderBookClubSummary(
+            id=None,
+            name=f"A {league} club" if league else "An undisclosed club",
+            crest_url=None,
+        )
+    return OrderBookClubSummary(
+        id=offer.from_club.id,
+        name=offer.from_club.name,
+        crest_url=getattr(offer.from_club, "crest_url", None),
+    )
+
+
+def order_book_entries(offers: list[Offer], my_club_id: uuid.UUID | None) -> list:
+    """Order-book rows for offers — shared by the player-scoped competition view
+    and the listing's order book, which used to build them separately and had
+    drifted: the listing's copy never masked anonymous buyers.
+
+    Live offers first; within them permanent offers ranked by fee, then loans
+    ranked by loan fee. A loan and a permanent offer are not the same kind of
+    proposal, so a loan is never ranked as if it were a low transfer bid.
+    """
+    from app.sales.schemas import OrderBookEntry
+
+    def _key(o: Offer):
+        is_loan = o.deal_type == DealType.LOAN
+        money = (o.loan_fee if is_loan else o.fee_amount) or 0
+        return (o.status not in _ACTIVE_OFFER_STATUSES, is_loan, -float(money))
+
+    entries = []
+    rank = 1
+    for offer in sorted(offers, key=_key):
+        is_active = offer.status in _ACTIVE_OFFER_STATUSES
+        entries.append(OrderBookEntry(
+            rank=rank if is_active else 0,
+            kind="offer",
+            id=offer.id,
+            club=_order_book_club(offer, my_club_id),
+            fee_amount=offer.fee_amount,
+            wage_weekly=offer.wage_weekly,
+            deal_type=offer.deal_type.value,
+            loan_fee=offer.loan_fee,
+            status=offer.status.value,
+            is_countered=offer.status == OfferStatus.COUNTERED,
+            is_active=is_active,
+            last_action_at=offer.last_action_at,
+        ))
+        if is_active:
+            rank += 1
+    return entries
+
+
+def loan_summary_parts(active_offers: list[Offer]) -> list[str]:
+    """The seller's one-line summary counts loan approaches separately, since
+    "Best £30m" says nothing about them."""
+    loans = sum(1 for o in active_offers if o.deal_type == DealType.LOAN)
+    return [f"{loans} loan {'approach' if loans == 1 else 'approaches'}"] if loans else []
+
+
 async def get_offer_competition(
     db: AsyncSession,
     player_id: uuid.UUID,
     my_club_id: uuid.UUID | None,
 ) -> "OrderBookResponse":
     """Player-scoped order book. Works for both sale-linked and standalone offers."""
-    from app.sales.schemas import OrderBookClubSummary, OrderBookEntry, OrderBookResponse
+    from app.sales.schemas import OrderBookResponse
     from app.sales.service import _band_width, _compute_tiers, _fmt_millions
 
     result = await db.execute(
@@ -865,60 +1205,17 @@ async def get_offer_competition(
         for o in all_offers
     )
 
-    def _sort_key(o: Offer):
-        return (o.status not in _active, -float(o.fee_amount or 0))
-
-    def _entry_club(offer: Offer) -> "OrderBookClubSummary | None":
-        """The order book names every club competing for a player, which is
-        exactly what an anonymous buyer is paying to avoid — mask them here too,
-        or the identity withheld on the offer itself leaks straight out of the
-        competition panel beside it. Anonymity ends at acceptance, and a club
-        always sees its own entry."""
-        if offer.from_club is None:
-            return None
-        anonymous = (
-            offer.is_anonymous
-            and offer.status != OfferStatus.ACCEPTED
-            and (my_club_id is None or str(offer.from_club_id) != str(my_club_id))
-        )
-        if anonymous:
-            league = offer.from_club.league_name
-            return OrderBookClubSummary(
-                id=None,
-                name=f"A {league} club" if league else "An undisclosed club",
-                crest_url=None,
-            )
-        return OrderBookClubSummary(
-            id=offer.from_club.id,
-            name=offer.from_club.name,
-            crest_url=getattr(offer.from_club, "crest_url", None),
-        )
-
-    entries: list[OrderBookEntry] = []
-    rank = 1
-    for offer in sorted(all_offers, key=_sort_key):
-        is_active = offer.status in _active
-        entry = OrderBookEntry(
-            rank=rank if is_active else 0,
-            kind="offer",
-            id=offer.id,
-            club=_entry_club(offer),
-            fee_amount=offer.fee_amount,
-            wage_weekly=offer.wage_weekly,
-            status=offer.status.value,
-            is_countered=offer.status == OfferStatus.COUNTERED,
-            is_active=is_active,
-            last_action_at=offer.last_action_at,
-        )
-        entries.append(entry)
-        if is_active:
-            rank += 1
+    entries = order_book_entries(all_offers, my_club_id)
 
     if is_seller:
-        best = max((o.fee_amount for o in active_offers if o.fee_amount), default=None)
+        best = max(
+            (o.fee_amount for o in active_offers if o.fee_amount and o.deal_type != DealType.LOAN),
+            default=None,
+        )
         parts = [f"{active_count} {'club' if active_count == 1 else 'clubs'}"]
         if best:
             parts.append(f"Best {_fmt_millions(best)}")
+        parts.extend(loan_summary_parts(active_offers))
         return OrderBookResponse(
             role="seller",
             active_count=active_count,

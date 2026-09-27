@@ -5,6 +5,7 @@ import type { OrderBook, OrderBookEntry } from "../../types/api";
 import type { SaleType } from "../../types/enums";
 import Spinner from "../ui/Spinner";
 import { formatCurrency } from "../../lib/utils";
+import { isLoan, offerHeadline } from "../../lib/offerTerms";
 
 const STATUS_VARIANT: Record<string, string> = {
   ACTIVE:    "bg-success/20 text-success-text",
@@ -64,7 +65,9 @@ export default function SellerOrderBook({ saleId, playerId, saleType, isOpen, se
 
   const activeEntries = ob.entries.filter((e) => e.is_active);
   const inactiveEntries = ob.entries.filter((e) => !e.is_active);
-  const maxFee = Math.max(...ob.entries.map((e) => e.fee_amount ?? 0), 1);
+  // The depth bar compares transfer fees; a loan's fee is a different figure
+  // and gets no bar rather than a misleadingly short one.
+  const maxFee = Math.max(...ob.entries.filter((e) => !isLoan(e)).map((e) => Number(e.fee_amount ?? 0)), 1);
 
   function handleRowClick(entry: OrderBookEntry) {
     if (saleType === "AUCTION") {
@@ -109,15 +112,19 @@ export default function SellerOrderBook({ saleId, playerId, saleType, isOpen, se
             {/* Depth bar */}
             <div
               className="absolute inset-y-0 left-0 bg-success/[0.06] pointer-events-none"
-              style={{ width: `${((entry.fee_amount ?? 0) / maxFee) * 100}%` }}
+              style={{ width: isLoan(entry) ? 0 : `${(Number(entry.fee_amount ?? 0) / maxFee) * 100}%` }}
             />
 
             <div className="relative flex items-center gap-3">
               {/* Rank badge */}
               <div className="w-6 shrink-0 text-center">
-                <span className={`text-xs font-bold ${entry.rank === 1 ? "text-success-text" : "text-text-muted"}`}>
-                  #{entry.rank}
-                </span>
+                {/* A loan is not ranked against transfer bids; its fee line
+                    already says "loan fee". */}
+                {!isLoan(entry) && (
+                  <span className={`text-xs font-bold ${entry.rank === 1 ? "text-success-text" : "text-text-muted"}`}>
+                    #{entry.rank}
+                  </span>
+                )}
               </div>
 
               {/* Club crest + name */}
@@ -143,8 +150,8 @@ export default function SellerOrderBook({ saleId, playerId, saleType, isOpen, se
 
               {/* Fee */}
               <div className="shrink-0 text-right">
-                <p className={`text-sm font-semibold tabular-nums ${entry.rank === 1 ? "text-success-text" : "text-text"}`}>
-                  {entry.fee_amount != null ? formatCurrency(entry.fee_amount) : "TBD"}
+                <p className={`text-sm font-semibold tabular-nums ${entry.rank === 1 && !isLoan(entry) ? "text-success-text" : "text-text"}`}>
+                  {offerHeadline(entry)}
                 </p>
                 {entry.wage_weekly != null && (
                   <p className="text-xs text-text-muted tabular-nums">
@@ -201,7 +208,7 @@ export default function SellerOrderBook({ saleId, playerId, saleType, isOpen, se
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-xs text-text-muted tabular-nums">
-                      {entry.fee_amount != null ? formatCurrency(entry.fee_amount) : "TBD"}
+                      {offerHeadline(entry)}
                     </p>
                   </div>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_VARIANT[entry.status] ?? "bg-text-muted/15 text-text-muted"}`}>

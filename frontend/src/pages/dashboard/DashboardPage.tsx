@@ -47,6 +47,7 @@ const WAITING_FALLBACK_TITLE: Record<DashboardItem["kind"], string> = {
 import FigureCard from "../../components/dashboard/FigureCard";
 import WorkingPanel from "../../components/dashboard/WorkingPanel";
 import ReferencePanel from "../../components/dashboard/ReferencePanel";
+import { offerHeadline } from "../../lib/offerTerms";
 
 // ── Tier 2 — Standing figures ────────────────────────────────────────────────
 
@@ -283,7 +284,7 @@ export default function DashboardPage() {
     key: o.id, onClick: () => navigate(`/offers/${o.id}`),
     name: o.player?.name ?? "—",
     sub: o.from_club_id === myClubId ? `to ${o.to_club?.name ?? "—"}` : `from ${buyerLabel(o, "—")}`,
-    value: o.fee_amount != null ? formatCurrency(o.fee_amount) : "TBD",
+    value: offerHeadline(o),
     move: offerWhoseMove(o, myClubId),
   }));
   const dealRows = deals.slice(0, 3).map((d) => ({

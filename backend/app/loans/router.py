@@ -8,10 +8,13 @@ whether a loan exists at all is not theirs to learn.
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.approvals import service as approvals_service
+from app.approvals.models import ApprovalActionType
 from app.auth.models import User
 from app.clubs import service as clubs_service
 from app.clubs.capabilities import Capability, require_club_capability
@@ -121,6 +124,11 @@ async def exercise_option(
     already at, and the loan is ended by the deal completing. It still passes
     the normal budget, medical and paperwork gates: the price was agreed, the
     ability to pay it today was not.
+
+    Spending-approval gated (D7) on the option price, like every other action
+    that commits a club to a fee. The option price is deliberately *not*
+    counted when the loan offer is approved — an option is a right the club
+    may never use — so this is the point where the money is actually committed.
     """
     loan = (
         await db.execute(
@@ -133,6 +141,34 @@ async def exercise_option(
     club = await _club_or_403(db, current_user)
     if club.id not in (loan.parent_club_id, loan.loanee_club_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan not found")
+
+    # Validate before capturing, so an approver is never asked to sign off an
+    # option that could not be exercised.
+    try:
+        service.check_can_exercise_option(loan, actor_club_id=club.id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    approval = await approvals_service.maybe_capture(
+        db,
+        current_user=current_user,
+        club=club,
+        action_type=ApprovalActionType.EXERCISE_OPTION,
+        amount=loan.option_to_buy,
+        payload={"loan_id": str(loan_id)},
+        summary=(
+            f"Exercise the option to buy {loan.player.name if loan.player else 'a player'}"
+            f" — £{loan.option_to_buy:,.0f}"
+        ),
+    )
+    if approval is not None:
+        await db.commit()
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content={"status": "PENDING_APPROVAL", "approval_id": str(approval.id)},
+        )
 
     try:
         await service.exercise_option(db, loan, actor_club_id=club.id)

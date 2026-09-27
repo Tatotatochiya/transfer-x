@@ -1,6 +1,6 @@
 ---
 title: "Feature Spec: Loan Transfers"
-last_updated: 2026-08-25
+last_updated: 2026-09-26
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -209,7 +209,7 @@ The other loan fields already exist (TRA-56).
 
 ### Validation rules
 
-Enforced in `OfferCreateRequest`/`OfferCounterRequest` **and** re-checked in `offers/service.py`, per the house pattern of never trusting the schema layer alone:
+Enforced in `OfferCreateRequest`/`OfferCounterRequest` **and** re-checked in `offers/service.py`, per the house pattern of never trusting the schema layer alone. (Until 2026-09-26 this was true of new offers only: a counter was never validated, so it could give a loan a transfer fee or a 500% wage split. See deviation 20.)
 
 | Rule | Applies to |
 |---|---|
@@ -429,7 +429,7 @@ Recorded before the phases were marked shipped, per this folder's [README](./REA
 
 14. **The deal room's `deal_type` is now fully read-only**, completing what phase 0 began (it had only made the derived types read-only). The type comes from the offer, and mutating it after acceptance is the original defect this whole spec exists to fix.
 
-**Found during phase 1, not fixed, not loan-specific:** when the *seller* counters at a higher fee, the buyer's reservation is never recomputed — `counter_offer` adjusts it only when the buyer is the actor. Accepting a raised counter therefore commits the original, lower figure while the deal records the higher `agreed_fee`. Pre-existing, and the wage reservation added here inherits the same asymmetry. Left alone deliberately: refusing an acceptance the buyer can no longer afford is a product decision, not a bug fix.
+**Found during phase 1, not loan-specific — fixed 2026-09-26, see deviation 26:** when the *seller* counters at a higher fee, the buyer's reservation is never recomputed — `counter_offer` adjusts it only when the buyer is the actor. Accepting a raised counter therefore commits the original, lower figure while the deal records the higher `agreed_fee`. Pre-existing, and the wage reservation added here inherits the same asymmetry. Left alone deliberately: refusing an acceptance the buyer can no longer afford is a product decision, not a bug fix.
 
 **Phase 4 deviations (2026-08-25):**
 
@@ -442,6 +442,32 @@ Recorded before the phases were marked shipped, per this folder's [README](./REA
 18. **`LOAN_CONVERTED`** notification type, not anticipated by the spec. Both clubs need telling that a loan is becoming permanent, and reusing `LOAN_ENDED` would have said the opposite of what happened.
 
 19. **`LoansPanel` covers both directions.** Phase 3 built it for the parent only, per the spec's UI section, which put borrowed players in the squad table with a chip. That has nowhere to hang an "exercise option" action, so the panel gained an "On loan to us" group. An obligation shows *"Completes automatically"* rather than a button — implying a choice the club does not have would be wrong.
+
+**Seller-side review fixes (2026-09-26):** found by reviewing the feature from the selling club's side, which phases 0–4 never exposed to a UI.
+
+20. **Counters are validated like new offers.** `counter_offer` never called `validate_offer_terms`, so a counter could set `fee_amount` on a loan, a wage split outside 0–1, dates past 18 months or past the parent contract, or negative money. It now validates the merged terms. `obligation_to_buy` and `recall_allowed` became counterable (`null` = unchanged), since they are the terms a seller most wants to negotiate. The counter's audit event records every changed term, where it previously recorded only a fee a loan does not have.
+
+21. **Loans go through D7 spending approval.** The threshold was tested against `fee_amount`, which a loan never carries, so every loan passed however much it committed the club to. A loan's approval amount is its **loan fee plus the purchase price when there is an obligation**: an obligation is a sale agreed now and paid later. An **option is not counted**, because it is a right the club may never use. That is a judgement call, and it left exercising an option with no approval check at all. That gap was closed in deviation 25.
+
+22. **The seller can see and counter a loan.** The frontend `Offer` type carried none of the loan fields, so the seller's offer page, inbox and order book showed a loan as having no fee and often "No terms". They now show the period, loan fee, wage share in pounds, purchase clause (an obligation flagged as binding), and recall, and the counter form negotiates loan terms. Order books rank permanent offers by fee and list loans after them, so a loan is never ranked as a low transfer bid.
+
+23. **Improving a loan no longer gives it a £0 transfer fee.** `improve_own_offer` fell back to `fee_amount or 0` for every offer type.
+
+24. **A loan's wage is read from the player's contract, not typed by the buyer** (product owner, 2026-09-26). The offer form asked the buyer for a weekly wage, and the loan was built on it: a blank meant the borrowing club paid £0, and a wrong figure became the wage on his loan contract. The buyer now proposes only the share. The server sets the offer's `wage_weekly` from the parent's active contract, and a buyer-supplied wage is refused on create, counter and improve. **A contract with no wage on record refuses the loan** rather than proceeding on £0. The demo data had no contract wages at all, which `scripts/backfill_contract_wages.py` fixes (see [pending data repairs](../operations/environments-and-deployment.md#pending-data-repairs-on-railway)).
+    - **Disclosure:** the review proposed showing the buyer the pound figure only after acceptance. That cannot hold: the buyer's wage reservation is share × wage, and `GET /clubs/me/commitments` itemises it per offer, so the salary can be derived as soon as the offer is sent. The wage basis is therefore shown to both clubs once a loan offer exists. That matches real loan talks, where the parent discloses the salary to a club negotiating a share of it. Making an offer is the cost of learning it: it requires an open window and `MARKET_WRITE`, it is audited, and the seller sees the approach. It is not shown on the form before sending.
+
+25. **Exercising an option to buy is spending-approval gated** (product owner, 2026-09-26), completing deviation 21. `POST /loans/{id}/exercise-option` validates first, then, for a MANAGER at or over the threshold, captures an `EXERCISE_OPTION` approval (migration `0071`) on the option price and returns 202. The replay re-validates the loan, so an option on a loan that was recalled or converted in the meantime fails soft.
+
+26. **The seller-counter reservation gap is closed** (product owner, 2026-09-26), resolving the long-standing "found, not fixed" note above. The buyer's reservation is trued up to the accepted terms **at acceptance**, not when the seller counters. Refusing a seller's counter because the buyer is short would disclose the buyer's budget to the seller, and a counter is only a proposal. After a seller's counter the buyer is the one accepting, so a shortfall is refused there and reported to them alone. A lower counter gives the difference back.
+
+27. **A deal's loan terms are locked; obligation conditions are agreed on the offer** (product owner, 2026-09-26). `PATCH /deals/{id}` let either club change `deal_type` and every loan term **alone**, with no validation. The frontend had hidden the type control, but the API still re-opened the original defect, and a changed `loan_fee` drifted from the `agreed_fee` and budget committed at acceptance. It now refuses the type and all loan terms ("agreed on the offer … collapse it and re-approach"), and refuses a sell-on on a loan. Sell-on stays editable on a permanent deal at `AGREEMENT`; the editor had only shown it inside the loan block, which is backwards. The deal room shows every loan term read-only, including the wage share in pounds and the recall clause, which it never showed before. `obligation_conditions` moved onto the offer (migration `0072`): it is collected with the obligation, counterable (`""` clears it, and dropping the obligation clears it too), carried onto the deal, and refused without an obligation. **A conditional obligation still converts at expiry.** The platform cannot evaluate "if promoted", so the purchase deal starts either way and the notice names the conditions, for the clubs to collapse the deal if they were not met. The loan's "Out on loan / On loan to us" panel does not show the conditions yet.
+
+28. **A player can be listed for loan** (product owner, 2026-09-26). Listings gained an availability of Transfer, Loan or Either (migration `0074`), and an offer against a listing must be of a kind it invites. The reasoning is in [product ADR 0004](../product/decisions/0004-listing-availability-transfer-loan-or-either.md).
+
+29. **Small follow-ups (2026-09-26).**
+    - A counter can now **remove** a purchase option: an explicit `"option_to_buy": null`, as opposed to leaving the field out, removes the option and with it any obligation and conditions.
+    - The loan row copies `obligation_conditions` from its deal (migration `0073`, backfilled), so the loans panel shows them. The panel's "Completes automatically" became "Purchase starts at the end date": the purchase still passes budget, medical and paperwork.
+    - `get_offer_by_id` uses `populate_existing`. The routers re-read an offer they had just changed in the same session and got the cached pre-change copy, so a counter's response showed the negotiation without the counter.
 
 ## Open questions for sign-off
 

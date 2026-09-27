@@ -18,10 +18,13 @@ const SALE_TYPES: { value: SaleType | ""; label: string }[] = [
 
 export default function SaleListPage() {
   const [saleType, setSaleType] = useState<SaleType | "">("");
+  // "Available for loan" is what a loan-hunting club is looking for: loan-only
+  // listings and those open to either. The server does the "or either".
+  const [forLoan, setForLoan] = useState(false);
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError } = useQuery<Paginated<Sale>>({
-    queryKey: ["sales", { status: "OPEN", saleType, page }],
+    queryKey: ["sales", { status: "OPEN", saleType, forLoan, page }],
     queryFn: () =>
       api
         .get<Paginated<Sale>>("/sales", {
@@ -30,6 +33,7 @@ export default function SaleListPage() {
             page,
             page_size: 20,
             ...(saleType && { sale_type: saleType }),
+            ...(forLoan && { available_for: "LOAN" }),
           },
         })
         .then((r) => r.data),
@@ -42,7 +46,7 @@ export default function SaleListPage() {
 
   return (
     <div>
-      <PageHeader title="Listings" subtitle="Browse open sales and auctions" />
+      <PageHeader title="Listings" subtitle="Players their clubs will sell or loan" />
 
       {/* Filters */}
       <div className="mb-6 flex flex-wrap gap-3">
@@ -59,6 +63,18 @@ export default function SaleListPage() {
             {t.label}
           </button>
         ))}
+        <span className="mx-1 self-center text-text-muted" aria-hidden>·</span>
+        <button
+          aria-pressed={forLoan}
+          onClick={() => { setForLoan((v) => !v); setPage(1); }}
+          className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
+            forLoan
+              ? "bg-accent-bg text-accent-active ring-1 ring-accent/40"
+              : "bg-surface-inset text-text-muted hover:text-text"
+          }`}
+        >
+          Available for loan
+        </button>
       </div>
 
       {isLoading && <ListSkeleton count={8} />}

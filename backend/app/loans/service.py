@@ -108,6 +108,7 @@ async def start_loan(
         loanee_wage_share=loanee_wage_share,
         option_to_buy=deal.option_to_buy,
         obligation_to_buy=deal.obligation_to_buy,
+        obligation_conditions=deal.obligation_conditions if deal.obligation_to_buy else None,
         recall_allowed=deal.recall_allowed,
         status=LoanStatus.ACTIVE,
     )
@@ -343,15 +344,19 @@ async def _start_conversion(db: AsyncSession, loan: PlayerLoan, *, player: Playe
             else "Option to buy exercised"
         ),
     )
-    await _notify_both_clubs(
-        db, loan,
-        type=NotificationType.LOAN_CONVERTED,
-        message=(
-            f"{player.name}'s loan is becoming permanent — "
-            f"{'obligation' if loan.obligation_to_buy else 'option'} triggered at "
-            f"{fee:,.0f}"
-        ),
+    # An obligation's conditions cannot be checked by the platform ("if
+    # promoted"), so the purchase starts either way and the notice says what
+    # it was conditional on: the clubs confirm it by running the deal, or
+    # collapse it if the conditions were not met.
+    conditions = loan.obligation_conditions if loan.obligation_to_buy else None
+    message = (
+        f"{player.name}'s loan is becoming permanent — "
+        f"{'obligation' if loan.obligation_to_buy else 'option'} triggered at "
+        f"{fee:,.0f}"
     )
+    if conditions:
+        message += f". Conditional on: {conditions} — collapse the deal if that was not met"
+    await _notify_both_clubs(db, loan, type=NotificationType.LOAN_CONVERTED, message=message)
     return deal
 
 
@@ -363,6 +368,18 @@ async def exercise_option(
     Never automatic, unlike an obligation (D7): an option is a right, and
     exercising it is a decision the club has to actually take.
     """
+    check_can_exercise_option(loan, actor_club_id=actor_club_id)
+
+    player = (
+        await db.execute(select(Player).where(Player.id == loan.player_id))
+    ).scalar_one()
+    return await _start_conversion(db, loan, player=player)
+
+
+def check_can_exercise_option(loan: PlayerLoan, *, actor_club_id: uuid.UUID) -> None:
+    """Every reason the option cannot be exercised right now. Separate so the
+    router can run it before capturing a spending approval — an approver should
+    never be asked to sign off an option that could not be exercised anyway."""
     if loan.loanee_club_id != actor_club_id:
         raise PermissionError("Only the club he is on loan at can exercise the option")
     if loan.status != LoanStatus.ACTIVE:
@@ -373,11 +390,6 @@ async def exercise_option(
         raise ValueError("This loan is already being made permanent")
     if loan.end_date < datetime.now(timezone.utc).date():
         raise ValueError("The loan has already ended — the option can no longer be exercised")
-
-    player = (
-        await db.execute(select(Player).where(Player.id == loan.player_id))
-    ).scalar_one()
-    return await _start_conversion(db, loan, player=player)
 
 
 async def process_due_loans(db: AsyncSession) -> dict[str, int]:

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Club, FairValueSignal, Loan, Paginated, PlayerDetail, Sale } from "../../types/api";
-import type { SaleType } from "../../types/enums";
+import type { ListingAvailability, SaleType } from "../../types/enums";
 import Button from "../ui/Button";
 import CurrencyInput from "../ui/CurrencyInput";
 import Modal from "../ui/Modal";
@@ -19,6 +19,22 @@ const SALE_TYPES: { value: SaleType; label: string }[] = [
   { value: "FIXED_PRICE", label: "Fixed price" },
   { value: "AUCTION", label: "Auction" },
 ];
+
+// What the club will consider. Transfer first: it is what a listing always
+// meant before loans could be listed.
+const AVAILABILITY: { value: ListingAvailability; label: string; hint: string }[] = [
+  { value: "TRANSFER", label: "Transfer", hint: "Sell him" },
+  { value: "LOAN", label: "Loan", hint: "Loan him out" },
+  { value: "EITHER", label: "Either", hint: "Hear both" },
+];
+
+/** Why a sale type does not fit what is on offer, or null. The server holds
+ *  the same rules (sales/service.validate_listing_terms). */
+function saleTypeBlocked(t: SaleType, a: ListingAvailability): string | null {
+  if (t === "AUCTION" && a !== "TRANSFER") return "An auction is for a transfer";
+  if (t === "FIXED_PRICE" && a === "LOAN") return "A fixed price is a transfer price";
+  return null;
+}
 
 const INPUT_CLASS =
   "w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors";
@@ -48,7 +64,14 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
   const ids = useId();
 
   const [playerId, setPlayerId] = useState(player?.id ?? defaultPlayerId ?? "");
+  const [availability, setAvailability] = useState<ListingAvailability>("TRANSFER");
   const [saleType, setSaleType] = useState<SaleType>("OPEN_TO_OFFERS");
+
+  function chooseAvailability(a: ListingAvailability) {
+    setAvailability(a);
+    // Keep the sale type valid for it rather than leaving a blocked choice selected.
+    if (saleTypeBlocked(saleType, a)) setSaleType("OPEN_TO_OFFERS");
+  }
   const [askingPrice, setAskingPrice] = useState("");
   const [reservePrice, setReservePrice] = useState("");
   const [minIncrement, setMinIncrement] = useState("500000");
@@ -117,7 +140,8 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
     onSuccess: (sale) => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       const type = SALE_TYPES.find((t) => t.value === sale.sale_type)?.label.toLowerCase();
-      addToast(`${sale.player?.name ?? player?.name ?? "Player"} is listed — ${type}.`, "success");
+      const what = sale.availability === "LOAN" ? "for loan" : sale.availability === "EITHER" ? "for transfer or loan" : type;
+      addToast(`${sale.player?.name ?? player?.name ?? "Player"} is listed — ${what}.`, "success");
       onDone(sale);
     },
     onError: (err: unknown) => setError(getApiError(err, "Failed to create listing.")),
@@ -132,11 +156,13 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
     const body: Record<string, unknown> = {
       player_id: playerId,
       sale_type: saleType,
+      availability,
       ...(notes && { notes }),
     };
 
+    // A loan-only listing has no asking price: clubs propose the loan terms.
     const parsedAsking = parseFloat(askingPrice);
-    if (askingPrice && !isNaN(parsedAsking)) body.asking_price = parsedAsking;
+    if (!loanOnly && askingPrice && !isNaN(parsedAsking)) body.asking_price = parsedAsking;
 
     if (saleType === "AUCTION") {
       const parsedReserve = parseFloat(reservePrice);
@@ -153,6 +179,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
   }
 
   const isAuction = saleType === "AUCTION";
+  const loanOnly = availability === "LOAN";
   const players = squad?.items ?? [];
 
   return (
@@ -187,32 +214,71 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
         </div>
       )}
 
-      {/* Sale type */}
+      {/* Available for — what the club will consider. First, because it
+          decides which sale types make sense. */}
       <div>
-        <p className="mb-1.5 text-sm font-semibold text-text-secondary">Sale type</p>
+        <p className="mb-1.5 text-sm font-semibold text-text-secondary">Available for</p>
         <div className="flex gap-2">
-          {SALE_TYPES.map((t) => (
+          {AVAILABILITY.map((a) => (
             <button
-              key={t.value}
+              key={a.value}
               type="button"
-              aria-pressed={saleType === t.value}
-              onClick={() => setSaleType(t.value)}
+              aria-pressed={availability === a.value}
+              onClick={() => chooseAvailability(a.value)}
               className={`min-h-11 flex-1 rounded-lg px-2 py-2 text-sm leading-tight transition-colors lg:min-h-0 ${
-                saleType === t.value
+                availability === a.value
                   ? "bg-accent-bg text-accent-active ring-1 ring-accent"
                   : "bg-surface-inset text-text-muted hover:text-text ring-1 ring-input-border"
               }`}
             >
-              {t.label}
+              <span className="block font-semibold">{a.label}</span>
+              <span className="block text-[11px] opacity-80">{a.hint}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Price */}
+      {/* Sale type */}
+      <div>
+        <p className="mb-1.5 text-sm font-semibold text-text-secondary">How offers arrive</p>
+        <div className="flex gap-2">
+          {SALE_TYPES.map((t) => {
+            const blocked = saleTypeBlocked(t.value, availability);
+            return (
+              <button
+                key={t.value}
+                type="button"
+                aria-pressed={saleType === t.value}
+                disabled={!!blocked}
+                title={blocked ?? undefined}
+                onClick={() => setSaleType(t.value)}
+                className={`min-h-11 flex-1 rounded-lg px-2 py-2 text-sm leading-tight transition-colors disabled:cursor-not-allowed disabled:opacity-40 lg:min-h-0 ${
+                  saleType === t.value
+                    ? "bg-accent-bg text-accent-active ring-1 ring-accent"
+                    : "bg-surface-inset text-text-muted hover:text-text ring-1 ring-input-border"
+                }`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+        {/* Tooltips never show on touch, so the reason is stated too. */}
+        {availability !== "TRANSFER" && (
+          <p className="mt-1.5 text-[13px] text-text-muted">
+            {availability === "LOAN"
+              ? "A loan is open to offers: clubs propose the dates, loan fee and wage share."
+              : "No auction: a loan cannot be auctioned."}
+          </p>
+        )}
+      </div>
+
+      {/* Price — none on a loan-only listing: a figure there would read as his
+          price, to buyers and to the fair-value signal. */}
+      {!loanOnly && (
       <div>
         <label htmlFor={`${ids}-price`} className="mb-1.5 block text-sm font-semibold text-text-secondary">
-          {isAuction ? "Starting price" : "Asking price"}{" "}
+          {isAuction ? "Starting price" : availability === "EITHER" ? "Asking price for a transfer" : "Asking price"}{" "}
           <span className="text-text-muted font-normal">(optional)</span>
         </label>
         <div className="relative">
@@ -241,6 +307,8 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
           </div>
         )}
       </div>
+
+      )}
 
       {isAuction && (
         <>

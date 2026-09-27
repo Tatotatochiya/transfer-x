@@ -13,7 +13,8 @@ import Pagination from "../../components/ui/Pagination";
 import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import { ListSkeleton } from "../../components/ui/Skeleton";
 import { offerOutcome } from "../../lib/badges";
-import { formatCurrency, formatDate } from "../../lib/utils";
+import { formatDate } from "../../lib/utils";
+import { offerHeadline } from "../../lib/offerTerms";
 
 const CHIPS: { label: string; value: OfferStatus | "" }[] = [
   { label: "All",       value: "" },
@@ -64,7 +65,7 @@ export default function SentOffersPage() {
     ) },
     { key: "to", header: "To", priority: 3, render: (o) => <ClubLink id={o.to_club?.id} name={o.to_club?.name} /> },
     { key: "fee", header: "Fee", priority: 2, className: "text-right", render: (o) => (
-      <span className="font-bold text-text">{o.fee_amount != null ? formatCurrency(o.fee_amount) : "TBD"}</span>
+      <span className="font-bold text-text">{offerHeadline(o)}</span>
     ) },
     { key: "status", header: "Status", priority: 4, render: (o) => {
       const outcome = offerOutcome(o.status, o.deal);
@@ -133,7 +134,7 @@ export default function SentOffersPage() {
                       {o.player?.name ?? "—"}
                       {o.player?.position && <span className="ml-1.5 text-xs text-text-muted">{o.player.position}</span>}
                     </span>
-                    <span className="text-sm font-bold text-text">{o.fee_amount != null ? formatCurrency(o.fee_amount) : "TBD"}</span>
+                    <span className="text-sm font-bold text-text">{offerHeadline(o)}</span>
                   </div>
                   <p className="mt-0.5 text-xs text-text-muted">{o.to_club?.name ?? "?"}</p>
                   <div className="mt-1 flex items-center justify-between">

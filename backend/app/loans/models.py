@@ -17,7 +17,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Uuid, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text, Uuid, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -80,6 +80,8 @@ class PlayerLoan(Base):
     obligation_to_buy: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    # What the obligation depends on, copied from the deal like the other terms.
+    obligation_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
     recall_allowed: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )

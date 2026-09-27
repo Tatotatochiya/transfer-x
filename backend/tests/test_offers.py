@@ -830,7 +830,10 @@ async def test_accepting_standalone_offer_leaves_no_sale_link(
 
 
 @pytest.mark.asyncio
-async def test_can_create_offer_with_no_fee(client: AsyncClient, buyer: dict, seller: dict, db):
+async def test_a_permanent_offer_must_name_a_fee(client: AsyncClient, buyer: dict, seller: dict, db):
+    """"No fee — a free transfer or a swap" described neither: out-of-contract
+    players are signed, not offered for, and a swap cannot be recorded. A
+    contracted player's transfer always names a fee, £0 included."""
     sel_headers = _auth_headers(seller)
     player = await _create_player(client, sel_headers)
     seller_club_id = await _get_seller_club_id(client, sel_headers)
@@ -840,35 +843,44 @@ async def test_can_create_offer_with_no_fee(client: AsyncClient, buyer: dict, se
         json={"player_id": player["id"], "to_club_id": seller_club_id},
         headers=_auth_headers(buyer),
     )
-    assert resp.status_code == 201, resp.text
-    assert resp.json()["fee_amount"] is None
+    assert resp.status_code == 400, resp.text
+    assert "needs a fee" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_can_accept_offer_with_no_fee(client: AsyncClient, buyer: dict, seller: dict, db):
-    """The second, latent copy of the same bug — `accept_offer`'s summary."""
+async def test_a_zero_fee_offer_needs_a_reason_the_seller_reads(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """£0 is a real term — a club releasing a player to clear his wages — but
+    it has to say why, and the seller reads that in the thread."""
     sel_headers = _auth_headers(seller)
     player = await _create_player(client, sel_headers)
     seller_club_id = await _get_seller_club_id(client, sel_headers)
+    body = {"player_id": player["id"], "to_club_id": seller_club_id, "fee_amount": 0}
 
-    offer = (await client.post(
-        "/offers",
-        json={"player_id": player["id"], "to_club_id": seller_club_id},
+    resp = await client.post("/offers", json=body, headers=_auth_headers(buyer))
+    assert resp.status_code == 400, resp.text
+    assert "needs a reason" in resp.json()["detail"]
+
+    resp = await client.post(
+        "/offers", json={**body, "no_fee_reason": "Taking on his full wage to free your squad place"},
         headers=_auth_headers(buyer),
-    )).json()
+    )
+    assert resp.status_code == 201, resp.text
 
-    resp = await client.post(f"/offers/{offer['id']}/accept", headers=sel_headers)
-    assert resp.status_code == 200, resp.text
+    seen = (await client.get(f"/offers/{resp.json()['id']}", headers=sel_headers)).json()
+    assert any("free your squad place" in m["body"] for m in seen["messages"]), seen["messages"]
+
+    # And the £0 offer can be accepted — the original 500 this area guarded.
+    accepted = await client.post(f"/offers/{resp.json()['id']}/accept", headers=sel_headers)
+    assert accepted.status_code == 200, accepted.text
 
 
 @pytest.mark.asyncio
-async def test_no_fee_offer_does_not_escalate_for_approval(
+async def test_zero_fee_offer_does_not_escalate_for_approval(
     client: AsyncClient, buyer: dict, seller: dict, db
 ):
-    """A fee-less offer is zero in threshold terms, so a MANAGER can send it
-    without sign-off — but it must reach that conclusion, not crash on the way.
-    Guards `maybe_capture`'s `Decimal(None)`, which the summary fix alone would
-    have left exposed for any club that has a threshold set."""
+    """£0 is zero in threshold terms, so a MANAGER can send it without sign-off."""
     from tests.test_capabilities import _create_staff
 
     sel_headers = _auth_headers(seller)
@@ -887,11 +899,13 @@ async def test_no_fee_offer_does_not_escalate_for_approval(
 
     resp = await client.post(
         "/offers",
-        json={"player_id": player["id"], "to_club_id": seller_club_id},
+        json={
+            "player_id": player["id"], "to_club_id": seller_club_id,
+            "fee_amount": 0, "no_fee_reason": "Release to clear wages",
+        },
         headers=_auth_headers(manager),
     )
     assert resp.status_code == 201, resp.text
-    assert resp.json()["fee_amount"] is None
 
 
 # ── Anonymous buying club ─────────────────────────────────────────────────────
@@ -1081,7 +1095,6 @@ def _loan_body(player_id: str, to_club_id: str, **over) -> dict:
         "loan_start": str(date(2026, 9, 1)),
         "loan_end": str(date(2027, 5, 31)),
         "loan_fee": 2_000_000,
-        "wage_weekly": 90_000,
         "wage_split_pct": 0.6,
     }
     body.update(over)
@@ -1357,3 +1370,302 @@ async def test_derived_deal_types_cannot_be_offered(
             headers=buy_headers,
         )
         assert resp.status_code == 422, resp.text
+
+
+@pytest.mark.asyncio
+async def test_listing_order_book_masks_an_anonymous_buyer(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """The listing's order book built its own rows and never masked: an
+    anonymous offer made against a listing named the buyer to that listing's
+    seller, in the panel beside the offer itself."""
+    await _give_budget(db)
+    buy_headers, sel_headers = _auth_headers(buyer), _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    buyer_club_id = (await client.get("/clubs/me", headers=buy_headers)).json()["id"]
+    sale = await client.post(
+        "/sales", json={"player_id": player["id"], "sale_type": "OPEN_TO_OFFERS"}, headers=sel_headers
+    )
+    assert sale.status_code == 201, sale.text
+
+    resp = await client.post(
+        "/offers",
+        json={
+            "player_id": player["id"], "to_club_id": seller_club_id, "sale_id": sale.json()["id"],
+            "fee_amount": 5_000_000, "is_anonymous": True,
+        },
+        headers=buy_headers,
+    )
+    assert resp.status_code == 201, resp.text
+
+    book = (await client.get(f"/sales/{sale.json()['id']}/order-book", headers=sel_headers)).json()
+    assert book["entries"], book
+    assert buyer_club_id not in json.dumps(book), "anonymous buyer leaked via the listing order book"
+
+
+@pytest.mark.asyncio
+async def test_order_book_ranks_a_loan_apart_from_permanent_offers(
+    client: AsyncClient, buyer: dict, seller: dict, third_club: dict, db
+):
+    """A loan is not a low transfer bid. It ranks after the permanent offers,
+    carries its type and loan fee, and the seller's summary counts it apart
+    from the best transfer fee."""
+    from datetime import date
+
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    await _contract(db, player["id"], seller_club_id, date(2028, 6, 30))
+
+    loan = await client.post(
+        "/offers", json=_loan_body(player["id"], seller_club_id, loan_fee=9_000_000),
+        headers=_auth_headers(buyer),
+    )
+    assert loan.status_code == 201, loan.text
+    await _make_offer(client, _auth_headers(third_club), player["id"], seller_club_id, fee=4_000_000)
+
+    book = (await client.get(f"/offers/competition/{player['id']}", headers=sel_headers)).json()
+    active = [e for e in book["entries"] if e["is_active"]]
+    assert [e["deal_type"] for e in active] == ["PERMANENT", "LOAN"]
+    assert Decimal(str(active[1]["loan_fee"])) == Decimal("9000000")
+    assert "Best £4" in book["summary"] and "1 loan approach" in book["summary"]
+
+
+async def _loan_offer_between(client: AsyncClient, db, buyer: dict, seller: dict, **over) -> dict:
+    from datetime import date
+
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    await _contract(db, player["id"], seller_club_id, date(2027, 12, 31))
+    resp = await client.post(
+        "/offers", json=_loan_body(player["id"], seller_club_id, **over), headers=_auth_headers(buyer)
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+@pytest.mark.asyncio
+async def test_seller_counters_a_loan_on_its_own_terms(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """The seller can ask for a bigger wage share, a recall clause and an
+    obligation — and the counter's audit entry records what changed."""
+    offer = await _loan_offer_between(client, db, buyer, seller)
+
+    resp = await client.post(
+        f"/offers/{offer['id']}/counter",
+        json={
+            "wage_split_pct": 0.8, "recall_allowed": True,
+            "option_to_buy": 15_000_000, "obligation_to_buy": True,
+        },
+        headers=_auth_headers(seller),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["deal_type"] == "LOAN"
+    assert Decimal(str(body["wage_split_pct"])) == Decimal("0.8")
+    assert body["recall_allowed"] is True
+    assert body["obligation_to_buy"] is True
+    assert body["fee_amount"] is None
+    seen = (await client.get(f"/offers/{offer['id']}", headers=_auth_headers(buyer))).json()
+    countered = [e for e in seen["events"] if e["event_type"] == "COUNTERED"][-1]
+    assert countered["payload"]["changes"]["recall_allowed"] is True
+    assert countered["payload"]["changes"]["wage_split_pct"] == "0.8"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("terms, message", [
+    ({"fee_amount": 5_000_000}, "loan fee"),
+    ({"wage_split_pct": 5}, "fraction"),
+    ({"loan_end": "2028-02-28"}, "contract expires"),
+    ({"loan_end": "2026-08-01"}, "must end after it starts"),
+    ({"obligation_to_buy": True}, "needs a price"),
+])
+async def test_a_loan_counter_is_validated_like_a_new_offer(
+    client: AsyncClient, buyer: dict, seller: dict, db, terms, message
+):
+    """Counters were never validated, so each of these used to be stored."""
+    offer = await _loan_offer_between(client, db, buyer, seller)
+    resp = await client.post(
+        f"/offers/{offer['id']}/counter", json=terms, headers=_auth_headers(seller)
+    )
+    assert resp.status_code == 400, resp.text
+    assert message in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_a_permanent_offer_cannot_be_countered_into_loan_terms(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    offer = await _make_offer(client, _auth_headers(buyer), player["id"], seller_club_id)
+
+    resp = await client.post(
+        f"/offers/{offer['id']}/counter", json={"loan_fee": 1_000_000}, headers=sel_headers
+    )
+    assert resp.status_code == 400, resp.text
+
+
+@pytest.mark.asyncio
+async def test_improving_a_loan_never_gives_it_a_transfer_fee(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """improve_own_offer fell back to `fee_amount or 0`, so raising a loan's
+    wage left it carrying a £0 transfer fee."""
+    offer = await _loan_offer_between(client, db, buyer, seller)
+    buy_headers = _auth_headers(buyer)
+
+    resp = await client.post(
+        f"/offers/{offer['id']}/improve", json={"loan_fee": 3_000_000}, headers=buy_headers
+    )
+    assert resp.status_code == 200, resp.text
+    assert Decimal(str(resp.json()["loan_fee"])) == Decimal("3000000")
+    assert resp.json()["fee_amount"] is None
+
+    # A loan's wage is his contract wage — not something the buyer can raise.
+    resp = await client.post(
+        f"/offers/{offer['id']}/improve", json={"wage_weekly": 100_000}, headers=buy_headers
+    )
+    assert resp.status_code == 400, resp.text
+
+    resp = await client.post(
+        f"/offers/{offer['id']}/improve", json={"fee_amount": 1_000_000}, headers=buy_headers
+    )
+    assert resp.status_code == 400, resp.text
+
+
+# ── The buyer's reservation follows a seller's counter, at acceptance ────────
+
+
+async def _seller_counter_then(client, db, buyer, seller, *, offered, countered, budget=Decimal("50000000")):
+    await _give_budget(db, budget)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    buyer_club_id = (await client.get("/clubs/me", headers=_auth_headers(buyer))).json()["id"]
+    offer = await _make_offer(client, _auth_headers(buyer), player["id"], seller_club_id, fee=offered)
+    resp = await client.post(
+        f"/offers/{offer['id']}/counter", json={"fee_amount": countered}, headers=sel_headers
+    )
+    assert resp.status_code == 200, resp.text
+    return offer, buyer_club_id
+
+
+@pytest.mark.asyncio
+async def test_accepting_a_raised_counter_commits_the_raised_fee(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Accepting a seller's £8m counter to a £5m offer used to commit £5m while
+    the deal recorded £8m."""
+    offer, buyer_club_id = await _seller_counter_then(
+        client, db, buyer, seller, offered=5_000_000, countered=8_000_000
+    )
+    fin = await _finance(db, buyer_club_id)
+    await db.refresh(fin)
+    assert fin.transfer_reserved == Decimal("5000000.00"), "a counter is a proposal, not a hold"
+
+    resp = await client.post(f"/offers/{offer['id']}/accept", headers=_auth_headers(buyer))
+    assert resp.status_code == 200, resp.text
+    await db.refresh(fin)
+    assert fin.transfer_reserved == Decimal("0.00")
+    assert fin.transfer_committed == Decimal("8000000.00")
+
+
+@pytest.mark.asyncio
+async def test_a_raised_counter_the_buyer_cannot_fund_is_refused_to_the_buyer(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """The shortfall surfaces when the buyer accepts, not when the seller
+    counters — refusing the seller's counter would reveal the buyer's budget."""
+    offer, buyer_club_id = await _seller_counter_then(
+        client, db, buyer, seller, offered=5_000_000, countered=8_000_000, budget=Decimal("6000000")
+    )
+    resp = await client.post(f"/offers/{offer['id']}/accept", headers=_auth_headers(buyer))
+    assert resp.status_code == 400, resp.text
+    assert "Insufficient transfer budget" in resp.json()["detail"]
+
+    seen = (await client.get(f"/offers/{offer['id']}", headers=_auth_headers(buyer))).json()
+    assert seen["status"] == "COUNTERED"
+    fin = await _finance(db, buyer_club_id)
+    await db.refresh(fin)
+    assert fin.transfer_reserved == Decimal("5000000.00")
+    assert fin.transfer_committed == Decimal("0.00")
+
+
+@pytest.mark.asyncio
+async def test_accepting_a_lowered_counter_gives_back_the_difference(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    offer, buyer_club_id = await _seller_counter_then(
+        client, db, buyer, seller, offered=5_000_000, countered=4_000_000
+    )
+    resp = await client.post(f"/offers/{offer['id']}/accept", headers=_auth_headers(buyer))
+    assert resp.status_code == 200, resp.text
+    fin = await _finance(db, buyer_club_id)
+    await db.refresh(fin)
+    assert fin.transfer_reserved == Decimal("0.00")
+    assert fin.transfer_committed == Decimal("4000000.00")
+
+
+
+@pytest.mark.asyncio
+async def test_a_loans_wage_is_his_contract_wage_not_the_buyers_figure(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """The buyer typed the wage, and a blank meant the borrowing club paid £0.
+    It is now read from his contract (£90k here): 60% reserves £54k."""
+    offer = await _loan_offer_between(client, db, buyer, seller)
+    assert Decimal(str(offer["wage_weekly"])) == Decimal("90000")
+
+    buyer_club_id = (await client.get("/clubs/me", headers=_auth_headers(buyer))).json()["id"]
+    fin = await _finance(db, buyer_club_id)
+    await db.refresh(fin)
+    assert fin.wage_reserved_weekly == Decimal("54000.00")
+
+
+@pytest.mark.asyncio
+async def test_a_loan_offer_cannot_propose_a_wage(client: AsyncClient, buyer: dict, seller: dict, db):
+    from datetime import date
+
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    await _contract(db, player["id"], seller_club_id, date(2027, 12, 31))
+
+    resp = await client.post(
+        "/offers", json=_loan_body(player["id"], seller_club_id, wage_weekly=50_000),
+        headers=_auth_headers(buyer),
+    )
+    assert resp.status_code == 400, resp.text
+    assert "contract wage" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_a_loan_is_refused_when_his_contract_has_no_wage(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Refused rather than built on £0: every later step's money depends on it."""
+    from datetime import date
+
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    await _contract(db, player["id"], seller_club_id, date(2027, 12, 31), wage=None)
+
+    resp = await client.post(
+        "/offers", json=_loan_body(player["id"], seller_club_id), headers=_auth_headers(buyer)
+    )
+    assert resp.status_code == 400, resp.text
+    assert "no wage on record" in resp.json()["detail"]

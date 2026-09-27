@@ -15,6 +15,7 @@ import { buyerLabel, isBuyerMasked } from "../../lib/buyerIdentity";
 import { offerWhoseMove } from "../../lib/whoseMove";
 import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 import { formatCurrency, formatDate } from "../../lib/utils";
+import { isLoan, offerHeadline, purchaseClause, wageSharePct } from "../../lib/offerTerms";
 
 // ── Filter chips ──────────────────────────────────────────────────────────────
 
@@ -86,7 +87,11 @@ function YourMoveRow({
   rivalCount: number;
 }) {
   const navigate = useNavigate();
-  const belowValuation = valuation != null && offer.fee_amount != null && offer.fee_amount < valuation.fair_value;
+  const loan = isLoan(offer);
+  // A loan fee is not a price for the player, so it is never judged against
+  // the valuation — flagging a £2m loan fee as "below valuation" would be noise.
+  const belowValuation =
+    !loan && valuation != null && offer.fee_amount != null && offer.fee_amount < valuation.fair_value;
 
   return (
     <div className="border-b border-rule px-5 py-4 last:border-b-0">
@@ -115,8 +120,13 @@ function YourMoveRow({
           )}
         </div>
         <div className="basis-[120px] shrink">
-          <p className="text-[11px] text-text-muted">Their offer</p>
-          <p className="text-[17px] font-bold text-text">{offer.fee_amount != null ? formatCurrency(offer.fee_amount) : "TBD"}</p>
+          <p className="text-[11px] text-text-muted">{loan ? "Loan offer" : "Their offer"}</p>
+          <p className="text-[17px] font-bold text-text">{offerHeadline(offer)}</p>
+          {loan && (
+            <p className="text-[12px] text-text-muted">
+              {wageSharePct(offer)}% of wage{purchaseClause(offer) ? ` · ${offer.obligation_to_buy ? "obligation" : "option"} to buy` : ""}
+            </p>
+          )}
         </div>
         <div className="basis-[120px] shrink">
           <p className="text-[11px] text-text-muted">Your valuation</p>
@@ -222,8 +232,17 @@ interface PlayerGroup {
   lastActivity: string;
 }
 
-function feeOf(o: Offer): number {
-  return o.fee_amount ?? -1;   // a fee-less offer ranks below any priced one
+/** Rank within a player's group: permanent offers by fee first, then loans by
+ *  loan fee. A loan is a different proposal, not a low transfer bid, so it
+ *  never outranks one. */
+function rankOf(o: Offer): [number, number] {
+  return isLoan(o) ? [0, Number(o.loan_fee ?? 0)] : [1, Number(o.fee_amount ?? -1)];
+}
+
+function compareOffers(a: Offer, b: Offer): number {
+  const [ka, va] = rankOf(a);
+  const [kb, vb] = rankOf(b);
+  return kb - ka || vb - va;
 }
 
 function groupByPlayer(rows: EverythingRow[]): PlayerGroup[] {
@@ -236,7 +255,7 @@ function groupByPlayer(rows: EverythingRow[]): PlayerGroup[] {
   // Map preserves insertion order, so the server's ordering (last activity)
   // still decides where each player sits.
   return [...byPlayer.entries()].map(([playerId, group]) => {
-    const offers = [...group].sort((a, b) => feeOf(b.offer) - feeOf(a.offer));
+    const offers = [...group].sort((a, b) => compareOffers(a.offer, b.offer));
     const lastActivity = group
       .map((r) => r.offer.last_action_at)
       .reduce((latest, d) => (new Date(d) > new Date(latest) ? d : latest));
@@ -319,7 +338,7 @@ function InboxSection({
                 )}
               </span>
               <span className="text-sm font-bold text-text">
-                {g.best.offer.fee_amount != null ? formatCurrency(g.best.offer.fee_amount) : "TBD"}
+                {offerHeadline(g.best.offer)}
               </span>
             </div>
             <p className="mt-0.5 text-xs text-text-muted">
@@ -439,7 +458,7 @@ export default function OfferInboxPage() {
     },
     { key: "fee", header: "Fee", priority: 2, className: "text-right", render: (g) => (
       <span className="font-bold text-text">
-        {g.best.offer.fee_amount != null ? formatCurrency(g.best.offer.fee_amount) : "TBD"}
+        {offerHeadline(g.best.offer)}
         {g.offers.length > 1 && (
           <span className="ml-1.5 text-[11px] font-normal text-text-muted">best</span>
         )}

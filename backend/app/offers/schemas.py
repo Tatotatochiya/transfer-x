@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.common.schemas import WhoseMove
 from app.deals.models import DealType
@@ -51,6 +51,9 @@ class OfferCreateRequest(BaseModel):
     option_to_buy: Decimal | None = None
     obligation_to_buy: bool = False
     recall_allowed: bool = False
+    obligation_conditions: str | None = Field(None, max_length=1000)
+    # Required when a permanent offer's fee is £0; posted to the thread.
+    no_fee_reason: str | None = Field(None, max_length=500)
 
     @field_validator("fee_amount", "wage_weekly", "loan_fee", "option_to_buy", mode="before")
     @classmethod
@@ -82,6 +85,17 @@ class OfferCounterRequest(BaseModel):
     loan_fee: Decimal | None = None
     wage_split_pct: Decimal | None = None
     option_to_buy: Decimal | None = None
+    # None leaves the clause as it is; true/false sets it.
+    obligation_to_buy: bool | None = None
+    recall_allowed: bool | None = None
+    obligation_conditions: str | None = Field(None, max_length=1000)
+
+    @field_validator("fee_amount", "wage_weekly", "loan_fee", "option_to_buy", mode="before")
+    @classmethod
+    def non_negative(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("must be non-negative")
+        return v
 
 
 class OfferImproveRequest(BaseModel):
@@ -89,6 +103,7 @@ class OfferImproveRequest(BaseModel):
     fee_amount: Decimal | None = None
     wage_weekly: Decimal | None = None
     add_ons: dict | None = None
+    loan_fee: Decimal | None = None
 
 
 class OfferMessageRequest(BaseModel):
@@ -145,6 +160,7 @@ class OfferResponse(BaseModel):
     option_to_buy: Decimal | None = None
     obligation_to_buy: bool = False
     recall_allowed: bool = False
+    obligation_conditions: str | None = None
     status: OfferStatus
     expires_at: datetime | None
     last_action_at: datetime

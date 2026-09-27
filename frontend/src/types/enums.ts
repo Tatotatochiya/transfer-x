@@ -7,6 +7,9 @@ export type PlayerVisibility = "PUBLIC" | "CLUBS_ONLY" | "PRIVATE";
 export type PlayerStatus = "CONTRACTED" | "EXTERNAL" | "FREE_AGENT";
 
 export type SaleType = "AUCTION" | "OPEN_TO_OFFERS" | "FIXED_PRICE";
+/** What a listing's club will consider — separate from SaleType, which is how
+ *  offers arrive (a loan cannot be auctioned). */
+export type ListingAvailability = "TRANSFER" | "LOAN" | "EITHER";
 export type SaleStatus = "OPEN" | "CLOSED" | "WITHDRAWN" | "EXPIRED";
 export type BidStatus = "ACTIVE" | "WITHDRAWN" | "ACCEPTED" | "REJECTED";
 
@@ -104,7 +107,7 @@ export type ClubCapability =
   | "APPROVE_ACTIONS";
 
 // Phase 5 — spending-authority approvals
-export type ApprovalActionType = "PLACE_BID" | "CREATE_OFFER" | "ACCEPT_OFFER" | "ACCEPT_BID";
+export type ApprovalActionType = "PLACE_BID" | "CREATE_OFFER" | "ACCEPT_OFFER" | "ACCEPT_BID" | "EXERCISE_OPTION";
 export type ApprovalStatus =
   | "PENDING"
   | "APPROVED_EXECUTED"

@@ -7,8 +7,9 @@ import Badge from "../../components/ui/Badge";
 import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
-import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
+import { formatDate, getApiError } from "../../lib/utils";
 import type { OfferStatus } from "../../types/enums";
+import { offerHeadline } from "../../lib/offerTerms";
 
 const OFFER_STATUSES = ["SENT", "COUNTERED", "ACCEPTED", "REJECTED", "WITHDRAWN", "EXPIRED"];
 
@@ -111,7 +112,7 @@ export default function AdminOffersPage() {
                     <td className="px-4 py-3 text-xs text-text-muted">{o.from_club?.name ?? "—"}</td>
                     <td className="px-4 py-3 text-xs text-text-muted">{o.to_club?.name ?? "—"}</td>
                     <td className="px-4 py-3 text-text-secondary text-xs">
-                      {o.fee_amount != null ? formatCurrency(o.fee_amount) : "—"}
+                      {offerHeadline(o)}
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={STATUS_VARIANT[o.status as OfferStatus] ?? "neutral"}>

@@ -83,6 +83,10 @@ class Offer(Base):
     recall_allowed: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    # What an obligation to buy depends on ("if promoted", "after 20
+    # appearances"). Agreed here and carried onto the deal, which already had
+    # the column but no way to collect it before the terms were locked.
+    obligation_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[OfferStatus] = mapped_column(
         SAEnum(OfferStatus, name="offerstatus"),
         nullable=False,
