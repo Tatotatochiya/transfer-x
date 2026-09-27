@@ -24,6 +24,10 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 
 ## [Unreleased]
 
+### Fixed
+- **Two simultaneous actions could both succeed on the same money (audit H3).** Accepting, countering, improving, rejecting or withdrawing an offer, and advancing, completing or collapsing a deal, or paying an instalment, all checked a state and then acted on it with no row lock. So a double-click or two staff at once could create two deals from one offer, or settle a transfer twice. Each now re-reads its row with `SELECT … FOR UPDATE` first; the second request waits and is then refused. Verified live against Postgres: two simultaneous accepts gave one deal and one refusal; two simultaneous collapses gave one collapse and one refusal. The refusals now read "This offer has already been accepted — it can no longer be accepted" rather than showing `OfferStatus.ACCEPTED`. (`backend/app/offers/service.py`, `backend/app/deals/service.py`)
+- No new regression tests, at the product owner's request (SQLite, which the suite uses, ignores row locks in any case). Checked by `tsc -b` (now 42, one below the 43 baseline), vitest at its 16-failure baseline, and live on the dev stack.
+
 ### Added
 - **A daily "waiting on you" email, and email where the next move is yours.** Clubs visit a few times a week, and with in-app notifications alone a seven-day offer could expire unseen.
   - **The digest:** once a day, after 07:00 UTC, each owner, Sporting Director and Manager gets one email listing what is waiting on them, each item linked. It is the dashboard's tier-1 list, so the two never disagree. It is sent only when something is waiting, at most once a day (recorded on the user, migration `0076`, because jobs re-run on every restart), and switched off from a new **Daily summary** entry on the notification preferences page.

@@ -41,6 +41,22 @@ _DEAL_SLA_DAYS = 14
 _AGENT_SILENCE_HOURS = 72
 
 
+async def _lock(db: AsyncSession, obj, *attributes: str) -> None:
+    """Re-read `attributes` of `obj` with SELECT … FOR UPDATE and hold the row
+    lock until the transaction commits (audit H3).
+
+    Money paths check a state and then act on it — "is the deal CONFIRMED?
+    then complete it", "is this instalment unpaid? then pay it". Without the
+    lock two concurrent requests can both pass the check and both act: the
+    player transferred twice, the instalment credited twice. With it the
+    second waits for the first, then re-reads the state the first left and is
+    refused. Only the named columns are refreshed, so relationships loaded
+    earlier in the request stay loaded. (SQLite ignores FOR UPDATE; the tests
+    run there, so this is exercised against Postgres only.)
+    """
+    await db.refresh(obj, attribute_names=list(attributes), with_for_update=True)
+
+
 def compute_deal_whose_move(deal: Deal) -> WhoseMove:
     """B1: mirrors dealWhoseMove() in frontend/src/lib/whoseMove.ts exactly,
     including what it does NOT do: distinguish buyer from seller. At
@@ -496,6 +512,7 @@ async def advance_deal(
       deadline — everything is agreed, only administrative execution is left.
     - CONFIRMED → COMPLETED: clubs or staff (triggers player transfer)
     """
+    await _lock(db, deal, "status", "stage")
     if deal.status not in (DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION):
         raise ValueError("Only IN_PROGRESS or PENDING_COMPLETION deals can be advanced")
 
@@ -654,8 +671,9 @@ async def collapse_deal(
     bidders were never told they could come back. Reopen the sale (if any) and
     let every club that had bid on it know it's live again.
     """
+    await _lock(db, deal, "status", "stage")
     if deal.status in (DealStatus.COMPLETED, DealStatus.COLLAPSED):
-        raise ValueError(f"Deal is already {deal.status}")
+        raise ValueError(f"This deal is already {deal.status.value.lower()}")
 
     _require_party(deal, actor_club_id, is_staff)
 
@@ -743,6 +761,7 @@ async def add_note(
 
 async def staff_complete(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UUID | None = None) -> Deal:
     """Staff override: force deal to COMPLETED, creating contract."""
+    await _lock(db, deal, "status", "stage")
     if deal.status == DealStatus.COMPLETED:
         raise ValueError("Deal is already completed")
     if deal.status == DealStatus.COLLAPSED:
@@ -1528,6 +1547,7 @@ async def mark_instalment_paid(
     inst = result.scalar_one_or_none()
     if inst is None:
         raise ValueError("Instalment not found")
+    await _lock(db, inst, "paid", "paid_at")
     if inst.paid:
         raise ValueError("Instalment already marked as paid")
 

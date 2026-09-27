@@ -71,7 +71,7 @@ Every finding below was checked directly against the running stack. Where a find
 | C5 | 7,825 contracted professionals displayed as free agents — and were signable for £0 | **Critical** | ✅ | ✅ |
 | H1 | List pages render a convincing "no data" empty state when the backend is down | **High** | ✅ | ✅ |
 | H2 | Admin Health page has three dead links (guaranteed 404) | **High** | ✅ | — |
-| H3 | No row locks on offer accept, deal completion, or instalment payment | **High** | — | ✅ |
+| H3 | ~~No row locks on offer accept, deal completion, or instalment payment~~ — **resolved 2026-09-27** | **High** | — | ✅ |
 | H4 | Agent mandates activate with no player confirmation | **High** | — | ✅ |
 | H5 | Verification status gates nothing — it is a decorative badge | **High** | — | ✅ |
 | H6 | No password reset flow of any kind | **High** | — | ✅ |
@@ -264,6 +264,8 @@ This is **not** a blanket gap: bids *are* correctly locked (`sales/service.py` u
 A single-presenter demo is unlikely to trigger these. They are, however, the top correctness bugs in the codebase and exactly what a club's technical evaluator would probe. From a Finance seat, "the numbers reconcile" is the whole point.
 
 **Recommendation:** add `with_for_update()` to the offer, deal, and instalment loads on those three write paths.
+
+> **Resolved 2026-09-27.** Each money path now re-reads its row with `SELECT … FOR UPDATE` before checking its state. That covers offer accept, counter, improve, reject and withdraw; deal advance (including completion), collapse and staff completion; and instalment payment. Verified live against Postgres: two simultaneous accepts of one offer gave one deal and one refusal, and two simultaneous collapses of one deal gave one collapse and one refusal. The locked columns are re-read explicitly (`deals/service._lock`, `offers/service._lock_offer`), so relationships loaded earlier in the request stay loaded. The test suite runs on SQLite, which ignores `FOR UPDATE`, so these paths are verified only against Postgres.
 
 ### H4. Agent mandates activate with no player confirmation
 

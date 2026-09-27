@@ -621,6 +621,19 @@ async def create_offer(
     return offer
 
 
+async def _lock_offer(db: AsyncSession, offer: Offer) -> None:
+    """Re-read the offer's row with SELECT … FOR UPDATE and hold the lock to
+    commit (audit H3). Accept, counter, improve, reject and withdraw each check
+    the offer's status and turn before acting; without the lock two of them
+    can both pass the check — two accepts creating two deals, or an accept
+    racing a withdrawal over the same reservation. Every column is re-read
+    (not the relationships, which stay as loaded)."""
+    from sqlalchemy import inspect as sa_inspect
+
+    columns = [attr.key for attr in sa_inspect(Offer).column_attrs]
+    await db.refresh(offer, attribute_names=columns, with_for_update=True)
+
+
 async def counter_offer(
     db: AsyncSession,
     offer: Offer,
@@ -653,9 +666,10 @@ async def counter_offer(
     could give a loan a transfer fee, a 500% wage split, or an end date past
     the player's contract — none of which `create_offer` would have allowed.
     """
+    await _lock_offer(db, offer)
     _check_not_expired(offer)
     if _is_terminal(offer.status):
-        raise ValueError(f"Cannot counter an offer with status {offer.status}")
+        raise ValueError(f"This offer has already been {offer.status.value.lower()} — it can no longer be countered")
     if offer.status not in (OfferStatus.SENT, OfferStatus.COUNTERED):
         raise ValueError("Only SENT or COUNTERED offers can be countered")
 
@@ -846,9 +860,10 @@ async def improve_own_offer(
     does NOT hand the turn back — the seller still holds the decision either
     way, so last_actor_club_id is left untouched.
     """
+    await _lock_offer(db, offer)
     _check_not_expired(offer)
     if offer.status not in (OfferStatus.SENT, OfferStatus.COUNTERED):
-        raise ValueError(f"Cannot improve an offer with status {offer.status}")
+        raise ValueError(f"This offer has already been {offer.status.value.lower()} — it can no longer be improved")
     if actor_club_id != offer.from_club_id:
         raise ValueError("Only the buyer can improve their own offer")
     reject_client_loan_wage(offer.deal_type, wage_weekly)
@@ -914,9 +929,10 @@ async def accept_offer(
     actor_club_id: uuid.UUID,
 ) -> Deal:
     """Accept an offer. Creates a Deal and commits the buyer's reserved budget."""
+    await _lock_offer(db, offer)
     _check_not_expired(offer)
     if offer.status not in (OfferStatus.SENT, OfferStatus.COUNTERED):
-        raise ValueError(f"Cannot accept an offer with status {offer.status}")
+        raise ValueError(f"This offer has already been {offer.status.value.lower()} — it can no longer be accepted")
     _require_party(offer, actor_club_id)
     _require_turn(offer, actor_club_id)
 
@@ -1189,9 +1205,10 @@ async def reject_offer(
     actor_club_id: uuid.UUID,
 ) -> Offer:
     """Reject an offer. Releases the buyer's budget reservation."""
+    await _lock_offer(db, offer)
     _check_not_expired(offer)
     if offer.status not in (OfferStatus.SENT, OfferStatus.COUNTERED):
-        raise ValueError(f"Cannot reject an offer with status {offer.status}")
+        raise ValueError(f"This offer has already been {offer.status.value.lower()} — it can no longer be rejected")
     _require_party(offer, actor_club_id)
     _require_turn(offer, actor_club_id)
 
@@ -1221,11 +1238,12 @@ async def withdraw_offer(
     respond first. A party who is NOT the last actor still can't withdraw;
     their move is reject_offer, which correctly requires the turn.
     """
+    await _lock_offer(db, offer)
     _require_party(offer, actor_club_id)
     if actor_club_id != offer.from_club_id and actor_club_id != offer.last_actor_club_id:
         raise ValueError("You can only retract your own most recent offer")
     if _is_terminal(offer.status):
-        raise ValueError(f"Cannot withdraw an offer with status {offer.status}")
+        raise ValueError(f"This offer has already been {offer.status.value.lower()} — it can no longer be withdrawn")
 
     await _release_offer_budget(db, offer)
     offer.status = OfferStatus.WITHDRAWN
