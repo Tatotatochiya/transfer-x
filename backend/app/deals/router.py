@@ -848,7 +848,12 @@ async def player_consent_to_terms(
 ):
     """Player consents to or declines personal terms. A mandated agent may act
     as their proxy only when the player has no account of their own — the
-    same rule used for the club-side of AGENT_NEGOTIATION."""
+    same rule used for the club-side of AGENT_NEGOTIATION.
+
+    When the player has neither an account nor an agent, the buying club
+    records his answer: in a real transfer it agrees personal terms with the
+    player directly, and without this only TransferX staff could move the deal
+    on. Audited as recorded by the club, and both clubs are notified."""
     from app.auth.models import AgentProfile, PlayerProfile, UserType
 
     deal = await _get_deal_or_404(db, deal_id)
@@ -871,17 +876,45 @@ async def player_consent_to_terms(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Player has their own account and must respond themselves",
             )
-    elif not current_user.is_superuser:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Player or agent access required")
+    recorded_by_club = False
+    if current_user.user_type not in (UserType.PLAYER, UserType.AGENT) and not current_user.is_superuser:
+        club = await _get_club_or_403(db, current_user)
+        if club.id != deal.buyer_club_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the buying club can record the player's answer",
+            )
+        await ensure_club_capability(db, current_user, Capability.DEAL_WRITE)
+        pt = await service.get_personal_terms(db, deal.id)
+        if pt is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No personal terms set")
+        if pt.agent_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="The player's agent responds on his behalf",
+            )
+        if await players_service.player_has_account(db, deal.player_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Player has their own account and must respond themselves",
+            )
+        recorded_by_club = True
 
+    buyer_name = deal.buyer_club.name if deal.buyer_club else "The buying club"
     try:
-        pt = await service.player_consent_to_terms(db, deal, body.agreement, actor_user_id=current_user.id)
+        pt = await service.player_consent_to_terms(
+            db, deal, body.agreement, actor_user_id=current_user.id, recorded_by_club=recorded_by_club,
+        )
         player_name = deal.player.name if deal.player else "The player"
         decision = "agreed to" if pt.player_consent == "AGREED" else "declined"
         await _db_notify_deal_parties(
             db, deal,
             ntype=NotificationType.PERSONAL_TERMS_DECISION,
-            message=f"{player_name} has {decision} the proposed personal terms",
+            message=(
+                f"{buyer_name} recorded that {player_name} has {decision} the proposed personal terms"
+                if recorded_by_club else
+                f"{player_name} has {decision} the proposed personal terms"
+            ),
         )
         await db.commit()
         await db.refresh(pt)

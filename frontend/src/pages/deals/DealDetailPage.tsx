@@ -386,7 +386,9 @@ function PersonalTermsBanner({ deal, isBuyer }: { deal: Deal; isBuyer: boolean }
       ? "The terms have been sent to the player. The deal moves on once he accepts them."
       : terms.agent_id
         ? "The player has no TransferX account, so his agent responds on his behalf."
-        : "The player has no TransferX account or agent, so TransferX records his acceptance.";
+        : isBuyer
+          ? "The player has no TransferX account or agent. Record his answer below once you have it in writing."
+          : `The player has no TransferX account or agent, so ${buyerName} records his answer.`;
   }
 
   const toneClass = {
@@ -1048,8 +1050,11 @@ export default function DealDetailPage() {
     retry: false,
   });
 
-  // Mandated agent responding on the player's behalf when they have no
-  // account (mirrors the club-side proxy rule already used at AGENT_NEGOTIATION).
+  const confirm = useConfirm();
+
+  // Responding for a player with no account: his mandated agent (mirrors the
+  // club-side proxy rule at AGENT_NEGOTIATION), or the buying club when he has
+  // no agent either.
   const personalTermsConsentMutation = useMutation({
     mutationFn: (agreement: string) =>
       api.post(`/deals/${id}/personal-terms/player-consent`, { agreement }).then((r) => r.data),
@@ -1113,6 +1118,9 @@ export default function DealDetailPage() {
     (isAgent && deal.commission_agent_id != null) ||
     (isBuyer && !isAgent && !isPlayer && deal.commission_agent_id == null && canDealWrite)
   );
+
+  const canRecordConsent = isBuyer && !isAgent && !isPlayer && canDealWrite && isActive && atPersonalTerms &&
+    terms?.player_consent === "PENDING" && !terms.player_has_account && terms.agent_id == null;
 
   const advanceError =
     advanceMutation.isError ? getApiError(advanceMutation.error, "Failed.") : null;
@@ -1524,6 +1532,48 @@ export default function DealDetailPage() {
                                                                         "text-warning-text"
                 }>{deal.personal_terms.player_consent}</dd>
               </dl>
+              {/* No account and no agent: the buying club, which agreed these
+                  terms with the player directly, records his answer. */}
+              {canRecordConsent && (
+                <div className="mt-3">
+                  <p className="mb-1.5 text-[11px] text-text-muted">
+                    {deal.player?.name ?? "The player"} has no TransferX account or agent — record his answer once you have it in writing.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={personalTermsConsentMutation.isPending}
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: "Record that the player agreed?",
+                          message: `Confirm that ${deal.player?.name ?? "the player"} has agreed these terms, for example in a signed copy. This is recorded as ${deal.buyer_club?.name ?? "your club"}'s confirmation, and ${deal.seller_club?.name ?? "the selling club"} is notified.`,
+                          confirmLabel: "Record agreement",
+                        });
+                        if (ok) personalTermsConsentMutation.mutate("AGREED");
+                      }}
+                    >
+                      He agreed
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      loading={personalTermsConsentMutation.isPending}
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: "Record that the player declined?",
+                          message: "A declined proposal ends this transfer: the deal collapses and the committed budget is released.",
+                          confirmLabel: "Record and collapse",
+                          variant: "danger",
+                        });
+                        if (ok) personalTermsConsentMutation.mutate("DECLINED");
+                      }}
+                    >
+                      He declined
+                    </Button>
+                  </div>
+                </div>
+              )}
               {isAgent && deal.personal_terms.player_consent === "PENDING" && !deal.personal_terms.player_has_account && (
                 <div className="mt-3">
                   <p className="mb-1.5 text-[11px] text-text-muted">

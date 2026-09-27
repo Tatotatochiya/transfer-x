@@ -40,6 +40,13 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Migration `0079`. (`backend/app/clubs/service.py`, `backend/app/auth/router.py`, `backend/app/admin/router.py`, `frontend/src/pages/auth/JoinClubPage.tsx`)
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
+### Changed
+- **The buying club records personal-terms consent for a player with no account and no agent** ([ADR 0006](./product/decisions/0006-buying-club-records-consent-for-unrepresented-player.md)).
+  - Until now only TransferX staff could, and most players are in that position, so most deals waited on staff at Personal Terms.
+  - The buyer's "He agreed" / "He declined" buttons are each confirmed first. Only the buying club, with deal-write permission, may record the answer.
+  - The audit entry and the seller's notification say the club recorded it.
+  - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
+
 ### Fixed
 - **Clubs can run a deal won at auction, as they can any other.**
   - The deal page told both clubs that "Stage advancement is handled by TransferX staff" and hid the Advance button. The backend never required staff, so this was a UI block.

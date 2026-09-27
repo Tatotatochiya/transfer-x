@@ -1400,8 +1400,13 @@ async def player_consent_to_terms(
     deal: Deal,
     agreement: "AgreementStatus",  # type: ignore[name-defined]
     actor_user_id: uuid.UUID | None = None,
+    recorded_by_club: bool = False,
 ) -> PersonalTerms:
-    """Player agrees or declines personal terms. Decline collapses the deal."""
+    """Player agrees or declines personal terms. Decline collapses the deal.
+
+    `recorded_by_club`: the buying club entered the answer for a player with no
+    account and no agent — kept in the audit trail, since the consent did not
+    come from the player's own login."""
     from app.agents.models import AgreementStatus
 
     if deal.status != DealStatus.IN_PROGRESS:
@@ -1422,8 +1427,11 @@ async def player_consent_to_terms(
         entity_type="DEAL", entity_id=deal.id,
         action="PERSONAL_TERMS_CONSENT",
         actor_user_id=actor_user_id,
-        payload={"agreement": agreement.value},
-        description=f"Player {agreement.value.lower()} the personal terms",
+        payload={"agreement": agreement.value, "recorded_by": "BUYING_CLUB" if recorded_by_club else None},
+        description=(
+            f"Buying club recorded that the player {agreement.value.lower()} the personal terms"
+            if recorded_by_club else f"Player {agreement.value.lower()} the personal terms"
+        ),
     )
 
     if agreement == AgreementStatus.DECLINED:
