@@ -230,6 +230,14 @@ class UpdateDealRequest(BaseModel):
 
 # ── Deal response ─────────────────────────────────────────────────────────────
 
+class PaperworkStep(BaseModel):
+    """One step of the PAPERWORK checklist (migration 0077)."""
+    key: str
+    owner: str  # "buyer" | "seller"
+    label: str
+    done: bool
+
+
 class DealResponse(BaseModel):
     id: uuid.UUID
     sale_id: uuid.UUID | None
@@ -252,6 +260,15 @@ class DealResponse(BaseModel):
     option_to_buy: Decimal | None = None
     obligation_to_buy: bool = False
     obligation_conditions: str | None = None
+    # The consented personal terms, carried onto the deal at PERSONAL_TERMS → PAPERWORK.
+    signing_bonus: Decimal | None = None
+    contract_length_years: int | None = None
+    # The club-run paperwork checklist. `paperwork` is the checklist itself,
+    # in order; the timestamps say when each club acted.
+    agreement_signed_by_buyer_at: datetime | None = None
+    agreement_signed_by_seller_at: datetime | None = None
+    registration_submitted_at: datetime | None = None
+    paperwork: list[PaperworkStep] = []
     # TRA-57
     sell_on_pct: Decimal | None = None
     clauses: list[DealClauseResponse] = []

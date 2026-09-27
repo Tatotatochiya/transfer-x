@@ -7,6 +7,7 @@ this is the expected state for local/dev environments.
 """
 
 import asyncio
+import html
 import logging
 import smtplib
 import uuid
@@ -29,6 +30,11 @@ EMAIL_ENABLED_TYPES = {
     NotificationType.REPRESENTATION_STARTED,
     NotificationType.INSTALMENT_DUE,
     NotificationType.DEAL_CLAUSE_TRIGGERED,
+    # Each of these puts the next move with the recipient, and a club that
+    # visits a few times a week would otherwise not know until it looked.
+    NotificationType.OFFER_COUNTERED,
+    NotificationType.APPROVAL_REQUESTED,
+    NotificationType.DEAL_PERSONAL_TERMS_SENT,
 }
 
 
@@ -39,6 +45,34 @@ def _render_html(message: str, link: str | None) -> str:
         f'font-weight:600;">View in TransferX</a>'
         if link else ""
     )
+    return _wrap(
+        f'<p style="margin:0;color:#0f172a;font-size:15px;line-height:1.6;">{message}</p>{button}'
+    )
+
+
+def render_digest_html(lines: list[tuple[str, str]], dashboard_url: str) -> str:
+    """The daily digest: one row per thing waiting on the recipient, each
+    linking straight to it. `lines` are (text, url)."""
+    rows = "".join(
+        f'<tr><td style="padding:10px 0;border-bottom:1px solid #eef0f3;">'
+        f'<a href="{html.escape(url)}" style="color:#0f172a;text-decoration:none;font-size:14px;'
+        f'line-height:1.5;">{html.escape(text)} &rarr;</a></td></tr>'
+        for text, url in lines
+    )
+    button = (
+        f'<a href="{html.escape(dashboard_url)}" style="display:inline-block;margin-top:20px;'
+        f'padding:10px 20px;background:#10b981;color:#ffffff;text-decoration:none;'
+        f'border-radius:8px;font-weight:600;">Open your dashboard</a>'
+    )
+    return _wrap(
+        '<p style="margin:0 0 8px;color:#0f172a;font-size:15px;font-weight:600;">'
+        "Waiting on you</p>"
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">{rows}</table>'
+        f"{button}"
+    )
+
+
+def _wrap(inner_html: str) -> str:
     return f"""\
 <!doctype html>
 <html>
@@ -54,8 +88,7 @@ def _render_html(message: str, link: str | None) -> str:
             </tr>
             <tr>
               <td style="padding:28px;">
-                <p style="margin:0;color:#0f172a;font-size:15px;line-height:1.6;">{message}</p>
-                {button}
+                {inner_html}
               </td>
             </tr>
             <tr>

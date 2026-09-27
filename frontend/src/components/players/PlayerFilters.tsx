@@ -8,6 +8,9 @@ export interface PlayerFilterState {
   position: PlayerPosition | "";
   status: PlayerStatus | "";
   open_to_offers: boolean;
+  /** Only players a club could actually sign here — on a TransferX club, or
+   *  free agents. Most of the catalogue plays for clubs outside the platform. */
+  buyable: boolean;
   min_age: string;
   max_age: string;
   nationality: string;
@@ -31,6 +34,7 @@ export const DEFAULT_PLAYER_FILTERS: PlayerFilterState = {
   position: "",
   status: "",
   open_to_offers: false,
+  buyable: false,
   min_age: "",
   max_age: "",
   nationality: "",
@@ -109,6 +113,28 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange }:
           className={inputCls}
         />
       </div>
+
+      {/* Buyable — kept visible: whether a player can be signed here at all is
+          the first thing a buying club needs to know, and most of the market
+          plays for clubs that are not on TransferX. */}
+      <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 lg:min-h-0">
+        <span className="text-sm text-text-secondary">
+          Buyable on TransferX only
+          <span className="block text-[13px] text-text-muted">
+            Clubs on TransferX, and free agents
+          </span>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={filters.buyable}
+          aria-label="Buyable on TransferX only"
+          onClick={() => set("buyable", !filters.buyable)}
+          className={`relative h-4 w-8 shrink-0 rounded-full transition-colors ${filters.buyable ? "bg-success" : "bg-border"}`}
+        >
+          <span className={`absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${filters.buyable ? "translate-x-4" : ""}`} />
+        </button>
+      </label>
 
       {/* Position */}
       <div>

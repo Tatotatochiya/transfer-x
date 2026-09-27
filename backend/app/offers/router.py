@@ -368,6 +368,9 @@ async def create_offer(
             no_fee_reason=body.no_fee_reason,
             obligation_conditions=body.obligation_conditions,
             sale_id=body.sale_id,
+            instalments=body.instalments,
+            clauses=body.clauses,
+            sell_on_pct=body.sell_on_pct,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -384,12 +387,13 @@ async def create_offer(
         option_to_buy=body.option_to_buy,
         obligation_to_buy=body.obligation_to_buy,
     )
+    _amount = service.approval_amount(**_terms, clauses=body.clauses)
     approval = await approvals_service.maybe_capture(
         db,
         current_user=current_user,
         club=club,
         action_type=ApprovalActionType.CREATE_OFFER,
-        amount=service.approval_amount(**_terms),
+        amount=_amount,
         # Everything the offer is, so the approved replay creates this offer
         # and not a permanent, named one: before the loan terms and the
         # anonymity flag were carried here, approving an anonymous offer sent
@@ -415,6 +419,9 @@ async def create_offer(
             "recall_allowed": body.recall_allowed,
             "no_fee_reason": body.no_fee_reason,
             "obligation_conditions": body.obligation_conditions,
+            "instalments": [i.model_dump(mode="json") for i in body.instalments],
+            "clauses": [c.model_dump(mode="json") for c in body.clauses],
+            "sell_on_pct": str(body.sell_on_pct) if body.sell_on_pct is not None else None,
         },
         summary=f"Offer for {_pname} — {_terms_summary(**_terms)}",
     )
@@ -449,6 +456,9 @@ async def create_offer(
             recall_allowed=body.recall_allowed,
             no_fee_reason=body.no_fee_reason,
             obligation_conditions=body.obligation_conditions,
+            instalments=body.instalments,
+            clauses=body.clauses,
+            sell_on_pct=body.sell_on_pct,
         )
         await _db_notify_offer(
             db, offer,
@@ -504,6 +514,12 @@ async def counter_offer(
             remove_option_to_buy=(
                 "option_to_buy" in body.model_fields_set and body.option_to_buy is None
             ),
+            instalments=body.instalments,
+            clauses=body.clauses,
+            sell_on_pct=body.sell_on_pct,
+            remove_sell_on=(
+                "sell_on_pct" in body.model_fields_set and body.sell_on_pct is None
+            ),
         )
         other_club_id = offer.to_club_id if offer.from_club_id == club.id else offer.from_club_id
         await _db_notify_offer(
@@ -517,6 +533,12 @@ async def counter_offer(
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
+    # The session does not expire on commit, so the re-read would hand back the
+    # copy already loaded — its events and messages as they were before this
+    # change. Expire just this offer: populate_existing on the query also
+    # refreshed the clubs loaded with it and dropped their loaded finance,
+    # which the approval check then lazy-loaded and crashed on.
+    db.expire(offer)
     offer = await service.get_offer_by_id(db, offer_id)
     await _notify_offer_parties(db, offer_id)
     return _offer_response(offer, club.id)
@@ -555,6 +577,12 @@ async def improve_offer(
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
+    # The session does not expire on commit, so the re-read would hand back the
+    # copy already loaded — its events and messages as they were before this
+    # change. Expire just this offer: populate_existing on the query also
+    # refreshed the clubs loaded with it and dropped their loaded finance,
+    # which the approval check then lazy-loaded and crashed on.
+    db.expire(offer)
     offer = await service.get_offer_by_id(db, offer_id)
     await _notify_offer_parties(db, offer_id)
     return _offer_response(offer, club.id)
@@ -590,7 +618,7 @@ async def accept_offer(
         current_user=current_user,
         club=club,
         action_type=ApprovalActionType.ACCEPT_OFFER,
-        amount=service.approval_amount(**_terms),
+        amount=service.approval_amount(**_terms, clauses=offer.clauses),
         payload={"offer_id": str(offer_id)},
         summary=f"Accept offer for {_pname} — {_terms_summary(**_terms)}",
     )

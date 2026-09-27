@@ -606,6 +606,8 @@ export default function PlayerMarketDetailPage() {
   // Item 13: direct free-agent signing and Bosman pre-contract deals.
   const isFreeAgentPlayer =
     !!player && player.status === "FREE_AGENT" && !player.current_club && !player.team_name;
+  // Contracted to a real-world club that is not on TransferX (ADR 0003).
+  const isOffPlatform = !!player && player.status === "EXTERNAL";
   const contractEndDate = player?.active_contract?.end_date ?? player?.contract_expiry ?? null;
   const daysUntilContractEnd = contractEndDate
     ? Math.ceil((new Date(contractEndDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -878,7 +880,16 @@ export default function PlayerMarketDetailPage() {
                 {!isMyPlayer && (
                   <>
                     <AddToShortlistButton playerId={player.id} />
-                    {isAuthenticated && !isAgent && can("MARKET_WRITE") && !isFreeAgentPlayer && (
+                    {/* A club outside TransferX cannot answer an offer, and the
+                        server refuses one — so say so here, instead of a Make
+                        Offer that leads to an offer no one will ever see. */}
+                    {isOffPlatform && (
+                      <p className="basis-full text-[13px] text-text-muted">
+                        {player.world_team?.name ?? player.team_name ?? "His club"} is not on TransferX, so an offer
+                        could not be answered. Shortlist him to follow his form and contract.
+                      </p>
+                    )}
+                    {isAuthenticated && !isAgent && can("MARKET_WRITE") && !isFreeAgentPlayer && !isOffPlatform && (
                       <Button
                         variant="primary"
                         disabled={player.active_deal?.status === "IN_PROGRESS"}
@@ -923,7 +934,7 @@ export default function PlayerMarketDetailPage() {
                   </>
                 )}
 
-                {!isAuthenticated && (
+                {!isAuthenticated && !isOffPlatform && (
                   <button
                     onClick={() => navigate("/login")}
                     className="rounded-lg bg-success/10 px-4 py-2 text-sm font-semibold text-success-text ring-1 ring-success/30 hover:bg-success/20 transition-colors"

@@ -31,10 +31,11 @@ export function offerWhoseMove(offer: Offer, myClubId: string): WhoseMove {
 
 /** Deal at CONFIRMED (either participant can execute) → your move. Deal at
  * AGENT_NEGOTIATION with the agent silent >=72h → your move (chasing is an
- * action — the resolved DECISIONS.md default). PERSONAL_TERMS/PAPERWORK
- * wait on the player or on staff, not on either club → neither. AGREEMENT
+ * action — the resolved DECISIONS.md default). PAPERWORK is the clubs' own
+ * checklist → your move while your club has a step left, their move while
+ * only theirs do. PERSONAL_TERMS waits on the player → neither. AGREEMENT
  * has no per-club "last actor" signal available on this shape → neither,
- * rather than guessing. */
+ * rather than guessing. Mirrors compute_deal_whose_move on the server. */
 export function dealWhoseMove(deal: Deal, myClubId: string): WhoseMove {
   if (deal.status === "COMPLETED" || deal.status === "COLLAPSED") return "neither";
 
@@ -46,8 +47,13 @@ export function dealWhoseMove(deal: Deal, myClubId: string): WhoseMove {
       // embed AgentNegotiation) — updated_at is the best available proxy
       // for "how long has this state persisted".
       return hoursSince(deal.updated_at) >= AGENT_SILENCE_HOURS ? "your" : "their";
+    case "PAPERWORK": {
+      const mySide = myClubId === deal.buyer_club_id ? "buyer" : myClubId === deal.seller_club_id ? "seller" : null;
+      const open = (deal.paperwork ?? []).filter((s) => !s.done);
+      if (open.some((s) => s.owner === mySide)) return "your";
+      return open.length > 0 ? "their" : "neither";
+    }
     case "PERSONAL_TERMS":
-    case "PAPERWORK":
       return "neither";
     default:
       return "neither";
@@ -73,8 +79,10 @@ export function dealWhoseMoveReason(deal: Deal): string {
     }
     case "PERSONAL_TERMS":
       return "Player — consent pending";
-    case "PAPERWORK":
-      return "TransferX — processing";
+    case "PAPERWORK": {
+      const left = (deal.paperwork ?? []).filter((s) => !s.done).length;
+      return `Clubs — paperwork, ${left} step${left === 1 ? "" : "s"} left`;
+    }
     default:
       return "Clubs — agreeing terms";
   }

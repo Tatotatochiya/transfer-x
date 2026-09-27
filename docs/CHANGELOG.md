@@ -24,6 +24,45 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 
 ## [Unreleased]
 
+### Changed
+- **The clubs run the paperwork; TransferX staff are no longer in every deal.** `PAPERWORK → CONFIRMED` was staff-only, and so was recording the medical.
+  - **The checklist:** the deal page now shows it. Each club signs the transfer agreement, and the buying club records a passed medical and submits the registration. A free-agent signing has no seller step.
+  - **Each club ticks only its own steps.** Every tick is confirmed in the UI, audited and notified to the other club (new `DEAL_PAPERWORK` type, migration `0077`).
+  - **The last step confirms the deal by itself.** A club pressing the generic Advance is refused with a pointer to the checklist, and staff keep a direct override.
+  - **Visibility:** outstanding steps are "your move" for the owning club on the dashboard, deal lists, sidebar count and daily digest. The deal header now reads "Paperwork checklist", not "TransferX paperwork".
+  - **Medical:** a failed medical still stops the deal. Previously a deal with no medical recorded could be confirmed; now a passed medical is required.
+  - **Checked** live end to end: seller steps refused to the buyer and vice versa, a second signature refused, the last step confirming the deal and notifying both clubs. (`backend/app/deals/`, `backend/app/dashboard/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`, `frontend/src/lib/whoseMove.ts`)
+
+### Fixed
+- **Two simultaneous actions could both succeed on the same money (audit H3).** Accepting, countering, improving, rejecting or withdrawing an offer, and advancing, completing or collapsing a deal, paying an instalment or ticking a paperwork step, all checked a state and then acted on it with no row lock. So a double-click or two staff at once could create two deals from one offer, or settle a transfer twice. Each now re-reads its row with `SELECT … FOR UPDATE` first; the second request waits and is then refused. Verified live against Postgres: two simultaneous accepts gave one deal and one refusal; two simultaneous collapses gave one collapse and one refusal. The refusals now read "This offer has already been accepted — it can no longer be accepted" rather than showing `OfferStatus.ACCEPTED`. (`backend/app/offers/service.py`, `backend/app/deals/service.py`)
+- No new regression tests for either, at the product owner's request (SQLite, which the suite uses, ignores row locks in any case). Checked by `tsc -b` (now 42, one below the 43 baseline), vitest at its 16-failure baseline, and live on the dev stack.
+
+### Added
+- **A daily "waiting on you" email, and email where the next move is yours.** Clubs visit a few times a week, and with in-app notifications alone a seven-day offer could expire unseen.
+  - **The digest:** once a day, after 07:00 UTC, each owner, Sporting Director and Manager gets one email listing what is waiting on them, each item linked. It is the dashboard's tier-1 list, so the two never disagree. It is sent only when something is waiting, at most once a day (recorded on the user, migration `0076`, because jobs re-run on every restart), and switched off from a new **Daily summary** entry on the notification preferences page.
+  - **More per-event emails:** a counter-offer, an approval request and personal terms sent to the player now email too.
+  - **Locally:** email goes to a Mailpit container (`http://localhost:8025`) instead of being skipped. Deployed environments need real `SMTP_*` settings, and Railway has none yet.
+  - **Checked** live: an offer produced the per-event email; the digest reached the seller with that offer; a second run the same day sent nothing. (`backend/app/notifications/digest.py`, `backend/app/notifications/email.py`, `backend/app/main.py`, `docker-compose.yml`, `frontend/src/pages/notifications/`)
+- **The market says who can actually be bought, and offers go only where someone can answer them.** About 99% of the catalogue plays for real-world clubs that are not on TransferX, yet every player page offered **Make Offer**. The offer was created with no receiving club, reserved against the buyer's budget, and could never be accepted.
+  - **Server:** offers to a player with no TransferX club are refused with the reason; a free agent is pointed to signing him instead.
+  - **Player page:** for those players the page says so ("Nice is not on TransferX, so an offer could not be answered — shortlist him") and shows **Shortlist** instead of **Make Offer**.
+  - **Market:** a **Buyable on TransferX only** filter (on a TransferX club, or a free agent) narrows 5,024 visible players to the 106 a club can act on.
+  - **Checked** live, signed in and signed out. (`backend/app/offers/service.py`, `backend/app/players/`, `frontend/src/pages/market/`, `frontend/src/components/players/PlayerFilters.tsx`)
+- No new regression tests for either, at the product owner's request. Checked by `tsc -b` (43 baseline) and live on the dev stack.
+
+### Fixed
+- **The contract a player signed was not the one he agreed to.** At `PERSONAL_TERMS` the player consents to a wage, signing bonus and contract length. Completion ignored all three and built his contract from the offer's opening wage, with no end date and no bonus. So the consent on record was not the contract executed, and every signing produced an open-ended contract, which the expiring-contracts view and loan validation both depend on.
+  - **Now:** when the deal leaves `PERSONAL_TERMS`, the consented terms become the deal's (migration `0075`). The wage replaces the opening wage, and the difference and the bonus are committed against the buyer's budget.
+  - **Refusal:** a buyer who cannot fund the terms is refused with a message that carries no figures, because either club may be the one advancing the deal.
+  - **Completion:** the contract gets that wage, starts today and ends after the agreed years; the bonus is charged. Loans are exempt, because the loan sets their wage and length.
+- **Deal terms could still be changed after the seller accepted.** An offer carried only a fee, a wage and a contract length. The payment schedule, add-ons and sell-on could only be added in the deal room afterwards, by either club alone, so a seller could accept £30m and see it spread over four years.
+  - **Now:** they are part of the offer and its counters (migration `0075`), validated (the schedule must add up to the fee and not fall in the past), and copied onto the deal at acceptance. The deal room shows them read-only and refuses to change them.
+  - **Money:** add-ons count toward the buyer's reservation and approval figure, as the free-form `add_ons` always did. Their hold is released at completion or collapse. Before, it stayed committed for good, and the finance commitments breakdown now includes it.
+  - **UI:** a collapsible "Payment schedule, add-ons & sell-on" section on the offer and counter forms.
+- **Collapsing a deal released too little, or too much.** A deal with no fee (a free-agent signing) never released its committed wage. A loan released the full wage when it had committed only the borrowing club's share. Collapse now releases the fee, add-ons, bonus and the right wage.
+- **Accepting an offer crashed for a manager at a club with an approval threshold.** A regression from the stale-counter fix (`d9e2d95`): refreshing the re-read offer with `populate_existing` also refreshed the clubs loaded with it and dropped their finance, which the approval check then lazy-loaded outside the async context. Found by the first full suite run over those commits. It now expires only the changed offer.
+- Tests: 13 new or rewritten across `test_deals.py` and `test_offers.py`. The five affected test files pass (194); a final full-suite run was not completed. `tsc -b` stays at the 43-error baseline and vitest at its 16-failure baseline. (`backend/app/deals/`, `backend/app/offers/`, `backend/app/clubs/service.py`, `frontend/src/components/offers/DealStructureFields.tsx`, `frontend/src/pages/offers/`, `frontend/src/pages/deals/DealDetailPage.tsx`)
+
 ### Added
 - **A player can be listed for loan.** Clubs routinely make young or surplus players available on loan, and a listing could only offer a player for sale, so buyers sent loan offers blind. A listing now says what its club will consider: Transfer, Loan or Either (migration `0074`, existing listings backfilled to Transfer).
   - **Limits on sale type:** an auction is transfer-only, since a loan cannot be auctioned. A fixed price is a transfer price, so it can be Transfer or Either but not loan-only. A loan-only listing is Open to Offers with no asking price, because a figure there would read as the player's price to buyers and to the fair-value signal.

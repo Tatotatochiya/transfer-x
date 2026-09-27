@@ -36,6 +36,9 @@ async def _give_budget(db, amount: Decimal = Decimal("100000000")):
     result = await db.execute(select(ClubFinance))
     for f in result.scalars():
         f.transfer_budget_total = amount
+        # Consented personal terms are committed against the buyer's wage
+        # budget when a deal leaves PERSONAL_TERMS, so deals need wage room.
+        f.wage_budget_total_weekly = Decimal("1000000")
     await db.commit()
 
 
@@ -56,8 +59,10 @@ async def _create_deal_via_offer(
     seller: dict,
     db,
     fee: float = 5_000_000,
+    **offer_terms,
 ) -> dict:
-    """Create a deal by making and accepting an offer."""
+    """Create a deal by making and accepting an offer. `offer_terms` are extra
+    offer fields — a payment schedule, add-ons, a wage."""
     await _give_budget(db)
     sel_headers = _auth_headers(seller)
     buy_headers = _auth_headers(buyer)
@@ -66,9 +71,10 @@ async def _create_deal_via_offer(
 
     offer_resp = await client.post(
         "/offers",
-        json={"player_id": player["id"], "to_club_id": seller_club_id, "fee_amount": fee},
+        json={"player_id": player["id"], "to_club_id": seller_club_id, "fee_amount": fee, **offer_terms},
         headers=buy_headers,
     )
+    assert offer_resp.status_code == 201, offer_resp.text
     offer_id = offer_resp.json()["id"]
 
     deal_resp = await client.post(f"/offers/{offer_id}/accept", headers=sel_headers)
@@ -155,6 +161,7 @@ async def _advance_through_personal_terms(
     assert r.status_code == 200, r.text
 
     r = await client.post(f"/deals/{deal_id}/advance", headers=buy_h)
+    assert r.status_code == 200, r.text
     assert r.json()["stage"] == "PAPERWORK", r.text
 
 
@@ -292,14 +299,16 @@ async def test_cannot_skip_personal_terms_consent(client: AsyncClient, buyer: di
 
 @pytest.mark.asyncio
 async def test_paperwork_stage_blocked_for_clubs(client: AsyncClient, buyer: dict, seller: dict, db):
-    """Clubs cannot advance past PAPERWORK — only staff can."""
+    """Clubs cannot advance PAPERWORK directly — the checklist does it."""
     deal = await _create_deal_via_offer(client, buyer, seller, db)
     await _advance_through_personal_terms(client, deal["id"], buyer, db)
 
-    # Try to advance again as club — should get 403
+    # Try to advance again as club — refused
     resp = await client.post(f"/deals/{deal['id']}/advance", headers=_auth_headers(buyer))
-    assert resp.status_code == 403
-    assert "paperwork" in resp.json()["detail"].lower()
+    # Clubs complete PAPERWORK through its checklist (migration 0077); the
+    # generic advance is refused with a pointer to it. Staff can still advance.
+    assert resp.status_code == 400
+    assert "paperwork checklist" in resp.json()["detail"].lower()
 
 
 @pytest.mark.asyncio
@@ -829,19 +838,18 @@ async def test_completion_does_not_credit_seller_when_instalments_exist(
 ):
     """Item 7: with an instalment schedule, the seller must NOT get the full fee
     up front at completion — only as each instalment is actually marked paid."""
-    deal = await _create_deal_via_offer(client, buyer, seller, db, fee=5_000_000)
+    # The schedule is agreed on the offer and copied onto the deal at acceptance.
+    deal = await _create_deal_via_offer(
+        client, buyer, seller, db, fee=5_000_000,
+        instalments=[
+            {"due_date": "2027-08-01", "amount": 2_000_000},
+            {"due_date": "2027-12-01", "amount": 3_000_000},
+        ],
+    )
     buy_h, sel_h = _auth_headers(buyer), _auth_headers(seller)
 
-    inst_resp = await client.post(
-        f"/deals/{deal['id']}/instalments",
-        json={"instalments": [
-            {"due_date": "2026-08-01", "amount": 2_000_000},
-            {"due_date": "2026-12-01", "amount": 3_000_000},
-        ]},
-        headers=buy_h,
-    )
-    assert inst_resp.status_code == 201, inst_resp.text
-    instalments = inst_resp.json()
+    instalments = (await client.get(f"/deals/{deal['id']}/instalments", headers=buy_h)).json()
+    assert [Decimal(str(i["amount"])) for i in instalments] == [Decimal("2000000"), Decimal("3000000")]
 
     seller_before = await _get_finance(client, sel_h)
     await _make_superuser(db)
@@ -989,25 +997,34 @@ async def test_double_complete_is_rejected(
 
 
 @pytest.mark.asyncio
-async def test_clause_addition_is_audited(client: AsyncClient, buyer: dict, seller: dict, db):
-    """Representative check for the clause/instalment/medical-check family of
-    audit events added this session — same 3-line emit() pattern at every
-    call site, so one proves the mechanism rather than five near-duplicates."""
-    deal = await _create_deal_via_offer(client, buyer, seller, db)
-    buy_h = _auth_headers(buyer)
-
-    resp = await client.post(
-        f"/deals/{deal['id']}/clauses",
-        json={"clause_type": "APPEARANCES", "trigger_description": "10+ appearances", "amount": 500000},
-        headers=buy_h,
+async def test_structure_is_agreed_on_the_offer_not_added_to_the_deal(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Add-ons, the payment schedule and sell-on used to be added in the deal
+    room after the seller had accepted, by either club alone. They come from
+    the offer now, and the deal room refuses to change them."""
+    deal = await _create_deal_via_offer(
+        client, buyer, seller, db,
+        clauses=[{"clause_type": "APPEARANCES", "trigger_description": "50 appearances", "amount": 500000}],
+        sell_on_pct=0.15,
     )
-    assert resp.status_code == 201, resp.text
+    buy_h, sel_h = _auth_headers(buyer), _auth_headers(seller)
 
-    audit_resp = await client.get(f"/deals/{deal['id']}/audit-log", headers=buy_h)
-    assert audit_resp.status_code == 200
-    clause_event = next(e for e in audit_resp.json() if e["action"] == "CLAUSE_ADDED")
-    assert clause_event["actor_user_id"] is not None
-    assert clause_event["actor_label"] is not None
+    seen = (await client.get(f"/deals/{deal['id']}", headers=sel_h)).json()
+    assert [c["trigger_description"] for c in seen["clauses"]] == ["50 appearances"]
+    assert Decimal(str(seen["sell_on_pct"])) == Decimal("0.15")
+
+    for method, path, body in (
+        ("POST", f"/deals/{deal['id']}/clauses",
+         {"clause_type": "GOALS", "trigger_description": "20 goals", "amount": 1_000_000}),
+        ("POST", f"/deals/{deal['id']}/instalments",
+         {"instalments": [{"due_date": "2027-08-01", "amount": 5_000_000}]}),
+        ("PATCH", f"/deals/{deal['id']}", {"sell_on_pct": 0.3}),
+    ):
+        for headers in (buy_h, sel_h):
+            r = await client.request(method, path, json=body, headers=headers)
+            assert r.status_code == 400, (path, r.text)
+            assert "agreed on the offer" in r.json()["detail"]
 
 
 # NOTE: Concurrent-completion overspend guard is NOT tested here.
@@ -1070,3 +1087,111 @@ async def test_deal_whose_move_neither_when_terminal(client: AsyncClient, buyer:
 
     resp = await client.get(f"/deals/{deal['id']}", headers=_auth_headers(buyer))
     assert resp.json()["whose_move"] == "neither"
+
+
+
+# ── The consented personal terms are the contract ────────────────────────────
+
+
+async def _consent_and_complete(client, db, deal_id, buyer, *, complete=True):
+    await _advance_through_personal_terms(client, deal_id, buyer, db)  # £50k/wk, £100k bonus, 4 years
+    if complete:
+        await _make_superuser(db)
+        await _staff_complete(client, deal_id, _auth_headers(buyer))
+
+
+@pytest.mark.asyncio
+async def test_the_contract_is_the_personal_terms_the_player_agreed(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Completion built the contract from the offer's opening wage with no end
+    date and no bonus, whatever the player had consented to."""
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+
+    from app.deals.service import _add_years
+    from app.players.models import Contract
+
+    deal = await _create_deal_via_offer(client, buyer, seller, db, wage_weekly=30_000)
+    before = await _get_finance(client, _auth_headers(buyer))
+    await _consent_and_complete(client, db, deal["id"], buyer)
+
+    contract = (await db.execute(
+        select(Contract).where(
+            Contract.player_id == uuid.UUID(deal["player_id"]), Contract.is_active == True  # noqa: E712
+        )
+    )).scalar_one()
+    assert contract.wage_weekly == Decimal("50000.00"), "the consented wage, not the offer's 30k"
+    today = datetime.now(timezone.utc).date()
+    assert contract.end_date == _add_years(today, 4), "the consented four years, not open-ended"
+    after = await _get_finance(client, _auth_headers(buyer))
+    # Fee and bonus both spent; nothing left committed to this deal.
+    assert Decimal(after["transfer_spent"]) - Decimal(before["transfer_spent"]) == Decimal("5100000")
+    assert Decimal(after["transfer_committed"]) == Decimal("0")
+    assert Decimal(after["wage_committed_weekly"]) == Decimal("0")
+
+
+@pytest.mark.asyncio
+async def test_personal_terms_the_buyer_cannot_fund_are_refused_without_figures(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Either club may advance the deal, so the refusal must not tell the
+    seller what the buyer's budget is."""
+    from sqlalchemy import select
+
+    from app.clubs.models import ClubFinance
+
+    deal = await _create_deal_via_offer(client, buyer, seller, db, wage_weekly=30_000)
+    buyer_club_id = await _get_club_id(client, _auth_headers(buyer))
+    fin = (await db.execute(
+        select(ClubFinance).where(ClubFinance.club_id == uuid.UUID(buyer_club_id))
+    )).scalar_one()
+    fin.wage_budget_total_weekly = Decimal("40000")  # room for the 30k offered, not the 50k agreed
+    await db.commit()
+
+    with pytest.raises(AssertionError) as refused:
+        await _advance_through_personal_terms(client, deal["id"], buyer, db)
+    assert "budget does not cover the personal terms" in str(refused.value)
+    assert "40000" not in str(refused.value) and "40,000" not in str(refused.value)
+
+
+@pytest.mark.asyncio
+async def test_collapse_releases_everything_committed_to_the_deal(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Fee, add-ons, the signing bonus and the wage all come back."""
+    deal = await _create_deal_via_offer(
+        client, buyer, seller, db, wage_weekly=30_000,
+        clauses=[{"clause_type": "GOALS", "trigger_description": "10 goals", "amount": 750000}],
+    )
+    await _consent_and_complete(client, db, deal["id"], buyer, complete=False)
+
+    buy_h = _auth_headers(buyer)
+    mid = await _get_finance(client, buy_h)
+    assert Decimal(mid["transfer_committed"]) == Decimal("5850000")  # 5m + 750k add-on + 100k bonus
+    commitments = (await client.get("/clubs/me/commitments", headers=buy_h)).json()
+    deal_row = next(r for r in commitments["items"] if r["kind"] == "deal")
+    assert Decimal(str(deal_row["transfer_amount"])) == Decimal("5850000"), "the row must match the total"
+    assert Decimal(str(commitments["total_transfer_committed"])) == Decimal("5850000")
+
+    r = await client.post(f"/deals/{deal['id']}/collapse", headers=buy_h)
+    assert r.status_code == 200, r.text
+    after = await _get_finance(client, buy_h)
+    assert Decimal(after["transfer_committed"]) == Decimal("0")
+    assert Decimal(after["wage_committed_weekly"]) == Decimal("0")
+
+
+@pytest.mark.asyncio
+async def test_completion_releases_the_add_on_hold(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """Add-ons were committed at acceptance and never released at completion,
+    so a completed deal left them committed for good."""
+    deal = await _create_deal_via_offer(
+        client, buyer, seller, db, wage_weekly=30_000,
+        clauses=[{"clause_type": "APPEARANCES", "trigger_description": "50 apps", "amount": 1_000_000}],
+    )
+    await _consent_and_complete(client, db, deal["id"], buyer)
+    after = await _get_finance(client, _auth_headers(buyer))
+    assert Decimal(after["transfer_committed"]) == Decimal("0")

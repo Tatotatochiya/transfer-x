@@ -309,6 +309,9 @@ async def _execute(db: AsyncSession, approval: PendingApproval) -> None:
             recall_allowed=payload.get("recall_allowed", False),
             no_fee_reason=payload.get("no_fee_reason"),
             obligation_conditions=payload.get("obligation_conditions"),
+            instalments=payload.get("instalments") or [],
+            clauses=payload.get("clauses") or [],
+            sell_on_pct=_dec("sell_on_pct"),
         )
         if offer.to_club_id:
             await notify_club(

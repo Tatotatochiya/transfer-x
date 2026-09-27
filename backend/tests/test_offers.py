@@ -1669,3 +1669,90 @@ async def test_a_loan_is_refused_when_his_contract_has_no_wage(
     )
     assert resp.status_code == 400, resp.text
     assert "no wage on record" in resp.json()["detail"]
+
+
+
+# ── Deal structure is agreed on the offer ────────────────────────────────────
+
+
+async def _permanent_offer(client, db, buyer, seller, **terms):
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    return await client.post(
+        "/offers",
+        json={"player_id": player["id"], "to_club_id": seller_club_id, "fee_amount": 10_000_000, **terms},
+        headers=_auth_headers(buyer),
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("terms, message", [
+    ({"instalments": [{"due_date": "2027-08-01", "amount": 4_000_000}]}, "must add up to the fee"),
+    ({"instalments": [{"due_date": "2020-01-01", "amount": 10_000_000}]}, "due in the past"),
+    ({"sell_on_pct": 15}, "fraction"),
+    ({"clauses": [{"clause_type": "GOALS", "trigger_description": "10 goals",
+                   "amount": 2_000_000, "cap": 1_000_000}]}, "cap is below"),
+])
+async def test_offer_structure_is_validated(client, buyer, seller, db, terms, message):
+    resp = await _permanent_offer(client, db, buyer, seller, **terms)
+    assert resp.status_code == 400, resp.text
+    assert message in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_add_ons_on_an_offer_are_reserved(client, buyer, seller, db):
+    resp = await _permanent_offer(
+        client, db, buyer, seller,
+        clauses=[{"clause_type": "APPEARANCES", "trigger_description": "50 apps", "amount": 2_000_000}],
+    )
+    assert resp.status_code == 201, resp.text
+    buyer_club_id = (await client.get("/clubs/me", headers=_auth_headers(buyer))).json()["id"]
+    fin = await _finance(db, buyer_club_id)
+    await db.refresh(fin)
+    assert fin.transfer_reserved == Decimal("12000000.00")
+
+
+@pytest.mark.asyncio
+async def test_a_counter_cannot_move_the_fee_away_from_the_schedule(client, buyer, seller, db):
+    """A new fee against an unchanged schedule would leave it adding up to the
+    old fee; the counter must bring the schedule with it."""
+    offer = (await _permanent_offer(
+        client, db, buyer, seller,
+        instalments=[{"due_date": "2027-08-01", "amount": 10_000_000}],
+    )).json()
+    sel_headers = _auth_headers(seller)
+
+    resp = await client.post(f"/offers/{offer['id']}/counter", json={"fee_amount": 12_000_000}, headers=sel_headers)
+    assert resp.status_code == 400, resp.text
+    assert "must add up to the fee" in resp.json()["detail"]
+
+    resp = await client.post(
+        f"/offers/{offer['id']}/counter",
+        json={"fee_amount": 12_000_000, "instalments": [
+            {"due_date": "2027-08-01", "amount": 6_000_000},
+            {"due_date": "2028-08-01", "amount": 6_000_000},
+        ], "sell_on_pct": 0.1},
+        headers=sel_headers,
+    )
+    assert resp.status_code == 200, resp.text
+    assert len(resp.json()["instalments"]) == 2
+    assert Decimal(str(resp.json()["sell_on_pct"])) == Decimal("0.1")
+
+
+@pytest.mark.asyncio
+async def test_a_loan_carries_no_transfer_structure(client, buyer, seller, db):
+    offer_body = None
+    from datetime import date
+
+    await _give_budget(db)
+    await _give_wage_budget(db)
+    sel_headers = _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    await _contract(db, player["id"], seller_club_id, date(2027, 12, 31))
+    offer_body = _loan_body(player["id"], seller_club_id, sell_on_pct=0.2)
+    resp = await client.post("/offers", json=offer_body, headers=_auth_headers(buyer))
+    assert resp.status_code == 400, resp.text
+    assert "belong to a transfer" in resp.json()["detail"]

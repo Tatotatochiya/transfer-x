@@ -12,6 +12,11 @@ import ClubLink from "../../components/ui/ClubLink";
 import Metric from "../../components/ui/Metric";
 import Spinner from "../../components/ui/Spinner";
 import OfferThread from "../../components/offers/OfferThread";
+import DealStructureFields, {
+  structureBody,
+  structureError,
+  structureFromOffer,
+} from "../../components/offers/DealStructureFields";
 import SellerOrderBook from "../../components/sales/SellerOrderBook";
 import BuyerOrderBook from "../../components/sales/BuyerOrderBook";
 import { offerOutcome, offerStatusLabel } from "../../lib/badges";
@@ -38,6 +43,7 @@ function CounterForm({
   const [fee, setFee] = useState(offer.fee_amount != null ? String(Number(offer.fee_amount)) : "");
   const [wage, setWage] = useState(offer.wage_weekly != null ? String(Number(offer.wage_weekly)) : "");
   const [years, setYears] = useState(String(offer.contract_years ?? ""));
+  const [structure, setStructure] = useState(() => structureFromOffer(offer));
   // Loan terms — the counter negotiates the loan, never converts it into a
   // permanent offer (deal_type is fixed at offer time).
   const [loanFee, setLoanFee] = useState(offer.loan_fee != null ? String(Number(offer.loan_fee)) : "");
@@ -112,6 +118,21 @@ function CounterForm({
       if (wage && !isNaN(parsedWage)) body.wage_weekly = parsedWage;
       const parsedYears = parseInt(years);
       if (years && !isNaN(parsedYears)) body.contract_years = parsedYears;
+
+      // Structure: send only what moved. A schedule tied to the old fee has
+      // to move with a new one, and the server refuses it otherwise.
+      const newFee = fee && !isNaN(parsedFee) ? parsedFee : offer.fee_amount != null ? Number(offer.fee_amount) : null;
+      const problem = structureError(structure, newFee);
+      if (problem) {
+        setError(problem);
+        return;
+      }
+      const next = structureBody(structure);
+      const prev = structureBody(structureFromOffer(offer));
+      if (JSON.stringify(next.instalments) !== JSON.stringify(prev.instalments)) body.instalments = next.instalments;
+      if (JSON.stringify(next.clauses) !== JSON.stringify(prev.clauses)) body.clauses = next.clauses;
+      // null removes the sell-on (as distinct from leaving it out).
+      if (next.sell_on_pct !== prev.sell_on_pct) body.sell_on_pct = next.sell_on_pct;
     }
 
     if (Object.keys(body).length === 0) {
@@ -207,6 +228,13 @@ function CounterForm({
           </div>
         </div>
       )}
+      {!loan && (
+        <DealStructureFields
+          value={structure}
+          onChange={setStructure}
+          fee={fee && !isNaN(parseFloat(fee)) ? parseFloat(fee) : null}
+        />
+      )}
       {error && <p className="text-xs text-danger-text">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}>Submit counter</Button>
@@ -226,9 +254,28 @@ function CounterForm({
  */
 function OfferTerms({ offer }: { offer: Offer }) {
   if (!isLoan(offer)) {
+    const instalments = offer.instalments ?? [];
+    const clauses = offer.clauses ?? [];
     return (
       <div className="space-y-2">
         <Metric label="Transfer fee" value={offerHeadline(offer)} />
+        <Metric
+          label="Payment"
+          value={instalments.length === 0 ? "On completion" : `${instalments.length} instalments`}
+        />
+        {instalments.map((i, n) => (
+          <Metric key={`i${n}`} label={`  ${formatDate(i.due_date)}`} value={formatCurrency(Number(i.amount))} />
+        ))}
+        {clauses.map((c, n) => (
+          <Metric
+            key={`c${n}`}
+            label={`Add-on: ${c.trigger_description}`}
+            value={`${formatCurrency(Number(c.amount))}${c.cap != null ? ` (cap ${formatCurrency(Number(c.cap))})` : ""}`}
+          />
+        ))}
+        {offer.sell_on_pct != null && (
+          <Metric label="Sell-on" value={`${Math.round(Number(offer.sell_on_pct) * 1000) / 10}%`} />
+        )}
         {offer.wage_weekly != null && <Metric label="Wage" value={formatWage(offer.wage_weekly)} />}
         {offer.contract_years != null && <Metric label="Contract" value={`${offer.contract_years} years`} />}
         {offer.contract_end_date != null && <Metric label="Ends" value={formatDate(offer.contract_end_date)} />}

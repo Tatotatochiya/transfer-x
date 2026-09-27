@@ -33,11 +33,11 @@ A transfer begins with a selling club listing a player (see [`negotiation-and-of
 
 | Stage | Description |
 |---|---|
-| `AGREEMENT` | Initial stage after a bid/offer is accepted. Deal terms (fee, loan structure, clauses, instalments) can still be adjusted here. |
+| `AGREEMENT` | Initial stage after a bid/offer is accepted. The terms are fixed: the fee, the loan terms, the payment schedule, add-ons and sell-on were all agreed on the offer and are shown read-only in the deal room. To change them, the clubs collapse the deal and re-approach. |
 | `AGENT_NEGOTIATION` | Entered only when the player has an active agent mandate. The agent negotiates commission with the buying club only — see [`agent-representation.md`](./agent-representation.md). |
-| `PERSONAL_TERMS` | The player reviews and consents (or declines) the proposed wage, signing bonus, and contract length — proposed by the mandated agent, or the buying club when there's no mandate. The player consents themselves if they have an account; the mandated agent may act as their proxy only if they don't. |
-| `PAPERWORK` | Staff-managed documentation stage. |
-| `CONFIRMED` | Documentation verified; ready for the transfer to be executed. |
+| `PERSONAL_TERMS` | The player reviews and consents (or declines) the proposed wage, signing bonus, and contract length — proposed by the mandated agent, or the buying club when there's no mandate. The player consents themselves if they have an account; the mandated agent may act as their proxy only if they don't. When the deal moves on, **the consented terms become the deal's**: the wage replaces the offer's opening wage, and the difference and the bonus are committed against the buying club's budget. The deal is refused if that budget cannot cover them, and the message carries no figures. Loans are exempt: their wage and length are set by the loan. |
+| `PAPERWORK` | The clubs' checklist: each signs the transfer agreement, and the buying club records a passed medical and submits the registration. The last step confirms the deal; staff can override. See [`deal-completion.md`](./deal-completion.md). |
+| `CONFIRMED` | Paperwork complete; ready for the transfer to be executed. |
 | `COMPLETED` | The transfer is finalized. For a **permanent** deal the player's contract moves to the buying club. For a **loan** the registration moves but ownership does not — see [Deal types](#deal-types) below. |
 | `COLLAPSED` | Terminal state reachable from most stages if either party withdraws or a required consent is declined. |
 

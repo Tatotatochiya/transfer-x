@@ -21,6 +21,7 @@ import DealRoomPanel from "../../components/deals/DealRoomPanel";
 import { dealStatusVariant, dealStageLabel, dealTypeLabel } from "../../lib/badges";
 import { formatCurrency, formatDate, formatWage, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
+import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 
 const STAGE_SEQ: DealStage[] = [
@@ -432,11 +433,12 @@ const MEDICAL_STATUS_STYLE: Record<string, string> = {
 function MedicalCheckPanel({
   dealId,
   medicalCheck,
-  isStaff,
+  canRecord,
 }: {
   dealId: string;
   medicalCheck: Deal["medical_check"];
-  isStaff: boolean;
+  /** The buying club at PAPERWORK (it runs the medical), or staff. */
+  canRecord: boolean;
 }) {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
@@ -453,14 +455,17 @@ function MedicalCheckPanel({
         notes: notesDraft.trim() || null,
       }).then((r) => r.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
+      // A passed medical can be the step that completes the paperwork and
+      // confirms the deal, so refresh everything that shows its stage.
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       setEditing(false);
-      addToast("Medical check saved.", "success");
+      addToast("Medical recorded.", "success");
     },
     onError: (err: unknown) => addToast(getApiError(err, "Failed to save medical check."), "error"),
   });
 
-  if (!isStaff && !medicalCheck) return null;
+  if (!canRecord && !medicalCheck) return null;
 
   return (
     <Panel title="Medical Check">
@@ -479,12 +484,12 @@ function MedicalCheckPanel({
               <dd className="text-text-muted">{formatDate(medicalCheck.updated_at)}</dd>
             </dl>
           ) : (
-            <p className="text-sm text-text-muted pb-1">Not yet requested — doesn't block progression.</p>
+            <p className="text-sm text-text-muted pb-1">Not recorded yet. The buying club records it at the paperwork stage.</p>
           )}
           {medicalCheck?.status === "FAILED" && (
-            <p className="mt-2 text-xs text-danger-text/80">Blocks Paperwork → Confirmed until changed.</p>
+            <p className="mt-2 text-[13px] text-danger-text">A failed medical stops the deal moving on. Record a new result, or collapse the deal.</p>
           )}
-          {isStaff && (
+          {canRecord && (
             <button
               onClick={() => {
                 setStatusDraft(medicalCheck?.status ?? "PENDING");
@@ -533,13 +538,105 @@ function MedicalCheckPanel({
   );
 }
 
+// ── Paperwork checklist ───────────────────────────────────────────────────────
+
+/**
+ * The clubs complete PAPERWORK themselves — it used to wait for TransferX
+ * staff on every deal. Each step belongs to one club; the last one confirms
+ * the deal. Ticking is binding (it is on the audit trail and tells the other
+ * club), so each tick is confirmed first.
+ */
+function PaperworkChecklist({
+  deal,
+  side,
+  canAct,
+}: {
+  deal: Deal;
+  side: "buyer" | "seller" | null;
+  canAct: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const { addToast } = useToast();
+  const confirm = useConfirm();
+
+  const mutation = useMutation({
+    mutationFn: (step: "sign-agreement" | "submit-registration") =>
+      api.post<Deal>(`/deals/${deal.id}/paperwork/${step}`).then((r) => r.data),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      addToast(
+        updated.stage === "CONFIRMED" ? "Paperwork complete — the transfer is ready to execute." : "Done.",
+        "success",
+      );
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Could not complete that step."), "error"),
+  });
+
+  async function act(step: string) {
+    if (step === "agreement_buyer" || step === "agreement_seller") {
+      if (await confirm({
+        title: "Sign the transfer agreement",
+        message: "Confirm that your club has signed the transfer agreement for this deal. The other club is told.",
+        confirmLabel: "Confirm signed",
+      })) mutation.mutate("sign-agreement");
+    } else if (step === "registration") {
+      if (await confirm({
+        title: "Registration submitted",
+        message: "Confirm that the registration has been submitted to the league (and international clearance requested, if needed).",
+        confirmLabel: "Confirm submitted",
+      })) mutation.mutate("submit-registration");
+    }
+  }
+
+  const remaining = deal.paperwork.filter((s) => !s.done).length;
+  return (
+    <div className="mb-6 rounded-xl bg-surface px-5 py-4 ring-1 ring-border">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-sm font-bold text-text">Paperwork</p>
+        <span className="text-[13px] text-text-muted">
+          {remaining === 0 ? "Complete" : `${remaining} of ${deal.paperwork.length} to go`}
+        </span>
+      </div>
+      <ul className="space-y-2">
+        {deal.paperwork.map((s) => {
+          const mine = s.owner === side;
+          return (
+            <li key={s.key} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className={s.done ? "text-text-muted" : "text-text"}>
+                <span aria-hidden className={`mr-2 inline-block w-4 ${s.done ? "text-success-text" : "text-text-muted"}`}>
+                  {s.done ? "✓" : "○"}
+                </span>
+                {s.label}
+                {!s.done && !mine && <span className="ml-2 text-[13px] text-text-muted">— their move</span>}
+              </span>
+              {!s.done && mine && canAct && (
+                s.key === "medical" ? (
+                  <span className="text-[13px] text-text-muted">Record it in the Medical Check panel</span>
+                ) : (
+                  <Button size="sm" variant="primary" loading={mutation.isPending} onClick={() => act(s.key)}>
+                    {s.key === "registration" ? "Mark submitted" : "Mark signed"}
+                  </Button>
+                )
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-3 text-[13px] text-text-muted">
+        When every step is done the deal is confirmed and ready to execute.
+      </p>
+    </div>
+  );
+}
+
 // ── Blocked-on header ─────────────────────────────────────────────────────────
 
 const BLOCKER_LABEL: Partial<Record<DealStage, string>> = {
   AGREEMENT: "Club terms",
   AGENT_NEGOTIATION: "Agent commission",
   PERSONAL_TERMS: "Player consent",
-  PAPERWORK: "TransferX paperwork",
+  PAPERWORK: "Paperwork checklist",
   CONFIRMED: "Execution",
 };
 
@@ -805,18 +902,6 @@ export default function DealDetailPage() {
   const [showCollapsePanel, setShowCollapsePanel] = useState(false);
   const [collapseReason, setCollapseReason] = useState("");
 
-  // Deal builder state (TRA-59)
-  const [editingDealStructure, setEditingDealStructure] = useState(false);
-  // Only a permanent deal's sell-on is editable here; the type and loan terms
-  // were agreed on the offer.
-  const [dealDraft, setDealDraft] = useState({ sell_on_pct: "" });
-  const [addingClause, setAddingClause] = useState(false);
-  const [clauseDraft, setClauseDraft] = useState({
-    clause_type: "APPEARANCES", trigger_description: "", amount: "", cap: "",
-  });
-  const [editingInstalments, setEditingInstalments] = useState(false);
-  const [instalmentRows, setInstalmentRows] = useState<Array<{due_date: string; amount: string}>>([]);
-
   const { data: deal, isLoading, isError } = useQuery<Deal>({
     queryKey: ["deals", id],
     queryFn: () => api.get<Deal>(`/deals/${id}`).then((r) => r.data),
@@ -866,41 +951,6 @@ export default function DealDetailPage() {
       addToast("Deal collapsed.", "warning");
     },
     onError: (err) => addToast(getApiError(err, "Failed to collapse deal."), "error"),
-  });
-
-  // Deal builder mutations (TRA-59)
-  const updateDealMutation = useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      api.patch<Deal>(`/deals/${id}`, body).then((r) => r.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deals", id] });
-      setEditingDealStructure(false);
-      addToast("Deal updated.", "success");
-    },
-    onError: (err: unknown) => addToast(getApiError(err, "Failed to update deal."), "error"),
-  });
-
-  const addClauseMutation = useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      api.post(`/deals/${id}/clauses`, body).then((r) => r.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deals", id] });
-      setAddingClause(false);
-      setClauseDraft({ clause_type: "APPEARANCES", trigger_description: "", amount: "", cap: "" });
-      addToast("Clause added.", "success");
-    },
-    onError: (err: unknown) => addToast(getApiError(err, "Failed to add clause."), "error"),
-  });
-
-  const setInstalmentsMutation = useMutation({
-    mutationFn: (instalments: Array<{due_date: string; amount: number}>) =>
-      api.put(`/deals/${id}/instalments`, { instalments }).then((r) => r.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deals", id] });
-      setEditingInstalments(false);
-      addToast("Payment schedule saved.", "success");
-    },
-    onError: (err: unknown) => addToast(getApiError(err, "Failed to save schedule."), "error"),
   });
 
   // Load AgentNegotiation when deal is in that stage (TRA-128/129) — commission
@@ -953,10 +1003,10 @@ export default function DealDetailPage() {
   const isParty    = isBuyer || isSeller;
   const isActive   = deal.status === "IN_PROGRESS" || deal.status === "PENDING_COMPLETION";
 
-  const atAgreement        = deal.stage === "AGREEMENT";
   const atAgentNegotiation = deal.stage === "AGENT_NEGOTIATION";
   const atPersonalTerms    = deal.stage === "PERSONAL_TERMS";
-  // At PAPERWORK stage, clubs cannot advance — only staff can
+  // At PAPERWORK the clubs complete the checklist, which confirms the deal
+  // itself; the generic Advance button is not theirs to press.
   const atPaperwork        = deal.stage === "PAPERWORK";
   const atConfirmed        = deal.stage === "CONFIRMED";
   // TRA-151 (D4): club-side deal writes need DEAL_WRITE — SCOUT/READONLY staff
@@ -968,7 +1018,6 @@ export default function DealDetailPage() {
   const agentCanAdvance    = isAgent && isActive && atAgentNegotiation &&
     negotiation?.club_agreement === "AGREED";
   const clubCanCollapse       = isParty && isActive && canDealWrite;
-  const canEditDealStructure  = isParty && isActive && atAgreement && canDealWrite;
   // Set personal terms (ADR 0001): the mandated agent if this deal went through
   // AGENT_NEGOTIATION, otherwise the buying club when there's no mandate at all.
   const canSetPersonalTerms   = isActive && atPersonalTerms && !deal.personal_terms && (
@@ -996,22 +1045,21 @@ export default function DealDetailPage() {
 
       <ThreeLanes deal={deal} negotiation={negotiation} />
 
-      {/* PAPERWORK banner */}
-      {atPaperwork && isParty && deal.status === "IN_PROGRESS" && (
-        <div className="mb-6 rounded-xl bg-accent-bg px-5 py-4 text-sm text-accent-active ring-1 ring-accent/20">
-          <p className="font-semibold mb-1">TransferX is handling the paperwork</p>
-          <p className="text-accent-active/80">
-            Our team is processing the documentation. You'll be notified when it's ready for confirmation.
-          </p>
-        </div>
+      {/* PAPERWORK checklist — completed by the clubs, not TransferX staff */}
+      {atPaperwork && (isParty || isStaff) && deal.status === "IN_PROGRESS" && (
+        <PaperworkChecklist
+          deal={deal}
+          side={isBuyer ? "buyer" : isSeller ? "seller" : null}
+          canAct={isParty && canDealWrite}
+        />
       )}
 
       {/* CONFIRMED / Ready to Execute banner */}
-      {atConfirmed && isParty && deal.status === "IN_PROGRESS" && (
+      {atConfirmed && isParty && (deal.status === "IN_PROGRESS" || deal.status === "PENDING_COMPLETION") && (
         <div className="mb-6 rounded-xl bg-success/10 px-5 py-4 text-sm text-success-text ring-1 ring-success/20">
-          <p className="font-semibold mb-1">Documents verified — ready to execute</p>
+          <p className="font-semibold mb-1">Paperwork complete — ready to execute</p>
           <p className="text-success-text/80">
-            TransferX has processed all documentation. Use the <strong>Execute Transfer</strong> button to complete the deal and register the player.
+            Both clubs have completed the paperwork. Use <strong>Execute Transfer</strong> to complete the deal and register the player.
           </p>
         </div>
       )}
@@ -1235,13 +1283,13 @@ export default function DealDetailPage() {
         {/* ── Right: builder panels + notes + timeline ── */}
         <div className="lg:col-span-2 space-y-4">
 
-          {/* Deal Structure (TRA-56/59). The type and every loan term were
-              agreed on the offer and are fixed here — the server refuses to
-              change them. Editing them after acceptance re-opened the original
-              loan defect (one deal agreed, another run) and let the loan fee
-              drift from the budget committed at acceptance. Only a permanent
-              deal's sell-on stays editable, at AGREEMENT. */}
-          {(canEditDealStructure || deal.deal_type === "LOAN" || deal.sell_on_pct != null) && (
+          {/* Deal Structure (TRA-56/59). Read-only: the type, loan terms,
+              payment schedule, add-ons and sell-on were all agreed on the
+              offer, and the server refuses to change them here. They used to be
+              set in this room after the seller had accepted, by either club
+              alone — the seller agreed one deal and was asked to run another. */}
+          {(deal.deal_type === "LOAN" || deal.sell_on_pct != null || deal.contract_length_years != null ||
+            deal.clauses.length > 0 || deal.instalments.length > 0) && (
             <Panel title="Deal Structure">
               <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 <dt className="text-text-muted">Type</dt>
@@ -1280,254 +1328,88 @@ export default function DealDetailPage() {
                     <dd className="text-text">{deal.recall_allowed ? "His club may recall him" : "Not allowed"}</dd>
                   </>
                 )}
-                {deal.deal_type !== "LOAN" && !editingDealStructure && deal.sell_on_pct != null && (
+                {deal.deal_type !== "LOAN" && (
                   <>
-                    <dt className="text-text-muted">Sell-on</dt>
-                    <dd className="text-text">{(Number(deal.sell_on_pct) * 100).toFixed(1)}%</dd>
+                    <dt className="text-text-muted">Payment</dt>
+                    <dd className="text-text">
+                      {deal.instalments.length > 0 ? `${deal.instalments.length} instalments` : "On completion"}
+                    </dd>
+                    {deal.sell_on_pct != null && (
+                      <>
+                        <dt className="text-text-muted">Sell-on</dt>
+                        <dd className="text-text">{(Number(deal.sell_on_pct) * 100).toFixed(1)}%</dd>
+                      </>
+                    )}
+                    {/* The personal terms the player consented to — the
+                        contract completion will create. */}
+                    {deal.contract_length_years != null && (
+                      <>
+                        <dt className="text-text-muted">Contract</dt>
+                        <dd className="text-text">
+                          {deal.contract_length_years} years
+                          {deal.agreed_wage_weekly != null && ` at ${formatCurrency(deal.agreed_wage_weekly)}/wk`}
+                        </dd>
+                      </>
+                    )}
+                    {deal.signing_bonus != null && (
+                      <>
+                        <dt className="text-text-muted">Signing bonus</dt>
+                        <dd className="text-text">{formatCurrency(deal.signing_bonus)}</dd>
+                      </>
+                    )}
                   </>
                 )}
               </dl>
-
-              {deal.deal_type === "LOAN" ? (
-                <p className="mt-3 text-[13px] text-text-muted">
-                  Agreed on the offer and fixed for this deal. To change them, collapse the deal and
-                  re-approach.
-                </p>
-              ) : editingDealStructure ? (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="mb-1 block text-xs text-text-muted">Sell-on (%)</label>
-                    <input
-                      type="number" step="0.5" min={0} max={100}
-                      value={dealDraft.sell_on_pct}
-                      onChange={(e) => setDealDraft({ sell_on_pct: e.target.value })}
-                      className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
-                    />
-                    <p className="mt-0.5 text-[13px] text-text-muted">
-                      Share of any future fee his club receives if you sell him on.
-                    </p>
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      loading={updateDealMutation.isPending}
-                      onClick={() => {
-                        const pct = parseFloat(dealDraft.sell_on_pct);
-                        if (isNaN(pct) || pct < 0 || pct > 100) {
-                          addToast("Sell-on must be between 0 and 100%.", "error");
-                          return;
-                        }
-                        // The API takes a fraction, like wage_split_pct.
-                        updateDealMutation.mutate({ sell_on_pct: pct / 100 });
-                      }}
-                    >
-                      Save
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setEditingDealStructure(false)}>Cancel</Button>
-                  </div>
-                </div>
-              ) : (
-                canEditDealStructure && (
-                  <button
-                    onClick={() => {
-                      setDealDraft({
-                        sell_on_pct: deal.sell_on_pct != null ? String(Number(deal.sell_on_pct) * 100) : "",
-                      });
-                      setEditingDealStructure(true);
-                    }}
-                    className="mt-3 text-xs text-text-muted hover:text-accent transition-colors"
-                  >
-                    {deal.sell_on_pct != null ? "Edit sell-on →" : "Add a sell-on →"}
-                  </button>
-                )
-              )}
+              <p className="mt-3 text-[13px] text-text-muted">
+                Agreed on the offer and fixed for this deal. To change them, collapse the deal and
+                re-approach.
+              </p>
             </Panel>
           )}
 
-          {/* Add-on clauses (TRA-57/59) */}
-          {(canEditDealStructure || deal.clauses.length > 0) && (
-            <Panel title={`Add-on Clauses${deal.clauses.length > 0 ? ` (${deal.clauses.length})` : ""}`}>
-              {deal.clauses.length > 0 && (
-                <div className="space-y-2 mb-3">
-                  {deal.clauses.map((c) => (
-                    <div key={c.id} className="rounded-lg bg-surface-inset px-3 py-2.5 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-text-secondary capitalize">
-                          {c.clause_type.toLowerCase()} clause
-                        </p>
-                        <p className="text-xs text-text-muted truncate">{c.trigger_description}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-text">{formatCurrency(c.amount)}</p>
-                        {c.cap != null && (
-                          <p className="text-[13px] text-text-muted">cap {formatCurrency(c.cap)}</p>
-                        )}
-                      </div>
-                      <span className={`text-[11px] px-1.5 py-0.5 rounded font-semibold ${
-                        c.status === "PAID"      ? "bg-success/15 text-success-text" :
-                        c.status === "TRIGGERED" ? "bg-warning-fill/15 text-warning-text"    :
-                                                    "bg-surface-inset text-text-muted"
-                      }`}>{c.status}</span>
+          {/* Add-on clauses (TRA-57/59) — agreed on the offer; shown here. */}
+          {deal.clauses.length > 0 && (
+            <Panel title={`Add-ons (${deal.clauses.length})`}>
+              <div className="space-y-2">
+                {deal.clauses.map((c) => (
+                  <div key={c.id} className="rounded-lg bg-surface-inset px-3 py-2.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-text-secondary capitalize">
+                        {c.clause_type.toLowerCase()}
+                      </p>
+                      <p className="text-xs text-text-muted truncate">{c.trigger_description}</p>
                     </div>
-                  ))}
-                </div>
-              )}
-              {canEditDealStructure && !addingClause && (
-                <button
-                  onClick={() => setAddingClause(true)}
-                  className="text-xs text-text-muted hover:text-accent transition-colors"
-                >
-                  + Add clause
-                </button>
-              )}
-              {addingClause && (
-                <div className="rounded-lg bg-surface-inset px-4 py-3 ring-1 ring-border space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="mb-1 block text-xs text-text-muted">Type</label>
-                      <select
-                        value={clauseDraft.clause_type}
-                        onChange={(e) => setClauseDraft((d) => ({ ...d, clause_type: e.target.value }))}
-                        className="w-full rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
-                      >
-                        {["APPEARANCES", "GOALS", "PROMOTION", "RESALE", "OTHER"].map((t) => (
-                          <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs text-text-muted">Amount (€)</label>
-                      <CurrencyInput
-                        value={clauseDraft.amount}
-                        onChange={(v) => setClauseDraft((d) => ({ ...d, amount: v }))}
-                        className="w-full rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-text-muted">Trigger description</label>
-                    <input
-                      type="text"
-                      value={clauseDraft.trigger_description}
-                      onChange={(e) => setClauseDraft((d) => ({ ...d, trigger_description: e.target.value }))}
-                      placeholder="e.g. Player makes 10+ appearances"
-                      className="w-full rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-text-muted">Cap (€, optional)</label>
-                    <CurrencyInput
-                      value={clauseDraft.cap}
-                      onChange={(v) => setClauseDraft((d) => ({ ...d, cap: v }))}
-                      className="w-full rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
-                    />
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      loading={addClauseMutation.isPending}
-                      disabled={!clauseDraft.trigger_description || !clauseDraft.amount}
-                      onClick={() => addClauseMutation.mutate({
-                        clause_type: clauseDraft.clause_type,
-                        trigger_description: clauseDraft.trigger_description,
-                        amount: Number(clauseDraft.amount),
-                        ...(clauseDraft.cap ? { cap: Number(clauseDraft.cap) } : {}),
-                      })}
-                    >
-                      Add clause
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setAddingClause(false)}>Cancel</Button>
-                  </div>
-                </div>
-              )}
-            </Panel>
-          )}
-
-          {/* Instalment schedule (TRA-58/59) */}
-          {(canEditDealStructure || deal.instalments.length > 0) && (
-            <Panel title={`Payment Schedule${deal.instalments.length > 0 ? ` (${deal.instalments.length} instalments)` : ""}`}>
-              {deal.instalments.length > 0 && !editingInstalments && (
-                <div className="space-y-1.5 mb-3">
-                  {deal.instalments.map((inst) => (
-                    <div key={inst.id} className="flex items-center justify-between text-sm">
-                      <span className="text-text-muted">{formatDate(inst.due_date)}</span>
-                      <span className="font-semibold text-text">{formatCurrency(inst.amount)}</span>
-                      <span className={inst.paid ? "text-success-text text-xs" : "text-text-muted text-xs"}>
-                        {inst.paid ? `Paid ${inst.paid_at ? formatDate(inst.paid_at) : ""}` : "Pending"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {canEditDealStructure && !editingInstalments && (
-                <button
-                  onClick={() => {
-                    setInstalmentRows(
-                      deal.instalments.length > 0
-                        ? deal.instalments.map((i) => ({ due_date: i.due_date, amount: String(i.amount) }))
-                        : [{ due_date: "", amount: "" }]
-                    );
-                    setEditingInstalments(true);
-                  }}
-                  className="text-xs text-text-muted hover:text-accent transition-colors"
-                >
-                  {deal.instalments.length > 0 ? "Edit schedule →" : "Set payment schedule"}
-                </button>
-              )}
-              {editingInstalments && (
-                <div className="space-y-2">
-                  {instalmentRows.map((row, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <input
-                        type="date"
-                        value={row.due_date}
-                        onChange={(e) => setInstalmentRows((rows) => rows.map((r, j) => j === i ? { ...r, due_date: e.target.value } : r))}
-                        className="flex-1 rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
-                      />
-                      <CurrencyInput
-                        placeholder="Amount (€)"
-                        value={row.amount}
-                        onChange={(v) => setInstalmentRows((rows) => rows.map((r, j) => j === i ? { ...r, amount: v } : r))}
-                        className="flex-1 rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
-                      />
-                      <button
-                        onClick={() => setInstalmentRows((rows) => rows.filter((_, j) => j !== i))}
-                        className="px-1 text-text-muted hover:text-danger-text transition-colors text-xs"
-                        title="Remove"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <div className="text-xs text-text-muted pt-1">
-                    Total: <span className="text-text font-semibold">{formatCurrency(instalmentRows.reduce((s, r) => s + (Number(r.amount) || 0), 0))}</span>
-                    {" / "}
-                    <span className="text-text-secondary">{formatCurrency(deal.agreed_fee)} agreed fee</span>
-                  </div>
-                  <div className="flex items-center gap-3 flex-wrap pt-1">
-                    <button
-                      onClick={() => setInstalmentRows((rows) => [...rows, { due_date: "", amount: "" }])}
-                      className="text-xs text-text-muted hover:text-accent transition-colors"
-                    >
-                      + Add instalment
-                    </button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      loading={setInstalmentsMutation.isPending}
-                      disabled={instalmentRows.some((r) => !r.due_date || !r.amount)}
-                      onClick={() => setInstalmentsMutation.mutate(
-                        instalmentRows.map((r) => ({ due_date: r.due_date, amount: Number(r.amount) }))
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-semibold text-text">{formatCurrency(c.amount)}</p>
+                      {c.cap != null && (
+                        <p className="text-[13px] text-text-muted">cap {formatCurrency(c.cap)}</p>
                       )}
-                    >
-                      Save schedule
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setEditingInstalments(false)}>Cancel</Button>
+                    </div>
+                    <span className={`text-[11px] px-1.5 py-0.5 rounded font-semibold ${
+                      c.status === "PAID"      ? "bg-success/15 text-success-text" :
+                      c.status === "TRIGGERED" ? "bg-warning-fill/15 text-warning-text"    :
+                                                  "bg-surface-inset text-text-muted"
+                    }`}>{c.status}</span>
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
+            </Panel>
+          )}
+
+          {/* Instalment schedule (TRA-58/59) — agreed on the offer; shown here. */}
+          {deal.instalments.length > 0 && (
+            <Panel title={`Payment Schedule (${deal.instalments.length} instalments)`}>
+              <div className="space-y-1.5">
+                {deal.instalments.map((inst) => (
+                  <div key={inst.id} className="flex items-center justify-between text-sm">
+                    <span className="text-text-muted">{formatDate(inst.due_date)}</span>
+                    <span className="font-semibold text-text">{formatCurrency(inst.amount)}</span>
+                    <span className={inst.paid ? "text-success-text text-xs" : "text-text-muted text-xs"}>
+                      {inst.paid ? `Paid ${inst.paid_at ? formatDate(inst.paid_at) : ""}` : "Pending"}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </Panel>
           )}
 
@@ -1599,7 +1481,13 @@ export default function DealDetailPage() {
           ) : null}
 
           {/* Medical check (TRA-61) — staff sets it; every participant can see it */}
-          {id && <MedicalCheckPanel dealId={id} medicalCheck={deal.medical_check} isStaff={isStaff} />}
+          {id && (
+            <MedicalCheckPanel
+              dealId={id}
+              medicalCheck={deal.medical_check}
+              canRecord={isStaff || (isBuyer && atPaperwork && deal.status === "IN_PROGRESS" && canDealWrite)}
+            />
+          )}
 
           <Panel title="Deal Notes">
             {deal.deal_notes.length === 0 ? (

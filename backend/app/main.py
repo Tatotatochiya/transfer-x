@@ -92,6 +92,21 @@ async def _enrichment_sync_job() -> None:
             logger.exception("Error in enrichment sync job")
 
 
+async def _daily_digest_job() -> None:
+    """Email each club decision-maker what is waiting on them, once a day.
+    Hourly so a restart never skips a day; `last_digest_sent_at` keeps it to
+    one each (notifications/digest.py)."""
+    from app.notifications.digest import send_daily_digests
+
+    async with AsyncSessionLocal() as db:
+        try:
+            sent = await send_daily_digests(db)
+            if sent:
+                logger.info("Daily digest: %s sent", sent)
+        except Exception:
+            logger.exception("Error in daily digest job")
+
+
 async def _loan_lifecycle_job() -> None:
     """Return loans that have reached their end date, and warn on those about
     to. Without this a loan has no way to end on its own — which is why the
@@ -230,6 +245,10 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(
         _loan_lifecycle_job, "interval", hours=24, id="loan_lifecycle",
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+    )
+    _scheduler.add_job(
+        _daily_digest_job, "interval", hours=1, id="daily_digest",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=20),
     )
     _scheduler.start()
     logger.info("APScheduler started")

@@ -31,6 +31,11 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # When the daily digest last went out, so it goes once a day however often
+    # the scheduler restarts (notifications/digest.py).
+    last_digest_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"

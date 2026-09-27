@@ -36,6 +36,7 @@ See the repository root [`README.md`](../../README.md) for exact, current comman
 | Frontend | `http://localhost:5173` |
 | Backend API | `http://localhost:8001` |
 | API docs (Swagger) | `http://localhost:8001/docs` |
+| Local mailbox (Mailpit) | `http://localhost:8025` — every email the API sends locally (notifications, the daily digest, staff invitations) lands here; nothing leaves the machine. `docker-compose.yml` points the API's `SMTP_*` at it. |
 | PostgreSQL | `localhost:5432` |
 
 ## Rationale

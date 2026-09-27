@@ -25,6 +25,12 @@ services:
     env_file: .env
     environment:
       POSTGRES_HOST: db
+      # Local email goes to Mailpit (below), so notifications and the daily
+      # digest can be seen at http://localhost:8025 instead of being skipped.
+      # Deployed environments set real SMTP_* values instead.
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_USE_TLS: "false"
     volumes:
       - ./backend:/app
     ports:
@@ -32,6 +38,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  # ── Local mailbox ──────────────────────────────────────────────────────────
+  # Catches every email the API sends in development; nothing leaves the
+  # machine. Inbox at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
 
   # ── React frontend ─────────────────────────────────────────────────────────
   frontend:

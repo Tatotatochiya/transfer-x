@@ -54,6 +54,15 @@ class Offer(Base):
     contract_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
     contract_end_date: Mapped[datetime | None] = mapped_column(Date, nullable=True)
     add_ons: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    # Deal structure, agreed here rather than in the deal room after acceptance
+    # (migration 0075). Copied onto the deal's instalments and clauses when the
+    # offer is accepted. Permanent offers only.
+    #   instalments: [{"due_date": "YYYY-MM-DD", "amount": "…"}], summing to the fee
+    #   clauses:     [{"clause_type": ClauseType, "trigger_description": str,
+    #                  "amount": "…", "cap": "…" | null}]
+    instalments: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
+    clauses: Mapped[list] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
+    sell_on_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
     # Loan terms (feature_spec/loan-transfers.md phase 1). The type is fixed at
     # approach time and is deliberately NOT counterable: countering a loan with
     # a permanent offer is a different proposal, and letting it mutate would

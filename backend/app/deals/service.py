@@ -29,6 +29,7 @@ from app.deals.models import (
 )
 from app.loans import service as loans_service
 from app.loans.models import LoanEndReason
+from app.notifications.models import NotificationType
 from app.players import service as players_service
 from app.players.models import Contract, Player
 
@@ -41,7 +42,171 @@ _DEAL_SLA_DAYS = 14
 _AGENT_SILENCE_HOURS = 72
 
 
-def compute_deal_whose_move(deal: Deal) -> WhoseMove:
+async def _lock(db: AsyncSession, obj, *attributes: str) -> None:
+    """Re-read `attributes` of `obj` with SELECT … FOR UPDATE and hold the row
+    lock until the transaction commits (audit H3).
+
+    Money paths check a state and then act on it — "is the deal CONFIRMED?
+    then complete it", "is this instalment unpaid? then pay it". Without the
+    lock two concurrent requests can both pass the check and both act: the
+    player transferred twice, the instalment credited twice. With it the
+    second waits for the first, then re-reads the state the first left and is
+    refused. Only the named columns are refreshed, so relationships loaded
+    earlier in the request stay loaded. (SQLite ignores FOR UPDATE; the tests
+    run there, so this is exercised against Postgres only.)
+    """
+    await db.refresh(obj, attribute_names=list(attributes), with_for_update=True)
+
+
+# ── Club-run paperwork (migration 0077) ───────────────────────────────────────
+#
+# PAPERWORK used to be a staff-only stage: every deal waited for TransferX to
+# move it on, and only staff could record the medical. The clubs complete it
+# themselves now. Each step belongs to one club; the last one moves the deal
+# to CONFIRMED. Staff can still advance it directly.
+
+PAPERWORK_STEP_LABELS = {
+    "agreement_buyer": "Buying club signs the transfer agreement",
+    "agreement_seller": "Selling club signs the transfer agreement",
+    "medical": "Buying club records a passed medical",
+    "registration": "Buying club submits the registration",
+}
+
+
+def paperwork_steps(deal: Deal) -> list[dict]:
+    """The checklist for this deal, in order: key, owning side, done or not.
+    A deal with no selling club (a free-agent signing) has no seller step."""
+    medical = deal.medical_check
+    steps = [
+        ("agreement_buyer", "buyer", deal.agreement_signed_by_buyer_at is not None),
+        ("agreement_seller", "seller", deal.agreement_signed_by_seller_at is not None),
+        ("medical", "buyer", medical is not None and medical.status == MedicalStatus.PASSED),
+        ("registration", "buyer", deal.registration_submitted_at is not None),
+    ]
+    return [
+        {"key": key, "owner": owner, "label": PAPERWORK_STEP_LABELS[key], "done": done}
+        for key, owner, done in steps
+        if not (owner == "seller" and deal.seller_club_id is None)
+    ]
+
+
+def outstanding_paperwork_for(deal: Deal, club_id: uuid.UUID | None) -> list[str]:
+    """This club's paperwork steps not yet done — empty unless at PAPERWORK."""
+    if deal.stage != DealStage.PAPERWORK or club_id is None:
+        return []
+    side = (
+        "buyer" if club_id == deal.buyer_club_id
+        else "seller" if club_id == deal.seller_club_id
+        else None
+    )
+    return [s["key"] for s in paperwork_steps(deal) if s["owner"] == side and not s["done"]]
+
+
+def _enter_confirmed(deal: Deal) -> None:
+    """Everything is agreed and done — only execution is left, on an SLA."""
+    deal.stage = DealStage.CONFIRMED
+    deal.status = DealStatus.PENDING_COMPLETION
+    deal.sla_deadline = datetime.now(timezone.utc) + timedelta(days=_DEAL_SLA_DAYS)
+
+
+async def _finish_paperwork_if_complete(
+    db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UUID | None = None
+) -> bool:
+    """Move the deal to CONFIRMED once every step is done. Returns whether it did."""
+    if deal.stage != DealStage.PAPERWORK or not all(s["done"] for s in paperwork_steps(deal)):
+        return False
+    _enter_confirmed(deal)
+    await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="PAPERWORK_COMPLETED",
+        actor_user_id=actor_user_id,
+        description="Paperwork complete — deal confirmed and ready to execute",
+    )
+    from app.notifications.service import notify_club
+
+    player = deal.player.name if deal.player else "the player"
+    for club_id in (deal.buyer_club_id, deal.seller_club_id):
+        if club_id is not None:
+            await notify_club(
+                db, club_id,
+                type=NotificationType.DEAL_PAPERWORK,
+                message=f"Paperwork complete for {player} — the transfer is ready to execute",
+                link=f"/deals/{deal.id}",
+                related_player_id=deal.player_id,
+            )
+    return True
+
+
+async def complete_paperwork_step(
+    db: AsyncSession,
+    deal: Deal,
+    step: str,
+    *,
+    actor_club_id: uuid.UUID,
+    actor_user_id: uuid.UUID | None = None,
+) -> Deal:
+    """A club ticks one of its own paperwork steps: `sign-agreement` (either
+    club, for its own side) or `submit-registration` (buying club). The
+    medical is recorded through `upsert_medical_check`."""
+    await _lock(db, deal, "status", "stage", "agreement_signed_by_buyer_at",
+                "agreement_signed_by_seller_at", "registration_submitted_at")
+    if deal.stage != DealStage.PAPERWORK or deal.status != DealStatus.IN_PROGRESS:
+        raise ValueError("The deal is not at the paperwork stage")
+    _require_party(deal, actor_club_id)
+    is_buyer = actor_club_id == deal.buyer_club_id
+    now = datetime.now(timezone.utc)
+
+    if step == "sign-agreement":
+        if is_buyer:
+            if deal.agreement_signed_by_buyer_at is not None:
+                raise ValueError("Your club has already signed the transfer agreement")
+            deal.agreement_signed_by_buyer_at = now
+        else:
+            if deal.agreement_signed_by_seller_at is not None:
+                raise ValueError("Your club has already signed the transfer agreement")
+            deal.agreement_signed_by_seller_at = now
+        done = "signed the transfer agreement"
+    elif step == "submit-registration":
+        if not is_buyer:
+            raise PermissionError("The buying club submits the registration")
+        if deal.registration_submitted_at is not None:
+            raise ValueError("The registration has already been submitted")
+        deal.registration_submitted_at = now
+        done = "submitted the registration"
+    else:
+        raise ValueError(f"Unknown paperwork step: {step}")
+
+    await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="PAPERWORK_STEP",
+        actor_user_id=actor_user_id,
+        payload={"step": step, "side": "buyer" if is_buyer else "seller"},
+        description=f"{'Buying' if is_buyer else 'Selling'} club {done}",
+    )
+    if not await _finish_paperwork_if_complete(db, deal, actor_user_id=actor_user_id):
+        other = deal.seller_club_id if is_buyer else deal.buyer_club_id
+        if other is not None:
+            from app.notifications.service import notify_club
+
+            actor = deal.buyer_club if is_buyer else deal.seller_club
+            await notify_club(
+                db, other,
+                type=NotificationType.DEAL_PAPERWORK,
+                message=(
+                    f"{actor.name if actor else 'The other club'} {done} for "
+                    f"{deal.player.name if deal.player else 'the player'}"
+                ),
+                link=f"/deals/{deal.id}",
+                related_player_id=deal.player_id,
+            )
+    return deal
+
+
+def compute_deal_whose_move(deal: Deal, viewer_club_id: uuid.UUID | None = None) -> WhoseMove:
     """B1: mirrors dealWhoseMove() in frontend/src/lib/whoseMove.ts exactly,
     including what it does NOT do: distinguish buyer from seller. At
     CONFIRMED both clubs must sign and per-club signature status isn't
@@ -54,6 +219,12 @@ def compute_deal_whose_move(deal: Deal) -> WhoseMove:
         return WhoseMove.NEITHER
     if deal.stage == DealStage.CONFIRMED:
         return WhoseMove.YOUR
+    # The paperwork checklist knows exactly whose steps are outstanding.
+    if deal.stage == DealStage.PAPERWORK and viewer_club_id is not None:
+        if outstanding_paperwork_for(deal, viewer_club_id):
+            return WhoseMove.YOUR
+        other = deal.seller_club_id if viewer_club_id == deal.buyer_club_id else deal.buyer_club_id
+        return WhoseMove.THEIR if outstanding_paperwork_for(deal, other) else WhoseMove.NEITHER
     if deal.stage == DealStage.AGENT_NEGOTIATION:
         updated_at = deal.updated_at
         if updated_at.tzinfo is None:  # SQLite drops tzinfo
@@ -395,6 +566,82 @@ async def get_transfer_analytics(db: AsyncSession) -> dict:
     }
 
 
+def _add_years(start: date, years: int) -> date:
+    try:
+        return start.replace(year=start.year + years)
+    except ValueError:  # 29 February into a non-leap year
+        return start.replace(year=start.year + years, month=2, day=28)
+
+
+_CANNOT_FUND_TERMS = (
+    "The buying club's budget does not cover the personal terms the player agreed — "
+    "the buying club needs to free budget before the deal can move to paperwork"
+)
+
+
+async def _apply_consented_terms(
+    db: AsyncSession, deal: Deal, pt, *, actor_user_id: uuid.UUID | None = None
+) -> None:
+    """Make the personal terms the player consented to the deal's terms.
+
+    The player agrees a wage, signing bonus and contract length here, and
+    completion used to ignore all three: it built his contract from the
+    offer's opening wage, with no end date and no bonus — so the consent on
+    record was not the contract executed. The consented wage replaces
+    `agreed_wage_weekly`; the bonus and length are recorded on the deal and
+    used at completion.
+
+    The buyer's commitment follows: the wage difference and the bonus are
+    committed now, as acceptance commits the fee. The failure message carries
+    no figures, since either club may be the one advancing and the seller
+    must not learn the buyer's budget from it.
+
+    A loan is left alone: its wage is set by the loan's terms (a share of his
+    contract wage) and its contract ends with the loan.
+    """
+    if deal.deal_type == DealType.LOAN:
+        return
+
+    old_wage = deal.agreed_wage_weekly or Decimal("0")
+    new_wage = pt.wage_weekly if pt.wage_weekly is not None else old_wage
+    wage_delta = new_wage - old_wage
+    bonus = pt.signing_bonus or Decimal("0")
+
+    if wage_delta > 0 or bonus > 0:
+        try:
+            await clubs_module.service.reserve_budget(
+                db, club_id=deal.buyer_club_id,
+                transfer_amount=bonus, wage_weekly=max(Decimal("0"), wage_delta),
+            )
+        except ValueError as exc:
+            raise ValueError(_CANNOT_FUND_TERMS) from exc
+        await clubs_module.service.commit_budget(
+            db, club_id=deal.buyer_club_id,
+            transfer_amount=bonus, wage_weekly=max(Decimal("0"), wage_delta),
+        )
+    if wage_delta < 0:
+        fin = await clubs_module.service.get_finance_for_update(db, deal.buyer_club_id)
+        if fin:
+            fin.wage_committed_weekly = max(Decimal("0"), fin.wage_committed_weekly + wage_delta)
+
+    deal.agreed_wage_weekly = new_wage if new_wage > 0 else deal.agreed_wage_weekly
+    deal.signing_bonus = bonus if bonus > 0 else None
+    deal.contract_length_years = pt.length_years
+    await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="PERSONAL_TERMS_APPLIED",
+        actor_user_id=actor_user_id,
+        payload={
+            "wage_weekly": str(new_wage),
+            "signing_bonus": str(bonus),
+            "contract_length_years": pt.length_years,
+        },
+        description="Consented personal terms became the deal's contract terms",
+    )
+
+
 async def advance_deal(
     db: AsyncSession,
     deal: Deal,
@@ -420,6 +667,7 @@ async def advance_deal(
       deadline — everything is agreed, only administrative execution is left.
     - CONFIRMED → COMPLETED: clubs or staff (triggers player transfer)
     """
+    await _lock(db, deal, "status", "stage")
     if deal.status not in (DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION):
         raise ValueError("Only IN_PROGRESS or PENDING_COMPLETION deals can be advanced")
 
@@ -474,11 +722,17 @@ async def advance_deal(
             raise ValueError("Personal terms have not been set yet")
         if pt.player_consent != AgreementStatus.AGREED:
             raise ValueError("Player has not consented to the personal terms")
+        await _apply_consented_terms(db, deal, pt, actor_user_id=actor_user_id)
         deal.stage = DealStage.PAPERWORK
 
     elif stage == DealStage.PAPERWORK:
+        # The clubs complete the checklist, and its last step moves the deal
+        # on (complete_paperwork_step / upsert_medical_check). Advancing it
+        # directly is the staff override.
         if not is_staff:
-            raise PermissionError("TransferX is handling the paperwork — staff only action")
+            raise ValueError(
+                "Complete the paperwork checklist — the deal moves on when every step is done"
+            )
         # TRA-61: block if medical check exists and is FAILED (missing = not yet done, allowed)
         mc_result = await db.execute(
             select(MedicalCheck).where(MedicalCheck.deal_id == deal.id)
@@ -486,11 +740,7 @@ async def advance_deal(
         mc = mc_result.scalar_one_or_none()
         if mc is not None and mc.status == MedicalStatus.FAILED:
             raise ValueError("Cannot advance: medical check has failed")
-        deal.stage = DealStage.CONFIRMED
-        # Item 5: everything is agreed — this is now purely administrative
-        # execution, with an SLA so it doesn't just sit here indefinitely.
-        deal.status = DealStatus.PENDING_COMPLETION
-        deal.sla_deadline = datetime.now(timezone.utc) + timedelta(days=_DEAL_SLA_DAYS)
+        _enter_confirmed(deal)
 
     elif stage == DealStage.CONFIRMED:
         deal.stage = DealStage.COMPLETED
@@ -577,20 +827,33 @@ async def collapse_deal(
     bidders were never told they could come back. Reopen the sale (if any) and
     let every club that had bid on it know it's live again.
     """
+    await _lock(db, deal, "status", "stage")
     if deal.status in (DealStatus.COMPLETED, DealStatus.COLLAPSED):
-        raise ValueError(f"Deal is already {deal.status}")
+        raise ValueError(f"This deal is already {deal.status.value.lower()}")
 
     _require_party(deal, actor_club_id, is_staff)
 
-    # Release committed budget back to available for buyer
-    if deal.agreed_fee and deal.agreed_fee > 0:
-        finance = await clubs_module.service.get_finance_for_update(db, deal.buyer_club_id)
-        if finance:
-            finance.transfer_committed = max(Decimal("0"), finance.transfer_committed - deal.agreed_fee)
-            if deal.agreed_wage_weekly:
-                finance.wage_committed_weekly = max(
-                    Decimal("0"), finance.wage_committed_weekly - deal.agreed_wage_weekly
-                )
+    # Release everything the buyer has committed to this deal: the fee, any
+    # add-ons held with it, a signing bonus committed at personal terms, and
+    # the wage. The wage used to be released only when there was a fee, so a
+    # collapsed free-agent signing kept its wage committed for good.
+    addons = sum(
+        (c.amount for c in (await db.execute(
+            select(DealClause).where(DealClause.deal_id == deal.id)
+        )).scalars()),
+        Decimal("0"),
+    )
+    transfer = (deal.agreed_fee or Decimal("0")) + addons + (deal.signing_bonus or Decimal("0"))
+    finance = await clubs_module.service.get_finance_for_update(db, deal.buyer_club_id)
+    if finance:
+        if transfer > 0:
+            finance.transfer_committed = max(Decimal("0"), finance.transfer_committed - transfer)
+        # A loan committed only the borrowing club's share of the wage.
+        wage = deal.agreed_wage_weekly or Decimal("0")
+        if deal.deal_type == DealType.LOAN and deal.wage_split_pct is not None:
+            wage = (wage * deal.wage_split_pct).quantize(Decimal("0.01"))
+        if wage > 0:
+            finance.wage_committed_weekly = max(Decimal("0"), finance.wage_committed_weekly - wage)
 
     deal.status = DealStatus.COLLAPSED
     await audit_service.emit(
@@ -654,6 +917,7 @@ async def add_note(
 
 async def staff_complete(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UUID | None = None) -> Deal:
     """Staff override: force deal to COMPLETED, creating contract."""
+    await _lock(db, deal, "status", "stage")
     if deal.status == DealStatus.COMPLETED:
         raise ValueError("Deal is already completed")
     if deal.status == DealStatus.COLLAPSED:
@@ -765,8 +1029,26 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
     buyer_fin = finances.get(deal.buyer_club_id)
     seller_fin = finances.get(deal.seller_club_id) if deal.seller_club_id else None
 
+    # Add-ons were held (reserved, then committed) because a club must be able
+    # to pay them if they fall due. Once the deal completes they are tracked
+    # per clause instead, so their hold is released rather than left committed
+    # indefinitely — which is what happened before, for the free-form add_ons.
+    addons = sum(
+        (c.amount for c in (await db.execute(
+            select(DealClause).where(DealClause.deal_id == deal.id)
+        )).scalars()),
+        Decimal("0"),
+    )
+    bonus = deal.signing_bonus or Decimal("0")
+
     # Buyer: fee committed → spent (skipped when instalments drive spending); wage committed → reserved.
     if buyer_fin:
+        if addons > 0:
+            buyer_fin.transfer_committed = max(Decimal("0"), buyer_fin.transfer_committed - addons)
+        # The signing bonus is paid on signing: committed → spent.
+        if bonus > 0:
+            buyer_fin.transfer_committed = max(Decimal("0"), buyer_fin.transfer_committed - bonus)
+            buyer_fin.transfer_spent += bonus
         if fee > 0:
             buyer_fin.transfer_committed = max(Decimal("0"), buyer_fin.transfer_committed - fee)
             if not has_instalments:
@@ -844,12 +1126,21 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
     # Clear open_to_offers — the flag belongs to the seller's context; new owner decides fresh
     player.open_to_offers = False
 
-    # Create new contract with buyer (also normalizes player status internally)
+    # Create new contract with buyer (also normalizes player status internally).
+    # Wage and length are the personal terms the player consented to (carried
+    # onto the deal when it left PERSONAL_TERMS); a deal with no agreed length
+    # still gets no end date, as before.
+    today = now.date()
     await players_service.create_contract(
         db,
         player=player,
         club_id=deal.buyer_club_id,
+        start_date=today,
+        end_date=_add_years(today, deal.contract_length_years) if deal.contract_length_years else None,
         wage_weekly=deal.agreed_wage_weekly,
+        notes=(
+            f"Signing bonus {deal.signing_bonus:,.0f}" if deal.signing_bonus else None
+        ),
     )
 
     # TRA-132: confirm any pending commission for this deal
@@ -1014,10 +1305,18 @@ async def upsert_medical_check(
     notes: str | None = None,
     is_staff: bool = False,
     actor_user_id: uuid.UUID | None = None,
+    actor_club_id: uuid.UUID | None = None,
 ) -> MedicalCheck:
-    """Staff creates or updates the medical check for a deal."""
+    """Record the medical. The buying club runs it and records the result
+    while the deal is at PAPERWORK; staff can record it at any time. A passed
+    medical is a paperwork step, so it may be the one that completes the
+    checklist; a failed one blocks the deal from moving on."""
     if not is_staff:
-        raise PermissionError("Staff only")
+        if actor_club_id is None or actor_club_id != deal.buyer_club_id:
+            raise PermissionError("The buying club records the medical")
+        if deal.stage != DealStage.PAPERWORK:
+            raise ValueError("The medical is recorded at the paperwork stage")
+    await _lock(db, deal, "status", "stage")
 
     mc = await get_medical_check(db, deal.id)
     if mc is None:
@@ -1035,6 +1334,9 @@ async def upsert_medical_check(
         payload={"status": status.value},
         description=f"Medical check recorded: {status.value}",
     )
+    # The checklist reads the deal's medical; make sure it is this one.
+    deal.medical_check = mc
+    await _finish_paperwork_if_complete(db, deal, actor_user_id=actor_user_id)
     return mc
 
 
@@ -1248,7 +1550,17 @@ def _require_party(
 _TERMS_AGREED_ON_THE_OFFER = {
     "deal_type", "loan_start", "loan_end", "loan_fee",
     "option_to_buy", "obligation_to_buy", "obligation_conditions",
+    "sell_on_pct",
 }
+
+# The deal room used to be where the payment schedule, add-ons and sell-on were
+# set — after the seller had accepted, by either club alone. They are agreed on
+# the offer now (offers/service.validate_structure) and copied onto the deal at
+# acceptance; here they are only displayed and tracked.
+_STRUCTURE_AGREED_ON_THE_OFFER = (
+    "The payment schedule, add-ons and sell-on are agreed on the offer and "
+    "cannot be changed on the deal — collapse it and re-approach to change them"
+)
 
 
 async def update_deal(
@@ -1321,27 +1633,15 @@ async def add_clause(
     cap: Decimal | None,
     actor_user_id: uuid.UUID | None = None,
 ) -> DealClause:
+    """Refused: add-ons are agreed on the offer (`_STRUCTURE_AGREED_ON_THE_OFFER`).
+
+    Kept as a function so the endpoint answers with the reason rather than a
+    404. Tracking an agreed clause — triggered, paid — is `update_clause_status`.
+    """
     if deal.status != DealStatus.IN_PROGRESS:
         raise ValueError("Clauses can only be added to in-progress deals")
     _require_party(deal, actor_club_id)
-    clause = DealClause(
-        deal_id=deal.id,
-        clause_type=clause_type,
-        trigger_description=trigger_description,
-        amount=amount,
-        cap=cap,
-    )
-    db.add(clause)
-    await db.flush()
-    await audit_service.emit(
-        db,
-        entity_type="DEAL", entity_id=deal.id,
-        action="CLAUSE_ADDED",
-        actor_user_id=actor_user_id,
-        payload={"clause_type": clause_type.value, "amount": str(amount)},
-        description=f"{clause_type.value.title()} clause added ({amount:,.0f})",
-    )
-    return clause
+    raise ValueError(_STRUCTURE_AGREED_ON_THE_OFFER)
 
 
 async def update_clause_status(
@@ -1385,46 +1685,13 @@ async def set_instalments(
     items: list[dict],
     actor_user_id: uuid.UUID | None = None,
 ) -> list[DealInstalment]:
-    """Replace the instalment schedule. Total must equal agreed_fee."""
+    """Refused: the payment schedule is agreed on the offer
+    (`_STRUCTURE_AGREED_ON_THE_OFFER`). Recording a payment made is
+    `mark_instalment_paid`."""
     if deal.status != DealStatus.IN_PROGRESS:
         raise ValueError("Instalments can only be set on in-progress deals")
-    if deal.stage != DealStage.AGREEMENT:
-        raise ValueError("Instalment schedule must be set at AGREEMENT stage")
     _require_party(deal, actor_club_id)
-
-    total = sum(Decimal(str(item["amount"])) for item in items)
-    if total != deal.agreed_fee:
-        raise ValueError(
-            f"Instalment total ({total}) must equal agreed_fee ({deal.agreed_fee})"
-        )
-
-    # Remove existing schedule
-    existing = await db.execute(
-        select(DealInstalment).where(DealInstalment.deal_id == deal.id)
-    )
-    for inst in existing.scalars():
-        await db.delete(inst)
-
-    new_instalments: list[DealInstalment] = []
-    for item in items:
-        inst = DealInstalment(
-            deal_id=deal.id,
-            due_date=item["due_date"],
-            amount=Decimal(str(item["amount"])),
-        )
-        db.add(inst)
-        new_instalments.append(inst)
-
-    await db.flush()
-    await audit_service.emit(
-        db,
-        entity_type="DEAL", entity_id=deal.id,
-        action="INSTALMENTS_SET",
-        actor_user_id=actor_user_id,
-        payload={"count": len(new_instalments), "total": str(total)},
-        description=f"Payment schedule set — {len(new_instalments)} instalments totalling {total:,.0f}",
-    )
-    return new_instalments
+    raise ValueError(_STRUCTURE_AGREED_ON_THE_OFFER)
 
 
 async def mark_instalment_paid(
@@ -1447,6 +1714,7 @@ async def mark_instalment_paid(
     inst = result.scalar_one_or_none()
     if inst is None:
         raise ValueError("Instalment not found")
+    await _lock(db, inst, "paid", "paid_at")
     if inst.paid:
         raise ValueError("Instalment already marked as paid")
 
