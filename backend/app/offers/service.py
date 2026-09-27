@@ -410,6 +410,24 @@ async def check_new_offer(
     """Every rule a new offer's terms must pass. Separate from `create_offer`
     so the router can run it before capturing a spending approval — otherwise
     an invalid offer is queued for an approver and only fails once approved."""
+    # An offer needs a club on TransferX to answer it. Most of the market plays
+    # for clubs that are not on the platform, and an offer to one of them was
+    # created with no receiving club — sent, reserved against the buyer's
+    # budget, and impossible for anyone ever to accept.
+    from app.players import service as players_service
+    from app.players.models import PlayerStatus
+
+    player = await players_service.get_player_by_id(db, player_id)
+    if player is None:
+        raise ValueError("Player not found")
+    if await players_service.get_owning_club_id(db, player) is None:
+        if player.status == PlayerStatus.FREE_AGENT:
+            raise ValueError("He is a free agent — sign him from his page rather than making an offer")
+        raise ValueError(
+            "He plays for a club that is not on TransferX, so no one could answer an offer. "
+            "Shortlist him to follow his form and contract."
+        )
+
     obligation_conditions = (obligation_conditions or "").strip() or None
     reject_client_loan_wage(deal_type, wage_weekly)
     if (

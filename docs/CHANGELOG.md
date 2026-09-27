@@ -24,6 +24,14 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 
 ## [Unreleased]
 
+### Added
+- **The market says who can actually be bought, and offers go only where someone can answer them.** About 99% of the catalogue plays for real-world clubs that are not on TransferX, yet every player page offered **Make Offer**. The offer was created with no receiving club, reserved against the buyer's budget, and could never be accepted.
+  - **Server:** offers to a player with no TransferX club are refused with the reason; a free agent is pointed to signing him instead.
+  - **Player page:** for those players the page says so ("Nice is not on TransferX, so an offer could not be answered — shortlist him") and shows **Shortlist** instead of **Make Offer**.
+  - **Market:** a **Buyable on TransferX only** filter (on a TransferX club, or a free agent) narrows 5,024 visible players to the 106 a club can act on.
+  - **Checked** live, signed in and signed out. (`backend/app/offers/service.py`, `backend/app/players/`, `frontend/src/pages/market/`, `frontend/src/components/players/PlayerFilters.tsx`)
+- No new regression tests, at the product owner's request. Checked by `tsc -b` (43 baseline) and live on the dev stack.
+
 ### Fixed
 - **The contract a player signed was not the one he agreed to.** At `PERSONAL_TERMS` the player consents to a wage, signing bonus and contract length. Completion ignored all three and built his contract from the offer's opening wage, with no end date and no bonus. So the consent on record was not the contract executed, and every signing produced an open-ended contract, which the expiring-contracts view and loan validation both depend on.
   - **Now:** when the deal leaves `PERSONAL_TERMS`, the consented terms become the deal's (migration `0075`). The wage replaces the opening wage, and the difference and the bonus are committed against the buyer's budget.

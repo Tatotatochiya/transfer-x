@@ -362,6 +362,7 @@ async def list_market_players(
     position: str | None,
     status: str | None,
     open_to_offers: bool | None,
+    buyable: bool | None = None,
     search: str | None,
     min_age: int | None,
     max_age: int | None,
@@ -399,6 +400,12 @@ async def list_market_players(
         q = q.where(Player.status == status)
     if open_to_offers is not None:
         q = q.where(Player.open_to_offers == open_to_offers)
+    # "Could I actually sign him here?" — under contract to a club on
+    # TransferX (which can answer an offer), or a free agent (signable
+    # directly). Everyone else is contracted to a club outside the platform:
+    # worth scouting, but an offer to them could never be answered.
+    if buyable:
+        q = q.where(Player.status.in_([PlayerStatus.CONTRACTED, PlayerStatus.FREE_AGENT]))
     if search:
         q = q.where(Player.name.ilike(f"%{search}%"))
     if min_age is not None:
