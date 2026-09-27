@@ -470,7 +470,7 @@ export default function TransferActivityPage() {
   return (
     <div>
       <PageHeader
-        title="Transfers"
+        title="Recent Transfers"
         subtitle={tab === "feed" ? "All completed transfers on the platform" : "Market-wide transfer analytics"}
       />
       <TabNav active={tab} onChange={setTab} />

@@ -85,8 +85,8 @@ export default function SentOffersPage() {
   return (
     <div>
       <PageHeader
-        title="Sent Offers"
-        subtitle="Offers you've made to other clubs"
+        title="My Offers"
+        subtitle="Offers you've made for other clubs' players"
         actions={
           <Button variant="primary" onClick={() => navigate("/offers/new")}>
             + New offer

@@ -472,7 +472,7 @@ export default function OfferInboxPage() {
 
   return (
     <div>
-      <PageHeader title="Offer Inbox" subtitle="Offers received from other clubs" />
+      <PageHeader title="Offers Received" subtitle="Offers from clubs for your players" />
 
       <div className="mb-5 flex flex-wrap gap-2">
         {CHIPS.map((c) => (
