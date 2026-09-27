@@ -60,6 +60,7 @@ const TYPE_LABELS: Record<string, string> = {
   LOAN_ENDED: "A loan has ended and the player has returned",
   LOAN_RECALLED: "A parent club has recalled their player early",
   LOAN_CONVERTED: "A loan is turning into a permanent transfer",
+  DEAL_PAPERWORK: "The other club completes a paperwork step, or the paperwork is done",
   DAILY_DIGEST: "A morning email of what is waiting on you — sent only when something is",
   APPROVAL_DECIDED: "Your spending request is decided",
 };
@@ -81,7 +82,7 @@ const TYPE_GROUPS: { label: string; types: string[] }[] = [
   },
   {
     label: "Deals",
-    types: ["DEAL_COMPLETED", "DEAL_COLLAPSED", "PERSONAL_TERMS_DECISION", "INSTALMENT_DUE", "DEAL_CLAUSE_TRIGGERED", "NEGOTIATION_MESSAGE"],
+    types: ["DEAL_COMPLETED", "DEAL_COLLAPSED", "PERSONAL_TERMS_DECISION", "DEAL_PAPERWORK", "INSTALMENT_DUE", "DEAL_CLAUSE_TRIGGERED", "NEGOTIATION_MESSAGE"],
   },
   {
     label: "Scouting",

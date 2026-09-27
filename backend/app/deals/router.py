@@ -151,7 +151,13 @@ async def _get_deal_or_404(db: AsyncSession, deal_id: uuid.UUID):
     return deal
 
 
-async def _build_deal_response(db: AsyncSession, deal, *, caller_user_type: str | None = None) -> DealResponse:
+async def _build_deal_response(
+    db: AsyncSession,
+    deal,
+    *,
+    caller_user_type: str | None = None,
+    viewer_club_id: uuid.UUID | None = None,
+) -> DealResponse:
     """TRA-137: field-scoped like `_build_neg_response` — commission terms (what
     the club pays the agent) are hidden from the player. Everything else here is
     either already gated to real participants by the caller, or legitimately
@@ -184,6 +190,10 @@ async def _build_deal_response(db: AsyncSession, deal, *, caller_user_type: str 
         obligation_conditions=deal.obligation_conditions,
         signing_bonus=deal.signing_bonus,
         contract_length_years=deal.contract_length_years,
+        agreement_signed_by_buyer_at=deal.agreement_signed_by_buyer_at,
+        agreement_signed_by_seller_at=deal.agreement_signed_by_seller_at,
+        registration_submitted_at=deal.registration_submitted_at,
+        paperwork=service.paperwork_steps(deal),
         sell_on_pct=deal.sell_on_pct,
         clauses=deal.clauses,
         instalments=deal.instalments,
@@ -204,7 +214,7 @@ async def _build_deal_response(db: AsyncSession, deal, *, caller_user_type: str 
         deal_notes=deal.deal_notes,
         sla_deadline=deal.sla_deadline,
         sla_escalated_at=deal.sla_escalated_at,
-        whose_move=service.compute_deal_whose_move(deal),
+        whose_move=service.compute_deal_whose_move(deal, viewer_club_id),
     )
 
 
@@ -295,7 +305,7 @@ async def list_deals(
         page=page, page_size=page_size,
     )
     return Paginated(
-        items=[await _build_deal_response(db, d) for d in deals],
+        items=[await _build_deal_response(db, d, viewer_club_id=club.id) for d in deals],
         total=total, page=page, page_size=page_size,
     )
 
@@ -311,7 +321,11 @@ async def get_deal(
     deal = await _get_deal_or_404(db, deal_id)
     if not await room_service.is_deal_participant(db, deal, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
-    return await _build_deal_response(db, deal, caller_user_type=current_user.user_type.value)
+    viewer = await clubs_service.get_club_for_user(db, current_user.id)
+    return await _build_deal_response(
+        db, deal, caller_user_type=current_user.user_type.value,
+        viewer_club_id=viewer.id if viewer else None,
+    )
 
 
 # ── Stage advancement ─────────────────────────────────────────────────────────
@@ -680,23 +694,57 @@ async def upsert_medical_check(
     body: UpsertMedicalCheckRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
 ):
-    """Staff only: create or update the medical check for a deal."""
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff only")
-
+    """Record the medical: the buying club at the paperwork stage (it runs the
+    medical), or staff at any time. A passed medical may complete the
+    paperwork checklist and confirm the deal."""
     deal = await _get_deal_or_404(db, deal_id)
+    club = None if current_user.is_superuser else await _get_club_or_403(db, current_user)
     try:
         mc = await service.upsert_medical_check(
-            db, deal, status=body.status, notes=body.notes, is_staff=True, actor_user_id=current_user.id,
+            db, deal, status=body.status, notes=body.notes,
+            is_staff=current_user.is_superuser,
+            actor_club_id=club.id if club else None,
+            actor_user_id=current_user.id,
         )
         await db.commit()
         await db.refresh(mc)
+    except PermissionError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     return mc
+
+
+@router.post("/deals/{deal_id}/paperwork/{step}", response_model=DealResponse)
+async def complete_paperwork_step(
+    deal_id: uuid.UUID,
+    step: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
+):
+    """A club ticks one of its own paperwork steps: `sign-agreement` or
+    `submit-registration`. The last step confirms the deal."""
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+    try:
+        await service.complete_paperwork_step(
+            db, deal, step, actor_club_id=club.id, actor_user_id=current_user.id,
+        )
+        await db.commit()
+    except PermissionError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    deal = await service.get_deal_by_id(db, deal_id)
+    return await _build_deal_response(db, deal, viewer_club_id=club.id)
 
 
 # ── TRA-60: personal terms ───────────────────────────────────────────────────

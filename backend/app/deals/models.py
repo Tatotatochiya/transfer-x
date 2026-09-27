@@ -111,6 +111,11 @@ class Deal(Base):
     # consented wage replaces `agreed_wage_weekly`.
     signing_bonus: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
     contract_length_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The PAPERWORK checklist the clubs complete themselves (migration 0077).
+    # The medical is the fourth step and lives in MedicalCheck.
+    agreement_signed_by_buyer_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    agreement_signed_by_seller_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    registration_submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # TRA-59: agent commission (set during AGENT_NEGOTIATION; mirrors AgentNegotiation fields for quick read)
     agent_commission_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
     agent_commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)

@@ -561,6 +561,13 @@ export interface OfferEvent {
   created_at: string;
 }
 
+export interface PaperworkStep {
+  key: "agreement_buyer" | "agreement_seller" | "medical" | "registration";
+  owner: "buyer" | "seller";
+  label: string;
+  done: boolean;
+}
+
 export interface OfferInstalment {
   due_date: string;
   amount: number | string;
@@ -801,6 +808,11 @@ export interface Deal {
    *  it left PERSONAL_TERMS; completion creates the contract from them. */
   signing_bonus: number | null;
   contract_length_years: number | null;
+  /** The club-run PAPERWORK checklist, in order (migration 0077). */
+  agreement_signed_by_buyer_at: string | null;
+  agreement_signed_by_seller_at: string | null;
+  registration_submitted_at: string | null;
+  paperwork: PaperworkStep[];
   recall_allowed: boolean;
   // TRA-57
   sell_on_pct: number | null;

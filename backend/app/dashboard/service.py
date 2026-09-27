@@ -90,11 +90,23 @@ async def _offer_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[datet
     return out
 
 
-def _deal_reason(deal: Deal) -> str:
+_PAPERWORK_REASON = {
+    "agreement_buyer": "Paperwork — sign the transfer agreement",
+    "agreement_seller": "Paperwork — sign the transfer agreement",
+    "medical": "Paperwork — record the medical",
+    "registration": "Paperwork — submit the registration",
+}
+
+
+def _deal_reason(deal: Deal, club_id: uuid.UUID | None = None) -> str:
     """Mirrors dealWhoseMoveReason() in frontend/src/lib/whoseMove.ts for the
-    two stages that can actually reach here (whose_move already == YOUR)."""
+    stages that can actually reach here (whose_move already == YOUR)."""
     if deal.stage == DealStage.CONFIRMED:
         return "You — signature"
+    if deal.stage == DealStage.PAPERWORK:
+        outstanding = deals_service.outstanding_paperwork_for(deal, club_id)
+        if outstanding:
+            return _PAPERWORK_REASON[outstanding[0]]
     updated_at = deal.updated_at
     if updated_at.tzinfo is None:  # SQLite drops tzinfo
         updated_at = updated_at.replace(tzinfo=timezone.utc)
@@ -106,7 +118,7 @@ async def _deal_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[dateti
     deals, _ = await deals_service.list_deals(db, club_id=club_id, page=1, page_size=_CANDIDATE_PAGE_SIZE)
     out = []
     for d in deals:
-        if deals_service.compute_deal_whose_move(d) != WhoseMove.YOUR:
+        if deals_service.compute_deal_whose_move(d, club_id) != WhoseMove.YOUR:
             continue
         counterparty = d.seller_club if d.buyer_club_id == club_id else d.buyer_club
         out.append((
@@ -117,7 +129,7 @@ async def _deal_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[dateti
                 player_name=d.player.name if d.player else None,
                 club_name=counterparty.name if counterparty else None,
                 amount=d.agreed_fee,
-                reason=_deal_reason(d),
+                reason=_deal_reason(d, club_id),
                 link=f"/deals/{d.id}",
             ),
         ))

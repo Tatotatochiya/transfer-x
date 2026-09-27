@@ -52,6 +52,7 @@ class NotificationType(str, enum.Enum):
     # Preference only: switches the daily "waiting on you" email on or off.
     # No in-app notification is created with it (notifications/digest.py).
     DAILY_DIGEST = "DAILY_DIGEST"
+    DEAL_PAPERWORK = "DEAL_PAPERWORK"
 
 
 class Notification(Base):

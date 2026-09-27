@@ -265,7 +265,7 @@ A single-presenter demo is unlikely to trigger these. They are, however, the top
 
 **Recommendation:** add `with_for_update()` to the offer, deal, and instalment loads on those three write paths.
 
-> **Resolved 2026-09-27.** Each money path now re-reads its row with `SELECT … FOR UPDATE` before checking its state. That covers offer accept, counter, improve, reject and withdraw; deal advance (including completion), collapse and staff completion; and instalment payment. Verified live against Postgres: two simultaneous accepts of one offer gave one deal and one refusal, and two simultaneous collapses of one deal gave one collapse and one refusal. The locked columns are re-read explicitly (`deals/service._lock`, `offers/service._lock_offer`), so relationships loaded earlier in the request stay loaded. The test suite runs on SQLite, which ignores `FOR UPDATE`, so these paths are verified only against Postgres.
+> **Resolved 2026-09-27.** Each money path now re-reads its row with `SELECT … FOR UPDATE` before checking its state. That covers offer accept, counter, improve, reject and withdraw; deal advance (including completion), collapse and staff completion; instalment payment; and the paperwork checklist. Verified live against Postgres: two simultaneous accepts of one offer gave one deal and one refusal, and two simultaneous collapses of one deal gave one collapse and one refusal. The locked columns are re-read explicitly (`deals/service._lock`, `offers/service._lock_offer`), so relationships loaded earlier in the request stay loaded. The test suite runs on SQLite, which ignores `FOR UPDATE`, so these paths are verified only against Postgres.
 
 ### H4. Agent mandates activate with no player confirmation
 

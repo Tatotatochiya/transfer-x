@@ -21,6 +21,7 @@ import DealRoomPanel from "../../components/deals/DealRoomPanel";
 import { dealStatusVariant, dealStageLabel, dealTypeLabel } from "../../lib/badges";
 import { formatCurrency, formatDate, formatWage, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
+import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 
 const STAGE_SEQ: DealStage[] = [
@@ -432,11 +433,12 @@ const MEDICAL_STATUS_STYLE: Record<string, string> = {
 function MedicalCheckPanel({
   dealId,
   medicalCheck,
-  isStaff,
+  canRecord,
 }: {
   dealId: string;
   medicalCheck: Deal["medical_check"];
-  isStaff: boolean;
+  /** The buying club at PAPERWORK (it runs the medical), or staff. */
+  canRecord: boolean;
 }) {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
@@ -453,14 +455,17 @@ function MedicalCheckPanel({
         notes: notesDraft.trim() || null,
       }).then((r) => r.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
+      // A passed medical can be the step that completes the paperwork and
+      // confirms the deal, so refresh everything that shows its stage.
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       setEditing(false);
-      addToast("Medical check saved.", "success");
+      addToast("Medical recorded.", "success");
     },
     onError: (err: unknown) => addToast(getApiError(err, "Failed to save medical check."), "error"),
   });
 
-  if (!isStaff && !medicalCheck) return null;
+  if (!canRecord && !medicalCheck) return null;
 
   return (
     <Panel title="Medical Check">
@@ -479,12 +484,12 @@ function MedicalCheckPanel({
               <dd className="text-text-muted">{formatDate(medicalCheck.updated_at)}</dd>
             </dl>
           ) : (
-            <p className="text-sm text-text-muted pb-1">Not yet requested — doesn't block progression.</p>
+            <p className="text-sm text-text-muted pb-1">Not recorded yet. The buying club records it at the paperwork stage.</p>
           )}
           {medicalCheck?.status === "FAILED" && (
-            <p className="mt-2 text-xs text-danger-text/80">Blocks Paperwork → Confirmed until changed.</p>
+            <p className="mt-2 text-[13px] text-danger-text">A failed medical stops the deal moving on. Record a new result, or collapse the deal.</p>
           )}
-          {isStaff && (
+          {canRecord && (
             <button
               onClick={() => {
                 setStatusDraft(medicalCheck?.status ?? "PENDING");
@@ -533,13 +538,105 @@ function MedicalCheckPanel({
   );
 }
 
+// ── Paperwork checklist ───────────────────────────────────────────────────────
+
+/**
+ * The clubs complete PAPERWORK themselves — it used to wait for TransferX
+ * staff on every deal. Each step belongs to one club; the last one confirms
+ * the deal. Ticking is binding (it is on the audit trail and tells the other
+ * club), so each tick is confirmed first.
+ */
+function PaperworkChecklist({
+  deal,
+  side,
+  canAct,
+}: {
+  deal: Deal;
+  side: "buyer" | "seller" | null;
+  canAct: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const { addToast } = useToast();
+  const confirm = useConfirm();
+
+  const mutation = useMutation({
+    mutationFn: (step: "sign-agreement" | "submit-registration") =>
+      api.post<Deal>(`/deals/${deal.id}/paperwork/${step}`).then((r) => r.data),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      addToast(
+        updated.stage === "CONFIRMED" ? "Paperwork complete — the transfer is ready to execute." : "Done.",
+        "success",
+      );
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Could not complete that step."), "error"),
+  });
+
+  async function act(step: string) {
+    if (step === "agreement_buyer" || step === "agreement_seller") {
+      if (await confirm({
+        title: "Sign the transfer agreement",
+        message: "Confirm that your club has signed the transfer agreement for this deal. The other club is told.",
+        confirmLabel: "Confirm signed",
+      })) mutation.mutate("sign-agreement");
+    } else if (step === "registration") {
+      if (await confirm({
+        title: "Registration submitted",
+        message: "Confirm that the registration has been submitted to the league (and international clearance requested, if needed).",
+        confirmLabel: "Confirm submitted",
+      })) mutation.mutate("submit-registration");
+    }
+  }
+
+  const remaining = deal.paperwork.filter((s) => !s.done).length;
+  return (
+    <div className="mb-6 rounded-xl bg-surface px-5 py-4 ring-1 ring-border">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-sm font-bold text-text">Paperwork</p>
+        <span className="text-[13px] text-text-muted">
+          {remaining === 0 ? "Complete" : `${remaining} of ${deal.paperwork.length} to go`}
+        </span>
+      </div>
+      <ul className="space-y-2">
+        {deal.paperwork.map((s) => {
+          const mine = s.owner === side;
+          return (
+            <li key={s.key} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className={s.done ? "text-text-muted" : "text-text"}>
+                <span aria-hidden className={`mr-2 inline-block w-4 ${s.done ? "text-success-text" : "text-text-muted"}`}>
+                  {s.done ? "✓" : "○"}
+                </span>
+                {s.label}
+                {!s.done && !mine && <span className="ml-2 text-[13px] text-text-muted">— their move</span>}
+              </span>
+              {!s.done && mine && canAct && (
+                s.key === "medical" ? (
+                  <span className="text-[13px] text-text-muted">Record it in the Medical Check panel</span>
+                ) : (
+                  <Button size="sm" variant="primary" loading={mutation.isPending} onClick={() => act(s.key)}>
+                    {s.key === "registration" ? "Mark submitted" : "Mark signed"}
+                  </Button>
+                )
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-3 text-[13px] text-text-muted">
+        When every step is done the deal is confirmed and ready to execute.
+      </p>
+    </div>
+  );
+}
+
 // ── Blocked-on header ─────────────────────────────────────────────────────────
 
 const BLOCKER_LABEL: Partial<Record<DealStage, string>> = {
   AGREEMENT: "Club terms",
   AGENT_NEGOTIATION: "Agent commission",
   PERSONAL_TERMS: "Player consent",
-  PAPERWORK: "TransferX paperwork",
+  PAPERWORK: "Paperwork checklist",
   CONFIRMED: "Execution",
 };
 
@@ -908,7 +1005,8 @@ export default function DealDetailPage() {
 
   const atAgentNegotiation = deal.stage === "AGENT_NEGOTIATION";
   const atPersonalTerms    = deal.stage === "PERSONAL_TERMS";
-  // At PAPERWORK stage, clubs cannot advance — only staff can
+  // At PAPERWORK the clubs complete the checklist, which confirms the deal
+  // itself; the generic Advance button is not theirs to press.
   const atPaperwork        = deal.stage === "PAPERWORK";
   const atConfirmed        = deal.stage === "CONFIRMED";
   // TRA-151 (D4): club-side deal writes need DEAL_WRITE — SCOUT/READONLY staff
@@ -947,22 +1045,21 @@ export default function DealDetailPage() {
 
       <ThreeLanes deal={deal} negotiation={negotiation} />
 
-      {/* PAPERWORK banner */}
-      {atPaperwork && isParty && deal.status === "IN_PROGRESS" && (
-        <div className="mb-6 rounded-xl bg-accent-bg px-5 py-4 text-sm text-accent-active ring-1 ring-accent/20">
-          <p className="font-semibold mb-1">TransferX is handling the paperwork</p>
-          <p className="text-accent-active/80">
-            Our team is processing the documentation. You'll be notified when it's ready for confirmation.
-          </p>
-        </div>
+      {/* PAPERWORK checklist — completed by the clubs, not TransferX staff */}
+      {atPaperwork && (isParty || isStaff) && deal.status === "IN_PROGRESS" && (
+        <PaperworkChecklist
+          deal={deal}
+          side={isBuyer ? "buyer" : isSeller ? "seller" : null}
+          canAct={isParty && canDealWrite}
+        />
       )}
 
       {/* CONFIRMED / Ready to Execute banner */}
-      {atConfirmed && isParty && deal.status === "IN_PROGRESS" && (
+      {atConfirmed && isParty && (deal.status === "IN_PROGRESS" || deal.status === "PENDING_COMPLETION") && (
         <div className="mb-6 rounded-xl bg-success/10 px-5 py-4 text-sm text-success-text ring-1 ring-success/20">
-          <p className="font-semibold mb-1">Documents verified — ready to execute</p>
+          <p className="font-semibold mb-1">Paperwork complete — ready to execute</p>
           <p className="text-success-text/80">
-            TransferX has processed all documentation. Use the <strong>Execute Transfer</strong> button to complete the deal and register the player.
+            Both clubs have completed the paperwork. Use <strong>Execute Transfer</strong> to complete the deal and register the player.
           </p>
         </div>
       )}
@@ -1384,7 +1481,13 @@ export default function DealDetailPage() {
           ) : null}
 
           {/* Medical check (TRA-61) — staff sets it; every participant can see it */}
-          {id && <MedicalCheckPanel dealId={id} medicalCheck={deal.medical_check} isStaff={isStaff} />}
+          {id && (
+            <MedicalCheckPanel
+              dealId={id}
+              medicalCheck={deal.medical_check}
+              canRecord={isStaff || (isBuyer && atPaperwork && deal.status === "IN_PROGRESS" && canDealWrite)}
+            />
+          )}
 
           <Panel title="Deal Notes">
             {deal.deal_notes.length === 0 ? (

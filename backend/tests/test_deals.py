@@ -299,14 +299,16 @@ async def test_cannot_skip_personal_terms_consent(client: AsyncClient, buyer: di
 
 @pytest.mark.asyncio
 async def test_paperwork_stage_blocked_for_clubs(client: AsyncClient, buyer: dict, seller: dict, db):
-    """Clubs cannot advance past PAPERWORK — only staff can."""
+    """Clubs cannot advance PAPERWORK directly — the checklist does it."""
     deal = await _create_deal_via_offer(client, buyer, seller, db)
     await _advance_through_personal_terms(client, deal["id"], buyer, db)
 
-    # Try to advance again as club — should get 403
+    # Try to advance again as club — refused
     resp = await client.post(f"/deals/{deal['id']}/advance", headers=_auth_headers(buyer))
-    assert resp.status_code == 403
-    assert "paperwork" in resp.json()["detail"].lower()
+    # Clubs complete PAPERWORK through its checklist (migration 0077); the
+    # generic advance is refused with a pointer to it. Staff can still advance.
+    assert resp.status_code == 400
+    assert "paperwork checklist" in resp.json()["detail"].lower()
 
 
 @pytest.mark.asyncio

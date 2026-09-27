@@ -29,6 +29,7 @@ from app.deals.models import (
 )
 from app.loans import service as loans_service
 from app.loans.models import LoanEndReason
+from app.notifications.models import NotificationType
 from app.players import service as players_service
 from app.players.models import Contract, Player
 
@@ -57,7 +58,155 @@ async def _lock(db: AsyncSession, obj, *attributes: str) -> None:
     await db.refresh(obj, attribute_names=list(attributes), with_for_update=True)
 
 
-def compute_deal_whose_move(deal: Deal) -> WhoseMove:
+# ── Club-run paperwork (migration 0077) ───────────────────────────────────────
+#
+# PAPERWORK used to be a staff-only stage: every deal waited for TransferX to
+# move it on, and only staff could record the medical. The clubs complete it
+# themselves now. Each step belongs to one club; the last one moves the deal
+# to CONFIRMED. Staff can still advance it directly.
+
+PAPERWORK_STEP_LABELS = {
+    "agreement_buyer": "Buying club signs the transfer agreement",
+    "agreement_seller": "Selling club signs the transfer agreement",
+    "medical": "Buying club records a passed medical",
+    "registration": "Buying club submits the registration",
+}
+
+
+def paperwork_steps(deal: Deal) -> list[dict]:
+    """The checklist for this deal, in order: key, owning side, done or not.
+    A deal with no selling club (a free-agent signing) has no seller step."""
+    medical = deal.medical_check
+    steps = [
+        ("agreement_buyer", "buyer", deal.agreement_signed_by_buyer_at is not None),
+        ("agreement_seller", "seller", deal.agreement_signed_by_seller_at is not None),
+        ("medical", "buyer", medical is not None and medical.status == MedicalStatus.PASSED),
+        ("registration", "buyer", deal.registration_submitted_at is not None),
+    ]
+    return [
+        {"key": key, "owner": owner, "label": PAPERWORK_STEP_LABELS[key], "done": done}
+        for key, owner, done in steps
+        if not (owner == "seller" and deal.seller_club_id is None)
+    ]
+
+
+def outstanding_paperwork_for(deal: Deal, club_id: uuid.UUID | None) -> list[str]:
+    """This club's paperwork steps not yet done — empty unless at PAPERWORK."""
+    if deal.stage != DealStage.PAPERWORK or club_id is None:
+        return []
+    side = (
+        "buyer" if club_id == deal.buyer_club_id
+        else "seller" if club_id == deal.seller_club_id
+        else None
+    )
+    return [s["key"] for s in paperwork_steps(deal) if s["owner"] == side and not s["done"]]
+
+
+def _enter_confirmed(deal: Deal) -> None:
+    """Everything is agreed and done — only execution is left, on an SLA."""
+    deal.stage = DealStage.CONFIRMED
+    deal.status = DealStatus.PENDING_COMPLETION
+    deal.sla_deadline = datetime.now(timezone.utc) + timedelta(days=_DEAL_SLA_DAYS)
+
+
+async def _finish_paperwork_if_complete(
+    db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UUID | None = None
+) -> bool:
+    """Move the deal to CONFIRMED once every step is done. Returns whether it did."""
+    if deal.stage != DealStage.PAPERWORK or not all(s["done"] for s in paperwork_steps(deal)):
+        return False
+    _enter_confirmed(deal)
+    await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="PAPERWORK_COMPLETED",
+        actor_user_id=actor_user_id,
+        description="Paperwork complete — deal confirmed and ready to execute",
+    )
+    from app.notifications.service import notify_club
+
+    player = deal.player.name if deal.player else "the player"
+    for club_id in (deal.buyer_club_id, deal.seller_club_id):
+        if club_id is not None:
+            await notify_club(
+                db, club_id,
+                type=NotificationType.DEAL_PAPERWORK,
+                message=f"Paperwork complete for {player} — the transfer is ready to execute",
+                link=f"/deals/{deal.id}",
+                related_player_id=deal.player_id,
+            )
+    return True
+
+
+async def complete_paperwork_step(
+    db: AsyncSession,
+    deal: Deal,
+    step: str,
+    *,
+    actor_club_id: uuid.UUID,
+    actor_user_id: uuid.UUID | None = None,
+) -> Deal:
+    """A club ticks one of its own paperwork steps: `sign-agreement` (either
+    club, for its own side) or `submit-registration` (buying club). The
+    medical is recorded through `upsert_medical_check`."""
+    await _lock(db, deal, "status", "stage", "agreement_signed_by_buyer_at",
+                "agreement_signed_by_seller_at", "registration_submitted_at")
+    if deal.stage != DealStage.PAPERWORK or deal.status != DealStatus.IN_PROGRESS:
+        raise ValueError("The deal is not at the paperwork stage")
+    _require_party(deal, actor_club_id)
+    is_buyer = actor_club_id == deal.buyer_club_id
+    now = datetime.now(timezone.utc)
+
+    if step == "sign-agreement":
+        if is_buyer:
+            if deal.agreement_signed_by_buyer_at is not None:
+                raise ValueError("Your club has already signed the transfer agreement")
+            deal.agreement_signed_by_buyer_at = now
+        else:
+            if deal.agreement_signed_by_seller_at is not None:
+                raise ValueError("Your club has already signed the transfer agreement")
+            deal.agreement_signed_by_seller_at = now
+        done = "signed the transfer agreement"
+    elif step == "submit-registration":
+        if not is_buyer:
+            raise PermissionError("The buying club submits the registration")
+        if deal.registration_submitted_at is not None:
+            raise ValueError("The registration has already been submitted")
+        deal.registration_submitted_at = now
+        done = "submitted the registration"
+    else:
+        raise ValueError(f"Unknown paperwork step: {step}")
+
+    await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="PAPERWORK_STEP",
+        actor_user_id=actor_user_id,
+        payload={"step": step, "side": "buyer" if is_buyer else "seller"},
+        description=f"{'Buying' if is_buyer else 'Selling'} club {done}",
+    )
+    if not await _finish_paperwork_if_complete(db, deal, actor_user_id=actor_user_id):
+        other = deal.seller_club_id if is_buyer else deal.buyer_club_id
+        if other is not None:
+            from app.notifications.service import notify_club
+
+            actor = deal.buyer_club if is_buyer else deal.seller_club
+            await notify_club(
+                db, other,
+                type=NotificationType.DEAL_PAPERWORK,
+                message=(
+                    f"{actor.name if actor else 'The other club'} {done} for "
+                    f"{deal.player.name if deal.player else 'the player'}"
+                ),
+                link=f"/deals/{deal.id}",
+                related_player_id=deal.player_id,
+            )
+    return deal
+
+
+def compute_deal_whose_move(deal: Deal, viewer_club_id: uuid.UUID | None = None) -> WhoseMove:
     """B1: mirrors dealWhoseMove() in frontend/src/lib/whoseMove.ts exactly,
     including what it does NOT do: distinguish buyer from seller. At
     CONFIRMED both clubs must sign and per-club signature status isn't
@@ -70,6 +219,12 @@ def compute_deal_whose_move(deal: Deal) -> WhoseMove:
         return WhoseMove.NEITHER
     if deal.stage == DealStage.CONFIRMED:
         return WhoseMove.YOUR
+    # The paperwork checklist knows exactly whose steps are outstanding.
+    if deal.stage == DealStage.PAPERWORK and viewer_club_id is not None:
+        if outstanding_paperwork_for(deal, viewer_club_id):
+            return WhoseMove.YOUR
+        other = deal.seller_club_id if viewer_club_id == deal.buyer_club_id else deal.buyer_club_id
+        return WhoseMove.THEIR if outstanding_paperwork_for(deal, other) else WhoseMove.NEITHER
     if deal.stage == DealStage.AGENT_NEGOTIATION:
         updated_at = deal.updated_at
         if updated_at.tzinfo is None:  # SQLite drops tzinfo
@@ -571,8 +726,13 @@ async def advance_deal(
         deal.stage = DealStage.PAPERWORK
 
     elif stage == DealStage.PAPERWORK:
+        # The clubs complete the checklist, and its last step moves the deal
+        # on (complete_paperwork_step / upsert_medical_check). Advancing it
+        # directly is the staff override.
         if not is_staff:
-            raise PermissionError("TransferX is handling the paperwork — staff only action")
+            raise ValueError(
+                "Complete the paperwork checklist — the deal moves on when every step is done"
+            )
         # TRA-61: block if medical check exists and is FAILED (missing = not yet done, allowed)
         mc_result = await db.execute(
             select(MedicalCheck).where(MedicalCheck.deal_id == deal.id)
@@ -580,11 +740,7 @@ async def advance_deal(
         mc = mc_result.scalar_one_or_none()
         if mc is not None and mc.status == MedicalStatus.FAILED:
             raise ValueError("Cannot advance: medical check has failed")
-        deal.stage = DealStage.CONFIRMED
-        # Item 5: everything is agreed — this is now purely administrative
-        # execution, with an SLA so it doesn't just sit here indefinitely.
-        deal.status = DealStatus.PENDING_COMPLETION
-        deal.sla_deadline = datetime.now(timezone.utc) + timedelta(days=_DEAL_SLA_DAYS)
+        _enter_confirmed(deal)
 
     elif stage == DealStage.CONFIRMED:
         deal.stage = DealStage.COMPLETED
@@ -1149,10 +1305,18 @@ async def upsert_medical_check(
     notes: str | None = None,
     is_staff: bool = False,
     actor_user_id: uuid.UUID | None = None,
+    actor_club_id: uuid.UUID | None = None,
 ) -> MedicalCheck:
-    """Staff creates or updates the medical check for a deal."""
+    """Record the medical. The buying club runs it and records the result
+    while the deal is at PAPERWORK; staff can record it at any time. A passed
+    medical is a paperwork step, so it may be the one that completes the
+    checklist; a failed one blocks the deal from moving on."""
     if not is_staff:
-        raise PermissionError("Staff only")
+        if actor_club_id is None or actor_club_id != deal.buyer_club_id:
+            raise PermissionError("The buying club records the medical")
+        if deal.stage != DealStage.PAPERWORK:
+            raise ValueError("The medical is recorded at the paperwork stage")
+    await _lock(db, deal, "status", "stage")
 
     mc = await get_medical_check(db, deal.id)
     if mc is None:
@@ -1170,6 +1334,9 @@ async def upsert_medical_check(
         payload={"status": status.value},
         description=f"Medical check recorded: {status.value}",
     )
+    # The checklist reads the deal's medical; make sure it is this one.
+    deal.medical_check = mc
+    await _finish_paperwork_if_complete(db, deal, actor_user_id=actor_user_id)
     return mc
 
 

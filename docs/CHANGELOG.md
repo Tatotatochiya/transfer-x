@@ -24,9 +24,18 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 
 ## [Unreleased]
 
+### Changed
+- **The clubs run the paperwork; TransferX staff are no longer in every deal.** `PAPERWORK → CONFIRMED` was staff-only, and so was recording the medical.
+  - **The checklist:** the deal page now shows it. Each club signs the transfer agreement, and the buying club records a passed medical and submits the registration. A free-agent signing has no seller step.
+  - **Each club ticks only its own steps.** Every tick is confirmed in the UI, audited and notified to the other club (new `DEAL_PAPERWORK` type, migration `0077`).
+  - **The last step confirms the deal by itself.** A club pressing the generic Advance is refused with a pointer to the checklist, and staff keep a direct override.
+  - **Visibility:** outstanding steps are "your move" for the owning club on the dashboard, deal lists, sidebar count and daily digest. The deal header now reads "Paperwork checklist", not "TransferX paperwork".
+  - **Medical:** a failed medical still stops the deal. Previously a deal with no medical recorded could be confirmed; now a passed medical is required.
+  - **Checked** live end to end: seller steps refused to the buyer and vice versa, a second signature refused, the last step confirming the deal and notifying both clubs. (`backend/app/deals/`, `backend/app/dashboard/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`, `frontend/src/lib/whoseMove.ts`)
+
 ### Fixed
-- **Two simultaneous actions could both succeed on the same money (audit H3).** Accepting, countering, improving, rejecting or withdrawing an offer, and advancing, completing or collapsing a deal, or paying an instalment, all checked a state and then acted on it with no row lock. So a double-click or two staff at once could create two deals from one offer, or settle a transfer twice. Each now re-reads its row with `SELECT … FOR UPDATE` first; the second request waits and is then refused. Verified live against Postgres: two simultaneous accepts gave one deal and one refusal; two simultaneous collapses gave one collapse and one refusal. The refusals now read "This offer has already been accepted — it can no longer be accepted" rather than showing `OfferStatus.ACCEPTED`. (`backend/app/offers/service.py`, `backend/app/deals/service.py`)
-- No new regression tests, at the product owner's request (SQLite, which the suite uses, ignores row locks in any case). Checked by `tsc -b` (now 42, one below the 43 baseline), vitest at its 16-failure baseline, and live on the dev stack.
+- **Two simultaneous actions could both succeed on the same money (audit H3).** Accepting, countering, improving, rejecting or withdrawing an offer, and advancing, completing or collapsing a deal, paying an instalment or ticking a paperwork step, all checked a state and then acted on it with no row lock. So a double-click or two staff at once could create two deals from one offer, or settle a transfer twice. Each now re-reads its row with `SELECT … FOR UPDATE` first; the second request waits and is then refused. Verified live against Postgres: two simultaneous accepts gave one deal and one refusal; two simultaneous collapses gave one collapse and one refusal. The refusals now read "This offer has already been accepted — it can no longer be accepted" rather than showing `OfferStatus.ACCEPTED`. (`backend/app/offers/service.py`, `backend/app/deals/service.py`)
+- No new regression tests for either, at the product owner's request (SQLite, which the suite uses, ignores row locks in any case). Checked by `tsc -b` (now 42, one below the 43 baseline), vitest at its 16-failure baseline, and live on the dev stack.
 
 ### Added
 - **A daily "waiting on you" email, and email where the next move is yours.** Clubs visit a few times a week, and with in-app notifications alone a seven-day offer could expire unseen.
