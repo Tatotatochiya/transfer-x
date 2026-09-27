@@ -25,8 +25,9 @@ interface Props {
   showContractDetails?: boolean;
   formScores?: Record<string, { score: number; trend: number | null }>;
   fairValues?: Record<string, FairValueSignal>;
-  onToggleOpenToOffers?: (playerId: string, next: boolean) => void;
-  togglingIds?: Set<string>;
+  /** Withdraw a player's listing — the "unlist" half of List / Unlist. */
+  onUnlist?: (saleId: string, player: { id: string; name: string }) => void;
+  unlistingIds?: Set<string>;
   onSetValuation?: (playerId: string, value: number | null) => void;
   /** Open listings right now, player id → listing id — drives the "Listed"
    *  chip and flag, and the row's link to the listing. */
@@ -42,7 +43,7 @@ interface Props {
   loanedIn?: Map<string, { endDate: string; parentClubName: string | null }>;
 }
 
-type ChipKey = "all" | "risk" | "listed" | "open";
+type ChipKey = "all" | "risk" | "listed";
 
 function monthsUntil(iso: string): number {
   return (new Date(iso).getTime() - Date.now()) / (30 * 86_400_000);
@@ -62,7 +63,7 @@ function valuationGap(pct: number): "in-line" | "notable" | "wide" {
 
 function PlayerRow({
   player, showContractDetails, formScore, fairValue, listingId, loan,
-  onToggleOpenToOffers, toggling, onSetValuation, onList, listBlockedReason,
+  onUnlist, unlisting, onSetValuation, onList, listBlockedReason,
 }: {
   player: SquadPlayer;
   showContractDetails: boolean;
@@ -70,8 +71,9 @@ function PlayerRow({
   fairValue?: FairValueSignal;
   listingId?: string;
   loan?: { endDate: string; parentClubName: string | null };
-  onToggleOpenToOffers?: (playerId: string, next: boolean) => void;
-  toggling?: boolean;
+  /** Withdraw a player's listing — the "unlist" half of List / Unlist. */
+  onUnlist?: (saleId: string, player: { id: string; name: string }) => void;
+  unlisting?: boolean;
   onSetValuation?: (playerId: string, value: number | null) => void;
   onList?: (player: { id: string; name: string }) => void;
   listBlockedReason?: string | null;
@@ -107,8 +109,6 @@ function PlayerRow({
     ? { label: "Transfer pending", colour: "text-warning-text" }
     : listingId
     ? { label: "Listed", colour: "text-accent" }
-    : player.open_to_offers
-    ? { label: "Open to offers", colour: "text-success-text" }
     : null;
 
   function commitValuation() {
@@ -276,18 +276,34 @@ function PlayerRow({
             >
               On loan
             </span>
-          ) : onToggleOpenToOffers ? (
+          ) : onUnlist ? (
             <>
             {/* Listing from the row: the state that blocks it is what shows
                 instead — his live listing, or the deal already under way. */}
+            {/* List / Unlist is the only availability control: the separate
+                "open to offers" switch is gone, because a player is
+                available exactly when he is listed. */}
             {onList && (
               listingId ? (
-                <Link
-                  to={`/sales/${listingId}`}
-                  className="inline-flex min-h-11 items-center text-xs font-semibold text-accent hover:underline lg:min-h-0"
-                >
-                  Listed →
-                </Link>
+                <span className="inline-flex items-center gap-2">
+                  <Link
+                    to={`/sales/${listingId}`}
+                    className="inline-flex min-h-11 items-center text-xs font-semibold text-accent hover:underline lg:min-h-0"
+                  >
+                    Listed →
+                  </Link>
+                  {onUnlist && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="min-w-11 lg:min-w-0"
+                      loading={unlisting}
+                      onClick={() => onUnlist(listingId, { id: player.id, name: player.name })}
+                    >
+                      Unlist
+                    </Button>
+                  )}
+                </span>
               ) : player.active_deal?.status === "IN_PROGRESS" ? (
                 <span className="text-xs font-semibold text-warning-text">Transfer pending</span>
               ) : (
@@ -303,15 +319,6 @@ function PlayerRow({
                 </Button>
               )
             )}
-            <button
-              disabled={toggling || player.active_deal?.status === "IN_PROGRESS"}
-              title={player.active_deal?.status === "IN_PROGRESS" ? "Cannot change while a transfer is in progress" : undefined}
-              onClick={() => onToggleOpenToOffers(player.id, !player.open_to_offers)}
-              className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ${player.open_to_offers ? "bg-success" : "bg-border"}`}
-              aria-label={player.open_to_offers ? "Disable open to offers" : "Enable open to offers"}
-            >
-              <span className={`pointer-events-none inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${player.open_to_offers ? "translate-x-[18px]" : "translate-x-0.5"}`} />
-            </button>
             </>
           ) : flag ? (
             <span className={`text-xs font-semibold ${flag.colour}`}>{flag.label}</span>
@@ -336,7 +343,7 @@ function PositionGroup({
 }: {
   pos: string; label: string; min: number; total: number; players: SquadPlayer[];
 } & Omit<Parameters<typeof PlayerRow>[0], "player" | "listingId" | "toggling" | "formScore" | "fairValue" | "loan">
-  & { openListings: Map<string, string>; formScores?: Record<string, { score: number; trend: number | null }>; fairValues?: Record<string, FairValueSignal>; togglingIds?: Set<string>; loanedIn?: Map<string, { endDate: string; parentClubName: string | null }> }) {
+  & { openListings: Map<string, string>; formScores?: Record<string, { score: number; trend: number | null }>; fairValues?: Record<string, FairValueSignal>; unlistingIds?: Set<string>; loanedIn?: Map<string, { endDate: string; parentClubName: string | null }> }) {
   // total is the whole squad's count for this position, independent of the
   // active filter chip — depth coverage shouldn't flip to "priority gap"
   // just because a filter (e.g. "Contract risk") happens to hide everyone.
@@ -365,8 +372,8 @@ function PositionGroup({
               fairValue={rowProps.fairValues?.[p.id]}
               listingId={rowProps.openListings.get(p.id)}
               loan={rowProps.loanedIn?.get(p.id)}
-              onToggleOpenToOffers={rowProps.onToggleOpenToOffers}
-              toggling={rowProps.togglingIds?.has(p.id)}
+              onUnlist={rowProps.onUnlist}
+              unlisting={rowProps.unlistingIds?.has(p.id)}
               onSetValuation={rowProps.onSetValuation}
               onList={rowProps.onList}
               listBlockedReason={rowProps.listBlockedReason}
@@ -382,7 +389,7 @@ function PositionGroup({
 
 export default function SquadTable({
   players, showContractDetails = false, formScores, fairValues,
-  onToggleOpenToOffers, togglingIds, onSetValuation, openListings, loanedIn, onList, listBlockedReason,
+  onUnlist, unlistingIds, onSetValuation, openListings, loanedIn, onList, listBlockedReason,
 }: Props) {
   const [chip, setChip] = useState<ChipKey>("all");
   const listed = openListings ?? new Map<string, string>();
@@ -395,13 +402,11 @@ export default function SquadTable({
     all: players.length,
     risk: players.filter((p) => p.active_contract?.end_date && monthsUntil(p.active_contract.end_date) < 12).length,
     listed: players.filter((p) => listed.has(p.id)).length,
-    open: players.filter((p) => p.open_to_offers).length,
   };
 
   const filtered = players.filter((p) => {
     if (chip === "risk") return p.active_contract?.end_date && monthsUntil(p.active_contract.end_date) < 12;
     if (chip === "listed") return listed.has(p.id);
-    if (chip === "open") return p.open_to_offers;
     return true;
   });
 
@@ -416,7 +421,6 @@ export default function SquadTable({
     { key: "all", label: `All ${counts.all}` },
     { key: "risk", label: `Contract risk ${counts.risk}` },
     { key: "listed", label: `Listed ${counts.listed}` },
-    { key: "open", label: `Open to offers ${counts.open}` },
   ];
 
   return (
@@ -453,8 +457,8 @@ export default function SquadTable({
           showContractDetails={showContractDetails}
           formScores={formScores}
           fairValues={fairValues}
-          onToggleOpenToOffers={onToggleOpenToOffers}
-          togglingIds={togglingIds}
+          onUnlist={onUnlist}
+          unlistingIds={unlistingIds}
           onSetValuation={onSetValuation}
           openListings={listed}
           loanedIn={loanedIn}
@@ -473,8 +477,8 @@ export default function SquadTable({
           showContractDetails={showContractDetails}
           formScores={formScores}
           fairValues={fairValues}
-          onToggleOpenToOffers={onToggleOpenToOffers}
-          togglingIds={togglingIds}
+          onUnlist={onUnlist}
+          unlistingIds={unlistingIds}
           onSetValuation={onSetValuation}
           openListings={listed}
           loanedIn={loanedIn}

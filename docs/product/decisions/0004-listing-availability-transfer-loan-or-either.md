@@ -31,7 +31,7 @@ A club could only list a player for sale. Clubs often make young or surplus play
 ## Consequences
 
 - Accepting any offer still closes its listing, including a loan offer on an Either listing. Once the loan completes, the parent can list him again.
-- The player-level `open_to_offers` flag is unchanged and still says nothing about loans. ADR 0003's deferred merge of the flag and listings now has a third dimension to consider.
+- The player-level `open_to_offers` flag is unchanged and still says nothing about loans. ADR 0003's deferred merge of the flag and listings now has a third dimension to consider. *(Superseded by [ADR 0005](./0005-one-listing-listed-means-available.md): the flag now means "has an open listing".)*
 - Migration `0074`.
 
 ## Related documents

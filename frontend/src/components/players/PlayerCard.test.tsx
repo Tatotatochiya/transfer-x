@@ -57,15 +57,15 @@ describe("PlayerCard", () => {
     expect(screen.queryByText("Free Agent")).not.toBeInTheDocument();
   });
 
-  it("shows Open badge when player is open to offers", () => {
+  it("shows Listed badge when player is listed", () => {
     const player: Player = { ...BASE_PLAYER, open_to_offers: true };
     renderWithProviders(<PlayerCard player={player} />);
-    expect(screen.getByText("Open")).toBeInTheDocument();
+    expect(screen.getByText("Listed")).toBeInTheDocument();
   });
 
-  it("does not show Open badge when player is not open to offers", () => {
+  it("does not show Listed badge when player is not listed", () => {
     renderWithProviders(<PlayerCard player={BASE_PLAYER} />);
-    expect(screen.queryByText("Open")).not.toBeInTheDocument();
+    expect(screen.queryByText("Listed")).not.toBeInTheDocument();
   });
 
   it("shows position badge", () => {

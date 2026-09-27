@@ -9,11 +9,11 @@ import Pagination from "../../components/ui/Pagination";
 import EmptyState from "../../components/ui/EmptyState";
 import { ListSkeleton } from "../../components/ui/Skeleton";
 
+// New listings are open to offers or (as an advanced option) auctions; the
+// old fixed-price type is folded into open to offers, so it is not a filter.
 const SALE_TYPES: { value: SaleType | ""; label: string }[] = [
-  { value: "",               label: "All types" },
-  { value: "AUCTION",        label: "Auctions" },
-  { value: "OPEN_TO_OFFERS", label: "Open to Offers" },
-  { value: "FIXED_PRICE",    label: "Fixed Price" },
+  { value: "",        label: "All listings" },
+  { value: "AUCTION", label: "Auctions" },
 ];
 
 export default function SaleListPage() {

@@ -217,7 +217,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange }:
             </select>
           </div>
           <label className="flex items-center justify-between rounded-lg bg-surface px-[11px] py-[9px] ring-1 ring-input-border cursor-pointer">
-            <span className="text-sm text-text-secondary">Open to offers only</span>
+            <span className="text-sm text-text-secondary">Listed only</span>
             <div
               onClick={(e) => { e.preventDefault(); set("open_to_offers", !filters.open_to_offers); }}
               className={`relative h-4 w-8 shrink-0 rounded-full transition-colors ${filters.open_to_offers ? "bg-success" : "bg-border"}`}

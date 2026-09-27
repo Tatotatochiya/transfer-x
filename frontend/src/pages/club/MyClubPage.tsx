@@ -21,6 +21,8 @@ import FixturesPanel from "../../components/fixtures/FixturesPanel";
 import VerifiedBadge from "../../components/verification/VerifiedBadge";
 import RequestVerificationPanel from "../../components/verification/RequestVerificationPanel";
 import { formatCurrency, getApiError } from "../../lib/utils";
+import { useToast } from "../../context/ToastContext";
+import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useListingClosedReason, useOpenListings } from "../../hooks/useListing";
 
@@ -173,32 +175,31 @@ export default function MyClubPage() {
 
   const squadQueryKey = ["clubs", club?.id, "squad"] as const;
 
-  const toggleOTOMutation = useMutation({
-    mutationFn: ({ playerId, next }: { playerId: string; next: boolean }) =>
-      api.patch(`/clubs/me/players/${playerId}`, { open_to_offers: next }),
-    onMutate: async ({ playerId, next }) => {
-      await queryClient.cancelQueries({ queryKey: squadQueryKey });
-      const prev = queryClient.getQueryData<Paginated<PlayerDetail>>(squadQueryKey);
-      if (prev) {
-        queryClient.setQueryData<Paginated<PlayerDetail>>(squadQueryKey, {
-          ...prev,
-          items: prev.items.map((p) =>
-            p.id === playerId ? { ...p, open_to_offers: next } : p
-          ),
-        });
-      }
-      return { prev };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) queryClient.setQueryData(squadQueryKey, ctx.prev);
-    },
-    onSettled: () => {
+  // Unlist: withdraw his listing. With the separate "open to offers" switch
+  // gone, List / Unlist is how a club makes a player available or not.
+  const confirm = useConfirm();
+  const { addToast } = useToast();
+  const [unlistingIds, setUnlistingIds] = useState<Set<string>>(new Set());
+  const unlistMutation = useMutation({
+    mutationFn: ({ saleId }: { saleId: string; playerId: string }) =>
+      api.post(`/sales/${saleId}/withdraw`),
+    onMutate: ({ playerId }) => setUnlistingIds((s) => new Set(s).add(playerId)),
+    onSettled: (_d, _e, { playerId }) => {
+      setUnlistingIds((s) => { const n = new Set(s); n.delete(playerId); return n; });
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: squadQueryKey });
     },
+    onSuccess: () => addToast("Listing withdrawn.", "success"),
+    onError: (err: unknown) => addToast(getApiError(err, "Could not withdraw the listing."), "error"),
   });
 
-  function toggleOpenToOffers(playerId: string, next: boolean) {
-    toggleOTOMutation.mutate({ playerId, next });
+  async function unlist(saleId: string, player: { id: string; name: string }) {
+    if (await confirm({
+      title: `Unlist ${player.name}`,
+      message: "Withdraw his listing? Clubs can no longer make offers against it; offers already made are unaffected.",
+      confirmLabel: "Unlist",
+      variant: "danger",
+    })) unlistMutation.mutate({ saleId, playerId: player.id });
   }
 
   // ── Valuation ─────────────────────────────────────────────────────────────
@@ -403,7 +404,8 @@ export default function MyClubPage() {
                     showContractDetails
                     formScores={formScores}
                     fairValues={fairValues}
-                    onToggleOpenToOffers={canMarketWrite ? toggleOpenToOffers : undefined}
+                    onUnlist={canMarketWrite ? unlist : undefined}
+                    unlistingIds={unlistingIds}
                     onSetValuation={canMarketWrite ? setValuation : undefined}
                     openListings={openListings}
                     loanedIn={loanedIn}

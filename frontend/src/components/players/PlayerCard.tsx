@@ -126,11 +126,11 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
           {/* Fair-value model badge (TRA-92) */}
           {fairValueSignal && <FairValueBadge signal={fairValueSignal} compact />}
 
-          {/* Open to offers */}
+          {/* Listed — open_to_offers now means he has an open listing. */}
           {player.open_to_offers && (
             <span className="flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 ring-1 ring-success/30">
               <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[13px] font-semibold text-success-text">Open</span>
+              <span className="text-[13px] font-semibold text-success-text">Listed</span>
             </span>
           )}
         </div>

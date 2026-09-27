@@ -159,15 +159,14 @@ async def update_my_club_player(
     if player.created_by_user_id != current_user.id and active_contract is None and not in_squad:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Player not in your squad")
 
-    # Block open_to_offers changes while a deal is in progress for this player
+    # "Open to offers" is no longer a switch of its own: a player is available
+    # when he is listed (sales/service.sync_listed_flag). The field is still
+    # accepted so an old client gets a reason rather than a silent no-op.
     if body.open_to_offers is not None:
-        from app.deals import service as deals_service
-        active_deal = await deals_service.get_active_deal_for_player(db, player_id)
-        if active_deal and active_deal.status == "IN_PROGRESS":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Cannot change offer availability while a transfer deal is in progress for this player.",
-            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Players are made available by listing them — list him, or withdraw his listing.",
+        )
 
     # Player-level flags
     player_updates = body.model_dump(exclude_none=True, exclude={"club_valuation"})
