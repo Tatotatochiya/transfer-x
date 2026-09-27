@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { AgentNegotiation, Club, Deal, DealTermsVersion, FairValueSignal, TermsDiff } from "../../types/api";
+import type { AgentNegotiation, Club, Deal, DealTermsVersion, FairValueSignal, Offer, TermsDiff } from "../../types/api";
+import OfferThread from "../../components/offers/OfferThread";
 import type { DealStage, DealType } from "../../types/enums";
 import { useAuthStore } from "../../store/auth";
 import FairValueBadge from "../../components/players/FairValueBadge";
@@ -534,6 +535,36 @@ function MedicalCheckPanel({
           </div>
         </div>
       )}
+    </Panel>
+  );
+}
+
+// ── How this deal was agreed ──────────────────────────────────────────────────
+
+/**
+ * One page per transfer: the negotiation that produced this deal is shown
+ * here, so a club follows a transfer from first approach to completion
+ * without switching between an offer page and a deal page. The accepted
+ * offer's own page sends parties straight here.
+ */
+function AgreedOfferHistory({ offerId, myClubId }: { offerId: string; myClubId?: string }) {
+  const { data: offer } = useQuery<Offer>({
+    queryKey: ["offers", offerId],
+    queryFn: () => api.get<Offer>(`/offers/${offerId}`).then((r) => r.data),
+  });
+  if (!offer) return null;
+  return (
+    <Panel title="How this was agreed">
+      <details>
+        <summary className="cursor-pointer text-[13px] text-text-secondary">
+          Offer made {formatDate(offer.created_at)} — {offer.messages.length} message
+          {offer.messages.length === 1 ? "" : "s"}, {offer.events.length} step
+          {offer.events.length === 1 ? "" : "s"} in the negotiation
+        </summary>
+        <div className="mt-3">
+          <OfferThread offer={offer} myClubId={myClubId} canMessage={false} />
+        </div>
+      </details>
     </Panel>
   );
 }
@@ -1488,6 +1519,8 @@ export default function DealDetailPage() {
               canRecord={isStaff || (isBuyer && atPaperwork && deal.status === "IN_PROGRESS" && canDealWrite)}
             />
           )}
+
+          {deal.offer_id && isParty && <AgreedOfferHistory offerId={deal.offer_id} myClubId={myClubId} />}
 
           <Panel title="Deal Notes">
             {deal.deal_notes.length === 0 ? (
