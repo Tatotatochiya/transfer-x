@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import OnboardingChecklist from "../../components/OnboardingChecklist";
 import { useQuery } from "@tanstack/react-query";
@@ -47,6 +48,8 @@ const WAITING_FALLBACK_TITLE: Record<DashboardItem["kind"], string> = {
 import FigureCard from "../../components/dashboard/FigureCard";
 import WorkingPanel from "../../components/dashboard/WorkingPanel";
 import ReferencePanel from "../../components/dashboard/ReferencePanel";
+import ListPlayerModal from "../../components/sales/ListPlayerModal";
+import { useOpenListings } from "../../hooks/useListing";
 import { offerHeadline } from "../../lib/offerTerms";
 
 // ── Tier 2 — Standing figures ────────────────────────────────────────────────
@@ -160,6 +163,11 @@ export default function DashboardPage() {
     queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
     staleTime: 60_000,
   });
+
+  // "List" on an expiring contract opens the same modal as the squad row.
+  const [listTarget, setListTarget] = useState<{ id: string; name: string } | null>(null);
+  const closeList = useCallback(() => setListTarget(null), []);
+  const { byPlayer: listedIds } = useOpenListings(myClub?.id);
 
   const { data: windowStatus } = useQuery<TransferWindowStatus>({
     queryKey: ["transfer-window", "status"],
@@ -304,10 +312,16 @@ export default function DashboardPage() {
     label: h.player_name, sub: h.shortlist_name,
     value: h.asking_price != null ? formatCurrency(h.asking_price) : "TBD", valueColour: "text-warning-text",
   }));
+  // A player about to leave for nothing is the moment to sell or loan him, so
+  // the list action sits on the row rather than a page away.
   const expiringRows = (expiringContracts ?? []).slice(0, 5).map((c) => ({
     key: c.player_id, onClick: () => navigate(`/players/market/${c.player_id}`),
     label: c.player_name, sub: formatDate(c.end_date),
-    value: `${c.days_remaining}d`, valueColour: c.days_remaining <= 60 ? "text-danger-text" : c.days_remaining <= 120 ? "text-warning-text" : "text-text-secondary",
+    value: listedIds.has(c.player_id) ? `${c.days_remaining}d · listed` : `${c.days_remaining}d`,
+    valueColour: c.days_remaining <= 60 ? "text-danger-text" : c.days_remaining <= 120 ? "text-warning-text" : "text-text-secondary",
+    action: listedIds.has(c.player_id) || !can("MARKET_WRITE")
+      ? undefined
+      : { label: "List", onClick: () => setListTarget({ id: c.player_id, name: c.player_name }) },
   }));
 
   return (
@@ -348,6 +362,7 @@ export default function DashboardPage() {
         <ReferencePanel title="Squad needs" linkTo="/players/market" linkLabel="Browse" rows={squadNeedRows} />
         <ReferencePanel title="Shortlist on market" linkTo="/scouting/shortlists" linkLabel="View" rows={shortlistRows} />
         <ReferencePanel title="Expiring contracts" linkTo="/club" linkLabel="View squad" rows={expiringRows} />
+        <ListPlayerModal open={!!listTarget} onClose={closeList} player={listTarget ?? undefined} />
       </div>
 
       <div className="mb-[18px]">

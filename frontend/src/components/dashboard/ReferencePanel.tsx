@@ -7,7 +7,11 @@ import Card from "../ui/Card";
  * absence). */
 export default function ReferencePanel({ title, linkTo, linkLabel, rows }: {
   title: string; linkTo?: string; linkLabel?: string;
-  rows: { key: string; onClick: () => void; label: string; sub: string; value: string; valueColour: string }[];
+  rows: {
+    key: string; onClick: () => void; label: string; sub: string; value: string; valueColour: string;
+    /** A one-click next step for the row, e.g. "List" on an expiring contract. */
+    action?: { label: string; onClick: () => void };
+  }[];
 }) {
   const navigate = useNavigate();
   if (rows.length === 0) return null;
@@ -28,7 +32,17 @@ export default function ReferencePanel({ title, linkTo, linkLabel, rows }: {
               <p className="truncate text-[13px] text-text">{row.label}</p>
               <p className="truncate text-[11px] text-text-muted">{row.sub}</p>
             </div>
-            <span className={`shrink-0 text-[13px] font-semibold ${row.valueColour}`}>{row.value}</span>
+            <div className="flex shrink-0 items-center gap-3">
+              <span className={`text-[13px] font-semibold ${row.valueColour}`}>{row.value}</span>
+              {row.action && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); row.action!.onClick(); }}
+                  className="min-h-11 rounded-lg bg-surface px-3 text-[13px] font-semibold text-accent ring-1 ring-border hover:ring-accent lg:min-h-0 lg:py-1"
+                >
+                  {row.action.label}
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
