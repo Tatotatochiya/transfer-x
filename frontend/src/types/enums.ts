@@ -92,6 +92,8 @@ export type NotificationType =
   | "LOAN_ENDED"
   | "LOAN_RECALLED"
   | "LOAN_CONVERTED"
+  // Preference only — switches the daily "waiting on you" email.
+  | "DAILY_DIGEST"
   | "APPROVAL_DECIDED";
 
 // TRA-151 — club roles & capabilities (server matrix is the only truth; the

@@ -25,12 +25,17 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **A daily "waiting on you" email, and email where the next move is yours.** Clubs visit a few times a week, and with in-app notifications alone a seven-day offer could expire unseen.
+  - **The digest:** once a day, after 07:00 UTC, each owner, Sporting Director and Manager gets one email listing what is waiting on them, each item linked. It is the dashboard's tier-1 list, so the two never disagree. It is sent only when something is waiting, at most once a day (recorded on the user, migration `0076`, because jobs re-run on every restart), and switched off from a new **Daily summary** entry on the notification preferences page.
+  - **More per-event emails:** a counter-offer, an approval request and personal terms sent to the player now email too.
+  - **Locally:** email goes to a Mailpit container (`http://localhost:8025`) instead of being skipped. Deployed environments need real `SMTP_*` settings, and Railway has none yet.
+  - **Checked** live: an offer produced the per-event email; the digest reached the seller with that offer; a second run the same day sent nothing. (`backend/app/notifications/digest.py`, `backend/app/notifications/email.py`, `backend/app/main.py`, `docker-compose.yml`, `frontend/src/pages/notifications/`)
 - **The market says who can actually be bought, and offers go only where someone can answer them.** About 99% of the catalogue plays for real-world clubs that are not on TransferX, yet every player page offered **Make Offer**. The offer was created with no receiving club, reserved against the buyer's budget, and could never be accepted.
   - **Server:** offers to a player with no TransferX club are refused with the reason; a free agent is pointed to signing him instead.
   - **Player page:** for those players the page says so ("Nice is not on TransferX, so an offer could not be answered — shortlist him") and shows **Shortlist** instead of **Make Offer**.
   - **Market:** a **Buyable on TransferX only** filter (on a TransferX club, or a free agent) narrows 5,024 visible players to the 106 a club can act on.
   - **Checked** live, signed in and signed out. (`backend/app/offers/service.py`, `backend/app/players/`, `frontend/src/pages/market/`, `frontend/src/components/players/PlayerFilters.tsx`)
-- No new regression tests, at the product owner's request. Checked by `tsc -b` (43 baseline) and live on the dev stack.
+- No new regression tests for either, at the product owner's request. Checked by `tsc -b` (43 baseline) and live on the dev stack.
 
 ### Fixed
 - **The contract a player signed was not the one he agreed to.** At `PERSONAL_TERMS` the player consents to a wage, signing bonus and contract length. Completion ignored all three and built his contract from the offer's opening wage, with no end date and no bonus. So the consent on record was not the contract executed, and every signing produced an open-ended contract, which the expiring-contracts view and loan validation both depend on.

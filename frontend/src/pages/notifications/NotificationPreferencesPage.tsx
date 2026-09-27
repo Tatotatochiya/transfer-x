@@ -60,10 +60,17 @@ const TYPE_LABELS: Record<string, string> = {
   LOAN_ENDED: "A loan has ended and the player has returned",
   LOAN_RECALLED: "A parent club has recalled their player early",
   LOAN_CONVERTED: "A loan is turning into a permanent transfer",
+  DAILY_DIGEST: "A morning email of what is waiting on you — sent only when something is",
   APPROVAL_DECIDED: "Your spending request is decided",
 };
 
 const TYPE_GROUPS: { label: string; types: string[] }[] = [
+  // First: for a club that visits a few times a week, this one email is the
+  // thing most likely to stop an offer expiring unseen.
+  {
+    label: "Daily summary",
+    types: ["DAILY_DIGEST"],
+  },
   {
     label: "Auctions",
     types: ["AUCTION_BID_RECEIVED", "AUCTION_ENDING", "AUCTION_BID_ACCEPTED", "OUTBID"],

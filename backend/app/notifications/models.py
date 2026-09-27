@@ -49,6 +49,9 @@ class NotificationType(str, enum.Enum):
     LOAN_ENDED = "LOAN_ENDED"
     LOAN_RECALLED = "LOAN_RECALLED"
     LOAN_CONVERTED = "LOAN_CONVERTED"
+    # Preference only: switches the daily "waiting on you" email on or off.
+    # No in-app notification is created with it (notifications/digest.py).
+    DAILY_DIGEST = "DAILY_DIGEST"
 
 
 class Notification(Base):

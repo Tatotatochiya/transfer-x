@@ -65,6 +65,12 @@ Two things to know before re-running the seed there:
 - **`seed_demo.py` reads `settings.database_url`, not `DATABASE_PUBLIC_URL`.** Unlike `sync_leagues.py` and `recompute_valuations_railway.py`, it has no Railway-specific branch — run it with `DATABASE_URL` set to Railway's public URL.
 - **Scenario `D3` needs a mandated Arsenal player.** Railway originally had mandates only on Liverpool and Chelsea players, and the script aborts with a clear message rather than picking a substitute. Local's 16 active mandates were mirrored across on 2026-08-25 (Arsenal 4 / Chelsea 5 / Liverpool 7) to close that.
 
+## Email
+
+Locally, email goes to Mailpit (`http://localhost:8025`). A deployed environment has to set real SMTP settings on the API service: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_USE_TLS`, and `FRONTEND_BASE_URL` so the links in emails point at that environment's front end. Without `SMTP_HOST` every send is skipped and logged. That includes the per-event notification emails and the daily "waiting on you" digest (hourly job, one email per person per day, after 07:00 UTC).
+
+> **TODO:** Railway has no SMTP configured, so no email is sent there. Decide on a provider (and a sending domain) before any real club uses it.
+
 ## Pending data repairs on Railway
 
 One-off repair scripts that have been run locally but not yet on Railway. These are not Alembic migrations, so nothing runs them automatically on deploy — each has to be invoked deliberately after the corresponding code change is deployed. Delete a row once it has been run there.
