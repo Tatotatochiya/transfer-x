@@ -11,6 +11,11 @@ import Spinner from "../../components/ui/Spinner";
 import { getApiError } from "../../lib/utils";
 import { useAuthStore } from "../../store/auth";
 import TransferWindowBanner from "../../components/transfers/TransferWindowBanner";
+import DealStructureFields, {
+  emptyStructure,
+  structureBody,
+  structureError,
+} from "../../components/offers/DealStructureFields";
 
 export default function CreateOfferPage() {
   const navigate = useNavigate();
@@ -24,6 +29,8 @@ export default function CreateOfferPage() {
   const [fee, setFee]         = useState("");
   // Required when the fee is £0, and posted to the thread for the seller.
   const [noFeeReason, setNoFeeReason] = useState("");
+  // Payment schedule, add-ons, sell-on — agreed here, not in the deal room.
+  const [structure, setStructure] = useState(emptyStructure);
   // Loan terms. Held separately from the permanent fields rather than reusing
   // them, because a loan's money is loan_fee and the server rejects an offer
   // that carries both.
@@ -167,6 +174,12 @@ export default function CreateOfferPage() {
         }
         body.no_fee_reason = noFeeReason.trim();
       }
+      const structureProblem = structureError(structure, parsedFee);
+      if (structureProblem) {
+        setError(structureProblem);
+        return;
+      }
+      Object.assign(body, structureBody(structure));
 
       // His new contract with you. A loan has none of these: he stays on his
       // own contract, and the loan's wage is read from it.
@@ -485,6 +498,8 @@ export default function CreateOfferPage() {
           )}
 
           {dealType === "PERMANENT" && (<>
+          <DealStructureFields value={structure} onChange={setStructure} fee={parsedFeeValue} />
+
           {/* Weekly wage */}
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-text-secondary">

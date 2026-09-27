@@ -551,7 +551,7 @@ async def get_commitments(db: AsyncSession, club_id: uuid.UUID) -> list[Commitme
     from sqlalchemy.orm import selectinload
 
     from app.deals import service as deals_service
-    from app.deals.models import DealStatus
+    from app.deals.models import DealStatus, DealType
     from app.offers import service as offers_service
     from app.offers.models import OfferStatus
     from app.sales.models import Bid, BidStatus, Sale
@@ -599,12 +599,20 @@ async def get_commitments(db: AsyncSession, club_id: uuid.UUID) -> list[Commitme
         if d.buyer_club_id != club_id:
             continue  # committed budget is a buyer-side concept
         paid = sum((i.amount for i in (d.instalments or []) if i.paid), Decimal("0"))
+        # Add-ons and a signing bonus are held alongside the fee until the
+        # deal completes or collapses (deals/service._complete_deal,
+        # collapse_deal), so they belong in this row or it stops adding up to
+        # transfer_committed. A loan holds only its share of the wage.
+        addons = sum((c.amount for c in (d.clauses or [])), Decimal("0"))
+        wage = d.agreed_wage_weekly
+        if wage is not None and d.deal_type == DealType.LOAN and d.wage_split_pct is not None:
+            wage = (wage * d.wage_split_pct).quantize(Decimal("0.01"))
         items.append(CommitmentItem(
             kind="deal",
             id=d.id,
             player_name=d.player.name if d.player else None,
-            transfer_amount=max(Decimal("0"), d.agreed_fee - paid),
-            wage_weekly_amount=d.agreed_wage_weekly,
+            transfer_amount=max(Decimal("0"), d.agreed_fee - paid) + addons + (d.signing_bonus or Decimal("0")),
+            wage_weekly_amount=wage,
             status="committed",
             releases_when="Deal completes or collapses",
             link=f"/deals/{d.id}",

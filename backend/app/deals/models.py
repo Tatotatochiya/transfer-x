@@ -106,6 +106,11 @@ class Deal(Base):
     obligation_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
     # TRA-57: sell-on percentage (0.0–1.0), recorded on the selling club's side
     sell_on_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
+    # The personal terms the player consented to, carried here when the deal
+    # leaves PERSONAL_TERMS and used at completion (migration 0075). The
+    # consented wage replaces `agreed_wage_weekly`.
+    signing_bonus: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    contract_length_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # TRA-59: agent commission (set during AGENT_NEGOTIATION; mirrors AgentNegotiation fields for quick read)
     agent_commission_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
     agent_commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)

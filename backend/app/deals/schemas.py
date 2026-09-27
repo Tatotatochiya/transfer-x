@@ -252,6 +252,9 @@ class DealResponse(BaseModel):
     option_to_buy: Decimal | None = None
     obligation_to_buy: bool = False
     obligation_conditions: str | None = None
+    # The consented personal terms, carried onto the deal at PERSONAL_TERMS → PAPERWORK.
+    signing_bonus: Decimal | None = None
+    contract_length_years: int | None = None
     # TRA-57
     sell_on_pct: Decimal | None = None
     clauses: list[DealClauseResponse] = []

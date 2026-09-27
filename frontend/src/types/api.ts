@@ -561,6 +561,18 @@ export interface OfferEvent {
   created_at: string;
 }
 
+export interface OfferInstalment {
+  due_date: string;
+  amount: number | string;
+}
+
+export interface OfferClause {
+  clause_type: ClauseType;
+  trigger_description: string;
+  amount: number | string;
+  cap: number | string | null;
+}
+
 export interface Offer {
   id: string;
   player_id: string;
@@ -590,6 +602,11 @@ export interface Offer {
    *  carried onto the deal. */
   obligation_conditions: string | null;
   recall_allowed: boolean;
+  /** Deal structure, agreed on the offer and copied onto the deal at
+   *  acceptance. Permanent offers only. The schedule sums to the fee. */
+  instalments: OfferInstalment[];
+  clauses: OfferClause[];
+  sell_on_pct: number | null;
   status: OfferStatus;
   expires_at: string | null;
   last_action_at: string;
@@ -780,6 +797,10 @@ export interface Deal {
   obligation_conditions: string | null;
   /** Loan only: fraction 0–1 of his wage the borrowing club pays. */
   wage_split_pct: number | null;
+  /** The personal terms the player consented to, carried onto the deal when
+   *  it left PERSONAL_TERMS; completion creates the contract from them. */
+  signing_bonus: number | null;
+  contract_length_years: number | null;
   recall_allowed: boolean;
   // TRA-57
   sell_on_pct: number | null;

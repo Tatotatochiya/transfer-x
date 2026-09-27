@@ -48,6 +48,60 @@ def _add_ons_total(add_ons: dict | None) -> Decimal:
     return total
 
 
+def _as_json(item) -> dict:
+    """A structure entry as stored: plain JSON, whether it arrived as a
+    request model or (from an approval replay) as a dict already."""
+    if hasattr(item, "model_dump"):
+        return item.model_dump(mode="json")
+    return {k: (str(v) if isinstance(v, Decimal) else v.isoformat() if isinstance(v, date) else v)
+            for k, v in dict(item).items()}
+
+
+def _clauses_total(clauses: list | None) -> Decimal:
+    """What every add-on would pay once — the most a club can be on the hook
+    for under them, which is what is reserved and approved."""
+    return sum((Decimal(str(_as_json(c)["amount"])) for c in clauses or []), Decimal("0"))
+
+
+def validate_structure(
+    *,
+    deal_type: DealType,
+    fee_amount: Decimal | None,
+    instalments: list | None,
+    clauses: list | None,
+    sell_on_pct: Decimal | None,
+) -> None:
+    """The payment schedule, add-ons and sell-on an offer proposes.
+
+    These were only ever set in the deal room after the seller had accepted —
+    by either club alone — so a seller could accept £30m and then see it
+    spread over four years. They belong to the offer, negotiated through its
+    counters like every other term.
+    """
+    if deal_type == DealType.LOAN:
+        if instalments or clauses or sell_on_pct is not None:
+            raise ValueError(
+                "A loan has no payment schedule, add-ons or sell-on — those belong to a transfer"
+            )
+        return
+    if sell_on_pct is not None and not (Decimal("0") < sell_on_pct <= Decimal("1")):
+        raise ValueError("Sell-on must be between 0 and 1 — it is a fraction, not a percentage")
+    if instalments:
+        rows = [_as_json(i) for i in instalments]
+        total = sum((Decimal(str(r["amount"])) for r in rows), Decimal("0"))
+        if fee_amount is None or total != fee_amount:
+            raise ValueError(
+                f"The payment schedule totals £{total:,.0f} — it must add up to the fee"
+                + (f" (£{fee_amount:,.0f})" if fee_amount is not None else "")
+            )
+        today = datetime.now(timezone.utc).date()
+        if any(date.fromisoformat(str(r["due_date"])) < today for r in rows):
+            raise ValueError("A payment in the schedule is due in the past")
+    for c in (_as_json(c) for c in clauses or []):
+        if c.get("cap") is not None and Decimal(str(c["cap"])) < Decimal(str(c["amount"])):
+            raise ValueError(f"An add-on's cap is below its amount: {c['trigger_description']}")
+
+
 def _reservation(
     *,
     deal_type: DealType,
@@ -56,6 +110,7 @@ def _reservation(
     add_ons: dict | None,
     wage_weekly: Decimal | None,
     wage_split_pct: Decimal | None,
+    clauses: list | None = None,
 ) -> tuple[Decimal, Decimal]:
     """What a buying club must have free to hold this offer: (transfer, weekly wage).
 
@@ -81,7 +136,10 @@ def _reservation(
         share = wage_split_pct if wage_split_pct is not None else Decimal("1")
         wage = (wage_weekly or Decimal("0")) * share
     else:
-        transfer = (fee_amount or Decimal("0")) + _add_ons_total(add_ons)
+        # Add-ons are contingent, but a club must be able to pay them if they
+        # fall due, so they are held alongside the fee — as the free-form
+        # add_ons always were.
+        transfer = (fee_amount or Decimal("0")) + _add_ons_total(add_ons) + _clauses_total(clauses)
         wage = wage_weekly or Decimal("0")
     return transfer, wage.quantize(Decimal("0.01"))
 
@@ -95,6 +153,7 @@ def _offer_reservation(offer: Offer, **overrides) -> tuple[Decimal, Decimal]:
         "add_ons": offer.add_ons,
         "wage_weekly": offer.wage_weekly,
         "wage_split_pct": offer.wage_split_pct,
+        "clauses": offer.clauses,
     }
     fields.update({k: v for k, v in overrides.items() if v is not None})
     return _reservation(**fields)
@@ -107,6 +166,7 @@ def approval_amount(
     loan_fee: Decimal | None,
     option_to_buy: Decimal | None,
     obligation_to_buy: bool,
+    clauses: list | None = None,
 ) -> Decimal | None:
     """The figure a spending-approval threshold (D7) is tested against.
 
@@ -122,6 +182,10 @@ def approval_amount(
         if obligation_to_buy and option_to_buy is not None:
             total += option_to_buy
         return total
+    # A permanent offer commits the fee and, if they fall due, its add-ons —
+    # the same figure it reserves.
+    if clauses:
+        return (fee_amount or Decimal("0")) + _clauses_total(clauses)
     return fee_amount
 
 
@@ -251,15 +315,8 @@ def _load_options():
 
 
 async def get_offer_by_id(db: AsyncSession, offer_id: uuid.UUID) -> Offer | None:
-    # populate_existing: the routers re-read an offer they have just changed in
-    # this same session, and without it the identity map hands back the copy
-    # already loaded — with its events and messages as they were *before* the
-    # change, so a counter's response showed the negotiation without the counter.
     result = await db.execute(
-        select(Offer)
-        .where(Offer.id == offer_id)
-        .options(*_load_options())
-        .execution_options(populate_existing=True)
+        select(Offer).where(Offer.id == offer_id).options(*_load_options())
     )
     return result.scalar_one_or_none()
 
@@ -346,6 +403,9 @@ async def check_new_offer(
     no_fee_reason: str | None,
     obligation_conditions: str | None = None,
     sale_id: uuid.UUID | None = None,
+    instalments: list | None = None,
+    clauses: list | None = None,
+    sell_on_pct: Decimal | None = None,
 ) -> None:
     """Every rule a new offer's terms must pass. Separate from `create_offer`
     so the router can run it before capturing a spending approval — otherwise
@@ -375,6 +435,13 @@ async def check_new_offer(
         obligation_to_buy=obligation_to_buy,
         recall_allowed=recall_allowed,
         obligation_conditions=obligation_conditions,
+    )
+    validate_structure(
+        deal_type=deal_type,
+        fee_amount=fee_amount,
+        instalments=instalments,
+        clauses=clauses,
+        sell_on_pct=sell_on_pct,
     )
     if deal_type == DealType.LOAN:
         await loan_wage_basis(db, player_id)
@@ -414,6 +481,9 @@ async def create_offer(
     recall_allowed: bool = False,
     no_fee_reason: str | None = None,
     obligation_conditions: str | None = None,
+    instalments: list | None = None,
+    clauses: list | None = None,
+    sell_on_pct: Decimal | None = None,
 ) -> Offer:
     """Create and immediately send an offer. Reserves budget from from_club.
 
@@ -439,8 +509,13 @@ async def create_offer(
         no_fee_reason=no_fee_reason,
         obligation_conditions=obligation_conditions,
         sale_id=sale_id,
+        instalments=instalments,
+        clauses=clauses,
+        sell_on_pct=sell_on_pct,
     )
     reason = (no_fee_reason or "").strip()
+    instalments = sorted((_as_json(i) for i in instalments or []), key=lambda r: r["due_date"])
+    clauses = [_as_json(c) for c in clauses or []]
     obligation_conditions = (obligation_conditions or "").strip() or None
 
     if deal_type == DealType.LOAN:
@@ -474,6 +549,9 @@ async def create_offer(
         obligation_to_buy=obligation_to_buy,
         recall_allowed=recall_allowed,
         obligation_conditions=obligation_conditions,
+        instalments=instalments,
+        clauses=clauses,
+        sell_on_pct=sell_on_pct,
     )
 
     # Reserve budget immediately on send — transfer and wage both, see _reservation.
@@ -484,6 +562,7 @@ async def create_offer(
         add_ons=add_ons,
         wage_weekly=wage_weekly,
         wage_split_pct=wage_split_pct,
+        clauses=clauses,
     )
     if reserve > 0 or wage_reserve > 0:
         await clubs_module.service.reserve_budget(
@@ -544,6 +623,10 @@ async def counter_offer(
     recall_allowed: bool | None = None,
     obligation_conditions: str | None = None,
     remove_option_to_buy: bool = False,
+    instalments: list | None = None,
+    clauses: list | None = None,
+    sell_on_pct: Decimal | None = None,
+    remove_sell_on: bool = False,
 ) -> Offer:
     """Counter an offer with new terms. Either party can counter.
 
@@ -587,9 +670,26 @@ async def counter_offer(
     # Dropping the obligation drops what it was conditional on.
     if changes.get("obligation_to_buy") is False and offer.obligation_conditions:
         changes["obligation_conditions"] = ""
+    # Structure: a list (empty included) replaces what was there.
+    if instalments is not None:
+        changes["instalments"] = sorted((_as_json(i) for i in instalments), key=lambda r: r["due_date"])
+    if clauses is not None:
+        changes["clauses"] = [_as_json(c) for c in clauses]
+    if sell_on_pct is not None:
+        changes["sell_on_pct"] = sell_on_pct
 
     def _merged(field: str):
         return changes.get(field, getattr(offer, field))
+
+    # A new fee against an unchanged schedule would leave the schedule adding
+    # up to the old fee — refused by the check below, with a message saying so.
+    validate_structure(
+        deal_type=offer.deal_type,
+        fee_amount=_merged("fee_amount"),
+        instalments=_merged("instalments"),
+        clauses=_merged("clauses"),
+        sell_on_pct=None if remove_sell_on else _merged("sell_on_pct"),
+    )
 
     await validate_offer_terms(
         db,
@@ -611,7 +711,7 @@ async def counter_offer(
     # whenever either the fee or the add_ons change, not just the fee.
     # A wage or loan-fee change moves the reservation as well, so those count too.
     if actor_club_id == offer.from_club_id and any(
-        v is not None for v in (fee_amount, add_ons, wage_weekly, loan_fee, wage_split_pct)
+        v is not None for v in (fee_amount, add_ons, wage_weekly, loan_fee, wage_split_pct, clauses)
     ):
         old_reserve = offer.reserved_transfer_amount
         old_wage_reserve = offer.reserved_wage_weekly
@@ -619,6 +719,7 @@ async def counter_offer(
             offer,
             fee_amount=fee_amount,
             add_ons=add_ons,
+            clauses=changes.get("clauses"),
             wage_weekly=wage_weekly,
             loan_fee=loan_fee,
             wage_split_pct=wage_split_pct,
@@ -668,6 +769,14 @@ async def counter_offer(
         offer.recall_allowed = recall_allowed
     if "obligation_conditions" in changes:
         offer.obligation_conditions = changes["obligation_conditions"] or None
+    if "instalments" in changes:
+        offer.instalments = changes["instalments"]
+    if "clauses" in changes:
+        offer.clauses = changes["clauses"]
+    if "sell_on_pct" in changes:
+        offer.sell_on_pct = changes["sell_on_pct"]
+    if remove_sell_on:
+        offer.sell_on_pct = None
     if contract_years is not None:
         offer.contract_years = contract_years
     if contract_end_date is not None:
@@ -688,8 +797,12 @@ async def counter_offer(
         payload={
             "fee_amount": str(fee_amount) if fee_amount else None,
             "changes": {
-                **{k: v if isinstance(v, bool) else str(v) for k, v in changes.items()},
+                **{
+                    k: v if isinstance(v, (bool, list)) else str(v)
+                    for k, v in changes.items()
+                },
                 **({"option_to_buy": None} if remove_option_to_buy else {}),
+                **({"sell_on_pct": None} if remove_sell_on else {}),
             },
         },
     ))
@@ -874,8 +987,43 @@ async def accept_offer(
         obligation_to_buy=offer.obligation_to_buy,
         obligation_conditions=offer.obligation_conditions,
         recall_allowed=offer.recall_allowed,
+        sell_on_pct=offer.sell_on_pct,
     )
     db.add(deal)
+    await db.flush()
+
+    # The structure the clubs agreed becomes the deal's. The deal room only
+    # displays and tracks it from here (marking payments made, add-ons met).
+    from app.deals.models import ClauseStatus, ClauseType, DealClause, DealInstalment
+
+    for row in offer.instalments or []:
+        db.add(DealInstalment(
+            deal_id=deal.id,
+            due_date=date.fromisoformat(str(row["due_date"])),
+            amount=Decimal(str(row["amount"])),
+        ))
+    for row in offer.clauses or []:
+        db.add(DealClause(
+            deal_id=deal.id,
+            clause_type=ClauseType(row["clause_type"]),
+            trigger_description=row["trigger_description"],
+            amount=Decimal(str(row["amount"])),
+            cap=Decimal(str(row["cap"])) if row.get("cap") is not None else None,
+            status=ClauseStatus.PENDING,
+        ))
+    # The older free-form add_ons: every numeric entry was reserved (and is now
+    # committed), so each becomes a clause too — otherwise that money stays
+    # committed with nothing on the deal to account for it or release it.
+    for key, value in (offer.add_ons or {}).items():
+        if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)) or value <= 0:
+            continue
+        db.add(DealClause(
+            deal_id=deal.id,
+            clause_type=ClauseType.OTHER,
+            trigger_description=str(key).replace("_", " "),
+            amount=Decimal(str(value)),
+            status=ClauseStatus.PENDING,
+        ))
     await db.flush()
 
     await audit_service.emit(

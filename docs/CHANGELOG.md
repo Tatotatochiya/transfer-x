@@ -24,6 +24,19 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 
 ## [Unreleased]
 
+### Fixed
+- **The contract a player signed was not the one he agreed to.** At `PERSONAL_TERMS` the player consents to a wage, signing bonus and contract length. Completion ignored all three and built his contract from the offer's opening wage, with no end date and no bonus. So the consent on record was not the contract executed, and every signing produced an open-ended contract, which the expiring-contracts view and loan validation both depend on.
+  - **Now:** when the deal leaves `PERSONAL_TERMS`, the consented terms become the deal's (migration `0075`). The wage replaces the opening wage, and the difference and the bonus are committed against the buyer's budget.
+  - **Refusal:** a buyer who cannot fund the terms is refused with a message that carries no figures, because either club may be the one advancing the deal.
+  - **Completion:** the contract gets that wage, starts today and ends after the agreed years; the bonus is charged. Loans are exempt, because the loan sets their wage and length.
+- **Deal terms could still be changed after the seller accepted.** An offer carried only a fee, a wage and a contract length. The payment schedule, add-ons and sell-on could only be added in the deal room afterwards, by either club alone, so a seller could accept £30m and see it spread over four years.
+  - **Now:** they are part of the offer and its counters (migration `0075`), validated (the schedule must add up to the fee and not fall in the past), and copied onto the deal at acceptance. The deal room shows them read-only and refuses to change them.
+  - **Money:** add-ons count toward the buyer's reservation and approval figure, as the free-form `add_ons` always did. Their hold is released at completion or collapse. Before, it stayed committed for good, and the finance commitments breakdown now includes it.
+  - **UI:** a collapsible "Payment schedule, add-ons & sell-on" section on the offer and counter forms.
+- **Collapsing a deal released too little, or too much.** A deal with no fee (a free-agent signing) never released its committed wage. A loan released the full wage when it had committed only the borrowing club's share. Collapse now releases the fee, add-ons, bonus and the right wage.
+- **Accepting an offer crashed for a manager at a club with an approval threshold.** A regression from the stale-counter fix (`d9e2d95`): refreshing the re-read offer with `populate_existing` also refreshed the clubs loaded with it and dropped their finance, which the approval check then lazy-loaded outside the async context. Found by the first full suite run over those commits. It now expires only the changed offer.
+- Tests: 13 new or rewritten across `test_deals.py` and `test_offers.py`. The five affected test files pass (194); a final full-suite run was not completed. `tsc -b` stays at the 43-error baseline and vitest at its 16-failure baseline. (`backend/app/deals/`, `backend/app/offers/`, `backend/app/clubs/service.py`, `frontend/src/components/offers/DealStructureFields.tsx`, `frontend/src/pages/offers/`, `frontend/src/pages/deals/DealDetailPage.tsx`)
+
 ### Added
 - **A player can be listed for loan.** Clubs routinely make young or surplus players available on loan, and a listing could only offer a player for sale, so buyers sent loan offers blind. A listing now says what its club will consider: Transfer, Loan or Either (migration `0074`, existing listings backfilled to Transfer).
   - **Limits on sale type:** an auction is transfer-only, since a loan cannot be auctioned. A fixed price is a transfer price, so it can be Transfer or Either but not loan-only. A loan-only listing is Open to Offers with no asking price, because a figure there would read as the player's price to buyers and to the fair-value signal.

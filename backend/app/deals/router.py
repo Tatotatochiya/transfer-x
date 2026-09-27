@@ -182,6 +182,8 @@ async def _build_deal_response(db: AsyncSession, deal, *, caller_user_type: str 
         option_to_buy=deal.option_to_buy,
         obligation_to_buy=deal.obligation_to_buy,
         obligation_conditions=deal.obligation_conditions,
+        signing_bonus=deal.signing_bonus,
+        contract_length_years=deal.contract_length_years,
         sell_on_pct=deal.sell_on_pct,
         clauses=deal.clauses,
         instalments=deal.instalments,

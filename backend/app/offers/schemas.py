@@ -5,7 +5,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field, field_validator
 
 from app.common.schemas import WhoseMove
-from app.deals.models import DealType
+from app.deals.models import ClauseType, DealType
 from app.offers.models import OfferEventType, OfferStatus
 from app.players.schemas import ActiveDealStub
 
@@ -21,6 +21,24 @@ class PlayerSummary(BaseModel):
     name: str
     position: str | None = None
     model_config = {"from_attributes": True}
+
+
+# ── Deal structure on an offer ────────────────────────────────────────────────
+
+
+class OfferInstalment(BaseModel):
+    """One payment in the schedule. The schedule sums to the fee."""
+    due_date: date
+    amount: Decimal = Field(gt=0)
+
+
+class OfferClause(BaseModel):
+    """An add-on: an amount paid if something happens ("£2m after 50
+    appearances"). `cap` bounds a clause that can pay more than once."""
+    clause_type: ClauseType
+    trigger_description: str = Field(min_length=1, max_length=300)
+    amount: Decimal = Field(gt=0)
+    cap: Decimal | None = Field(None, gt=0)
 
 
 # ── Offer schemas ─────────────────────────────────────────────────────────────
@@ -52,6 +70,11 @@ class OfferCreateRequest(BaseModel):
     obligation_to_buy: bool = False
     recall_allowed: bool = False
     obligation_conditions: str | None = Field(None, max_length=1000)
+    # Structure (permanent only). An empty schedule means one payment on
+    # completion; empty clauses, no add-ons.
+    instalments: list[OfferInstalment] = []
+    clauses: list[OfferClause] = []
+    sell_on_pct: Decimal | None = None
     # Required when a permanent offer's fee is £0; posted to the thread.
     no_fee_reason: str | None = Field(None, max_length=500)
 
@@ -89,6 +112,11 @@ class OfferCounterRequest(BaseModel):
     obligation_to_buy: bool | None = None
     recall_allowed: bool | None = None
     obligation_conditions: str | None = Field(None, max_length=1000)
+    # Structure. None leaves it as it is; a list (empty included) replaces it.
+    # An explicit "sell_on_pct": null removes the sell-on (as with the option).
+    instalments: list[OfferInstalment] | None = None
+    clauses: list[OfferClause] | None = None
+    sell_on_pct: Decimal | None = None
 
     @field_validator("fee_amount", "wage_weekly", "loan_fee", "option_to_buy", mode="before")
     @classmethod
@@ -161,6 +189,9 @@ class OfferResponse(BaseModel):
     obligation_to_buy: bool = False
     recall_allowed: bool = False
     obligation_conditions: str | None = None
+    instalments: list[OfferInstalment] = []
+    clauses: list[OfferClause] = []
+    sell_on_pct: Decimal | None = None
     status: OfferStatus
     expires_at: datetime | None
     last_action_at: datetime

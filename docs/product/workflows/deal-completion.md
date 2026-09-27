@@ -36,8 +36,9 @@ Out of scope: earlier stages (see [`transfer-lifecycle.md`](./transfer-lifecycle
 
 `CONFIRMED → COMPLETED` can be triggered by a club (any deal participant) or staff, via the same generic advance action — the buyer/seller banner at this stage reads "ready to execute" with an **Execute Transfer** button. On completion:
 
-- The player's active contract moves to the buying club (a new `Contract` row; wage per the deal's agreed terms).
-- The buyer's committed transfer/wage budget converts to spent; the seller's finance is credited the agreed fee.
+- The player's active contract moves to the buying club (a new `Contract` row) on **the personal terms he consented to**: that wage, starting today and ending after the agreed number of years. Before 2026-09-27 the contract took the offer's opening wage and had no end date.
+- The buyer's committed transfer/wage budget converts to spent, including the signing bonus; the seller's finance is credited the agreed fee (or per instalment, as each is marked paid, when there is a schedule).
+- The add-ons' hold on the buyer's budget is released. They were reserved and committed so the club could pay them if they fell due; from completion they are tracked per clause.
 - The player's `open_to_offers` flag is cleared (belongs to the seller's context — the new owner decides fresh).
 - Any `PENDING` `AgentCommission` for the deal moves to `CONFIRMED` (the agent's commission is due, but not yet invoiced or paid — see [`agent-representation.md`](./agent-representation.md)).
 - A `DEAL_COMPLETED` event is recorded in the deal's audit log (see [`../../architecture/data-model.md`](../../architecture/data-model.md) for the audit-log schema).

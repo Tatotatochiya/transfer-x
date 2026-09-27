@@ -395,6 +395,82 @@ async def get_transfer_analytics(db: AsyncSession) -> dict:
     }
 
 
+def _add_years(start: date, years: int) -> date:
+    try:
+        return start.replace(year=start.year + years)
+    except ValueError:  # 29 February into a non-leap year
+        return start.replace(year=start.year + years, month=2, day=28)
+
+
+_CANNOT_FUND_TERMS = (
+    "The buying club's budget does not cover the personal terms the player agreed — "
+    "the buying club needs to free budget before the deal can move to paperwork"
+)
+
+
+async def _apply_consented_terms(
+    db: AsyncSession, deal: Deal, pt, *, actor_user_id: uuid.UUID | None = None
+) -> None:
+    """Make the personal terms the player consented to the deal's terms.
+
+    The player agrees a wage, signing bonus and contract length here, and
+    completion used to ignore all three: it built his contract from the
+    offer's opening wage, with no end date and no bonus — so the consent on
+    record was not the contract executed. The consented wage replaces
+    `agreed_wage_weekly`; the bonus and length are recorded on the deal and
+    used at completion.
+
+    The buyer's commitment follows: the wage difference and the bonus are
+    committed now, as acceptance commits the fee. The failure message carries
+    no figures, since either club may be the one advancing and the seller
+    must not learn the buyer's budget from it.
+
+    A loan is left alone: its wage is set by the loan's terms (a share of his
+    contract wage) and its contract ends with the loan.
+    """
+    if deal.deal_type == DealType.LOAN:
+        return
+
+    old_wage = deal.agreed_wage_weekly or Decimal("0")
+    new_wage = pt.wage_weekly if pt.wage_weekly is not None else old_wage
+    wage_delta = new_wage - old_wage
+    bonus = pt.signing_bonus or Decimal("0")
+
+    if wage_delta > 0 or bonus > 0:
+        try:
+            await clubs_module.service.reserve_budget(
+                db, club_id=deal.buyer_club_id,
+                transfer_amount=bonus, wage_weekly=max(Decimal("0"), wage_delta),
+            )
+        except ValueError as exc:
+            raise ValueError(_CANNOT_FUND_TERMS) from exc
+        await clubs_module.service.commit_budget(
+            db, club_id=deal.buyer_club_id,
+            transfer_amount=bonus, wage_weekly=max(Decimal("0"), wage_delta),
+        )
+    if wage_delta < 0:
+        fin = await clubs_module.service.get_finance_for_update(db, deal.buyer_club_id)
+        if fin:
+            fin.wage_committed_weekly = max(Decimal("0"), fin.wage_committed_weekly + wage_delta)
+
+    deal.agreed_wage_weekly = new_wage if new_wage > 0 else deal.agreed_wage_weekly
+    deal.signing_bonus = bonus if bonus > 0 else None
+    deal.contract_length_years = pt.length_years
+    await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="PERSONAL_TERMS_APPLIED",
+        actor_user_id=actor_user_id,
+        payload={
+            "wage_weekly": str(new_wage),
+            "signing_bonus": str(bonus),
+            "contract_length_years": pt.length_years,
+        },
+        description="Consented personal terms became the deal's contract terms",
+    )
+
+
 async def advance_deal(
     db: AsyncSession,
     deal: Deal,
@@ -474,6 +550,7 @@ async def advance_deal(
             raise ValueError("Personal terms have not been set yet")
         if pt.player_consent != AgreementStatus.AGREED:
             raise ValueError("Player has not consented to the personal terms")
+        await _apply_consented_terms(db, deal, pt, actor_user_id=actor_user_id)
         deal.stage = DealStage.PAPERWORK
 
     elif stage == DealStage.PAPERWORK:
@@ -582,15 +659,27 @@ async def collapse_deal(
 
     _require_party(deal, actor_club_id, is_staff)
 
-    # Release committed budget back to available for buyer
-    if deal.agreed_fee and deal.agreed_fee > 0:
-        finance = await clubs_module.service.get_finance_for_update(db, deal.buyer_club_id)
-        if finance:
-            finance.transfer_committed = max(Decimal("0"), finance.transfer_committed - deal.agreed_fee)
-            if deal.agreed_wage_weekly:
-                finance.wage_committed_weekly = max(
-                    Decimal("0"), finance.wage_committed_weekly - deal.agreed_wage_weekly
-                )
+    # Release everything the buyer has committed to this deal: the fee, any
+    # add-ons held with it, a signing bonus committed at personal terms, and
+    # the wage. The wage used to be released only when there was a fee, so a
+    # collapsed free-agent signing kept its wage committed for good.
+    addons = sum(
+        (c.amount for c in (await db.execute(
+            select(DealClause).where(DealClause.deal_id == deal.id)
+        )).scalars()),
+        Decimal("0"),
+    )
+    transfer = (deal.agreed_fee or Decimal("0")) + addons + (deal.signing_bonus or Decimal("0"))
+    finance = await clubs_module.service.get_finance_for_update(db, deal.buyer_club_id)
+    if finance:
+        if transfer > 0:
+            finance.transfer_committed = max(Decimal("0"), finance.transfer_committed - transfer)
+        # A loan committed only the borrowing club's share of the wage.
+        wage = deal.agreed_wage_weekly or Decimal("0")
+        if deal.deal_type == DealType.LOAN and deal.wage_split_pct is not None:
+            wage = (wage * deal.wage_split_pct).quantize(Decimal("0.01"))
+        if wage > 0:
+            finance.wage_committed_weekly = max(Decimal("0"), finance.wage_committed_weekly - wage)
 
     deal.status = DealStatus.COLLAPSED
     await audit_service.emit(
@@ -765,8 +854,26 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
     buyer_fin = finances.get(deal.buyer_club_id)
     seller_fin = finances.get(deal.seller_club_id) if deal.seller_club_id else None
 
+    # Add-ons were held (reserved, then committed) because a club must be able
+    # to pay them if they fall due. Once the deal completes they are tracked
+    # per clause instead, so their hold is released rather than left committed
+    # indefinitely — which is what happened before, for the free-form add_ons.
+    addons = sum(
+        (c.amount for c in (await db.execute(
+            select(DealClause).where(DealClause.deal_id == deal.id)
+        )).scalars()),
+        Decimal("0"),
+    )
+    bonus = deal.signing_bonus or Decimal("0")
+
     # Buyer: fee committed → spent (skipped when instalments drive spending); wage committed → reserved.
     if buyer_fin:
+        if addons > 0:
+            buyer_fin.transfer_committed = max(Decimal("0"), buyer_fin.transfer_committed - addons)
+        # The signing bonus is paid on signing: committed → spent.
+        if bonus > 0:
+            buyer_fin.transfer_committed = max(Decimal("0"), buyer_fin.transfer_committed - bonus)
+            buyer_fin.transfer_spent += bonus
         if fee > 0:
             buyer_fin.transfer_committed = max(Decimal("0"), buyer_fin.transfer_committed - fee)
             if not has_instalments:
@@ -844,12 +951,21 @@ async def _complete_deal(db: AsyncSession, deal: Deal) -> None:
     # Clear open_to_offers — the flag belongs to the seller's context; new owner decides fresh
     player.open_to_offers = False
 
-    # Create new contract with buyer (also normalizes player status internally)
+    # Create new contract with buyer (also normalizes player status internally).
+    # Wage and length are the personal terms the player consented to (carried
+    # onto the deal when it left PERSONAL_TERMS); a deal with no agreed length
+    # still gets no end date, as before.
+    today = now.date()
     await players_service.create_contract(
         db,
         player=player,
         club_id=deal.buyer_club_id,
+        start_date=today,
+        end_date=_add_years(today, deal.contract_length_years) if deal.contract_length_years else None,
         wage_weekly=deal.agreed_wage_weekly,
+        notes=(
+            f"Signing bonus {deal.signing_bonus:,.0f}" if deal.signing_bonus else None
+        ),
     )
 
     # TRA-132: confirm any pending commission for this deal
@@ -1248,7 +1364,17 @@ def _require_party(
 _TERMS_AGREED_ON_THE_OFFER = {
     "deal_type", "loan_start", "loan_end", "loan_fee",
     "option_to_buy", "obligation_to_buy", "obligation_conditions",
+    "sell_on_pct",
 }
+
+# The deal room used to be where the payment schedule, add-ons and sell-on were
+# set — after the seller had accepted, by either club alone. They are agreed on
+# the offer now (offers/service.validate_structure) and copied onto the deal at
+# acceptance; here they are only displayed and tracked.
+_STRUCTURE_AGREED_ON_THE_OFFER = (
+    "The payment schedule, add-ons and sell-on are agreed on the offer and "
+    "cannot be changed on the deal — collapse it and re-approach to change them"
+)
 
 
 async def update_deal(
@@ -1321,27 +1447,15 @@ async def add_clause(
     cap: Decimal | None,
     actor_user_id: uuid.UUID | None = None,
 ) -> DealClause:
+    """Refused: add-ons are agreed on the offer (`_STRUCTURE_AGREED_ON_THE_OFFER`).
+
+    Kept as a function so the endpoint answers with the reason rather than a
+    404. Tracking an agreed clause — triggered, paid — is `update_clause_status`.
+    """
     if deal.status != DealStatus.IN_PROGRESS:
         raise ValueError("Clauses can only be added to in-progress deals")
     _require_party(deal, actor_club_id)
-    clause = DealClause(
-        deal_id=deal.id,
-        clause_type=clause_type,
-        trigger_description=trigger_description,
-        amount=amount,
-        cap=cap,
-    )
-    db.add(clause)
-    await db.flush()
-    await audit_service.emit(
-        db,
-        entity_type="DEAL", entity_id=deal.id,
-        action="CLAUSE_ADDED",
-        actor_user_id=actor_user_id,
-        payload={"clause_type": clause_type.value, "amount": str(amount)},
-        description=f"{clause_type.value.title()} clause added ({amount:,.0f})",
-    )
-    return clause
+    raise ValueError(_STRUCTURE_AGREED_ON_THE_OFFER)
 
 
 async def update_clause_status(
@@ -1385,46 +1499,13 @@ async def set_instalments(
     items: list[dict],
     actor_user_id: uuid.UUID | None = None,
 ) -> list[DealInstalment]:
-    """Replace the instalment schedule. Total must equal agreed_fee."""
+    """Refused: the payment schedule is agreed on the offer
+    (`_STRUCTURE_AGREED_ON_THE_OFFER`). Recording a payment made is
+    `mark_instalment_paid`."""
     if deal.status != DealStatus.IN_PROGRESS:
         raise ValueError("Instalments can only be set on in-progress deals")
-    if deal.stage != DealStage.AGREEMENT:
-        raise ValueError("Instalment schedule must be set at AGREEMENT stage")
     _require_party(deal, actor_club_id)
-
-    total = sum(Decimal(str(item["amount"])) for item in items)
-    if total != deal.agreed_fee:
-        raise ValueError(
-            f"Instalment total ({total}) must equal agreed_fee ({deal.agreed_fee})"
-        )
-
-    # Remove existing schedule
-    existing = await db.execute(
-        select(DealInstalment).where(DealInstalment.deal_id == deal.id)
-    )
-    for inst in existing.scalars():
-        await db.delete(inst)
-
-    new_instalments: list[DealInstalment] = []
-    for item in items:
-        inst = DealInstalment(
-            deal_id=deal.id,
-            due_date=item["due_date"],
-            amount=Decimal(str(item["amount"])),
-        )
-        db.add(inst)
-        new_instalments.append(inst)
-
-    await db.flush()
-    await audit_service.emit(
-        db,
-        entity_type="DEAL", entity_id=deal.id,
-        action="INSTALMENTS_SET",
-        actor_user_id=actor_user_id,
-        payload={"count": len(new_instalments), "total": str(total)},
-        description=f"Payment schedule set — {len(new_instalments)} instalments totalling {total:,.0f}",
-    )
-    return new_instalments
+    raise ValueError(_STRUCTURE_AGREED_ON_THE_OFFER)
 
 
 async def mark_instalment_paid(
