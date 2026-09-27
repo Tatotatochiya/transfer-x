@@ -153,6 +153,34 @@ class InvitationAcceptRequest(BaseModel):
     password: str
 
 
+class ClubInvitationCreateRequest(BaseModel):
+    email: str
+    club_name: str
+
+
+class ClubInvitationResponse(BaseModel):
+    """For TransferX staff. `accept_url` carries the raw token and is set only
+    on the response that creates the invitation."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    club_name: str
+    created_at: datetime
+    expires_at: datetime
+    accepted_at: datetime | None = None
+    revoked_at: datetime | None = None
+    club_id: uuid.UUID | None = None
+    accept_url: str | None = None
+
+
+class ClubInvitationPreviewResponse(BaseModel):
+    """Public preview for the join page — the club and email being invited."""
+    club_name: str
+    email: str
+    expires_at: datetime
+
+
 # ── Player search views ───────────────────────────────────────────────────────
 
 class PlayerSearchViewResponse(BaseModel):

@@ -13,7 +13,12 @@ from app.auth.schemas import (
     UserResponse,
 )
 from app.clubs import service as clubs_service
-from app.clubs.schemas import InvitationAcceptRequest, InvitationPreviewResponse
+from app.clubs.schemas import (
+    ClubInvitationPreviewResponse,
+    InvitationAcceptRequest,
+    InvitationPreviewResponse,
+)
+from app.config import settings
 from app.database import get_db
 
 router = APIRouter(tags=["auth"])
@@ -22,6 +27,14 @@ router = APIRouter(tags=["auth"])
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     from app.auth.models import UserType
+
+    # Clubs join by invitation only: public club sign-up let anyone claim to
+    # be any club. Agents and players still register here.
+    if body.user_type == UserType.CLUB and not settings.allow_club_self_registration:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Clubs join TransferX by invitation. Contact TransferX to be invited.",
+        )
 
     try:
         user = await auth_service.create_user(
@@ -127,6 +140,49 @@ async def preview_invitation(token: str, db: AsyncSession = Depends(get_db)) -> 
         email=invitation.email,
         expires_at=invitation.expires_at,
     )
+
+
+# ── Club invitations: how a club joins TransferX ─────────────────────────────
+
+
+@router.get("/club-invitations/{token}", response_model=ClubInvitationPreviewResponse)
+async def preview_club_invitation(token: str, db: AsyncSession = Depends(get_db)):
+    """What the join page shows: which club, and which email. 404 for any
+    token that is not live, with no hint as to why."""
+    inv = await clubs_service.get_live_club_invitation(db, token)
+    if inv is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+    return ClubInvitationPreviewResponse(club_name=inv.club_name, email=inv.email, expires_at=inv.expires_at)
+
+
+@router.post("/club-invitations/{token}/accept", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def accept_club_invitation(
+    token: str, body: InvitationAcceptRequest, db: AsyncSession = Depends(get_db)
+) -> TokenResponse:
+    """Accept a club invitation: creates the owner's account, the club and its
+    finance, and signs the owner straight in."""
+    from app.audit import service as audit_service
+
+    if len(body.password) < 8:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Use at least 8 characters")
+    try:
+        user = await clubs_service.accept_club_invitation(db, token, password=body.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    club = await clubs_service.get_club_for_user(db, user.id)
+    await audit_service.emit(
+        db,
+        entity_type="CLUB",
+        entity_id=club.id,
+        action="CLUB_JOINED",
+        actor_user_id=user.id,
+        payload={"email": user.email},
+        description=f"{club.name} joined TransferX by invitation",
+    )
+    access_token = auth_service.create_access_token(user.id, user.email)
+    refresh_token = await auth_service.create_refresh_token(db, user.id)
+    await db.commit()
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/invitations/{token}/accept", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)

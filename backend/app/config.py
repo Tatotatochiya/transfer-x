@@ -123,5 +123,10 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
     frontend_base_url: str = "http://localhost:5173"
 
+    # Clubs join by invitation (clubs/service.create_club_invitation). Public
+    # club sign-up is off unless this is set — the test suite sets it, since
+    # its fixtures register clubs directly; real environments leave it off.
+    allow_club_self_registration: bool = False
+
 
 settings = Settings()

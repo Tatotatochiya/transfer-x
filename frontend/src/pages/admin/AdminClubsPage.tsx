@@ -263,6 +263,130 @@ function CreateClubPanel({ onCreated }: { onCreated: (club: AdminClubDetail) => 
   );
 }
 
+// ── Club invitations ──────────────────────────────────────────────────────────
+
+interface ClubInvitation {
+  id: string;
+  email: string;
+  club_name: string;
+  created_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+  revoked_at: string | null;
+  club_id: string | null;
+  accept_url: string | null;
+}
+
+/**
+ * Clubs join TransferX by invitation only. Staff invite the owner by email;
+ * the link is also shown here once, for sharing by hand where email is not
+ * configured (it carries the token, so it is never shown again).
+ */
+function ClubInvitationsPanel() {
+  const queryClient = useQueryClient();
+  const [clubName, setClubName] = useState("");
+  const [email, setEmail] = useState("");
+  const [justSent, setJustSent] = useState<ClubInvitation | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: invitations = [] } = useQuery<ClubInvitation[]>({
+    queryKey: ["admin", "club-invitations"],
+    queryFn: () => api.get<ClubInvitation[]>("/admin/club-invitations").then((r) => r.data),
+  });
+
+  const invite = useMutation({
+    mutationFn: () =>
+      api.post<ClubInvitation>("/admin/club-invitations", { club_name: clubName, email }).then((r) => r.data),
+    onSuccess: (inv) => {
+      setJustSent(inv);
+      setClubName("");
+      setEmail("");
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: ["admin", "club-invitations"] });
+    },
+    onError: (err: unknown) => setError(getApiError(err, "Could not send the invitation.")),
+  });
+
+  const revoke = useMutation({
+    mutationFn: (id: string) => api.post(`/admin/club-invitations/${id}/revoke`).then((r) => r.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "club-invitations"] }),
+  });
+
+  const status = (i: ClubInvitation) =>
+    i.accepted_at ? "Joined" : i.revoked_at ? "Revoked" : new Date(i.expires_at) < new Date() ? "Expired" : "Pending";
+
+  return (
+    <div className="mb-6 rounded-xl bg-surface p-5 ring-1 ring-border">
+      <p className="text-sm font-bold text-text">Invite a club</p>
+      <p className="mt-0.5 text-[13px] text-text-muted">
+        Clubs join by invitation only. The owner gets an email with a link to set a password; accepting creates
+        the club.
+      </p>
+      <form
+        className="mt-3 flex flex-wrap items-end gap-3"
+        onSubmit={(e) => { e.preventDefault(); invite.mutate(); }}
+      >
+        <label className="min-w-[200px] flex-1">
+          <span className="mb-1 block text-xs text-text-muted">Club name</span>
+          <input
+            required
+            value={clubName}
+            onChange={(e) => setClubName(e.target.value)}
+            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+          />
+        </label>
+        <label className="min-w-[220px] flex-1">
+          <span className="mb-1 block text-xs text-text-muted">Owner's email</span>
+          <input
+            required
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+          />
+        </label>
+        <Button type="submit" variant="primary" size="sm" loading={invite.isPending}>Send invitation</Button>
+      </form>
+      {error && <p className="mt-2 text-sm text-danger-text">{error}</p>}
+      {justSent?.accept_url && (
+        <p className="mt-3 break-all rounded-lg bg-surface-inset px-3 py-2 text-[13px] text-text-secondary ring-1 ring-border">
+          Invitation sent to {justSent.email}. Link (shown once): <span className="font-mono">{justSent.accept_url}</span>
+        </p>
+      )}
+      {invitations.length > 0 && (
+        <table className="mt-4 w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-text-muted">
+              <th className="py-1.5 font-semibold">Club</th>
+              <th className="py-1.5 font-semibold">Owner</th>
+              <th className="py-1.5 font-semibold">Sent</th>
+              <th className="py-1.5 font-semibold">Status</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {invitations.map((i) => (
+              <tr key={i.id} className="border-t border-rule-faint">
+                <td className="py-2 text-text">{i.club_name}</td>
+                <td className="py-2 text-text-secondary">{i.email}</td>
+                <td className="py-2 text-text-muted">{formatDate(i.created_at)}</td>
+                <td className="py-2 text-text-secondary">{status(i)}</td>
+                <td className="py-2 text-right">
+                  {status(i) === "Pending" && (
+                    <Button variant="ghost" size="sm" loading={revoke.isPending} onClick={() => revoke.mutate(i.id)}>
+                      Revoke
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 export default function AdminClubsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -311,6 +435,8 @@ export default function AdminClubsPage() {
           </Button>
         </div>
       </div>
+
+      <ClubInvitationsPanel />
 
       <div className="mb-6">
         <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} accent="amber" />

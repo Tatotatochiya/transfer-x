@@ -1,5 +1,6 @@
 """M7 — Admin endpoints (superuser only)."""
 
+import asyncio
 import uuid
 from datetime import date
 
@@ -35,6 +36,8 @@ from app.admin.schemas import (
     UpdateStaffRoleRequest,
 )
 from app.auth.models import User
+from app.clubs import service as clubs_service
+from app.clubs.schemas import ClubInvitationCreateRequest, ClubInvitationResponse
 from app.database import get_db
 from app.deps import get_current_superuser
 from app.offers.schemas import OfferResponse
@@ -180,6 +183,58 @@ async def create_club(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     club = await admin_service.get_club_by_id(db, club.id)
     return AdminClubDetailResponse.model_validate(club)
+
+
+# ── Club invitations — how a club joins TransferX ────────────────────────────
+
+
+@router.post("/club-invitations", response_model=ClubInvitationResponse, status_code=status.HTTP_201_CREATED)
+async def invite_club(
+    body: ClubInvitationCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    """Invite a club's owner. The accept link is emailed, and returned once
+    here so it can be shared by hand where email is not configured."""
+    from app.config import settings
+    from app.notifications.email import send_club_invitation_email
+
+    try:
+        inv, raw_token = await clubs_service.create_club_invitation(
+            db, email=body.email, club_name=body.club_name, invited_by_user_id=current_user.id
+        )
+        await db.commit()
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    accept_url = f"{settings.frontend_base_url}/join?token={raw_token}"
+    asyncio.create_task(send_club_invitation_email(inv.email, inv.club_name, accept_url))
+    resp = ClubInvitationResponse.model_validate(inv)
+    resp.accept_url = accept_url
+    return resp
+
+
+@router.get("/club-invitations", response_model=list[ClubInvitationResponse])
+async def list_club_invitations(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    return [ClubInvitationResponse.model_validate(i) for i in await clubs_service.list_club_invitations(db)]
+
+
+@router.post("/club-invitations/{invitation_id}/revoke", response_model=ClubInvitationResponse)
+async def revoke_club_invitation(
+    invitation_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    try:
+        inv = await clubs_service.revoke_club_invitation(db, invitation_id)
+        await db.commit()
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return ClubInvitationResponse.model_validate(inv)
 
 
 @router.get("/clubs", response_model=PaginatedClubs)
