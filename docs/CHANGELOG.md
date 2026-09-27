@@ -40,7 +40,26 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Migration `0079`. (`backend/app/clubs/service.py`, `backend/app/auth/router.py`, `backend/app/admin/router.py`, `frontend/src/pages/auth/JoinClubPage.tsx`)
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
+### Changed
+- **The buying club records personal-terms consent for a player with no account and no agent** ([ADR 0006](./product/decisions/0006-buying-club-records-consent-for-unrepresented-player.md)).
+  - Until now only TransferX staff could, and most players are in that position, so most deals waited on staff at Personal Terms.
+  - The buyer's "He agreed" / "He declined" buttons are each confirmed first. Only the buying club, with deal-write permission, may record the answer.
+  - The audit entry and the seller's notification say the club recorded it.
+  - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
+
 ### Fixed
+- **Clubs can run a deal won at auction, as they can any other.**
+  - The deal page told both clubs that "Stage advancement is handled by TransferX staff" and hid the Advance button. The backend never required staff, so this was a UI block.
+  - Accepting a winning bid also skipped three steps that accepting an offer takes:
+    - Other clubs' pending offers for the player were left open, with their budget still reserved. They are now rejected, their budget released and those clubs notified.
+    - A mandated player's agent was never brought in.
+    - No "deal created" audit entry was written.
+  - Checked live: Arsenal's direct offer was rejected when Chelsea's bid was accepted, the audit entry appeared, and Chelsea advanced the deal itself. (`backend/app/sales/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
+- **The deal page says who a deal at Personal Terms is waiting on.**
+  - It used to say "The agent has proposed personal contract terms" on every deal, including deals with no agent and no terms yet. Now it says who is needed: the buying club to propose terms, the player (or his agent) to accept them, or a club to advance once he has.
+  - The header and the personal-terms lane follow the same states.
+  - "Advance to Paperwork" appears only once the player has consented; before, the server refused the click.
+- **Personal terms could be proposed and consented to on a collapsed deal.** Both steps checked only the deal's stage, and a collapsed deal keeps its stage. Both now require the deal to be in progress. (`backend/app/deals/service.py`)
 - **The frontend test suite is green again:** 136 of 136, up from 120. The 16 failures were stale tests, not product bugs: player cards rendered without the compare context, and two label expectations predated their labels.
 
 ### Changed

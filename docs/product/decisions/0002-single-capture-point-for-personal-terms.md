@@ -29,7 +29,7 @@ Personal terms are captured exactly once, at `PERSONAL_TERMS`, regardless of whe
 
 - Resolves the "known gap, not addressed" note in ADR 0001 — there is nothing left to copy, since there's only one place these figures are ever entered.
 - `AgentNegotiationResponse` no longer exposes `player_agreement`/`proposed_*` fields; any frontend code reading them was updated in the same change (`AgentNegotiationWorkspace`, `PlayerTermsProposalView` — the latter removed entirely).
-- The account-gated proxy rule (real player consents if they have an account; mandated agent proxies only if they don't) is now the *only* rule governing personal-terms consent, for both mandated and non-mandated deals, rather than one rule at `AGENT_NEGOTIATION` and a looser, unconditional one at `PERSONAL_TERMS`.
+- The account-gated proxy rule (real player consents if they have an account; mandated agent proxies only if they don't) is now the *only* rule governing personal-terms consent, for both mandated and non-mandated deals, rather than one rule at `AGENT_NEGOTIATION` and a looser, unconditional one at `PERSONAL_TERMS`. *(Extended by [ADR 0006](./0006-buying-club-records-consent-for-unrepresented-player.md): with neither an account nor an agent, the buying club records the player's answer.)*
 
 ## Related documents
 

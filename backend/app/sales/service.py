@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app import clubs as clubs_module
+from app.audit import service as audit_service
 from app.clubs.models import ClubFinance
 from app.common.filters import apply_date_range
 from app.common.schemas import WhoseMove
@@ -562,6 +563,25 @@ async def accept_bid(
     )
     db.add(deal)
     await db.flush()
+
+    # From here an auction deal is run like any other: the clubs take it
+    # through personal terms and the paperwork checklist themselves. So it
+    # gets the same start as a deal from an accepted offer — until now it
+    # skipped all three of these, and waited on TransferX staff instead.
+    from app.offers import service as offers_service
+
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="DEAL_CREATED",
+        payload={"agreed_fee": str(deal.agreed_fee), "stage": deal.stage.value, "bid_id": str(bid_id)},
+        description="Deal created from accepted auction bid",
+    )
+    # Offers made to the seller directly, outside the auction, are moot now:
+    # release their reservations and tell those clubs.
+    await offers_service.reject_offers_for_player(db, deal.player_id)
+    # A mandated player's agent is brought in, as on the offer path.
+    await offers_service.maybe_invite_agent_for_deal(db, deal)
     return deal
 
 
