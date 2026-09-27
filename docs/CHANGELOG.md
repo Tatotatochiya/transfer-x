@@ -1,6 +1,6 @@
 ---
 title: "Changelog"
-last_updated: 2026-09-26
+last_updated: 2026-09-27
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -24,7 +24,40 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 
 ## [Unreleased]
 
+### Added
+- **Enquiries: ask about a player before making an offer.**
+  - Any club can ask the owning club about a TransferX player from his page ("Ask about him"), openly or anonymously. Nobody has to list him first.
+  - The two clubs message each other in a thread at `/enquiries/{id}`. The asker can turn it into an offer from there, and either side can close it.
+  - An anonymous asker is masked, id and name, as "A {league} club", as with anonymous offers.
+  - One open enquiry per player per club: a second attempt opens the existing thread.
+  - Enquiries count as "your move" on the War Room, the sidebar badge and the daily digest, and notify the other club (`ENQUIRY_RECEIVED` / `ENQUIRY_REPLIED`).
+  - Migration `0080`. (`backend/app/enquiries/`, `frontend/src/pages/enquiries/`)
+- **Clubs join by invitation.**
+  - TransferX staff invite a club's owner from Admin → Clubs, by email and club name.
+  - The owner opens `/join?token=…`, sets a password, and the account, club and finance are created together.
+  - Invitations expire after 7 days, work once, can be revoked, and are stored hashed. The link is shown to staff once and emailed.
+  - Self-registering as a club is refused (403). Players and agents still self-register. The `ALLOW_CLUB_SELF_REGISTRATION` setting reopens it, and the test suite uses it.
+  - Migration `0079`. (`backend/app/clubs/service.py`, `backend/app/auth/router.py`, `backend/app/admin/router.py`, `frontend/src/pages/auth/JoinClubPage.tsx`)
+- **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
+
+### Fixed
+- **The frontend test suite is green again:** 136 of 136, up from 120. The 16 failures were stale tests, not product bugs: player cards rendered without the compare context, and two label expectations predated their labels.
+
 ### Changed
+- **Navigation regrouped by what a club is doing:** Home, Buying, Selling, Club. Pages are renamed to say what they hold:
+  - Offer Inbox → **Offers Received**
+  - Sent Offers → **My Offers**
+  - Deals → **Transfers in progress**
+  - Transfer Activity → **Recent Transfers**
+- **One kind of listing** ([ADR 0005](./product/decisions/0005-one-listing-listed-means-available.md)):
+  - The listing modal lists a player for offers, with an optional guide price and an optional "hear offers until" date. Auction is an Advanced option, and Fixed Price is no longer offered.
+  - Any listing with a deadline now closes by itself when it passes (it used to be auctions only), and a past deadline is refused.
+  - The Listings page filters are All / Auctions / Available for loan.
+- **"Open to offers" now means "listed".**
+  - The squad toggle is gone: a player is available because he is listed, and **Unlist** withdraws the listing.
+  - The flag follows listing state on every path that opens or closes one. Setting it directly returns 400 for club players; free agents keep their own switch.
+  - Migration `0078` backfills it. Badges and filters read "Listed".
+- **One page per transfer.** Once an offer becomes a deal, opening the offer takes the parties to the deal. The deal page shows the negotiation that led to it under "How this was agreed".
 - **The clubs run the paperwork; TransferX staff are no longer in every deal.** `PAPERWORK → CONFIRMED` was staff-only, and so was recording the medical.
   - **The checklist:** the deal page now shows it. Each club signs the transfer agreement, and the buying club records a passed medical and submits the registration. A free-agent signing has no seller step.
   - **Each club ticks only its own steps.** Every tick is confirmed in the UI, audited and notified to the other club (new `DEAL_PAPERWORK` type, migration `0077`).
