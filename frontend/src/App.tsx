@@ -39,6 +39,8 @@ const OfferDetailPage           = lazy(() => import("./pages/offers/OfferDetailP
 const CreateOfferPage           = lazy(() => import("./pages/offers/CreateOfferPage"));
 const DealListPage              = lazy(() => import("./pages/deals/DealListPage"));
 const DealDetailPage            = lazy(() => import("./pages/deals/DealDetailPage"));
+const EnquiriesPage             = lazy(() => import("./pages/enquiries/EnquiriesPage"));
+const EnquiryDetailPage         = lazy(() => import("./pages/enquiries/EnquiryDetailPage"));
 const FinancePage               = lazy(() => import("./pages/club/FinancePage"));
 const ShortlistListPage         = lazy(() => import("./pages/scouting/ShortlistListPage"));
 const ShortlistDetailPage       = lazy(() => import("./pages/scouting/ShortlistDetailPage"));
@@ -63,6 +65,7 @@ const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage")
 const TeamPage                  = lazy(() => import("./pages/club/TeamPage"));
 const ApprovalsPage             = lazy(() => import("./pages/club/ApprovalsPage"));
 const AcceptInvitePage          = lazy(() => import("./pages/auth/AcceptInvitePage"));
+const JoinClubPage              = lazy(() => import("./pages/auth/JoinClubPage"));
 const AgentDashboardPage        = lazy(() => import("./pages/agent/AgentDashboardPage"));
 const AgentPipelinePage         = lazy(() => import("./pages/agent/AgentPipelinePage"));
 const AgentProfilePage          = lazy(() => import("./pages/agent/AgentProfilePage"));
@@ -171,6 +174,7 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           {/* Staff invitation acceptance — public tokenised link, not open signup (D6) */}
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
+          <Route path="/join" element={<JoinClubPage />} />
 
           {/* ── Public market ── */}
           <Route path="/players/market"     element={<PublicRoute><PlayerMarketPage /></PublicRoute>} />
@@ -195,6 +199,8 @@ export default function App() {
 
           {/* ── Deals (club-only list; deal room accessible to all parties) ── */}
           <Route path="/deals"     element={<ClubRoute><DealListPage /></ClubRoute>} />
+          <Route path="/enquiries"     element={<ClubRoute><EnquiriesPage /></ClubRoute>} />
+          <Route path="/enquiries/:id" element={<ClubRoute><EnquiryDetailPage /></ClubRoute>} />
           <Route path="/deals/:id" element={<ProtectedRoute><DealDetailPage /></ProtectedRoute>} />
 
           {/* ── Club (protected, club-only) ── */}

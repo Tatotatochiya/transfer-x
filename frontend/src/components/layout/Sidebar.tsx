@@ -25,6 +25,7 @@ const WAITING_ROUTE: Record<DashboardItem["kind"], string> = {
   deal:     "/deals",
   sale:     "/sales/mine",
   approval: "/club/approvals",
+  enquiry:  "/enquiries",
 };
 
 interface NavItem {
@@ -34,6 +35,8 @@ interface NavItem {
   end?: boolean;      // exact match for active state (React Router NavLink `end`)
   // TRA-151: capability-gated items (server matrix via useClubCapabilities)
   gate?: "TEAM_MANAGE" | "APPROVALS";
+  /** Hidden when signed out, in a group that also has public items. */
+  authRequired?: boolean;
 }
 
 interface NavGroup {
@@ -96,41 +99,46 @@ function getNavGroups(userType: UserType | null): NavGroup[] {
   }
 
   // CLUB / unauthenticated / STAFF / ADMIN
+  //
+  // Grouped by what the club is doing — buying or selling — rather than by
+  // the platform's object types (offers, sales, deals). A signed-out visitor
+  // sees only Buying's public items: the market and the listings.
   return [
     {
-      title: "Market",
+      title: "Home",
+      authRequired: true,
       items: [
-        { label: "Browse Players", to: "/players/market", icon: "users" },
-        { label: "Listings",       to: "/sales",          icon: "tag", end: true },
-        { label: "Transfers",      to: "/transfers",      icon: "arrow-right-left" },
+        { label: "War Room",  to: "/dashboard", icon: "layout-dashboard" },
+        { label: "Transfers in progress", to: "/deals", icon: "arrow-right-left" },
+        { label: "Enquiries", to: "/enquiries", icon: "message" },
       ],
     },
     {
-      title: "My Deals",
+      title: "Buying",
+      items: [
+        { label: "Browse Players", to: "/players/market",      icon: "users" },
+        { label: "Listings",       to: "/sales",               icon: "tag", end: true },
+        { label: "Shortlists",     to: "/scouting/shortlists", icon: "list", authRequired: true },
+        { label: "My Offers",      to: "/offers/sent",         icon: "send", authRequired: true },
+        { label: "Recent Transfers", to: "/transfers",         icon: "crosshair" },
+      ],
+    },
+    {
+      title: "Selling",
       authRequired: true,
       items: [
-        { label: "Auctions",    to: "/sales/mine",      icon: "gavel" },
-        { label: "Inbox",       to: "/offers/received", icon: "inbox" },
-        { label: "Sent Offers", to: "/offers/sent",     icon: "send" },
-        { label: "Deals",       to: "/deals",           icon: "tag" },
+        { label: "My Listings",     to: "/sales/mine",      icon: "gavel" },
+        { label: "Offers Received", to: "/offers/received", icon: "inbox" },
       ],
     },
     {
       title: "Club",
       authRequired: true,
       items: [
-        { label: "War Room",  to: "/dashboard",      icon: "layout-dashboard" },
         { label: "My Club",   to: "/club",           icon: "shield", end: true },
         { label: "Finance",   to: "/club/finance",   icon: "wallet" },
         { label: "Team",      to: "/club/team",      icon: "users", gate: "TEAM_MANAGE" },
         { label: "Approvals", to: "/club/approvals", icon: "check", gate: "APPROVALS" },
-      ],
-    },
-    {
-      title: "Scouting",
-      authRequired: true,
-      items: [
-        { label: "Shortlists", to: "/scouting/shortlists", icon: "list" },
       ],
     },
     ADMIN_GROUP,
@@ -234,6 +242,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   // Approvals shows for deciders (owner/SD) and for MANAGERs, whose own
   // requests land there; scouts and read-only members never see it.
   const itemVisible = (item: NavItem) => {
+    if (item.authRequired && !isAuthenticated) return false;
     if (!item.gate) return true;
     if (item.gate === "TEAM_MANAGE") return can("TEAM_MANAGE");
     return can("APPROVE_ACTIONS") || role === "MANAGER";

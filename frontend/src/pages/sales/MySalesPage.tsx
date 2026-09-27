@@ -97,7 +97,7 @@ export default function MySalesPage() {
     <div>
       <PageHeader
         title="My Listings"
-        subtitle="Sales and auctions you've created"
+        subtitle="Players you've listed for transfer or loan"
         actions={
           can("MARKET_WRITE") && (
             <Button variant="primary" onClick={() => setListOpen(true)}>

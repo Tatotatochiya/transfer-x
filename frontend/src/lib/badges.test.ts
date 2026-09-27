@@ -56,7 +56,7 @@ describe("dealStatusVariant", () => {
 describe("dealStageLabel", () => {
   it("AGREEMENT → Agreement", () => expect(dealStageLabel("AGREEMENT")).toBe("Agreement"));
   it("PAPERWORK → Paperwork", () => expect(dealStageLabel("PAPERWORK")).toBe("Paperwork"));
-  it("CONFIRMED → Confirmed", () => expect(dealStageLabel("CONFIRMED")).toBe("Confirmed"));
+  it("CONFIRMED → Ready to Execute", () => expect(dealStageLabel("CONFIRMED")).toBe("Ready to Execute"));
   it("COMPLETED → Completed", () => expect(dealStageLabel("COMPLETED")).toBe("Completed"));
 });
 

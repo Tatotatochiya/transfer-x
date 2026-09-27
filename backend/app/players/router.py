@@ -346,6 +346,14 @@ async def update_my_player_profile(
     if player is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
     updates = body.model_dump(exclude_none=True)
+    # A player at a club is made available by his club listing him
+    # (sales/service.sync_listed_flag); his own switch would contradict it. A
+    # free agent has no club to list him, so his own stays his to set.
+    if "open_to_offers" in updates and player.current_club_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your club makes you available by listing you.",
+        )
     if updates:
         await players_service.update_player(db, player, **updates)
         await db.commit()

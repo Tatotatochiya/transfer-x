@@ -10,9 +10,10 @@ export type IconName =
   | "send" | "layout-dashboard" | "shield" | "wallet" | "crosshair"
   | "list" | "settings" | "log-out" | "menu" | "x" | "chevron-right"
   | "chevrons-right" | "chevrons-left" | "bolt" | "check" | "arrow-right-left"
-  | "user" | "briefcase";
+  | "user" | "briefcase" | "message";
 
 const paths: Record<IconName, React.ReactNode> = {
+  message: <><path strokeLinecap="round" strokeLinejoin="round" d="M8 10h8M8 14h5m-9 6l3.5-3H19a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v9a2 2 0 002 2h1v3z" /></>,
   users: <><path strokeLinecap="round" strokeLinejoin="round" d="M17 20H7m10 0a3 3 0 003-3v-1a5 5 0 00-5-5H9a5 5 0 00-5 5v1a3 3 0 003 3m10 0v-2a7 7 0 00-7-7m0 0a3 3 0 10-6 0 3 3 0 006 0z" /></>,
   tag: <><path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" /></>,
   "user-plus": <><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h11m3-4v4m0 0h-4m4 0h4" /></>,

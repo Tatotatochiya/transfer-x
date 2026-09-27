@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
@@ -399,6 +399,16 @@ export default function OfferDetailPage() {
     },
     onError: (err) => addToast(getApiError(err, "Failed to withdraw offer."), "error"),
   });
+
+  // One page per transfer: once the offer became a deal, the deal page carries
+  // the whole story — this negotiation included ("How this was agreed") — so
+  // the two clubs go straight there. `replace`, so Back does not bounce here.
+  useEffect(() => {
+    if (!offer?.deal || !myClub) return;
+    if (myClub.id === offer.from_club_id || myClub.id === offer.to_club_id) {
+      navigate(`/deals/${offer.deal.id}`, { replace: true });
+    }
+  }, [offer, myClub, navigate]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Spinner size="lg" /></div>;

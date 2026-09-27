@@ -63,10 +63,10 @@ describe("PlayerFilters", () => {
     expect(screen.getByPlaceholderText("Nationality…")).toBeInTheDocument();
   });
 
-  it("toggles open_to_offers on click once More filters is open", async () => {
+  it("toggles the Listed only filter once More filters is open", async () => {
     const { onChange } = setup({ open_to_offers: false });
     await userEvent.click(screen.getByText(/More filters/));
-    const toggle = screen.getByText("Open to offers only").nextSibling as HTMLElement;
+    const toggle = screen.getByText("Listed only").nextSibling as HTMLElement;
     await userEvent.click(toggle);
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ open_to_offers: true })

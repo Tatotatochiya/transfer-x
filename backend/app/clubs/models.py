@@ -143,6 +143,36 @@ class ClubStaff(Base):
     user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
 
 
+class ClubInvitation(Base):
+    """An invitation for a club to join TransferX (migration 0079).
+
+    Clubs join by invitation only (product decision, 2026-09-27): public
+    sign-up let anyone claim to be any club. TransferX staff invite the club's
+    owner by email; accepting sets a password and creates the account, the
+    club and its finance record. Like staff invitations, the raw token is
+    returned once and only its sha256 hash is stored.
+    """
+    __tablename__ = "club_invitations"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(254), nullable=False, index=True)
+    club_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    invited_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The club the acceptance created.
+    club_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("clubs.id", ondelete="SET NULL"), nullable=True
+    )
+
+
 class ClubStaffInvitation(Base):
     """TRA-86 (D6): tokenised staff invitation. The raw token is returned exactly
     once at creation and never stored — only its sha256 hash lives here."""

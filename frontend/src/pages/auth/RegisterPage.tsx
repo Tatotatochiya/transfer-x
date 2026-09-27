@@ -49,9 +49,6 @@ export default function RegisterPage() {
   const [email, setEmail]         = useState("");
   const [password, setPassword]   = useState("");
 
-  // Club fields
-  const [clubName, setClubName] = useState("");
-
   // Agent fields
   const [displayName, setDisplayName] = useState("");
   const [agencyName, setAgencyName]   = useState("");
@@ -109,9 +106,7 @@ export default function RegisterPage() {
     try {
       const body: Record<string, unknown> = { email, password, user_type: actorType };
 
-      if (actorType === "CLUB" && clubName.trim()) {
-        body.club_name = clubName.trim();
-      } else if (actorType === "AGENT") {
+      if (actorType === "AGENT") {
         body.display_name = displayName;
         body.agency_name  = agencyName;
         body.country      = country;
@@ -193,6 +188,20 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* Clubs join by invitation only (product decision, 2026-09-27):
+                public sign-up let anyone claim to be any club. The Club card
+                stays — most visitors are clubs — and explains how to join
+                rather than offering a form the server would refuse. */}
+            {actorType === "CLUB" ? (
+              <div className="rounded-lg bg-surface-inset px-4 py-4 ring-1 ring-border">
+                <p className="text-sm font-semibold text-text">Clubs join TransferX by invitation</p>
+                <p className="mt-1 text-[13px] text-text-muted">
+                  Every club on TransferX is invited and verified by our team, so the club you deal with is
+                  the club it says it is. Contact TransferX to be invited; if you already have been, use
+                  the link in your invitation email.
+                </p>
+              </div>
+            ) : (<>
             {/* Common fields */}
             <div>
               <label htmlFor="email" className={LABEL_CLS}>Email</label>
@@ -221,23 +230,6 @@ export default function RegisterPage() {
                 placeholder="Min. 8 characters"
               />
             </div>
-
-            {/* Club-specific */}
-            {actorType === "CLUB" && (
-              <div>
-                <label htmlFor="club_name" className={LABEL_CLS}>
-                  Club name <span className="text-text-muted">(optional)</span>
-                </label>
-                <input
-                  id="club_name"
-                  type="text"
-                  value={clubName}
-                  onChange={(e) => setClubName(e.target.value)}
-                  className={INPUT_CLS}
-                  placeholder="Defaults to your email prefix"
-                />
-              </div>
-            )}
 
             {/* Agent-specific */}
             {actorType === "AGENT" && (
@@ -355,6 +347,7 @@ export default function RegisterPage() {
             <Button type="submit" variant="primary" size="lg" loading={loading} className="w-full mt-2">
               Create account
             </Button>
+            </>)}
           </form>
         </div>
 

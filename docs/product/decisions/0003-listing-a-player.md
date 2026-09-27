@@ -16,7 +16,7 @@ Listing a player was a full-page form (`/sales/new`) reached only from My Club's
 1. **A club lists a player from wherever the player is**: a List action on his squad row, List for sale on his own page, and the listings pages. All three open the same form in a modal, and the club stays where it was afterwards. `/sales/new` remains for deep links; `?player_id=` preselects him.
 2. **The default sale type is Open to Offers.** It is the listing that asks least of the seller (no price, no deadline), so the common case is two clicks from the squad row or the player page.
 3. **The model's estimate is offered beside the price as a one-click "Use £X", never pre-filled**, and is not shown for auctions.
-4. **The player-level `open_to_offers` flag and an Open to Offers listing stay separate concepts for now.**
+4. **The player-level `open_to_offers` flag and an Open to Offers listing stay separate concepts for now.** *(Superseded by [ADR 0005](./0005-one-listing-listed-means-available.md): the flag now means "has an open listing".)*
 
 ## Alternatives considered
 

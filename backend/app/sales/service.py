@@ -1,5 +1,6 @@
 """M3 — Sales + Bidding service layer."""
 
+import logging
 import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -19,6 +20,8 @@ from app.sales.models import (
 
 # B1: matches AUCTION_CLOSING_SOON_HOURS in frontend/src/lib/whoseMove.ts.
 _AUCTION_CLOSING_SOON_HOURS = 48
+
+logger = logging.getLogger(__name__)
 
 
 # ── Sale CRUD ─────────────────────────────────────────────────────────────────
@@ -75,6 +78,10 @@ async def create_sale(
     availability: ListingAvailability = ListingAvailability.TRANSFER,
 ) -> Sale:
     validate_listing_terms(sale_type=sale_type, availability=availability, asking_price=asking_price)
+    if deadline is not None:
+        due = deadline if deadline.tzinfo else deadline.replace(tzinfo=timezone.utc)
+        if due <= datetime.now(timezone.utc):
+            raise ValueError("The deadline has already passed — choose a later one")
     sale = Sale(
         player_id=player_id,
         seller_club_id=seller_club_id,
@@ -89,6 +96,7 @@ async def create_sale(
     )
     db.add(sale)
     await db.flush()
+    await sync_listed_flag(db, player_id)
 
     event = SaleEvent(
         sale_id=sale.id,
@@ -98,6 +106,37 @@ async def create_sale(
     db.add(event)
     await db.flush()
     return sale
+
+
+async def sync_listed_flag(db: AsyncSession, player_id: uuid.UUID) -> None:
+    """Keep `Player.open_to_offers` equal to "he has an open listing".
+
+    There used to be two ways to say a player was available — a quiet "open to
+    offers" switch on the squad, and a public listing — and they disagreed: a
+    player page could read "Closed to offers" beside "View listing". They are
+    one concept now (product decision, 2026-09-27): a player is listed or he
+    is not. The flag is kept, because the market filter, badges, scouting and
+    AI search all read it, but only listings write it — every place a listing
+    opens or closes calls this. Clubs whose shortlist he is on are told when he
+    becomes listed, as the switch used to tell them.
+    """
+    from app.players.models import Player
+
+    player = (await db.execute(select(Player).where(Player.id == player_id))).scalar_one_or_none()
+    if player is None:
+        return
+    listed = await get_open_sale_for_player(db, player_id) is not None
+    if player.open_to_offers == listed:
+        return
+    player.open_to_offers = listed
+    await db.flush()
+    if listed:
+        try:
+            from app.notifications.service import notify_player_available
+
+            await notify_player_available(db, player.id)
+        except Exception:
+            logger.exception("Could not notify clubs that player %s was listed", player_id)
 
 
 async def get_open_sale_for_player(db: AsyncSession, player_id: uuid.UUID) -> Sale | None:
@@ -234,6 +273,8 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
         )
 
     sale.status = SaleStatus.WITHDRAWN
+    await db.flush()
+    await sync_listed_flag(db, sale.player_id)
     db.add(
         SaleEvent(
             sale_id=sale.id,
@@ -334,6 +375,7 @@ async def place_bid(
         sale.status = SaleStatus.EXPIRED
         db.add(SaleEvent(sale_id=sale.id, event_type=SaleEventType.SALE_EXPIRED))
         await db.flush()
+        await sync_listed_flag(db, sale.player_id)
         raise ValueError("Sale deadline has passed")
 
     min_bid = get_minimum_next_bid(sale)
@@ -487,6 +529,8 @@ async def accept_bid(
 
     winning_bid.status = BidStatus.ACCEPTED
     sale.status = SaleStatus.CLOSED
+    await db.flush()
+    await sync_listed_flag(db, sale.player_id)
 
     db.add(
         SaleEvent(
@@ -569,6 +613,8 @@ async def close_sale_after_offer_accepted(
         )
 
     sale.status = SaleStatus.CLOSED
+    await db.flush()
+    await sync_listed_flag(db, sale.player_id)
     db.add(
         SaleEvent(
             sale_id=sale.id,
@@ -583,18 +629,24 @@ async def close_sale_after_offer_accepted(
 
 
 async def close_expired_sales(db: AsyncSession) -> int:
-    """Find OPEN AUCTION sales past deadline, expire them, release all bid reservations.
+    """Expire OPEN listings past their deadline; for auctions, release every
+    bid reservation too.
+
+    Every listing can carry a deadline now — an "Open to offers" listing's is
+    optional, and says "we will hear offers until…". Before, only auctions
+    were ever closed, so a deadline on any other listing did nothing. Offers
+    already made against an expired listing are untouched: they run to their
+    own expiry and can still be answered.
 
     Returns the number of sales expired.
     """
     now = datetime.now(timezone.utc)
 
-    # Find expired open auction sales
     result = await db.execute(
         select(Sale)
         .where(
             Sale.status == SaleStatus.OPEN,
-            Sale.sale_type == SaleType.AUCTION,
+            Sale.deadline.is_not(None),
             Sale.deadline < now,
         )
         .options(selectinload(Sale.bids))
@@ -627,6 +679,8 @@ async def close_expired_sales(db: AsyncSession) -> int:
                 )
         sale.status = SaleStatus.EXPIRED
         db.add(SaleEvent(sale_id=sale.id, event_type=SaleEventType.SALE_EXPIRED))
+        await db.flush()
+        await sync_listed_flag(db, sale.player_id)
         count += 1
 
     if count:

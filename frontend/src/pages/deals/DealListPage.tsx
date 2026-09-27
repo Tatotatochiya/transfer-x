@@ -180,7 +180,7 @@ export default function DealListPage() {
 
   return (
     <div>
-      <PageHeader title="My Deals" subtitle="Transfer deals you're involved in" />
+      <PageHeader title="Transfers in progress" subtitle="Every transfer your club is buying or selling, from agreement to completion" />
 
       <div className="mb-4 flex flex-wrap gap-2">
         {CHIPS.map((c) => (
@@ -205,7 +205,7 @@ export default function DealListPage() {
       {isLoading && <ListSkeleton count={6} />}
 
       {!isLoading && items.length === 0 && (
-        <EmptyState title="No deals" body="Accepted offers and won auctions will appear here." />
+        <EmptyState title="No transfers in progress" body="An accepted offer or a won auction becomes a transfer here." />
       )}
 
       {!isLoading && items.length > 0 && (

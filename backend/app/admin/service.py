@@ -337,6 +337,9 @@ async def admin_cancel_sale(db: AsyncSession, sale):
         raise ValueError(f"Sale is already {sale.status.value} — cannot cancel")
     sale.status = SaleStatus.CANCELLED
     await db.flush()
+    from app.sales.service import sync_listed_flag
+
+    await sync_listed_flag(db, sale.player_id)
     return sale
 
 

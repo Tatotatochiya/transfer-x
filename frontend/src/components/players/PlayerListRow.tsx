@@ -145,9 +145,9 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
         <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
           <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
           {player.open_to_offers && (
-            <span className="flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 ring-1 ring-success/30" title="Open to offers">
+            <span className="flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 ring-1 ring-success/30" title="Listed by his club">
               <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[13px] font-semibold text-success-text">Open</span>
+              <span className="text-[13px] font-semibold text-success-text">Listed</span>
             </span>
           )}
         </div>

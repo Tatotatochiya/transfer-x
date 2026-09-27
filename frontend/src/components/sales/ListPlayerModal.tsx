@@ -12,14 +12,6 @@ import { useToast } from "../../context/ToastContext";
 import { useOpenListings } from "../../hooks/useListing";
 import { formatCompactCurrency, getApiError } from "../../lib/utils";
 
-// Open to offers first: it is the default, and the listing that asks least of
-// the seller — no price, no deadline.
-const SALE_TYPES: { value: SaleType; label: string }[] = [
-  { value: "OPEN_TO_OFFERS", label: "Open to offers" },
-  { value: "FIXED_PRICE", label: "Fixed price" },
-  { value: "AUCTION", label: "Auction" },
-];
-
 // What the club will consider. Transfer first: it is what a listing always
 // meant before loans could be listed.
 const AVAILABILITY: { value: ListingAvailability; label: string; hint: string }[] = [
@@ -27,14 +19,6 @@ const AVAILABILITY: { value: ListingAvailability; label: string; hint: string }[
   { value: "LOAN", label: "Loan", hint: "Loan him out" },
   { value: "EITHER", label: "Either", hint: "Hear both" },
 ];
-
-/** Why a sale type does not fit what is on offer, or null. The server holds
- *  the same rules (sales/service.validate_listing_terms). */
-function saleTypeBlocked(t: SaleType, a: ListingAvailability): string | null {
-  if (t === "AUCTION" && a !== "TRANSFER") return "An auction is for a transfer";
-  if (t === "FIXED_PRICE" && a === "LOAN") return "A fixed price is a transfer price";
-  return null;
-}
 
 const INPUT_CLASS =
   "w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors";
@@ -65,17 +49,24 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
 
   const [playerId, setPlayerId] = useState(player?.id ?? defaultPlayerId ?? "");
   const [availability, setAvailability] = useState<ListingAvailability>("TRANSFER");
-  const [saleType, setSaleType] = useState<SaleType>("OPEN_TO_OFFERS");
+  // One kind of listing: open to offers, with an optional guide price and an
+  // optional deadline. "Fixed price" was that with a firmer label, so it is
+  // folded in. An auction stays available, but as an advanced option — and
+  // only for a transfer, since a loan cannot be auctioned.
+  const [asAuction, setAsAuction] = useState(false);
+  const saleType: SaleType = asAuction ? "AUCTION" : "OPEN_TO_OFFERS";
 
   function chooseAvailability(a: ListingAvailability) {
     setAvailability(a);
-    // Keep the sale type valid for it rather than leaving a blocked choice selected.
-    if (saleTypeBlocked(saleType, a)) setSaleType("OPEN_TO_OFFERS");
+    if (a !== "TRANSFER") setAsAuction(false);
   }
   const [askingPrice, setAskingPrice] = useState("");
   const [reservePrice, setReservePrice] = useState("");
   const [minIncrement, setMinIncrement] = useState("500000");
   const [deadline, setDeadline] = useState(() => toLocalInputValue(new Date(Date.now() + 7 * 86_400_000)));
+  // "Hear offers until" — optional on an open-to-offers listing, which then
+  // expires at that time; required (as the auction's close) on an auction.
+  const [offersUntil, setOffersUntil] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -139,8 +130,11 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
     mutationFn: (body: object) => api.post<Sale>("/sales", body).then((r) => r.data),
     onSuccess: (sale) => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
-      const type = SALE_TYPES.find((t) => t.value === sale.sale_type)?.label.toLowerCase();
-      const what = sale.availability === "LOAN" ? "for loan" : sale.availability === "EITHER" ? "for transfer or loan" : type;
+      const what =
+        sale.sale_type === "AUCTION" ? "as an auction"
+        : sale.availability === "LOAN" ? "for loan"
+        : sale.availability === "EITHER" ? "for transfer or loan"
+        : "for transfer";
       addToast(`${sale.player?.name ?? player?.name ?? "Player"} is listed — ${what}.`, "success");
       onDone(sale);
     },
@@ -173,6 +167,8 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
 
       if (!deadline) { setError("Auctions require a deadline."); return; }
       body.deadline = new Date(deadline).toISOString();
+    } else if (offersUntil) {
+      body.deadline = new Date(offersUntil).toISOString();
     }
 
     mutation.mutate(body);
@@ -238,47 +234,12 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
         </div>
       </div>
 
-      {/* Sale type */}
-      <div>
-        <p className="mb-1.5 text-sm font-semibold text-text-secondary">How offers arrive</p>
-        <div className="flex gap-2">
-          {SALE_TYPES.map((t) => {
-            const blocked = saleTypeBlocked(t.value, availability);
-            return (
-              <button
-                key={t.value}
-                type="button"
-                aria-pressed={saleType === t.value}
-                disabled={!!blocked}
-                title={blocked ?? undefined}
-                onClick={() => setSaleType(t.value)}
-                className={`min-h-11 flex-1 rounded-lg px-2 py-2 text-sm leading-tight transition-colors disabled:cursor-not-allowed disabled:opacity-40 lg:min-h-0 ${
-                  saleType === t.value
-                    ? "bg-accent-bg text-accent-active ring-1 ring-accent"
-                    : "bg-surface-inset text-text-muted hover:text-text ring-1 ring-input-border"
-                }`}
-              >
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-        {/* Tooltips never show on touch, so the reason is stated too. */}
-        {availability !== "TRANSFER" && (
-          <p className="mt-1.5 text-[13px] text-text-muted">
-            {availability === "LOAN"
-              ? "A loan is open to offers: clubs propose the dates, loan fee and wage share."
-              : "No auction: a loan cannot be auctioned."}
-          </p>
-        )}
-      </div>
-
       {/* Price — none on a loan-only listing: a figure there would read as his
           price, to buyers and to the fair-value signal. */}
       {!loanOnly && (
       <div>
         <label htmlFor={`${ids}-price`} className="mb-1.5 block text-sm font-semibold text-text-secondary">
-          {isAuction ? "Starting price" : availability === "EITHER" ? "Asking price for a transfer" : "Asking price"}{" "}
+          {isAuction ? "Starting price" : availability === "EITHER" ? "Guide price for a transfer" : "Guide price"}{" "}
           <span className="text-text-muted font-normal">(optional)</span>
         </label>
         <div className="relative">
@@ -308,6 +269,44 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
         )}
       </div>
 
+      )}
+
+      {/* Hear offers until — optional, and not for an auction (which has its
+          own deadline below). A loan listing needs no end. */}
+      {!isAuction && (
+        <div>
+          <label htmlFor={`${ids}-until`} className="mb-1.5 block text-sm font-semibold text-text-secondary">
+            Hear offers until <span className="text-text-muted font-normal">(optional)</span>
+          </label>
+          <input
+            id={`${ids}-until`}
+            type="datetime-local"
+            value={offersUntil}
+            onChange={(e) => setOffersUntil(e.target.value)}
+            min={toLocalInputValue(new Date(Date.now() + 60 * 60 * 1000))}
+            className={INPUT_CLASS}
+          />
+          <p className="mt-1 text-[13px] text-text-muted">
+            The listing closes then. Leave it empty to keep hearing offers until you withdraw it.
+          </p>
+        </div>
+      )}
+
+      {/* Advanced: an auction. Only for a transfer — a loan cannot be
+          auctioned, so the option is not offered for loan listings. */}
+      {availability === "TRANSFER" && (
+        <label className="flex min-h-11 cursor-pointer items-start gap-2.5 lg:min-h-0">
+          <input
+            type="checkbox"
+            checked={asAuction}
+            onChange={(e) => setAsAuction(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded accent-accent"
+          />
+          <span className="text-[13px] text-text-secondary">
+            <span className="font-semibold">Advanced: run as an auction</span> — clubs bid against each other
+            until a deadline, and you can accept the highest bid.
+          </span>
+        </label>
       )}
 
       {isAuction && (

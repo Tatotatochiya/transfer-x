@@ -50,6 +50,8 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   LOAN_CONVERTED:             "Loan becoming permanent",
   DAILY_DIGEST:               "Daily summary",
   DEAL_PAPERWORK:             "Paperwork",
+  ENQUIRY_RECEIVED:           "Enquiry received",
+  ENQUIRY_REPLIED:            "Enquiry reply",
   APPROVAL_DECIDED:           "Approval decided",
 };
 
@@ -91,6 +93,8 @@ const TYPE_COLOURS: Record<NotificationType, string> = {
   LOAN_CONVERTED:           "text-accent",
   DAILY_DIGEST:             "text-text-secondary",
   DEAL_PAPERWORK:           "text-accent",
+  ENQUIRY_RECEIVED:         "text-accent",
+  ENQUIRY_REPLIED:          "text-text-secondary",
   APPROVAL_DECIDED:         "text-success-text",
 };
 

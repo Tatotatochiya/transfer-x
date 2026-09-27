@@ -20,6 +20,7 @@ import {
 } from "../../lib/badges";
 import { formatCurrency, formatDate, formatWage } from "../../lib/utils";
 import AddToShortlistButton from "../../components/scouting/AddToShortlistButton";
+import AskAboutPlayerModal from "../../components/enquiries/AskAboutPlayerModal";
 import ListPlayerModal from "../../components/sales/ListPlayerModal";
 import { useCompare } from "../../context/CompareContext";
 import CareerHistoryPanel from "../../components/players/CareerHistoryPanel";
@@ -572,14 +573,8 @@ export default function PlayerMarketDetailPage() {
   const listClosedReason = useListingClosedReason(canList);
   const [listOpen, setListOpen] = useState(false);
   const closeListing = useCallback(() => setListOpen(false), []);
-
-  const toggleOTOMutation = useMutation({
-    mutationFn: (next: boolean) =>
-      api.patch(`/clubs/me/players/${id}`, { open_to_offers: next }).then((r) => r.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["players", "market", id] });
-    },
-  });
+  const [askOpen, setAskOpen] = useState(false);
+  const closeAsk = useCallback(() => setAskOpen(false), []);
 
   // Item 14: buyer meets the release clause, bypassing seller consent entirely.
   const releaseClauseMutation = useMutation({
@@ -759,10 +754,11 @@ export default function PlayerMarketDetailPage() {
                       {playerStatusLabel(player.status)}
                     </Badge>
                   )}
+                  {/* open_to_offers now means "listed" (sales/service.sync_listed_flag). */}
                   {player.open_to_offers && (
                     <span className="flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 ring-1 ring-success/30">
                       <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                      <span className="text-xs font-semibold text-success-text">Open to offers</span>
+                      <span className="text-xs font-semibold text-success-text">Listed</span>
                     </span>
                   )}
                   {isMyPlayer && competition && competition.active_count > 0 && (
@@ -831,22 +827,6 @@ export default function PlayerMarketDetailPage() {
                   Compare
                 </button>
 
-                {isMyPlayer && can("MARKET_WRITE") && (
-                  <button
-                    disabled={toggleOTOMutation.isPending || player.active_deal?.status === "IN_PROGRESS"}
-                    title={player.active_deal?.status === "IN_PROGRESS" ? "Cannot change while a transfer deal is in progress" : undefined}
-                    onClick={() => toggleOTOMutation.mutate(!player.open_to_offers)}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ring-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                      player.open_to_offers
-                        ? "bg-success/15 text-success-text ring-success/30 hover:bg-success/25"
-                        : "bg-surface-inset text-text-muted ring-input-border hover:text-text"
-                    }`}
-                  >
-                    <span className={`h-2 w-2 rounded-full ${player.open_to_offers ? "bg-success animate-pulse" : "bg-border"}`} />
-                    {player.open_to_offers ? "Open to offers" : "Closed to offers"}
-                  </button>
-                )}
-
                 {/* Not until his listing state is known, or a listed player
                     offers "List for sale" for a moment. */}
                 {canList && listingsKnown && (
@@ -888,6 +868,21 @@ export default function PlayerMarketDetailPage() {
                         {player.world_team?.name ?? player.team_name ?? "His club"} is not on TransferX, so an offer
                         could not be answered. Shortlist him to follow his form and contract.
                       </p>
+                    )}
+                    {/* Ask first: the informal step before an offer, committing
+                        nobody to anything. */}
+                    {isAuthenticated && !isAgent && can("MARKET_WRITE") && !isFreeAgentPlayer && !isOffPlatform && (
+                      <>
+                        <Button variant="secondary" onClick={() => setAskOpen(true)}>
+                          Ask about him
+                        </Button>
+                        <AskAboutPlayerModal
+                          open={askOpen}
+                          onClose={closeAsk}
+                          player={{ id: player.id, name: player.name }}
+                          ownerName={player.active_loan?.parent_club?.name ?? player.current_club?.name ?? "His club"}
+                        />
+                      </>
                     )}
                     {isAuthenticated && !isAgent && can("MARKET_WRITE") && !isFreeAgentPlayer && !isOffPlatform && (
                       <Button

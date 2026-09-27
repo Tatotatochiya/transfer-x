@@ -3,8 +3,14 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.config import settings
 from app.database import Base, get_db
 from app.main import app
+
+# The fixtures register clubs directly through POST /auth/register. Real
+# environments are invitation-only (settings.allow_club_self_registration
+# defaults to False); the invitation flow has its own tests.
+settings.allow_club_self_registration = True
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 

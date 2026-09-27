@@ -25,7 +25,7 @@ function FilterChips({ filters }: { filters: NLParsedFilters }) {
   if (filters.min_height_cm != null) chips.push(`≥${filters.min_height_cm}cm`);
   if (filters.min_form_score != null) chips.push(`form ≥${filters.min_form_score}`);
   if (filters.nationalities?.length) chips.push(filters.nationalities.join(" / "));
-  if (filters.open_to_offers) chips.push("open to offers");
+  if (filters.open_to_offers) chips.push("listed");
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -58,7 +58,7 @@ function PlayerRow({ player }: { player: NLPlayerSearchResult }) {
               </Badge>
             )}
             {player.open_to_offers && (
-              <Badge variant="success">open</Badge>
+              <Badge variant="success">listed</Badge>
             )}
           </div>
           <p className="text-xs text-text-muted truncate">

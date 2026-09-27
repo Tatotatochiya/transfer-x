@@ -885,6 +885,10 @@ async def _reopen_sale_after_collapse(db: AsyncSession, deal: Deal) -> None:
         return
 
     sale.status = SaleStatus.OPEN
+    await db.flush()
+    from app.sales.service import sync_listed_flag
+
+    await sync_listed_flag(db, sale.player_id)
 
     bids_result = await db.execute(select(Bid).where(Bid.sale_id == sale.id))
     bidder_club_ids = {b.buyer_club_id for b in bids_result.scalars()}
