@@ -74,9 +74,10 @@ describe("StatsPanel", () => {
     expect(screen.getByText("7.1")).toBeInTheDocument(); // rating
   });
 
-  it("shows team name and season header", () => {
+  it("shows league name and season header", () => {
+    // The header names the league when the record has one, the team otherwise.
     render(<StatsPanel stats={[BASE_STATS]} form={null} />);
-    expect(screen.getByText("Liverpool")).toBeInTheDocument();
+    expect(screen.getByText("Premier League")).toBeInTheDocument();
     expect(screen.getByText("2025")).toBeInTheDocument();
   });
 
@@ -140,10 +141,11 @@ describe("StatsPanel", () => {
     expect(screen.queryByText("99")).not.toBeInTheDocument();
   });
 
-  it("shows multiple-seasons notice when more than 1 stats record", () => {
+  it("shows a tab per record when there is more than one", () => {
     const secondRecord = { ...BASE_STATS, id: "s2", league_id: "140" };
     render(<StatsPanel stats={[BASE_STATS, secondRecord]} form={null} />);
-    expect(screen.getByText(/2 league records/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Premier League · 2025/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /La Liga · 2025/ })).toBeInTheDocument();
   });
 
   it("shows minutes played", () => {

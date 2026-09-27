@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, type RenderOptions } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
+import { CompareProvider } from "../context/CompareContext";
 
 /** Create a fresh QueryClient per test (no shared cache) */
 function makeQueryClient() {
@@ -22,7 +23,9 @@ function AllProviders({ children, initialPath = "/" }: WrapperProps) {
   const qc = makeQueryClient();
   return (
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[initialPath]}>{children}</MemoryRouter>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <CompareProvider>{children}</CompareProvider>
+      </MemoryRouter>
     </QueryClientProvider>
   );
 }

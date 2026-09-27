@@ -75,7 +75,7 @@ describe("PlayerCard", () => {
 
   it("shows age and nationality", () => {
     renderWithProviders(<PlayerCard player={BASE_PLAYER} />);
-    expect(screen.getByText(/32 yrs/)).toBeInTheDocument();
+    expect(screen.getByText(/32y/)).toBeInTheDocument();
     expect(screen.getByText(/Egypt/)).toBeInTheDocument();
   });
 
