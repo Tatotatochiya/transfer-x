@@ -323,9 +323,10 @@ async def test_mandated_agent_can_consent_for_player_with_no_account(client: Asy
     assert resp.json()["player_has_account"] is False
 
 
-async def test_mandated_agent_cannot_consent_for_player_with_an_account(client: AsyncClient, db: AsyncSession):
-    """Once the player has their own account, the proxy escape hatch closes —
-    they must consent themselves, matching the frontend's actual behaviour."""
+async def test_mandated_agent_can_consent_even_when_player_has_an_account(client: AsyncClient, db: AsyncSession):
+    """Product decision (2026-09-28): the mandated agent may answer for his
+    client whether or not the player has an account — representing the player
+    is what the mandate is for. (Before, an account closed the proxy.)"""
     ctx = await _setup_invited_deal(client, db)
     await _register_player_account(client, "player-with-account-pt@negterms.com", ctx["player_id"])
     await _advance_to_personal_terms(client, ctx)
@@ -340,8 +341,9 @@ async def test_mandated_agent_cannot_consent_for_player_with_an_account(client: 
         json={"agreement": "AGREED"},
         headers=_headers(ctx["invited_agent"]),
     )
-    assert resp.status_code == 403
-    assert "must respond themselves" in resp.json()["detail"].lower()
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["player_consent"] == "AGREED"
+    assert resp.json()["player_has_account"] is True
 
 
 # ── Agent dashboard invitations vs. deal lifecycle ──────────────────────────────

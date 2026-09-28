@@ -383,10 +383,12 @@ function PersonalTermsBanner({ deal, isBuyer }: { deal: Deal; isBuyer: boolean }
     body = "Advance to Paperwork to continue.";
   } else {
     title = "Awaiting the player's consent";
-    body = terms.player_has_account
-      ? "The terms have been sent to the player. The deal moves on once he accepts them."
-      : terms.agent_id
-        ? "The player has no TransferX account, so his agent responds on his behalf."
+    body = terms.agent_id
+      ? terms.player_has_account
+        ? "The terms have been sent to the player. He or his agent can accept them."
+        : "The player has no TransferX account, so his agent responds on his behalf."
+      : terms.player_has_account
+        ? "The terms have been sent to the player. The deal moves on once he accepts them."
         : isBuyer
           ? "The player has no TransferX account or agent. Record his answer below once you have it in writing."
           : `The player has no TransferX account or agent, so ${buyerName} records his answer.`;
@@ -1632,10 +1634,14 @@ export default function DealDetailPage() {
                   </div>
                 </div>
               )}
-              {isAgent && deal.personal_terms.player_consent === "PENDING" && !deal.personal_terms.player_has_account && (
+              {/* The mandated agent may answer for his client, account or not
+                  (product decision, 2026-09-28). */}
+              {isAgent && deal.personal_terms.player_consent === "PENDING" && (
                 <div className="mt-3">
                   <p className="mb-1.5 text-[11px] text-text-muted">
-                    Player has no account yet — you may respond on their behalf
+                    {deal.personal_terms.player_has_account
+                      ? "The player can answer himself, or you can answer on his behalf"
+                      : "Player has no account yet — you may respond on their behalf"}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button

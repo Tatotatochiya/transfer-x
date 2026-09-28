@@ -848,9 +848,8 @@ async def player_consent_to_terms(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Player consents to or declines personal terms. A mandated agent may act
-    as their proxy only when the player has no account of their own — the
-    same rule used for the club-side of AGENT_NEGOTIATION.
+    """Player consents to or declines personal terms. His mandated agent may
+    answer for him, account or not (product decision, 2026-09-28).
 
     When the player has neither an account nor an agent, the buying club
     records his answer: in a real transfer it agrees personal terms with the
@@ -873,11 +872,10 @@ async def player_consent_to_terms(
         profile = profile_r.scalar_one_or_none()
         if profile is None or pt.agent_id != profile.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not the mandated agent")
-        if await players_service.player_has_account(db, deal.player_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Player has their own account and must respond themselves",
-            )
+        # The mandated agent may answer for his client whether or not the
+        # player has an account (product decision, 2026-09-28): representing
+        # the player is what the mandate is for. The player can still answer
+        # himself; whichever answers first decides.
     recorded_by_club = False
     if current_user.user_type not in (UserType.PLAYER, UserType.AGENT) and not current_user.is_superuser:
         club = await _get_club_or_403(db, current_user)
