@@ -58,6 +58,32 @@ class Club(Base):
         foreign_keys="ClubStaff.club_id",
     )
 
+    @property
+    def masking_league(self) -> str | None:
+        """The league an anonymous approach may show ("A {league} club"), or
+        None to show none.
+
+        `league_name` is filled from vendor data and sometimes holds the last
+        competition synced rather than the domestic league: "A UEFA Champions
+        League club" reads oddly and narrows the field to a couple of dozen
+        clubs, which defeats the anonymity. Only a domestic league is shown.
+        """
+        name = (self.league_name or "").strip()
+        if not name:
+            return None
+        lowered = name.lower()
+        if any(word in lowered for word in _NOT_A_DOMESTIC_LEAGUE):
+            return None
+        return name
+
+
+# Competitions that are not a club's domestic league.
+_NOT_A_DOMESTIC_LEAGUE = (
+    "uefa", "champions league", "europa", "conference league", "cup", "super cup",
+    "club world", "libertadores", "sudamericana", "concacaf", "afc ", "caf ",
+    "friendlies", "shield", "trophy",
+)
+
 
 class ClubFinance(Base):
     __tablename__ = "club_finances"

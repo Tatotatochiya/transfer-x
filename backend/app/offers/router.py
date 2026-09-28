@@ -171,7 +171,7 @@ def _mask_buyer(resp: OfferResponse, offer) -> OfferResponse:
     buyer_id = str(offer.from_club_id)
     resp.from_club = None
     resp.from_club_id = None
-    resp.buyer_league_name = offer.from_club.league_name if offer.from_club else None
+    resp.buyer_league_name = offer.from_club.masking_league if offer.from_club else None
 
     if str(resp.last_actor_club_id) == buyer_id:
         resp.last_actor_club_id = None

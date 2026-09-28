@@ -1303,7 +1303,7 @@ def _order_book_club(offer: Offer, my_club_id: uuid.UUID | None):
         and (my_club_id is None or str(offer.from_club_id) != str(my_club_id))
     )
     if anonymous:
-        league = offer.from_club.league_name
+        league = offer.from_club.masking_league
         return OrderBookClubSummary(
             id=None,
             name=f"A {league} club" if league else "An undisclosed club",
