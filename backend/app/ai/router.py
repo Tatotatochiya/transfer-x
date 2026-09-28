@@ -343,3 +343,18 @@ async def offer_summary(
         return await negotiation_summary(db, offer_id, viewer_club_id=club.id, user_id=current_user.id)
     except Exception as exc:
         raise _assist_errors(exc)
+
+
+@router.get("/deals/{deal_id}/next-steps")
+async def deal_next_steps(
+    deal_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """What the deal waits on and who must act; plus an AI brief when available."""
+    from app.ai.assist import deal_next_steps as _steps
+    club = await _get_club(db, current_user)
+    try:
+        return await _steps(db, deal_id, viewer_club_id=club.id, user_id=current_user.id)
+    except Exception as exc:
+        raise _assist_errors(exc)

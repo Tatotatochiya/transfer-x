@@ -579,3 +579,101 @@ async def negotiation_summary(db: AsyncSession, offer_id: uuid.UUID, *, viewer_c
 
     result, cached = await _cached(key, produce)
     return {**result, "rounds": sum(1 for h in history if h["event"] in ("COUNTERED", "IMPROVED")), "cached": cached}
+
+
+# ── Phase 2a: deal next steps ─────────────────────────────────────────────────
+
+
+def deal_steps(deal, viewer_club_id: uuid.UUID) -> list[dict]:
+    """What the deal is waiting on, and who must act — worked out from the
+    stage machine, not by the model. Owners: "you", "them", "either",
+    "player", "agent", "staff"."""
+    from app.deals.models import DealStage, DealStatus
+    from app.deals.service import paperwork_steps
+
+    if deal.status not in (DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION):
+        return []
+    side = "buyer" if viewer_club_id == deal.buyer_club_id else "seller"
+
+    def owner_of(s: str) -> str:
+        return "you" if s == side else "them"
+
+    steps: list[dict] = []
+    stage = deal.stage
+    if stage == DealStage.AGREEMENT:
+        steps.append({"label": "Move the deal on to personal terms", "owner": "either"})
+    elif stage == DealStage.AGENT_NEGOTIATION:
+        steps.append({"label": "Agree the agent's commission", "owner": owner_of("buyer")})
+    elif stage == DealStage.PERSONAL_TERMS:
+        pt = deal.personal_terms
+        consent = (pt.player_consent.value if pt is not None and hasattr(pt.player_consent, "value")
+                   else (pt.player_consent if pt is not None else None))
+        if pt is None:
+            steps.append({
+                "label": "Propose personal terms to the player",
+                "owner": "agent" if deal.commission_agent_id else owner_of("buyer"),
+            })
+        elif consent == "AGREED":
+            steps.append({"label": "Advance to paperwork", "owner": "either"})
+        else:
+            steps.append({
+                "label": "Get the player's answer on the proposed terms",
+                "owner": "player" if getattr(pt, "agent_id", None) is None else "agent",
+            })
+    elif stage == DealStage.PAPERWORK:
+        for s in paperwork_steps(deal):
+            if not s["done"]:
+                steps.append({"label": s["label"], "owner": owner_of(s["owner"])})
+    elif stage == DealStage.CONFIRMED:
+        sla = _utc(deal.sla_deadline)
+        steps.append({
+            "label": "Complete the transfer",
+            "owner": "either",
+            "due": sla.date().isoformat() if sla else None,
+        })
+    return steps
+
+
+async def deal_next_steps(db: AsyncSession, deal_id: uuid.UUID, *, viewer_club_id: uuid.UUID,
+                          user_id: uuid.UUID) -> dict:
+    import hashlib
+
+    from app.deals.service import get_deal_by_id
+
+    deal = await get_deal_by_id(db, deal_id)
+    if deal is None or viewer_club_id not in (deal.buyer_club_id, deal.seller_club_id):
+        raise LookupError("Deal not found")
+    steps = deal_steps(deal, viewer_club_id)
+    role = "buyer" if viewer_club_id == deal.buyer_club_id else "seller"
+    idle_days = (datetime.now(timezone.utc) - _utc(deal.updated_at)).days if deal.updated_at else None
+
+    brief = None
+    if steps and ai_available():
+        other = deal.seller_club if role == "buyer" else deal.buyer_club
+        facts = {
+            "currency": CURRENCY,
+            "viewer_role": role,
+            "player": deal.player.name if deal.player else None,
+            "other_club": other.name if other else None,
+            "deal_type": deal.deal_type.value,
+            "stage": deal.stage.value,
+            "agreed_fee": _num(deal.agreed_fee),
+            "days_since_last_movement": idle_days if idle_days and idle_days >= 3 else None,
+            "outstanding_steps": steps,
+            "window_or_sla_deadline": _utc(deal.sla_deadline).date().isoformat() if deal.sla_deadline else None,
+        }
+        fingerprint = hashlib.sha1(_dumps(facts).encode()).hexdigest()[:12]
+        try:
+            brief, _ = await _cached(
+                f"deal:{deal.id}:{viewer_club_id}:{fingerprint}",
+                lambda: _deal_brief(facts, role, user_id),
+            )
+        except Exception as exc:  # the steps stand on their own
+            logger.warning("Deal brief unavailable: %s", exc)
+    return {"steps": steps, "idle_days": idle_days, "brief": brief}
+
+
+async def _deal_brief(facts: dict, role: str, user_id: uuid.UUID) -> dict:
+    data = await _llm_json("DEAL_BRIEF_USER", user_id=user_id, endpoint="deal-brief", max_tokens=400,
+                           role=role, facts_json=_dumps(facts))
+    return {"headline": str(data.get("headline", "")).strip(), "advice": _strs(data.get("advice"), 3)}

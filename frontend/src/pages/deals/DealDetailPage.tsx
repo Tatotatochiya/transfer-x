@@ -23,7 +23,7 @@ import { dealStatusVariant, dealStageLabel, dealTypeLabel } from "../../lib/badg
 import { formatCurrency, formatDate, formatWage, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
-import { NegotiationSummaryPanel } from "../../components/ai/Assistant";
+import { DealNextStepsPanel, NegotiationSummaryPanel } from "../../components/ai/Assistant";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 
 const STAGE_SEQ: DealStage[] = [
@@ -1141,6 +1141,9 @@ export default function DealDetailPage() {
       </button>
 
       <DealRoomHeader deal={deal} />
+
+      {/* The assistant: what the deal waits on and who must act */}
+      {isParty && !isAgent && <DealNextStepsPanel deal={deal} />}
 
       <ThreeLanes deal={deal} negotiation={negotiation} />
 

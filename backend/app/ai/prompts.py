@@ -154,6 +154,16 @@ Return JSON:
 - "your_moves": list of short strings, rephrasing "moves_by_you" (empty if it is empty)
 """
 
+DEAL_BRIEF_USER = """\
+Brief the {role} club on this transfer's next steps. Facts, including the outstanding steps already worked out
+by TransferX, with who owns each:
+{facts_json}
+
+Return JSON:
+- "headline": string, one sentence: what the deal is waiting on and who must act
+- "advice": list of 1-3 short strings, practical tips for the viewer's own next steps (deadlines, order, risks)
+"""
+
 # ── Versioning ────────────────────────────────────────────────────────────────
 
 _DEFAULTS: dict[str, str] = {
@@ -166,6 +176,7 @@ _DEFAULTS: dict[str, str] = {
     "SYSTEM_ADVISOR": SYSTEM_ADVISOR,
     "OFFER_ADVICE_USER": OFFER_ADVICE_USER,
     "NEGOTIATION_SUMMARY_USER": NEGOTIATION_SUMMARY_USER,
+    "DEAL_BRIEF_USER": DEAL_BRIEF_USER,
 }
 
 _overrides: dict[str, str] = {}

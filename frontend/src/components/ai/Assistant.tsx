@@ -11,10 +11,11 @@ import { getApiError } from "../../lib/utils";
 import { formatCompactCurrency } from "../../lib/utils";
 import {
   useAIStatus,
+  useDealNextSteps,
   useNegotiationSummary,
   useOfferAdvice,
 } from "../../hooks/useAssistant";
-import type { Offer, SuggestedTerms, TermsWarning } from "../../types/api";
+import type { Deal, Offer, SuggestedTerms, TermsWarning } from "../../types/api";
 import Spinner from "../ui/Spinner";
 
 // ── Shell ─────────────────────────────────────────────────────────────────────
@@ -234,6 +235,44 @@ export function NegotiationSummaryPanel({ offer }: { offer: Offer }) {
             )}
           </div>
         </div>
+      )}
+    </AIPanel>
+  );
+}
+
+// ── Deal next steps ──────────────────────────────────────────────────────────
+
+const OWNER_LABEL: Record<string, string> = {
+  you: "You", them: "Them", either: "Either club", player: "The player", agent: "The agent", staff: "TransferX",
+};
+
+export function DealNextStepsPanel({ deal }: { deal: Deal }) {
+  // Keyed on the deal's version so a step completed elsewhere refreshes it.
+  const version = `${deal.updated_at}:${deal.stage}:${deal.personal_terms?.player_consent ?? ""}:${deal.medical_check?.status ?? ""}`;
+  const { data } = useDealNextSteps(deal.id, version);
+  if (!data || data.steps.length === 0) return null;
+  const mine = data.steps.filter((s) => s.owner === "you" || s.owner === "either");
+  return (
+    <AIPanel title="Next steps" className="mb-6">
+      {data.brief?.headline && <p className="mb-2 text-[13px] leading-snug text-text">{data.brief.headline}</p>}
+      <ul className="space-y-1.5">
+        {data.steps.map((s, i) => (
+          <li key={i} className="flex items-start justify-between gap-3 text-[13px]">
+            <span className={s.owner === "you" || s.owner === "either" ? "font-medium text-text" : "text-text-secondary"}>
+              {s.label}
+              {s.due && <span className="ml-1 text-text-muted">· by {s.due}</span>}
+            </span>
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${
+              s.owner === "you" ? "bg-accent-bg text-accent ring-accent/30" : "bg-surface-inset text-text-muted ring-border"
+            }`}>
+              {OWNER_LABEL[s.owner] ?? s.owner}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {data.brief && data.brief.advice.length > 0 && mine.length > 0 && <Bullets items={data.brief.advice} />}
+      {data.idle_days != null && data.idle_days >= 5 && (
+        <p className="mt-2 text-xs text-warning-text">No movement for {data.idle_days} days.</p>
       )}
     </AIPanel>
   );

@@ -1638,3 +1638,15 @@ export interface NegotiationSummary {
   rounds: number;
   cached: boolean;
 }
+
+export interface DealStep {
+  label: string;
+  owner: "you" | "them" | "either" | "player" | "agent" | "staff";
+  due?: string | null;
+}
+
+export interface DealNextSteps {
+  steps: DealStep[];
+  idle_days: number | null;
+  brief: { headline: string; advice: string[] } | null;
+}
