@@ -22,6 +22,7 @@ In scope: system-design decisions (e.g. choice of database, a module boundary, a
 - [0003 — Player status distinguishes external clubs from free agency](./0003-player-status-distinguishes-external-clubs.md)
 - [0004 — An anonymous buyer is masked server-side, not hidden in the UI](./0004-anonymous-buyer-masked-server-side.md)
 - [0005 — A loan separates registration from ownership, without a second active contract](./0005-loan-registration-separate-from-ownership.md)
+- [0006 — The AI assistant advises from server-scoped facts, and never acts](./0006-ai-assistant-advises-from-scoped-facts.md)
 
 > **TODO:** Add further decisions here as `NNNN-short-title.md`, following the short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
 >
