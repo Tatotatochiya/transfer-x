@@ -26,6 +26,7 @@ export type OfferEventType =
   | "CREATED"
   | "SENT"
   | "COUNTERED"
+  | "IMPROVED"
   | "ACCEPTED"
   | "REJECTED"
   | "WITHDRAWN"
