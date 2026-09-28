@@ -174,6 +174,40 @@ class ClubInvitationResponse(BaseModel):
     accept_url: str | None = None
 
 
+class PlayerInvitationCreateRequest(BaseModel):
+    player_id: uuid.UUID
+    email: str
+
+
+class PlayerInvitationResponse(BaseModel):
+    """For the inviting club. `accept_url` carries the raw token and is set
+    only on the response that creates the invitation."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    player_id: uuid.UUID
+    email: str
+    created_at: datetime
+    expires_at: datetime
+    accepted_at: datetime | None = None
+    revoked_at: datetime | None = None
+    accept_url: str | None = None
+
+
+class PlayerAccountStatusResponse(BaseModel):
+    """Whether one of the club's players has a TransferX account, and the
+    latest invitation sent to him."""
+    has_account: bool
+    invitation: PlayerInvitationResponse | None = None
+
+
+class PlayerInvitationPreviewResponse(BaseModel):
+    player_name: str
+    club_name: str
+    email: str
+    expires_at: datetime
+
+
 class ClubInvitationPreviewResponse(BaseModel):
     """Public preview for the join page — the club and email being invited."""
     club_name: str

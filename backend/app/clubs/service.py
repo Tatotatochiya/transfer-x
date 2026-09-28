@@ -389,6 +389,116 @@ async def revoke_club_invitation(db: AsyncSession, invitation_id: uuid.UUID) -> 
     return inv
 
 
+# ── Player invitations (migration 0082) ──────────────────────────────────────
+#
+# Players join by invitation from the club that owns them: a player account
+# can accept personal terms, so it is never self-claimed.
+
+
+async def create_player_invitation(
+    db: AsyncSession, *, club_id: uuid.UUID, player_id: uuid.UUID, email: str, invited_by_user_id: uuid.UUID
+) -> tuple["PlayerInvitation", str]:
+    """Returns (row, raw_token). Refuses a player the club does not own, one
+    who already has an account, an email already on TransferX, and a second
+    live invitation for the same player."""
+    from app.auth.models import PlayerProfile, User
+    from app.clubs.models import PlayerInvitation
+    from app.players.models import Player
+    from app.players.service import get_owning_club_id
+
+    email_norm = email.strip().lower()
+    if "@" not in email_norm:
+        raise ValueError("Enter the player's email address")
+    player = (await db.execute(select(Player).where(Player.id == player_id))).scalar_one_or_none()
+    if player is None or await get_owning_club_id(db, player) != club_id:
+        raise LookupError("Player not found")
+    if (await db.execute(select(PlayerProfile.id).where(PlayerProfile.player_id == player_id))).first():
+        raise ValueError(f"{player.name} already has a TransferX account")
+    if (await db.execute(select(User.id).where(func.lower(User.email) == email_norm))).first():
+        raise ValueError("This email already has a TransferX account")
+    pending = (await db.execute(
+        select(PlayerInvitation).where(
+            PlayerInvitation.player_id == player_id,
+            PlayerInvitation.accepted_at.is_(None),
+            PlayerInvitation.revoked_at.is_(None),
+        )
+    )).scalars()
+    if any(invitation_is_live(inv) for inv in pending):
+        raise ValueError(f"{player.name} already has a pending invitation — revoke it to send a new one")
+
+    raw_token = secrets.token_urlsafe(32)
+    invitation = PlayerInvitation(
+        player_id=player_id,
+        club_id=club_id,
+        email=email_norm,
+        token_hash=_hash_invitation_token(raw_token),
+        invited_by_user_id=invited_by_user_id,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=INVITATION_TTL_DAYS),
+    )
+    db.add(invitation)
+    await db.flush()
+    return invitation, raw_token
+
+
+async def get_live_player_invitation(db: AsyncSession, raw_token: str):
+    from app.clubs.models import PlayerInvitation
+
+    digest = _hash_invitation_token(raw_token)
+    inv = (await db.execute(
+        select(PlayerInvitation).where(PlayerInvitation.token_hash == digest)
+    )).scalar_one_or_none()
+    if inv is None or not hmac.compare_digest(inv.token_hash, digest):
+        return None
+    return inv if invitation_is_live(inv) else None
+
+
+async def accept_player_invitation(db: AsyncSession, raw_token: str, *, password: str):
+    """Create the player's account and link it to his player record. Returns
+    the new user. Locks the invitation so a double submit creates one account."""
+    from app.auth import service as auth_service
+    from app.auth.models import PlayerProfile, UserType
+
+    inv = await get_live_player_invitation(db, raw_token)
+    if inv is None:
+        raise ValueError("This invitation is no longer valid — ask your club for a new one")
+    await db.refresh(inv, attribute_names=["accepted_at", "revoked_at"], with_for_update=True)
+    if not invitation_is_live(inv):
+        raise ValueError("This invitation is no longer valid — ask your club for a new one")
+
+    user = await auth_service.create_user(db, email=inv.email, password=password, user_type=UserType.PLAYER)
+    await auth_service.create_player_profile(db, user_id=user.id, player_id=inv.player_id)
+    # The club vouched for this address, so the link is verified.
+    profile = (await db.execute(select(PlayerProfile).where(PlayerProfile.user_id == user.id))).scalar_one()
+    profile.verified = True
+    inv.accepted_at = datetime.now(timezone.utc)
+    await db.flush()
+    return user
+
+
+async def list_player_invitations(db: AsyncSession, club_id: uuid.UUID, player_id: uuid.UUID | None = None):
+    from app.clubs.models import PlayerInvitation
+
+    q = select(PlayerInvitation).where(PlayerInvitation.club_id == club_id)
+    if player_id is not None:
+        q = q.where(PlayerInvitation.player_id == player_id)
+    return list((await db.execute(q.order_by(PlayerInvitation.created_at.desc()))).scalars())
+
+
+async def revoke_player_invitation(db: AsyncSession, *, club_id: uuid.UUID, invitation_id: uuid.UUID):
+    from app.clubs.models import PlayerInvitation
+
+    inv = (await db.execute(
+        select(PlayerInvitation).where(PlayerInvitation.id == invitation_id, PlayerInvitation.club_id == club_id)
+    )).scalar_one_or_none()
+    if inv is None:
+        raise LookupError("Invitation not found")
+    if inv.accepted_at is not None:
+        raise ValueError("This invitation has already been accepted")
+    inv.revoked_at = datetime.now(timezone.utc)
+    await db.flush()
+    return inv
+
+
 async def list_pending_invitations(db: AsyncSession, club_id: uuid.UUID) -> list[ClubStaffInvitation]:
     result = await db.execute(
         select(ClubStaffInvitation)

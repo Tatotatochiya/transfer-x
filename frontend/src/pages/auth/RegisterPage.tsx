@@ -5,7 +5,7 @@ import { useAuthStore } from "../../store/auth";
 import Button from "../../components/ui/Button";
 import Icon from "../../components/layout/Icon";
 import type { IconName } from "../../components/layout/Icon";
-import type { Paginated, Player, TokenResponse, User } from "../../types/api";
+import type { TokenResponse, User } from "../../types/api";
 
 type ActorType = "CLUB" | "AGENT" | "PLAYER";
 
@@ -55,52 +55,17 @@ export default function RegisterPage() {
   const [country, setCountry]         = useState("");
   const [licenceNo, setLicenceNo]     = useState("");
 
-  // Player claim fields
-  const [playerSearch, setPlayerSearch]     = useState("");
-  const [searchResults, setSearchResults]   = useState<Player[]>([]);
-  const [searching, setSearching]           = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-
   const [error, setError]     = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (actorType !== "PLAYER" || playerSearch.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const { data } = await api.get<Paginated<Player>>("/players/market", {
-          params: { search: playerSearch, page_size: 8 },
-        });
-        setSearchResults(data.items);
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [playerSearch, actorType]);
-
   // Reset type-specific state when switching
   useEffect(() => {
-    setSelectedPlayer(null);
-    setPlayerSearch("");
-    setSearchResults([]);
     setError(null);
   }, [actorType]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-
-    if (actorType === "PLAYER" && !selectedPlayer) {
-      setError("Please search for and select your player record.");
-      return;
-    }
 
     setLoading(true);
     try {
@@ -111,8 +76,6 @@ export default function RegisterPage() {
         body.agency_name  = agencyName;
         body.country      = country;
         if (licenceNo.trim()) body.licence_no = licenceNo.trim();
-      } else if (actorType === "PLAYER") {
-        body.player_id = selectedPlayer!.id;
       }
 
       const { data: tokens } = await api.post<TokenResponse>("/auth/register", body);
@@ -120,9 +83,7 @@ export default function RegisterPage() {
       const { data: me } = await api.get<User>("/auth/me");
       setUser(me);
 
-      const dest = actorType === "AGENT" ? "/agent/dashboard"
-                 : actorType === "PLAYER" ? "/player/profile"
-                 : "/dashboard";
+      const dest = actorType === "AGENT" ? "/agent/dashboard" : "/dashboard";
       navigate(dest, { replace: true });
     } catch (err: unknown) {
       const msg =
@@ -199,6 +160,18 @@ export default function RegisterPage() {
                   Every club on TransferX is invited and verified by our team, so the club you deal with is
                   the club it says it is. Contact TransferX to be invited; if you already have been, use
                   the link in your invitation email.
+                </p>
+              </div>
+            ) : actorType === "PLAYER" ? (
+              /* Players join by invitation from their club (2026-09-28): a
+                 player account accepts personal terms, so it is never claimed
+                 by searching for a name. */
+              <div className="rounded-lg bg-surface-inset px-4 py-4 ring-1 ring-border">
+                <p className="text-sm font-semibold text-text">Players join by invitation from their club</p>
+                <p className="mt-1 text-[13px] text-text-muted">
+                  Your account lets you review and accept the personal terms clubs offer you, so it is set up
+                  by the club you play for. Ask your club to invite you, then use the link in your invitation
+                  email. Your agent can also accept terms on your behalf.
                 </p>
               </div>
             ) : (<>
@@ -283,64 +256,6 @@ export default function RegisterPage() {
                     placeholder="e.g. FIFA-2024-001234"
                   />
                 </div>
-              </div>
-            )}
-
-            {/* Player-specific */}
-            {actorType === "PLAYER" && (
-              <div>
-                <label className={LABEL_CLS}>Find your player record</label>
-                {selectedPlayer ? (
-                  <div className="flex items-center justify-between rounded-lg bg-accent-bg px-4 py-3 ring-1 ring-accent">
-                    <div>
-                      <p className="text-sm font-medium text-text">{selectedPlayer.name}</p>
-                      <p className="text-xs text-text-muted">{selectedPlayer.position ?? "Unknown position"}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { setSelectedPlayer(null); setPlayerSearch(""); }}
-                      className="text-xs text-text-muted hover:text-text transition-colors"
-                    >
-                      Change
-                    </button>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={playerSearch}
-                      onChange={(e) => setPlayerSearch(e.target.value)}
-                      className={INPUT_CLS}
-                      placeholder="Search by name…"
-                    />
-                    {(searching || searchResults.length > 0) && (
-                      <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg bg-surface py-1 ring-1 ring-border shadow-xl">
-                        {searching ? (
-                          <p className="px-4 py-2 text-xs text-text-muted">Searching…</p>
-                        ) : searchResults.length === 0 ? (
-                          <p className="px-4 py-2 text-xs text-text-muted">No players found</p>
-                        ) : (
-                          searchResults.map((p) => (
-                            <button
-                              key={p.id}
-                              type="button"
-                              onClick={() => { setSelectedPlayer(p); setSearchResults([]); }}
-                              className="w-full px-4 py-2.5 text-left text-sm hover:bg-surface-inset transition-colors"
-                            >
-                              <span className="font-medium text-text">{p.name}</span>
-                              {p.position && (
-                                <span className="ml-2 text-xs text-text-muted">{p.position}</span>
-                              )}
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-                <p className="mt-1.5 text-xs text-text-muted">
-                  Your account will be linked to this player record.
-                </p>
               </div>
             )}
 

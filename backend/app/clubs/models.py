@@ -77,6 +77,39 @@ class Club(Base):
         return name
 
 
+class PlayerInvitation(Base):
+    """An invitation for a player to create his TransferX account (migration
+    0082), sent by the club that owns him.
+
+    Players join by invitation only (product decision, 2026-09-28): a player
+    account can accept personal terms, so it must not be claimable by anyone
+    who knows a player's id. The owning club vouches for the email address;
+    accepting creates the PLAYER user and links it to the player record.
+    Same token discipline as the other invitations: the raw token is returned
+    once and only its sha256 hash is stored.
+    """
+    __tablename__ = "player_invitations"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    club_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("clubs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    email: Mapped[str] = mapped_column(String(254), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    invited_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 # Competitions that are not a club's domestic league.
 _NOT_A_DOMESTIC_LEAGUE = (
     "uefa", "champions league", "europa", "conference league", "cup", "super cup",

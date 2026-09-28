@@ -23,6 +23,7 @@ In scope: product-level decisions (what to build, what not to build, scope trade
 - [0004 — A listing says whether the player is for transfer, loan, or either](./0004-listing-availability-transfer-loan-or-either.md)
 - [0005 — One kind of listing, and listed means available](./0005-one-listing-listed-means-available.md)
 - [0006 — The buying club records consent for a player with no account or agent](./0006-buying-club-records-consent-for-unrepresented-player.md)
+- [0007 — Players join by invitation from their club; a mandated agent can always answer](./0007-players-join-by-invitation-agents-can-answer.md)
 
 > **TODO:** Add further decisions here as `NNNN-short-title.md`, following the short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
 

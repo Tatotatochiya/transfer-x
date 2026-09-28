@@ -25,6 +25,12 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Players join by invitation from their club** ([ADR 0007](./product/decisions/0007-players-join-by-invitation-agents-can-answer.md)).
+  - A "Player account" card on your own player's page shows whether he has an account and lets a club member with team permission invite him by email. The link is shown once and emailed.
+  - The player accepts at `/join/player`, which creates his account, linked to his record and marked verified.
+  - Invitations work once, expire after 7 days, can be revoked, and are stored hashed. Inviting and joining are audited, and the club is notified.
+  - Registering as a player is refused, closing the old route where anyone could claim a player by name.
+  - Migration `0082`.
 - **The AI assistant now covers the whole transfer workflow** ([architecture ADR 0006](./architecture/decisions/0006-ai-assistant-advises-from-scoped-facts.md)). It advises and never acts: suggestions are applied through the normal confirmed forms, and a used suggestion is audited (`AI_SUGGESTION_USED`).
   - **Offer advisor** (offer page). Recommends accept, counter, reject or wait. It weighs the offer against the fee model, the guide price, the club's own budget (buyer) or competing offers (seller), and suggests counter terms. "Use these terms" opens the counter form pre-filled.
   - **Terms checks** (making or countering an offer). Rule-based warnings as the club types, with no AI model needed:
@@ -56,6 +62,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **A mandated agent can accept personal terms for his client whether or not the player has an account.** Before, an account closed the agent's route. The player can still answer himself.
 - **Recording a player's agreement needs the signed terms** ([ADR 0006](./product/decisions/0006-buying-club-records-consent-for-unrepresented-player.md)).
   - When the buying club records the agreement for a player with no account or agent, it attaches the signed copy. The copy goes into its private deal-room channel, and the consent and its audit entry point to it.
   - New terms clear the copy along with the consent.
@@ -69,6 +76,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **A club player's profile offered him an "Open to offers" switch the server refuses.** Since listings took over that switch, a club player is available only when his club lists him. His profile now says whether he's listed, and only free agents keep the switch.
 - **An anonymous buyer was named on the seller's War Room.** The "waiting on you" row showed the buying club of an anonymous offer, and so did everything that reads that list: the daily digest email, the AI briefing and Ask TransferX. It now shows the masked label, as the offer page does.
 - **The anonymous label no longer names a European competition.** A club's league field sometimes holds a competition, so buyers showed as "A UEFA Champions League club", which narrows the field to a couple of dozen clubs. Only a domestic league is shown now, otherwise "An undisclosed club". This applies to offers, order books, enquiries and the War Room (`Club.masking_league`).
 - **Automated tests for this month's permission-sensitive features:** enquiries, club invitations, clubs running auction deals and recording consent, the AI assistant (with a fake model), and the anonymous label. That's 39 tests in total.
