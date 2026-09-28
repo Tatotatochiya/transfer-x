@@ -21,6 +21,7 @@ import {
 import { formatCurrency, formatDate, formatWage } from "../../lib/utils";
 import AddToShortlistButton from "../../components/scouting/AddToShortlistButton";
 import AskAboutPlayerModal from "../../components/enquiries/AskAboutPlayerModal";
+import { PotentialBuyersPanel } from "../../components/ai/Assistant";
 import ListPlayerModal from "../../components/sales/ListPlayerModal";
 import { useCompare } from "../../context/CompareContext";
 import CareerHistoryPanel from "../../components/players/CareerHistoryPanel";
@@ -1038,6 +1039,8 @@ export default function PlayerMarketDetailPage() {
           {isAuthenticated && !isMyPlayer && (
             <PlayerFitCard playerId={player.id} />
           )}
+          {/* Selling: clubs whose squads look short in his position */}
+          {isMyPlayer && can("MARKET_WRITE") && <PotentialBuyersPanel playerId={player.id} />}
           {isAgent && !isMyPlayer && id && (
             <AgentRepresentationCard playerId={id} />
           )}

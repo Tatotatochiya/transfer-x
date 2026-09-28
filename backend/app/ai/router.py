@@ -388,3 +388,18 @@ async def listing_advice(
         return await _advice(db, player_id, viewer_club_id=club.id, user_id=current_user.id)
     except Exception as exc:
         raise _assist_errors(exc)
+
+
+@router.get("/potential-buyers/{player_id}")
+async def potential_buyers(
+    player_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Clubs whose (public) squads suggest a need for one of the caller's players."""
+    from app.ai.assist import potential_buyers as _buyers
+    club = await _get_club(db, current_user)
+    try:
+        return await _buyers(db, player_id, viewer_club_id=club.id, user_id=current_user.id)
+    except Exception as exc:
+        raise _assist_errors(exc)

@@ -6,6 +6,7 @@
  * form pre-filled — and the server audits that it was used.
  */
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import { getApiError } from "../../lib/utils";
 import { formatCompactCurrency } from "../../lib/utils";
@@ -15,6 +16,7 @@ import {
   useDealNextSteps,
   useNegotiationSummary,
   useOfferAdvice,
+  usePotentialBuyers,
 } from "../../hooks/useAssistant";
 import type { Deal, Offer, SuggestedTerms, TermsWarning } from "../../types/api";
 import Spinner from "../ui/Spinner";
@@ -304,6 +306,36 @@ export function BriefingCard() {
             </p>
           )}
           <Bullets items={data.points} />
+        </div>
+      )}
+    </AIPanel>
+  );
+}
+
+// ── Who might want him ───────────────────────────────────────────────────────
+
+export function PotentialBuyersPanel({ playerId }: { playerId: string }) {
+  const [asked, setAsked] = useState(false);
+  const { data, isFetching, error } = usePotentialBuyers(playerId, asked);
+  return (
+    <AIPanel
+      title="Who might want him?"
+      action={!data && <AskButton label="Find clubs" onClick={() => setAsked(true)} loading={isFetching} />}
+    >
+      {!asked && <p className="text-xs text-text-muted">Clubs on TransferX whose squads look short in his position, from public squad information.</p>}
+      {isFetching && !data && <Loading text="Looking at squads…" />}
+      {error != null && <ErrorText error={error} />}
+      {data && (
+        <div className="space-y-2">
+          {data.summary && <p className="text-[13px] leading-snug text-text">{data.summary}</p>}
+          <ul className="space-y-2">
+            {data.clubs.map((c) => (
+              <li key={c.club_id} className="text-[13px] leading-snug">
+                <Link to={`/clubs/${c.club_id}`} className="font-semibold text-text hover:text-accent">{c.club}</Link>
+                <span className="text-text-secondary"> — {c.reason}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </AIPanel>

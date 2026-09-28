@@ -190,6 +190,17 @@ listing without one simply invites offers. Never tell the club to wait, not to l
 first.
 """
 
+POTENTIAL_BUYERS_USER = """\
+The viewer's club wants to know which clubs on TransferX might want its player. Candidate clubs, each with the
+squad facts TransferX found (public squad information only):
+{facts_json}
+
+Return JSON:
+- "summary": string, one sentence
+- "clubs": list of up to 5 objects, best first, each with "club_id" (copied exactly from the facts) and
+  "reason" (one sentence grounded in that club's facts)
+"""
+
 # ── Versioning ────────────────────────────────────────────────────────────────
 
 _DEFAULTS: dict[str, str] = {
@@ -205,6 +216,7 @@ _DEFAULTS: dict[str, str] = {
     "DEAL_BRIEF_USER": DEAL_BRIEF_USER,
     "CLUB_BRIEFING_USER": CLUB_BRIEFING_USER,
     "LISTING_ADVICE_USER": LISTING_ADVICE_USER,
+    "POTENTIAL_BUYERS_USER": POTENTIAL_BUYERS_USER,
 }
 
 _overrides: dict[str, str] = {}

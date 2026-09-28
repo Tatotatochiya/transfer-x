@@ -8,6 +8,7 @@ import type {
   NegotiationSummary,
   OfferAdvice,
   OfferCheckResponse,
+  PotentialBuyers,
 } from "../types/api";
 
 /**
@@ -84,6 +85,16 @@ export function useListingAdvice(playerId: string | undefined, enabled: boolean)
     queryFn: () => api.get<ListingAdvice>(`/ai/listing-advice/${playerId}`).then((r) => r.data),
     enabled: enabled && !!playerId,
     staleTime: 30 * 60 * 1000,
+    retry: false,
+  });
+}
+
+export function usePotentialBuyers(playerId: string, enabled: boolean) {
+  return useQuery<PotentialBuyers>({
+    queryKey: ["ai", "potential-buyers", playerId],
+    queryFn: () => api.get<PotentialBuyers>(`/ai/potential-buyers/${playerId}`).then((r) => r.data),
+    enabled,
+    staleTime: 60 * 60 * 1000,
     retry: false,
   });
 }

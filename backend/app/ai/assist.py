@@ -851,3 +851,98 @@ async def listing_advice(db: AsyncSession, player_id: uuid.UUID, *, viewer_club_
     except Exception as exc:
         logger.warning("Listing advice narrative unavailable: %s", exc)
     return result
+
+
+# ── Phase 3b: who might want him ─────────────────────────────────────────────
+
+# A squad's usual depth per position; fewer than this is a gap.
+_TYPICAL_DEPTH = {"GK": 3, "DEF": 8, "MID": 8, "FWD": 6}
+
+
+async def potential_buyers(db: AsyncSession, player_id: uuid.UUID, *, viewer_club_id: uuid.UUID,
+                           user_id: uuid.UUID) -> dict:
+    """Clubs on TransferX whose squads suggest a need for this player. Uses
+    public squad information only — never another club's budget."""
+    from app.clubs.models import Club
+    from app.players.models import Player
+
+    from app.players.service import get_owning_club_id
+
+    target = (await db.execute(select(Player).where(Player.id == player_id))).scalar_one_or_none()
+    if target is None or await get_owning_club_id(db, target) != viewer_club_id:
+        raise LookupError("Player not found")
+    if target.position is None:
+        return {"summary": "He has no position recorded, so there is nothing to match on.", "clubs": []}
+    pos = target.position.value
+    clubs = (await db.execute(select(Club).where(Club.id != viewer_club_id))).scalars().all()
+    from sqlalchemy import func
+
+    sizes = dict((await db.execute(
+        select(Player.current_club_id, func.count()).where(Player.current_club_id.in_([c.id for c in clubs]))
+        .group_by(Player.current_club_id)
+    )).all())
+    # A club with no real squad on TransferX (a test or just-joined account)
+    # tells us nothing about need.
+    clubs = [c for c in clubs if sizes.get(c.id, 0) >= 11]
+    players = (await db.execute(
+        select(Player).where(Player.current_club_id.in_([c.id for c in clubs]), Player.position == target.position)
+    )).scalars().all()
+    ends = await _contract_ends(db, players)
+    by_club: dict[uuid.UUID, list] = {}
+    for p in players:
+        by_club.setdefault(p.current_club_id, []).append(p)
+    horizon = date.today() + timedelta(days=365)
+    candidates = []
+    for club in clubs:
+        squad = by_club.get(club.id, [])
+        ages = [p.age for p in squad if p.age]
+        expiring = sum(1 for p in squad if ends.get(p.id) and ends[p.id] <= horizon)
+        over_31 = sum(1 for a in ages if a >= 31)
+        depth = len(squad)
+        avg_age = sum(ages) / len(ages) if ages else None
+        need = (max(0, _TYPICAL_DEPTH.get(pos, 6) - depth) * 2 + expiring + over_31
+                + (1 if avg_age and avg_age >= 29 else 0))
+        if need <= 0:
+            continue
+        candidates.append({
+            "club_id": str(club.id), "club": club.name, "league": club.league_name,
+            "players_in_position": depth, "average_age_in_position": round(avg_age, 1) if avg_age else None,
+            "contracts_ending_within_12_months": expiring, "aged_31_or_over": over_31, "need_score": need,
+        })
+    candidates.sort(key=lambda c: -c["need_score"])
+    top = candidates[:10]
+
+    def plain(c: dict) -> str:
+        bits = [f"{c['players_in_position']} {pos} in the squad"]
+        if c["contracts_ending_within_12_months"]:
+            bits.append(f"{c['contracts_ending_within_12_months']} out of contract within a year")
+        if c["aged_31_or_over"]:
+            bits.append(f"{c['aged_31_or_over']} aged 31+")
+        return "; ".join(bits).capitalize() + "."
+
+    fallback = {
+        "summary": None if top else f"No club on TransferX looks short of a {pos} right now — listing him lets any club find him.",
+        "clubs": [{"club_id": c["club_id"], "club": c["club"], "reason": plain(c)} for c in top[:5]],
+    }
+    if not top or not ai_available():
+        return fallback
+    facts = {"player": {"name": target.name, "age": target.age, "position": pos},
+             "candidate_clubs": [{k: v for k, v in c.items() if k != "need_score"} for c in top]}
+
+    async def produce():
+        data = await _llm_json("POTENTIAL_BUYERS_USER", user_id=user_id, endpoint="potential-buyers",
+                               max_tokens=600, facts_json=_dumps(facts))
+        known = {c["club_id"]: c for c in top}
+        picked = []
+        for row in data.get("clubs") or []:
+            cid = str(row.get("club_id", ""))
+            if cid in known and cid not in {p["club_id"] for p in picked}:
+                picked.append({"club_id": cid, "club": known[cid]["club"], "reason": str(row.get("reason", "")).strip() or plain(known[cid])})
+        return {"summary": str(data.get("summary", "")).strip() or None, "clubs": picked[:5] or fallback["clubs"]}
+
+    try:
+        result, _ = await _cached(f"buyers:{player_id}:{date.today()}", produce, ttl=12 * 3600)
+        return result
+    except Exception as exc:
+        logger.warning("Potential buyers narrative unavailable: %s", exc)
+        return fallback

@@ -1669,3 +1669,8 @@ export interface ListingAdvice {
   reasons: string[];
   tips: string[];
 }
+
+export interface PotentialBuyers {
+  summary: string | null;
+  clubs: { club_id: string; club: string; reason: string }[];
+}
