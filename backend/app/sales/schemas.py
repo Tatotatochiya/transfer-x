@@ -23,6 +23,8 @@ class SaleCreateRequest(BaseModel):
     min_increment: Decimal = Decimal("500000")
     deadline: datetime | None = None
     notes: str | None = None
+    # The guide price came from the listing assistant; audited, not binding.
+    ai_assisted: bool = False
 
     @field_validator("asking_price", "reserve_price", "min_increment", mode="before")
     @classmethod

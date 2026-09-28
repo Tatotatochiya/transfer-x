@@ -4,6 +4,7 @@ import api from "../lib/api";
 import type {
   ClubBriefing,
   DealNextSteps,
+  ListingAdvice,
   NegotiationSummary,
   OfferAdvice,
   OfferCheckResponse,
@@ -72,6 +73,16 @@ export function useBriefing(enabled: boolean) {
     queryKey: ["ai", "briefing"],
     queryFn: () => api.get<ClubBriefing | null>("/ai/briefing").then((r) => r.data),
     enabled,
+    staleTime: 30 * 60 * 1000,
+    retry: false,
+  });
+}
+
+export function useListingAdvice(playerId: string | undefined, enabled: boolean) {
+  return useQuery<ListingAdvice>({
+    queryKey: ["ai", "listing-advice", playerId],
+    queryFn: () => api.get<ListingAdvice>(`/ai/listing-advice/${playerId}`).then((r) => r.data),
+    enabled: enabled && !!playerId,
     staleTime: 30 * 60 * 1000,
     retry: false,
   });

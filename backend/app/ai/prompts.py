@@ -174,6 +174,22 @@ Return JSON:
 - "points": list of 2-5 short strings covering what needs them and what changed in the last 24 hours
 """
 
+LISTING_ADVICE_USER = """\
+The viewer's club is considering listing (or re-pricing) one of its players. Facts, including a guide price
+TransferX computed from the fee model and comparable completed transfers:
+{facts_json}
+
+Return JSON:
+- "summary": string, 1-2 sentences
+- "availability": one of "TRANSFER", "LOAN", "EITHER", with the loan option only if the facts support it
+  (young, low minutes, long contract)
+- "reasons": list of 2-4 short strings explaining the guide price and availability
+- "tips": list of 0-3 short strings (e.g. for a listing with no offers: lower the price, open to loans)
+If there is no computed guide price, the club sets the price from its own view — a guide price is optional and
+listing without one simply invites offers. Never tell the club to wait, not to list, or that it must set a price
+first.
+"""
+
 # ── Versioning ────────────────────────────────────────────────────────────────
 
 _DEFAULTS: dict[str, str] = {
@@ -188,6 +204,7 @@ _DEFAULTS: dict[str, str] = {
     "NEGOTIATION_SUMMARY_USER": NEGOTIATION_SUMMARY_USER,
     "DEAL_BRIEF_USER": DEAL_BRIEF_USER,
     "CLUB_BRIEFING_USER": CLUB_BRIEFING_USER,
+    "LISTING_ADVICE_USER": LISTING_ADVICE_USER,
 }
 
 _overrides: dict[str, str] = {}

@@ -1658,3 +1658,14 @@ export interface ClubBriefing {
   waiting_count: number;
   cached: boolean;
 }
+
+export interface ListingAdvice {
+  guide_price: number | null;
+  guide_basis: string | null;
+  comparables: { player: string; age: number | null; fee: number | null; completed: string | null }[];
+  listing: { days_listed: number; guide_price: number | null; availability: string; offers_received: number } | null;
+  availability: "TRANSFER" | "LOAN" | "EITHER";
+  summary: string | null;
+  reasons: string[];
+  tips: string[];
+}

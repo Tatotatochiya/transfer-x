@@ -372,3 +372,19 @@ async def briefing(
         return await club_briefing(db, club, current_user)
     except Exception as exc:
         raise _assist_errors(exc)
+
+
+@router.get("/listing-advice/{player_id}")
+async def listing_advice(
+    player_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Guide price (model + comparable transfers) and availability for one of
+    the caller's own players. The guide price needs no model."""
+    from app.ai.assist import listing_advice as _advice
+    club = await _get_club(db, current_user)
+    try:
+        return await _advice(db, player_id, viewer_club_id=club.id, user_id=current_user.id)
+    except Exception as exc:
+        raise _assist_errors(exc)

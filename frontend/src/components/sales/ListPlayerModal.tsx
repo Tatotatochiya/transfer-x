@@ -11,6 +11,8 @@ import TransferWindowBanner from "../transfers/TransferWindowBanner";
 import { useToast } from "../../context/ToastContext";
 import { useOpenListings } from "../../hooks/useListing";
 import { formatCompactCurrency, getApiError } from "../../lib/utils";
+import { useListingAdvice } from "../../hooks/useAssistant";
+import Spinner from "../ui/Spinner";
 
 // What the club will consider. Transfer first: it is what a listing always
 // meant before loans could be listed.
@@ -69,6 +71,11 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
   const [offersUntil, setOffersUntil] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // The pricing assistant: asked for on demand, and remembered if the club
+  // takes its price, so the listing is audited as AI-assisted.
+  const [adviceAsked, setAdviceAsked] = useState(false);
+  const [aiPrice, setAiPrice] = useState<string | null>(null);
+  const { data: advice, isFetching: adviceLoading, error: adviceError } = useListingAdvice(playerId, adviceAsked);
 
   // ── Picker data — only when no player was given ────────────────────────────
 
@@ -157,6 +164,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
     // A loan-only listing has no asking price: clubs propose the loan terms.
     const parsedAsking = parseFloat(askingPrice);
     if (!loanOnly && askingPrice && !isNaN(parsedAsking)) body.asking_price = parsedAsking;
+    if (aiPrice != null && aiPrice === askingPrice) body.ai_assisted = true;
 
     if (saleType === "AUCTION") {
       const parsedReserve = parseFloat(reservePrice);
@@ -233,6 +241,70 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
           ))}
         </div>
       </div>
+
+      {/* Pricing assistant — a guide price from the model and comparable
+          completed transfers, and whether to open him to loans. Advice only:
+          "Use" fills the fields below, which the club still reviews. */}
+      {playerId && (
+        <div className="rounded-xl bg-surface p-3.5 ring-1 ring-role-agent-text/25">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-text"><span className="text-role-agent-text">✦</span> Pricing assistant</p>
+            {!advice && (
+              <button
+                type="button"
+                onClick={() => setAdviceAsked(true)}
+                disabled={adviceLoading}
+                className="rounded-lg bg-role-agent-text/10 px-3 py-1.5 text-xs font-semibold text-role-agent-text ring-1 ring-role-agent-text/30 hover:bg-role-agent-text/20 disabled:opacity-50"
+              >
+                {adviceLoading ? <Spinner size="sm" /> : "Suggest a price"}
+              </button>
+            )}
+          </div>
+          {adviceError != null && <p className="mt-2 text-xs text-danger-text">{getApiError(adviceError, "No suggestion just now.")}</p>}
+          {advice && (
+            <div className="mt-2 space-y-2 text-[13px] leading-snug">
+              {advice.guide_price != null ? (
+                <p className="text-text">
+                  Guide <span className="font-semibold">{formatCompactCurrency(advice.guide_price)}</span>
+                  <span className="text-text-muted"> · from the {advice.guide_basis}</span>
+                  {advice.comparables.length > 0 && (
+                    <span className="text-text-muted"> ({advice.comparables.length} comparable{advice.comparables.length === 1 ? "" : "s"})</span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-text-muted">No model valuation or comparable transfers for him yet — set the price from your own view.</p>
+              )}
+              {advice.summary && <p className="text-text-secondary">{advice.summary}</p>}
+              {advice.reasons.length > 0 && (
+                <ul className="list-disc space-y-0.5 pl-4 text-text-secondary">
+                  {advice.reasons.map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+              )}
+              {advice.tips.length > 0 && (
+                <ul className="list-disc space-y-0.5 pl-4 text-text-muted">
+                  {advice.tips.map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  chooseAvailability(advice.availability);
+                  if (advice.guide_price != null && advice.availability !== "LOAN") {
+                    const v = String(advice.guide_price);
+                    setAskingPrice(v);
+                    setAiPrice(v);
+                  }
+                }}
+              >
+                Use {advice.guide_price != null && advice.availability !== "LOAN" ? `${formatCompactCurrency(advice.guide_price)}, ` : ""}
+                {advice.availability === "EITHER" ? "transfer or loan" : advice.availability.toLowerCase()}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Price — none on a loan-only listing: a figure there would read as his
           price, to buyers and to the fair-value signal. */}

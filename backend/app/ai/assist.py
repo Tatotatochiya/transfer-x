@@ -734,3 +734,120 @@ async def club_briefing(db: AsyncSession, club, user) -> dict | None:
 
     result, cached = await _cached(f"briefing:{user.id}:{date.today()}:{fingerprint}", produce, ttl=12 * 3600)
     return {**result, "waiting_count": len(facts["waiting_on_you"]), "cached": cached}
+
+
+# ── Phase 3a: listing assistant ──────────────────────────────────────────────
+
+
+def _round_price(v: float) -> float:
+    step = 250_000 if v >= 2_000_000 else 50_000
+    return max(step, round(v / step) * step)
+
+
+async def _comparables(db: AsyncSession, player: dict, exclude_player_id: uuid.UUID) -> list[dict]:
+    """Completed permanent transfers of similar players in the last 18
+    months — public on Recent Transfers."""
+    from app.deals.models import Deal, DealStatus, DealType
+    from app.players.models import Player, PlayerPosition
+
+    if not player.get("position"):
+        return []
+    since = datetime.now(timezone.utc) - timedelta(days=548)
+    q = (
+        select(Deal, Player).join(Player, Player.id == Deal.player_id)
+        .where(Deal.status == DealStatus.COMPLETED, Deal.deal_type == DealType.PERMANENT,
+               Deal.completed_at >= since, Deal.agreed_fee > 0,
+               Player.position == PlayerPosition(player["position"]), Player.id != exclude_player_id)
+    )
+    age = player.get("age")
+    if age:
+        q = q.where(Player.age.between(age - 3, age + 3))
+    rows = (await db.execute(q.order_by(Deal.completed_at.desc()).limit(8))).all()
+    return [
+        {"player": p.name, "age": p.age, "fee": _num(d.agreed_fee),
+         "completed": d.completed_at.date().isoformat() if d.completed_at else None}
+        for d, p in rows
+    ]
+
+
+async def listing_advice(db: AsyncSession, player_id: uuid.UUID, *, viewer_club_id: uuid.UUID,
+                         user_id: uuid.UUID) -> dict:
+    from app.offers.models import Offer
+    from app.players.models import Player
+    from app.sales.models import Sale, SaleStatus
+
+    from app.players.service import get_owning_club_id
+
+    # The owner, as listing resolves it: a club lending a player out still
+    # owns him, and a club that created a player with no contract owns him.
+    target = (await db.execute(select(Player).where(Player.id == player_id))).scalar_one_or_none()
+    if target is None or await get_owning_club_id(db, target) != viewer_club_id:
+        raise LookupError("Player not found")
+    player = await _player_facts(db, player_id)
+    comps = await _comparables(db, player, player_id)
+    model = player.get("fee_model") or {}
+    fair = model.get("fair_value")
+    comp_fees = sorted(c["fee"] for c in comps if c["fee"])
+    comp_median = comp_fees[len(comp_fees) // 2] if comp_fees else None
+    if fair and comp_median:
+        guide = 0.6 * fair + 0.4 * comp_median
+        basis = "model and comparable transfers"
+    elif fair:
+        guide, basis = fair, "model"
+    elif comp_median:
+        guide, basis = comp_median, "comparable transfers"
+    else:
+        guide, basis = None, None
+    months = player.get("months_left_on_contract")
+    if guide and months is not None and months <= 12:
+        guide *= 0.7  # a player who can leave for nothing within a year sells for less
+        basis += ", reduced for his contract ending within 12 months"
+    guide = _round_price(guide) if guide else None
+
+    listing = None
+    sale = (await db.execute(
+        select(Sale).where(Sale.player_id == player_id, Sale.status == SaleStatus.OPEN)
+    )).scalars().first()
+    if sale is not None:
+        offers = (await db.execute(select(Offer.id).where(Offer.sale_id == sale.id))).all()
+        listing = {
+            "days_listed": (datetime.now(timezone.utc) - _utc(sale.created_at)).days,
+            "guide_price": _num(sale.asking_price),
+            "availability": sale.availability.value,
+            "offers_received": len(offers),
+        }
+    age = player.get("age") or 99
+    default_availability = "EITHER" if age <= 21 else "TRANSFER"
+    result = {
+        "guide_price": guide,
+        "guide_basis": basis,
+        "comparables": comps,
+        "listing": listing,
+        "availability": default_availability,
+        "summary": None,
+        "reasons": [],
+        "tips": [],
+    }
+    if not ai_available():
+        return result
+    facts = {"currency": CURRENCY, "player": player, "computed_guide_price": guide, "guide_basis": basis,
+             "comparable_transfers": comps, "current_listing": listing}
+    key = f"listing:{player_id}:{guide}:{_dumps(listing)}"
+
+    async def produce():
+        data = await _llm_json("LISTING_ADVICE_USER", user_id=user_id, endpoint="listing-advice",
+                               max_tokens=500, facts_json=_dumps(facts))
+        availability = str(data.get("availability", "")).upper()
+        return {
+            "summary": str(data.get("summary", "")).strip() or None,
+            "availability": availability if availability in ("TRANSFER", "LOAN", "EITHER") else default_availability,
+            "reasons": _strs(data.get("reasons"), 4),
+            "tips": _strs(data.get("tips"), 3),
+        }
+
+    try:
+        ai, _ = await _cached(key, produce)
+        result.update(ai)
+    except Exception as exc:
+        logger.warning("Listing advice narrative unavailable: %s", exc)
+    return result
