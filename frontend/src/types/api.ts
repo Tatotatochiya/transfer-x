@@ -690,6 +690,8 @@ export interface PersonalTerms {
   created_at: string;
   buyer_club_id: string;
   buyer_club_name: string;
+  /** The signed terms the buying club attached when it recorded agreement. */
+  consent_evidence_attachment_id: string | null;
 }
 
 export interface MedicalCheck {

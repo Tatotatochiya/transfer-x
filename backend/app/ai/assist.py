@@ -584,10 +584,15 @@ async def negotiation_summary(db: AsyncSession, offer_id: uuid.UUID, *, viewer_c
 # ── Phase 2a: deal next steps ─────────────────────────────────────────────────
 
 
-def deal_steps(deal, viewer_club_id: uuid.UUID) -> list[dict]:
+def deal_steps(deal, viewer_club_id: uuid.UUID, player_has_account: bool | None = None) -> list[dict]:
     """What the deal is waiting on, and who must act — worked out from the
     stage machine, not by the model. Owners: "you", "them", "either",
-    "player", "agent", "staff"."""
+    "player", "agent", "staff".
+
+    `player_has_account`: whether the player can answer personal terms
+    himself. With no account and no agent, the buying club records his
+    answer (product ADR 0006), so that step is the buyer's. Unknown (None)
+    is shown as the player's."""
     from app.deals.models import DealStage, DealStatus
     from app.deals.service import paperwork_steps
 
@@ -615,11 +620,15 @@ def deal_steps(deal, viewer_club_id: uuid.UUID) -> list[dict]:
             })
         elif consent == "AGREED":
             steps.append({"label": "Advance to paperwork", "owner": "either"})
-        else:
+        elif getattr(pt, "agent_id", None) is not None:
+            steps.append({"label": "Get the player's answer on the proposed terms", "owner": "agent"})
+        elif player_has_account is False:
             steps.append({
-                "label": "Get the player's answer on the proposed terms",
-                "owner": "player" if getattr(pt, "agent_id", None) is None else "agent",
+                "label": "Record the player's answer, with the signed terms",
+                "owner": owner_of("buyer"),
             })
+        else:
+            steps.append({"label": "Get the player's answer on the proposed terms", "owner": "player"})
     elif stage == DealStage.PAPERWORK:
         for s in paperwork_steps(deal):
             if not s["done"]:
@@ -643,7 +652,9 @@ async def deal_next_steps(db: AsyncSession, deal_id: uuid.UUID, *, viewer_club_i
     deal = await get_deal_by_id(db, deal_id)
     if deal is None or viewer_club_id not in (deal.buyer_club_id, deal.seller_club_id):
         raise LookupError("Deal not found")
-    steps = deal_steps(deal, viewer_club_id)
+    from app.players.service import player_has_account
+
+    steps = deal_steps(deal, viewer_club_id, await player_has_account(db, deal.player_id))
     role = "buyer" if viewer_club_id == deal.buyer_club_id else "seller"
     idle_days = (datetime.now(timezone.utc) - _utc(deal.updated_at)).days if deal.updated_at else None
 
@@ -659,6 +670,11 @@ async def deal_next_steps(db: AsyncSession, deal_id: uuid.UUID, *, viewer_club_i
             "stage": deal.stage.value,
             "agreed_fee": _num(deal.agreed_fee),
             "days_since_last_movement": idle_days if idle_days and idle_days >= 3 else None,
+            "personal_terms_consent": (
+                deal.personal_terms.player_consent.value if deal.personal_terms is not None
+                and hasattr(deal.personal_terms.player_consent, "value")
+                else (deal.personal_terms.player_consent if deal.personal_terms is not None else None)
+            ),
             "outstanding_steps": steps,
             "window_or_sla_deadline": _utc(deal.sla_deadline).date().isoformat() if deal.sla_deadline else None,
         }

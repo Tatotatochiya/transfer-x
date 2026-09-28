@@ -1070,6 +1070,29 @@ export default function DealDetailPage() {
     onError: (err: unknown) => addToast(getApiError(err, "Failed to respond."), "error"),
   });
 
+  // The buying club recording a player's agreement (ADR 0006) must attach the
+  // signed terms: uploaded to its private deal-room channel, then referenced
+  // by the consent so the record rests on a document, not the club's word.
+  const [signedTerms, setSignedTerms] = useState<File | null>(null);
+  const recordAgreementMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("audience", "BUYER_ONLY");
+      const { data: attachment } = await api.post<{ id: string }>(`/deals/${id}/attachments`, form);
+      return api.post(`/deals/${id}/personal-terms/player-consent`, {
+        agreement: "AGREED",
+        evidence_attachment_id: attachment.id,
+      }).then((r) => r.data);
+    },
+    onSuccess: () => {
+      setSignedTerms(null);
+      queryClient.invalidateQueries({ queryKey: ["deals", id] });
+      addToast("Agreement recorded with the signed terms.", "success");
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Could not record the agreement."), "error"),
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -1539,23 +1562,53 @@ export default function DealDetailPage() {
               </dl>
               {/* No account and no agent: the buying club, which agreed these
                   terms with the player directly, records his answer. */}
+              {isBuyer && deal.personal_terms.consent_evidence_attachment_id && (
+                <p className="mt-2 text-xs text-text-muted">
+                  Recorded by your club with the signed terms —{" "}
+                  <a
+                    href={`${api.defaults.baseURL ?? ""}/deals/${deal.id}/attachments/${deal.personal_terms.consent_evidence_attachment_id}/download`}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      const res = await api.get(
+                        `/deals/${deal.id}/attachments/${deal.personal_terms!.consent_evidence_attachment_id}/download`,
+                        { responseType: "blob" },
+                      );
+                      window.open(URL.createObjectURL(res.data), "_blank");
+                    }}
+                    className="font-semibold text-accent hover:underline"
+                  >
+                    view signed copy
+                  </a>
+                </p>
+              )}
               {canRecordConsent && (
                 <div className="mt-3">
                   <p className="mb-1.5 text-[11px] text-text-muted">
-                    {deal.player?.name ?? "The player"} has no TransferX account or agent — record his answer once you have it in writing.
+                    {deal.player?.name ?? "The player"} has no TransferX account or agent — record his answer with the signed terms.
                   </p>
+                  <label className="mb-2 block text-[12px] text-text-secondary">
+                    Signed terms <span className="text-text-muted">(PDF or image — kept in your club&rsquo;s private deal-room channel)</span>
+                    <input
+                      type="file"
+                      accept=".pdf,image/*"
+                      onChange={(e) => setSignedTerms(e.target.files?.[0] ?? null)}
+                      className="mt-1 block w-full text-xs text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-inset file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-text"
+                    />
+                  </label>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="primary"
                       size="sm"
-                      loading={personalTermsConsentMutation.isPending}
+                      disabled={!signedTerms}
+                      loading={recordAgreementMutation.isPending}
                       onClick={async () => {
+                        if (!signedTerms) return;
                         const ok = await confirm({
                           title: "Record that the player agreed?",
-                          message: `Confirm that ${deal.player?.name ?? "the player"} has agreed these terms, for example in a signed copy. This is recorded as ${deal.buyer_club?.name ?? "your club"}'s confirmation, and ${deal.seller_club?.name ?? "the selling club"} is notified.`,
+                          message: `Confirm that ${deal.player?.name ?? "the player"} has signed these terms (${signedTerms.name}). This is recorded as ${deal.buyer_club?.name ?? "your club"}'s confirmation, with the signed copy, and ${deal.seller_club?.name ?? "the selling club"} is notified.`,
                           confirmLabel: "Record agreement",
                         });
-                        if (ok) personalTermsConsentMutation.mutate("AGREED");
+                        if (ok) recordAgreementMutation.mutate(signedTerms);
                       }}
                     >
                       He agreed

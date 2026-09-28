@@ -115,6 +115,12 @@ async def test_deal_next_steps_work_without_a_model(client, buyer, seller, outsi
     # The seller sees the buyer's step as the other side's.
     assert steps == [{"label": "Propose personal terms to the player", "owner": "them"}]
 
+    # Terms proposed to a player with no account or agent: the buying club
+    # records his answer (ADR 0006), so the step is the buyer's.
+    await client.put(f"/deals/{deal['id']}/personal-terms", json={"wage_weekly": 40000}, headers=_auth_headers(buyer))
+    steps = (await client.get(f"/ai/deals/{deal['id']}/next-steps", headers=_auth_headers(buyer))).json()["steps"]
+    assert steps == [{"label": "Record the player's answer, with the signed terms", "owner": "you"}]
+
     assert (await client.get(f"/ai/deals/{deal['id']}/next-steps", headers=_auth_headers(outsider))).status_code == 404
 
 

@@ -170,6 +170,10 @@ class PersonalTermsResponse(BaseModel):
     # Item 9: the consent panel must show which club the player is being asked to join.
     buyer_club_id: uuid.UUID
     buyer_club_name: str
+    # The signed terms the buying club attached when it recorded the player's
+    # agreement (ADR 0006); a deal-room attachment, downloadable by those who
+    # can see its channel.
+    consent_evidence_attachment_id: uuid.UUID | None = None
     model_config = {"from_attributes": True}
 
 
@@ -207,6 +211,13 @@ class UpdateNegotiationTermsRequest(BaseModel):
 
 class NegotiationRespondRequest(BaseModel):
     agreement: AgreementStatus
+
+
+class PlayerConsentRequest(BaseModel):
+    agreement: AgreementStatus
+    # Required when the buying club records the player's agreement: the signed
+    # terms, uploaded to the deal room first.
+    evidence_attachment_id: uuid.UUID | None = None
 
 
 # ── Update deal request (TRA-56) ──────────────────────────────────────────────
