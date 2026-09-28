@@ -127,6 +127,9 @@ class Settings(BaseSettings):
     # club sign-up is off unless this is set — the test suite sets it, since
     # its fixtures register clubs directly; real environments leave it off.
     allow_club_self_registration: bool = False
+    # Players join by invitation from their club (a player account can accept
+    # personal terms). The test suite turns this on to register players directly.
+    allow_player_self_registration: bool = False
 
 
 settings = Settings()

@@ -25,6 +25,9 @@ from app.clubs.schemas import (
     ClubStaffMemberResponse,
     ClubUpdateRequest,
     CommitmentsResponse,
+    PlayerAccountStatusResponse,
+    PlayerInvitationCreateRequest,
+    PlayerInvitationResponse,
     PlayerSearchViewCreateRequest,
     PlayerSearchViewResponse,
     PlayerSearchViewUpdateRequest,
@@ -664,3 +667,89 @@ async def get_contract_cliff(
         )
 
     return ContractCliffResponse(windows=windows)
+
+
+# ── Player invitations (migration 0082) ──────────────────────────────────────
+# Players join by invitation from the club that owns them; TEAM_MANAGE, as for
+# inviting staff, because it brings a person onto the platform for the club.
+
+
+@router.get("/me/players/{player_id}/account", response_model=PlayerAccountStatusResponse)
+async def get_player_account_status(
+    player_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Whether one of our players has an account, and his latest invitation."""
+    from app.players.models import Player
+
+    club = await _get_my_club_or_403(db, current_user)
+    player = (await db.execute(select(Player).where(Player.id == player_id))).scalar_one_or_none()
+    if player is None or await players_service.get_owning_club_id(db, player) != club.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    invitations = await clubs_service.list_player_invitations(db, club.id, player_id)
+    return PlayerAccountStatusResponse(
+        has_account=await players_service.player_has_account(db, player_id),
+        invitation=PlayerInvitationResponse.model_validate(invitations[0]) if invitations else None,
+    )
+
+
+@router.post("/me/player-invitations", response_model=PlayerInvitationResponse, status_code=status.HTTP_201_CREATED)
+async def invite_player(
+    body: PlayerInvitationCreateRequest,
+    current_user: User = Depends(get_current_user),
+    _manage: User = Depends(_team_manage),
+    db: AsyncSession = Depends(get_db),
+):
+    """Invite one of our players to create his account. The accept link is
+    emailed, and returned once here so it can be passed on by hand."""
+    import asyncio
+
+    from app.audit import service as audit_service
+    from app.config import settings
+    from app.notifications.email import send_player_invitation_email
+    from app.players.models import Player
+
+    club = await _get_my_club_or_403(db, current_user)
+    try:
+        inv, raw_token = await clubs_service.create_player_invitation(
+            db, club_id=club.id, player_id=body.player_id, email=body.email, invited_by_user_id=current_user.id,
+        )
+        await audit_service.emit(
+            db, entity_type="PLAYER", entity_id=inv.player_id, action="PLAYER_INVITED",
+            actor_user_id=current_user.id, payload={"email": inv.email},
+            description=f"{club.name} invited the player to TransferX",
+        )
+        await db.commit()
+    except LookupError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    player = (await db.execute(select(Player).where(Player.id == inv.player_id))).scalar_one()
+    accept_url = f"{settings.frontend_base_url}/join/player?token={raw_token}"
+    asyncio.create_task(send_player_invitation_email(inv.email, player.name, club.name, accept_url))
+    resp = PlayerInvitationResponse.model_validate(inv)
+    resp.accept_url = accept_url
+    return resp
+
+
+@router.post("/me/player-invitations/{invitation_id}/revoke", response_model=PlayerInvitationResponse)
+async def revoke_player_invitation(
+    invitation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    _manage: User = Depends(_team_manage),
+    db: AsyncSession = Depends(get_db),
+):
+    club = await _get_my_club_or_403(db, current_user)
+    try:
+        inv = await clubs_service.revoke_player_invitation(db, club_id=club.id, invitation_id=invitation_id)
+        await db.commit()
+    except LookupError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return PlayerInvitationResponse.model_validate(inv)

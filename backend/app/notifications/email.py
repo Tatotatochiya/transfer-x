@@ -158,6 +158,21 @@ async def send_staff_invitation_email(
         logger.exception("Failed to send staff invitation email")
 
 
+async def send_player_invitation_email(to_email: str, player_name: str, club_name: str, accept_url: str) -> None:
+    """Fire-and-forget player invitation. Never logs the URL (it embeds the raw
+    token)."""
+    try:
+        message = (
+            f"{club_name} has invited you, {player_name}, to TransferX. With your own account you "
+            "review and accept the personal terms offered to you. The link expires in 7 days."
+        )
+        await asyncio.to_thread(
+            _send_sync, to_email, f"TransferX — {club_name} invites you", _render_html(message, accept_url)
+        )
+    except Exception:
+        logger.exception("Failed to send player invitation email")
+
+
 async def send_club_invitation_email(to_email: str, club_name: str, accept_url: str) -> None:
     """Fire-and-forget club invitation. Never logs the URL (it embeds the raw
     token)."""

@@ -11,6 +11,8 @@ from app.main import app
 # environments are invitation-only (settings.allow_club_self_registration
 # defaults to False); the invitation flow has its own tests.
 settings.allow_club_self_registration = True
+# Likewise players: real environments invite them from their club.
+settings.allow_player_self_registration = True
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
