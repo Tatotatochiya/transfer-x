@@ -106,6 +106,54 @@ Return a JSON array of up to 10 recommended players, each with:
 - "reason": string (1-2 sentences)
 """
 
+
+# ── Workflow assistant (offers, deals, briefing, listings, Ask) ──────────────
+#
+# Every figure in these prompts' input was computed by TransferX from data the
+# viewing club is allowed to see. The model phrases and recommends; it does not
+# supply numbers of its own. Keep "Only use figures given" in any override.
+
+SYSTEM_ADVISOR = (
+    "You are the transfer assistant inside TransferX, a platform professional football clubs use to buy, "
+    "sell and loan players. You advise one club, the viewer. "
+    "Only use the facts and figures given to you; never invent a number, a club, a player or an event. "
+    "Money is in the currency given; write amounts compactly (e.g. £12.5m, £80k/wk). "
+    "Be brief, specific and practical, like a trusted sporting-director's analyst. "
+    "You recommend; the club decides and acts. "
+    "Always respond with a single valid JSON object and nothing else."
+)
+
+OFFER_ADVICE_USER = """\
+The viewer is the {role} club in this negotiation. Facts (computed by TransferX; the viewer may see all of them):
+{facts_json}
+
+Rule-based checks already raised on the current terms:
+{checks_json}
+
+Advise the viewer on their next move. Return JSON:
+- "summary": string, 1-2 sentences on where the negotiation stands for the viewer
+- "recommendation": one of "accept", "counter", "reject", "wait" ("wait" when it is not the viewer's turn)
+- "suggested_terms": object or null. Only when recommending "counter": the terms to propose, using only these
+  keys, each a number or null for unchanged: "fee_amount", "wage_weekly", "contract_years", "sell_on_pct"
+  (a fraction, 0.1 = 10%), "loan_fee", "wage_split_pct" (fraction the borrowing club pays), "option_to_buy".
+  Anchor every figure to the facts (current terms, model range, guide price, budget).
+- "reasons": list of 2-4 short strings
+- "watch_outs": list of 0-3 short strings
+"""
+
+NEGOTIATION_SUMMARY_USER = """\
+Summarise this negotiation for the {role} club. Chronological history (computed by TransferX):
+{facts_json}
+
+"moves_by_you" and "moves_by_them" already list who changed what; do not reassign a move to the other side.
+
+Return JSON:
+- "summary": string, 2-3 sentences: how the terms moved and where they stand now
+- "gap": string or null, the remaining difference between the sides in one phrase (e.g. "£2.5m on the fee")
+- "their_moves": list of short strings, rephrasing "moves_by_them" (empty if it is empty)
+- "your_moves": list of short strings, rephrasing "moves_by_you" (empty if it is empty)
+"""
+
 # ── Versioning ────────────────────────────────────────────────────────────────
 
 _DEFAULTS: dict[str, str] = {
@@ -115,6 +163,9 @@ _DEFAULTS: dict[str, str] = {
     "MARKET_RECOMMENDATIONS_USER": MARKET_RECOMMENDATIONS_USER,
     "SHORTLIST_REVIEW_USER": SHORTLIST_REVIEW_USER,
     "NL_SEARCH_PARSE": NL_SEARCH_PARSE,
+    "SYSTEM_ADVISOR": SYSTEM_ADVISOR,
+    "OFFER_ADVICE_USER": OFFER_ADVICE_USER,
+    "NEGOTIATION_SUMMARY_USER": NEGOTIATION_SUMMARY_USER,
 }
 
 _overrides: dict[str, str] = {}

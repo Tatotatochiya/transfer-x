@@ -528,6 +528,14 @@ async def counter_offer(
             ntype=NotificationType.OFFER_COUNTERED,
             message="A counter offer has been submitted",
         )
+        if body.ai_assisted:
+            from app.audit import service as audit_service
+
+            await audit_service.emit(
+                db, entity_type="OFFER", entity_id=offer.id, action="AI_SUGGESTION_USED",
+                actor_user_id=current_user.id, payload={"feature": "counter_advisor"},
+                description="Counter offer started from the assistant's suggestion",
+            )
         await db.commit()
     except ValueError as exc:
         await db.rollback()

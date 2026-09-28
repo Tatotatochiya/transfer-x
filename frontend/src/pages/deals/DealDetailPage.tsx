@@ -23,6 +23,7 @@ import { dealStatusVariant, dealStageLabel, dealTypeLabel } from "../../lib/badg
 import { formatCurrency, formatDate, formatWage, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
+import { NegotiationSummaryPanel } from "../../components/ai/Assistant";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 
 const STAGE_SEQ: DealStage[] = [
@@ -608,6 +609,7 @@ function AgreedOfferHistory({ offerId, myClubId }: { offerId: string; myClubId?:
           {offer.events.length === 1 ? "" : "s"} in the negotiation
         </summary>
         <div className="mt-3">
+          <div className="mb-3"><NegotiationSummaryPanel offer={offer} /></div>
           <OfferThread offer={offer} myClubId={myClubId} canMessage={false} />
         </div>
       </details>

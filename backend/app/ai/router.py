@@ -261,3 +261,85 @@ async def reset_prompt(
     """Reset a prompt override back to the built-in default. Superuser only."""
     from app.ai.prompts import reset_override
     reset_override(key)
+
+
+# ── Workflow assistant (ai/assist.py) ─────────────────────────────────────────
+#
+# Every route resolves the caller's club and lets assist.py scope the facts to
+# what that club may see. Nothing here changes state. The terms checker and a
+# deal's next steps need no model; the rest answer 503 without one.
+
+
+def _assist_errors(exc: Exception) -> HTTPException:
+    if isinstance(exc, HTTPException):
+        return exc
+    if isinstance(exc, LookupError):
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    import logging
+    logging.getLogger(__name__).warning("Assistant error: %s", exc)
+    return HTTPException(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        detail="The assistant could not answer just now — try again in a moment.",
+    )
+
+
+@router.get("/status")
+async def assistant_status(current_user: User = Depends(get_current_user)) -> dict:
+    """Whether AI answers are available — the UI hides AI buttons otherwise."""
+    from app.ai.assist import ai_available
+    from app.ai.rate_limit import get_rate_limit_status
+    return {"available": ai_available(), "rate_limit": get_rate_limit_status(current_user.id)}
+
+
+@router.post("/offer-check")
+async def offer_check(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Rule-based warnings on draft offer terms (as the buyer) or on a counter
+    or incoming offer (`offer_id`: the caller's side comes from the offer)."""
+    from app.ai import assist
+    club = await _get_club(db, current_user)
+    terms = body.get("terms") or {}
+    try:
+        offer = None
+        if body.get("offer_id"):
+            offer = await assist._load_offer(db, uuid.UUID(str(body["offer_id"])), club.id)
+        elif not terms.get("player_id"):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="player_id is required")
+        return await assist.check_offer_terms(db, viewer_club_id=club.id, terms=terms, offer=offer)
+    except Exception as exc:
+        raise _assist_errors(exc)
+
+
+@router.get("/offers/{offer_id}/advice")
+async def offer_advice(
+    offer_id: uuid.UUID,
+    refresh: bool = Query(False),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Counter-offer advisor for either party."""
+    from app.ai.assist import offer_advice as _advice
+    _require_llm_key()
+    club = await _get_club(db, current_user)
+    try:
+        return await _advice(db, offer_id, viewer_club_id=club.id, user_id=current_user.id, refresh=refresh)
+    except Exception as exc:
+        raise _assist_errors(exc)
+
+
+@router.get("/offers/{offer_id}/summary")
+async def offer_summary(
+    offer_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    from app.ai.assist import negotiation_summary
+    _require_llm_key()
+    club = await _get_club(db, current_user)
+    try:
+        return await negotiation_summary(db, offer_id, viewer_club_id=club.id, user_id=current_user.id)
+    except Exception as exc:
+        raise _assist_errors(exc)

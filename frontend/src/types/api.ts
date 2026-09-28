@@ -1588,3 +1588,53 @@ export interface Loan {
   // "in" = we borrowed him. Server-derived so no consumer re-compares club ids.
   direction: "out" | "in" | null;
 }
+
+// ── Workflow assistant (backend/app/ai/assist.py) ─────────────────────────────
+
+export interface TermsWarning {
+  severity: "high" | "medium" | "low";
+  code: string;
+  message: string;
+}
+
+export interface OfferCheckResponse {
+  role: "buyer" | "seller";
+  warnings: TermsWarning[];
+}
+
+export interface SuggestedTerms {
+  fee_amount?: number;
+  wage_weekly?: number;
+  contract_years?: number;
+  sell_on_pct?: number;
+  loan_fee?: number;
+  wage_split_pct?: number;
+  option_to_buy?: number;
+}
+
+export interface OfferAdvice {
+  summary: string;
+  recommendation: "accept" | "counter" | "reject" | "wait";
+  suggested_terms: SuggestedTerms | null;
+  reasons: string[];
+  watch_outs: string[];
+  checks: TermsWarning[];
+  facts: {
+    model_fair_value: number | null;
+    model_range: [number | null, number | null] | null;
+    fee_vs_model_pct: number | null;
+    listing_guide_price: number | null;
+    competing_offers: { count: number; best_fee: number | null } | null;
+    your_budget: { transfer_budget_remaining: number | null; wage_budget_remaining_weekly: number | null } | null;
+  };
+  cached: boolean;
+}
+
+export interface NegotiationSummary {
+  summary: string;
+  gap: string | null;
+  their_moves: string[];
+  your_moves: string[];
+  rounds: number;
+  cached: boolean;
+}
