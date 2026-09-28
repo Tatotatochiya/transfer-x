@@ -165,7 +165,10 @@ export default function PlayerProfilePage() {
   async function handleSave() {
     setSaving(true);
     try {
-      await api.patch("/players/me", { visibility, open_to_offers: openToOffers });
+      // A player at a club is made available by his club listing him; the
+      // server refuses his own switch (product ADR 0005), so only a free agent
+      // sends it.
+      await api.patch("/players/me", player?.current_club ? { visibility } : { visibility, open_to_offers: openToOffers });
       await queryClient.invalidateQueries({ queryKey: ["players", "me"] });
       setDirty(false);
     } finally {
@@ -206,6 +209,16 @@ export default function PlayerProfilePage() {
             <VisibilitySelector value={visibility} onChange={handleVisibilityChange} />
           </div>
 
+          {player.current_club ? (
+            <div>
+              <p className="text-sm font-medium text-text-secondary">Available for transfer</p>
+              <p className="text-xs text-text-muted">
+                {player.open_to_offers
+                  ? `Yes — ${player.current_club.name} has listed you.`
+                  : `Not listed. ${player.current_club.name} makes you available by listing you.`}
+              </p>
+            </div>
+          ) : (
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-text-secondary">Open to offers</p>
@@ -225,6 +238,7 @@ export default function PlayerProfilePage() {
               />
             </button>
           </div>
+          )}
 
           {dirty && (
             <Button

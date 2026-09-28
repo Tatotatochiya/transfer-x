@@ -339,13 +339,15 @@ function PlayerChecklist({ userId }: { userId: string }) {
       to: "/player/profile",
       visitFlag: true,
     },
-    {
+    // A player at a club is made available by his club listing him, so only
+    // a free agent sets this himself.
+    ...(me.current_club ? [] : [{
       id: "player-openness",
       label: "Set whether you're open to offers",
       done: readFlag(userId, "player-openness") || !!me.open_to_offers,
       to: "/player/profile",
       visitFlag: true,
-    },
+    }]),
     {
       id: "player-representation",
       label: "Review your representation",
