@@ -358,3 +358,17 @@ async def deal_next_steps(
         return await _steps(db, deal_id, viewer_club_id=club.id, user_id=current_user.id)
     except Exception as exc:
         raise _assist_errors(exc)
+
+
+@router.get("/briefing")
+async def briefing(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict | None:
+    """Today's briefing for the caller, or null without a model."""
+    from app.ai.assist import club_briefing
+    club = await _get_club(db, current_user)
+    try:
+        return await club_briefing(db, club, current_user)
+    except Exception as exc:
+        raise _assist_errors(exc)

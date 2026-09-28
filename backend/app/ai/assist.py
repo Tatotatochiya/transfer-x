@@ -677,3 +677,60 @@ async def _deal_brief(facts: dict, role: str, user_id: uuid.UUID) -> dict:
     data = await _llm_json("DEAL_BRIEF_USER", user_id=user_id, endpoint="deal-brief", max_tokens=400,
                            role=role, facts_json=_dumps(facts))
     return {"headline": str(data.get("headline", "")).strip(), "advice": _strs(data.get("advice"), 3)}
+
+
+# ── Phase 2b: morning briefing ───────────────────────────────────────────────
+
+
+async def briefing_facts(db: AsyncSession, club, user) -> dict:
+    from app.dashboard import service as dashboard_service
+    from app.notifications.models import Notification
+    from app.players.models import Player
+
+    waiting = (await dashboard_service.get_dashboard(db, club=club, current_user=user)).waiting_on_you
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    recent = (await db.execute(
+        select(Notification).where(Notification.recipient_user_id == user.id, Notification.created_at >= since)
+        .order_by(Notification.created_at.desc()).limit(15)
+    )).scalars().all()
+    soon = date.today() + timedelta(days=183)
+    squad = (await db.execute(select(Player).where(Player.current_club_id == club.id))).scalars().all()
+    ends = await _contract_ends(db, squad)
+    expiring = sorted((p for p in squad if ends.get(p.id) and ends[p.id] <= soon), key=lambda p: ends[p.id])[:6]
+    return {
+        "currency": CURRENCY,
+        "today": date.today().isoformat(),
+        "waiting_on_you": [
+            {"what": i.reason, "player": i.player_name, "club": i.club_name,
+             "deadline": i.deadline.isoformat() if getattr(i, "deadline", None) else None, "path": i.link}
+            for i in waiting[:10]
+        ],
+        "last_24_hours": [n.message for n in recent],
+        "contracts_ending_within_6_months": [
+            {"player": p.name, "ends": ends[p.id].isoformat()} for p in expiring
+        ],
+        "budget": await _budget_facts(db, club.id),
+    }
+
+
+async def club_briefing(db: AsyncSession, club, user) -> dict | None:
+    """Today's AI briefing for one person at a club, or None without a model.
+    Cached per user and day, refreshed when what is waiting on them changes."""
+    import hashlib
+
+    if not ai_available():
+        return None
+    facts = await briefing_facts(db, club, user)
+    fingerprint = hashlib.sha1(_dumps(facts["waiting_on_you"]).encode()).hexdigest()[:12]
+
+    async def produce():
+        data = await _llm_json("CLUB_BRIEFING_USER", user_id=user.id, endpoint="club-briefing", max_tokens=500,
+                               club_name=club.name, facts_json=_dumps(facts))
+        return {
+            "headline": str(data.get("headline", "")).strip(),
+            "focus": str(data.get("focus", "")).strip(),
+            "points": _strs(data.get("points"), 5),
+        }
+
+    result, cached = await _cached(f"briefing:{user.id}:{date.today()}:{fingerprint}", produce, ttl=12 * 3600)
+    return {**result, "waiting_count": len(facts["waiting_on_you"]), "cached": cached}

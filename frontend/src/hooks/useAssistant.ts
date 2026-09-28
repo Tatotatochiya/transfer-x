@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import api from "../lib/api";
 import type {
+  ClubBriefing,
   DealNextSteps,
   NegotiationSummary,
   OfferAdvice,
@@ -62,6 +63,16 @@ export function useDealNextSteps(dealId: string | undefined, version: string) {
     queryFn: () => api.get<DealNextSteps>(`/ai/deals/${dealId}/next-steps`).then((r) => r.data),
     enabled: !!dealId,
     staleTime: 60_000,
+    retry: false,
+  });
+}
+
+export function useBriefing(enabled: boolean) {
+  return useQuery<ClubBriefing | null>({
+    queryKey: ["ai", "briefing"],
+    queryFn: () => api.get<ClubBriefing | null>("/ai/briefing").then((r) => r.data),
+    enabled,
+    staleTime: 30 * 60 * 1000,
     retry: false,
   });
 }

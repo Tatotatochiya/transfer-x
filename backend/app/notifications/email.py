@@ -50,9 +50,11 @@ def _render_html(message: str, link: str | None) -> str:
     )
 
 
-def render_digest_html(lines: list[tuple[str, str]], dashboard_url: str) -> str:
+def render_digest_html(lines: list[tuple[str, str]], dashboard_url: str, briefing: dict | None = None) -> str:
     """The daily digest: one row per thing waiting on the recipient, each
-    linking straight to it. `lines` are (text, url)."""
+    linking straight to it. `lines` are (text, url). `briefing`, when the AI
+    assistant is available, opens the email with the day's headline and the
+    one thing to focus on."""
     rows = "".join(
         f'<tr><td style="padding:10px 0;border-bottom:1px solid #eef0f3;">'
         f'<a href="{html.escape(url)}" style="color:#0f172a;text-decoration:none;font-size:14px;'
@@ -64,8 +66,19 @@ def render_digest_html(lines: list[tuple[str, str]], dashboard_url: str) -> str:
         f'padding:10px 20px;background:#10b981;color:#ffffff;text-decoration:none;'
         f'border-radius:8px;font-weight:600;">Open your dashboard</a>'
     )
+    intro = ""
+    if briefing and briefing.get("headline"):
+        intro = (
+            f'<p style="margin:0 0 6px;color:#0f172a;font-size:15px;line-height:1.5;">{html.escape(briefing["headline"])}</p>'
+            + (
+                f'<p style="margin:0 0 20px;color:#334155;font-size:14px;line-height:1.5;">'
+                f'<strong>Today&rsquo;s focus:</strong> {html.escape(briefing["focus"])}</p>'
+                if briefing.get("focus") else ""
+            )
+        )
     return _wrap(
-        '<p style="margin:0 0 8px;color:#0f172a;font-size:15px;font-weight:600;">'
+        intro
+        + '<p style="margin:0 0 8px;color:#0f172a;font-size:15px;font-weight:600;">'
         "Waiting on you</p>"
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">{rows}</table>'
         f"{button}"

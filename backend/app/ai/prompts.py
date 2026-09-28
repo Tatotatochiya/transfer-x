@@ -164,6 +164,16 @@ Return JSON:
 - "advice": list of 1-3 short strings, practical tips for the viewer's own next steps (deadlines, order, risks)
 """
 
+CLUB_BRIEFING_USER = """\
+Write this morning's briefing for {club_name}. Facts (their own data only):
+{facts_json}
+
+Return JSON:
+- "headline": string, one sentence on the day
+- "focus": string, the single most important thing to do today and why
+- "points": list of 2-5 short strings covering what needs them and what changed in the last 24 hours
+"""
+
 # ── Versioning ────────────────────────────────────────────────────────────────
 
 _DEFAULTS: dict[str, str] = {
@@ -177,6 +187,7 @@ _DEFAULTS: dict[str, str] = {
     "OFFER_ADVICE_USER": OFFER_ADVICE_USER,
     "NEGOTIATION_SUMMARY_USER": NEGOTIATION_SUMMARY_USER,
     "DEAL_BRIEF_USER": DEAL_BRIEF_USER,
+    "CLUB_BRIEFING_USER": CLUB_BRIEFING_USER,
 }
 
 _overrides: dict[str, str] = {}

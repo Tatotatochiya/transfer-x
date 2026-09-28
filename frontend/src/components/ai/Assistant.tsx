@@ -11,6 +11,7 @@ import { getApiError } from "../../lib/utils";
 import { formatCompactCurrency } from "../../lib/utils";
 import {
   useAIStatus,
+  useBriefing,
   useDealNextSteps,
   useNegotiationSummary,
   useOfferAdvice,
@@ -273,6 +274,37 @@ export function DealNextStepsPanel({ deal }: { deal: Deal }) {
       {data.brief && data.brief.advice.length > 0 && mine.length > 0 && <Bullets items={data.brief.advice} />}
       {data.idle_days != null && data.idle_days >= 5 && (
         <p className="mt-2 text-xs text-warning-text">No movement for {data.idle_days} days.</p>
+      )}
+    </AIPanel>
+  );
+}
+
+// ── Morning briefing ─────────────────────────────────────────────────────────
+
+export function BriefingCard() {
+  const { data: status } = useAIStatus();
+  const [asked, setAsked] = useState(false);
+  const { data, isFetching, error } = useBriefing(!!status?.available && asked);
+  if (!status?.available) return null;
+  return (
+    <AIPanel
+      title="Today's briefing"
+      className="mb-6"
+      action={!data && <AskButton label="Brief me" onClick={() => setAsked(true)} loading={isFetching} />}
+    >
+      {!asked && <p className="text-xs text-text-muted">A short summary of what needs you today and what changed overnight.</p>}
+      {isFetching && !data && <Loading text="Preparing your briefing…" />}
+      {error != null && <ErrorText error={error} />}
+      {data && (
+        <div className="space-y-2">
+          <p className="text-[13px] leading-snug text-text">{data.headline}</p>
+          {data.focus && (
+            <p className="rounded-lg bg-accent-bg px-3 py-2 text-[13px] leading-snug text-text ring-1 ring-accent/20">
+              <span className="font-semibold">Focus today:</span> {data.focus}
+            </p>
+          )}
+          <Bullets items={data.points} />
+        </div>
       )}
     </AIPanel>
   );

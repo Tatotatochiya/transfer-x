@@ -1650,3 +1650,11 @@ export interface DealNextSteps {
   idle_days: number | null;
   brief: { headline: string; advice: string[] } | null;
 }
+
+export interface ClubBriefing {
+  headline: string;
+  focus: string;
+  points: string[];
+  waiting_count: number;
+  cached: boolean;
+}
