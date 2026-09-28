@@ -201,6 +201,18 @@ Return JSON:
   "reason" (one sentence grounded in that club's facts)
 """
 
+ASK_USER = """\
+A member of {club_name} asks: "{question}"
+
+Everything TransferX may show them that could be relevant (their own club's data only):
+{facts_json}
+
+Answer only from these facts; if they do not contain the answer, say so plainly. Return JSON:
+- "answer": string, 1-4 sentences
+- "links": list of 0-4 objects {{"label": string, "path": string}}, where every path is copied exactly from a
+  "path" field in the facts
+"""
+
 # ── Versioning ────────────────────────────────────────────────────────────────
 
 _DEFAULTS: dict[str, str] = {
@@ -217,6 +229,7 @@ _DEFAULTS: dict[str, str] = {
     "CLUB_BRIEFING_USER": CLUB_BRIEFING_USER,
     "LISTING_ADVICE_USER": LISTING_ADVICE_USER,
     "POTENTIAL_BUYERS_USER": POTENTIAL_BUYERS_USER,
+    "ASK_USER": ASK_USER,
 }
 
 _overrides: dict[str, str] = {}

@@ -1674,3 +1674,9 @@ export interface PotentialBuyers {
   summary: string | null;
   clubs: { club_id: string; club: string; reason: string }[];
 }
+
+export interface AskAnswer {
+  answer: string;
+  links: { label: string; path: string }[];
+  cached: boolean;
+}

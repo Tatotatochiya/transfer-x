@@ -403,3 +403,22 @@ async def potential_buyers(
         return await _buyers(db, player_id, viewer_club_id=club.id, user_id=current_user.id)
     except Exception as exc:
         raise _assist_errors(exc)
+
+
+@router.post("/ask")
+async def ask(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Ask TransferX: questions about the caller's own club, answered from its data."""
+    from app.ai.assist import ask as _ask
+    question = str(body.get("question") or "").strip()
+    if len(question) < 3:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Ask a question")
+    _require_llm_key()
+    club = await _get_club(db, current_user)
+    try:
+        return await _ask(db, club, current_user, question)
+    except Exception as exc:
+        raise _assist_errors(exc)

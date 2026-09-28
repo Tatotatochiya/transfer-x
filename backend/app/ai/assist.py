@@ -946,3 +946,149 @@ async def potential_buyers(db: AsyncSession, player_id: uuid.UUID, *, viewer_clu
     except Exception as exc:
         logger.warning("Potential buyers narrative unavailable: %s", exc)
         return fallback
+
+
+# ── Phase 3c: Ask TransferX ──────────────────────────────────────────────────
+
+
+async def ask_facts(db: AsyncSession, club, user) -> dict:
+    """The viewer's own club data, each item with the page it lives on."""
+    from app.deals.models import Deal, DealStatus
+    from app.enquiries.models import Enquiry, EnquiryStatus
+    from app.offers.models import Offer, OfferStatus
+    from app.players.models import Player
+    from app.sales.models import Sale, SaleStatus
+
+    active = [OfferStatus.SENT, OfferStatus.COUNTERED]
+    received = (await db.execute(
+        select(Offer).where(Offer.to_club_id == club.id, Offer.status.in_(active))
+        .options(selectinload(Offer.player), selectinload(Offer.from_club)).limit(30)
+    )).scalars().all()
+    sent = (await db.execute(
+        select(Offer).where(Offer.from_club_id == club.id, Offer.status.in_(active))
+        .options(selectinload(Offer.player), selectinload(Offer.to_club)).limit(30)
+    )).scalars().all()
+    from app.dashboard import service as dashboard_service
+
+    waiting = (await dashboard_service.get_dashboard(db, club=club, current_user=user)).waiting_on_you
+    deals = (await db.execute(
+        select(Deal).where(
+            (Deal.buyer_club_id == club.id) | (Deal.seller_club_id == club.id),
+            Deal.status.in_([DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION]),
+        ).options(selectinload(Deal.player), selectinload(Deal.buyer_club), selectinload(Deal.seller_club),
+                  selectinload(Deal.personal_terms), selectinload(Deal.medical_check)).limit(30)
+    )).scalars().all()
+    listings = (await db.execute(
+        select(Sale).where(Sale.seller_club_id == club.id, Sale.status == SaleStatus.OPEN)
+        .options(selectinload(Sale.player)).limit(30)
+    )).scalars().all()
+    enquiries = (await db.execute(
+        select(Enquiry).where((Enquiry.from_club_id == club.id) | (Enquiry.to_club_id == club.id),
+                              Enquiry.status == EnquiryStatus.OPEN)
+        .options(selectinload(Enquiry.player)).limit(30)
+    )).scalars().all()
+    squad = (await db.execute(select(Player).where(Player.current_club_id == club.id))).scalars().all()
+    ends = await _contract_ends(db, squad)
+
+    def exp(o) -> str | None:
+        return _utc(o.expires_at).date().isoformat() if o.expires_at else None
+
+    def whose(o) -> str:
+        return "theirs" if o.last_actor_club_id == club.id else "yours"
+
+    return {
+        "currency": CURRENCY,
+        "today": date.today().isoformat(),
+        "club": club.name,
+        "budget": await _budget_facts(db, club.id),
+        "offers_received": [
+            {"player": o.player.name if o.player else None,
+             "from": "an undisclosed club" if o.is_anonymous else (o.from_club.name if o.from_club else None),
+             "type": o.deal_type.value, "fee": _num(o.fee_amount), "loan_fee": _num(o.loan_fee),
+             "status": o.status.value, "move": whose(o), "expires": exp(o), "path": f"/offers/{o.id}"}
+            for o in received
+        ],
+        "offers_sent": [
+            {"player": o.player.name if o.player else None, "to": o.to_club.name if o.to_club else None,
+             "type": o.deal_type.value, "fee": _num(o.fee_amount), "loan_fee": _num(o.loan_fee),
+             "status": o.status.value, "move": whose(o), "expires": exp(o), "path": f"/offers/{o.id}"}
+            for o in sent
+        ],
+        "transfers_in_progress": [
+            {"player": d.player.name if d.player else None,
+             "side": "buying" if d.buyer_club_id == club.id else "selling",
+             "other_club": (d.seller_club.name if d.buyer_club_id == club.id and d.seller_club
+                            else d.buyer_club.name if d.buyer_club else None),
+             "stage": d.stage.value, "fee": _num(d.agreed_fee),
+             "next_steps": [f"{s['label']} ({s['owner']})" for s in deal_steps(d, club.id)],
+             "path": f"/deals/{d.id}"}
+            for d in deals
+        ],
+        # The War Room's own list: exactly what is waiting on this person now.
+        "waiting_on_you": [
+            {"what": i.reason, "player": i.player_name, "club": i.club_name, "path": i.link} for i in waiting
+        ],
+        "your_listings": [
+            {"player": s.player.name if s.player else None, "type": s.sale_type.value,
+             "availability": s.availability.value, "guide_price": _num(s.asking_price),
+             "deadline": _utc(s.deadline).date().isoformat() if s.deadline else None, "path": f"/sales/{s.id}"}
+            for s in listings
+        ],
+        "open_enquiries": [
+            {"player": e.player.name if e.player else None,
+             "side": "you asked" if e.from_club_id == club.id else "about your player",
+             "path": f"/enquiries/{e.id}"}
+            for e in enquiries
+        ],
+        "squad": [
+            {"player": p.name, "position": p.position.value if p.position else None, "age": p.age,
+             "contract_ends": ends[p.id].isoformat() if ends.get(p.id) else None,
+             "listed": p.open_to_offers, "path": f"/players/market/{p.id}"}
+            for p in squad
+        ][:60],
+        "pages": [
+            {"label": "War Room", "path": "/dashboard"}, {"label": "Browse players", "path": "/players/market"},
+            {"label": "Listings", "path": "/sales"}, {"label": "My listings", "path": "/sales/mine"},
+            {"label": "Offers received", "path": "/offers/received"}, {"label": "My offers", "path": "/offers/sent"},
+            {"label": "Transfers in progress", "path": "/deals"}, {"label": "Enquiries", "path": "/enquiries"},
+            {"label": "My club", "path": "/club"}, {"label": "Finance", "path": "/club/finance"},
+        ],
+    }
+
+
+def _paths(facts: dict) -> set[str]:
+    found: set[str] = set()
+
+    def walk(v):
+        if isinstance(v, dict):
+            if isinstance(v.get("path"), str):
+                found.add(v["path"])
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x)
+
+    walk(facts)
+    return found
+
+
+async def ask(db: AsyncSession, club, user, question: str) -> dict:
+    import hashlib
+
+    question = question.strip()[:500]
+    facts = await ask_facts(db, club, user)
+    allowed = _paths(facts)
+    fingerprint = hashlib.sha1((question.lower() + _dumps(facts)).encode()).hexdigest()[:16]
+
+    async def produce():
+        data = await _llm_json("ASK_USER", user_id=user.id, endpoint="ask", max_tokens=600,
+                               club_name=club.name, question=question.replace('"', "'"), facts_json=_dumps(facts))
+        links = []
+        for row in data.get("links") or []:
+            if isinstance(row, dict) and row.get("path") in allowed:
+                links.append({"label": str(row.get("label") or row["path"]).strip(), "path": row["path"]})
+        return {"answer": str(data.get("answer", "")).strip(), "links": links[:4]}
+
+    result, cached = await _cached(f"ask:{user.id}:{fingerprint}", produce, ttl=600)
+    return {**result, "cached": cached}

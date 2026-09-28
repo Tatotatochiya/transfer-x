@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import api from "../lib/api";
 import type {
+  AskAnswer,
   ClubBriefing,
   DealNextSteps,
   ListingAdvice,
@@ -95,6 +96,13 @@ export function usePotentialBuyers(playerId: string, enabled: boolean) {
     queryFn: () => api.get<PotentialBuyers>(`/ai/potential-buyers/${playerId}`).then((r) => r.data),
     enabled,
     staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+}
+
+export function useAsk() {
+  return useMutation<AskAnswer, Error, string>({
+    mutationFn: (question: string) => api.post<AskAnswer>("/ai/ask", { question }).then((r) => r.data),
     retry: false,
   });
 }
