@@ -117,6 +117,8 @@ class OfferCounterRequest(BaseModel):
     instalments: list[OfferInstalment] | None = None
     clauses: list[OfferClause] | None = None
     sell_on_pct: Decimal | None = None
+    # The counter started from the assistant's suggestion; audited, not binding.
+    ai_assisted: bool = False
 
     @field_validator("fee_amount", "wage_weekly", "loan_fee", "option_to_buy", mode="before")
     @classmethod

@@ -271,6 +271,14 @@ async def create_sale(
             notes=body.notes,
             availability=body.availability,
         )
+        if body.ai_assisted:
+            from app.audit import service as audit_service
+
+            await audit_service.emit(
+                db, entity_type="SALE", entity_id=sale.id, action="AI_SUGGESTION_USED",
+                actor_user_id=current_user.id, payload={"feature": "listing_assistant"},
+                description="Guide price taken from the listing assistant",
+            )
         await db.commit()
         await db.refresh(sale)
     except ValueError as exc:

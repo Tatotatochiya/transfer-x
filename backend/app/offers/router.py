@@ -171,7 +171,7 @@ def _mask_buyer(resp: OfferResponse, offer) -> OfferResponse:
     buyer_id = str(offer.from_club_id)
     resp.from_club = None
     resp.from_club_id = None
-    resp.buyer_league_name = offer.from_club.league_name if offer.from_club else None
+    resp.buyer_league_name = offer.from_club.masking_league if offer.from_club else None
 
     if str(resp.last_actor_club_id) == buyer_id:
         resp.last_actor_club_id = None
@@ -528,6 +528,14 @@ async def counter_offer(
             ntype=NotificationType.OFFER_COUNTERED,
             message="A counter offer has been submitted",
         )
+        if body.ai_assisted:
+            from app.audit import service as audit_service
+
+            await audit_service.emit(
+                db, entity_type="OFFER", entity_id=offer.id, action="AI_SUGGESTION_USED",
+                actor_user_id=current_user.id, payload={"feature": "counter_advisor"},
+                description="Counter offer started from the assistant's suggestion",
+            )
         await db.commit()
     except ValueError as exc:
         await db.rollback()

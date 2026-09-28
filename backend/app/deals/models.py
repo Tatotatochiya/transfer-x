@@ -304,6 +304,12 @@ class PersonalTerms(Base):
         server_default="PENDING",
     )
     agreed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When the buying club records the answer for a player with no account or
+    # agent (ADR 0006), the signed terms it attached from the deal room.
+    # Cleared whenever the terms change, with the consent itself.
+    consent_evidence_attachment_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("deal_attachments.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

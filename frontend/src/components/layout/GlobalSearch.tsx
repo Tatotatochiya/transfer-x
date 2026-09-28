@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
 import Modal from "../ui/Modal";
-import type { ClubPublic, Player } from "../../types/api";
+import type { Club, ClubPublic, Player } from "../../types/api";
+import { useAIStatus, useAsk } from "../../hooks/useAssistant";
+import { getApiError } from "../../lib/utils";
 
 interface SearchResults {
   players: Player[];
@@ -68,6 +70,26 @@ export default function GlobalSearch() {
 
   const hasResults = (data?.players.length ?? 0) + (data?.clubs.length ?? 0) > 0;
 
+  // Ask TransferX: a question about the club's own data, answered by the
+  // assistant from what this user may already see. Club members only.
+  const { data: aiStatus } = useAIStatus();
+  const { data: myClub } = useQuery<Club>({
+    queryKey: ["clubs", "me"],
+    queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
+    staleTime: 60_000,
+    enabled: open,
+    retry: false,
+  });
+  const ask = useAsk();
+  const canAsk = !!aiStatus?.available && !!myClub && query.trim().length >= 3;
+  const { reset: resetAsk } = ask;
+  useEffect(() => {
+    if (!open) resetAsk();
+  }, [open, resetAsk]);
+  function runAsk() {
+    if (canAsk) ask.mutate(query.trim());
+  }
+
   return (
     <>
       {/* Trigger button in header */}
@@ -93,7 +115,13 @@ export default function GlobalSearch() {
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search players and clubs…"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                runAsk();
+              }
+            }}
+            placeholder={aiStatus?.available && myClub ? "Search, or ask a question and press Enter…" : "Search players and clubs…"}
             className="flex-1 bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none"
           />
           {isFetching && (
@@ -107,11 +135,49 @@ export default function GlobalSearch() {
 
         {/* Results */}
         <div className="max-h-[400px] overflow-y-auto">
+          {/* Ask TransferX */}
+          {canAsk && !ask.data && (
+            <button
+              onClick={runAsk}
+              disabled={ask.isPending}
+              className="flex w-full items-center gap-3 border-b border-rule px-4 py-3 text-left hover:bg-surface-inset transition-colors"
+            >
+              <span className="text-role-agent-text">✦</span>
+              <span className="min-w-0 flex-1 truncate text-sm text-text">
+                {ask.isPending ? "Asking…" : <>Ask TransferX: <span className="font-medium">“{query.trim()}”</span></>}
+              </span>
+              <kbd className="rounded bg-surface-inset px-1.5 py-0.5 text-[11px] font-mono text-text-muted">Enter</kbd>
+            </button>
+          )}
+          {ask.isError && (
+            <p className="border-b border-rule px-4 py-3 text-sm text-danger-text">{getApiError(ask.error, "Could not answer just now.")}</p>
+          )}
+          {ask.data && (
+            <div className="border-b border-rule px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-role-agent-text">✦ Answer</p>
+              <p className="mt-1 text-sm leading-snug text-text">{ask.data.answer}</p>
+              {ask.data.links.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {ask.data.links.map((l) => (
+                    <button
+                      key={l.path}
+                      onClick={() => go(l.path)}
+                      className="rounded-lg bg-accent-bg px-2.5 py-1 text-xs font-semibold text-accent ring-1 ring-accent/20 hover:ring-accent"
+                    >
+                      {l.label} →
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => ask.reset()} className="mt-2 text-xs text-text-muted hover:text-text">Ask something else</button>
+            </div>
+          )}
+
           {debouncedQ.length < 2 && (
             <p className="px-4 py-8 text-center text-sm text-text-muted">Type at least 2 characters to search</p>
           )}
 
-          {debouncedQ.length >= 2 && !isFetching && !hasResults && (
+          {debouncedQ.length >= 2 && !isFetching && !hasResults && !canAsk && !ask.data && (
             <p className="px-4 py-8 text-center text-sm text-text-muted">No results for "{debouncedQ}"</p>
           )}
 

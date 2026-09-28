@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
@@ -26,31 +26,54 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useToast } from "../../context/ToastContext";
 import { isLoan, loanPeriod, offerHeadline, purchaseClause, wageSharePct } from "../../lib/offerTerms";
+import { NegotiationSummaryPanel, OfferAdvisor, TermsWarnings } from "../../components/ai/Assistant";
+import { useOfferCheck } from "../../hooks/useAssistant";
+import type { SuggestedTerms } from "../../types/api";
+
+/** The value after it has stopped changing for `ms` — for the live terms check. */
+function useDebounced<T>(value: T, ms = 400): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
 
 // ── Counter form ─────────────────────────────────────────────────────────────
 
 function CounterForm({
   offer,
   onSuccess,
+  prefill,
 }: {
   offer: Offer;
   onSuccess: () => void;
+  /** Terms from the offer advisor; the counter is then audited as AI-assisted. */
+  prefill?: SuggestedTerms | null;
 }) {
   const queryClient = useQueryClient();
   const loan = isLoan(offer);
   // Number(): money arrives Decimal-serialised ("90000.00"), which the input
   // would otherwise display with its trailing zeros.
-  const [fee, setFee] = useState(offer.fee_amount != null ? String(Number(offer.fee_amount)) : "");
-  const [wage, setWage] = useState(offer.wage_weekly != null ? String(Number(offer.wage_weekly)) : "");
-  const [years, setYears] = useState(String(offer.contract_years ?? ""));
-  const [structure, setStructure] = useState(() => structureFromOffer(offer));
+  const pick = (suggested: number | undefined, current: number | string | null | undefined) =>
+    suggested != null ? String(suggested) : current != null ? String(Number(current)) : "";
+  const [fee, setFee] = useState(pick(prefill?.fee_amount, offer.fee_amount));
+  const [wage, setWage] = useState(pick(prefill?.wage_weekly, offer.wage_weekly));
+  const [years, setYears] = useState(String(prefill?.contract_years ?? offer.contract_years ?? ""));
+  const [structure, setStructure] = useState(() => {
+    const base = structureFromOffer(offer);
+    return prefill?.sell_on_pct != null ? { ...base, sellOn: String(Math.round(prefill.sell_on_pct * 100)) } : base;
+  });
   // Loan terms — the counter negotiates the loan, never converts it into a
   // permanent offer (deal_type is fixed at offer time).
-  const [loanFee, setLoanFee] = useState(offer.loan_fee != null ? String(Number(offer.loan_fee)) : "");
-  const [split, setSplit] = useState(String(wageSharePct(offer)));
+  const [loanFee, setLoanFee] = useState(pick(prefill?.loan_fee, offer.loan_fee));
+  const [split, setSplit] = useState(
+    prefill?.wage_split_pct != null ? String(Math.round(prefill.wage_split_pct * 100)) : String(wageSharePct(offer)),
+  );
   const [loanStart, setLoanStart] = useState(offer.loan_start ?? "");
   const [loanEnd, setLoanEnd] = useState(offer.loan_end ?? "");
-  const [option, setOption] = useState(offer.option_to_buy != null ? String(Number(offer.option_to_buy)) : "");
+  const [option, setOption] = useState(pick(prefill?.option_to_buy, offer.option_to_buy));
   const [obligation, setObligation] = useState(offer.obligation_to_buy);
   const [conditions, setConditions] = useState(offer.obligation_conditions ?? "");
   const [recall, setRecall] = useState(offer.recall_allowed);
@@ -74,6 +97,20 @@ function CounterForm({
       setError(getApiError(err, "Failed to submit counter."));
     },
   });
+
+  // Rule checks on the draft as it is edited (no AI model involved).
+  // Debounced as a string: an object would be a new value every render.
+  const draftJson = useDebounced(JSON.stringify(
+    loan
+      ? { deal_type: "LOAN", loan_fee: parseFloat(loanFee) || null, wage_split_pct: (parseFloat(split) || 0) / 100,
+          loan_start: loanStart || null, loan_end: loanEnd || null, option_to_buy: parseFloat(option) || null,
+          obligation_to_buy: obligation, obligation_conditions: conditions }
+      : { deal_type: "PERMANENT", fee_amount: parseFloat(fee) || null, wage_weekly: parseFloat(wage) || null,
+          contract_years: parseInt(years) || null, sell_on_pct: structureBody(structure).sell_on_pct,
+          instalments: structureBody(structure).instalments, clauses: structureBody(structure).clauses },
+  ));
+  const checkBody = useMemo(() => ({ offer_id: offer.id, terms: JSON.parse(draftJson) }), [offer.id, draftJson]);
+  const { data: check } = useOfferCheck(checkBody);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -139,6 +176,7 @@ function CounterForm({
       setError("Change at least one term to counter.");
       return;
     }
+    if (prefill) body.ai_assisted = true;
     mutation.mutate(body);
   }
 
@@ -235,6 +273,12 @@ function CounterForm({
           fee={fee && !isNaN(parseFloat(fee)) ? parseFloat(fee) : null}
         />
       )}
+      {prefill && (
+        <p className="text-xs text-text-muted">
+          <span className="text-role-agent-text">✦</span> Pre-filled from the advisor's suggestion — review before you send.
+        </p>
+      )}
+      <TermsWarnings warnings={check?.warnings} />
       {error && <p className="text-xs text-danger-text">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}>Submit counter</Button>
@@ -343,6 +387,7 @@ export default function OfferDetailPage() {
   const { addToast } = useToast();
   const { can } = useClubCapabilities();
   const [showCounter, setShowCounter] = useState(false);
+  const [prefill, setPrefill] = useState<SuggestedTerms | null>(null);
   const [mobileSection, setMobileSection] = useState<"detail" | "context">("detail");
 
   const { data: offer, isLoading, isError } = useQuery<Offer>({
@@ -549,7 +594,7 @@ export default function OfferDetailPage() {
                   }}>
                   Accept offer
                 </Button>
-                <Button variant="secondary" size="sm" className="w-full" onClick={() => setShowCounter((v) => !v)}>
+                <Button variant="secondary" size="sm" className="w-full" onClick={() => { setPrefill(null); setShowCounter((v) => !v); }}>
                   {showCounter ? "Cancel counter" : "Counter offer"}
                 </Button>
                 <Button variant="danger" size="sm" className="w-full" loading={rejectMutation.isPending}
@@ -579,11 +624,34 @@ export default function OfferDetailPage() {
         </Card>
       )}
 
+      {/* The assistant: advice on the next move, and where the talks stand */}
+      {isParty && isActive && (
+        <OfferAdvisor
+          offer={offer}
+          canCounter={canAct}
+          onUseTerms={(terms) => {
+            setPrefill(terms);
+            setShowCounter(true);
+          }}
+        />
+      )}
+      {isParty && <NegotiationSummaryPanel offer={offer} />}
+
       {/* Negotiation thread */}
       <div className="rounded-xl bg-surface ring-1 ring-border p-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Negotiations</p>
         <OfferThread offer={offer} myClubId={myClubId} canMessage={canMessage} />
-        {showCounter && canAct && <CounterForm offer={offer} onSuccess={() => setShowCounter(false)} />}
+        {showCounter && canAct && (
+          <CounterForm
+            key={JSON.stringify(prefill)}
+            offer={offer}
+            prefill={prefill}
+            onSuccess={() => {
+              setShowCounter(false);
+              setPrefill(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
@@ -16,6 +16,8 @@ import DealStructureFields, {
   structureBody,
   structureError,
 } from "../../components/offers/DealStructureFields";
+import { TermsWarnings } from "../../components/ai/Assistant";
+import { useOfferCheck } from "../../hooks/useAssistant";
 
 export default function CreateOfferPage() {
   const navigate = useNavigate();
@@ -104,6 +106,30 @@ export default function CreateOfferPage() {
       setError(getApiError(err, "Failed to create offer."));
     },
   });
+
+  // Rule checks on the draft as it is typed (budget, fee against the model,
+  // contract length, structure) — computed by TransferX, no AI model. The
+  // draft is debounced as a string so a re-render does not re-check.
+  const draftJson = JSON.stringify(
+    dealType === "LOAN"
+      ? { player_id: playerId, deal_type: "LOAN", loan_fee: parseFloat(loanFee) || null,
+          wage_split_pct: (parseFloat(wageSplit) || 0) / 100, loan_start: loanStart || null, loan_end: loanEnd || null,
+          option_to_buy: parseFloat(optionToBuy) || null, obligation_to_buy: obligation, obligation_conditions: conditions,
+          wage_weekly: parseFloat(wage) || null }
+      : { player_id: playerId, deal_type: "PERMANENT", fee_amount: fee === "" ? null : parseFloat(fee),
+          wage_weekly: parseFloat(wage) || null, contract_years: parseInt(years) || null,
+          ...structureBody(structure) },
+  );
+  const [debouncedDraft, setDebouncedDraft] = useState(draftJson);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedDraft(draftJson), 400);
+    return () => clearTimeout(t);
+  }, [draftJson]);
+  const checkBody = useMemo(
+    () => (playerId ? { terms: JSON.parse(debouncedDraft) as Record<string, unknown> } : null),
+    [playerId, debouncedDraft],
+  );
+  const { data: check } = useOfferCheck(checkBody);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -572,6 +598,8 @@ export default function CreateOfferPage() {
               </span>
             </label>
           </div>
+
+          <TermsWarnings warnings={check?.warnings} />
 
           {error && <p className="text-sm text-danger-text">{error}</p>}
 

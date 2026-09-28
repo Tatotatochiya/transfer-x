@@ -690,6 +690,8 @@ export interface PersonalTerms {
   created_at: string;
   buyer_club_id: string;
   buyer_club_name: string;
+  /** The signed terms the buying club attached when it recorded agreement. */
+  consent_evidence_attachment_id: string | null;
 }
 
 export interface MedicalCheck {
@@ -1587,4 +1589,96 @@ export interface Loan {
   // Which side the caller is on: "out" = we own him and he is away,
   // "in" = we borrowed him. Server-derived so no consumer re-compares club ids.
   direction: "out" | "in" | null;
+}
+
+// ── Workflow assistant (backend/app/ai/assist.py) ─────────────────────────────
+
+export interface TermsWarning {
+  severity: "high" | "medium" | "low";
+  code: string;
+  message: string;
+}
+
+export interface OfferCheckResponse {
+  role: "buyer" | "seller";
+  warnings: TermsWarning[];
+}
+
+export interface SuggestedTerms {
+  fee_amount?: number;
+  wage_weekly?: number;
+  contract_years?: number;
+  sell_on_pct?: number;
+  loan_fee?: number;
+  wage_split_pct?: number;
+  option_to_buy?: number;
+}
+
+export interface OfferAdvice {
+  summary: string;
+  recommendation: "accept" | "counter" | "reject" | "wait";
+  suggested_terms: SuggestedTerms | null;
+  reasons: string[];
+  watch_outs: string[];
+  checks: TermsWarning[];
+  facts: {
+    model_fair_value: number | null;
+    model_range: [number | null, number | null] | null;
+    fee_vs_model_pct: number | null;
+    listing_guide_price: number | null;
+    competing_offers: { count: number; best_fee: number | null } | null;
+    your_budget: { transfer_budget_remaining: number | null; wage_budget_remaining_weekly: number | null } | null;
+  };
+  cached: boolean;
+}
+
+export interface NegotiationSummary {
+  summary: string;
+  gap: string | null;
+  their_moves: string[];
+  your_moves: string[];
+  rounds: number;
+  cached: boolean;
+}
+
+export interface DealStep {
+  label: string;
+  owner: "you" | "them" | "either" | "player" | "agent" | "staff";
+  due?: string | null;
+}
+
+export interface DealNextSteps {
+  steps: DealStep[];
+  idle_days: number | null;
+  brief: { headline: string; advice: string[] } | null;
+}
+
+export interface ClubBriefing {
+  headline: string;
+  focus: string;
+  points: string[];
+  waiting_count: number;
+  cached: boolean;
+}
+
+export interface ListingAdvice {
+  guide_price: number | null;
+  guide_basis: string | null;
+  comparables: { player: string; age: number | null; fee: number | null; completed: string | null }[];
+  listing: { days_listed: number; guide_price: number | null; availability: string; offers_received: number } | null;
+  availability: "TRANSFER" | "LOAN" | "EITHER";
+  summary: string | null;
+  reasons: string[];
+  tips: string[];
+}
+
+export interface PotentialBuyers {
+  summary: string | null;
+  clubs: { club_id: string; club: string; reason: string }[];
+}
+
+export interface AskAnswer {
+  answer: string;
+  links: { label: string; path: string }[];
+  cached: boolean;
 }

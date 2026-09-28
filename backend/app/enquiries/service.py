@@ -46,7 +46,7 @@ def to_response(enquiry: Enquiry, viewer_club_id: uuid.UUID, *, with_messages: b
     resolves via GET /clubs/{id} (the lesson of ADR 0004)."""
     asking_view = viewer_club_id == enquiry.from_club_id
     if enquiry.is_anonymous and not asking_view:
-        league = enquiry.from_club.league_name if enquiry.from_club else None
+        league = enquiry.from_club.masking_league if enquiry.from_club else None
         asking = EnquiryParty(id=None, name=f"A {league} club" if league else "An undisclosed club")
     else:
         asking = EnquiryParty(id=enquiry.from_club_id, name=enquiry.from_club.name if enquiry.from_club else "")

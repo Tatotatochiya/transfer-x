@@ -25,6 +25,21 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **The AI assistant now covers the whole transfer workflow** ([architecture ADR 0006](./architecture/decisions/0006-ai-assistant-advises-from-scoped-facts.md)). It advises and never acts: suggestions are applied through the normal confirmed forms, and a used suggestion is audited (`AI_SUGGESTION_USED`).
+  - **Offer advisor** (offer page). Recommends accept, counter, reject or wait. It weighs the offer against the fee model, the guide price, the club's own budget (buyer) or competing offers (seller), and suggests counter terms. "Use these terms" opens the counter form pre-filled.
+  - **Terms checks** (making or countering an offer). Rule-based warnings as the club types, with no AI model needed:
+    - over budget;
+    - well above or below the model;
+    - a contract longer than 5 years, or a long contract for a player aged 31+;
+    - instalments already due or running past 4 years;
+    - a heavy sell-on or heavy add-ons;
+    - a loan running past his contract, or an obligation to buy with no conditions.
+  - **Negotiation summary** (offer page, and a deal's "How this was agreed"). Where the talks stand, the remaining gap, and each side's moves. Who moved is worked out by TransferX, not guessed by the model.
+  - **Next steps** (deal page). Each outstanding step and who owns it, worked out from the deal's stage without a model, plus a short AI brief.
+  - **Morning briefing.** A "Today's briefing" card on the War Room, and the headline and today's focus at the top of the daily digest email. The email is unchanged if AI is unavailable.
+  - **Pricing assistant** (list-player dialog). A guide price from the fee model and comparable completed transfers, discounted when the contract ends within a year, plus advice on transfer or loan. "Use" fills the form.
+  - **Who might want him?** (your own player's page). Clubs whose public squads look short in his position; never their budgets.
+  - **Ask TransferX** (⌘K search). Type a question and press Enter. It answers from the club's own offers, deals, listings, enquiries, squad and budget, with links to the pages.
 - **Enquiries: ask about a player before making an offer.**
   - Any club can ask the owning club about a TransferX player from his page ("Ask about him"), openly or anonymously. Nobody has to list him first.
   - The two clubs message each other in a thread at `/enquiries/{id}`. The asker can turn it into an offer from there, and either side can close it.
@@ -41,6 +56,12 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Recording a player's agreement needs the signed terms** ([ADR 0006](./product/decisions/0006-buying-club-records-consent-for-unrepresented-player.md)).
+  - When the buying club records the agreement for a player with no account or agent, it attaches the signed copy. The copy goes into its private deal-room channel, and the consent and its audit entry point to it.
+  - New terms clear the copy along with the consent.
+  - A deal's next steps now show this step as the buying club's, not the player's.
+  - Migration `0081`.
+- The default AI model is now `claude-sonnet-5` (`.env` still overrides it).
 - **The buying club records personal-terms consent for a player with no account and no agent** ([ADR 0006](./product/decisions/0006-buying-club-records-consent-for-unrepresented-player.md)).
   - Until now only TransferX staff could, and most players are in that position, so most deals waited on staff at Personal Terms.
   - The buyer's "He agreed" / "He declined" buttons are each confirmed first. Only the buying club, with deal-write permission, may record the answer.
@@ -48,6 +69,10 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **An anonymous buyer was named on the seller's War Room.** The "waiting on you" row showed the buying club of an anonymous offer, and so did everything that reads that list: the daily digest email, the AI briefing and Ask TransferX. It now shows the masked label, as the offer page does.
+- **The anonymous label no longer names a European competition.** A club's league field sometimes holds a competition, so buyers showed as "A UEFA Champions League club", which narrows the field to a couple of dozen clubs. Only a domestic league is shown now, otherwise "An undisclosed club". This applies to offers, order books, enquiries and the War Room (`Club.masking_league`).
+- **Automated tests for this month's permission-sensitive features:** enquiries, club invitations, clubs running auction deals and recording consent, the AI assistant (with a fake model), and the anonymous label. That's 39 tests in total.
+- A buyer improving its own offer showed a blank step in the offer's history. It now reads "Offer improved".
 - **Clubs can run a deal won at auction, as they can any other.**
   - The deal page told both clubs that "Stage advancement is handled by TransferX staff" and hid the Advance button. The backend never required staff, so this was a UI block.
   - Accepting a winning bid also skipped three steps that accepting an offer takes:

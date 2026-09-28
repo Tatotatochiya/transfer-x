@@ -84,10 +84,20 @@ async def send_daily_digests(db: AsyncSession, *, now: datetime | None = None) -
             if not items:
                 continue
 
+            # The AI briefing is a bonus: without a model, or if it fails or is
+            # slow, the digest goes out exactly as before.
+            briefing = None
+            try:
+                from app.ai.assist import club_briefing
+
+                briefing = await asyncio.wait_for(club_briefing(db, club, user), timeout=30)
+            except Exception:
+                logger.warning("No AI briefing for user %s's digest", user.id)
             base = settings.frontend_base_url
             html_body = render_digest_html(
                 [(_line(i), f"{base}{i.link}") for i in items],
                 f"{base}/dashboard",
+                briefing=briefing,
             )
             subject = (
                 f"{len(items)} {'thing' if len(items) == 1 else 'things'} waiting on you — TransferX"

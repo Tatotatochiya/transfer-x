@@ -106,6 +106,113 @@ Return a JSON array of up to 10 recommended players, each with:
 - "reason": string (1-2 sentences)
 """
 
+
+# ── Workflow assistant (offers, deals, briefing, listings, Ask) ──────────────
+#
+# Every figure in these prompts' input was computed by TransferX from data the
+# viewing club is allowed to see. The model phrases and recommends; it does not
+# supply numbers of its own. Keep "Only use figures given" in any override.
+
+SYSTEM_ADVISOR = (
+    "You are the transfer assistant inside TransferX, a platform professional football clubs use to buy, "
+    "sell and loan players. You advise one club, the viewer. "
+    "Only use the facts and figures given to you; never invent a number, a club, a player or an event. "
+    "Money is in the currency given; write amounts compactly (e.g. £12.5m, £80k/wk). "
+    "Be brief, specific and practical, like a trusted sporting-director's analyst. "
+    "You recommend; the club decides and acts. "
+    "Always respond with a single valid JSON object and nothing else."
+)
+
+OFFER_ADVICE_USER = """\
+The viewer is the {role} club in this negotiation. Facts (computed by TransferX; the viewer may see all of them):
+{facts_json}
+
+Rule-based checks already raised on the current terms:
+{checks_json}
+
+Advise the viewer on their next move. Return JSON:
+- "summary": string, 1-2 sentences on where the negotiation stands for the viewer
+- "recommendation": one of "accept", "counter", "reject", "wait" ("wait" when it is not the viewer's turn)
+- "suggested_terms": object or null. Only when recommending "counter": the terms to propose, using only these
+  keys, each a number or null for unchanged: "fee_amount", "wage_weekly", "contract_years", "sell_on_pct"
+  (a fraction, 0.1 = 10%), "loan_fee", "wage_split_pct" (fraction the borrowing club pays), "option_to_buy".
+  Anchor every figure to the facts (current terms, model range, guide price, budget).
+- "reasons": list of 2-4 short strings
+- "watch_outs": list of 0-3 short strings
+"""
+
+NEGOTIATION_SUMMARY_USER = """\
+Summarise this negotiation for the {role} club. Chronological history (computed by TransferX):
+{facts_json}
+
+"moves_by_you" and "moves_by_them" already list who changed what; do not reassign a move to the other side.
+
+Return JSON:
+- "summary": string, 2-3 sentences: how the terms moved and where they stand now
+- "gap": string or null, the remaining difference between the sides in one phrase (e.g. "£2.5m on the fee")
+- "their_moves": list of short strings, rephrasing "moves_by_them" (empty if it is empty)
+- "your_moves": list of short strings, rephrasing "moves_by_you" (empty if it is empty)
+"""
+
+DEAL_BRIEF_USER = """\
+Brief the {role} club on this transfer's next steps. Facts, including the outstanding steps already worked out
+by TransferX, with who owns each:
+{facts_json}
+
+Return JSON:
+- "headline": string, one sentence: what the deal is waiting on and who must act
+- "advice": list of 1-3 short strings, practical tips for the viewer's own next steps (deadlines, order, risks)
+"""
+
+CLUB_BRIEFING_USER = """\
+Write this morning's briefing for {club_name}. Facts (their own data only):
+{facts_json}
+
+Return JSON:
+- "headline": string, one sentence on the day
+- "focus": string, the single most important thing to do today and why
+- "points": list of 2-5 short strings covering what needs them and what changed in the last 24 hours
+"""
+
+LISTING_ADVICE_USER = """\
+The viewer's club is considering listing (or re-pricing) one of its players. Facts, including a guide price
+TransferX computed from the fee model and comparable completed transfers:
+{facts_json}
+
+Return JSON:
+- "summary": string, 1-2 sentences
+- "availability": one of "TRANSFER", "LOAN", "EITHER", with the loan option only if the facts support it
+  (young, low minutes, long contract)
+- "reasons": list of 2-4 short strings explaining the guide price and availability
+- "tips": list of 0-3 short strings (e.g. for a listing with no offers: lower the price, open to loans)
+If there is no computed guide price, the club sets the price from its own view — a guide price is optional and
+listing without one simply invites offers. Never tell the club to wait, not to list, or that it must set a price
+first.
+"""
+
+POTENTIAL_BUYERS_USER = """\
+The viewer's club wants to know which clubs on TransferX might want its player. Candidate clubs, each with the
+squad facts TransferX found (public squad information only):
+{facts_json}
+
+Return JSON:
+- "summary": string, one sentence
+- "clubs": list of up to 5 objects, best first, each with "club_id" (copied exactly from the facts) and
+  "reason" (one sentence grounded in that club's facts)
+"""
+
+ASK_USER = """\
+A member of {club_name} asks: "{question}"
+
+Everything TransferX may show them that could be relevant (their own club's data only):
+{facts_json}
+
+Answer only from these facts; if they do not contain the answer, say so plainly. Return JSON:
+- "answer": string, 1-4 sentences
+- "links": list of 0-4 objects {{"label": string, "path": string}}, where every path is copied exactly from a
+  "path" field in the facts
+"""
+
 # ── Versioning ────────────────────────────────────────────────────────────────
 
 _DEFAULTS: dict[str, str] = {
@@ -115,6 +222,14 @@ _DEFAULTS: dict[str, str] = {
     "MARKET_RECOMMENDATIONS_USER": MARKET_RECOMMENDATIONS_USER,
     "SHORTLIST_REVIEW_USER": SHORTLIST_REVIEW_USER,
     "NL_SEARCH_PARSE": NL_SEARCH_PARSE,
+    "SYSTEM_ADVISOR": SYSTEM_ADVISOR,
+    "OFFER_ADVICE_USER": OFFER_ADVICE_USER,
+    "NEGOTIATION_SUMMARY_USER": NEGOTIATION_SUMMARY_USER,
+    "DEAL_BRIEF_USER": DEAL_BRIEF_USER,
+    "CLUB_BRIEFING_USER": CLUB_BRIEFING_USER,
+    "LISTING_ADVICE_USER": LISTING_ADVICE_USER,
+    "POTENTIAL_BUYERS_USER": POTENTIAL_BUYERS_USER,
+    "ASK_USER": ASK_USER,
 }
 
 _overrides: dict[str, str] = {}

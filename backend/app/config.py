@@ -102,7 +102,7 @@ class Settings(BaseSettings):
     #   "claude-sonnet-4-6"       (Anthropic)
     #   "gpt-4o"                  (OpenAI)
     #   "deepseek/deepseek-chat"  (DeepSeek)
-    llm_model: str = "claude-sonnet-4-6"
+    llm_model: str = "claude-sonnet-5"
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
     deepseek_api_key: str | None = None

@@ -26,6 +26,7 @@ from app.deals.schemas import (
     DealResponse,
     MedicalCheckResponse,
     NegotiationRespondRequest,
+    PlayerConsentRequest,
     OngoingStats,
     PersonalTermsResponse,
     PositionBreakdown,
@@ -764,6 +765,7 @@ async def _build_personal_terms_response(db: AsyncSession, pt, deal) -> Personal
         created_at=pt.created_at,
         buyer_club_id=deal.buyer_club_id,
         buyer_club_name=deal.buyer_club.name if deal.buyer_club else "Unknown club",
+        consent_evidence_attachment_id=pt.consent_evidence_attachment_id,
     )
 
 
@@ -842,7 +844,7 @@ async def set_personal_terms(
 @router.post("/deals/{deal_id}/personal-terms/player-consent", response_model=PersonalTermsResponse)
 async def player_consent_to_terms(
     deal_id: uuid.UUID,
-    body: NegotiationRespondRequest,
+    body: PlayerConsentRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -899,11 +901,36 @@ async def player_consent_to_terms(
                 detail="Player has their own account and must respond themselves",
             )
         recorded_by_club = True
+        # The club's word alone is not a consent trail: recording an agreement
+        # needs the signed terms, uploaded to the deal room by the buying club.
+        if body.agreement == "AGREED":
+            if body.evidence_attachment_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Attach the signed terms to record the player's agreement",
+                )
+            from app.deals.room_models import CommentAudience
+
+            evidence = await room_service.get_attachment(db, deal.id, body.evidence_attachment_id)
+            uploader_club = (
+                await clubs_service.get_club_for_user(db, evidence.uploaded_by_user_id)
+                if evidence is not None and evidence.uploaded_by_user_id else None
+            )
+            if (
+                evidence is None
+                or evidence.audience not in (CommentAudience.SHARED, CommentAudience.BUYER_ONLY)
+                or uploader_club is None or uploader_club.id != deal.buyer_club_id
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="The signed terms must be a document your club uploaded to this deal",
+                )
 
     buyer_name = deal.buyer_club.name if deal.buyer_club else "The buying club"
     try:
         pt = await service.player_consent_to_terms(
             db, deal, body.agreement, actor_user_id=current_user.id, recorded_by_club=recorded_by_club,
+            evidence_attachment_id=body.evidence_attachment_id if recorded_by_club else None,
         )
         player_name = deal.player.name if deal.player else "The player"
         decision = "agreed to" if pt.player_consent == "AGREED" else "declined"

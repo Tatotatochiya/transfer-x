@@ -1381,9 +1381,11 @@ async def set_personal_terms(
     pt.wage_weekly = wage_weekly
     pt.signing_bonus = signing_bonus
     pt.length_years = length_years
-    # Reset consent whenever terms change
+    # Reset consent whenever terms change — and any signed copy recorded with it,
+    # which was a signature on the old terms.
     pt.player_consent = "PENDING"  # type: ignore[assignment]
     pt.agreed_at = None
+    pt.consent_evidence_attachment_id = None
     await db.flush()
     await audit_service.emit(
         db,
@@ -1401,6 +1403,7 @@ async def player_consent_to_terms(
     agreement: "AgreementStatus",  # type: ignore[name-defined]
     actor_user_id: uuid.UUID | None = None,
     recorded_by_club: bool = False,
+    evidence_attachment_id: uuid.UUID | None = None,
 ) -> PersonalTerms:
     """Player agrees or declines personal terms. Decline collapses the deal.
 
@@ -1421,13 +1424,18 @@ async def player_consent_to_terms(
     pt.player_consent = agreement
     if agreement == AgreementStatus.AGREED:
         pt.agreed_at = datetime.now(timezone.utc)
+        pt.consent_evidence_attachment_id = evidence_attachment_id
     await db.flush()
     await audit_service.emit(
         db,
         entity_type="DEAL", entity_id=deal.id,
         action="PERSONAL_TERMS_CONSENT",
         actor_user_id=actor_user_id,
-        payload={"agreement": agreement.value, "recorded_by": "BUYING_CLUB" if recorded_by_club else None},
+        payload={
+            "agreement": agreement.value,
+            "recorded_by": "BUYING_CLUB" if recorded_by_club else None,
+            "evidence_attachment_id": str(evidence_attachment_id) if evidence_attachment_id else None,
+        },
         description=(
             f"Buying club recorded that the player {agreement.value.lower()} the personal terms"
             if recorded_by_club else f"Player {agreement.value.lower()} the personal terms"

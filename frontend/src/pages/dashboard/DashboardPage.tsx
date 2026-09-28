@@ -27,6 +27,7 @@ import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { ScoutReportPanel } from "../../components/ai/ScoutReportPanel";
 import { dealWhoseMove, offerWhoseMove, saleWhoseMove } from "../../lib/whoseMove";
 import WaitingOnYouBand, { type WaitingItem } from "../../components/dashboard/WaitingOnYouBand";
+import { BriefingCard } from "../../components/ai/Assistant";
 import { useClubDashboard } from "../../hooks/useClubDashboard";
 import { buyerLabel } from "../../lib/buyerIdentity";
 import type { DashboardItem } from "../../types/api";
@@ -335,6 +336,8 @@ export default function DashboardPage() {
 
       <TransferWindowBanner />
       <OnboardingChecklist />
+
+      <BriefingCard />
 
       <WaitingOnYouBand items={waitingItems} />
 

@@ -74,13 +74,20 @@ async def _offer_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[datet
         if offers_service.compute_offer_whose_move(o, club_id) != WhoseMove.YOUR:
             continue
         counterparty = o.to_club if o.from_club_id == club_id else o.from_club
+        # An anonymous buyer stays hidden from the seller until acceptance —
+        # here too: this list also feeds the digest email and the AI briefing.
+        if o.is_anonymous and o.from_club_id != club_id and o.status != OfferStatus.ACCEPTED:
+            league = o.from_club.masking_league if o.from_club else None
+            counterparty_name = f"A {league} club" if league else "An undisclosed club"
+        else:
+            counterparty_name = counterparty.name if counterparty else None
         out.append((
             o.last_action_at,
             DashboardItem(
                 kind="offer",
                 id=o.id,
                 player_name=o.player.name if o.player else None,
-                club_name=counterparty.name if counterparty else None,
+                club_name=counterparty_name,
                 amount=o.fee_amount,
                 reason=_offer_reason(o),
                 link=f"/offers/{o.id}",
