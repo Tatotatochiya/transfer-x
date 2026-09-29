@@ -25,7 +25,8 @@ This file is **overwritten**, not appended to, at the end of each session — ma
 ## Session Summary — 2026-09-28
 
 **Where the work is.**
-- Branch **`free-agents-obligations-contracts`**, off `main` after PR #8, **uncommitted**. It holds:
+- Branch **`username-login-premier-league`**, **uncommitted**, stacked on PR #9's branch because it needs migrations `0083`–`0084`. It holds username sign-in and the Premier League onboarding script (already run locally: all 20 clubs now on TransferX).
+- PR #9 (`free-agents-obligations-contracts`, open), off `main` after PR #8, **uncommitted**. It holds:
   - free-agent invitations by staff or agent (migration `0083`);
   - conditional obligations confirmed by both clubs (migration `0084`);
   - TransferX staff settling a conditional obligation the clubs dispute;
