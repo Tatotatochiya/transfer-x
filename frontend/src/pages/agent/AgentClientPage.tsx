@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import PlayerAccountCard from "../../components/players/PlayerAccountCard";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { ClientAlert, ClientStatus, MandateDetailResponse, UpdateMandateRequest } from "../../types/api";
@@ -194,6 +195,11 @@ export default function AgentClientPage() {
               </Link>
             </div>
           </Card>
+
+          {/* A free agent has no club to invite him, so his agent can. */}
+          {!client.player_club_name && (
+            <PlayerAccountCard playerId={client.player_id} playerName={client.player_name} inviter="agent" />
+          )}
 
           <Card>
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">

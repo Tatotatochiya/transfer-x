@@ -94,8 +94,14 @@ class PlayerInvitation(Base):
     player_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    club_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("clubs.id", ondelete="CASCADE"), nullable=False, index=True
+    # Who invited him (migration 0083): the club that owns him, or — for a
+    # free agent, who has no club — his mandated agent or TransferX staff
+    # (both null then, with invited_by_user_id the staff member).
+    club_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("clubs.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("agent_profiles.id", ondelete="CASCADE"), nullable=True, index=True
     )
     email: Mapped[str] = mapped_column(String(254), nullable=False, index=True)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)

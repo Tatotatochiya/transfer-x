@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +25,7 @@ from app.database import get_db
 from app.deps import get_current_agent_profile
 from app.mandates import alerts_service
 from app.mandates.schemas import ClientAlertResponse
+from app.clubs.schemas import PlayerAccountStatusResponse, PlayerInvitationCreateRequest, PlayerInvitationResponse
 
 router = APIRouter(tags=["agents"])
 
@@ -197,3 +198,83 @@ async def mark_alert_read(
         raise HTTPException(status_code=404, detail="Alert not found")
     await db.commit()
     return ClientAlertResponse.model_validate(alert)
+
+
+# ── Player invitations for free-agent clients (migration 0083) ───────────────
+# A free agent has no club to invite him, so his mandated agent can. A client
+# at a club is his club's to invite (clubs/router.py).
+
+
+@router.get("/me/players/{player_id}/account", response_model=PlayerAccountStatusResponse)
+async def client_account_status(
+    player_id: uuid.UUID,
+    profile: AgentProfile = Depends(get_current_agent_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.clubs import service as clubs_service
+    from app.mandates.models import Mandate, MandateStatus
+    from app.players import service as players_service
+
+    mandate = (await db.execute(
+        select(Mandate.id).where(
+            Mandate.agent_id == profile.id, Mandate.player_id == player_id, Mandate.status == MandateStatus.ACTIVE,
+        )
+    )).first()
+    if mandate is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    invitations = await clubs_service.list_player_invitations(db, agent_id=profile.id, player_id=player_id)
+    return PlayerAccountStatusResponse(
+        has_account=await players_service.player_has_account(db, player_id),
+        invitation=PlayerInvitationResponse.model_validate(invitations[0]) if invitations else None,
+    )
+
+
+@router.post("/me/player-invitations", response_model=PlayerInvitationResponse, status_code=status.HTTP_201_CREATED)
+async def invite_client(
+    body: PlayerInvitationCreateRequest,
+    profile: AgentProfile = Depends(get_current_agent_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    """Invite a free-agent client to create his account."""
+    from app.audit import service as audit_service
+    from app.clubs import service as clubs_service
+
+    try:
+        inv, raw_token = await clubs_service.create_player_invitation(
+            db, player_id=body.player_id, email=body.email, invited_by_user_id=profile.user_id, agent_id=profile.id,
+        )
+        await audit_service.emit(
+            db, entity_type="PLAYER", entity_id=inv.player_id, action="PLAYER_INVITED",
+            actor_user_id=profile.user_id, payload={"email": inv.email, "by": "AGENT"},
+            description=f"{profile.display_name} invited his client to TransferX",
+        )
+        await db.commit()
+    except LookupError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    resp = PlayerInvitationResponse.model_validate(inv)
+    resp.accept_url = await clubs_service.send_player_invitation(db, inv, raw_token)
+    return resp
+
+
+@router.post("/me/player-invitations/{invitation_id}/revoke", response_model=PlayerInvitationResponse)
+async def revoke_client_invitation(
+    invitation_id: uuid.UUID,
+    profile: AgentProfile = Depends(get_current_agent_profile),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.clubs import service as clubs_service
+
+    try:
+        inv = await clubs_service.revoke_player_invitation(db, invitation_id=invitation_id, agent_id=profile.id)
+        await db.commit()
+    except LookupError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return PlayerInvitationResponse.model_validate(inv)

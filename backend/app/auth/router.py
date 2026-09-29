@@ -205,9 +205,9 @@ async def preview_player_invitation(token: str, db: AsyncSession = Depends(get_d
     if inv is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
     player = (await db.execute(select(Player).where(Player.id == inv.player_id))).scalar_one()
-    club = await clubs_service.get_club_by_id(db, inv.club_id)
     return PlayerInvitationPreviewResponse(
-        player_name=player.name, club_name=club.name if club else "", email=inv.email, expires_at=inv.expires_at,
+        player_name=player.name, invited_by=await clubs_service.player_invitation_inviter(db, inv),
+        email=inv.email, expires_at=inv.expires_at,
     )
 
 
@@ -230,13 +230,27 @@ async def accept_player_invitation(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     await audit_service.emit(
         db, entity_type="PLAYER", entity_id=inv.player_id, action="PLAYER_JOINED",
-        actor_user_id=user.id, payload={"email": user.email, "club_id": str(inv.club_id)},
-        description="Player joined TransferX by invitation from his club",
+        actor_user_id=user.id,
+        payload={
+            "email": user.email,
+            "club_id": str(inv.club_id) if inv.club_id else None,
+            "agent_id": str(inv.agent_id) if inv.agent_id else None,
+        },
+        description=f"Player joined TransferX by invitation from {await clubs_service.player_invitation_inviter(db, inv)}",
     )
-    club = await clubs_service.get_club_by_id(db, inv.club_id)
-    if club is not None:
+    # Tell whoever invited him: the club's owner, or the agent.
+    recipient = None
+    if inv.club_id is not None:
+        club = await clubs_service.get_club_by_id(db, inv.club_id)
+        recipient = club.user_id if club else None
+    elif inv.agent_id is not None:
+        from app.auth.models import AgentProfile
+
+        agent = (await db.execute(select(AgentProfile).where(AgentProfile.id == inv.agent_id))).scalar_one_or_none()
+        recipient = agent.user_id if agent else None
+    if recipient is not None:
         await notif_service.create_notification(
-            db, recipient_user_id=club.user_id, type=NotificationType.STAFF_INVITATION,
+            db, recipient_user_id=recipient, type=NotificationType.STAFF_INVITATION,
             message=f"{user.email} accepted your invitation and now has a player account",
             link=f"/players/market/{inv.player_id}", related_player_id=inv.player_id,
         )

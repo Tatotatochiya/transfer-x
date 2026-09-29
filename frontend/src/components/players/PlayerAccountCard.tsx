@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import api from "../../lib/api";
 import { formatDate, getApiError } from "../../lib/utils";
-import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
 
@@ -23,29 +22,70 @@ interface PlayerAccountStatus {
   invitation: PlayerInvitation | null;
 }
 
+/** Who is inviting, and so which endpoints: the owning club, the player's
+ *  agent (free agents only), or TransferX staff (free agents only). */
+export type Inviter = "club" | "agent" | "staff";
+
+const ENDPOINTS: Record<Inviter, { status: (id: string) => string; invite: string; revoke: (id: string) => string }> = {
+  club: {
+    status: (id) => `/clubs/me/players/${id}/account`,
+    invite: "/clubs/me/player-invitations",
+    revoke: (id) => `/clubs/me/player-invitations/${id}/revoke`,
+  },
+  agent: {
+    status: (id) => `/agents/me/players/${id}/account`,
+    invite: "/agents/me/player-invitations",
+    revoke: (id) => `/agents/me/player-invitations/${id}/revoke`,
+  },
+  staff: {
+    status: (id) => `/admin/players/${id}/account`,
+    invite: "/admin/player-invitations",
+    revoke: (id) => `/admin/player-invitations/${id}/revoke`,
+  },
+};
+
+const NO_ACCOUNT_TEXT: Record<Inviter, (name: string) => string> = {
+  club: (name) =>
+    `${name} has no account yet, so your club records his answer to personal terms (with the signed copy), or his agent answers for him. Invite him to answer himself.`,
+  agent: (name) =>
+    `${name} is a free agent with no account yet. Invite him so he can accept terms himself; you can still answer for him.`,
+  staff: (name) =>
+    `${name} has no account yet. TransferX can invite a free agent (so can his agent); a player at a club is invited by his club.`,
+};
+
 /**
- * Whether one of the club's players has a TransferX account, and the way to
- * invite him (product decision, 2026-09-28: players join only by invitation
- * from their club). With an account he accepts his own personal terms; his
- * mandated agent can still answer for him.
+ * Whether a player has a TransferX account, and the way to invite him
+ * (product ADR 0007: players join only by invitation — from their club, or
+ * for a free agent from his agent or TransferX). With an account he accepts
+ * his own personal terms; his mandated agent can still answer for him.
  */
-export default function PlayerAccountCard({ playerId, playerName }: { playerId: string; playerName: string }) {
+export default function PlayerAccountCard({
+  playerId,
+  playerName,
+  inviter = "club",
+  canInvite = true,
+}: {
+  playerId: string;
+  playerName: string;
+  inviter?: Inviter;
+  /** Clubs: members with TEAM_MANAGE. */
+  canInvite?: boolean;
+}) {
   const queryClient = useQueryClient();
-  const { can } = useClubCapabilities();
-  const canInvite = can("TEAM_MANAGE");
+  const urls = ENDPOINTS[inviter];
   const [email, setEmail] = useState("");
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const key = ["clubs", "me", "players", playerId, "account"];
+  const key = ["player-account", inviter, playerId];
   const { data } = useQuery<PlayerAccountStatus>({
     queryKey: key,
-    queryFn: () => api.get<PlayerAccountStatus>(`/clubs/me/players/${playerId}/account`).then((r) => r.data),
+    queryFn: () => api.get<PlayerAccountStatus>(urls.status(playerId)).then((r) => r.data),
   });
 
   const invite = useMutation({
     mutationFn: () =>
-      api.post<PlayerInvitation>("/clubs/me/player-invitations", { player_id: playerId, email }).then((r) => r.data),
+      api.post<PlayerInvitation>(urls.invite, { player_id: playerId, email }).then((r) => r.data),
     onSuccess: (inv) => {
       setLink(inv.accept_url);
       setEmail("");
@@ -54,7 +94,7 @@ export default function PlayerAccountCard({ playerId, playerName }: { playerId: 
   });
 
   const revoke = useMutation({
-    mutationFn: (id: string) => api.post(`/clubs/me/player-invitations/${id}/revoke`).then((r) => r.data),
+    mutationFn: (id: string) => api.post(urls.revoke(id)).then((r) => r.data),
     onSuccess: () => {
       setLink(null);
       queryClient.invalidateQueries({ queryKey: key });
@@ -105,10 +145,7 @@ export default function PlayerAccountCard({ playerId, playerName }: { playerId: 
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-sm text-text-muted">
-            {playerName} has no account yet, so your club records his answer to personal terms (with the signed
-            copy), or his agent answers for him. Invite him to answer himself.
-          </p>
+          <p className="text-sm text-text-muted">{NO_ACCOUNT_TEXT[inviter](playerName)}</p>
           {canInvite && (
             <form
               onSubmit={(e) => {

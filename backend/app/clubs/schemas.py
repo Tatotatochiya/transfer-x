@@ -192,6 +192,8 @@ class PlayerInvitationResponse(BaseModel):
     accepted_at: datetime | None = None
     revoked_at: datetime | None = None
     accept_url: str | None = None
+    # Staff listing only: whose it is, and the player's name.
+    player_name: str | None = None
 
 
 class PlayerAccountStatusResponse(BaseModel):
@@ -203,7 +205,8 @@ class PlayerAccountStatusResponse(BaseModel):
 
 class PlayerInvitationPreviewResponse(BaseModel):
     player_name: str
-    club_name: str
+    # Who invited him: his club's name, "your agent …", or "TransferX".
+    invited_by: str
     email: str
     expires_at: datetime
 

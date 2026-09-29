@@ -5,6 +5,7 @@ import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.admin import service as admin_service
@@ -37,7 +38,13 @@ from app.admin.schemas import (
 )
 from app.auth.models import User
 from app.clubs import service as clubs_service
-from app.clubs.schemas import ClubInvitationCreateRequest, ClubInvitationResponse
+from app.clubs.schemas import (
+    ClubInvitationCreateRequest,
+    ClubInvitationResponse,
+    PlayerAccountStatusResponse,
+    PlayerInvitationCreateRequest,
+    PlayerInvitationResponse,
+)
 from app.database import get_db
 from app.deps import get_current_superuser
 from app.offers.schemas import OfferResponse
@@ -700,3 +707,93 @@ async def health_check(
 ) -> HealthReport:
     report = await admin_service.get_health_report(db)
     return HealthReport(**report)
+
+
+# ── Player invitations for free agents (migration 0083) ──────────────────────
+# A free agent has no club to invite him, so TransferX staff can (as can his
+# agent, from the agent side).
+
+
+@router.post("/player-invitations", response_model=PlayerInvitationResponse, status_code=status.HTTP_201_CREATED)
+async def invite_free_agent(
+    body: PlayerInvitationCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    from app.audit import service as audit_service
+
+    try:
+        inv, raw_token = await clubs_service.create_player_invitation(
+            db, player_id=body.player_id, email=body.email, invited_by_user_id=current_user.id, by_staff=True,
+        )
+        await audit_service.emit(
+            db, entity_type="PLAYER", entity_id=inv.player_id, action="PLAYER_INVITED",
+            actor_user_id=current_user.id, payload={"email": inv.email, "by": "STAFF"},
+            description="TransferX invited the free agent to TransferX",
+        )
+        await db.commit()
+    except LookupError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    resp = PlayerInvitationResponse.model_validate(inv)
+    resp.accept_url = await clubs_service.send_player_invitation(db, inv, raw_token)
+    return resp
+
+
+@router.get("/players/{player_id}/account", response_model=PlayerAccountStatusResponse)
+async def player_account_status(
+    player_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    """Any player's account status and latest invitation, whoever sent it."""
+    from app.players import service as players_service
+
+    invitations = await clubs_service.list_player_invitations(db, staff=True, player_id=player_id)
+    return PlayerAccountStatusResponse(
+        has_account=await players_service.player_has_account(db, player_id),
+        invitation=PlayerInvitationResponse.model_validate(invitations[0]) if invitations else None,
+    )
+
+
+@router.get("/player-invitations", response_model=list[PlayerInvitationResponse])
+async def list_free_agent_invitations(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    """Staff-sent invitations (clubs' and agents' are theirs to manage)."""
+    from app.clubs.models import PlayerInvitation
+    from app.players.models import Player
+
+    rows = (await db.execute(
+        select(PlayerInvitation, Player.name).join(Player, Player.id == PlayerInvitation.player_id)
+        .where(PlayerInvitation.club_id.is_(None), PlayerInvitation.agent_id.is_(None))
+        .order_by(PlayerInvitation.created_at.desc()).limit(200)
+    )).all()
+    out = []
+    for inv, name in rows:
+        r = PlayerInvitationResponse.model_validate(inv)
+        r.player_name = name
+        out.append(r)
+    return out
+
+
+@router.post("/player-invitations/{invitation_id}/revoke", response_model=PlayerInvitationResponse)
+async def revoke_free_agent_invitation(
+    invitation_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    try:
+        inv = await clubs_service.revoke_player_invitation(db, invitation_id=invitation_id, staff=True)
+        await db.commit()
+    except LookupError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return PlayerInvitationResponse.model_validate(inv)

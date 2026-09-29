@@ -1041,7 +1041,7 @@ export default function PlayerMarketDetailPage() {
             <PlayerFitCard playerId={player.id} />
           )}
           {/* His own account: invite him so he answers personal terms himself */}
-          {isMyPlayer && <PlayerAccountCard playerId={player.id} playerName={player.name} />}
+          {isMyPlayer && <PlayerAccountCard playerId={player.id} playerName={player.name} canInvite={can("TEAM_MANAGE")} />}
           {/* Selling: clubs whose squads look short in his position */}
           {isMyPlayer && can("MARKET_WRITE") && <PotentialBuyersPanel playerId={player.id} />}
           {isAgent && !isMyPlayer && id && (
