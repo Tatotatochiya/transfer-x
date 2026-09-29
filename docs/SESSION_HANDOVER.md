@@ -25,8 +25,12 @@ This file is **overwritten**, not appended to, at the end of each session — ma
 ## Session Summary — 2026-09-28
 
 **Where the work is.**
-- Branch **`player-invitations`**, off `main` at `b85c0cb` (PRs #3–#7 merged). It holds player accounts by invitation, the agent rule change and this handover, all **uncommitted**.
-- The local database is at migration head `0082`.
+- Branch **`free-agents-obligations-contracts`**, off `main` after PR #8, **uncommitted**. It holds:
+  - free-agent invitations by staff or agent (migration `0083`);
+  - conditional obligations confirmed by both clubs (migration `0084`);
+  - TransferX staff settling a conditional obligation the clubs dispute;
+  - the mock contract end dates script and the player-status repair (13 players to FREE_AGENT), both already run locally.
+- The local database is at migration head `0084`.
 - `gh` is authenticated on this machine, so pushing and opening PRs work from here.
 - Commits are authored per command as `Tatotatochiya <aashishpradhan@outlook.com>`, because this machine has no git identity configured.
 
@@ -76,12 +80,12 @@ This file is **overwritten**, not appended to, at the end of each session — ma
 **Outstanding work:**
 
 - **Commit `player-invitations`, then push and open its PR.**
-- **Free agents can't join yet.** Player invitations come only from the owning club (TODO in ADR 0007).
 - **Test data left in the dev database.**
   - My live checks from 27–28 Sept left 7 deals, 9 offers, 5 auction listings, 3 enquiries and 2 "Test FC" clubs.
   - Their money is already released (the deals are collapsed, the offer withdrawn, the listings withdrawn).
   - Deleting the rows was refused by the permission check as a mass delete, so it's the product owner's call.
-- **Contract end dates are missing for whole squads** (e.g. Liverpool has none), which weakens the expiring-contracts panel, the briefing, "Who might want him?" and the pricing assistant.
+- **Contract end dates are mock data** (`scripts/mock_contract_end_dates.py`, run locally). They need replacing with real dates from the clubs or the vendor feed.
+- **Railway also needs** `repair_player_statuses.py` and, if demo data is wanted there, `mock_contract_end_dates.py` (see the pending-repairs table in `operations/environments-and-deployment.md`).
 - **The AI cache and rate limit are in memory.** A shared store is needed before running several API processes.
 - **Not built from the AI ideas list:** offer builder, approvals brief, finance forecast, deal document drafts.
 - **No production environment.**

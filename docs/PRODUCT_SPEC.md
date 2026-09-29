@@ -47,7 +47,7 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 |---|---|---|
 | Backend | FastAPI (Python), SQLAlchemy async, PostgreSQL | [`architecture/backend-architecture.md`](./architecture/backend-architecture.md) |
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS v4 | [`architecture/frontend-architecture.md`](./architecture/frontend-architecture.md) |
-| Database migrations | 84 files, head at `0082` (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
+| Database migrations | 86 files, head at `0084` (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
 | User types | Club (owner + 4 staff roles), Agent, Player, Admin | [`product/personas.md`](./product/personas.md) |
 | Deal stages | AGREEMENT → AGENT_NEGOTIATION → PERSONAL_TERMS → PAPERWORK → CONFIRMED → COMPLETED (or COLLAPSED) | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
 | Deal types | PERMANENT, LOAN (both offerable); FREE_TRANSFER, PRE_CONTRACT (derived by the signing paths) | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |

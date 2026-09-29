@@ -469,6 +469,17 @@ Recorded before the phases were marked shipped, per this folder's [README](./REA
     - The loan row copies `obligation_conditions` from its deal (migration `0073`, backfilled), so the loans panel shows them. The panel's "Completes automatically" became "Purchase starts at the end date": the purchase still passes budget, medical and paperwork.
     - `get_offer_by_id` uses `populate_existing`. The routers re-read an offer they had just changed in the same session and got the cached pre-change copy, so a counter's response showed the negotiation without the counter.
 
+30. **Both clubs confirm a conditional obligation** (product owner, 2026-09-28; supersedes the last part of 27). A conditional obligation ("if promoted") no longer starts the purchase regardless at expiry.
+    - Each club answers "conditions met" or "not met" on its loans panel (`POST /loans/{id}/obligation-conditions`). It can answer at any time during the loan and change its answer until the question is settled.
+    - **At or after the end date:**
+      - both clubs said met → the purchase deal starts, as before;
+      - both said not met → the loan ends and he returns to his club (`end_reason = OBLIGATION_NOT_MET`);
+      - one answer missing, or the clubs disagree → nothing happens, and both clubs are asked once to confirm.
+    - Each answer is audited, and the other club is notified.
+    - An obligation with no conditions still converts automatically.
+    - Migration `0084`: `parent_obligation_answer`, `loanee_obligation_answer`, `obligation_prompted_at` on `player_loans`.
+    - **A lasting disagreement is settled by TransferX** (product owner, 2026-09-29). Admin → Deals lists every conditional obligation past its end date that the clubs have not both confirmed, with each club's answer. Staff decide "met" (the purchase starts) or "not met" (he returns), with a reason. Both clubs see the reason, and it's audited (`OBLIGATION_DECIDED_BY_STAFF`). The routes are `GET /admin/loans/obligations-awaiting` and `POST /admin/loans/{id}/obligation-decision`.
+
 ## Open questions for sign-off
 
 1. **D4** — wage split as a percentage, or an absolute weekly figure?

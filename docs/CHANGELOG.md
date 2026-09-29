@@ -25,6 +25,14 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **TransferX settles a conditional obligation the clubs can't agree on.** Admin → Deals lists obligations past the loan's end that the clubs haven't both confirmed, with each club's answer. Staff decide "met" (the purchase starts) or "not met" (the player returns), with a reason that both clubs see and the audit keeps.
+- **Free agents can be invited** ([ADR 0007](./product/decisions/0007-players-join-by-invitation-agents-can-answer.md)).
+  - TransferX staff invite from the admin player page.
+  - A mandated agent invites his free-agent client from the client page.
+  - The join page and email name who invited him.
+  - Only genuine free agents qualify: a player at a TransferX club is his club's to invite, and one at a club outside TransferX can't be invited.
+  - Migration `0083`.
+- **Mock contract end dates for demos** (`backend/scripts/mock_contract_end_dates.py`). No contract had an end date, so every feature about contracts running down showed nothing. Run locally: 106 contracts and 5,011 players. Development data only.
 - **Players join by invitation from their club** ([ADR 0007](./product/decisions/0007-players-join-by-invitation-agents-can-answer.md)).
   - A "Player account" card on your own player's page shows whether he has an account and lets a club member with team permission invite him by email. The link is shown once and emailed.
   - The player accepts at `/join/player`, which creates his account, linked to his record and marked verified.
@@ -62,6 +70,10 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **A conditional obligation to buy needs both clubs to confirm its conditions.** Each club answers "met" or "not met" on its loans panel.
+  - At the end of the loan: both met → the purchase starts; both not met → the player returns; otherwise it waits and both clubs are asked.
+  - Before, the purchase started regardless, and the clubs had to collapse the deal.
+  - Migration `0084`; loan spec deviation 30.
 - **A mandated agent can accept personal terms for his client whether or not the player has an account.** Before, an account closed the agent's route. The player can still answer himself.
 - **Recording a player's agreement needs the signed terms** ([ADR 0006](./product/decisions/0006-buying-club-records-consent-for-unrepresented-player.md)).
   - When the buying club records the agreement for a player with no account or agent, it attaches the signed copy. The copy goes into its private deal-room channel, and the consent and its audit entry point to it.
@@ -76,6 +88,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **Players with no club anywhere were marked EXTERNAL instead of FREE_AGENT**, so the platform had no free agents to sign or invite. `backend/scripts/repair_player_statuses.py` re-derives mismatched statuses with the standard rule. Locally: 13 players.
 - **A club player's profile offered him an "Open to offers" switch the server refuses.** Since listings took over that switch, a club player is available only when his club lists him. His profile now says whether he's listed, and only free agents keep the switch.
 - **An anonymous buyer was named on the seller's War Room.** The "waiting on you" row showed the buying club of an anonymous offer, and so did everything that reads that list: the daily digest email, the AI briefing and Ask TransferX. It now shows the masked label, as the offer page does.
 - **The anonymous label no longer names a European competition.** A club's league field sometimes holds a competition, so buyers showed as "A UEFA Champions League club", which narrows the field to a couple of dozen clubs. Only a domestic league is shown now, otherwise "An undisclosed club". This applies to offers, order books, enquiries and the War Room (`Club.masking_league`).
