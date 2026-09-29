@@ -11,14 +11,15 @@ import { getApiError, formatDateTime } from "../../lib/utils";
 
 interface PlayerInvitationPreview {
   player_name: string;
-  club_name: string;
+  /** His club's name, "your agent …", or "TransferX". */
+  invited_by: string;
   email: string;
   expires_at: string;
 }
 
 /**
- * How a player joins TransferX: by invitation from the club that owns him
- * (product decision, 2026-09-28). His account accepts personal terms, so it
+ * How a player joins TransferX: by invitation from the club that owns him, or
+ * for a free agent from his agent or TransferX (product ADR 0007). His account accepts personal terms, so it
  * is never self-claimed. This page, reached from the emailed link, sets a
  * password and creates the account linked to his player record. Mirrors
  * JoinClubPage.
@@ -88,7 +89,7 @@ export default function JoinPlayerPage() {
               <p className="text-sm font-medium text-danger-text">
                 This invitation link is invalid, expired, or has already been used.
               </p>
-              <p className="mt-2 text-sm text-text-muted">Ask your club to send you a new invitation.</p>
+              <p className="mt-2 text-sm text-text-muted">Ask whoever invited you — your club, your agent or TransferX — for a new one.</p>
               <Button variant="secondary" size="sm" className="mt-5" onClick={() => navigate("/login")}>
                 Go to sign in
               </Button>
@@ -98,7 +99,7 @@ export default function JoinPlayerPage() {
               <div className="mb-6 rounded-lg bg-surface-inset px-4 py-3.5 ring-1 ring-border">
                 <p className="text-sm font-semibold text-text">{preview.player_name}</p>
                 <p className="text-[13px] text-text-muted">
-                  Invited by {preview.club_name}. With your account you review and accept the personal
+                  Invited by {preview.invited_by}. With your account you review and accept the personal
                   terms clubs offer you.
                 </p>
                 <p className="mt-0.5 text-[13px] text-text-muted">Expires {formatDateTime(preview.expires_at)}</p>

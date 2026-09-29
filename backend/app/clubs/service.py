@@ -396,22 +396,56 @@ async def revoke_club_invitation(db: AsyncSession, invitation_id: uuid.UUID) -> 
 
 
 async def create_player_invitation(
-    db: AsyncSession, *, club_id: uuid.UUID, player_id: uuid.UUID, email: str, invited_by_user_id: uuid.UUID
+    db: AsyncSession, *, player_id: uuid.UUID, email: str, invited_by_user_id: uuid.UUID,
+    club_id: uuid.UUID | None = None, agent_id: uuid.UUID | None = None, by_staff: bool = False,
 ) -> tuple["PlayerInvitation", str]:
-    """Returns (row, raw_token). Refuses a player the club does not own, one
-    who already has an account, an email already on TransferX, and a second
-    live invitation for the same player."""
+    """Returns (row, raw_token). Exactly one inviter:
+
+    - `club_id`: the club that owns him (a loan's parent club, as for listing).
+    - `agent_id`: his agent, under an active mandate, and only for a free agent
+      — a player at a club is his club's to invite.
+    - `by_staff`: TransferX staff, and only for a free agent.
+
+    A free agent here is status FREE_AGENT: a player contracted at a club
+    outside TransferX (EXTERNAL) is not one (ADR 0003) and is not invitable.
+    Also refuses a player who already has an account, an email already on
+    TransferX, and a second live invitation for the same player."""
+    from datetime import date as _date
+
     from app.auth.models import PlayerProfile, User
     from app.clubs.models import PlayerInvitation
-    from app.players.models import Player
+    from app.mandates.models import Mandate, MandateStatus
+    from app.players.models import Player, PlayerStatus
     from app.players.service import get_owning_club_id
 
+    assert sum([club_id is not None, agent_id is not None, by_staff]) == 1, "exactly one inviter"
     email_norm = email.strip().lower()
     if "@" not in email_norm:
         raise ValueError("Enter the player's email address")
     player = (await db.execute(select(Player).where(Player.id == player_id))).scalar_one_or_none()
-    if player is None or await get_owning_club_id(db, player) != club_id:
+    if player is None:
         raise LookupError("Player not found")
+    owner = await get_owning_club_id(db, player)
+    if club_id is not None:
+        if owner != club_id:
+            raise LookupError("Player not found")
+    else:
+        if owner is not None or player.status != PlayerStatus.FREE_AGENT:
+            raise ValueError(
+                f"{player.name} is not a free agent — his club invites him"
+                if owner is not None else f"{player.name} is not a free agent"
+            )
+        if agent_id is not None:
+            today = _date.today()
+            mandate = (await db.execute(
+                select(Mandate.id).where(
+                    Mandate.agent_id == agent_id, Mandate.player_id == player_id,
+                    Mandate.status == MandateStatus.ACTIVE,
+                    (Mandate.end_date.is_(None)) | (Mandate.end_date >= today),
+                )
+            )).first()
+            if mandate is None:
+                raise LookupError("Player not found")
     if (await db.execute(select(PlayerProfile.id).where(PlayerProfile.player_id == player_id))).first():
         raise ValueError(f"{player.name} already has a TransferX account")
     if (await db.execute(select(User.id).where(func.lower(User.email) == email_norm))).first():
@@ -430,6 +464,7 @@ async def create_player_invitation(
     invitation = PlayerInvitation(
         player_id=player_id,
         club_id=club_id,
+        agent_id=agent_id,
         email=email_norm,
         token_hash=_hash_invitation_token(raw_token),
         invited_by_user_id=invited_by_user_id,
@@ -438,6 +473,35 @@ async def create_player_invitation(
     db.add(invitation)
     await db.flush()
     return invitation, raw_token
+
+
+async def send_player_invitation(db: AsyncSession, inv, raw_token: str) -> str:
+    """Email the join link (fire-and-forget) and return it, for the inviter to
+    see once. Shared by the club, agent and staff routes."""
+    import asyncio
+
+    from app.config import settings
+    from app.notifications.email import send_player_invitation_email
+    from app.players.models import Player
+
+    player = (await db.execute(select(Player).where(Player.id == inv.player_id))).scalar_one()
+    accept_url = f"{settings.frontend_base_url}/join/player?token={raw_token}"
+    inviter = await player_invitation_inviter(db, inv)
+    asyncio.create_task(send_player_invitation_email(inv.email, player.name, inviter, accept_url))
+    return accept_url
+
+
+async def player_invitation_inviter(db: AsyncSession, inv) -> str:
+    """Who sent it, for the join page and emails: the club, the agent, or TransferX."""
+    from app.auth.models import AgentProfile
+
+    if inv.club_id is not None:
+        club = await get_club_by_id(db, inv.club_id)
+        return club.name if club else "Your club"
+    if inv.agent_id is not None:
+        agent = (await db.execute(select(AgentProfile).where(AgentProfile.id == inv.agent_id))).scalar_one_or_none()
+        return f"your agent {agent.display_name}" if agent and agent.display_name else "Your agent"
+    return "TransferX"
 
 
 async def get_live_player_invitation(db: AsyncSession, raw_token: str):
@@ -475,21 +539,40 @@ async def accept_player_invitation(db: AsyncSession, raw_token: str, *, password
     return user
 
 
-async def list_player_invitations(db: AsyncSession, club_id: uuid.UUID, player_id: uuid.UUID | None = None):
+async def list_player_invitations(
+    db: AsyncSession, *, club_id: uuid.UUID | None = None, agent_id: uuid.UUID | None = None,
+    staff: bool = False, player_id: uuid.UUID | None = None,
+):
+    """A club's or an agent's invitations; staff see all of them."""
     from app.clubs.models import PlayerInvitation
 
-    q = select(PlayerInvitation).where(PlayerInvitation.club_id == club_id)
+    q = select(PlayerInvitation)
+    if club_id is not None:
+        q = q.where(PlayerInvitation.club_id == club_id)
+    elif agent_id is not None:
+        q = q.where(PlayerInvitation.agent_id == agent_id)
+    elif not staff:
+        return []
     if player_id is not None:
         q = q.where(PlayerInvitation.player_id == player_id)
     return list((await db.execute(q.order_by(PlayerInvitation.created_at.desc()))).scalars())
 
 
-async def revoke_player_invitation(db: AsyncSession, *, club_id: uuid.UUID, invitation_id: uuid.UUID):
+async def revoke_player_invitation(
+    db: AsyncSession, *, invitation_id: uuid.UUID, club_id: uuid.UUID | None = None,
+    agent_id: uuid.UUID | None = None, staff: bool = False,
+):
+    """Revoke one invitation the caller sent (staff: any)."""
     from app.clubs.models import PlayerInvitation
 
-    inv = (await db.execute(
-        select(PlayerInvitation).where(PlayerInvitation.id == invitation_id, PlayerInvitation.club_id == club_id)
-    )).scalar_one_or_none()
+    q = select(PlayerInvitation).where(PlayerInvitation.id == invitation_id)
+    if club_id is not None:
+        q = q.where(PlayerInvitation.club_id == club_id)
+    elif agent_id is not None:
+        q = q.where(PlayerInvitation.agent_id == agent_id)
+    elif not staff:
+        raise LookupError("Invitation not found")
+    inv = (await db.execute(q)).scalar_one_or_none()
     if inv is None:
         raise LookupError("Invitation not found")
     if inv.accepted_at is not None:

@@ -45,7 +45,7 @@ async def test_invite_preview_accept_once(client, club):
     preview = await client.get(f"/auth/player-invitations/{token}")
     assert preview.status_code == 200
     assert preview.json()["player_name"] == player["name"]
-    assert preview.json()["club_name"] == "Inviting FC"
+    assert preview.json()["invited_by"] == "Inviting FC"
 
     accepted = await client.post(f"/auth/player-invitations/{token}/accept", json={"password": "password123"})
     assert accepted.status_code == 201, accepted.text
@@ -144,3 +144,138 @@ async def test_invited_player_answers_his_own_terms(client, db):
     )
     assert by_player.status_code == 200, by_player.text
     assert by_player.json()["player_consent"] == "AGREED"
+
+
+# ── Free agents: invited by TransferX staff or by their agent ────────────────
+
+
+async def _free_agent(db, name="Free Agent Fred"):
+    from app.players.models import Player, PlayerStatus
+
+    p = Player(name=name, status=PlayerStatus.FREE_AGENT)
+    db.add(p)
+    await db.commit()
+    return str(p.id)
+
+
+async def _external_player(db):
+    from app.players.models import Player, PlayerStatus
+
+    p = Player(name="Elsewhere Eric", status=PlayerStatus.EXTERNAL, team_name="Real Somewhere")
+    db.add(p)
+    await db.commit()
+    return str(p.id)
+
+
+@pytest_asyncio.fixture
+async def staff(client: AsyncClient, db) -> dict:
+    from sqlalchemy import select
+
+    from app.auth.models import User
+
+    tokens = await _register(client, "staff_pinv@test.com", club_name="TX Staff")
+    user = (await db.execute(select(User).where(User.email == "staff_pinv@test.com"))).scalar_one()
+    user.is_superuser = True
+    await db.commit()
+    return tokens
+
+
+async def _agent_with_mandate(client, db, player_id, *, active=True) -> dict:
+    from sqlalchemy import select
+
+    from app.auth.models import AgentProfile, User
+    from app.mandates.models import Mandate, MandateStatus
+
+    tokens = (await client.post("/auth/register", json={
+        "email": "agent_pinv@test.com", "password": "password123", "user_type": "AGENT",
+        "display_name": "Ada Agent", "agency_name": "Ada Sports", "country": "England",
+    })).json()
+    user = (await db.execute(select(User).where(User.email == "agent_pinv@test.com"))).scalar_one()
+    profile = (await db.execute(select(AgentProfile).where(AgentProfile.user_id == user.id))).scalar_one()
+    import uuid as _uuid
+
+    db.add(Mandate(agent_id=profile.id, player_id=_uuid.UUID(player_id),
+                   status=MandateStatus.ACTIVE if active else MandateStatus.REVOKED))
+    await db.commit()
+    return tokens
+
+
+@pytest.mark.asyncio
+async def test_staff_invite_a_free_agent(client, staff, db):
+    player_id = await _free_agent(db)
+    resp = await client.post(
+        "/admin/player-invitations", json={"player_id": player_id, "email": "fred@free.com"},
+        headers=_auth_headers(staff),
+    )
+    assert resp.status_code == 201, resp.text
+    token = _token(resp.json())
+    assert (await client.get(f"/auth/player-invitations/{token}")).json()["invited_by"] == "TransferX"
+    listed = (await client.get("/admin/player-invitations", headers=_auth_headers(staff))).json()
+    assert listed[0]["player_name"] == "Free Agent Fred"
+    accepted = await client.post(f"/auth/player-invitations/{token}/accept", json={"password": "password123"})
+    assert accepted.status_code == 201, accepted.text
+
+
+@pytest.mark.asyncio
+async def test_staff_cannot_invite_club_or_external_players(client, staff, club, db):
+    club_player = await _create_player_for_seller(client, _auth_headers(club))
+    for pid in (club_player["id"], await _external_player(db)):
+        resp = await client.post(
+            "/admin/player-invitations", json={"player_id": pid, "email": "x@y.com"}, headers=_auth_headers(staff),
+        )
+        assert resp.status_code == 400, resp.text
+        assert "not a free agent" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_only_staff_use_the_admin_route(client, club, db):
+    player_id = await _free_agent(db)
+    resp = await client.post(
+        "/admin/player-invitations", json={"player_id": player_id, "email": "x@y.com"}, headers=_auth_headers(club),
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_agent_invites_his_free_agent_client(client, db):
+    player_id = await _free_agent(db)
+    agent = await _agent_with_mandate(client, db, player_id)
+    status_before = (await client.get(f"/agents/me/players/{player_id}/account", headers=_auth_headers(agent))).json()
+    assert status_before["has_account"] is False
+
+    resp = await client.post(
+        "/agents/me/player-invitations", json={"player_id": player_id, "email": "fred@free.com"},
+        headers=_auth_headers(agent),
+    )
+    assert resp.status_code == 201, resp.text
+    token = _token(resp.json())
+    assert (await client.get(f"/auth/player-invitations/{token}")).json()["invited_by"] == "your agent Ada Agent"
+
+
+@pytest.mark.asyncio
+async def test_agent_needs_an_active_mandate(client, db):
+    player_id = await _free_agent(db)
+    agent = await _agent_with_mandate(client, db, player_id, active=False)
+    resp = await client.post(
+        "/agents/me/player-invitations", json={"player_id": player_id, "email": "fred@free.com"},
+        headers=_auth_headers(agent),
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_agent_cannot_invite_a_client_who_has_a_club(client, club, db):
+    club_player = await _create_player_for_seller(client, _auth_headers(club))
+    agent = await _agent_with_mandate(client, db, club_player["id"])
+    resp = await client.post(
+        "/agents/me/player-invitations", json={"player_id": club_player["id"], "email": "p@club.com"},
+        headers=_auth_headers(agent),
+    )
+    assert resp.status_code == 400
+    assert "his club invites him" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_a_club_cannot_invite_a_free_agent(client, club, db):
+    player_id = await _free_agent(db)
+    assert (await _invite(client, club, player_id)).status_code == 404

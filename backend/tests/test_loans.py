@@ -1025,3 +1025,194 @@ async def test_an_approved_option_fails_soft_if_the_loan_ended_meanwhile(
         f"/clubs/me/approvals/{resp.json()['approval_id']}/approve", headers=_auth_headers(loanee)
     )
     assert done.json()["status"] == "APPROVED_FAILED", done.text
+
+
+# ── A conditional obligation needs both clubs to confirm (2026-09-28) ────────
+
+
+async def _conditional_obligation_loan(client, db, parent, loanee, *, due=True):
+    player, _, loan = await _run_loan_to_completion(
+        client, db, parent, loanee, option_to_buy=18_000_000, obligation=True
+    )
+    loan.obligation_conditions = "If the club is promoted"
+    if due:
+        loan.end_date = _today() - timedelta(days=1)
+    await db.commit()
+    return player, loan
+
+
+async def _answer(client, club, loan_id, met: bool):
+    return await client.post(
+        f"/loans/{loan_id}/obligation-conditions", json={"met": met}, headers=_auth_headers(club)
+    )
+
+
+async def _reload(db, loan):
+    from app.loans.models import PlayerLoan
+
+    row = (await db.execute(select(PlayerLoan).where(PlayerLoan.id == loan.id))).scalar_one()
+    await db.refresh(row)
+    return row
+
+
+@pytest.mark.asyncio
+async def test_conditional_obligation_waits_for_both_clubs_at_expiry(client: AsyncClient, parent, loanee, db):
+    from app.loans import service as loans_service
+
+    _, loan = await _conditional_obligation_loan(client, db, parent, loanee)
+    first = await loans_service.process_due_loans(db)
+    await db.commit()
+    assert first["converted"] == 0 and first["returned"] == 0
+    row = await _reload(db, loan)
+    assert row.status.value == "ACTIVE" and row.conversion_deal_id is None
+    assert row.obligation_prompted_at is not None  # both clubs asked to confirm
+
+    prompted = row.obligation_prompted_at
+    await loans_service.process_due_loans(db)
+    await db.commit()
+    assert (await _reload(db, loan)).obligation_prompted_at == prompted  # asked once
+
+
+@pytest.mark.asyncio
+async def test_both_clubs_confirm_met_starts_the_purchase(client: AsyncClient, parent, loanee, db):
+    _, loan = await _conditional_obligation_loan(client, db, parent, loanee)
+    first = await _answer(client, loanee, loan.id, True)
+    assert first.status_code == 200, first.text
+    assert first.json()["loanee_obligation_answer"] == "MET"
+    assert first.json()["conversion_deal_id"] is None  # one answer is not enough
+
+    second = await _answer(client, parent, loan.id, True)
+    assert second.status_code == 200, second.text
+    assert second.json()["conversion_deal_id"] is not None
+
+
+@pytest.mark.asyncio
+async def test_both_clubs_say_not_met_returns_the_player(client: AsyncClient, parent, loanee, db):
+    from app.players.models import Player
+
+    player, loan = await _conditional_obligation_loan(client, db, parent, loanee)
+    await _answer(client, parent, loan.id, False)
+    resp = await _answer(client, loanee, loan.id, False)
+    assert resp.status_code == 200, resp.text
+    row = await _reload(db, loan)
+    assert row.status.value != "ACTIVE"
+    assert row.end_reason == "OBLIGATION_NOT_MET"
+    assert row.conversion_deal_id is None
+    back = (await db.execute(select(Player).where(Player.id == uuid_mod.UUID(player["id"])))).scalar_one()
+    await db.refresh(back)
+    assert str(back.current_club_id) == await _club_id(client, _auth_headers(parent))
+
+
+@pytest.mark.asyncio
+async def test_disagreement_changes_nothing(client: AsyncClient, parent, loanee, db):
+    _, loan = await _conditional_obligation_loan(client, db, parent, loanee)
+    await _answer(client, loanee, loan.id, True)
+    resp = await _answer(client, parent, loan.id, False)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ACTIVE" and resp.json()["conversion_deal_id"] is None
+    # An answer can change until it is settled: the parent comes round.
+    resp = await _answer(client, parent, loan.id, True)
+    assert resp.json()["conversion_deal_id"] is not None
+
+
+@pytest.mark.asyncio
+async def test_answers_before_the_end_are_acted_on_at_expiry(client: AsyncClient, parent, loanee, db):
+    from app.loans import service as loans_service
+
+    _, loan = await _conditional_obligation_loan(client, db, parent, loanee, due=False)
+    await _answer(client, parent, loan.id, True)
+    resp = await _answer(client, loanee, loan.id, True)
+    assert resp.json()["conversion_deal_id"] is None  # not due yet
+
+    row = await _reload(db, loan)
+    row.end_date = _today() - timedelta(days=1)
+    await db.commit()
+    result = await loans_service.process_due_loans(db)
+    await db.commit()
+    assert result["converted"] == 1
+
+
+@pytest.mark.asyncio
+async def test_obligation_answers_are_for_the_two_clubs_and_conditional_loans(
+    client: AsyncClient, parent, loanee, outsider, db
+):
+    _, loan = await _conditional_obligation_loan(client, db, parent, loanee)
+    assert (await _answer(client, outsider, loan.id, True)).status_code == 404
+
+    _, _, plain = await _run_loan_to_completion(
+        client, db, parent, loanee, option_to_buy=18_000_000, obligation=True
+    )
+    resp = await _answer(client, parent, plain.id, True)
+    assert resp.status_code == 400
+    assert "no conditional obligation" in resp.json()["detail"]
+
+
+# ── TransferX settles a conditional obligation the clubs could not ───────────
+
+
+@pytest_asyncio.fixture
+async def staff(client: AsyncClient, db) -> dict:
+    from app.auth.models import User
+
+    tokens = await _register(client, "staff_loans@test.com", club_name="TX Staff Loans")
+    user = (await db.execute(select(User).where(User.email == "staff_loans@test.com"))).scalar_one()
+    user.is_superuser = True
+    await db.commit()
+    return tokens
+
+
+async def _decide(client, who, loan_id, met: bool, reason="The club finished 1st and was promoted"):
+    return await client.post(
+        f"/admin/loans/{loan_id}/obligation-decision", json={"met": met, "reason": reason},
+        headers=_auth_headers(who),
+    )
+
+
+@pytest.mark.asyncio
+async def test_staff_see_and_settle_a_disagreement_as_met(client: AsyncClient, parent, loanee, staff, db):
+    from app.audit.models import AuditEvent
+
+    _, loan = await _conditional_obligation_loan(client, db, parent, loanee)
+    await _answer(client, loanee, loan.id, True)
+    await _answer(client, parent, loan.id, False)
+
+    waiting = (await client.get("/admin/loans/obligations-awaiting", headers=_auth_headers(staff))).json()
+    row = next(r for r in waiting if r["id"] == str(loan.id))
+    assert (row["parent_obligation_answer"], row["loanee_obligation_answer"]) == ("NOT_MET", "MET")
+
+    resp = await _decide(client, staff, loan.id, True)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["conversion_deal_id"] is not None
+    event = (await db.execute(
+        select(AuditEvent).where(AuditEvent.entity_id == loan.id, AuditEvent.action == "OBLIGATION_DECIDED_BY_STAFF")
+    )).scalar_one()
+    assert event.payload_json["reason"] == "The club finished 1st and was promoted"
+
+    waiting = (await client.get("/admin/loans/obligations-awaiting", headers=_auth_headers(staff))).json()
+    assert all(r["id"] != str(loan.id) for r in waiting)
+
+
+@pytest.mark.asyncio
+async def test_staff_settle_as_not_met_returns_him(client: AsyncClient, parent, loanee, staff, db):
+    _, loan = await _conditional_obligation_loan(client, db, parent, loanee)  # neither club answered
+    resp = await _decide(client, staff, loan.id, False, reason="Relegated, so the condition failed")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] != "ACTIVE"
+    assert resp.json()["end_reason"] == "OBLIGATION_NOT_MET"
+
+
+@pytest.mark.asyncio
+async def test_staff_decision_needs_a_due_loan_and_a_reason(client: AsyncClient, parent, loanee, staff, db):
+    _, early = await _conditional_obligation_loan(client, db, parent, loanee, due=False)
+    assert (await _decide(client, staff, early.id, True)).status_code == 400  # not ended yet
+    row = await _reload(db, early)
+    row.end_date = _today() - timedelta(days=1)
+    await db.commit()
+    assert (await _decide(client, staff, early.id, True, reason="  ")).status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_clubs_cannot_use_the_staff_decision(client: AsyncClient, parent, loanee, db):
+    _, loan = await _conditional_obligation_loan(client, db, parent, loanee)
+    assert (await _decide(client, parent, loan.id, True)).status_code == 403
+    assert (await client.get("/admin/loans/obligations-awaiting", headers=_auth_headers(loanee))).status_code == 403

@@ -8,6 +8,7 @@ import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Metric from "../../components/ui/Metric";
 import Spinner from "../../components/ui/Spinner";
+import PlayerAccountCard from "../../components/players/PlayerAccountCard";
 import { formatDate, getApiError } from "../../lib/utils";
 import { positionVariant } from "../../lib/badges";
 import type { PlayerPosition } from "../../types/enums";
@@ -240,6 +241,14 @@ export default function AdminPlayerDetailPage() {
             </form>
           )}
         </Card>
+
+        {/* ── Player account: TransferX invites a free agent ── */}
+        <PlayerAccountCard
+          playerId={player.id}
+          playerName={player.name}
+          inviter="staff"
+          canInvite={player.status === "FREE_AGENT"}
+        />
 
         {/* ── Contract info ── */}
         <Card>

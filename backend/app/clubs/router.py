@@ -687,7 +687,7 @@ async def get_player_account_status(
     player = (await db.execute(select(Player).where(Player.id == player_id))).scalar_one_or_none()
     if player is None or await players_service.get_owning_club_id(db, player) != club.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
-    invitations = await clubs_service.list_player_invitations(db, club.id, player_id)
+    invitations = await clubs_service.list_player_invitations(db, club_id=club.id, player_id=player_id)
     return PlayerAccountStatusResponse(
         has_account=await players_service.player_has_account(db, player_id),
         invitation=PlayerInvitationResponse.model_validate(invitations[0]) if invitations else None,
@@ -703,12 +703,7 @@ async def invite_player(
 ):
     """Invite one of our players to create his account. The accept link is
     emailed, and returned once here so it can be passed on by hand."""
-    import asyncio
-
     from app.audit import service as audit_service
-    from app.config import settings
-    from app.notifications.email import send_player_invitation_email
-    from app.players.models import Player
 
     club = await _get_my_club_or_403(db, current_user)
     try:
@@ -727,11 +722,8 @@ async def invite_player(
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    player = (await db.execute(select(Player).where(Player.id == inv.player_id))).scalar_one()
-    accept_url = f"{settings.frontend_base_url}/join/player?token={raw_token}"
-    asyncio.create_task(send_player_invitation_email(inv.email, player.name, club.name, accept_url))
     resp = PlayerInvitationResponse.model_validate(inv)
-    resp.accept_url = accept_url
+    resp.accept_url = await clubs_service.send_player_invitation(db, inv, raw_token)
     return resp
 
 
