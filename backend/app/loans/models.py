@@ -36,6 +36,8 @@ class LoanEndReason(str, enum.Enum):
     RECALLED = "RECALLED"
     OPTION_EXERCISED = "OPTION_EXERCISED"
     OBLIGATION = "OBLIGATION"
+    # A conditional obligation both clubs confirmed was not met: he returns.
+    OBLIGATION_NOT_MET = "OBLIGATION_NOT_MET"
     PARENT_SOLD = "PARENT_SOLD"
 
 
@@ -98,6 +100,14 @@ class PlayerLoan(Base):
         DateTime(timezone=True), nullable=True
     )
     end_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # A conditional obligation to buy ("if promoted") starts the purchase only
+    # when BOTH clubs confirm the conditions were met (product decision,
+    # 2026-09-28; migration 0084). Each club's answer: "MET", "NOT_MET" or
+    # null (not answered). An unconditional obligation needs no answers.
+    parent_obligation_answer: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    loanee_obligation_answer: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # When the clubs were asked, at expiry, to confirm (once).
+    obligation_prompted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # The permanent deal this loan turned into, whether the loanee exercised an
     # option or an obligation crystallised at expiry. Set when the deal is
     # created, not when it completes: it is what stops the daily job starting a

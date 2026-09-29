@@ -9,6 +9,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -19,7 +20,7 @@ from app.auth.models import User
 from app.clubs import service as clubs_service
 from app.clubs.capabilities import Capability, require_club_capability
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_superuser, get_current_user
 from app.loans import service
 from app.loans.models import LoanStatus, PlayerLoan
 from app.loans.schemas import LoanResponse
@@ -225,3 +226,95 @@ async def recall(
         )
     ).scalar_one()
     return _to_response(loan, club.id)
+
+
+class ObligationAnswerRequest(BaseModel):
+    met: bool
+
+
+@router.post("/loans/{loan_id}/obligation-conditions", response_model=LoanResponse)
+async def answer_obligation_conditions(
+    loan_id: uuid.UUID,
+    body: ObligationAnswerRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _write: User = Depends(_market_write),
+):
+    """A club's answer to whether a conditional obligation to buy's conditions
+    were met. The purchase starts only when both clubs say they were (product
+    decision, 2026-09-28); both saying not met returns the player. Answers
+    given before the loan ends are acted on when it does."""
+    loan = (
+        await db.execute(select(PlayerLoan).where(PlayerLoan.id == loan_id).options(*_LOAN_OPTS))
+    ).scalar_one_or_none()
+    club = await _club_or_403(db, current_user)
+    if loan is None or club.id not in (loan.parent_club_id, loan.loanee_club_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan not found")
+    try:
+        await service.answer_obligation_conditions(
+            db, loan, actor_club_id=club.id, met=body.met, actor_user_id=current_user.id,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    await db.commit()
+    loan = (
+        await db.execute(select(PlayerLoan).where(PlayerLoan.id == loan_id).options(*_LOAN_OPTS))
+    ).scalar_one()
+    return _to_response(loan, club.id)
+
+
+# ── TransferX staff: conditional obligations the clubs could not settle ──────
+
+
+class StaffObligationDecisionRequest(BaseModel):
+    met: bool
+    reason: str
+
+
+@router.get("/admin/loans/obligations-awaiting", response_model=list[LoanResponse])
+async def obligations_awaiting_decision(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    """Conditional obligations past their end date that the clubs have not
+    settled — one never answered, or they disagree. Each row carries both
+    clubs' answers."""
+    from datetime import date as _date
+
+    rows = (await db.execute(
+        select(PlayerLoan).where(
+            PlayerLoan.status == LoanStatus.ACTIVE,
+            PlayerLoan.obligation_to_buy.is_(True),
+            PlayerLoan.conversion_deal_id.is_(None),
+            PlayerLoan.end_date <= _date.today(),
+        ).options(*_LOAN_OPTS).order_by(PlayerLoan.end_date)
+    )).scalars().all()
+    return [_to_response(loan, None) for loan in rows if service.awaiting_obligation_decision(loan)]
+
+
+@router.post("/admin/loans/{loan_id}/obligation-decision", response_model=LoanResponse)
+async def staff_decide_obligation(
+    loan_id: uuid.UUID,
+    body: StaffObligationDecisionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    """TransferX settles it: met starts the purchase, not met returns him."""
+    loan = (
+        await db.execute(select(PlayerLoan).where(PlayerLoan.id == loan_id).options(*_LOAN_OPTS))
+    ).scalar_one_or_none()
+    if loan is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan not found")
+    try:
+        await service.staff_decide_obligation(
+            db, loan, met=body.met, reason=body.reason, actor_user_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    await db.commit()
+    loan = (
+        await db.execute(select(PlayerLoan).where(PlayerLoan.id == loan_id).options(*_LOAN_OPTS))
+    ).scalar_one()
+    return _to_response(loan, None)

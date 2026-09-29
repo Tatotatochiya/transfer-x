@@ -7,6 +7,7 @@ import Badge from "../../components/ui/Badge";
 import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
+import ObligationDecisionsPanel from "../../components/admin/ObligationDecisionsPanel";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
 
 const DEAL_STATUSES = ["IN_PROGRESS", "PENDING_COMPLETION", "COMPLETED", "COLLAPSED"];
@@ -243,6 +244,7 @@ export default function AdminDealsPage() {
 
   return (
     <div>
+      <ObligationDecisionsPanel />
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>

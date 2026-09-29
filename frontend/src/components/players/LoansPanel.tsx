@@ -72,6 +72,55 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
     onError: (e) => setError(getApiError(e)),
   });
 
+  // A conditional obligation starts the purchase only when both clubs
+  // confirm its conditions were met (2026-09-28). Each answers here.
+  const answer = useMutation({
+    mutationFn: ({ loanId, met }: { loanId: string; met: boolean }) =>
+      api.post<Loan>(`/loans/${loanId}/obligation-conditions`, { met }).then((r) => r.data),
+    onSuccess: (result) => {
+      invalidate();
+      if (result.conversion_deal_id) {
+        addToast("Both clubs confirmed — the purchase has started.", "success");
+        navigate(`/deals/${result.conversion_deal_id}`);
+      }
+    },
+    onError: (e) => setError(getApiError(e)),
+  });
+
+  function ObligationAnswers({ loan, side }: { loan: Loan; side: "parent" | "loanee" }) {
+    const mine = side === "parent" ? loan.parent_obligation_answer : loan.loanee_obligation_answer;
+    const theirs = side === "parent" ? loan.loanee_obligation_answer : loan.parent_obligation_answer;
+    const word = (a: string | null) => (a === "MET" ? "met" : a === "NOT_MET" ? "not met" : "not answered");
+    return (
+      <span className="flex flex-wrap items-center gap-1.5 text-[13px]">
+        <span className="text-text-muted">
+          Conditions met? You: <span className="text-text">{word(mine)}</span> · They:{" "}
+          <span className="text-text">{word(theirs)}</span>
+        </span>
+        {canAct && (
+          <>
+            <Button
+              size="sm"
+              variant={mine === "MET" ? "primary" : "secondary"}
+              disabled={answer.isPending}
+              onClick={() => answer.mutate({ loanId: loan.id, met: true })}
+            >
+              Met
+            </Button>
+            <Button
+              size="sm"
+              variant={mine === "NOT_MET" ? "danger" : "secondary"}
+              disabled={answer.isPending}
+              onClick={() => answer.mutate({ loanId: loan.id, met: false })}
+            >
+              Not met
+            </Button>
+          </>
+        )}
+      </span>
+    );
+  }
+
   if (out.length === 0 && incoming.length === 0) return null;
 
   function returnDate(loan: Loan) {
@@ -152,8 +201,11 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
                   </p>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
                   {optionChip(loan)}
+                  {loan.obligation_to_buy && loan.obligation_conditions && !loan.conversion_deal_id && (
+                    <ObligationAnswers loan={loan} side="parent" />
+                  )}
 
                   {/* Once a purchase is running, that is the state that matters
                       — and recalling him would contradict a sale in progress. */}
@@ -284,11 +336,16 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
                       end date, and pretending otherwise would suggest the club
                       still has a choice. */}
                   {loan.obligation_to_buy && !loan.conversion_deal_id && (
-                    <span className="text-[13px] text-text-muted">
-                      {loan.obligation_conditions
-                        ? "Purchase starts at the end date — collapse it if the conditions were not met"
-                        : "Purchase starts at the end date"}
-                    </span>
+                    loan.obligation_conditions ? (
+                      <span className="flex flex-col gap-1">
+                        <span className="text-[13px] text-text-muted">
+                          The purchase starts at the end date only if both clubs confirm the conditions were met
+                        </span>
+                        <ObligationAnswers loan={loan} side="loanee" />
+                      </span>
+                    ) : (
+                      <span className="text-[13px] text-text-muted">Purchase starts at the end date</span>
+                    )
                   )}
                 </div>
               </div>

@@ -43,6 +43,10 @@ class LoanResponse(BaseModel):
     # Set once the loan is being made permanent. Non-null means an option was
     # exercised or an obligation crystallised, and that deal is now running.
     conversion_deal_id: uuid.UUID | None = None
+    # A conditional obligation: each club's answer to "were its conditions
+    # met?" — "MET", "NOT_MET" or null. Both MET starts the purchase.
+    parent_obligation_answer: str | None = None
+    loanee_obligation_answer: str | None = None
     created_at: datetime
 
     player: LoanPlayerSummary | None = None

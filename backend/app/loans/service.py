@@ -250,6 +250,12 @@ async def end_loan(
     elif reason == LoanEndReason.PARENT_SOLD:
         message = f"{player.name}'s loan has ended — his parent club has sold him"
         notif_type = NotificationType.LOAN_ENDED
+    elif reason == LoanEndReason.OBLIGATION_NOT_MET:
+        message = (
+            f"{player.name}'s loan has ended and he returns to his club: both clubs confirmed "
+            "the obligation's conditions were not met"
+        )
+        notif_type = NotificationType.LOAN_ENDED
     else:
         message = f"{player.name}'s loan has ended"
         notif_type = NotificationType.LOAN_ENDED
@@ -344,20 +350,136 @@ async def _start_conversion(db: AsyncSession, loan: PlayerLoan, *, player: Playe
             else "Option to buy exercised"
         ),
     )
-    # An obligation's conditions cannot be checked by the platform ("if
-    # promoted"), so the purchase starts either way and the notice says what
-    # it was conditional on: the clubs confirm it by running the deal, or
-    # collapse it if the conditions were not met.
-    conditions = loan.obligation_conditions if loan.obligation_to_buy else None
+    # A conditional obligation only gets here once both clubs have confirmed
+    # its conditions were met (resolve_conditional_obligation).
     message = (
         f"{player.name}'s loan is becoming permanent — "
         f"{'obligation' if loan.obligation_to_buy else 'option'} triggered at "
         f"{fee:,.0f}"
     )
-    if conditions:
-        message += f". Conditional on: {conditions} — collapse the deal if that was not met"
+    if is_conditional_obligation(loan):
+        message += ", both clubs having confirmed its conditions were met"
     await _notify_both_clubs(db, loan, type=NotificationType.LOAN_CONVERTED, message=message)
     return deal
+
+
+def is_conditional_obligation(loan: PlayerLoan) -> bool:
+    """An obligation to buy with conditions the platform cannot check."""
+    return bool(
+        loan.obligation_to_buy and loan.option_to_buy is not None and (loan.obligation_conditions or "").strip()
+    )
+
+
+async def answer_obligation_conditions(
+    db: AsyncSession, loan: PlayerLoan, *, actor_club_id: uuid.UUID, met: bool,
+    actor_user_id: uuid.UUID | None = None,
+) -> str:
+    """One club's answer to "were the obligation's conditions met?".
+
+    Either club may answer at any time during the loan, and change its answer
+    until the question is settled. Once the loan has reached its end date the
+    answers are acted on at once (see resolve_conditional_obligation).
+    Returns the outcome: "converted", "returned" or "waiting".
+    """
+    if loan.status != LoanStatus.ACTIVE:
+        raise ValueError(f"Loan is already {loan.status.value}")
+    if not is_conditional_obligation(loan):
+        raise ValueError("This loan has no conditional obligation to buy")
+    if loan.conversion_deal_id is not None:
+        raise ValueError("The purchase has already started")
+    if actor_club_id == loan.parent_club_id:
+        loan.parent_obligation_answer = "MET" if met else "NOT_MET"
+        other_club_id = loan.loanee_club_id
+    elif actor_club_id == loan.loanee_club_id:
+        loan.loanee_obligation_answer = "MET" if met else "NOT_MET"
+        other_club_id = loan.parent_club_id
+    else:
+        raise PermissionError("Only the two clubs in this loan can answer")
+    await db.flush()
+
+    player = (await db.execute(select(Player).where(Player.id == loan.player_id))).scalar_one()
+    await audit_service.emit(
+        db, entity_type="LOAN", entity_id=loan.id, action="OBLIGATION_CONDITIONS_ANSWERED",
+        actor_user_id=actor_user_id,
+        payload={"club_id": str(actor_club_id), "met": met},
+        description=f"A club said the obligation's conditions were {'met' if met else 'not met'}",
+    )
+    other = (await db.execute(select(Club).where(Club.id == other_club_id))).scalar_one_or_none()
+    if other is not None and other.user_id is not None:
+        await notif_service.create_notification(
+            db, recipient_user_id=other.user_id, type=NotificationType.LOAN_CONVERTED,
+            message=(
+                f"The other club says the conditions of {player.name}'s obligation to buy were "
+                f"{'met' if met else 'not met'} — confirm your answer"
+            ),
+            link=f"/players/market/{loan.player_id}", related_player_id=loan.player_id,
+        )
+    if loan.end_date <= datetime.now(timezone.utc).date():
+        return await resolve_conditional_obligation(db, loan, player=player)
+    return "waiting"
+
+
+async def resolve_conditional_obligation(db: AsyncSession, loan: PlayerLoan, *, player: Player) -> str:
+    """At or after the loan's end: both clubs said met → the purchase starts;
+    both said not met → he returns to his club; otherwise (an answer missing,
+    or the clubs disagree) nothing happens and the loan waits for them."""
+    answers = (loan.parent_obligation_answer, loan.loanee_obligation_answer)
+    if answers == ("MET", "MET"):
+        await _start_conversion(db, loan, player=player)
+        return "converted"
+    if answers == ("NOT_MET", "NOT_MET"):
+        await end_loan(db, loan, reason=LoanEndReason.OBLIGATION_NOT_MET)
+        return "returned"
+    return "waiting"
+
+
+def awaiting_obligation_decision(loan: PlayerLoan, today=None) -> bool:
+    """A conditional obligation past its end date that the clubs have not
+    settled: an answer missing, or the two clubs disagree."""
+    today = today or datetime.now(timezone.utc).date()
+    return (
+        loan.status == LoanStatus.ACTIVE
+        and is_conditional_obligation(loan)
+        and loan.conversion_deal_id is None
+        and loan.end_date <= today
+    )
+
+
+async def staff_decide_obligation(
+    db: AsyncSession, loan: PlayerLoan, *, met: bool, reason: str, actor_user_id: uuid.UUID | None = None,
+) -> str:
+    """TransferX staff settle a conditional obligation the clubs could not:
+    one of them never answered, or they disagree. Met starts the purchase;
+    not met returns the player. Needs a reason, which both clubs see and the
+    audit keeps. Returns "converted" or "returned"."""
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("Give a reason — both clubs see it")
+    if not awaiting_obligation_decision(loan):
+        raise ValueError("This loan has no unsettled conditional obligation past its end date")
+
+    player = (await db.execute(select(Player).where(Player.id == loan.player_id))).scalar_one()
+    await audit_service.emit(
+        db, entity_type="LOAN", entity_id=loan.id, action="OBLIGATION_DECIDED_BY_STAFF",
+        actor_user_id=actor_user_id,
+        payload={
+            "met": met, "reason": reason,
+            "parent_answer": loan.parent_obligation_answer, "loanee_answer": loan.loanee_obligation_answer,
+        },
+        description=f"TransferX decided the obligation's conditions were {'met' if met else 'not met'}: {reason}",
+    )
+    await _notify_both_clubs(
+        db, loan, type=NotificationType.LOAN_CONVERTED if met else NotificationType.LOAN_ENDED,
+        message=(
+            f"TransferX has decided the conditions of {player.name}'s obligation to buy were "
+            f"{'met — the purchase starts' if met else 'not met — he returns to his club'}. Reason: {reason}"
+        ),
+    )
+    if met:
+        await _start_conversion(db, loan, player=player)
+        return "converted"
+    await end_loan(db, loan, reason=LoanEndReason.OBLIGATION_NOT_MET)
+    return "returned"
 
 
 async def exercise_option(
@@ -417,6 +539,30 @@ async def process_due_loans(db: AsyncSession) -> dict[str, int]:
         # terms. The loan stays ACTIVE while that deal runs and is ended by
         # the deal completing — conversion_deal_id is what stops this job
         # starting a second deal on tomorrow's run.
+        if is_conditional_obligation(loan):
+            # Both clubs must confirm the conditions (product decision,
+            # 2026-09-28). Settle it if they have; otherwise ask them, once.
+            if loan.conversion_deal_id is None:
+                player = (
+                    await db.execute(select(Player).where(Player.id == loan.player_id))
+                ).scalar_one_or_none()
+                if player is not None:
+                    outcome = await resolve_conditional_obligation(db, loan, player=player)
+                    if outcome == "converted":
+                        converted += 1
+                    elif outcome == "returned":
+                        returned += 1
+                    elif loan.obligation_prompted_at is None:
+                        await _notify_both_clubs(
+                            db, loan, type=NotificationType.LOAN_ENDING_SOON,
+                            message=(
+                                f"{player.name}'s loan has reached its end. Confirm whether the obligation's "
+                                f"conditions were met ({loan.obligation_conditions}) — the purchase starts "
+                                "only when both clubs say they were"
+                            ),
+                        )
+                        loan.obligation_prompted_at = now
+            continue
         if loan.obligation_to_buy and loan.option_to_buy is not None:
             if loan.conversion_deal_id is None:
                 player = (
