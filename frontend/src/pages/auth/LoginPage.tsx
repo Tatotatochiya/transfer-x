@@ -29,7 +29,11 @@ export default function LoginPage() {
       if (axios.isAxiosError(err) && !err.response) {
         setError("Can't reach the server. Check your connection and try again.");
       } else {
-        setError("Invalid email or password.");
+        // The server says when a username is shared by two accounts.
+        const detail = axios.isAxiosError(err) ? err.response?.data?.detail : undefined;
+        setError(typeof detail === "string" && detail.includes("email address")
+          ? detail
+          : "Invalid email, username or password.");
       }
     } finally {
       setLoading(false);
@@ -59,18 +63,21 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
+              {/* A username is the part of the email before the "@". */}
               <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-text-secondary">
-                Email
+                Email or username
               </label>
               <input
                 id="email"
-                type="email"
-                autoComplete="email"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
-                placeholder="you@club.com"
+                placeholder="you@club.com or you"
               />
             </div>
 
