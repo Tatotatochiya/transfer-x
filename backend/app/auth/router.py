@@ -98,11 +98,20 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
 
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
-    user = await auth_service.authenticate_user(db, email=body.email, password=body.password)
+    """Sign in with an email address or a username (the part of the email
+    before the "@")."""
+    try:
+        user = await auth_service.authenticate_user(db, email=body.email, password=body.password)
+    except auth_service.AmbiguousUsername:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="More than one account uses that username — sign in with your email address",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Incorrect email, username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = auth_service.create_access_token(user.id, user.email)

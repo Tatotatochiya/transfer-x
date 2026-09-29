@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.auth.models import UserType
 
@@ -21,7 +21,10 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    # An email address or a username. A username is the part of the email
+    # before the "@" (product decision, 2026-09-29), so there is no separate
+    # username to register; the field keeps its name for existing clients.
+    email: str = Field(min_length=1, max_length=254)
     password: str
 
 

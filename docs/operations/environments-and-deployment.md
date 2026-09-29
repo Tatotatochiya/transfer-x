@@ -56,7 +56,13 @@ Seeded 2026-08-25 so a demo can walk the whole transfer pipeline. All seven deal
 | James Mitchell — Elite Sports Management | `james.mitchell@elitesports.com` | 6 (Arsenal + Liverpool) | 2 — at `PERSONAL_TERMS` and `PAPERWORK` |
 | Marco Rossi — Global Football Agency | `marco.rossi@globalfootball.com` | 5 (Liverpool) | 0 |
 
-Club logins follow the same password: `arsenal@transferx.com`, `chelsea@transferx.com`, `liverpool@transferx.com`, plus `admin@club.com` for staff-only actions.
+Club logins follow the same password. **Every account can sign in with its username**, which is the part of the email before the "@" (e.g. `arsenal`), or with the full email.
+
+All 20 Premier League clubs are clubs on TransferX:
+- **The original three:** `arsenal`, `chelsea`, `liverpool`.
+- **Added locally on 2026-09-29** by `scripts/onboard_premier_league_clubs.py`: `astonvilla`, `bournemouth`, `brentford`, `brighton`, `burnley`, `crystalpalace`, `everton`, `fulham`, `leeds`, `manchestercity`, `manchesterunited`, `newcastle`, `nottinghamforest`, `sunderland`, `tottenham`, `westham`, `wolves`.
+
+Every club's email is `<username>@transferx.com`. `admin@club.com` is for staff-only actions.
 
 > **Every account on Railway shares the password `password123`**, including the superuser. That is acceptable for a demo environment nobody real depends on, and unacceptable the moment this becomes a staging or production environment — which is part of what the *Decide explicitly what Railway is* TODO above has to settle.
 
@@ -78,6 +84,7 @@ One-off repair scripts that have been run locally but not yet on Railway. These 
 | Script | Why | Run locally |
 |---|---|---|
 | `backend/scripts/backfill_contract_wages.py` | Every active contract had no wage, so after migration `0071`'s release a loan is refused ("His contract has no wage on record") on every player. Gives each such contract a plausible wage and adds it to the club's wage bill. Run `--dry-run` first. Like `seed_demo.py` it reads `settings.database_url`, so set `DATABASE_URL` to Railway's public URL. | 2026-09-26: 106 contracts; Arsenal +£1.58m/wk, Chelsea +£1.59m/wk, Liverpool +£1.19m/wk. A second run touched nothing. |
+| `backend/scripts/onboard_premier_league_clubs.py` | Only Arsenal, Chelsea and Liverpool were TransferX clubs; the other 17 Premier League clubs were vendor world teams whose players could not be signed. For each of the 17, it creates the owner account (`<name>@transferx.com`, shared demo password), the club (league "Premier League"), a tiered transfer budget, a wage budget about 30% above the squad's wage bill, and an active contract for every squad player. It also relabels the original three's league from "UEFA Champions League" to "Premier League". Idempotent; `--dry-run` first; `--password` sets the shared password. | 2026-09-29: 17 clubs and 574 contracts; the original three relabelled. A second run skipped all 17. |
 | `backend/scripts/repair_player_statuses.py` | Players with no club anywhere were stored as EXTERNAL, not FREE_AGENT (ADR 0003), so they could not be signed or invited (ADR 0007). It re-derives each mismatched player's status through `normalize_player_status`; players who become free agents trigger the usual PLAYER_AVAILABLE notification. Idempotent; run `--dry-run` first. | 2026-09-29: 13 players EXTERNAL → FREE_AGENT; a second run found none. |
 | `backend/scripts/mock_contract_end_dates.py` | **Mock data, for demos only.** No contract carried an end date, so expiring contracts, the morning briefing, "Who might want him?" and the pricing assistant's discount all showed nothing. It gives every contracted player a plausible end date: 30 June 2027–31, or 31 January 2027 for about 5%. Dates are deterministic by player id, and a real date is never overwritten. Replace with real dates from the clubs or the vendor feed before any real use. | 2026-09-28: 106 active contracts and 5,011 players; each TransferX club has 2 contracts ending within six months. A second run touched nothing. |
 

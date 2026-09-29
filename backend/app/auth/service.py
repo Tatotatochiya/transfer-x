@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import bcrypt
 from jose import JWTError, jwt
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import RefreshToken, User
@@ -112,8 +112,36 @@ async def get_user_by_id(db: AsyncSession, user_id: uuid.UUID) -> User | None:
     return await db.get(User, user_id)
 
 
+class AmbiguousUsername(Exception):
+    """More than one account shares this username (the part of their emails
+    before the "@"), so it cannot say which one is signing in."""
+
+
+async def get_user_by_login(db: AsyncSession, identifier: str) -> User | None:
+    """The user an email address or a username names, ignoring case.
+
+    A username is the part of the email before the "@": "arsenal" signs in as
+    arsenal@transferx.com. Two accounts can share one (owner@a.com and
+    owner@b.com); that raises AmbiguousUsername rather than guessing.
+    """
+    ident = identifier.strip().lower()
+    if not ident:
+        return None
+    if "@" in ident:
+        return (await db.execute(select(User).where(func.lower(User.email) == ident))).scalar_one_or_none()
+    # LIKE, with the pattern's own wildcards escaped: "a_b" must not match "axb@…".
+    escaped = ident.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    matches = (await db.execute(
+        select(User).where(func.lower(User.email).like(f"{escaped}@%", escape="\\")).limit(2)
+    )).scalars().all()
+    if len(matches) > 1:
+        raise AmbiguousUsername(ident)
+    return matches[0] if matches else None
+
+
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User | None:
-    user = await get_user_by_email(db, email)
+    """`email` is an email address or a username."""
+    user = await get_user_by_login(db, email)
     if user is None or not verify_password(password, user.hashed_password):
         return None
     if not user.is_active:

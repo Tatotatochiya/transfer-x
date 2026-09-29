@@ -25,6 +25,13 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Sign in with a username.** The username is the part of the email before the "@", so `arsenal` signs in as `arsenal@transferx.com`.
+  - Username and email are both matched regardless of case. The sign-in field reads "Email or username".
+  - If two accounts share a username, the sign-in asks for the email rather than guessing.
+- **All 20 Premier League clubs are on TransferX** (demo data, `backend/scripts/onboard_premier_league_clubs.py`).
+  - The 17 added clubs each have an owner account (`<name>@transferx.com`, username `<name>`, the shared demo password), a tiered budget, and their full squad under contract.
+  - Arsenal, Chelsea and Liverpool are now labelled "Premier League" rather than "UEFA Champions League".
+  - Run locally: 17 clubs and 574 contracts.
 - **TransferX settles a conditional obligation the clubs can't agree on.** Admin → Deals lists obligations past the loan's end that the clubs haven't both confirmed, with each club's answer. Staff decide "met" (the purchase starts) or "not met" (the player returns), with a reason that both clubs see and the audit keeps.
 - **Free agents can be invited** ([ADR 0007](./product/decisions/0007-players-join-by-invitation-agents-can-answer.md)).
   - TransferX staff invite from the admin player page.
