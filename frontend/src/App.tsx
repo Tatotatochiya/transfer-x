@@ -3,7 +3,7 @@ import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useAuthStore } from "./store/auth";
-import { useAuth } from "./hooks/useAuth";
+import { useAuthBootstrap } from "./hooks/useAuth";
 import { useWebSocket } from "./hooks/useWebSocket";
 import AppShell from "./components/layout/AppShell";
 import Spinner from "./components/ui/Spinner";
@@ -98,7 +98,7 @@ const NotFoundPage = () => (
 // ── Single bootstrap + WebSocket connection for the whole app ─────────────────
 
 function GlobalSetup() {
-  useAuth();      // Called once here — not inside route wrappers, so it never gets cancelled by navigation
+  useAuthBootstrap(); // Once, here only — not inside route wrappers, so it never gets cancelled by navigation
   useWebSocket();
   usePageTracking();
   return null;

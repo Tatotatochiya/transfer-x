@@ -215,7 +215,7 @@ async def nl_player_search(
     _require_llm_key()
     check_rate_limit(current_user.id)
     try:
-        return await _search(db, body.query, user_id=current_user.id)
+        return await _search(db, body.query, user_id=current_user.id, buyable=body.buyable)
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"LLM error: {exc}")
 

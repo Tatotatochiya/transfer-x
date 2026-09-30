@@ -34,7 +34,7 @@ export const DEFAULT_PLAYER_FILTERS: PlayerFilterState = {
   position: "",
   status: "",
   open_to_offers: false,
-  buyable: false,
+  buyable: true,
   min_age: "",
   max_age: "",
   nationality: "",

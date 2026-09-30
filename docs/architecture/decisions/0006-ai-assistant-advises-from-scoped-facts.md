@@ -12,7 +12,7 @@ owner: "TODO — assign a Technical Lead"
 AI help was extended from scouting (squad analysis, player fit, market recommendations, natural-language search) to every step of a transfer. The new features, all in `backend/app/ai/assist.py`:
 
 - **Offers:** the offer advisor, the negotiation summary, and rule checks on offer terms.
-- **Deals and the club:** a deal's next steps, and the morning briefing on the War Room and in the daily email.
+- **Deals and the club:** a deal's next steps, and the morning briefing on the Dashboard and in the daily email.
 - **Selling:** the pricing assistant, and "Who might want him?".
 - **Everywhere:** Ask TransferX.
 

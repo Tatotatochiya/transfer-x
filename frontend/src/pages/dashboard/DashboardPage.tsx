@@ -330,7 +330,7 @@ export default function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title="War Room"
+        title="Dashboard"
         subtitle={`${myClub.name}${myClub.league_name ? ` · ${myClub.league_name}` : ""}`}
       />
 

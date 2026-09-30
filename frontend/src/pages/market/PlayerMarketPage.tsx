@@ -39,7 +39,7 @@ function applySavedFilters(saved: Record<string, unknown>, current: PlayerFilter
     position: (saved.position as PlayerFilterState["position"]) ?? "",
     status: (saved.status as PlayerFilterState["status"]) ?? "",
     open_to_offers: (saved.open_to_offers as boolean) ?? false,
-    buyable: (saved.buyable as boolean) ?? false,
+    buyable: (saved.buyable as boolean) ?? DEFAULT_PLAYER_FILTERS.buyable,
     min_age: (saved.min_age as string) ?? "",
     max_age: (saved.max_age as string) ?? "",
     nationality: (saved.nationality as string) ?? "",
@@ -331,7 +331,7 @@ export default function PlayerMarketPage() {
         </div>
       )}
 
-      {isAuthenticated && <NLPlayerSearch />}
+      {isAuthenticated && <NLPlayerSearch buyable={filters.buyable} />}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[250px_1fr]">
         {/* Filter rail */}

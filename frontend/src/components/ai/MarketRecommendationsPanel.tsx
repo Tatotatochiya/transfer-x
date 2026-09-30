@@ -94,7 +94,7 @@ export function MarketRecommendationsPanel({
                   <div className="min-w-0 flex-1">
                     <div className="mb-0.5 flex items-center gap-2">
                       <Link
-                        to={`/market/players/${rec.player_id}`}
+                        to={`/players/market/${rec.player_id}`}
                         className="truncate text-sm font-semibold text-text hover:text-role-agent-text transition-colors"
                       >
                         {rec.name}

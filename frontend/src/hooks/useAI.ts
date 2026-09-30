@@ -53,9 +53,9 @@ export function useShortlistReview(shortlistId: string, enabled: boolean, forceR
 }
 
 export function useNLPlayerSearch() {
-  return useMutation<NLSearchResponse, Error, string>({
-    mutationFn: (query: string) =>
-      api.post<NLSearchResponse>("/ai/player-search", { query }).then((r) => r.data),
+  return useMutation<NLSearchResponse, Error, { query: string; buyable: boolean }>({
+    mutationFn: (body) =>
+      api.post<NLSearchResponse>("/ai/player-search", body).then((r) => r.data),
     retry: false,
   });
 }

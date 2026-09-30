@@ -109,7 +109,7 @@ function getNavGroups(userType: UserType | null): NavGroup[] {
       title: "Home",
       authRequired: true,
       items: [
-        { label: "War Room",  to: "/dashboard", icon: "layout-dashboard" },
+        { label: "Dashboard", to: "/dashboard", icon: "layout-dashboard" },
         { label: "Transfers in progress", to: "/deals", icon: "arrow-right-left" },
         { label: "Enquiries", to: "/enquiries", icon: "message" },
       ],

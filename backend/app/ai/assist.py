@@ -1128,7 +1128,7 @@ async def ask_facts(db: AsyncSession, club, user) -> dict:
              "path": f"/deals/{d.id}"}
             for d in deals
         ],
-        # The War Room's own list: exactly what is waiting on this person now.
+        # The Dashboard's own list: exactly what is waiting on this person now.
         "waiting_on_you": [
             {"what": i.reason, "player": i.player_name, "club": i.club_name, "path": i.link} for i in waiting
         ],
@@ -1151,7 +1151,7 @@ async def ask_facts(db: AsyncSession, club, user) -> dict:
             for p in squad
         ][:60],
         "pages": [
-            {"label": "War Room", "path": "/dashboard"}, {"label": "Browse players", "path": "/players/market"},
+            {"label": "Dashboard", "path": "/dashboard"}, {"label": "Browse players", "path": "/players/market"},
             {"label": "Listings", "path": "/sales"}, {"label": "My listings", "path": "/sales/mine"},
             {"label": "Offers received", "path": "/offers/received"}, {"label": "My offers", "path": "/offers/sent"},
             {"label": "Transfers in progress", "path": "/deals"}, {"label": "Enquiries", "path": "/enquiries"},

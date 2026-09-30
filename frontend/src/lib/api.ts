@@ -38,6 +38,32 @@ const SKIP_REFRESH = ["/auth/login", "/auth/refresh", "/auth/logout"];
 
 let _refreshing: Promise<string> | null = null;
 
+/**
+ * Swap the refresh token for a new access token, once at a time. Refresh
+ * tokens rotate, so two refreshes with the same token race: the second is
+ * refused and the user is signed out. Everything that refreshes (session
+ * restore on page load, and a 401 below) shares this one call.
+ */
+export function refreshAccessToken(): Promise<string> {
+  if (!_refreshing) {
+    _refreshing = (async () => {
+      const refreshToken: string | null = useAuthStore.getState().refreshToken;
+      if (!refreshToken) throw new Error("No refresh token");
+
+      const { data } = await axios.post<{
+        access_token: string;
+        refresh_token: string;
+      }>(`${_baseURL}/auth/refresh`, { refresh_token: refreshToken });
+
+      useAuthStore.getState().setTokens(data.access_token, data.refresh_token);
+      return data.access_token;
+    })().finally(() => {
+      _refreshing = null;
+    });
+  }
+  return _refreshing;
+}
+
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
@@ -55,28 +81,7 @@ api.interceptors.response.use(
     original._retry = true;
 
     try {
-      // Deduplicate concurrent 401s into a single refresh call
-      if (!_refreshing) {
-        _refreshing = (async () => {
-          const refreshToken: string | null =
-            useAuthStore.getState().refreshToken;
-          if (!refreshToken) throw new Error("No refresh token");
-
-          const { data } = await axios.post<{
-            access_token: string;
-            refresh_token: string;
-          }>(`${_baseURL}/auth/refresh`, { refresh_token: refreshToken });
-
-          useAuthStore
-            .getState()
-            .setTokens(data.access_token, data.refresh_token);
-          return data.access_token;
-        })().finally(() => {
-          _refreshing = null;
-        });
-      }
-
-      const newAccessToken = await _refreshing;
+      const newAccessToken = await refreshAccessToken();
       original.headers = {
         ...original.headers,
         Authorization: `Bearer ${newAccessToken}`,

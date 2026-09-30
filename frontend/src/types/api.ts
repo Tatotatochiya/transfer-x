@@ -1474,6 +1474,7 @@ export interface NLParsedFilters {
   nationalities: string[] | null;
   min_height_cm: number | null;
   open_to_offers: boolean | null;
+  buyable?: boolean;
   interpreted_as: string;
 }
 

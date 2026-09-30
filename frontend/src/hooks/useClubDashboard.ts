@@ -5,7 +5,7 @@ import type { DashboardItem, DashboardResponse } from "../types/api";
 /**
  * The club's "waiting on you" aggregate (backend item B2).
  *
- * One server-side call replaces both the War Room's five client-side queries
+ * One server-side call replaces both the Dashboard's five client-side queries
  * and any per-section counting the sidebar would otherwise have to do — the
  * `kind` on each item is what makes one response serve both. Shared query key
  * so the two consumers hit the same cache entry rather than the endpoint twice.
