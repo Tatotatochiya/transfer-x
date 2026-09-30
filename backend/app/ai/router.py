@@ -308,7 +308,9 @@ async def offer_check(
             offer = await assist._load_offer(db, uuid.UUID(str(body["offer_id"])), club.id)
         elif not terms.get("player_id"):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="player_id is required")
-        return await assist.check_offer_terms(db, viewer_club_id=club.id, terms=terms, offer=offer)
+        return await assist.check_offer_terms(
+            db, viewer_club_id=club.id, terms=terms, offer=offer, user=current_user, club=club,
+        )
     except Exception as exc:
         raise _assist_errors(exc)
 

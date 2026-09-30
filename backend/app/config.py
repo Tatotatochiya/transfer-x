@@ -130,6 +130,11 @@ class Settings(BaseSettings):
     # Players join by invitation from their club (a player account can accept
     # personal terms). The test suite turns this on to register players directly.
     allow_player_self_registration: bool = False
+    # Lite mode's default for owners and sporting directors who have never
+    # chosen (docs/feature_spec/lite-mode, decision 1). Off: the full app is
+    # everyone's default for now (product owner, 2026-09-30), and Lite is
+    # opt-in from the profile menu. LITE_ROLE_DEFAULT_ON=true turns it on.
+    lite_role_default_on: bool = False
 
 
 settings = Settings()

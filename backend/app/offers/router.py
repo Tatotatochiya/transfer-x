@@ -24,6 +24,7 @@ from app.notifications.models import NotificationType
 from app.offers import service
 from app.offers.models import OfferStatus
 from app.offers.schemas import (
+    OfferDecisionRequest,
     OfferCounterRequest,
     OfferCreateRequest,
     OfferImproveRequest,
@@ -218,6 +219,18 @@ async def _offer_page(db: AsyncSession, offers, viewer_club_id: uuid.UUID) -> li
 
 
 # ── Competition (player-scoped order book) ────────────────────────────────────
+
+
+async def _audit_ai_used(db: AsyncSession, *, entity_type: str, entity_id, user: User, feature: str,
+                         description: str) -> None:
+    """The action started from the assistant's suggestion (ADR 0006): recorded,
+    never binding."""
+    from app.audit import service as audit_service
+
+    await audit_service.emit(
+        db, entity_type=entity_type, entity_id=entity_id, action="AI_SUGGESTION_USED",
+        actor_user_id=user.id, payload={"feature": feature}, description=description,
+    )
 
 
 @router.get("/offers/competition/{player_id}", response_model=OrderBookResponse)
@@ -426,6 +439,9 @@ async def create_offer(
         summary=f"Offer for {_pname} — {_terms_summary(**_terms)}",
     )
     if approval is not None:
+        if body.ai_assisted:
+            await _audit_ai_used(db, entity_type="APPROVAL", entity_id=approval.id, user=current_user,
+                                 feature="lite_action_card", description="Offer started from the assistant's suggestion")
         await db.commit()
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,
@@ -467,6 +483,9 @@ async def create_offer(
             message="You have received a new offer",
         )
         await _notify_player_of_offer(db, offer)
+        if body.ai_assisted:
+            await _audit_ai_used(db, entity_type="OFFER", entity_id=offer.id, user=current_user,
+                                 feature="lite_action_card", description="Offer started from the assistant's suggestion")
         await db.commit()
     except ValueError as exc:
         await db.rollback()
@@ -529,13 +548,8 @@ async def counter_offer(
             message="A counter offer has been submitted",
         )
         if body.ai_assisted:
-            from app.audit import service as audit_service
-
-            await audit_service.emit(
-                db, entity_type="OFFER", entity_id=offer.id, action="AI_SUGGESTION_USED",
-                actor_user_id=current_user.id, payload={"feature": "counter_advisor"},
-                description="Counter offer started from the assistant's suggestion",
-            )
+            await _audit_ai_used(db, entity_type="OFFER", entity_id=offer.id, user=current_user,
+                                 feature="counter_advisor", description="Counter offer started from the assistant's suggestion")
         await db.commit()
     except ValueError as exc:
         await db.rollback()
@@ -602,6 +616,7 @@ async def improve_offer(
 @router.post("/offers/{offer_id}/accept", response_model=DealStubResponse)
 async def accept_offer(
     offer_id: uuid.UUID,
+    body: OfferDecisionRequest | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     _write: User = Depends(_market_write),
@@ -630,7 +645,11 @@ async def accept_offer(
         payload={"offer_id": str(offer_id)},
         summary=f"Accept offer for {_pname} — {_terms_summary(**_terms)}",
     )
+    ai_assisted = bool(body and body.ai_assisted)
     if approval is not None:
+        if ai_assisted:
+            await _audit_ai_used(db, entity_type="APPROVAL", entity_id=approval.id, user=current_user,
+                                 feature="lite_action_card", description="Acceptance started from the assistant's suggestion")
         await db.commit()
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,
@@ -645,6 +664,9 @@ async def accept_offer(
             ntype=NotificationType.OFFER_ACCEPTED,
             message="Your offer has been accepted",
         )
+        if ai_assisted:
+            await _audit_ai_used(db, entity_type="OFFER", entity_id=offer.id, user=current_user,
+                                 feature="lite_action_card", description="Acceptance started from the assistant's suggestion")
         await db.commit()
         await db.refresh(deal)
     except ValueError as exc:
@@ -661,6 +683,7 @@ async def accept_offer(
 @router.post("/offers/{offer_id}/reject", response_model=OfferResponse)
 async def reject_offer(
     offer_id: uuid.UUID,
+    body: OfferDecisionRequest | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     _write: User = Depends(_market_write),
@@ -676,6 +699,9 @@ async def reject_offer(
             ntype=NotificationType.OFFER_REJECTED,
             message="Your offer has been rejected",
         )
+        if body and body.ai_assisted:
+            await _audit_ai_used(db, entity_type="OFFER", entity_id=offer.id, user=current_user,
+                                 feature="lite_action_card", description="Rejection started from the assistant's suggestion")
         await db.commit()
     except ValueError as exc:
         await db.rollback()

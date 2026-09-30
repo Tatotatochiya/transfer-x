@@ -44,6 +44,11 @@ class OfferClause(BaseModel):
 # ── Offer schemas ─────────────────────────────────────────────────────────────
 
 
+class OfferDecisionRequest(BaseModel):
+    """Optional body for accept and reject."""
+    ai_assisted: bool = False
+
+
 class OfferCreateRequest(BaseModel):
     player_id: uuid.UUID
     sale_id: uuid.UUID | None = None
@@ -77,6 +82,9 @@ class OfferCreateRequest(BaseModel):
     sell_on_pct: Decimal | None = None
     # Required when a permanent offer's fee is £0; posted to the thread.
     no_fee_reason: str | None = Field(None, max_length=500)
+    # Sent from a suggestion the assistant made (Lite's action card);
+    # audited as AI_SUGGESTION_USED, not binding.
+    ai_assisted: bool = False
 
     @field_validator("fee_amount", "wage_weekly", "loan_fee", "option_to_buy", mode="before")
     @classmethod
