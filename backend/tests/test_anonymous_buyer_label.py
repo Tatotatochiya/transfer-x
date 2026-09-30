@@ -60,7 +60,7 @@ def test_masking_league_shows_only_a_domestic_league(league, expected):
 
 @pytest.mark.asyncio
 async def test_seller_dashboard_does_not_name_an_anonymous_buyer(client, buyer, seller, db):
-    """Regression: the War Room row (and so the digest email and the AI
+    """Regression: the Dashboard row (and so the digest email and the AI
     briefing, which read it) named the buying club of an anonymous offer."""
     await _set_league(db, "Secret Buyers FC", "Premier League")
     await _anonymous_offer(client, buyer, seller, db)

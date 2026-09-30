@@ -188,7 +188,71 @@ async def _budget_facts(db: AsyncSession, club_id: uuid.UUID) -> dict | None:
     return {
         "transfer_budget_remaining": _num(fin.transfer_remaining),
         "wage_budget_remaining_weekly": _num(fin.wage_remaining_weekly),
+        "transfer_budget_total": _num(fin.transfer_budget_total),
     }
+
+
+# ── Money effect (shared by check_terms and Lite's money panel) ──────────────
+
+
+def money_effect(terms: dict, *, role: str, budget: dict | None, reserved: dict | None = None) -> dict:
+    """What an offer's terms do to the viewing club's money.
+
+    A buyer's figures use `offers.service._reservation`, the arithmetic the
+    offer paths reserve with (fee or loan fee, add-ons, the loan wage split),
+    less what the offer already holds (`reserved`, when countering or
+    accepting), and "over" is exactly the test `reserve_budget` refuses on.
+    So the budget warnings and Lite's money panel agree with the refusal.
+    A seller's fee arrives when the deal completes; there is no wage line.
+    """
+    from app.deals.models import DealType
+    from app.offers.service import _reservation
+
+    def dec(v):
+        return Decimal(str(v)) if v is not None else None
+
+    loan = terms.get("deal_type") == "LOAN"
+    transfer, wage = _reservation(
+        deal_type=DealType.LOAN if loan else DealType.PERMANENT,
+        fee_amount=dec(terms.get("fee_amount")),
+        loan_fee=dec(terms.get("loan_fee")),
+        add_ons=terms.get("add_ons") or None,
+        wage_weekly=dec(terms.get("wage_weekly")),
+        wage_split_pct=dec(terms.get("wage_split_pct")),
+        clauses=terms.get("clauses") or None,
+    )
+    budget = budget or {}
+    before = budget.get("transfer_budget_remaining")
+    wage_before = budget.get("wage_budget_remaining_weekly")
+    out = {
+        "transfer_budget": budget.get("transfer_budget_total"),
+        "transfer_before": before,
+        "on_completion": role == "seller",
+    }
+    if role == "seller":
+        incoming = float(dec(terms.get("loan_fee") if loan else terms.get("fee_amount")) or 0)
+        out.update({
+            "this_action": incoming,
+            "transfer_after": before + incoming if before is not None else None,
+            "wage_before_weekly": None, "wage_after_weekly": None, "wage_this_action": None,
+            "over_transfer": False, "over_wage": False, "over_budget": False,
+        })
+        return out
+    reserved = reserved or {}
+    this = float(transfer) - float(reserved.get("transfer") or 0)
+    this_wage = float(wage) - float(reserved.get("wage") or 0)
+    over_transfer = before is not None and this > before
+    over_wage = wage_before is not None and this_wage > wage_before
+    out.update({
+        "this_action": this,
+        "transfer_after": before - this if before is not None else None,
+        "wage_this_action": this_wage,
+        "wage_before_weekly": wage_before,
+        "wage_after_weekly": wage_before - this_wage if wage_before is not None else None,
+        "over_transfer": over_transfer, "over_wage": over_wage,
+        "over_budget": over_transfer or over_wage,
+    })
+    return out
 
 
 # ── Phase 1a: offer terms checker (deterministic) ─────────────────────────────
@@ -201,8 +265,9 @@ def check_terms(terms: dict, *, role: str, player: dict, budget: dict | None,
                 guide_price: float | None, current: dict | None = None) -> list[dict]:
     """Rule-based warnings on a set of offer terms, from the viewer's side.
 
-    `terms` uses the offer's field names. `current` is the offer as it stands
-    when checking a counter, so money already reserved is not counted twice.
+    `terms` uses the offer's field names. `current` is what the offer already
+    holds when checking a counter or an acceptance ({"transfer", "wage"}), so
+    money already reserved is not counted twice.
     Each warning: {"severity": "high"|"medium"|"low", "code", "message"}.
     """
     out: list[dict] = []
@@ -233,21 +298,16 @@ def check_terms(terms: dict, *, role: str, player: dict, budget: dict | None,
 
     # ── Buyer's budget ──────────────────────────────────────────────────────
     if role == "buyer" and budget:
-        already = _num((current or {}).get("fee_amount")) or 0 if current else 0
+        money = money_effect(terms, role=role, budget=budget, reserved=current)
         room = budget.get("transfer_budget_remaining")
-        if fee is not None and room is not None and fee - already > room:
+        if money["over_transfer"]:
             warn("high", "over_transfer_budget",
                  f"The fee is more than your remaining transfer budget of {fmt(room)}."
-                 if not already else
-                 f"Raising the fee needs {fmt(fee - already)} more, but only {fmt(room)} of your transfer budget is left.")
-        wage_room = budget.get("wage_budget_remaining_weekly")
-        already_wage = _num((current or {}).get("wage_weekly")) or 0 if current else 0
-        pay = wage
-        if loan and wage is not None and terms.get("wage_split_pct") is not None:
-            pay = wage * float(terms["wage_split_pct"])
-        if pay is not None and wage_room is not None and pay - already_wage > wage_room:
+                 if not (current or {}).get("transfer") else
+                 f"Raising the fee needs {fmt(money['this_action'])} more, but only {fmt(room)} of your transfer budget is left.")
+        if money["over_wage"]:
             warn("high", "over_wage_budget",
-                 f"The weekly wage exceeds your remaining wage budget ({fmt(wage_room)}/wk).")
+                 f"The weekly wage exceeds your remaining wage budget ({fmt(budget.get('wage_budget_remaining_weekly'))}/wk).")
 
     # ── Wage and contract ───────────────────────────────────────────────────
     current_wage = player.get("current_wage_weekly")
@@ -317,25 +377,52 @@ async def _guide_price(db: AsyncSession, player_id: uuid.UUID) -> float | None:
 
 
 async def check_offer_terms(db: AsyncSession, *, viewer_club_id: uuid.UUID, terms: dict,
-                            offer=None) -> dict:
+                            offer=None, user=None, club=None) -> dict:
     """Checks for a draft offer (no `offer`: the viewer is the buyer) or for a
-    counter/incoming offer (`offer` given: the viewer's side comes from it)."""
+    counter/incoming offer (`offer` given: the viewer's side comes from it).
+
+    `money` is the effect on the viewer's budget (see `money_effect`); with
+    `user` and `club`, it also says whether the spending-approval rule would
+    capture the action, from the same rule the offer endpoints apply."""
     player_id = offer.player_id if offer is not None else uuid.UUID(str(terms["player_id"]))
     role = "buyer" if offer is None or offer.from_club_id == viewer_club_id else "seller"
     player = await _player_facts(db, player_id)
-    budget = await _budget_facts(db, viewer_club_id) if role == "buyer" else None
+    own_budget = await _budget_facts(db, viewer_club_id)
+    budget = own_budget if role == "buyer" else None
     current = None
     if offer is not None:
-        current = {"fee_amount": offer.fee_amount, "wage_weekly": offer.wage_weekly}
+        current = {"transfer": offer.reserved_transfer_amount, "wage": offer.reserved_wage_weekly}
         merged = _offer_terms(offer)
+        merged["add_ons"] = offer.add_ons
         merged.update({k: v for k, v in terms.items() if v is not None})
         terms = merged
+    if terms.get("deal_type") == "LOAN" and terms.get("wage_weekly") is None:
+        # A loan's wage is his contract wage, filled in by the offer paths
+        # (offers.service.loan_wage_basis); the draft never carries it.
+        terms = {**terms, "wage_weekly": player.get("current_wage_weekly")}
+    money = money_effect(terms, role=role, budget=own_budget, reserved=current)
+    money["requires_approval"] = False
+    if user is not None and club is not None:
+        from app.approvals.service import approval_required
+        from app.deals.models import DealType
+        from app.offers.service import approval_amount
+
+        def dec(v):
+            return Decimal(str(v)) if v is not None else None
+        amount = approval_amount(
+            deal_type=DealType.LOAN if terms.get("deal_type") == "LOAN" else DealType.PERMANENT,
+            fee_amount=dec(terms.get("fee_amount")), loan_fee=dec(terms.get("loan_fee")),
+            option_to_buy=dec(terms.get("option_to_buy")), obligation_to_buy=bool(terms.get("obligation_to_buy")),
+            clauses=terms.get("clauses") or None,
+        )
+        money["requires_approval"] = await approval_required(db, current_user=user, club=club, amount=amount)
     return {
         "role": role,
         "warnings": check_terms(
             terms, role=role, player=player, budget=budget,
             guide_price=await _guide_price(db, player_id), current=current,
         ),
+        "money": money,
     }
 
 
@@ -468,6 +555,7 @@ async def offer_advice(db: AsyncSession, offer_id: uuid.UUID, *, viewer_club_id:
     checks = check_terms(
         facts["current_terms"], role=facts["viewer_role"], player=facts["player"],
         budget=facts.get("your_budget"), guide_price=facts["listing_guide_price"],
+        current={"transfer": offer.reserved_transfer_amount, "wage": offer.reserved_wage_weekly},
     )
     key = f"advice:{offer.id}:{viewer_club_id}:{offer.last_action_at.isoformat()}"
     if refresh:
@@ -1040,7 +1128,7 @@ async def ask_facts(db: AsyncSession, club, user) -> dict:
              "path": f"/deals/{d.id}"}
             for d in deals
         ],
-        # The War Room's own list: exactly what is waiting on this person now.
+        # The Dashboard's own list: exactly what is waiting on this person now.
         "waiting_on_you": [
             {"what": i.reason, "player": i.player_name, "club": i.club_name, "path": i.link} for i in waiting
         ],
@@ -1063,7 +1151,7 @@ async def ask_facts(db: AsyncSession, club, user) -> dict:
             for p in squad
         ][:60],
         "pages": [
-            {"label": "War Room", "path": "/dashboard"}, {"label": "Browse players", "path": "/players/market"},
+            {"label": "Dashboard", "path": "/dashboard"}, {"label": "Browse players", "path": "/players/market"},
             {"label": "Listings", "path": "/sales"}, {"label": "My listings", "path": "/sales/mine"},
             {"label": "Offers received", "path": "/offers/received"}, {"label": "My offers", "path": "/offers/sent"},
             {"label": "Transfers in progress", "path": "/deals"}, {"label": "Enquiries", "path": "/enquiries"},

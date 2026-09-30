@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #d6d3d1; }
+  * { box-sizing: border-box; }
+  a { color: #34d399; text-decoration: none; }
+  a:hover { color: #6ee7b7; }
+  input::placeholder { color: #64748b; }
+</style>
+</helmet>
+
+<section style="padding:56px 64px 40px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#1c1917;display:flex;flex-direction:column;gap:32px;">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:960px;">
+    <div style="font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#57534e;">Turn 3 · Improvements to 2a, static mocks</div>
+    <div style="font-size:32px;font-weight:800;letter-spacing:-0.02em;">Act from the assistant, see the money, undo anything</div>
+    <div style="font-size:16px;line-height:1.5;color:#44403c;text-wrap:pretty;"><a href="#3a" style="color:#047857;font-weight:700;">3a</a> the assistant prepares the action and shows the money effect. <a href="#3b" style="color:#047857;font-weight:700;">3b</a> after confirming: undo and deal progress. <a href="#3c" style="color:#047857;font-weight:700;">3c</a> deciding from a phone notification or chat. <a href="#3d" style="color:#047857;font-weight:700;">3d</a> home outside the window, carry on where you left off, and settings in the profile menu.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start;">
+
+    <div id="3a" style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:#1c1917;color:#fafaf9;font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px;">3a</span>
+        <span style="font-size:18px;font-weight:700;">Assistant action card</span>
+        <span style="font-size:14px;color:#57534e;">Spoken request, ready-to-confirm action, money effect, source.</span>
+      </div>
+      <div style="width:1194px;height:834px;background:#faf8f5;color:#1c1917;border-radius:24px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 60px rgba(28,25,23,0.35),0 0 0 10px #1c1917;">
+        <div style="height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 40px;border-bottom:1px solid #e7e5e4;background:#fff;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:34px;height:34px;border-radius:9px;background:#047857;display:flex;align-items:center;justify-content:center;">
+              <svg style="width:18px;height:18px;color:#fff;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <span style="font-size:18px;font-weight:800;">TransferX</span>
+            <span style="font-size:16px;color:#78716c;">Northgate FC</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <span style="display:flex;align-items:center;gap:8px;padding:12px 20px;border-radius:12px;background:#f5f5f4;font-size:16px;font-weight:700;">
+              <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h14V10"></path></svg>Home
+            </span>
+            <span style="width:44px;height:44px;border-radius:50%;background:#e7e5e4;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#44403c;">RM</span>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;padding:36px 56px 40px;display:flex;flex-direction:column;gap:22px;">
+          <div style="height:68px;flex-shrink:0;display:flex;align-items:center;gap:14px;padding:0 8px 0 22px;border-radius:18px;background:#fff;box-shadow:inset 0 0 0 2px #ddd6fe;">
+            <svg style="width:24px;height:24px;color:#6d28d9;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+            <span style="flex:1;font-size:20px;color:#a8a29e;">Type or tap the microphone to speak</span>
+            <span style="display:flex;align-items:center;gap:10px;height:52px;padding:0 20px;border-radius:13px;background:#ede9fe;color:#5b21b6;font-size:17px;font-weight:700;">
+              <svg style="width:22px;height:22px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-14 0m7 7v3m0-18a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3z"></path></svg>Speak
+            </span>
+          </div>
+          <div style="align-self:flex-end;display:flex;align-items:center;gap:10px;max-width:640px;padding:12px 18px;border-radius:16px;background:#1c1917;color:#fafaf9;font-size:18px;font-weight:600;">
+            <svg style="width:18px;height:18px;color:#a8a29e;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-14 0m7 7v3m0-18a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3z"></path></svg>
+            "Put in a bid for Ellis Varga, eight million"
+          </div>
+          <div style="flex:1;min-height:0;background:#fff;border-radius:24px;box-shadow:inset 0 0 0 1px #e7e5e4,0 8px 24px rgba(28,25,23,0.07);display:grid;grid-template-columns:minmax(0,1fr) 400px;overflow:hidden;">
+            <div style="padding:30px 32px;display:flex;flex-direction:column;gap:20px;">
+              <span style="align-self:flex-start;font-size:13px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:#ede9fe;color:#5b21b6;">Ready to send · check before confirming</span>
+              <div style="font-size:30px;font-weight:800;letter-spacing:-0.02em;line-height:1.2;">Bid £8m for Ellis Varga</div>
+              <div style="display:flex;flex-direction:column;gap:12px;font-size:18px;">
+                <div style="display:flex;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid #f0efed;"><span style="color:#78716c;">Player</span><span style="font-weight:600;">Ellis Varga, left-back, 23</span></div>
+                <div style="display:flex;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid #f0efed;"><span style="color:#78716c;">Sent to</span><span style="font-weight:600;">Brentwell Town</span></div>
+                <div style="display:flex;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid #f0efed;"><span style="color:#78716c;">Fee</span><span style="font-weight:800;">£8m</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#78716c;">Wages offered</span><span style="font-weight:600;">£35k a week</span></div>
+              </div>
+              <div style="margin-top:auto;display:flex;gap:12px;">
+                <span style="flex:1;height:64px;border-radius:14px;background:#047857;color:#fff;font-size:19px;font-weight:700;display:flex;align-items:center;justify-content:center;">Confirm and send bid</span>
+                <span style="height:64px;padding:0 24px;border-radius:14px;background:#fff;color:#1c1917;font-size:18px;font-weight:700;box-shadow:inset 0 0 0 2px #d6d3d1;display:flex;align-items:center;">Change amount</span>
+                <span style="height:64px;padding:0 24px;border-radius:14px;color:#57534e;font-size:18px;font-weight:600;display:flex;align-items:center;">Cancel</span>
+              </div>
+            </div>
+            <div style="background:#f7f6f3;padding:30px 28px;display:flex;flex-direction:column;gap:22px;border-left:1px solid #eeece8;">
+              <div style="font-size:16px;font-weight:700;color:#57534e;">What this does to your money</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div style="font-size:15px;color:#78716c;">Money left to spend</div>
+                <div style="display:flex;align-items:baseline;gap:12px;font-size:34px;font-weight:800;letter-spacing:-0.02em;">
+                  <span style="color:#a8a29e;text-decoration:line-through;font-size:24px;">£22m</span><span>→ £14m</span>
+                </div>
+                <div style="height:12px;border-radius:999px;background:#e7e5e4;overflow:hidden;display:flex;">
+                  <div style="width:35%;background:#047857;"></div>
+                  <div style="width:20%;background:repeating-linear-gradient(45deg,#fbbf24 0 6px,#fcd34d 6px 12px);"></div>
+                </div>
+                <div style="font-size:14px;color:#78716c;">Striped part is this bid, of your £40m budget</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <div style="font-size:15px;color:#78716c;">Spare for wages</div>
+                <div style="font-size:24px;font-weight:800;"><span style="color:#a8a29e;text-decoration:line-through;font-size:18px;">£140k</span> → £105k a week</div>
+              </div>
+              <div style="margin-top:auto;display:flex;flex-direction:column;gap:12px;padding-top:18px;border-top:1px solid #e7e5e4;">
+                <div style="display:flex;gap:10px;font-size:15px;line-height:1.45;color:#57534e;">
+                  <svg style="width:18px;height:18px;flex-shrink:0;margin-top:2px;color:#047857;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  <span>Based on your budget and squad data, updated today at 8:02</span>
+                </div>
+                <span style="align-self:flex-start;font-size:16px;font-weight:700;color:#4338ca;">Ask Sam to check first →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="3b" style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:#1c1917;color:#fafaf9;font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px;">3b</span>
+        <span style="font-size:18px;font-weight:700;">Sent, with undo and progress</span>
+        <span style="font-size:14px;color:#57534e;">10 seconds to undo. Then plain-word steps show where the deal is.</span>
+      </div>
+      <div style="width:1194px;height:834px;background:#faf8f5;color:#1c1917;border-radius:24px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 30px 60px rgba(28,25,23,0.35),0 0 0 10px #1c1917;">
+        <div style="height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 40px;border-bottom:1px solid #e7e5e4;background:#fff;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:34px;height:34px;border-radius:9px;background:#047857;display:flex;align-items:center;justify-content:center;">
+              <svg style="width:18px;height:18px;color:#fff;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <span style="font-size:18px;font-weight:800;">TransferX</span>
+            <span style="font-size:16px;color:#78716c;">Northgate FC</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <span style="display:flex;align-items:center;gap:8px;padding:12px 20px;border-radius:12px;background:#f5f5f4;font-size:16px;font-weight:700;">
+              <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h14V10"></path></svg>Home
+            </span>
+            <span style="width:44px;height:44px;border-radius:50%;background:#e7e5e4;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#44403c;">RM</span>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;padding:44px 56px 40px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:32px;">
+          <div style="display:flex;flex-direction:column;gap:28px;">
+            <div style="display:flex;align-items:center;gap:18px;">
+              <span style="width:64px;height:64px;border-radius:50%;background:#d1fae5;color:#047857;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg style="width:32px;height:32px;" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+              </span>
+              <div>
+                <div style="font-size:36px;font-weight:800;letter-spacing:-0.025em;">Bid sent to Brentwell Town</div>
+                <div style="margin-top:4px;font-size:19px;color:#57534e;">£8m for Ellis Varga. Sam has been told.</div>
+              </div>
+            </div>
+            <div style="background:#fff;border-radius:24px;padding:30px 32px;box-shadow:inset 0 0 0 1px #e7e5e4,0 4px 12px rgba(28,25,23,0.05);display:flex;flex-direction:column;gap:6px;">
+              <div style="font-size:16px;font-weight:700;color:#57534e;margin-bottom:14px;">Where this deal is</div>
+              <div style="display:flex;gap:18px;">
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <span style="width:32px;height:32px;border-radius:50%;background:#047857;color:#fff;display:flex;align-items:center;justify-content:center;"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg></span>
+                  <span style="width:3px;height:30px;background:#047857;"></span>
+                </div>
+                <div style="padding-top:4px;"><div style="font-size:19px;font-weight:700;">You approved it</div><div style="font-size:15px;color:#78716c;">Today, 9:14</div></div>
+              </div>
+              <div style="display:flex;gap:18px;">
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <span style="width:32px;height:32px;border-radius:50%;background:#047857;color:#fff;display:flex;align-items:center;justify-content:center;"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg></span>
+                  <span style="width:3px;height:30px;background:#d6d3d1;"></span>
+                </div>
+                <div style="padding-top:4px;"><div style="font-size:19px;font-weight:700;">Bid sent</div><div style="font-size:15px;color:#78716c;">Just now</div></div>
+              </div>
+              <div style="display:flex;gap:18px;">
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <span style="width:32px;height:32px;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 3px #047857;display:flex;align-items:center;justify-content:center;"><span style="width:10px;height:10px;border-radius:50%;background:#047857;"></span></span>
+                  <span style="width:3px;height:30px;background:#d6d3d1;"></span>
+                </div>
+                <div style="padding-top:4px;"><div style="font-size:19px;font-weight:700;">Waiting for Brentwell to reply</div><div style="font-size:15px;color:#78716c;">Clubs usually reply in 1 to 2 days. We'll message you.</div></div>
+              </div>
+              <div style="display:flex;gap:18px;">
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <span style="width:32px;height:32px;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 2px #d6d3d1;"></span>
+                  <span style="width:3px;height:30px;background:#d6d3d1;"></span>
+                </div>
+                <div style="padding-top:4px;"><div style="font-size:19px;font-weight:600;color:#78716c;">Medical and personal terms</div></div>
+              </div>
+              <div style="display:flex;gap:18px;">
+                <span style="width:32px;height:32px;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 2px #d6d3d1;flex-shrink:0;"></span>
+                <div style="padding-top:4px;"><div style="font-size:19px;font-weight:600;color:#78716c;">Signed</div></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:18px;">
+            <div style="background:#fff;border-radius:20px;padding:22px;box-shadow:inset 0 0 0 1px #e7e5e4;display:flex;flex-direction:column;gap:10px;">
+              <div style="font-size:15px;color:#78716c;">Money left to spend</div>
+              <div style="font-size:34px;font-weight:800;letter-spacing:-0.02em;">£14m <span style="font-size:16px;font-weight:500;color:#78716c;">of £40m</span></div>
+              <div style="height:10px;border-radius:999px;background:#e7e5e4;overflow:hidden;"><div style="width:35%;height:100%;background:#047857;"></div></div>
+              <div style="font-size:14px;color:#78716c;">£8m held for this bid until Brentwell reply</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <span style="height:60px;border-radius:14px;background:#047857;color:#fff;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;">Back to home</span>
+              <span style="height:56px;border-radius:14px;background:#fff;color:#1c1917;font-size:17px;font-weight:700;box-shadow:inset 0 0 0 2px #d6d3d1;display:flex;align-items:center;justify-content:center;">Message Sam about this</span>
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;left:50%;bottom:32px;transform:translateX(-50%);width:620px;background:#1c1917;color:#fafaf9;border-radius:18px;box-shadow:0 16px 40px rgba(28,25,23,0.35);overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 18px 18px 24px;">
+            <span style="font-size:18px;font-weight:600;">Bid sent. Changed your mind?</span>
+            <span style="display:flex;align-items:center;gap:10px;height:52px;padding:0 22px;border-radius:12px;background:#fafaf9;color:#1c1917;font-size:18px;font-weight:800;">
+              <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>Undo · 8s
+            </span>
+          </div>
+          <div style="height:5px;background:#44403c;"><div style="width:80%;height:100%;background:#34d399;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="3c" style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:#1c1917;color:#fafaf9;font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px;">3c</span>
+        <span style="font-size:18px;font-weight:700;">Decide without opening the app</span>
+        <span style="font-size:14px;color:#57534e;">Phone notification with buttons, and the same decision in a chat app.</span>
+      </div>
+      <div style="width:1194px;height:834px;background:#e7e2da;border-radius:24px;display:flex;align-items:center;justify-content:center;gap:72px;">
+        <div style="width:390px;height:780px;border-radius:52px;background:#1c1917;padding:12px;box-shadow:0 30px 60px rgba(28,25,23,0.3);">
+          <div style="width:100%;height:100%;border-radius:42px;overflow:hidden;background:linear-gradient(180deg,#1e3a34 0%,#0f172a 100%);color:#fff;display:flex;flex-direction:column;align-items:center;padding:20px 16px;position:relative;">
+            <div style="width:120px;height:32px;border-radius:999px;background:#000;"></div>
+            <div style="margin-top:40px;font-size:18px;font-weight:600;color:#d6d3d1;">Thursday 27 September</div>
+            <div style="font-size:84px;font-weight:700;letter-spacing:-0.03em;line-height:1.05;">9:14</div>
+            <div style="margin-top:36px;width:100%;background:rgba(250,250,249,0.94);color:#1c1917;border-radius:24px;overflow:hidden;">
+              <div style="padding:16px 18px 14px;display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;align-items:center;gap:8px;font-size:14px;color:#57534e;">
+                  <span style="width:22px;height:22px;border-radius:6px;background:#047857;display:flex;align-items:center;justify-content:center;"><svg style="width:12px;height:12px;color:#fff;" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
+                  <span style="font-weight:600;">TransferX</span><span style="margin-left:auto;">now</span>
+                </div>
+                <div style="font-size:17px;font-weight:700;">Chelsea offer £18m for Mitchell</div>
+                <div style="font-size:15px;line-height:1.4;color:#44403c;">You value him at £20m. Expires Friday. Sam suggests asking for £21m.</div>
+              </div>
+              <div style="display:flex;flex-direction:column;border-top:1px solid #d6d3d1;">
+                <span style="padding:15px 18px;font-size:17px;font-weight:600;color:#047857;border-bottom:1px solid #d6d3d1;">Ask for £21m</span>
+                <span style="padding:15px 18px;font-size:17px;font-weight:600;color:#1c1917;border-bottom:1px solid #d6d3d1;">Accept £18m</span>
+                <span style="padding:15px 18px;font-size:17px;font-weight:600;color:#be123c;border-bottom:1px solid #d6d3d1;">Say no</span>
+                <span style="padding:15px 18px;font-size:17px;font-weight:600;color:#1c1917;">Open in TransferX</span>
+              </div>
+            </div>
+            <div style="position:absolute;bottom:10px;width:130px;height:5px;border-radius:999px;background:rgba(255,255,255,0.7);"></div>
+          </div>
+        </div>
+
+        <div style="width:390px;height:780px;border-radius:52px;background:#1c1917;padding:12px;box-shadow:0 30px 60px rgba(28,25,23,0.3);">
+          <div style="width:100%;height:100%;border-radius:42px;overflow:hidden;background:#efeae2;display:flex;flex-direction:column;">
+            <div style="padding:56px 18px 14px;background:#f7f7f5;display:flex;align-items:center;gap:12px;border-bottom:1px solid #e7e5e4;">
+              <span style="font-size:22px;color:#047857;">‹</span>
+              <span style="width:40px;height:40px;border-radius:50%;background:#047857;display:flex;align-items:center;justify-content:center;"><svg style="width:18px;height:18px;color:#fff;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
+              <div><div style="font-size:17px;font-weight:700;color:#1c1917;">TransferX</div><div style="font-size:13px;color:#78716c;">Northgate FC deals</div></div>
+            </div>
+            <div style="flex:1;padding:18px 14px;display:flex;flex-direction:column;gap:10px;">
+              <div style="align-self:center;font-size:13px;color:#57534e;background:#fff;padding:4px 10px;border-radius:8px;">Today</div>
+              <div style="align-self:flex-start;max-width:300px;background:#fff;border-radius:4px 16px 16px 16px;padding:12px 14px;font-size:16px;line-height:1.45;color:#1c1917;box-shadow:0 1px 1px rgba(0,0,0,0.08);">
+                <strong>Chelsea offer £18m for Jordan Mitchell.</strong> You value him at £20m and the offer runs until Friday.<br><br>Sam suggests asking for £21m.
+                <div style="text-align:right;font-size:12px;color:#a8a29e;margin-top:4px;">9:14</div>
+              </div>
+              <div style="align-self:flex-start;width:300px;display:flex;flex-direction:column;gap:6px;">
+                <span style="background:#fff;border-radius:12px;padding:13px;text-align:center;font-size:16px;font-weight:700;color:#047857;box-shadow:0 1px 1px rgba(0,0,0,0.08);">Ask for £21m</span>
+                <span style="background:#fff;border-radius:12px;padding:13px;text-align:center;font-size:16px;font-weight:700;color:#047857;box-shadow:0 1px 1px rgba(0,0,0,0.08);">Accept £18m</span>
+                <span style="background:#fff;border-radius:12px;padding:13px;text-align:center;font-size:16px;font-weight:700;color:#047857;box-shadow:0 1px 1px rgba(0,0,0,0.08);">Say no</span>
+              </div>
+              <div style="align-self:flex-end;max-width:260px;background:#d9fdd3;border-radius:16px 4px 16px 16px;padding:10px 14px;font-size:16px;color:#1c1917;box-shadow:0 1px 1px rgba(0,0,0,0.08);">Ask for £21m<div style="text-align:right;font-size:12px;color:#78716c;margin-top:2px;">9:15 ✓✓</div></div>
+              <div style="align-self:flex-start;max-width:300px;background:#fff;border-radius:4px 16px 16px 16px;padding:12px 14px;font-size:16px;line-height:1.45;color:#1c1917;box-shadow:0 1px 1px rgba(0,0,0,0.08);">
+                Done. Chelsea have been sent a counter-offer of £21m. Reply <strong>UNDO</strong> in the next minute to cancel.
+                <div style="text-align:right;font-size:12px;color:#a8a29e;margin-top:4px;">9:15</div>
+              </div>
+            </div>
+            <div style="padding:10px 12px 28px;background:#f7f7f5;display:flex;align-items:center;gap:10px;">
+              <span style="flex:1;height:42px;border-radius:999px;background:#fff;padding:0 16px;display:flex;align-items:center;font-size:15px;color:#a8a29e;">Message</span>
+              <span style="width:42px;height:42px;border-radius:50%;background:#047857;display:flex;align-items:center;justify-content:center;"><svg style="width:20px;height:20px;color:#fff;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-14 0m7 7v3m0-18a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3z"></path></svg></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="3d" style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:#1c1917;color:#fafaf9;font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px;">3d</span>
+        <span style="font-size:18px;font-weight:700;">Home outside the window</span>
+        <span style="font-size:14px;color:#57534e;">Seasonal tiles, carry on where you left off, Lite mode and text size in the profile menu.</span>
+      </div>
+      <div style="width:1194px;height:834px;background:#faf8f5;color:#1c1917;border-radius:24px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 30px 60px rgba(28,25,23,0.35),0 0 0 10px #1c1917;">
+        <div style="height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 40px;border-bottom:1px solid #e7e5e4;background:#fff;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:34px;height:34px;border-radius:9px;background:#047857;display:flex;align-items:center;justify-content:center;">
+              <svg style="width:18px;height:18px;color:#fff;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <span style="font-size:18px;font-weight:800;">TransferX</span>
+            <span style="font-size:16px;color:#78716c;">Northgate FC</span>
+          </div>
+          <span style="width:44px;height:44px;border-radius:50%;background:#1c1917;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;box-shadow:0 0 0 4px #d6d3d1;">RM</span>
+        </div>
+        <div style="flex:1;min-height:0;padding:40px 56px 44px;display:flex;flex-direction:column;gap:24px;">
+          <div>
+            <div style="font-size:40px;font-weight:800;letter-spacing:-0.025em;">Good morning, Rob.</div>
+            <div style="margin-top:6px;font-size:22px;color:#57534e;">The window is closed. The next one opens on 1 January, in 95 days.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:20px;padding:18px 20px 18px 24px;border-radius:18px;background:#fff;box-shadow:inset 0 0 0 2px #a7f3d0;">
+            <span style="width:48px;height:48px;border-radius:12px;background:#ecfdf5;color:#047857;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg style="width:24px;height:24px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </span>
+            <div style="flex:1;">
+              <div style="font-size:15px;font-weight:600;color:#047857;">Carry on where you left off</div>
+              <div style="margin-top:2px;font-size:20px;font-weight:700;">Left-back search, £5m to £10m · 3 players found</div>
+            </div>
+            <span style="height:54px;padding:0 24px;border-radius:13px;background:#047857;color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;">Continue</span>
+          </div>
+          <div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:18px;">
+            <div style="border-radius:24px;padding:26px 30px;background:#047857;color:#fff;display:flex;flex-direction:column;justify-content:space-between;">
+              <svg style="width:36px;height:36px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              <div><div style="font-size:28px;font-weight:800;letter-spacing:-0.02em;">Renew contracts</div><div style="margin-top:4px;font-size:18px;color:#d1fae5;">2 players' contracts end this season</div></div>
+            </div>
+            <div style="border-radius:24px;padding:26px 30px;background:#fff;box-shadow:inset 0 0 0 1px #e7e5e4;display:flex;flex-direction:column;justify-content:space-between;">
+              <svg style="width:36px;height:36px;color:#0369a1;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+              <div><div style="font-size:28px;font-weight:800;letter-spacing:-0.02em;">Plan January</div><div style="margin-top:4px;font-size:18px;color:#57534e;">Make a shortlist before the window opens</div></div>
+            </div>
+            <div style="border-radius:24px;padding:26px 30px;background:#fff;box-shadow:inset 0 0 0 1px #e7e5e4;display:flex;flex-direction:column;justify-content:space-between;">
+              <svg style="width:36px;height:36px;color:#a16207;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              <div><div style="font-size:28px;font-weight:800;letter-spacing:-0.02em;">My squad</div><div style="margin-top:4px;font-size:18px;color:#57534e;">Who's playing, who's on loan</div></div>
+            </div>
+            <div style="border-radius:24px;padding:26px 30px;background:#f5f3ff;box-shadow:inset 0 0 0 2px #ddd6fe;display:flex;flex-direction:column;justify-content:space-between;">
+              <svg style="width:36px;height:36px;color:#6d28d9;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+              <div><div style="font-size:28px;font-weight:800;letter-spacing:-0.02em;">Ask anything</div><div style="margin-top:4px;font-size:18px;color:#57534e;">Type or speak a question</div></div>
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;top:80px;right:32px;width:380px;background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(28,25,23,0.22),inset 0 0 0 1px #e7e5e4;padding:10px;display:flex;flex-direction:column;">
+          <div style="padding:14px 14px 16px;border-bottom:1px solid #f0efed;"><div style="font-size:18px;font-weight:800;">Rob Mason</div><div style="font-size:15px;color:#78716c;">Sporting Director, Northgate FC</div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 14px;border-bottom:1px solid #f0efed;">
+            <div><div style="font-size:17px;font-weight:700;">Lite mode</div><div style="font-size:14px;color:#78716c;">Simple home with big buttons</div></div>
+            <span style="width:52px;height:30px;border-radius:999px;background:#047857;display:flex;align-items:center;justify-content:flex-end;padding:3px;"><span style="width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.25);"></span></span>
+          </div>
+          <div style="padding:18px 14px;border-bottom:1px solid #f0efed;display:flex;flex-direction:column;gap:12px;">
+            <div style="font-size:17px;font-weight:700;">Text size</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+              <span style="height:52px;border-radius:12px;box-shadow:inset 0 0 0 2px #e7e5e4;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;">Aa</span>
+              <span style="height:52px;border-radius:12px;box-shadow:inset 0 0 0 3px #047857;background:#ecfdf5;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;">Aa</span>
+              <span style="height:52px;border-radius:12px;box-shadow:inset 0 0 0 2px #e7e5e4;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;">Aa</span>
+            </div>
+          </div>
+          <div style="padding:16px 14px;font-size:17px;font-weight:600;">Notifications and messages</div>
+          <div style="padding:16px 14px;font-size:17px;font-weight:600;color:#57534e;">Sign out</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:56px 64px 40px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#1c1917;display:flex;flex-direction:column;gap:32px;">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:960px;">
+    <div style="font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#57534e;">Turn 2 · Borrow what directors already use</div>
+    <div style="font-size:32px;font-weight:800;letter-spacing:-0.02em;">Three familiar patterns: questions, messages, a letter</div>
+    <div style="font-size:16px;line-height:1.5;color:#44403c;text-wrap:pretty;">Each one copies something a non-technical director already knows how to use, so there's nothing new to learn. <a href="#2a" style="color:#047857;font-weight:700;">2a</a> asks simple questions step by step. <a href="#2b" style="color:#047857;font-weight:700;">2b</a> works like WhatsApp: one conversation per deal. <a href="#2c" style="color:#047857;font-weight:700;">2c</a> is a morning letter with the decisions written into it. All three use a light theme, which is easier to read on an iPad in daylight.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start;">
+
+    <div id="2a" style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:#1c1917;color:#fafaf9;font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px;">2a</span>
+        <span style="font-size:18px;font-weight:700;">Ask me questions</span>
+        <span style="font-size:14px;color:#57534e;">Four big choices, then one question per screen. Try "Buy a player".</span>
+      </div>
+      <div style="width:1194px;height:834px;background:#faf8f5;color:#1c1917;border-radius:24px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 60px rgba(28,25,23,0.35),0 0 0 10px #1c1917;">
+        <div style="height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 40px;border-bottom:1px solid #e7e5e4;background:#fff;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:34px;height:34px;border-radius:9px;background:#047857;display:flex;align-items:center;justify-content:center;">
+              <svg style="width:18px;height:18px;color:#fff;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <span style="font-size:18px;font-weight:800;">TransferX</span>
+            <span style="font-size:16px;color:#78716c;">Northgate FC</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <sc-if value="{{ g2NotHome }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ g2Home }}" style="border:none;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;padding:12px 20px;border-radius:12px;background:#f5f5f4;color:#1c1917;font-size:16px;font-weight:700;">
+                <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h14V10"></path></svg>
+                Home
+              </button>
+            </sc-if>
+            <button onClick="{{ toggleLite }}" style="border:none;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:12px;padding:8px 10px 8px 16px;border-radius:12px;background:transparent;color:#44403c;font-size:16px;font-weight:600;box-shadow:inset 0 0 0 1px #e7e5e4;">
+              Lite mode
+              <span style="width:52px;height:30px;border-radius:999px;background:{{ liteTrack }};display:flex;align-items:center;padding:3px;justify-content:{{ liteKnobSide }};">
+                <span style="width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.25);"></span>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div style="flex:1;min-height:0;padding:44px 56px 48px;display:flex;flex-direction:column;gap:32px;">
+          <sc-if value="{{ g2IsHome }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div style="font-size:40px;font-weight:800;letter-spacing:-0.025em;">Good morning, Rob.</div>
+              <div style="margin-top:6px;font-size:22px;color:#57534e;">What would you like to do? You have £22m left to spend and 12 days until the window closes.</div>
+            </div>
+            <div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:20px;">
+              <button onClick="{{ g2StartBuy }}" style="border:none;cursor:pointer;font-family:inherit;text-align:left;border-radius:24px;padding:30px 32px;background:#047857;color:#fff;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 8px 20px rgba(4,120,87,0.25);">
+                <svg style="width:40px;height:40px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                <div>
+                  <div style="font-size:30px;font-weight:800;letter-spacing:-0.02em;">Buy a player</div>
+                  <div style="margin-top:6px;font-size:18px;color:#d1fae5;">Tell us what you need. We'll find them.</div>
+                </div>
+              </button>
+              <button style="border:none;cursor:pointer;font-family:inherit;text-align:left;border-radius:24px;padding:30px 32px;background:#fff;color:#1c1917;display:flex;flex-direction:column;justify-content:space-between;box-shadow:inset 0 0 0 1px #e7e5e4,0 4px 12px rgba(28,25,23,0.05);">
+                <svg style="width:40px;height:40px;color:#0369a1;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                <div>
+                  <div style="font-size:30px;font-weight:800;letter-spacing:-0.02em;">Sell or loan a player</div>
+                  <div style="margin-top:6px;font-size:18px;color:#57534e;">Pick someone from your squad.</div>
+                </div>
+              </button>
+              <button style="border:none;cursor:pointer;font-family:inherit;text-align:left;border-radius:24px;padding:30px 32px;background:#fff;color:#1c1917;display:flex;flex-direction:column;justify-content:space-between;box-shadow:inset 0 0 0 2px #fda4af,0 4px 12px rgba(28,25,23,0.05);">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <svg style="width:40px;height:40px;color:#be123c;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                  <span style="background:#be123c;color:#fff;font-size:18px;font-weight:800;border-radius:999px;padding:4px 14px;">2 waiting</span>
+                </div>
+                <div>
+                  <div style="font-size:30px;font-weight:800;letter-spacing:-0.02em;">Answer offers</div>
+                  <div style="margin-top:6px;font-size:18px;color:#57534e;">Chelsea and Brentwell are waiting for you.</div>
+                </div>
+              </button>
+              <button onClick="{{ g2StartAsk }}" style="border:none;cursor:pointer;font-family:inherit;text-align:left;border-radius:24px;padding:30px 32px;background:#f5f3ff;color:#1c1917;display:flex;flex-direction:column;justify-content:space-between;box-shadow:inset 0 0 0 2px #ddd6fe,0 4px 12px rgba(28,25,23,0.05);">
+                <svg style="width:40px;height:40px;color:#6d28d9;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                <div>
+                  <div style="font-size:30px;font-weight:800;letter-spacing:-0.02em;">Ask anything</div>
+                  <div style="margin-top:6px;font-size:18px;color:#57534e;">Ask a question in your own words. Get the answer or a shortcut.</div>
+                </div>
+              </button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ g2NotHome }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <button onClick="{{ g2Back }}" style="border:none;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;padding:12px 18px 12px 12px;border-radius:12px;background:transparent;color:#44403c;font-size:17px;font-weight:600;box-shadow:inset 0 0 0 1px #d6d3d1;">
+                <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
+                Back
+              </button>
+              <span style="font-size:16px;font-weight:600;color:#78716c;">{{ g2StepLabel }}</span>
+            </div>
+            <div>
+              <div style="font-size:38px;font-weight:800;letter-spacing:-0.025em;">{{ g2Question }}</div>
+              <div style="margin-top:8px;font-size:20px;color:#57534e;">{{ g2Hint }}</div>
+            </div>
+            <sc-if value="{{ g2ShowChoices }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;">
+                <sc-for list="{{ g2Choices }}" as="c" hint-placeholder-count="8">
+                  <button onClick="{{ c.onClick }}" style="border:none;cursor:pointer;font-family:inherit;height:120px;border-radius:20px;background:#fff;color:#1c1917;font-size:22px;font-weight:700;box-shadow:inset 0 0 0 2px #e7e5e4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;" style-hover="box-shadow:inset 0 0 0 3px #047857;">
+                    <span>{{ c.label }}</span>
+                    <span style="font-size:15px;font-weight:500;color:#78716c;">{{ c.sub }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ g2ShowResults }}" hint-placeholder-val="{{ false }}">
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;">
+                <sc-for list="{{ g2Results }}" as="r" hint-placeholder-count="3">
+                  <div style="background:#fff;border-radius:22px;padding:26px;box-shadow:inset 0 0 0 1px #e7e5e4,0 4px 12px rgba(28,25,23,0.05);display:flex;flex-direction:column;gap:18px;">
+                    <div style="display:flex;align-items:center;gap:14px;">
+                      <span style="width:56px;height:56px;border-radius:50%;background:#f5f5f4;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#57534e;">{{ r.initials }}</span>
+                      <div>
+                        <div style="font-size:22px;font-weight:800;">{{ r.name }}</div>
+                        <div style="font-size:16px;color:#78716c;">{{ r.club }}</div>
+                      </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:10px;font-size:17px;">
+                      <div style="display:flex;justify-content:space-between;"><span style="color:#78716c;">Age</span><span style="font-weight:600;">{{ r.age }}</span></div>
+                      <div style="display:flex;justify-content:space-between;"><span style="color:#78716c;">Price</span><span style="font-weight:800;color:#047857;">{{ r.price }}</span></div>
+                      <div style="display:flex;justify-content:space-between;"><span style="color:#78716c;">Wages</span><span style="font-weight:600;">{{ r.wage }}</span></div>
+                    </div>
+                    <div style="font-size:16px;line-height:1.45;color:#44403c;padding:14px;border-radius:12px;background:#f5f5f4;">{{ r.why }}</div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                      <button style="border:none;cursor:pointer;font-family:inherit;height:56px;border-radius:14px;background:#047857;color:#fff;font-size:18px;font-weight:700;">Make an offer</button>
+                      <button style="border:none;cursor:pointer;font-family:inherit;height:48px;border-radius:14px;background:transparent;color:#44403c;font-size:16px;font-weight:600;box-shadow:inset 0 0 0 1px #d6d3d1;">Ask Sam about him</button>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ g2ShowAsk }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:18px;">
+                <div style="height:68px;flex-shrink:0;display:flex;align-items:center;gap:14px;padding:0 8px 0 22px;border-radius:18px;background:#fff;box-shadow:inset 0 0 0 2px #ddd6fe;">
+                  <svg style="width:24px;height:24px;color:#6d28d9;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                  <input value="{{ askText }}" onChange="{{ askChange }}" onKeyDown="{{ askKey }}" placeholder="Type your question, e.g. which contracts end soon?" style="flex:1;min-width:0;border:none;outline:none;background:transparent;font-family:inherit;font-size:20px;color:#1c1917;">
+                  <button onClick="{{ askSubmit }}" style="border:none;cursor:pointer;font-family:inherit;height:52px;padding:0 26px;border-radius:13px;background:#6d28d9;color:#fff;font-size:18px;font-weight:700;">Ask</button>
+                </div>
+                <sc-if value="{{ askEmpty }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;flex-direction:column;gap:12px;">
+                    <span style="font-size:16px;font-weight:600;color:#78716c;">Or tap a question</span>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                      <sc-for list="{{ askSuggestions }}" as="s" hint-placeholder-count="4">
+                        <button onClick="{{ s.onClick }}" style="border:none;cursor:pointer;font-family:inherit;text-align:left;height:76px;padding:0 24px;border-radius:18px;background:#fff;color:#1c1917;font-size:20px;font-weight:600;box-shadow:inset 0 0 0 2px #e7e5e4;" style-hover="box-shadow:inset 0 0 0 3px #6d28d9;">{{ s.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+                <div style="flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:18px;">
+                  <sc-for list="{{ askThread }}" as="a" hint-placeholder-count="0">
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                      <div style="align-self:flex-end;max-width:640px;padding:12px 18px;border-radius:16px;background:#1c1917;color:#fafaf9;font-size:18px;font-weight:600;">{{ a.q }}</div>
+                      <div style="background:#fff;border-radius:20px;padding:22px 24px;box-shadow:inset 0 0 0 1px #e7e5e4,0 4px 12px rgba(28,25,23,0.05);display:flex;flex-direction:column;gap:16px;">
+                        <div style="font-size:21px;line-height:1.5;color:#1c1917;text-wrap:pretty;">{{ a.text }}</div>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                          <sc-for list="{{ a.shortcuts }}" as="s" hint-placeholder-count="2">
+                            <button onClick="{{ s.onClick }}" style="border:none;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;height:52px;padding:0 20px;border-radius:13px;font-size:17px;font-weight:700;background:{{ s.bg }};color:{{ s.color }};box-shadow:inset 0 0 0 2px {{ s.ring }};">{{ s.label }}<span style="font-size:18px;">→</span></button>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+          </sc-if>
+
+          <sc-if value="{{ liteOff }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:22px;max-width:640px;">
+              <div style="font-size:38px;font-weight:800;letter-spacing:-0.025em;">Lite mode is off</div>
+              <div style="font-size:20px;line-height:1.5;color:#57534e;text-wrap:pretty;">You're using the full TransferX app with every page and tool. You can switch back to Lite mode at any time from the top of the screen.</div>
+              <div style="display:flex;gap:12px;">
+                <a href="TransferX - Current.dc.html" style="display:flex;align-items:center;height:60px;padding:0 26px;border-radius:14px;background:#1c1917;color:#fff;font-size:18px;font-weight:700;">Open the full app</a>
+                <button onClick="{{ toggleLite }}" style="border:none;cursor:pointer;font-family:inherit;height:60px;padding:0 26px;border-radius:14px;background:#fff;color:#1c1917;font-size:18px;font-weight:700;box-shadow:inset 0 0 0 2px #d6d3d1;">Turn Lite mode back on</button>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+
+    <div id="2b" style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:#1c1917;color:#fafaf9;font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px;">2b</span>
+        <span style="font-size:18px;font-weight:700;">Messages</span>
+        <span style="font-size:14px;color:#57534e;">Every deal is a conversation. Reply with one tap.</span>
+      </div>
+      <div style="width:1194px;height:834px;background:#faf8f5;color:#1c1917;border-radius:24px;overflow:hidden;display:grid;grid-template-columns:380px minmax(0,1fr);box-shadow:0 30px 60px rgba(28,25,23,0.35),0 0 0 10px #1c1917;">
+        <div style="background:#fff;border-right:1px solid #e7e5e4;display:flex;flex-direction:column;min-height:0;">
+          <div style="padding:26px 24px 18px;display:flex;flex-direction:column;gap:4px;">
+            <div style="font-size:28px;font-weight:800;letter-spacing:-0.02em;">Deals</div>
+            <div style="font-size:16px;color:#78716c;">Northgate FC · £22m left to spend</div>
+          </div>
+          <div style="flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;">
+            <sc-for list="{{ threads }}" as="t" hint-placeholder-count="5">
+              <div onClick="{{ t.onClick }}" style="display:flex;gap:14px;padding:16px 24px;cursor:pointer;background:{{ t.bg }};border-left:4px solid {{ t.edge }};">
+                <span style="width:52px;height:52px;border-radius:50%;flex-shrink:0;background:{{ t.avatarBg }};color:{{ t.avatarColor }};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;">{{ t.initials }}</span>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;justify-content:space-between;gap:8px;">
+                    <span style="font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.name }}</span>
+                    <span style="font-size:14px;color:#78716c;flex-shrink:0;">{{ t.time }}</span>
+                  </div>
+                  <div style="margin-top:3px;display:flex;justify-content:space-between;gap:8px;align-items:center;">
+                    <span style="font-size:15px;color:#57534e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.preview }}</span>
+                    <sc-if value="{{ t.unread }}" hint-placeholder-val="{{ false }}">
+                      <span style="width:12px;height:12px;border-radius:50%;background:#be123c;flex-shrink:0;"></span>
+                    </sc-if>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;min-height:0;">
+          <div style="height:84px;flex-shrink:0;display:flex;align-items:center;gap:14px;padding:0 32px;background:#fff;border-bottom:1px solid #e7e5e4;">
+            <span style="width:48px;height:48px;border-radius:50%;background:{{ thread.avatarBg }};color:{{ thread.avatarColor }};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;">{{ thread.initials }}</span>
+            <div>
+              <div style="font-size:20px;font-weight:800;">{{ thread.name }}</div>
+              <div style="font-size:15px;color:#78716c;">{{ thread.sub }}</div>
+            </div>
+          </div>
+          <div style="flex:1;min-height:0;overflow:auto;padding:28px 32px;display:flex;flex-direction:column;gap:14px;background:#f5f3ef;">
+            <sc-for list="{{ messages }}" as="m" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;align-items:{{ m.align }};gap:4px;">
+                <span style="font-size:13px;font-weight:600;color:#78716c;padding:0 6px;">{{ m.from }}</span>
+                <div style="max-width:560px;padding:14px 18px;border-radius:18px;font-size:18px;line-height:1.45;background:{{ m.bg }};color:{{ m.color }};box-shadow:{{ m.shadow }};text-wrap:pretty;">{{ m.text }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="flex-shrink:0;padding:18px 32px 24px;background:#fff;border-top:1px solid #e7e5e4;display:flex;flex-direction:column;gap:14px;">
+            <sc-if value="{{ hasReplies }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <span style="font-size:14px;font-weight:600;color:#78716c;">Tap to reply</span>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                  <sc-for list="{{ replies }}" as="r" hint-placeholder-count="3">
+                    <button onClick="{{ r.onClick }}" style="border:none;cursor:pointer;font-family:inherit;height:56px;padding:0 24px;border-radius:999px;font-size:18px;font-weight:700;background:{{ r.bg }};color:{{ r.color }};box-shadow:inset 0 0 0 2px {{ r.ring }};">{{ r.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:12px;height:56px;padding:0 8px 0 20px;border-radius:999px;background:#f5f5f4;">
+              <input placeholder="Write to Sam…" style="flex:1;min-width:0;border:none;outline:none;background:transparent;font-family:inherit;font-size:18px;color:#1c1917;">
+              <span style="width:44px;height:44px;border-radius:50%;background:#047857;color:#fff;display:flex;align-items:center;justify-content:center;">
+                <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6l6 6"></path></svg>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="2c" style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:#1c1917;color:#fafaf9;font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px;">2c</span>
+        <span style="font-size:18px;font-weight:700;">The morning letter</span>
+        <span style="font-size:14px;color:#57534e;">Read it top to bottom. Decisions are buttons inside the text.</span>
+      </div>
+      <div style="width:1194px;height:834px;background:#efebe4;color:#1c1917;border-radius:24px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 60px rgba(28,25,23,0.35),0 0 0 10px #1c1917;">
+        <div style="height:64px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 40px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:30px;height:30px;border-radius:8px;background:#047857;display:flex;align-items:center;justify-content:center;">
+              <svg style="width:16px;height:16px;color:#fff;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <span style="font-size:17px;font-weight:800;">TransferX</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:#57534e;">
+            <span style="padding:8px 14px;border-radius:10px;">← Yesterday</span>
+            <span style="padding:8px 14px;border-radius:10px;background:#fff;color:#1c1917;">Today</span>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;overflow:auto;padding:8px 0 48px;">
+          <div style="width:760px;margin:0 auto;background:#fff;border-radius:6px;box-shadow:0 1px 2px rgba(28,25,23,0.08),0 12px 32px rgba(28,25,23,0.08);padding:56px 64px 60px;font-family:'Source Serif 4',Georgia,serif;">
+            <div style="font-family:Inter,sans-serif;font-size:14px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#78716c;">Thursday 27 September · Northgate FC</div>
+            <div style="margin-top:18px;font-size:40px;font-weight:700;letter-spacing:-0.01em;line-height:1.15;">Good morning, Rob.</div>
+            <p style="margin:18px 0 0;font-size:21px;line-height:1.6;color:#292524;text-wrap:pretty;">The window closes in 12 days and you have <strong>£22m</strong> left to spend. {{ letterIntro }}</p>
+
+            <sc-for list="{{ letterItems }}" as="l" hint-placeholder-count="3">
+              <div style="margin-top:32px;padding-top:28px;border-top:1px solid #e7e5e4;">
+                <div style="font-family:Inter,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:{{ l.kindColor }};">{{ l.kind }}</div>
+                <p style="margin:10px 0 0;font-size:21px;line-height:1.6;color:#292524;text-wrap:pretty;">{{ l.text }}</p>
+                <p style="margin:8px 0 0;font-size:19px;line-height:1.55;color:#57534e;font-style:italic;text-wrap:pretty;">{{ l.advice }}</p>
+                <sc-if value="{{ l.open }}" hint-placeholder-val="{{ true }}">
+                  <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;font-family:Inter,sans-serif;">
+                    <sc-for list="{{ l.actions }}" as="a" hint-placeholder-count="3">
+                      <button onClick="{{ a.onClick }}" style="border:none;cursor:pointer;font-family:inherit;height:54px;padding:0 22px;border-radius:12px;font-size:17px;font-weight:700;background:{{ a.bg }};color:{{ a.color }};box-shadow:inset 0 0 0 2px {{ a.ring }};">{{ a.label }}</button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ l.decided }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:16px;display:flex;align-items:center;gap:12px;font-family:Inter,sans-serif;">
+                    <span style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;background:#ecfdf5;color:#065f46;font-size:17px;font-weight:700;">
+                      <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                      {{ l.result }}
+                    </span>
+                    <button onClick="{{ l.undo }}" style="border:none;background:none;cursor:pointer;font-family:inherit;font-size:16px;color:#78716c;text-decoration:underline;">Change</button>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+
+            <div style="margin-top:32px;padding-top:28px;border-top:1px solid #e7e5e4;">
+              <div style="font-family:Inter,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#78716c;">On track, nothing needed from you</div>
+              <p style="margin:10px 0 0;font-size:19px;line-height:1.7;color:#44403c;text-wrap:pretty;">Priya meets Marcus Reid's agent on Monday about a new contract. Kai Brandt's loan to Harwick is waiting for their signature.</p>
+            </div>
+            <p style="margin:36px 0 0;font-size:19px;color:#57534e;">Sam and the recruitment team</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:56px 64px 80px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#1c1917;display:flex;flex-direction:column;gap:32px;">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:900px;">
+    <div style="font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#57534e;">Turn 1 · Director home, iPad landscape</div>
+    <div style="font-size:32px;font-weight:800;letter-spacing:-0.02em;">Two directions for non-technical sporting directors</div>
+    <div style="font-size:16px;line-height:1.5;color:#44403c;text-wrap:pretty;"><a href="#1a" style="color:#047857;font-weight:700;">1a</a> puts the squad on a pitch and makes it the way you buy and sell. <a href="#1b" style="color:#047857;font-weight:700;">1b</a> assumes staff do the work and the director only decides, one thing at a time. Both are clickable.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start;">
+
+    <div id="1a" style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:#1c1917;color:#fafaf9;font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px;">1a</span>
+        <span style="font-size:18px;font-weight:700;">The pitch</span>
+        <span style="font-size:14px;color:#57534e;">Tap a player to sell. Tap a gap to buy.</span>
+      </div>
+
+      <div style="width:1194px;height:834px;background:#020617;color:#f8fafc;border-radius:24px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 60px rgba(28,25,23,0.35),0 0 0 10px #1c1917;">
+        <div style="height:68px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 28px;border-bottom:1px solid rgba(255,255,255,0.08);">
+          <div style="display:flex;align-items:center;gap:10px;width:220px;">
+            <div style="width:32px;height:32px;border-radius:9px;background:#10b981;display:flex;align-items:center;justify-content:center;">
+              <svg style="width:18px;height:18px;color:#022c22;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <span style="font-size:17px;font-weight:800;">TransferX</span>
+          </div>
+          <div style="display:flex;gap:6px;background:#0f172a;padding:5px;border-radius:14px;">
+            <div style="padding:10px 22px;border-radius:10px;font-size:15px;font-weight:700;background:rgba(16,185,129,0.16);color:#6ee7b7;">Today</div>
+            <div style="padding:10px 22px;border-radius:10px;font-size:15px;font-weight:600;color:#cbd5e1;">My squad</div>
+            <div style="padding:10px 22px;border-radius:10px;font-size:15px;font-weight:600;color:#cbd5e1;">Find players</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 22px;border-radius:10px;font-size:15px;font-weight:600;color:#cbd5e1;">Deals<span style="background:#ef4444;color:#fff;font-size:12px;font-weight:800;border-radius:999px;padding:1px 7px;">2</span></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;width:220px;">
+            <span style="font-size:14px;color:#94a3b8;">Northgate FC</span>
+            <span style="width:36px;height:36px;border-radius:50%;background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#e2e8f0;">RM</span>
+          </div>
+        </div>
+
+        <div style="flex:1;min-height:0;display:grid;grid-template-columns:380px minmax(0,1fr);gap:24px;padding:24px 28px 26px;">
+          <div style="display:flex;flex-direction:column;gap:18px;min-height:0;">
+            <div>
+              <div style="font-size:28px;font-weight:800;letter-spacing:-0.02em;">Good morning, Rob</div>
+              <div style="margin-top:4px;font-size:15px;color:#94a3b8;">Thursday 27 September · Window closes in 12 days</div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="font-size:13px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#94a3b8;">Needs you today</div>
+              <sc-for list="{{ needs }}" as="n" hint-placeholder-count="2">
+                <div style="background:#0f172a;border-radius:16px;padding:18px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:14px;">
+                  <div>
+                    <div style="font-size:17px;font-weight:700;line-height:1.35;text-wrap:pretty;">{{ n.title }}</div>
+                    <div style="margin-top:4px;font-size:14px;color:#94a3b8;">{{ n.sub }}</div>
+                  </div>
+                  <sc-if value="{{ n.open }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;gap:8px;">
+                      <sc-for list="{{ n.actions }}" as="a" hint-placeholder-count="3">
+                        <button onClick="{{ a.onClick }}" style="border:none;cursor:pointer;font-family:inherit;padding:12px 16px;border-radius:11px;font-size:15px;font-weight:700;background:{{ a.bg }};color:{{ a.color }};box-shadow:inset 0 0 0 1px {{ a.ring }};">{{ a.label }}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ n.decided }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                      <div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:#6ee7b7;">
+                        <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                        <span>{{ n.result }}</span>
+                      </div>
+                      <button onClick="{{ n.undo }}" style="border:none;background:none;cursor:pointer;font-family:inherit;font-size:14px;color:#94a3b8;">Undo</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="margin-top:auto;background:#0f172a;border-radius:16px;padding:18px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:12px;">
+              <div style="font-size:14px;color:#94a3b8;">Money left to spend this window</div>
+              <div style="display:flex;align-items:baseline;gap:8px;">
+                <span style="font-size:36px;font-weight:800;letter-spacing:-0.02em;">{{ moneyLeft }}</span>
+                <span style="font-size:15px;color:#94a3b8;">of £40m</span>
+              </div>
+              <div style="height:10px;border-radius:999px;background:#1e293b;overflow:hidden;">
+                <div style="height:100%;width:{{ moneyPct }}%;background:#10b981;border-radius:999px;"></div>
+              </div>
+              <div style="font-size:14px;color:#cbd5e1;">£140k a week spare for wages</div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:14px;min-height:0;">
+            <div style="height:56px;flex-shrink:0;display:flex;align-items:center;gap:12px;background:#0f172a;border-radius:14px;padding:0 8px 0 18px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.1);">
+              <svg style="width:20px;height:20px;color:#c084fc;flex-shrink:0;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+              <input placeholder="Ask for a player, e.g. a left-back under 24 for less than £10m" style="flex:1;min-width:0;border:none;outline:none;background:transparent;color:#f8fafc;font-family:inherit;font-size:16px;">
+              <button style="border:none;cursor:pointer;font-family:inherit;padding:10px 18px;border-radius:10px;font-size:15px;font-weight:700;background:rgba(168,85,247,0.2);color:#e9d5ff;">Ask</button>
+            </div>
+
+            <div onClick="{{ closeSheet }}" style="flex:1;min-height:0;position:relative;border-radius:18px;overflow:hidden;background:repeating-linear-gradient(180deg,#0a3324 0px,#0a3324 54px,#0c3a29 54px,#0c3a29 108px);">
+              <div style="position:absolute;inset:16px;border:2px solid rgba(255,255,255,0.13);border-radius:6px;"></div>
+              <div style="position:absolute;left:16px;right:16px;top:50%;height:2px;background:rgba(255,255,255,0.13);"></div>
+              <div style="position:absolute;left:50%;top:50%;width:120px;height:120px;transform:translate(-50%,-50%);border:2px solid rgba(255,255,255,0.13);border-radius:50%;"></div>
+              <div style="position:absolute;left:50%;top:16px;width:44%;height:17%;transform:translateX(-50%);border:2px solid rgba(255,255,255,0.13);border-top:none;"></div>
+              <div style="position:absolute;left:50%;bottom:16px;width:44%;height:17%;transform:translateX(-50%);border:2px solid rgba(255,255,255,0.13);border-bottom:none;"></div>
+
+              <sc-for list="{{ tokens }}" as="t" hint-placeholder-count="11">
+                <div onClick="{{ t.onClick }}" style="position:absolute;left:{{ t.x }}%;top:{{ t.y }}%;transform:translate(-50%,-50%);width:130px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;">
+                  <sc-if value="{{ t.gap }}" hint-placeholder-val="{{ false }}">
+                    <div style="width:58px;height:58px;border-radius:50%;border:2px dashed #6ee7b7;background:rgba(16,185,129,0.12);display:flex;align-items:center;justify-content:center;color:#6ee7b7;font-size:28px;font-weight:400;box-shadow:{{ t.glow }};">+</div>
+                    <div style="font-size:13px;font-weight:700;background:rgba(2,6,23,0.75);padding:3px 9px;border-radius:7px;">{{ t.name }}</div>
+                    <div style="font-size:12px;font-weight:700;background:#10b981;color:#022c22;padding:2px 9px;border-radius:999px;">Find one</div>
+                  </sc-if>
+                  <sc-if value="{{ t.isPlayer }}" hint-placeholder-val="{{ true }}">
+                    <div style="width:58px;height:58px;border-radius:50%;background:#0f172a;border:3px solid {{ t.ring }};display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:800;box-shadow:{{ t.glow }};">{{ t.num }}</div>
+                    <div style="font-size:13px;font-weight:700;background:rgba(2,6,23,0.75);padding:3px 9px;border-radius:7px;white-space:nowrap;">{{ t.name }}</div>
+                    <sc-if value="{{ t.hasTag }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:12px;font-weight:700;background:{{ t.tagBg }};color:{{ t.tagColor }};padding:2px 9px;border-radius:999px;white-space:nowrap;">{{ t.tag }}</div>
+                    </sc-if>
+                  </sc-if>
+                </div>
+              </sc-for>
+
+              <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ stop }}" style="position:absolute;top:16px;right:16px;bottom:16px;width:320px;background:#0f172a;border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,0.55),inset 0 0 0 1px rgba(255,255,255,0.1);padding:22px;display:flex;flex-direction:column;gap:18px;">
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+                    <div>
+                      <div style="font-size:22px;font-weight:800;letter-spacing:-0.01em;">{{ sel.title }}</div>
+                      <div style="margin-top:3px;font-size:14px;color:#94a3b8;">{{ sel.sub }}</div>
+                    </div>
+                    <button onClick="{{ closeSheet }}" style="border:none;cursor:pointer;width:36px;height:36px;border-radius:10px;background:#1e293b;color:#cbd5e1;font-size:18px;flex-shrink:0;">×</button>
+                  </div>
+                  <sc-if value="{{ sel.hasNote }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:15px;line-height:1.45;font-weight:600;padding:14px;border-radius:12px;background:{{ sel.noteBg }};color:{{ sel.noteColor }};">{{ sel.note }}</div>
+                  </sc-if>
+                  <sc-for list="{{ sel.facts }}" as="f" hint-placeholder-count="3">
+                    <div style="display:flex;justify-content:space-between;gap:12px;font-size:15px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.07);">
+                      <span style="color:#94a3b8;">{{ f.k }}</span><span style="font-weight:600;text-align:right;">{{ f.v }}</span>
+                    </div>
+                  </sc-for>
+                  <sc-for list="{{ sel.options }}" as="o" hint-placeholder-count="0">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:12px;background:#1e293b;cursor:pointer;">
+                      <div>
+                        <div style="font-size:15px;font-weight:700;">{{ o.name }}</div>
+                        <div style="font-size:13px;color:#94a3b8;">{{ o.sub }}</div>
+                      </div>
+                      <div style="font-size:15px;font-weight:800;color:#6ee7b7;">{{ o.price }}</div>
+                    </div>
+                  </sc-for>
+                  <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px;">
+                    <sc-for list="{{ sel.actions }}" as="a" hint-placeholder-count="2">
+                      <button style="border:none;cursor:pointer;font-family:inherit;padding:14px;border-radius:12px;font-size:16px;font-weight:700;background:{{ a.bg }};color:{{ a.color }};">{{ a.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+
+            <div style="display:flex;gap:22px;font-size:13px;color:#94a3b8;">
+              <span style="display:flex;align-items:center;gap:7px;"><span style="width:11px;height:11px;border-radius:50%;border:3px solid #f43f5e;"></span>Offer received</span>
+              <span style="display:flex;align-items:center;gap:7px;"><span style="width:11px;height:11px;border-radius:50%;border:3px solid #f59e0b;"></span>Contract ending</span>
+              <span style="display:flex;align-items:center;gap:7px;"><span style="width:11px;height:11px;border-radius:50%;border:3px solid #38bdf8;"></span>For sale</span>
+              <span style="display:flex;align-items:center;gap:7px;"><span style="width:11px;height:11px;border-radius:50%;border:2px dashed #6ee7b7;"></span>Position to fill</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1b" style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="background:#1c1917;color:#fafaf9;font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px;">1b</span>
+        <span style="font-size:18px;font-weight:700;">The decision desk</span>
+        <span style="font-size:14px;color:#57534e;">One decision at a time. Staff handle everything else.</span>
+      </div>
+
+      <div style="width:1194px;height:834px;background:#020617;color:#f8fafc;border-radius:24px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 60px rgba(28,25,23,0.35),0 0 0 10px #1c1917;">
+        <div style="height:68px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 32px;border-bottom:1px solid rgba(255,255,255,0.08);">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:32px;height:32px;border-radius:9px;background:#10b981;display:flex;align-items:center;justify-content:center;">
+              <svg style="width:18px;height:18px;color:#022c22;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <span style="font-size:17px;font-weight:800;">TransferX</span>
+            <span style="width:1px;height:20px;background:rgba(255,255,255,0.15);"></span>
+            <span style="font-size:15px;color:#94a3b8;">Northgate FC</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:18px;">
+            <a href="#1b" style="font-size:14px;font-weight:600;color:#94a3b8;">Open the full app →</a>
+            <span style="width:36px;height:36px;border-radius:50%;background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#e2e8f0;">RM</span>
+          </div>
+        </div>
+
+        <div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:32px;padding:32px 40px 36px;">
+          <div style="display:flex;flex-direction:column;gap:22px;min-height:0;">
+            <sc-if value="{{ inboxActive }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;">
+                <div>
+                  <div style="font-size:15px;color:#94a3b8;">Thursday 27 September · Window closes in 12 days</div>
+                  <div style="margin-top:6px;font-size:34px;font-weight:800;letter-spacing:-0.02em;">{{ remainingText }}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding-bottom:8px;">
+                  <sc-for list="{{ dots }}" as="d" hint-placeholder-count="3">
+                    <span style="width:{{ d.w }}px;height:10px;border-radius:999px;background:{{ d.bg }};"></span>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="flex:1;min-height:0;background:#0f172a;border-radius:22px;padding:30px 32px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:20px;">
+                <span style="align-self:flex-start;font-size:13px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;padding:5px 11px;border-radius:999px;background:{{ cur.kindBg }};color:{{ cur.kindColor }};">{{ cur.kind }}</span>
+                <div style="font-size:30px;font-weight:800;line-height:1.2;letter-spacing:-0.015em;text-wrap:pretty;">{{ cur.title }}</div>
+                <div style="display:flex;align-items:baseline;gap:14px;">
+                  <span style="font-size:54px;font-weight:800;letter-spacing:-0.03em;line-height:1;">{{ cur.amount }}</span>
+                  <span style="font-size:17px;color:#94a3b8;">{{ cur.amountNote }}</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <sc-for list="{{ cur.facts }}" as="f" hint-placeholder-count="2">
+                    <div style="display:flex;align-items:center;gap:10px;font-size:17px;color:#cbd5e1;"><span style="width:6px;height:6px;border-radius:50%;background:#475569;flex-shrink:0;"></span>{{ f }}</div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:14px;padding:16px 18px;border-radius:14px;background:#111c33;">
+                  <span style="width:40px;height:40px;border-radius:50%;background:#312e81;color:#c7d2fe;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;">SP</span>
+                  <div>
+                    <div style="font-size:14px;color:#94a3b8;">Sam Price, Head of Recruitment, suggests</div>
+                    <div style="margin-top:3px;font-size:17px;font-weight:600;line-height:1.4;">{{ cur.advice }}</div>
+                  </div>
+                </div>
+                <div style="margin-top:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;">
+                  <sc-for list="{{ cur.actions }}" as="a" hint-placeholder-count="3">
+                    <button onClick="{{ a.onClick }}" style="border:none;cursor:pointer;font-family:inherit;height:64px;border-radius:14px;font-size:18px;font-weight:700;background:{{ a.bg }};color:{{ a.color }};box-shadow:inset 0 0 0 1px {{ a.ring }};">{{ a.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="font-size:15px;color:#94a3b8;text-align:center;">Not sure? <span style="color:#a5b4fc;font-weight:600;cursor:pointer;">Ask Sam a question</span></div>
+            </sc-if>
+
+            <sc-if value="{{ inboxDone }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:24px;max-width:620px;">
+                <span style="width:72px;height:72px;border-radius:50%;background:rgba(16,185,129,0.16);color:#34d399;display:flex;align-items:center;justify-content:center;">
+                  <svg style="width:36px;height:36px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                </span>
+                <div>
+                  <div style="font-size:40px;font-weight:800;letter-spacing:-0.02em;">You're all caught up</div>
+                  <div style="margin-top:8px;font-size:18px;color:#94a3b8;line-height:1.5;">Your team has been told what you decided. We'll let you know when something new needs you.</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                  <sc-for list="{{ decidedList }}" as="r" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;border-radius:14px;background:#0f172a;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);">
+                      <span style="font-size:16px;font-weight:600;">{{ r.title }}</span>
+                      <span style="font-size:15px;font-weight:700;color:#6ee7b7;white-space:nowrap;">{{ r.result }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <button onClick="{{ resetInbox }}" style="align-self:flex-start;border:none;cursor:pointer;font-family:inherit;background:none;padding:0;font-size:15px;font-weight:600;color:#94a3b8;">Start again</button>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:18px;min-height:0;">
+            <div style="background:#0f172a;border-radius:18px;padding:20px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:12px;">
+              <div style="font-size:14px;color:#94a3b8;">Money left to spend</div>
+              <div style="display:flex;align-items:baseline;gap:8px;">
+                <span style="font-size:34px;font-weight:800;letter-spacing:-0.02em;">{{ inboxMoney }}</span>
+                <span style="font-size:15px;color:#94a3b8;">of £40m</span>
+              </div>
+              <div style="height:10px;border-radius:999px;background:#1e293b;overflow:hidden;">
+                <div style="height:100%;width:{{ inboxMoneyPct }}%;background:#10b981;border-radius:999px;"></div>
+              </div>
+              <div style="font-size:14px;color:#cbd5e1;">£140k a week spare for wages</div>
+            </div>
+
+            <div style="background:#0f172a;border-radius:18px;padding:20px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:16px;">
+              <div style="font-size:14px;color:#94a3b8;">Your team is working on</div>
+              <sc-for list="{{ teamWork }}" as="w" hint-placeholder-count="3">
+                <div style="display:flex;gap:12px;align-items:flex-start;">
+                  <span style="width:34px;height:34px;border-radius:50%;background:#1e293b;color:#cbd5e1;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">{{ w.who }}</span>
+                  <div>
+                    <div style="font-size:15px;font-weight:600;line-height:1.35;">{{ w.what }}</div>
+                    <div style="margin-top:2px;font-size:13px;color:#94a3b8;">{{ w.when }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="margin-top:auto;font-size:14px;line-height:1.5;color:#64748b;">Nothing here needs a login to the full app. Everything above is also sent to you as a morning email.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;liteMode&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;2a · Ask me questions&quot;},&quot;formation&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;4-3-3&quot;,&quot;4-2-3-1&quot;],&quot;default&quot;:&quot;4-3-3&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;1a · Pitch&quot;},&quot;inboxCleared&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;1b · Decision desk&quot;}}">
+const SQUAD = [
+  { num: 1, name: "Tom Hale", pos: "Goalkeeper", age: 29, contract: "June 2028", value: "£4m" },
+  { num: 2, name: "Luca Ferri", pos: "Right-back", age: 26, contract: "June 2027", value: "£7m" },
+  { num: 5, name: "Dan Okafor", pos: "Centre-back", age: 31, contract: "Ends in 48 days", value: "£3m", state: "expiring", tag: "48 days left" },
+  { num: 6, name: "Ryan Cole", pos: "Centre-back", age: 24, contract: "June 2029", value: "£11m" },
+  { gap: true, name: "Left-back" },
+  { num: 8, name: "Jordan Mitchell", pos: "Midfielder", age: 25, contract: "June 2028", value: "£20m", state: "offer", tag: "Offer £18m" },
+  { num: 4, name: "Theo Marsh", pos: "Midfielder", age: 27, contract: "June 2027", value: "£9m" },
+  { num: 10, name: "Kai Brandt", pos: "Midfielder", age: 28, contract: "June 2027", value: "£6m", state: "listed", tag: "For sale" },
+  { num: 7, name: "Sami Idrissi", pos: "Right winger", age: 22, contract: "June 2030", value: "£15m" },
+  { num: 9, name: "Marcus Reid", pos: "Striker", age: 30, contract: "Ends in 110 days", value: "£8m", state: "expiring", tag: "110 days left" },
+  { num: 11, name: "Owen Pryce", pos: "Left winger", age: 23, contract: "June 2029", value: "£12m" },
+];
+
+const FORMATIONS = {
+  "4-3-3": [[50, 88], [84, 68], [62, 73], [38, 73], [16, 68], [72, 47], [50, 52], [28, 47], [80, 22], [50, 14], [20, 22]],
+  "4-2-3-1": [[50, 88], [84, 68], [62, 73], [38, 73], [16, 68], [62, 54], [38, 54], [50, 34], [80, 32], [50, 13], [20, 32]],
+};
+
+const STATE_STYLE = {
+  offer: { ring: "#f43f5e", tagBg: "#f43f5e", tagColor: "#fff" },
+  expiring: { ring: "#f59e0b", tagBg: "#f59e0b", tagColor: "#1c1917" },
+  listed: { ring: "#38bdf8", tagBg: "#38bdf8", tagColor: "#082f49" },
+};
+
+const BTN = [
+  { bg: "#10b981", color: "#022c22", ring: "transparent" },
+  { bg: "#1e293b", color: "#e2e8f0", ring: "rgba(255,255,255,0.1)" },
+  { bg: "transparent", color: "#fda4af", ring: "rgba(244,63,94,0.45)" },
+];
+
+const NEEDS = [
+  { title: "Chelsea offered £18m for Jordan Mitchell", sub: "Expires Friday · you value him at £20m",
+    actions: [["Accept", "Accepted. Chelsea have been told."], ["Counter £21m", "Countered at £21m."], ["Say no", "Declined. Chelsea have been told."]] },
+  { title: "Sam wants to bid £8m for Ellis Varga", sub: "Left-back, 23 · needs your approval",
+    actions: [["Approve", "Approved. Sam will send the bid."], ["Say no", "Declined. Sam has been told."]] },
+];
+
+const DECISIONS = [
+  { kind: "Offer for your player", kindBg: "rgba(244,63,94,0.16)", kindColor: "#fda4af",
+    title: "Chelsea want to buy Jordan Mitchell", amount: "£18m", amountNote: "Offer expires Friday",
+    facts: ["You value him at £20m", "He has two years left on his contract"],
+    advice: "Counter at £21m. Chelsea have room in their budget to go higher.",
+    actions: [["Accept £18m", "Accepted £18m"], ["Counter at £21m", "Countered at £21m"], ["Say no", "Said no"]] },
+  { kind: "Your approval", kindBg: "rgba(56,189,248,0.16)", kindColor: "#7dd3fc",
+    title: "Sam wants to bid for Ellis Varga, left-back at Brentwell Town", amount: "£8m", amountNote: "Transfer fee · £35k a week",
+    facts: ["He's 23 and fills your only empty position", "You'd have £14m left to spend after this"],
+    advice: "Approve. Two other clubs are watching him and Brentwell want a quick deal.", spends: 8,
+    actions: [["Approve bid", "Approved £8m bid"], ["Change amount", "Asked Sam to lower it"], ["Say no", "Said no"]] },
+  { kind: "Contract ending", kindBg: "rgba(245,158,11,0.16)", kindColor: "#fcd34d",
+    title: "Dan Okafor's contract ends in 48 days", amount: "£3m", amountNote: "What he could sell for now",
+    facts: ["If nothing happens he leaves for free", "He's 31 and played 14 of 20 games"],
+    advice: "List him now while clubs can still pay a fee for him.",
+    actions: [["List for sale", "Listed for sale"], ["Offer new contract", "New contract offered"], ["Let him go", "Letting him go"]] },
+];
+
+const TEAM_WORK = [
+  { who: "SP", what: "Talking to Brentwell Town about Ellis Varga", when: "Updated 2 hours ago" },
+  { who: "PK", what: "Contract talks with Marcus Reid's agent", when: "Meeting on Monday" },
+  { who: "LG", what: "Paperwork for Kai Brandt's loan to Harwick", when: "Waiting on their signature" },
+];
+
+const LBTN = [
+  { bg: "#047857", color: "#fff", ring: "#047857" },
+  { bg: "#fff", color: "#1c1917", ring: "#d6d3d1" },
+  { bg: "#fff", color: "#be123c", ring: "#fda4af" },
+];
+
+const POSITIONS = [
+  ["Goalkeeper", "In goal"], ["Centre-back", "Middle of defence"], ["Left-back", "You have none"], ["Right-back", "Side of defence"],
+  ["Midfielder", "Middle of the pitch"], ["Winger", "Wide attacker"], ["Striker", "Scores goals"], ["Not sure", "Sam will suggest"],
+];
+const BUDGETS = [["Up to £5m", "Cheapest"], ["£5m to £10m", "Most choice"], ["£10m to £20m", "Top players"], ["Free or loan", "No fee"]];
+const RESULTS = [
+  { initials: "EV", name: "Ellis Varga", club: "Brentwell Town", age: "23", price: "£8m", wage: "£35k a week", why: "Starts every game. Two other clubs are watching him." },
+  { initials: "NA", name: "Nico Albers", club: "FC Lindau", age: "21", price: "£6m", wage: "£22k a week", why: "Young and improving. His club needs to sell this window." },
+  { initials: "RS", name: "Rafa Soto", club: "CD Marbella", age: "26", price: "£9.5m", wage: "£40k a week", why: "Most experienced of the three. Played in Europe last season." },
+];
+
+const THREADS = [
+  { initials: "CH", name: "Chelsea · Jordan Mitchell", sub: "Offer for your player", time: "8:12", avatarBg: "#dbeafe", avatarColor: "#1e40af", unread: true,
+    msgs: [["TransferX", "Chelsea have offered £18m for Jordan Mitchell. The offer runs until Friday."], ["Sam Price", "You value him at £20m. I'd counter at £21m. They have room in their budget."]],
+    replies: [["Accept £18m", "Done. Chelsea have been told you accept £18m. Sam will start the paperwork."], ["Counter at £21m", "Done. Chelsea have been sent a counter-offer of £21m."], ["Say no", "Done. Chelsea have been told no."]] },
+  { initials: "SP", name: "Sam · Ellis Varga", sub: "Sam needs your approval", time: "7:40", avatarBg: "#e0e7ff", avatarColor: "#3730a3", unread: true,
+    msgs: [["Sam Price", "Can I bid £8m for Ellis Varga? He's the left-back from Brentwell Town, 23 years old."], ["Sam Price", "It would leave us £14m to spend. Two other clubs are watching him, so I'd like to move today."]],
+    replies: [["Yes, go ahead", "Approved. Sam will send the £8m bid now."], ["Try a lower price", "Sam will open at a lower price and come back to you."], ["No", "Sam has been told no."]] },
+  { initials: "DO", name: "Dan Okafor", sub: "Contract ends in 48 days", time: "Yesterday", avatarBg: "#fef3c7", avatarColor: "#92400e", unread: false,
+    msgs: [["TransferX", "Dan Okafor's contract ends in 48 days. If nothing happens he leaves for free."], ["Sam Price", "I'd put him up for sale now while clubs will still pay a fee."]],
+    replies: [["Put him up for sale", "Done. Dan Okafor is now listed for sale."], ["Offer new contract", "Priya will prepare a new contract offer."], ["Let him go", "Noted. He'll leave when his contract ends."]] },
+  { initials: "HA", name: "Harwick · Kai Brandt", sub: "Loan agreed", time: "Tuesday", avatarBg: "#f5f5f4", avatarColor: "#57534e", unread: false,
+    msgs: [["TransferX", "Harwick agreed to take Kai Brandt on loan until June."], ["Lena Grant", "Paperwork is with Harwick. Nothing needed from you."]], replies: [] },
+];
+
+const LETTER = [
+  { kind: "Offer for your player", kindColor: "#be123c",
+    text: "Chelsea have offered £18m for Jordan Mitchell. You value him at £20m, and the offer runs until Friday.",
+    advice: "Sam suggests asking for £21m.",
+    actions: [["Accept £18m", "You accepted £18m"], ["Ask for £21m", "You asked for £21m"], ["Say no", "You said no"]] },
+  { kind: "Sam needs your approval", kindColor: "#1d4ed8",
+    text: "Sam wants to bid £8m for Ellis Varga, a 23-year-old left-back at Brentwell Town. You have no left-back at the moment. After this bid you would have £14m left.",
+    advice: "Two other clubs are watching him, so Sam wants to move today.",
+    actions: [["Approve the bid", "You approved the bid"], ["Say no", "You said no"]] },
+  { kind: "Contract ending", kindColor: "#a16207",
+    text: "Dan Okafor's contract ends in 48 days. If nothing happens, he leaves for free.",
+    advice: "Sam suggests putting him up for sale now, while clubs will still pay a fee.",
+    actions: [["Put him up for sale", "Listed for sale"], ["Offer new contract", "New contract requested"], ["Let him go", "Letting him go"]] },
+];
+
+class Component extends DCLogic {
+  state = { sel: null, needs: {}, idx: 0, results: [], g2: "home", g2Pos: null, lite: this.props.liteMode ?? true, askText: "", askThread: [], thread: 0, threadReplies: {}, letter: {} };
+
+  answerFor(q) {
+    const s = q.toLowerCase();
+    const go = (label, fn, j = 1) => ({ label, ...LBTN[j], onClick: fn || (() => {}) });
+    const toResults = () => this.setState({ g2: "results", g2Pos: "Left-back" });
+    const toBuy = () => this.setState({ g2: "pos" });
+    if (/money|budget|spend|left|afford/.test(s)) return { text: "You have £22m left to spend on transfer fees this window, out of £40m. You also have £140k a week spare for wages.", shortcuts: [go("Buy a player", toBuy, 0), go("See spending breakdown")] };
+    if (/contract|expir|ending|end soon/.test(s)) return { text: "Two contracts end this season. Dan Okafor's ends in 48 days and Marcus Reid's in 110 days. If nothing happens, both leave for free.", shortcuts: [go("Sell Dan Okafor", null, 0), go("Offer Marcus Reid a new contract")] };
+    if (/left-back|left back|find|defender|need a/.test(s)) return { text: "I found 3 left-backs under £10m. Sam's first choice is Ellis Varga from Brentwell Town, 23, for £8m.", shortcuts: [go("See the 3 players", toResults, 0), go("Ask Sam about Ellis Varga")] };
+    if (/mitchell|chelsea|offer/.test(s)) return { text: "Chelsea have offered £18m for Jordan Mitchell. You value him at £20m. The offer runs until Friday, and Sam suggests asking for £21m.", shortcuts: [go("Answer the offer", null, 0), go("See all offers")] };
+    return { text: "I don't have an answer for that yet. These might help, or I can pass the question to Sam.", shortcuts: [go("Answer offers", null, 1), go("Buy a player", toBuy, 1), go("Send to Sam", null, 0)] };
+  }
+
+  ask(q) {
+    const t = (q || "").trim();
+    if (!t) return;
+    this.setState((s) => ({ askThread: [{ q: t }, ...s.askThread], askText: "" }));
+  }
+
+  g2Vals() {
+    const lite = this.state.lite;
+    const step = this.state.g2;
+    const pos = this.state.g2Pos;
+    const choices = step === "pos"
+      ? POSITIONS.map(([label, sub]) => ({ label, sub, onClick: () => this.setState({ g2: "budget", g2Pos: label }) }))
+      : BUDGETS.map(([label, sub]) => ({ label, sub, onClick: () => this.setState({ g2: "results" }) }));
+    const q = {
+      pos: ["What position do you need?", "Tap one. You can change it later.", "Step 1 of 2"],
+      budget: ["How much can you spend on the fee?", "You have £22m left this window.", "Step 2 of 2"],
+      results: [`3 players who fit`, `${pos === "Not sure" ? "Players" : pos + "s"} available now, chosen by Sam's team.`, "Results"],
+      ask: ["Ask anything", "About your squad, money, offers or players you want.", "Assistant"],
+    }[step] || ["", "", ""];
+    const suggestions = ["How much money do I have left?", "Which contracts end soon?", "Find me a left-back under £10m", "What's happening with Mitchell?"];
+    return {
+      g2IsHome: lite && step === "home", g2NotHome: lite && step !== "home", liteOff: !lite,
+      liteTrack: lite ? "#047857" : "#d6d3d1", liteKnobSide: lite ? "flex-end" : "flex-start",
+      toggleLite: () => this.setState((s) => ({ lite: !s.lite })),
+      g2ShowAsk: step === "ask", g2StartAsk: () => this.setState({ g2: "ask" }),
+      askText: this.state.askText, askEmpty: this.state.askThread.length === 0,
+      askChange: (e) => this.setState({ askText: e.target.value }),
+      askKey: (e) => { if (e.key === "Enter") this.ask(this.state.askText); },
+      askSubmit: () => this.ask(this.state.askText),
+      askSuggestions: suggestions.map((label) => ({ label, onClick: () => this.ask(label) })),
+      askThread: this.state.askThread.map((a) => ({ q: a.q, ...this.answerFor(a.q) })),
+      g2Question: q[0], g2Hint: q[1], g2StepLabel: q[2],
+      g2ShowChoices: step === "pos" || step === "budget", g2ShowResults: step === "results",
+      g2Choices: choices.map((c) => ({ ...c, sub: step === "pos" && c.label === "Left-back" ? "You have none" : c.sub })),
+      g2Results: RESULTS,
+      g2StartBuy: () => this.setState({ g2: "pos" }),
+      g2Home: () => this.setState({ g2: "home", g2Pos: null, askThread: [], askText: "" }),
+      g2Back: () => this.setState((s) => ({ g2: s.g2 === "results" ? "budget" : s.g2 === "budget" ? "pos" : "home" })),
+    };
+  }
+
+  msgVals() {
+    const ti = this.state.thread;
+    const reply = this.state.threadReplies[ti];
+    const t = THREADS[ti];
+    const bubble = (from, text) => from === "You"
+      ? { from, text, align: "flex-end", bg: "#047857", color: "#fff", shadow: "none" }
+      : from === "TransferX"
+      ? { from, text, align: "flex-start", bg: "#fff", color: "#1c1917", shadow: "inset 0 0 0 2px #e7e5e4" }
+      : { from, text, align: "flex-start", bg: "#fff", color: "#1c1917", shadow: "0 1px 2px rgba(28,25,23,0.08)" };
+    const messages = t.msgs.map(([f, x]) => bubble(f, x));
+    if (reply) { messages.push(bubble("You", reply[0])); messages.push(bubble("TransferX", reply[1])); }
+    return {
+      threads: THREADS.map((x, i) => {
+        const answered = !!this.state.threadReplies[i];
+        return {
+          ...x, unread: x.unread && !answered,
+          preview: answered ? `You: ${this.state.threadReplies[i][0]}` : x.msgs[x.msgs.length - 1][1],
+          bg: i === ti ? "#f0fdf4" : "#fff", edge: i === ti ? "#047857" : "transparent",
+          onClick: () => this.setState({ thread: i }),
+        };
+      }),
+      thread: t, messages,
+      hasReplies: !reply && t.replies.length > 0,
+      replies: t.replies.map(([label, res], j) => ({
+        label, ...LBTN[j],
+        onClick: () => this.setState((s) => ({ threadReplies: { ...s.threadReplies, [ti]: [label, res] } })),
+      })),
+    };
+  }
+
+  letterVals() {
+    const L = this.state.letter;
+    const open = LETTER.filter((_, i) => !L[i]).length;
+    return {
+      letterIntro: open === 0 ? "You've answered everything that needed you today." : `${open === 1 ? "One thing needs" : ["", "", "Two", "Three"][open] + " things need"} your answer.`,
+      letterItems: LETTER.map((l, i) => ({
+        ...l, open: !L[i], decided: !!L[i], result: L[i],
+        undo: () => this.setState((s) => { const m = { ...s.letter }; delete m[i]; return { letter: m }; }),
+        actions: l.actions.map(([label, res], j) => ({
+          label, ...LBTN[l.actions.length === 2 && j === 1 ? 2 : j],
+          onClick: () => this.setState((s) => ({ letter: { ...s.letter, [i]: res } })),
+        })),
+      })),
+    };
+  }
+
+  componentDidUpdate(prev) {
+    if (prev.liteMode !== this.props.liteMode) this.setState({ lite: this.props.liteMode ?? true });
+    if (prev.inboxCleared !== this.props.inboxCleared) this.setState({ idx: this.props.inboxCleared ? DECISIONS.length : 0, results: this.props.inboxCleared ? DECISIONS.map((d) => d.actions[0][1]) : [] });
+  }
+
+  componentDidMount() {
+    if (this.props.inboxCleared) this.setState({ idx: DECISIONS.length, results: DECISIONS.map((d) => d.actions[0][1]) });
+  }
+
+  sheetFor(p) {
+    if (p.gap) {
+      return {
+        title: "No left-back", sub: "Nobody in your squad plays here", hasNote: false,
+        facts: [],
+        options: [
+          { name: "Ellis Varga", sub: "23 · Brentwell Town", price: "£8m" },
+          { name: "Nico Albers", sub: "21 · FC Lindau", price: "£6m" },
+          { name: "Jamal Pierce", sub: "26 · Free agent", price: "Free" },
+        ],
+        actions: [{ label: "See all left-backs", ...BTN[0] }],
+      };
+    }
+    const notes = {
+      offer: ["Chelsea offered £18m. Expires Friday.", "rgba(244,63,94,0.14)", "#fecdd3"],
+      expiring: [`Contract ${p.contract.toLowerCase()}. List him or offer a new deal.`, "rgba(245,158,11,0.14)", "#fde68a"],
+      listed: ["For sale at £6m. Two clubs have asked about him.", "rgba(56,189,248,0.14)", "#bae6fd"],
+    };
+    const n = notes[p.state];
+    const actions = p.state === "offer"
+      ? [{ label: "See the offer", ...BTN[0] }, { label: "Loan him out", ...BTN[1] }]
+      : p.state === "listed"
+      ? [{ label: "See interest", ...BTN[0] }, { label: "Take off sale", ...BTN[1] }]
+      : [{ label: "Sell him", ...BTN[0] }, { label: "Loan him out", ...BTN[1] }];
+    return {
+      title: p.name, sub: `#${p.num} · ${p.pos} · ${p.age}`,
+      hasNote: !!n, note: n ? n[0] : "", noteBg: n ? n[1] : "", noteColor: n ? n[2] : "",
+      facts: [{ k: "Contract", v: p.contract }, { k: "Worth about", v: p.value }],
+      options: [], actions,
+    };
+  }
+
+  renderVals() {
+    const coords = FORMATIONS[this.props.formation] || FORMATIONS["4-3-3"];
+    const sel = this.state.sel;
+    const tokens = SQUAD.map((p, i) => {
+      const s = STATE_STYLE[p.state] || { ring: "rgba(255,255,255,0.3)" };
+      return {
+        ...p, x: coords[i][0], y: coords[i][1], isPlayer: !p.gap,
+        ring: s.ring, tagBg: s.tagBg, tagColor: s.tagColor, hasTag: !!p.tag,
+        glow: sel === i ? "0 0 0 5px rgba(255,255,255,0.35)" : "0 4px 12px rgba(0,0,0,0.4)",
+        onClick: (e) => { e.stopPropagation(); this.setState({ sel: i }); },
+      };
+    });
+
+    const needs = NEEDS.map((n, i) => {
+      const result = this.state.needs[i];
+      return {
+        ...n, open: !result, decided: !!result, result,
+        undo: () => this.setState((st) => { const m = { ...st.needs }; delete m[i]; return { needs: m }; }),
+        actions: n.actions.map(([label, done], j) => ({
+          label, ...BTN[n.actions.length === 2 && j === 1 ? 2 : j],
+          onClick: () => this.setState((st) => ({ needs: { ...st.needs, [i]: done } })),
+        })),
+      };
+    });
+    const spent1a = this.state.needs[1] && this.state.needs[1].startsWith("Approved") ? 8 : 0;
+
+    const idx = this.state.idx;
+    const done = idx >= DECISIONS.length;
+    const d = DECISIONS[Math.min(idx, DECISIONS.length - 1)];
+    const left = DECISIONS.length - idx;
+    const spentInbox = this.state.results[1] && this.state.results[1].startsWith("Approved") ? 8 : 0;
+
+    return {
+      ...this.g2Vals(),
+      ...this.msgVals(),
+      ...this.letterVals(),
+      needs,
+      moneyLeft: `£${22 - spent1a}m`, moneyPct: ((22 - spent1a) / 40) * 100,
+      tokens,
+      sheetOpen: sel !== null,
+      sel: sel !== null ? this.sheetFor(SQUAD[sel]) : { facts: [], options: [], actions: [] },
+      closeSheet: () => this.setState({ sel: null }),
+      stop: (e) => e.stopPropagation(),
+
+      inboxActive: !done, inboxDone: done,
+      remainingText: left === 1 ? "1 decision left" : `${left} decisions waiting for you`,
+      dots: DECISIONS.map((_, i) => ({ w: i === idx ? 28 : 10, bg: i < idx ? "#10b981" : i === idx ? "#f8fafc" : "#334155" })),
+      cur: {
+        ...d,
+        actions: d.actions.map(([label, result], j) => ({
+          label, ...BTN[j],
+          onClick: () => this.setState((st) => ({ idx: st.idx + 1, results: [...st.results, result] })),
+        })),
+      },
+      decidedList: DECISIONS.map((x, i) => ({ title: x.title, result: this.state.results[i] || "" })),
+      resetInbox: () => this.setState({ idx: 0, results: [] }),
+      inboxMoney: `£${22 - spentInbox}m`, inboxMoneyPct: ((22 - spentInbox) / 40) * 100,
+      teamWork: TEAM_WORK,
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1474,6 +1474,7 @@ export interface NLParsedFilters {
   nationalities: string[] | null;
   min_height_cm: number | null;
   open_to_offers: boolean | null;
+  buyable?: boolean;
   interpreted_as: string;
 }
 
@@ -1602,9 +1603,28 @@ export interface TermsWarning {
   message: string;
 }
 
+/** What the terms do to the viewer's budget (POST /ai/offer-check), computed
+ *  by the same arithmetic the offer endpoints refuse with. */
+export interface OfferMoney {
+  transfer_budget: number | null;
+  transfer_before: number | null;
+  transfer_after: number | null;
+  this_action: number;
+  wage_before_weekly: number | null;
+  wage_after_weekly: number | null;
+  wage_this_action: number | null;
+  /** A seller's fee arrives when the deal completes. */
+  on_completion: boolean;
+  over_transfer: boolean;
+  over_wage: boolean;
+  over_budget: boolean;
+  requires_approval: boolean;
+}
+
 export interface OfferCheckResponse {
   role: "buyer" | "seller";
   warnings: TermsWarning[];
+  money?: OfferMoney;
 }
 
 export interface SuggestedTerms {

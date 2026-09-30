@@ -33,6 +33,7 @@ from app.verification.models import VerificationRequest  # noqa: F401
 from app.deals.room_models import DealTermsVersion, DealComment, DealAttachment  # noqa: F401
 from app.loans.models import PlayerLoan  # noqa: F401
 from app.enquiries.models import Enquiry, EnquiryMessage  # noqa: F401
+from app.lite.models import UserPreference  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url_sync)

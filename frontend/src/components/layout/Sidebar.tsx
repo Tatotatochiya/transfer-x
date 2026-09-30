@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../hooks/useAuth";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useIdentity, type IdentityRole } from "../../hooks/useIdentity";
+import { useUpdatePreferences } from "../../hooks/usePreferences";
 import api from "../../lib/api";
 import Avatar from "../ui/Avatar";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
@@ -108,7 +109,7 @@ function getNavGroups(userType: UserType | null): NavGroup[] {
       title: "Home",
       authRequired: true,
       items: [
-        { label: "War Room",  to: "/dashboard", icon: "layout-dashboard" },
+        { label: "Dashboard", to: "/dashboard", icon: "layout-dashboard" },
         { label: "Transfers in progress", to: "/deals", icon: "arrow-right-left" },
         { label: "Enquiries", to: "/enquiries", icon: "message" },
       ],
@@ -269,6 +270,8 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   // false on desktop under normal use (see AppShell's route-change effect).
   const drawerRef = useFocusTrap(mobileOpen, onMobileClose);
 
+  const switchToLite = useUpdatePreferences();
+
   async function handleLogout() {
     await logout();
     navigate("/login");
@@ -326,6 +329,20 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
         {/* Footer */}
         <div className="border-t border-border px-3 py-3 space-y-0.5">
+          {/* Lite mode (docs/feature_spec/lite-mode): the way back is always one tap. */}
+          {isAuthenticated && userType === "CLUB" && (
+            <button
+              type="button"
+              onClick={() => switchToLite.mutate({ lite_mode: true }, { onSuccess: () => navigate("/lite") })}
+              disabled={switchToLite.isPending}
+              className="min-h-12 lg:min-h-0 flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm font-medium transition-colors hover:bg-surface-inset"
+            >
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-text-muted">
+                <Icon name="home" className="h-4 w-4" />
+              </div>
+              <span className="text-text-secondary">Switch to Lite mode</span>
+            </button>
+          )}
           {isAuthenticated && (
             <NavLink
               to="/account"

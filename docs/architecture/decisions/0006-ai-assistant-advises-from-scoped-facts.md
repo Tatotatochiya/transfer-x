@@ -12,7 +12,7 @@ owner: "TODO — assign a Technical Lead"
 AI help was extended from scouting (squad analysis, player fit, market recommendations, natural-language search) to every step of a transfer. The new features, all in `backend/app/ai/assist.py`:
 
 - **Offers:** the offer advisor, the negotiation summary, and rule checks on offer terms.
-- **Deals and the club:** a deal's next steps, and the morning briefing on the War Room and in the daily email.
+- **Deals and the club:** a deal's next steps, and the morning briefing on the Dashboard and in the daily email.
 - **Selling:** the pricing assistant, and "Who might want him?".
 - **Everywhere:** Ask TransferX.
 
@@ -37,7 +37,7 @@ These features touch money and confidential negotiation state: rival bids, a mas
    - suggested counter terms are limited to known fields, within half to double of the figures in the facts;
    - club ids in "Who might want him?" must be candidates we supplied;
    - Ask TransferX links must be paths that appear in the facts.
-3. **It advises; the club acts.** No assistant endpoint changes state. A suggestion is applied through the normal confirmed form: "Use these terms" opens the counter form pre-filled, and "Use £X" fills the listing's guide price. When one is used, the server writes an `AI_SUGGESTION_USED` audit event.
+3. **It advises; the club acts.** No assistant endpoint changes state. A suggestion is applied through the normal confirmed form: "Use these terms" opens the counter form pre-filled, and "Use £X" fills the listing's guide price. When one is used, the server writes an `AI_SUGGESTION_USED` audit event. Lite mode's action card (`docs/feature_spec/lite-mode`, L4) is also this normal confirmed form. It only describes the action; the user's confirm calls the existing offer endpoints, with `ai_assisted: true` when an assistant suggestion filled it in.
 4. **Features that don't need a model work without one.** The terms checker, a deal's steps, the guide price and the candidate clubs are all computed in code. Without an API key the UI hides the model-only features, and the digest email goes out without its briefing.
 5. **Answers are cached against the state they describe** (an offer's last action, a deal's steps, the day), and only a cache miss counts against the user's hourly AI limit.
 

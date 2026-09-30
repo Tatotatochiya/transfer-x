@@ -1,8 +1,9 @@
+import LiteLayout from "./components/lite/LiteLayout";
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useAuthStore } from "./store/auth";
-import { useAuth } from "./hooks/useAuth";
+import { useAuthBootstrap } from "./hooks/useAuth";
 import { useWebSocket } from "./hooks/useWebSocket";
 import AppShell from "./components/layout/AppShell";
 import Spinner from "./components/ui/Spinner";
@@ -67,6 +68,14 @@ const ApprovalsPage             = lazy(() => import("./pages/club/ApprovalsPage"
 const AcceptInvitePage          = lazy(() => import("./pages/auth/AcceptInvitePage"));
 const JoinClubPage              = lazy(() => import("./pages/auth/JoinClubPage"));
 const JoinPlayerPage            = lazy(() => import("./pages/auth/JoinPlayerPage"));
+const LiteHomePage              = lazy(() => import("./pages/lite/LiteHomePage"));
+const LiteOffersPage            = lazy(() => import("./pages/lite/LiteOffersPage"));
+const LiteAskPage               = lazy(() => import("./pages/lite/LiteAskPage"));
+const LiteBuyPositionPage       = lazy(() => import("./pages/lite/LiteBuyPage").then((m) => ({ default: m.LiteBuyPositionPage })));
+const LiteBuyBudgetPage         = lazy(() => import("./pages/lite/LiteBuyPage").then((m) => ({ default: m.LiteBuyBudgetPage })));
+const LiteBuyResultsPage        = lazy(() => import("./pages/lite/LiteBuyPage").then((m) => ({ default: m.LiteBuyResultsPage })));
+const LiteBidPage               = lazy(() => import("./pages/lite/LiteBidPage"));
+const LiteOfferCardPage         = lazy(() => import("./pages/lite/LiteOfferCardPage"));
 const AgentDashboardPage        = lazy(() => import("./pages/agent/AgentDashboardPage"));
 const AgentPipelinePage         = lazy(() => import("./pages/agent/AgentPipelinePage"));
 const AgentProfilePage          = lazy(() => import("./pages/agent/AgentProfilePage"));
@@ -89,7 +98,7 @@ const NotFoundPage = () => (
 // ── Single bootstrap + WebSocket connection for the whole app ─────────────────
 
 function GlobalSetup() {
-  useAuth();      // Called once here — not inside route wrappers, so it never gets cancelled by navigation
+  useAuthBootstrap(); // Once, here only — not inside route wrappers, so it never gets cancelled by navigation
   useWebSocket();
   usePageTracking();
   return null;
@@ -120,6 +129,16 @@ function ClubRoute({ children }: { children: React.ReactNode }) {
   if (!accessToken && !refreshToken) return <Navigate to="/login" replace />;
   if (user && user.user_type !== "CLUB" && !user.is_superuser) return <Navigate to="/" replace />;
   return <AppShell>{children}</AppShell>;
+}
+
+/** Lite mode (docs/feature_spec/lite-mode): club members only, in the Lite
+ *  shell rather than the full app's. */
+function LiteRoute({ children }: { children: React.ReactNode }) {
+  const { user, accessToken, refreshToken, isBootstrapping } = useAuthStore();
+  if (isBootstrapping) return <LoadingScreen />;
+  if (!accessToken && !refreshToken) return <Navigate to="/login" replace />;
+  if (user && user.user_type !== "CLUB") return <Navigate to="/" replace />;
+  return <LiteLayout>{children}</LiteLayout>;
 }
 
 function AgentRoute({ children }: { children: React.ReactNode }) {
@@ -177,6 +196,14 @@ export default function App() {
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
           <Route path="/join" element={<JoinClubPage />} />
           <Route path="/join/player" element={<JoinPlayerPage />} />
+          <Route path="/lite" element={<LiteRoute><LiteHomePage /></LiteRoute>} />
+          <Route path="/lite/offers" element={<LiteRoute><LiteOffersPage /></LiteRoute>} />
+          <Route path="/lite/offers/:offerId" element={<LiteRoute><LiteOfferCardPage /></LiteRoute>} />
+          <Route path="/lite/bid" element={<LiteRoute><LiteBidPage /></LiteRoute>} />
+          <Route path="/lite/ask" element={<LiteRoute><LiteAskPage /></LiteRoute>} />
+          <Route path="/lite/buy" element={<LiteRoute><LiteBuyPositionPage /></LiteRoute>} />
+          <Route path="/lite/buy/budget" element={<LiteRoute><LiteBuyBudgetPage /></LiteRoute>} />
+          <Route path="/lite/buy/results" element={<LiteRoute><LiteBuyResultsPage /></LiteRoute>} />
 
           {/* ── Public market ── */}
           <Route path="/players/market"     element={<PublicRoute><PlayerMarketPage /></PublicRoute>} />

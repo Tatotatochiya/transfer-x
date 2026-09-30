@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useRef } from "react"; // useRef kept — guards against double-invocation in React Strict Mode
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../store/auth";
-import api from "../lib/api";
+import api, { refreshAccessToken } from "../lib/api";
 import type { TokenResponse, User } from "../types/api";
 
-export function useAuth() {
-  const { user, accessToken, refreshToken, setTokens, setUser, setBootstrapping, logout } =
-    useAuthStore();
-  const queryClient = useQueryClient();
-
+/**
+ * Restore the session on page load: with a refresh token but no access token,
+ * refresh silently. Called once, from the app's global setup. It used to run
+ * inside `useAuth`, so every component using `useAuth` ran it too, and a public
+ * page's first requests (sent before the session is back) refreshed on their
+ * 401 at the same time: refreshes raced with the same rotated token, the loser
+ * logged the user out, and a reload of the player market showed it signed
+ * out. Now it runs once and shares the client's single refresh.
+ */
+export function useAuthBootstrap() {
+  const { accessToken, refreshToken, setUser, setBootstrapping, logout } = useAuthStore();
   const bootstrapped = useRef(false);
 
-  // On mount: if we have a refresh token but no access token, silently refresh
-  // so the user stays logged in across page reloads.
   useEffect(() => {
     if (bootstrapped.current) return;
     bootstrapped.current = true;
@@ -22,12 +26,8 @@ export function useAuth() {
       return;
     }
 
-    api
-      .post<TokenResponse>("/auth/refresh", { refresh_token: refreshToken })
-      .then(({ data }) => {
-        setTokens(data.access_token, data.refresh_token);
-        return api.get<User>("/auth/me");
-      })
+    refreshAccessToken()
+      .then(() => api.get<User>("/auth/me"))
       .then((res) => {
         if (res) setUser(res.data);
       })
@@ -38,6 +38,12 @@ export function useAuth() {
         setBootstrapping(false);
       });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+export function useAuth() {
+  const { user, accessToken, refreshToken, setTokens, setUser, logout } =
+    useAuthStore();
+  const queryClient = useQueryClient();
 
   const login = useCallback(
     async (email: string, password: string): Promise<User> => {

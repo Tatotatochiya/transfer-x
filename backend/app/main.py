@@ -19,6 +19,7 @@ from app.deals import router as deals_router
 from app.deals import room_router as deal_room_router
 from app.loans import router as loans_router
 from app.enquiries import router as enquiries_router
+from app.lite import router as lite_router
 from app.notifications import router as notifications_router
 from app.offers import router as offers_router
 from app.players import router as players_router
@@ -304,6 +305,7 @@ app.include_router(deals_router.router, prefix="")
 app.include_router(deal_room_router.router, prefix="")
 app.include_router(loans_router.router, prefix="")
 app.include_router(enquiries_router.router, prefix="")
+app.include_router(lite_router.router, prefix="")
 app.include_router(scouting_router.router)
 app.include_router(notifications_router.router)
 app.include_router(stats_router.router)

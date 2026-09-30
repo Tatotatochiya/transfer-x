@@ -26,6 +26,7 @@ function FilterChips({ filters }: { filters: NLParsedFilters }) {
   if (filters.min_form_score != null) chips.push(`form ≥${filters.min_form_score}`);
   if (filters.nationalities?.length) chips.push(filters.nationalities.join(" / "));
   if (filters.open_to_offers) chips.push("listed");
+  if (filters.buyable) chips.push("buyable on TransferX");
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -46,7 +47,7 @@ function PlayerRow({ player }: { player: NLPlayerSearchResult }) {
   return (
     <li>
       <Link
-        to={`/market/players/${player.player_id}`}
+        to={`/players/market/${player.player_id}`}
         className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-inset transition-colors"
       >
         <div className="min-w-0 flex-1">
@@ -73,7 +74,8 @@ function PlayerRow({ player }: { player: NLPlayerSearchResult }) {
   );
 }
 
-export function NLPlayerSearch() {
+/** `buyable` follows the market's "Buyable on TransferX only" switch. */
+export function NLPlayerSearch({ buyable = true }: { buyable?: boolean }) {
   const [query, setQuery] = useState("");
   const { mutate, data, isPending, error, reset } = useNLPlayerSearch();
 
@@ -81,7 +83,7 @@ export function NLPlayerSearch() {
     e.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
-    mutate(trimmed);
+    mutate({ query: trimmed, buyable });
   }
 
   return (

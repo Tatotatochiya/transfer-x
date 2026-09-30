@@ -213,6 +213,16 @@ Answer only from these facts; if they do not contain the answer, say so plainly.
   "path" field in the facts
 """
 
+LITE_BUY_REASONS_USER = """\
+A sporting director asked for a player. TransferX has already chosen these players and computed every figure:
+{facts_json}
+
+For each player write one short sentence (at most 20 words) on why he fits this club, in plain British English,
+money written like "£6m". Use only the facts given. Return JSON:
+- "reasons": object mapping each "player_id" (copied exactly) to its sentence
+"""
+
+
 # ── Versioning ────────────────────────────────────────────────────────────────
 
 _DEFAULTS: dict[str, str] = {
@@ -230,6 +240,7 @@ _DEFAULTS: dict[str, str] = {
     "LISTING_ADVICE_USER": LISTING_ADVICE_USER,
     "POTENTIAL_BUYERS_USER": POTENTIAL_BUYERS_USER,
     "ASK_USER": ASK_USER,
+    "LITE_BUY_REASONS_USER": LITE_BUY_REASONS_USER,
 }
 
 _overrides: dict[str, str] = {}

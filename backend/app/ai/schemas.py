@@ -67,6 +67,9 @@ class ShortlistReviewResponse(BaseModel):
 
 class NLSearchRequest(BaseModel):
     query: str
+    # Only players a club could sign here (the market's "buyable" filter):
+    # at a club on TransferX, or a free agent. On unless the caller turns it off.
+    buyable: bool = True
 
 
 class ParsedFilters(BaseModel):
@@ -77,6 +80,7 @@ class ParsedFilters(BaseModel):
     nationalities: list[str] | None = None
     min_height_cm: int | None = None
     open_to_offers: bool | None = None
+    buyable: bool = False
     interpreted_as: str
 
 

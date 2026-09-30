@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import api from "../../lib/api";
 import { useAuth } from "../../hooks/useAuth";
 import Button from "../../components/ui/Button";
 import Icon from "../../components/layout/Icon";
@@ -20,9 +21,15 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const me = await login(email, password);
-      const dest = me.user_type === "AGENT" ? "/agent/dashboard"
-                 : me.user_type === "PLAYER" ? "/player/profile"
-                 : "/dashboard";
+      let dest = me.user_type === "AGENT" ? "/agent/dashboard"
+               : me.user_type === "PLAYER" ? "/player/profile"
+               : "/dashboard";
+      // Club members with Lite mode on land on the Lite home. If the
+      // preference can't be read, the full app is the safe default.
+      if (me.user_type === "CLUB") {
+        const prefs = await api.get<{ lite_mode: boolean }>("/users/me/preferences").then((r) => r.data).catch(() => null);
+        if (prefs?.lite_mode) dest = "/lite";
+      }
       navigate(dest, { replace: true });
     } catch (err) {
       console.error("Login error:", err);

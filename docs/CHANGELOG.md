@@ -25,6 +25,36 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Lite mode, first step (L1 of the [Lite mode plan](./feature_spec/lite-mode/README.md)).**
+  - A `/lite` home with a plain top bar and a profile menu, which has the Lite switch, three text sizes, notifications and sign out.
+  - "Switch to Lite mode" in the full app's sidebar.
+  - Signing in lands on `/lite` when Lite is on.
+  - The preference and text size follow the user across devices (`GET/PATCH /users/me/preferences`, migration `0085`). Switching Lite on or off is audited.
+  - Lite was off by default for everyone until its action cards shipped (`LITE_ROLE_DEFAULT_ON`; on since L4).
+  - Text size applies inside Lite only.
+- **Lite mode home (L2).**
+  - Four tiles that change with the transfer window: Buy, Sell, Answer offers and Ask when it's open (or no window is set); Renew, Plan, My squad and Ask when it's closed, with Answer offers replacing My squad when something is waiting.
+  - A greeting with the money left to spend and the window's days.
+  - A "Carry on where you left off" card.
+  - The Answer offers list, with each item opening its page.
+  - A basic Ask anything page.
+  - One request (`GET /lite/home`), with no AI call. Anonymous buyers stay masked.
+- **Lite mode action cards (L4).**
+  - "Make an offer" in the Buy results opens a card: the player, the club, the fee, wages and contract. Confirming sends the bid.
+  - "Change amount" gives a £0.5m stepper.
+  - A money panel shows what the bid does to the money left to spend and to spare wages, and updates as the amount changes.
+  - Offers waiting in Answer offers open as cards with Accept, Counter and Say no. Each asks once more before it goes. An anonymous buyer stays "an undisclosed Premier League club".
+  - Confirm is disabled when the bid is over budget. When the club's approval rule applies, it reads "Send for approval".
+  - The full app stays everyone's default for now (product owner, 2026-09-30). Lite is opt-in from the profile menu or "Switch to Lite mode"; `LITE_ROLE_DEFAULT_ON=true` would make it the default for owners and sporting directors.
+- **Offer check money block.** `POST /ai/offer-check` returns what the terms do to the club's budget, with the same arithmetic the offer endpoints refuse with.
+- **Approval rule:** added `approvals.service.approval_required`, a read-only check.
+- **Offers:** create, accept and reject take `ai_assisted`, audited as `AI_SUGGESTION_USED` as counters already were.
+- **Lite mode buy flow (L3).**
+  - "Buy a player" asks two questions (position, then budget) and shows the three players who fit best, each with age, price, wages and a one-line reason.
+  - Only players the club can make an offer for now: at another club or a free agent, not already in a deal.
+  - Prices are the asking price where listed, otherwise marked "our estimate".
+  - The answers stay in the address, so Back and "Carry on where you left off" return to the same results.
+  - "Make an offer" opens the offer form for that player.
 - **Sign in with a username.** The username is the part of the email before the "@", so `arsenal` signs in as `arsenal@transferx.com`.
   - Username and email are both matched regardless of case. The sign-in field reads "Email or username".
   - If two accounts share a username, the sign-in asks for the email rather than guessing.
@@ -77,6 +107,8 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **"War Room" is now "Dashboard"** in the sidebar, on the page itself and in Ask TransferX's links.
+- **The player market shows buyable players by default:** players at clubs on TransferX, and free agents. "Buyable on TransferX only" starts switched on; switch it off to see every player. The AI player search follows the same switch (`POST /ai/player-search` takes `buyable`, default true) and shows it as a chip.
 - **A conditional obligation to buy needs both clubs to confirm its conditions.** Each club answers "met" or "not met" on its loans panel.
   - At the end of the loan: both met → the purchase starts; both not met → the player returns; otherwise it waits and both clubs are asked.
   - Before, the purchase started regardless, and the clubs had to collapse the deal.
@@ -95,6 +127,9 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **Opening a player from the AI player search (or from "Recommended for you") gave an error page.** The links pointed to `/market/players/{id}`, which doesn't exist; they now open `/players/market/{id}`. The admin health page's player, contract and sale links had the same fault.
+- **Reloading a public page, such as the player market, signed the user out.** Restoring the session ran in every component that used `useAuth`, and a public page's first requests also refreshed on their 401. The refreshes raced with the same rotating refresh token, and the one refused signed the user out. The session is now restored once, and every refresh shares a single call (`lib/api.ts` `refreshAccessToken`).
+- **The offer checker's over-budget warning now matches the refusal.** It looked at the fee and wage alone, so a bid whose add-ons or loan wage share took it over budget was refused on sending without a warning first. It now uses the same arithmetic as the refusal. When a counter or acceptance is checked, it deducts what the offer already holds.
 - **Players with no club anywhere were marked EXTERNAL instead of FREE_AGENT**, so the platform had no free agents to sign or invite. `backend/scripts/repair_player_statuses.py` re-derives mismatched statuses with the standard rule. Locally: 13 players.
 - **A club player's profile offered him an "Open to offers" switch the server refuses.** Since listings took over that switch, a club player is available only when his club lists him. His profile now says whether he's listed, and only free agents keep the switch.
 - **An anonymous buyer was named on the seller's War Room.** The "waiting on you" row showed the buying club of an anonymous offer, and so did everything that reads that list: the daily digest email, the AI briefing and Ask TransferX. It now shows the masked label, as the offer page does.

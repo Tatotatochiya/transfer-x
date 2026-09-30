@@ -215,7 +215,7 @@ async def nl_player_search(
     _require_llm_key()
     check_rate_limit(current_user.id)
     try:
-        return await _search(db, body.query, user_id=current_user.id)
+        return await _search(db, body.query, user_id=current_user.id, buyable=body.buyable)
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"LLM error: {exc}")
 
@@ -308,7 +308,9 @@ async def offer_check(
             offer = await assist._load_offer(db, uuid.UUID(str(body["offer_id"])), club.id)
         elif not terms.get("player_id"):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="player_id is required")
-        return await assist.check_offer_terms(db, viewer_club_id=club.id, terms=terms, offer=offer)
+        return await assist.check_offer_terms(
+            db, viewer_club_id=club.id, terms=terms, offer=offer, user=current_user, club=club,
+        )
     except Exception as exc:
         raise _assist_errors(exc)
 

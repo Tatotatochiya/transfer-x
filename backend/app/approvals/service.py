@@ -27,6 +27,29 @@ APPROVAL_TTL_HOURS = 24
 # ── Capture ───────────────────────────────────────────────────────────────────
 
 
+async def approval_required(
+    db: AsyncSession, *, current_user: User, club: Club, amount: Decimal | None
+) -> bool:
+    """The escalation rule on its own, read-only: a MANAGER-role caller, a club
+    threshold set, and `amount` (None counts as zero) at or above it. Owners,
+    sporting directors and superusers are never escalated. `maybe_capture`
+    decides with this, and Lite's money panel previews with it, so the two
+    cannot disagree."""
+    if current_user.is_superuser:
+        return False
+    from app.clubs import service as clubs_service
+    from app.clubs.models import ClubFinance
+
+    role = await clubs_service.get_club_membership_role(db, uuid.UUID(str(current_user.id)))
+    if role != "MANAGER":
+        return False
+    threshold = (await db.execute(
+        select(ClubFinance.approval_threshold).where(ClubFinance.club_id == uuid.UUID(str(club.id)))
+    )).scalar_one_or_none()
+    amount = amount if amount is not None else Decimal("0")
+    return threshold is not None and Decimal(amount) >= threshold
+
+
 async def maybe_capture(
     db: AsyncSession,
     *,
@@ -49,17 +72,9 @@ async def maybe_capture(
     threshold terms — there is no fee to approve. Coerced here rather than at
     each call site so a nullable amount can never reach `Decimal(None)`.
     """
-    if current_user.is_superuser:
+    if not await approval_required(db, current_user=current_user, club=club, amount=amount):
         return None
     amount = amount if amount is not None else Decimal("0")
-    from app.clubs import service as clubs_service
-
-    role = await clubs_service.get_club_membership_role(db, uuid.UUID(str(current_user.id)))
-    if role != "MANAGER":
-        return None
-    threshold = club.finance.approval_threshold if club.finance else None
-    if threshold is None or Decimal(amount) < threshold:
-        return None
 
     approval = PendingApproval(
         club_id=uuid.UUID(str(club.id)),

@@ -299,6 +299,7 @@ async def nl_player_search(
     db: AsyncSession,
     query: str,
     user_id: uuid.UUID | None = None,
+    buyable: bool = True,
 ) -> NLSearchResponse:
     """Parse a natural language query into filters, then execute a DB search."""
     from app.clubs.models import Club
@@ -321,6 +322,7 @@ async def nl_player_search(
         nationalities=data.get("nationalities") or None,
         min_height_cm=data.get("min_height_cm"),
         open_to_offers=data.get("open_to_offers"),
+        buyable=buyable,
         interpreted_as=data.get("interpreted_as", query),
     )
 
@@ -356,6 +358,10 @@ async def nl_player_search(
         stmt = stmt.where(Player.open_to_offers == True)  # noqa: E712
     if parsed.min_form_score is not None:
         stmt = stmt.where(PlayerForm.form_score >= parsed.min_form_score)
+    if buyable:
+        # The same rule as the market's buyable filter (players.service).
+        from app.players.models import PlayerStatus
+        stmt = stmt.where(Player.status.in_([PlayerStatus.CONTRACTED, PlayerStatus.FREE_AGENT]))
 
     stmt = stmt.order_by(nullslast(PlayerForm.form_score.desc())).limit(20)
 

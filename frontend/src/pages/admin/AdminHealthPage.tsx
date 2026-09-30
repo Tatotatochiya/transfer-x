@@ -23,9 +23,9 @@ const SEVERITY_BG: Record<string, string> = {
 
 const CATEGORY_LINK: Record<string, (id: string) => string> = {
   deals:     (id) => `/deals/${id}`,
-  sales:     (id) => `/market/sales/${id}`,
-  players:   (id) => `/market/players/${id}`,
-  contracts: (id) => `/market/players/${id}`,
+  sales:     (id) => `/sales/${id}`,
+  players:   (id) => `/players/market/${id}`,
+  contracts: (id) => `/players/market/${id}`,
 };
 
 // ── Issue card ─────────────────────────────────────────────────────────────────
