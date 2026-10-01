@@ -672,7 +672,8 @@ async def negotiation_summary(db: AsyncSession, offer_id: uuid.UUID, *, viewer_c
 # ── Phase 2a: deal next steps ─────────────────────────────────────────────────
 
 
-def deal_steps(deal, viewer_club_id: uuid.UUID, player_has_account: bool | None = None) -> list[dict]:
+def deal_steps(deal, viewer_club_id: uuid.UUID, player_has_account: bool | None = None,
+               negotiation=None) -> list[dict]:
     """What the deal is waiting on, and who must act — worked out from the
     stage machine, not by the model. Owners: "you", "them", "either",
     "player", "agent", "staff".
@@ -680,7 +681,12 @@ def deal_steps(deal, viewer_club_id: uuid.UUID, player_has_account: bool | None 
     `player_has_account`: whether the player can answer personal terms
     himself. With no account and no agent, the buying club records his
     answer (product ADR 0006), so that step is the buyer's. Unknown (None)
-    is shown as the player's."""
+    is shown as the player's.
+
+    `negotiation`: the deal's AgentNegotiation, if loaded. At that stage the
+    agent proposes the commission first, then the buying club answers, then
+    either club moves the deal on (deals.service.advance_deal); without it,
+    the step is shown as the buying club's, as before."""
     from app.deals.models import DealStage, DealStatus
     from app.deals.service import paperwork_steps
 
@@ -696,7 +702,17 @@ def deal_steps(deal, viewer_club_id: uuid.UUID, player_has_account: bool | None 
     if stage == DealStage.AGREEMENT:
         steps.append({"label": "Move the deal on to personal terms", "owner": "either"})
     elif stage == DealStage.AGENT_NEGOTIATION:
-        steps.append({"label": "Agree the agent's commission", "owner": owner_of("buyer")})
+        agreement = getattr(getattr(negotiation, "club_agreement", None), "value", None) if negotiation else None
+        proposed = negotiation is not None and (
+            negotiation.commission_pct is not None or negotiation.commission_amount is not None)
+        if negotiation is not None and not proposed:
+            steps.append({"label": "Propose the commission terms", "owner": "agent"})
+        elif agreement == "AGREED":
+            steps.append({"label": "Move the deal on to personal terms", "owner": "either"})
+        elif negotiation is not None:
+            steps.append({"label": "Answer the agent's commission proposal", "owner": owner_of("buyer")})
+        else:
+            steps.append({"label": "Agree the agent's commission", "owner": owner_of("buyer")})
     elif stage == DealStage.PERSONAL_TERMS:
         pt = deal.personal_terms
         consent = (pt.player_consent.value if pt is not None and hasattr(pt.player_consent, "value")
@@ -742,7 +758,17 @@ async def deal_next_steps(db: AsyncSession, deal_id: uuid.UUID, *, viewer_club_i
         raise LookupError("Deal not found")
     from app.players.service import player_has_account
 
-    steps = deal_steps(deal, viewer_club_id, await player_has_account(db, deal.player_id))
+    negotiation = None
+    if deal.stage.value == "AGENT_NEGOTIATION":
+        from app.agents.models import AgentNegotiation
+        negotiation = (await db.execute(
+            select(AgentNegotiation).where(AgentNegotiation.deal_id == deal.id)
+        )).scalar_one_or_none()
+        if negotiation is None:
+            # Invited but not yet started: the agent opens it with a proposal.
+            from types import SimpleNamespace
+            negotiation = SimpleNamespace(commission_pct=None, commission_amount=None, club_agreement=None)
+    steps = deal_steps(deal, viewer_club_id, await player_has_account(db, deal.player_id), negotiation)
     role = "buyer" if viewer_club_id == deal.buyer_club_id else "seller"
     idle_days = (datetime.now(timezone.utc) - _utc(deal.updated_at)).days if deal.updated_at else None
 

@@ -784,7 +784,16 @@ export interface DealAttachment {
   created_at: string;
 }
 
+/** The player's agent on a deal (invited to it, else his mandated agent). */
+export interface DealAgent {
+  id: string;
+  display_name: string;
+  agency_name: string;
+}
+
 export interface Deal {
+  /** The player's agent on this deal, named on every negotiation stage. */
+  agent?: DealAgent | null;
   id: string;
   sale_id: string | null;
   bid_id: string | null;

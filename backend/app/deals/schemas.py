@@ -183,6 +183,14 @@ class SetPersonalTermsRequest(BaseModel):
     length_years: int | None = None
 
 
+class DealAgentSummary(BaseModel):
+    """Who represents the player on a deal: the agent invited to it, else his
+    agent under an active mandate."""
+    id: uuid.UUID
+    display_name: str
+    agency_name: str
+
+
 # ── Agent negotiation schemas (TRA-127) ──────────────────────────────────────
 
 class AgentNegotiationResponse(BaseModel):
@@ -308,4 +316,6 @@ class DealResponse(BaseModel):
     deal_notes: list[DealNoteResponse] = []
     # B1
     whose_move: WhoseMove | None = None
+    # The player's agent on this deal, named on every negotiation stage.
+    agent: DealAgentSummary | None = None
     model_config = {"from_attributes": True}
