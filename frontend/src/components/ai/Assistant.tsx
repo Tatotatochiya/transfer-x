@@ -254,26 +254,47 @@ export function DealNextStepsPanel({ deal }: { deal: Deal }) {
   const version = `${deal.updated_at}:${deal.stage}:${deal.personal_terms?.player_consent ?? ""}:${deal.medical_check?.status ?? ""}`;
   const { data } = useDealNextSteps(deal.id, version);
   if (!data || data.steps.length === 0) return null;
-  const mine = data.steps.filter((s) => s.owner === "you" || s.owner === "either");
+  const isMine = (owner: string) => owner === "you" || owner === "either";
+  const mine = data.steps.filter((s) => isMine(s.owner));
+  const ownerLabel = (owner: string) =>
+    owner === "agent" && deal.agent ? `Agent: ${deal.agent.display_name}` : OWNER_LABEL[owner] ?? owner;
   return (
     <AIPanel title="Next steps" className="mb-6">
-      {data.brief?.headline && <p className="mb-2 text-[13px] leading-snug text-text">{data.brief.headline}</p>}
-      <ul className="space-y-1.5">
+      {data.brief?.headline && <p className="mb-3 text-[13px] leading-snug text-text">{data.brief.headline}</p>}
+      {/* One row per step, its owner beside it, so which step is whose is never in doubt. */}
+      <ol className="divide-y divide-border overflow-hidden rounded-lg ring-1 ring-border">
         {data.steps.map((s, i) => (
-          <li key={i} className="flex items-start justify-between gap-3 text-[13px]">
-            <span className={s.owner === "you" || s.owner === "either" ? "font-medium text-text" : "text-text-secondary"}>
-              {s.label}
-              {s.due && <span className="ml-1 text-text-muted">· by {s.due}</span>}
+          <li key={i} className={`flex items-start gap-3 px-3 py-2.5 ${isMine(s.owner) ? "bg-accent-bg" : "bg-surface"}`}>
+            <span
+              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                isMine(s.owner) ? "bg-accent text-white" : "bg-surface-inset text-text-muted ring-1 ring-border"
+              }`}
+              aria-hidden="true"
+            >
+              {i + 1}
             </span>
-            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${
-              s.owner === "you" ? "bg-accent-bg text-accent ring-accent/30" : "bg-surface-inset text-text-muted ring-border"
-            }`}>
-              {OWNER_LABEL[s.owner] ?? s.owner}
-            </span>
+            <div className="min-w-0 flex-1">
+              <span className={`text-[13px] leading-snug ${isMine(s.owner) ? "font-semibold text-text" : "text-text-secondary"}`}>
+                {s.label}
+              </span>
+              <span className="mt-1 flex flex-wrap items-center gap-2">
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${
+                  isMine(s.owner) ? "bg-surface text-accent ring-accent/30" : "bg-surface-inset text-text-muted ring-border"
+                }`}>
+                  {isMine(s.owner) ? (s.owner === "you" ? "Your move" : "Either club") : ownerLabel(s.owner)}
+                </span>
+                {s.due && <span className="text-[11px] text-text-muted">by {s.due}</span>}
+              </span>
+            </div>
           </li>
         ))}
-      </ul>
-      {data.brief && data.brief.advice.length > 0 && mine.length > 0 && <Bullets items={data.brief.advice} />}
+      </ol>
+      {data.brief && data.brief.advice.length > 0 && mine.length > 0 && (
+        <div className="mt-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Assistant's advice</p>
+          <Bullets items={data.brief.advice} />
+        </div>
+      )}
       {data.idle_days != null && data.idle_days >= 5 && (
         <p className="mt-2 text-xs text-warning-text">No movement for {data.idle_days} days.</p>
       )}

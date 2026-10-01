@@ -25,6 +25,14 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Every TransferX player has an agent** (demo data, `backend/scripts/allocate_players_to_agents.py`).
+  - Each contracted player or free agent without a mandate gets an exclusive two-year mandate with one of the existing agents, shared out evenly.
+  - New deals for them start at the agent negotiation stage and invite that agent. Deals already under way, and players at clubs outside TransferX, are untouched.
+  - Locally: 693 players across three demo agents.
+- **Short sign-in names for agents** (`backend/scripts/rename_agent_emails.py`). Each agent's email becomes `<display name, joined>@transferx.com`, so "Kia Joorabchian" signs in as `kiajoorabchian`, as the clubs do. Passwords are unchanged; their mail now goes to the new address.
+- **The deal names the player's agent:**
+  - on the Player card, in the agreed terms, in the agent negotiation and personal terms banners, and on the agent lane ("Agent: Kia Joorabchian");
+  - as a `DealResponse.agent` field: the agent invited to the deal, else the player's mandated agent.
 - **Lite mode, first step (L1 of the [Lite mode plan](./feature_spec/lite-mode/README.md)).**
   - A `/lite` home with a plain top bar and a profile menu, which has the Lite switch, three text sizes, notifications and sign out.
   - "Switch to Lite mode" in the full app's sidebar.
@@ -107,6 +115,8 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Clearer "Next steps" and Paperwork checklist on the deal page.** Each step is its own numbered row with its owner ("Your move", "Their move", or the agent's name) beside it. Your open steps are highlighted, the assistant's advice has its own heading, and each paperwork step's button sits inside its row. "Record medical ↓" jumps to the Medical Check panel.
+- **Agent-stage next steps follow the negotiation.** First the agent proposes the commission, then the buying club answers, then either club moves the deal on. Before, the buying club was always shown as the one to act, even before the agent had proposed anything. The agent lane also shows from the start of that stage.
 - **"War Room" is now "Dashboard"** in the sidebar, on the page itself and in Ask TransferX's links.
 - **The player market shows buyable players by default:** players at clubs on TransferX, and free agents. "Buyable on TransferX only" starts switched on; switch it off to see every player. The AI player search follows the same switch (`POST /ai/player-search` takes `buyable`, default true) and shows it as a chip.
 - **A conditional obligation to buy needs both clubs to confirm its conditions.** Each club answers "met" or "not met" on its loans panel.

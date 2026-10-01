@@ -364,6 +364,7 @@ function PersonalTermsBanner({ deal, isBuyer }: { deal: Deal; isBuyer: boolean }
   const terms = deal.personal_terms;
   const buyerName = deal.buyer_club?.name ?? "The buying club";
   const viaAgent = deal.commission_agent_id != null;
+  const agentName = deal.agent ? `${deal.agent.display_name} (${deal.agent.agency_name})` : null;
 
   // A declined proposal collapses the deal (player_consent_to_terms), so an
   // open deal is only ever waiting on a proposal, on consent, or on Advance.
@@ -373,7 +374,7 @@ function PersonalTermsBanner({ deal, isBuyer }: { deal: Deal; isBuyer: boolean }
   if (!terms) {
     title = "Personal terms needed";
     body = viaAgent
-      ? "The player's agent proposes his personal terms. The deal moves on once the player accepts them."
+      ? `${agentName ? `His agent, ${agentName},` : "The player's agent"} proposes his personal terms. The deal moves on once the player accepts them.`
       : isBuyer
         ? "Propose the player's personal terms below. The deal moves on once he accepts them."
         : `Waiting for ${buyerName} to propose personal terms to the player.`;
@@ -385,8 +386,8 @@ function PersonalTermsBanner({ deal, isBuyer }: { deal: Deal; isBuyer: boolean }
     title = "Awaiting the player's consent";
     body = terms.agent_id
       ? terms.player_has_account
-        ? "The terms have been sent to the player. He or his agent can accept them."
-        : "The player has no TransferX account, so his agent responds on his behalf."
+        ? `The terms have been sent to the player. He or his agent${agentName ? `, ${agentName},` : ""} can accept them.`
+        : `The player has no TransferX account, so his agent${agentName ? `, ${agentName},` : ""} responds on his behalf.`
       : terms.player_has_account
         ? "The terms have been sent to the player. The deal moves on once he accepts them."
         : isBuyer
@@ -518,6 +519,7 @@ function MedicalCheckPanel({
   if (!canRecord && !medicalCheck) return null;
 
   return (
+    <div id="medical-check" className="scroll-mt-6">
     <Panel title="Medical Check">
       {!editing ? (
         <>
@@ -585,6 +587,7 @@ function MedicalCheckPanel({
         </div>
       )}
     </Panel>
+    </div>
   );
 }
 
@@ -679,21 +682,41 @@ function PaperworkChecklist({
           {remaining === 0 ? "Complete" : `${remaining} of ${deal.paperwork.length} to go`}
         </span>
       </div>
+      {/* One boxed row per step, its action inside the same box. */}
       <ul className="space-y-2">
         {deal.paperwork.map((s) => {
           const mine = s.owner === side;
+          const myOpen = !s.done && mine && canAct;
           return (
-            <li key={s.key} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <span className={s.done ? "text-text-muted" : "text-text"}>
-                <span aria-hidden className={`mr-2 inline-block w-4 ${s.done ? "text-success-text" : "text-text-muted"}`}>
-                  {s.done ? "✓" : "○"}
-                </span>
-                {s.label}
-                {!s.done && !mine && <span className="ml-2 text-[13px] text-text-muted">— their move</span>}
+            <li
+              key={s.key}
+              className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg px-3 py-2.5 text-sm ring-1 ${
+                s.done ? "bg-surface-inset ring-border" : myOpen ? "bg-accent-bg ring-accent/30" : "bg-surface ring-border"
+              }`}
+            >
+              <span
+                aria-hidden
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                  s.done ? "bg-success-text text-white" : myOpen ? "ring-2 ring-accent" : "ring-1 ring-border"
+                }`}
+              >
+                {s.done ? "✓" : ""}
               </span>
-              {!s.done && mine && canAct && (
+              <span className={`min-w-0 flex-1 ${s.done ? "text-text-muted line-through decoration-text-muted/40" : myOpen ? "font-semibold text-text" : "text-text"}`}>
+                {s.label}
+                <span className="ml-2 text-[12px] font-normal no-underline">
+                  {s.done ? "Done" : mine ? "Your move" : "Their move"}
+                </span>
+              </span>
+              {myOpen && (
                 s.key === "medical" ? (
-                  <span className="text-[13px] text-text-muted">Record it in the Medical Check panel</span>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => document.getElementById("medical-check")?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                  >
+                    Record medical ↓
+                  </Button>
                 ) : (
                   <Button size="sm" variant="primary" loading={mutation.isPending} onClick={() => act(s.key)}>
                     {s.key === "registration" ? "Mark submitted" : "Mark signed"}
@@ -791,7 +814,7 @@ function ThreeLanes({ deal, negotiation }: { deal: Deal; negotiation: AgentNegot
   // deal.commission_agent_id is only set once commission is finalized — a
   // negotiation in flight (still being proposed) is an equally real signal
   // that this deal has an agent, so either one shows the lane.
-  const hasAgent = deal.commission_agent_id != null || negotiation != null;
+  const hasAgent = deal.commission_agent_id != null || negotiation != null || deal.stage === "AGENT_NEGOTIATION";
   const agentStatus = laneStatus(deal, "AGENT_NEGOTIATION");
   // Once the player has accepted, personal terms are agreed even though the
   // deal waits at this stage for a club to press Advance.
@@ -812,10 +835,10 @@ function ThreeLanes({ deal, negotiation }: { deal: Deal; negotiation: AgentNegot
       {hasAgent && (
         <Lane
           status={agentStatus}
-          title="Agent commission"
+          title={deal.agent ? `Agent: ${deal.agent.display_name}` : "Agent commission"}
           description={
             agentStatus === "pending" ? "Not yet started." :
-            agentStatus === "blocking" ? "Agent and club negotiating commission terms." :
+            agentStatus === "blocking" ? `${deal.agent?.display_name ?? "Agent"} and the club are negotiating commission.` :
             "Commission terms agreed."
           }
           metricLabel="Commission"
@@ -1194,9 +1217,14 @@ export default function DealDetailPage() {
       {/* AGENT_NEGOTIATION banner — clubs only; agent gets a dedicated panel below */}
       {atAgentNegotiation && isParty && !isAgent && !isPlayer && deal.status === "IN_PROGRESS" && (
         <div className="mb-6 rounded-xl bg-role-agent-bg px-5 py-4 text-sm text-role-agent-text ring-1 ring-role-agent-text/20">
-          <p className="font-semibold mb-1">Agent negotiation in progress</p>
+          <p className="font-semibold mb-1">
+            Agent negotiation in progress{deal.agent ? ` with ${deal.agent.display_name}` : ""}
+          </p>
           <p className="text-role-agent-text/80">
-            The mandated agent is negotiating commission terms with the buying club. Personal terms follow once this stage is agreed.
+            {deal.agent
+              ? `${deal.agent.display_name} (${deal.agent.agency_name}) represents ${deal.player?.name ?? "the player"} and is negotiating commission terms with the buying club.`
+              : "The mandated agent is negotiating commission terms with the buying club."}{" "}
+            Personal terms follow once this stage is agreed.
           </p>
         </div>
       )}
@@ -1267,6 +1295,16 @@ export default function DealDetailPage() {
             {deal.player?.position && (
               <p className="text-xs text-text-muted mt-0.5">{deal.player.position}</p>
             )}
+            <p className="mt-2 text-sm text-text-secondary">
+              {deal.agent ? (
+                <>
+                  Agent: <span className="font-semibold text-role-agent-text">{deal.agent.display_name}</span>
+                  <span className="text-text-muted"> · {deal.agent.agency_name}</span>
+                </>
+              ) : (
+                <span className="text-text-muted">No agent: the clubs deal with him directly</span>
+              )}
+            </p>
           </Card>
 
           {/* Terms */}
@@ -1305,6 +1343,7 @@ export default function DealDetailPage() {
                   />
                 }
               />
+              {deal.agent && <Metric label="Player's agent" value={`${deal.agent.display_name} (${deal.agent.agency_name})`} />}
               <Metric label="Type" value={dealTypeLabel(deal.deal_type)} />
               <Metric label="Stage" value={dealStageLabel(deal.stage)} />
               <Metric label="Created" value={formatDate(deal.created_at)} />
