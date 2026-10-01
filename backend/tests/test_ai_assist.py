@@ -142,14 +142,32 @@ async def test_advice_facts_are_scoped_to_the_viewer(client, buyer, seller, db, 
     assert "your_budget" not in seller_facts
     assert "competing_offers" in seller_facts
 
-    resp = await client.get(f"/ai/offers/{offer['id']}/advice", headers=_auth_headers(buyer))
-    assert resp.status_code == 200, resp.text
-    buyer_facts = calls[-1]["facts"]
+    # The seller is told plainly whose terms these are.
+    assert seller_facts["current_terms_were_sent_by"] == "them"
+    assert seller_facts["waiting_for"] == "you to accept, counter or reject"
+
     # The buyer sees its own budget, never the seller's order book.
+    from uuid import UUID
+
+    from app.ai.assist import _load_offer, offer_facts
+    buyer_club = UUID(await _get_club_id(client, _auth_headers(buyer)))
+    buyer_facts = await offer_facts(db, await _load_offer(db, UUID(offer["id"]), buyer_club), buyer_club)
     assert "your_budget" in buyer_facts
     assert "competing_offers" not in buyer_facts
-    # Not the buyer's turn: whatever the model says, the advice is to wait.
-    assert resp.json()["recommendation"] == "wait"
+    assert buyer_facts["current_terms_were_sent_by"] == "you"
+    assert buyer_facts["waiting_for"] == "Selling Side FC to reply"
+
+    # Not the buyer's turn: the advice is to wait, said in code with no
+    # model call (the model once read the buyer's own offer as the seller's).
+    before = len(calls)
+    resp = await client.get(f"/ai/offers/{offer['id']}/advice", headers=_auth_headers(buyer))
+    assert resp.status_code == 200, resp.text
+    advice = resp.json()
+    assert len(calls) == before
+    assert advice["recommendation"] == "wait"
+    assert advice["summary"] == ("You sent a £5m offer for Deal Player. "
+                                 "It's Selling Side FC's move: they can accept, counter or reject it.")
+    assert any("expires in" in r for r in advice["reasons"])
 
 
 @pytest.mark.asyncio

@@ -158,6 +158,10 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **The offer advisor read a club's own offer as the other club's.** Tottenham, waiting on its own £4m offer, was told "Manchester United have sent terms… the ball is in your court".
+  - When it isn't your move, the advisor now says where the offer stands in code, with no model call: "You sent a £4m offer… It's Manchester United's move". It adds the expiry and how the fee compares with the model.
+  - The model's facts now say plainly who sent the current terms and who must reply.
+  - The advisor prompt bans quoting field names or codes like `your_turn` or `SENT`.
 - **Opening a player from the AI player search (or from "Recommended for you") gave an error page.** The links pointed to `/market/players/{id}`, which doesn't exist; they now open `/players/market/{id}`. The admin health page's player, contract and sale links had the same fault.
 - **Reloading a public page, such as the player market, signed the user out.** Restoring the session ran in every component that used `useAuth`, and a public page's first requests also refreshed on their 401. The refreshes raced with the same rotating refresh token, and the one refused signed the user out. The session is now restored once, and every refresh shares a single call (`lib/api.ts` `refreshAccessToken`).
 - **The offer checker's over-budget warning now matches the refusal.** It looked at the fee and wage alone, so a bid whose add-ons or loan wage share took it over budget was refused on sending without a warning first. It now uses the same arithmetic as the refusal. When a counter or acceptance is checked, it deducts what the offer already holds.
