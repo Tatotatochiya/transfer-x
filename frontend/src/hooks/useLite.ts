@@ -125,3 +125,14 @@ export function useLiteOfferCard(offerId: string | undefined) {
     retry: false,
   });
 }
+
+// ── Ask anything (L5) ────────────────────────────────────────────────────────
+
+/** Questions to tap before the first one: from the club's state, no model call. */
+export function useLiteAskSuggestions() {
+  return useQuery<{ suggestions: string[] }>({
+    queryKey: ["lite", "ask", "suggestions"],
+    queryFn: () => api.get("/lite/ask/suggestions").then((r) => r.data),
+    staleTime: 5 * 60_000,
+  });
+}

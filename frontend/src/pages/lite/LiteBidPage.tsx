@@ -22,6 +22,10 @@ import { getApiError } from "../../lib/utils";
 export default function LiteBidPage() {
   const [params] = useSearchParams();
   const playerId = params.get("player_id");
+  // From Ask anything: a fee the server checked, and the offer is recorded as
+  // the assistant's suggestion when confirmed.
+  const fromAsk = params.get("from") === "ask";
+  const proposedFee = Number(params.get("fee")) || null;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: draft, isLoading, error } = useLiteOfferDraft(playerId);
@@ -33,8 +37,8 @@ export default function LiteBidPage() {
   const [done, setDone] = useState<null | { kind: "sent"; offerId: string } | { kind: "approval" }>(null);
 
   useEffect(() => {
-    if (draft && fee == null) setFee(draft.fee ?? 1_000_000);
-  }, [draft, fee]);
+    if (draft && fee == null) setFee(proposedFee ?? draft.fee ?? 1_000_000);
+  }, [draft, fee, proposedFee]);
 
   const terms = useMemo(() => draft && fee != null ? {
     player_id: draft.player_id,
@@ -95,7 +99,7 @@ export default function LiteBidPage() {
     setSending(true);
     setSendError(null);
     try {
-      const resp = await api.post("/offers", terms);
+      const resp = await api.post("/offers", fromAsk ? { ...terms, ai_assisted: true } : terms);
       await api.delete("/lite/resume").catch(() => undefined);
       queryClient.invalidateQueries({ queryKey: ["lite"] });
       setDone(resp.status === 202 ? { kind: "approval" } : { kind: "sent", offerId: resp.data.id });

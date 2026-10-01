@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
   ActionCardShell, Done, FactRow, FeeStepper, MoneyPanel, Notes,
@@ -34,8 +34,16 @@ export default function LiteOfferCardPage() {
   const queryClient = useQueryClient();
   const { data: card, isLoading, error } = useLiteOfferCard(offerId);
 
-  const [mode, setMode] = useState<Mode>("answer");
-  const [counterFee, setCounterFee] = useState<number | null>(null);
+  // From Ask anything: the action it proposed opens ready to confirm, and is
+  // recorded as the assistant's suggestion when confirmed.
+  const [params] = useSearchParams();
+  const fromAsk = params.get("from") === "ask";
+  const proposed = params.get("action");
+  const [mode, setMode] = useState<Mode>(
+    proposed === "accept" || proposed === "reject" || proposed === "counter" ? proposed : "answer",
+  );
+  const [counterFee, setCounterFee] = useState<number | null>(Number(params.get("amount")) || null);
+  const aiBody = fromAsk ? { ai_assisted: true } : {};
   const [busy, setBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
@@ -93,15 +101,15 @@ export default function LiteOfferCardPage() {
     }
   };
   const accept = () => run(async () => {
-    const r = await api.post(`/offers/${card.offer_id}/accept`, {});
+    const r = await api.post(`/offers/${card.offer_id}/accept`, aiBody);
     return r.status === 202 ? { kind: "approval" } : { kind: "accepted", dealId: r.data.id };
   });
   const sendCounter = () => run(async () => {
-    await api.post(`/offers/${card.offer_id}/counter`, { fee_amount: counter });
+    await api.post(`/offers/${card.offer_id}/counter`, { fee_amount: counter, ...(fromAsk ? { ai_assisted: true, ai_feature: "ask_proposal" } : {}) });
     return { kind: "countered" };
   });
   const reject = () => run(async () => {
-    await api.post(`/offers/${card.offer_id}/reject`, {});
+    await api.post(`/offers/${card.offer_id}/reject`, aiBody);
     return { kind: "rejected" };
   });
 

@@ -9,6 +9,7 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { formatDateTime, getApiError } from "../../lib/utils";
+import { DraftButton, useDraftTracking } from "../../components/ai/DraftButton";
 
 /**
  * One enquiry's thread. The asking club can move to a formal offer from here
@@ -22,6 +23,7 @@ export default function EnquiryDetailPage() {
   const { addToast } = useToast();
   const { can } = useClubCapabilities();
   const [body, setBody] = useState("");
+  const draftTracking = useDraftTracking("enquiry_reply", id ?? "");
 
   const { data: e, isLoading, isError } = useQuery<Enquiry>({
     queryKey: ["enquiries", id],
@@ -36,7 +38,7 @@ export default function EnquiryDetailPage() {
   };
   const reply = useMutation({
     mutationFn: () => api.post<Enquiry>(`/enquiries/${id}/messages`, { body }).then((r) => r.data),
-    onSuccess: (updated) => { setBody(""); refresh(updated); },
+    onSuccess: (updated) => { draftTracking.sent(body); setBody(""); refresh(updated); },
     onError: (err: unknown) => addToast(getApiError(err, "Could not send."), "error"),
   });
   const close = useMutation({
@@ -106,7 +108,7 @@ export default function EnquiryDetailPage() {
 
         {open && canWrite ? (
           <form
-            className="flex gap-2 border-t border-rule-faint pt-3"
+            className="space-y-2 border-t border-rule-faint pt-3"
             onSubmit={(ev) => { ev.preventDefault(); if (body.trim()) reply.mutate(); }}
           >
             <textarea
@@ -115,9 +117,12 @@ export default function EnquiryDetailPage() {
               rows={2}
               maxLength={2000}
               placeholder="Write a reply…"
-              className="flex-1 resize-none rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+              className="w-full resize-y rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             />
-            <Button type="submit" variant="primary" size="sm" loading={reply.isPending}>Send</Button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {id && <DraftButton kind="enquiry_reply" id={id} current={body} onDraft={setBody} onDrafted={draftTracking.drafted} />}
+              <Button type="submit" variant="primary" size="sm" loading={reply.isPending}>Send</Button>
+            </div>
           </form>
         ) : (
           !open && <p className="border-t border-rule-faint pt-3 text-[13px] text-text-muted">This enquiry is closed.</p>

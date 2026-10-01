@@ -39,7 +39,7 @@ async def create_shortlist(
         select(Shortlist).where(Shortlist.club_id == club_id, Shortlist.name == name)
     )
     if existing.scalar_one_or_none():
-        raise ValueError(f"Shortlist named '{name}' already exists")
+        raise ValueError(f"You already have a shortlist called '{name}'.")
 
     sl = Shortlist(club_id=club_id, name=name, description=description)
     db.add(sl)
@@ -62,7 +62,7 @@ async def update_shortlist(
                 )
             )
             if existing.scalar_one_or_none():
-                raise ValueError(f"Shortlist named '{name}' already exists")
+                raise ValueError(f"You already have a shortlist called '{name}'.")
         shortlist.name = name
     if description is not None:
         shortlist.description = description

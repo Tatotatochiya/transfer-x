@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -98,12 +99,13 @@ async def _cached(key: str, produce: Callable[[], Awaitable[Any]], ttl: int = _C
     return value, False
 
 
-async def _llm_json(prompt_key: str, *, user_id: uuid.UUID, endpoint: str, max_tokens: int = 900, **fmt) -> dict:
+async def _llm_json(prompt_key: str, *, user_id: uuid.UUID, endpoint: str, max_tokens: int = 900,
+                    bucket: str = "default", **fmt) -> dict:
     """One model call returning a JSON object. Counts against the user's AI
-    rate limit — call it only on a cache miss."""
+    rate limit (`bucket`: Ask has its own) — call it only on a cache miss."""
     from app.ai.rate_limit import check_rate_limit
 
-    check_rate_limit(user_id)
+    check_rate_limit(user_id, bucket)
     messages = [
         {"role": "system", "content": get_prompt("SYSTEM_ADVISOR")},
         {"role": "user", "content": get_prompt(prompt_key).format(**fmt)},
@@ -576,7 +578,7 @@ async def offer_advice(db: AsyncSession, offer_id: uuid.UUID, *, viewer_club_id:
             "recommendation": rec,
             "suggested_terms": _validate_suggestion(data.get("suggested_terms"), facts) if rec == "counter" else None,
             "reasons": _strs(data.get("reasons"), 4),
-            "watch_outs": _strs(data.get("watch_outs"), 3),
+            "watch_outs": useful_tips(_strs(data.get("watch_outs"), 3), limit=3),
         }
 
     result, cached = await _cached(key, produce)
@@ -803,10 +805,195 @@ async def deal_next_steps(db: AsyncSession, deal_id: uuid.UUID, *, viewer_club_i
     return {"steps": steps, "idle_days": idle_days, "brief": brief}
 
 
+_FILLER = re.compile(
+    r"\b(act (today|now|promptly|quickly)|promptly|without delay|as soon as possible|asap|"
+    r"avoid (any |unnecessary )?(delay|delays)|delays? (risks?|could|may)|risks? (stalling|the move stalling)|"
+    r"keep (the )?(lines of )?communication|communicate clearly|stay in (close )?contact|keep .{0,20} informed|"
+    r"no deadline is set|only outstanding step|(it is|it's) yours)\b",
+    re.IGNORECASE,
+)
+
+
+def _words(text: str) -> set[str]:
+    """Content words, crudely stemmed ("records" and "record" match)."""
+    return {re.sub(r"(ing|ed|s)$", "", w) for w in re.findall(r"[a-z]+", text.lower()) if len(w) > 3}
+
+
+def useful_tips(tips: list[str], *, steps: list[dict] | None = None, limit: int = 2) -> list[str]:
+    """The model's tips, less filler: drop a tip that is generic (`_FILLER`)
+    or that mostly restates an outstanding step's label. Applied in code
+    because a prompt rule alone is not reliably followed."""
+    labels = [_words(s.get("label", "")) for s in steps or []]
+    out = []
+    for tip in tips:
+        words = _words(tip)
+        if _FILLER.search(tip) or len(words) < 3:
+            continue
+        if any(lw and len(words & lw) >= max(2, round(0.6 * len(lw))) and len(words - lw) <= 6 for lw in labels):
+            continue
+        out.append(tip)
+    return out[:limit]
+
+
 async def _deal_brief(facts: dict, role: str, user_id: uuid.UUID) -> dict:
     data = await _llm_json("DEAL_BRIEF_USER", user_id=user_id, endpoint="deal-brief", max_tokens=400,
                            role=role, facts_json=_dumps(facts))
-    return {"headline": str(data.get("headline", "")).strip(), "advice": _strs(data.get("advice"), 3)}
+    return {"headline": str(data.get("headline", "")).strip(),
+            "advice": useful_tips(_strs(data.get("advice"), 3), steps=facts.get("outstanding_steps"))}
+
+
+# ── Drafts: the assistant writes, the user edits and sends ───────────────────
+
+DRAFT_KINDS = ("deal_message", "counter_note", "enquiry_reply")
+_MONEY = re.compile(r"£\s?(\d[\d,]*(?:\.\d+)?)\s?(m|k|bn)?", re.IGNORECASE)
+
+
+def _figures(value) -> set[float]:
+    """Every number in the facts, to check a draft's money against."""
+    out: set[float] = set()
+    if isinstance(value, bool):
+        return out
+    if isinstance(value, (int, float)):
+        out.add(float(value))
+    elif isinstance(value, dict):
+        for v in value.values():
+            out |= _figures(v)
+    elif isinstance(value, list):
+        for v in value:
+            out |= _figures(v)
+    return out
+
+
+def keep_known_figures(text: str, facts: dict) -> str:
+    """Drop any sentence quoting a £ figure that is not in the facts (within
+    5%, for rounding such as £5.7m for 5,700,000): TransferX computes the
+    figures, the model only words them (ADR 0006)."""
+    known = [f for f in _figures(facts) if f > 0]
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    kept = []
+    for sentence in sentences:
+        ok = True
+        for amount, unit in _MONEY.findall(sentence):
+            v = float(amount.replace(",", "")) * {"m": 1e6, "k": 1e3, "bn": 1e9}.get(unit.lower(), 1)
+            if not any(abs(v - f) <= 0.05 * f for f in known):
+                ok = False
+                break
+        if ok:
+            kept.append(sentence)
+    return " ".join(kept).strip()
+
+
+async def draft_facts(db: AsyncSession, *, kind: str, ref_id: uuid.UUID, club, channel: str | None = None) -> tuple[dict, str, dict]:
+    """(facts, purpose, masks) for a draft. Only what the recipients may be
+    told: never the club's budget or a rival's bid, and an undisclosed club
+    stays undisclosed. `masks` maps a hidden club name to its label, so the
+    draft can be cleaned if the model slips. LookupError if the club may not
+    see the subject."""
+    masks: dict = {}
+    if kind == "deal_message":
+        from app.deals.room_models import CommentAudience, DealComment
+        from app.deals.service import get_deal_by_id
+
+        deal = await get_deal_by_id(db, ref_id)
+        if deal is None or club.id not in (deal.buyer_club_id, deal.seller_club_id):
+            raise LookupError("Deal not found")
+        side = "buyer" if club.id == deal.buyer_club_id else "seller"
+        own_channel = "BUYER_ONLY" if side == "buyer" else "SELLER_ONLY"
+        audience = {"SHARED": "SHARED", "CLUB_ONLY": own_channel, own_channel: own_channel}.get(channel or "SHARED", "SHARED")
+        other = deal.seller_club if side == "buyer" else deal.buyer_club
+        comments = (await db.execute(
+            select(DealComment).where(DealComment.deal_id == deal.id, DealComment.audience == CommentAudience(audience))
+            .order_by(DealComment.created_at.desc()).limit(6)
+        )).scalars().all()
+        from app.deals.service import deal_agent
+
+        agent = await deal_agent(db, deal)
+        facts = {
+            "currency": CURRENCY, "your_club": club.name,
+            "your_side": "buying club" if side == "buyer" else "selling club",
+            "other_club": other.name if other else None,
+            "player": deal.player.name if deal.player else None,
+            "player_agent": f"{agent['display_name']} ({agent['agency_name']})" if agent else None,
+            "stage": deal.stage.value, "agreed_fee": _num(deal.agreed_fee),
+            "outstanding_steps": deal_steps(deal, club.id),
+            "recent_messages": [c.body[:300] for c in reversed(comments)],
+        }
+        purpose = ("a message in the deal room, seen by both clubs and the player's agent"
+                   if audience == "SHARED" else "an internal note in the deal room, seen only by your own club")
+        return facts, purpose, masks
+
+    if kind == "counter_note":
+        offer = await _load_offer(db, ref_id, club.id)
+        full = await offer_facts(db, offer, club.id)
+        if _masked(offer, club.id) and offer.from_club is not None:
+            masks[offer.from_club.name] = "an undisclosed club"
+        model = full["player"].get("fee_model") or {}
+        facts = {
+            "currency": CURRENCY, "your_club": club.name, "your_side": full["viewer_role"] + " club",
+            "other_club": full["other_club"],
+            "player": {k: full["player"].get(k) for k in ("name", "age", "position", "contract_ends")},
+            "current_terms": full["current_terms"], "status": full["status"],
+            "counter_rounds_so_far": full["counter_rounds_so_far"],
+            "model_range": [model.get("range_low"), model.get("range_high")] if model else None,
+            "listing_guide_price": full["listing_guide_price"],
+            "recent_messages": [m.body[:300] for m in sorted(offer.messages, key=lambda m: m.created_at)[-6:]],
+        }
+        return facts, "a message to the other club on the offer, explaining the current terms", masks
+
+    if kind == "enquiry_reply":
+        from app.enquiries.models import Enquiry
+
+        enquiry = (await db.execute(
+            select(Enquiry).where(Enquiry.id == ref_id).options(
+                selectinload(Enquiry.messages), selectinload(Enquiry.player),
+                selectinload(Enquiry.from_club), selectinload(Enquiry.to_club))
+        )).scalar_one_or_none()
+        if enquiry is None or club.id not in (enquiry.from_club_id, enquiry.to_club_id):
+            raise LookupError("Enquiry not found")
+        asking = club.id == enquiry.from_club_id
+        other = enquiry.to_club if asking else enquiry.from_club
+        other_label = other.name if other else None
+        if not asking and enquiry.is_anonymous and other is not None:
+            league = getattr(other, "masking_league", None)
+            other_label = f"an undisclosed {league} club" if league else "an undisclosed club"
+            masks[other.name] = other_label
+        facts = {
+            "your_club": club.name, "your_side": "asking club" if asking else "the player's club",
+            "other_club": other_label, "player": enquiry.player.name if enquiry.player else None,
+            "status": enquiry.status.value,
+            "messages": [{"from": "you" if m.sender_club_id == club.id else "them", "text": m.body[:300]}
+                         for m in sorted(enquiry.messages, key=lambda m: m.created_at)[-8:]],
+        }
+        return facts, "a reply in an enquiry about a player", masks
+
+    raise ValueError("Unknown draft kind")
+
+
+async def draft_message(db: AsyncSession, *, kind: str, ref_id: uuid.UUID, club, user,
+                        channel: str | None = None, intent: str | None = None) -> dict:
+    """A message for the user to edit and send themselves (ADR 0006): never
+    sent from here. Hidden club names are masked and unknown figures dropped
+    in code, whatever the model wrote."""
+    import hashlib
+
+    if kind not in DRAFT_KINDS:
+        raise ValueError("Unknown draft kind")
+    facts, purpose, masks = await draft_facts(db, kind=kind, ref_id=ref_id, club=club, channel=channel)
+    intent = (intent or "").strip().replace('"', "'")[:300]
+    fingerprint = hashlib.sha1((kind + intent + _dumps(facts)).encode()).hexdigest()[:16]
+
+    async def produce():
+        data = await _llm_json("DRAFT_MESSAGE_USER", user_id=user.id, endpoint=f"draft-{kind}", max_tokens=500,
+                               club_name=club.name, purpose=purpose, intent=intent, facts_json=_dumps(facts))
+        return str(data.get("text", "")).strip()
+
+    text, _ = await _cached(f"draft:{user.id}:{ref_id}:{fingerprint}", produce, ttl=300)
+    for real, label in masks.items():
+        text = re.sub(re.escape(real), label, text, flags=re.IGNORECASE)
+    text = keep_known_figures(text, facts)[:1500]
+    if not text:
+        raise RuntimeError("The assistant couldn't write a usable draft. Try again, or say what you want to say.")
+    return {"kind": kind, "text": text}
 
 
 # ── Phase 2b: morning briefing ───────────────────────────────────────────────
@@ -859,7 +1046,7 @@ async def club_briefing(db: AsyncSession, club, user) -> dict | None:
         return {
             "headline": str(data.get("headline", "")).strip(),
             "focus": str(data.get("focus", "")).strip(),
-            "points": _strs(data.get("points"), 5),
+            "points": useful_tips(_strs(data.get("points"), 5), limit=5),
         }
 
     result, cached = await _cached(f"briefing:{user.id}:{date.today()}:{fingerprint}", produce, ttl=12 * 3600)
@@ -972,7 +1159,7 @@ async def listing_advice(db: AsyncSession, player_id: uuid.UUID, *, viewer_club_
             "summary": str(data.get("summary", "")).strip() or None,
             "availability": availability if availability in ("TRANSFER", "LOAN", "EITHER") else default_availability,
             "reasons": _strs(data.get("reasons"), 4),
-            "tips": _strs(data.get("tips"), 3),
+            "tips": useful_tips(_strs(data.get("tips"), 3), limit=3),
         }
 
     try:
@@ -1131,6 +1318,8 @@ async def ask_facts(db: AsyncSession, club, user) -> dict:
         "today": date.today().isoformat(),
         "club": club.name,
         "budget": await _budget_facts(db, club.id),
+        "budget_note": ("transfer_budget_remaining is what is free now: money held for open offers and committed "
+                        "to transfers in progress is already taken off it"),
         "offers_received": [
             {"player": o.player.name if o.player else None,
              "from": "an undisclosed club" if o.is_anonymous else (o.from_club.name if o.from_club else None),
@@ -1203,22 +1392,202 @@ def _paths(facts: dict) -> set[str]:
     return found
 
 
-async def ask(db: AsyncSession, club, user, question: str) -> dict:
+LITE_PAGES = [
+    {"label": "Lite home", "path": "/lite"},
+    {"label": "Buy a player", "path": "/lite/buy"},
+    {"label": "Answer offers", "path": "/lite/offers"},
+    {"label": "Ask anything", "path": "/lite/ask"},
+]
+_LITE_POSITIONS = {"GK": "goalkeepers", "DEF": "defenders", "MID": "midfielders", "FWD": "forwards"}
+_LITE_BANDS = {"0-5": "up to £5m", "5-10": "£5m to £10m", "10-20": "£10m to £20m", "free": "free or on loan"}
+PROPOSAL_KINDS = ("bid", "counter", "accept", "reject")
+_CANT = re.compile(r"\b(don't|do not|doesn't|does not|can't|cannot|no) (have|show|include|contain|information|data|answer)", re.I)
+
+
+def lite_ask_facts(facts: dict) -> dict:
+    """Lite pages and the Buy flow's results pages, so the model can link to
+    them (it may only use paths that appear in the facts)."""
+    searches = [{"label": f"{word.capitalize()}, {band}", "path": f"/lite/buy/results?position={pos}&budget={key}"}
+                for pos, word in _LITE_POSITIONS.items() for key, band in _LITE_BANDS.items()]
+    return {**facts, "pages": LITE_PAGES + facts["pages"], "lite_player_searches": searches}
+
+
+def _short_money(v: float) -> str:
+    return f"£{v / 1e6:.1f}m".replace(".0m", "m") if v >= 1e6 else f"£{v / 1e3:.0f}k"
+
+
+_PROPOSAL_ANSWER = {
+    "bid": lambda p: f"I've prepared a {_short_money(p['amount'])} bid for {p['player']} ({p['club']}) for you to check.",
+    "counter": lambda p: f"I've prepared a counter at {_short_money(p['amount'])} for {p['player']} for you to check.",
+    "accept": lambda p: f"I've opened the offer for {p['player']} ready to accept, for you to check.",
+    "reject": lambda p: f"I've opened the offer for {p['player']} ready to turn down, for you to check.",
+}
+
+
+async def resolve_proposal(db: AsyncSession, raw, *, facts: dict, club, user) -> tuple[dict | None, list[dict], str | None]:
+    """The model's proposal, checked in code (BACKEND.md §3): a known kind,
+    a player or offer this club may act on, an amount within half and double
+    the known figures, and a role allowed to do it. Returns (proposal or
+    None, links, reason): an ambiguous player gives no proposal and one link
+    per candidate, and `reason` says in plain words why it couldn't be
+    prepared. Nothing is sent; the card it opens is confirmed by the user."""
+    if not isinstance(raw, dict) or raw.get("kind") not in PROPOSAL_KINDS:
+        return None, [], None
+    from app.clubs.capabilities import Capability, capabilities_for_role
+    from app.clubs.service import get_club_and_role_for_user
+
+    _, role = await get_club_and_role_for_user(db, user.id)
+    if not user.is_superuser and Capability.MARKET_WRITE not in capabilities_for_role(role or "OWNER"):
+        return None, [], "Your role can't send or answer offers. Ask your club's owner."
+    kind = raw["kind"]
+    try:
+        amount = float(raw["amount"]) if raw.get("amount") is not None else None
+    except (TypeError, ValueError):
+        amount = None
+
+    if kind == "bid":
+        from app.clubs.models import Club
+        from app.lite.service import _round_half_m, player_prices
+        from app.players.models import Player, PlayerStatus
+        from app.players.service import get_owning_club_id
+
+        name = str(raw.get("player") or "").strip()
+        if len(name) < 2:
+            return None, [], "I couldn't tell which player you meant."
+        found = (await db.execute(
+            select(Player).where(Player.name.ilike(f"%{name}%"),
+                                 Player.status.in_([PlayerStatus.CONTRACTED, PlayerStatus.FREE_AGENT]))
+            .order_by(Player.name).limit(6)
+        )).scalars().all()
+        exact = [p for p in found if p.name.lower() == name.lower()]
+        candidates = exact or found
+        if len(candidates) != 1:
+            return (None, [{"label": p.name, "path": f"/players/market/{p.id}"} for p in candidates[:3]],
+                    f"More than one player matches “{name}”. Which one did you mean?" if candidates
+                    else f"I couldn't find a player called “{name}” that you can make an offer for.")
+        player = candidates[0]
+        owner = await get_owning_club_id(db, player)
+        if owner is None or owner == club.id:
+            return None, [{"label": player.name, "path": f"/players/market/{player.id}"}], (
+                f"{player.name} is already your player." if owner == club.id
+                else f"{player.name} has no club on TransferX to make an offer to.")
+        price, _, sale = (await player_prices(db, [player], owned={player.id})).get(player.id, (None, None, None))
+        if not price:
+            return None, [{"label": player.name, "path": f"/players/market/{player.id}"}], (
+                f"TransferX has no price for {player.name} to check a bid against, so make it from his page.")
+        if amount is None:
+            amount = _round_half_m(price)
+        if not (0.5 * price <= amount <= 2 * price):
+            return None, [{"label": player.name, "path": f"/players/market/{player.id}"}], (
+                f"{_short_money(amount)} is too far from his price of about {_short_money(price)} to prepare. "
+                "Open his page to make a different offer.")
+        seller = (await db.execute(select(Club.name).where(Club.id == owner))).scalar_one_or_none()
+        return {
+            "kind": "bid", "player_id": str(player.id), "player": player.name, "club": seller, "amount": amount,
+            "prefill": {"player_id": str(player.id), "to_club_id": str(owner),
+                        "sale_id": str(sale.id) if sale is not None else None, "fee_amount": amount},
+            "card_path": f"/lite/bid?player_id={player.id}&fee={int(amount)}&from=ask",
+        }, [], None
+
+    # counter / accept / reject: an open offer in the facts, and the club's move.
+    path = str(raw.get("offer_path") or "")
+    offer = next((o for o in facts.get("offers_received", []) + facts.get("offers_sent", [])
+                  if o.get("path") == path), None)
+    if offer is None or offer.get("move") != "yours":
+        return None, [], "That offer isn't waiting on you, so there's nothing to answer yet."
+    offer_id = path.rsplit("/", 1)[-1]
+    if kind == "counter":
+        fee = offer.get("fee")
+        if offer.get("type") != "PERMANENT" or not fee or amount is None or not (0.5 * fee <= amount <= 2 * fee):
+            return None, [{"label": f"Offer for {offer.get('player')}", "path": f"/lite/offers/{offer_id}"}], (
+                "I can only prepare a counter on a permanent offer, at a fee between half and double theirs.")
+    query = f"action={kind}&from=ask" + (f"&amount={int(amount)}" if kind == "counter" else "")
+    return {
+        "kind": kind, "offer_id": offer_id, "player": offer.get("player"),
+        "club": offer.get("from") or offer.get("to"), "amount": amount if kind == "counter" else offer.get("fee"),
+        "prefill": {"fee_amount": amount} if kind == "counter" else {},
+        "card_path": f"/lite/offers/{offer_id}?{query}",
+    }, [], None
+
+
+_BID_ASK = [
+    # "bid £8m for Ellis Varga", "offer 8m for Varga", "put in a £7.5m bid for Varga"
+    re.compile(r"\b(?:bid|offer)\s+£?\s?(?P<amount>\d+(?:\.\d+)?)\s?(?P<unit>m|k|million)?\s+(?:for|on)\s+(?P<player>.+)$", re.I),
+    re.compile(r"£?\s?(?P<amount>\d+(?:\.\d+)?)\s?(?P<unit>m|k|million)?\s+(?:bid|offer)\s+(?:for|on)\s+(?P<player>.+)$", re.I),
+    # "bid for Ellis Varga" (no amount: his price is used)
+    re.compile(r"^(?:please\s+)?(?:make\s+an?\s+|put\s+in\s+an?\s+)?(?:bid|offer)\s+(?:for|on)\s+(?P<player>.+)$", re.I),
+]
+
+
+def bid_from_question(question: str) -> dict | None:
+    """A plain bid request, read in code when the model gives no proposal;
+    it is then checked by `resolve_proposal` like any other."""
+    q = question.strip().rstrip(".?!")
+    for pattern in _BID_ASK:
+        m = pattern.search(q)
+        if m:
+            amount = None
+            if m.groupdict().get("amount"):
+                unit = (m.group("unit") or "m").lower()
+                amount = float(m.group("amount")) * (1e3 if unit == "k" else 1e6)
+            return {"kind": "bid", "player": m.group("player").strip(), "amount": amount}
+    return None
+
+
+async def _log_question(db: AsyncSession, user, question: str, *, input: str, lite: bool,
+                        had_proposal: bool, links_count: int, fallback: bool) -> None:
+    from app.ai.models import AssistantQuery
+
+    db.add(AssistantQuery(user_id=user.id, question=question[:500], input=input, lite=lite,
+                          had_proposal=had_proposal, links_count=links_count, fallback=fallback))
+    await db.flush()
+
+
+async def ask(db: AsyncSession, club, user, question: str, *, lite: bool = False, input: str = "text") -> dict:
+    """Ask TransferX. In Lite, the answer is shorter, can link to Lite pages,
+    and can carry a `proposal` that opens an action card. Every question is
+    logged (`assistant_queries`); the caller commits."""
     import hashlib
 
+    from app.ai import tracking
+
     question = question.strip()[:500]
+    input = input if input in ("text", "voice") else "text"
     facts = await ask_facts(db, club, user)
+    if lite:
+        facts = lite_ask_facts(facts)
     allowed = _paths(facts)
-    fingerprint = hashlib.sha1((question.lower() + _dumps(facts)).encode()).hexdigest()[:16]
+    fingerprint = hashlib.sha1((str(lite) + question.lower() + _dumps(facts)).encode()).hexdigest()[:16]
 
     async def produce():
-        data = await _llm_json("ASK_USER", user_id=user.id, endpoint="ask", max_tokens=600,
-                               club_name=club.name, question=question.replace('"', "'"), facts_json=_dumps(facts))
+        data = await _llm_json("ASK_LITE_USER" if lite else "ASK_USER", user_id=user.id, endpoint="ask",
+                               max_tokens=600, bucket="ask", club_name=club.name,
+                               question=question.replace('"', "'"), facts_json=_dumps(facts))
         links = []
         for row in data.get("links") or []:
             if isinstance(row, dict) and row.get("path") in allowed:
                 links.append({"label": str(row.get("label") or row["path"]).strip(), "path": row["path"]})
-        return {"answer": str(data.get("answer", "")).strip(), "links": links[:4]}
+        return {"answer": str(data.get("answer", "")).strip(), "links": links[:4],
+                "raw_proposal": data.get("proposal") if lite else None}
 
-    result, cached = await _cached(f"ask:{user.id}:{fingerprint}", produce, ttl=600)
-    return {**result, "cached": cached}
+    try:
+        result, cached = await _cached(f"ask:{user.id}:{fingerprint}", produce, ttl=600)
+    except Exception:
+        await _log_question(db, user, question, input=input, lite=lite, had_proposal=False, links_count=0, fallback=True)
+        raise
+    raw = (result.get("raw_proposal") or bid_from_question(question)) if lite else None
+    proposal, extra, reason = (await resolve_proposal(db, raw, facts=facts, club=club, user=user)
+                               if lite else (None, [], None))
+    links = (result["links"] + [lnk for lnk in extra if lnk not in result["links"]])[:4]
+    # The model can't know how the check went, so when it proposed an action
+    # the answer comes from code: ready to check, or why it couldn't be.
+    if proposal is not None:
+        result = {**result, "answer": _PROPOSAL_ANSWER[proposal["kind"]](proposal)}
+    elif reason:
+        result = {**result, "answer": reason}
+    fallback = not result["answer"] or (not links and proposal is None and bool(_CANT.search(result["answer"])))
+    await _log_question(db, user, question, input=input, lite=lite, had_proposal=proposal is not None,
+                        links_count=len(links), fallback=fallback)
+    if proposal is not None:
+        await tracking.record_shown(db, "ask_proposal", user.id, ref=proposal.get("player_id") or proposal.get("offer_id"))
+    return {"answer": result["answer"], "links": links, "proposal": proposal, "fallback": fallback, "cached": cached}

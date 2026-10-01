@@ -58,9 +58,12 @@ async def _get_shortlist_or_404(db: AsyncSession, shortlist_id: uuid.UUID, club_
 
 @router.get("/shortlists", response_model=list[ShortlistSummaryResponse])
 async def list_shortlists(
+    player_id: uuid.UUID | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """The club's shortlists. With `player_id`, each says whether he is
+    already on it (`contains_player`), for the add-to-shortlist menu."""
     club = await _get_club_or_403(db, current_user)
     shortlists = await service.list_shortlists(db, club.id)
     return [
@@ -72,6 +75,7 @@ async def list_shortlists(
             item_count=len(sl.items),
             created_at=sl.created_at,
             updated_at=sl.updated_at,
+            contains_player=(any(i.player_id == player_id for i in sl.items) if player_id else None),
         )
         for sl in shortlists
     ]

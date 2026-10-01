@@ -24,6 +24,8 @@ from app.auth.models import User
 from app.config import settings
 from app.database import get_db
 from app.deps import get_current_superuser, get_current_user
+from app.ai import models as _ai_models  # noqa: F401  (registers the AI tables)
+from sqlalchemy import Integer
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -229,6 +231,42 @@ async def ai_usage(current_user: User = Depends(get_current_superuser)) -> AIUsa
     return AIUsageStats(**get_stats())
 
 
+@router.get("/suggestions/stats")
+async def suggestion_stats(
+    days: int = Query(30, ge=1, le=365),
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Per feature: suggestions shown, used, and the share used. Superuser only."""
+    from app.ai.tracking import suggestion_stats as _stats
+    return {"days": days, "features": await _stats(db, days)}
+
+
+@router.get("/assistant/questions")
+async def assistant_questions(
+    fallback_only: bool = Query(True),
+    limit: int = Query(50, ge=1, le=200),
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Recent Ask questions, by default the ones it couldn't answer: they
+    show what to build next. Superuser only."""
+    from sqlalchemy import func, select
+
+    from app.ai.models import AssistantQuery
+
+    q = select(AssistantQuery).order_by(AssistantQuery.created_at.desc()).limit(limit)
+    if fallback_only:
+        q = q.where(AssistantQuery.fallback.is_(True))
+    rows = (await db.execute(q)).scalars().all()
+    totals = (await db.execute(select(func.count(), func.sum(func.cast(AssistantQuery.fallback, Integer))))).one()
+    return {
+        "total": totals[0] or 0, "fallbacks": int(totals[1] or 0),
+        "questions": [{"question": r.question, "input": r.input, "lite": r.lite, "had_proposal": r.had_proposal,
+                       "fallback": r.fallback, "created_at": r.created_at.isoformat()} for r in rows],
+    }
+
+
 # ── Prompt versioning (admin) ──────────────────────────────────────────────────
 
 @router.get("/prompts", response_model=list[PromptInfo])
@@ -327,9 +365,14 @@ async def offer_advice(
     _require_llm_key()
     club = await _get_club(db, current_user)
     try:
-        return await _advice(db, offer_id, viewer_club_id=club.id, user_id=current_user.id, refresh=refresh)
+        result = await _advice(db, offer_id, viewer_club_id=club.id, user_id=current_user.id, refresh=refresh)
     except Exception as exc:
         raise _assist_errors(exc)
+    if result.get("suggested_terms"):
+        from app.ai import tracking
+        await tracking.record_shown(db, "counter_advisor", current_user.id, ref=offer_id)
+        await db.commit()
+    return result
 
 
 @router.get("/offers/{offer_id}/summary")
@@ -387,9 +430,14 @@ async def listing_advice(
     from app.ai.assist import listing_advice as _advice
     club = await _get_club(db, current_user)
     try:
-        return await _advice(db, player_id, viewer_club_id=club.id, user_id=current_user.id)
+        result = await _advice(db, player_id, viewer_club_id=club.id, user_id=current_user.id)
     except Exception as exc:
         raise _assist_errors(exc)
+    if result.get("guide_price"):
+        from app.ai import tracking
+        await tracking.record_shown(db, "listing_assistant", current_user.id, ref=player_id)
+        await db.commit()
+    return result
 
 
 @router.get("/potential-buyers/{player_id}")
@@ -413,14 +461,85 @@ async def ask(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Ask TransferX: questions about the caller's own club, answered from its data."""
+    """Ask TransferX: questions about the caller's own club, answered from its
+    data. `lite: true` gives Lite's short answers, Lite links and checked
+    `proposal`s; `input` ("text" | "voice") is only logged. In Lite, a model
+    failure answers with the fallback (shortcuts only) rather than an error."""
+    from app.ai.assist import LITE_PAGES
     from app.ai.assist import ask as _ask
     question = str(body.get("question") or "").strip()
     if len(question) < 3:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Ask a question")
+    lite = bool(body.get("lite"))
+    fallback = {"answer": None, "links": LITE_PAGES[1:3], "proposal": None, "fallback": True, "cached": False}
+    if lite and not ai_available_now():
+        return fallback
     _require_llm_key()
     club = await _get_club(db, current_user)
     try:
-        return await _ask(db, club, current_user, question)
+        result = await _ask(db, club, current_user, question, lite=lite, input=str(body.get("input") or "text"))
+    except HTTPException:
+        await db.commit()  # the question is logged even when it is refused
+        raise
+    except Exception as exc:
+        await db.commit()
+        if lite:
+            return fallback
+        raise _assist_errors(exc)
+    await db.commit()
+    return result
+
+
+def ai_available_now() -> bool:
+    from app.ai.assist import ai_available
+    return ai_available()
+
+
+# ── Drafts (the assistant writes; the user edits and sends) ───────────────────
+
+
+@router.post("/draft")
+async def draft(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """A draft deal-room message, offer note or enquiry reply, for the user to
+    edit and send through the normal box. Nothing is sent from here."""
+    from app.ai import tracking
+    from app.ai.assist import DRAFT_KINDS, draft_message
+
+    kind = str(body.get("kind") or "")
+    if kind not in DRAFT_KINDS:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unknown draft kind")
+    try:
+        ref_id = uuid.UUID(str(body.get("id")))
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="id is required")
+    _require_llm_key()
+    club = await _get_club(db, current_user)
+    try:
+        result = await draft_message(db, kind=kind, ref_id=ref_id, club=club, user=current_user,
+                                     channel=body.get("channel"), intent=body.get("intent"))
     except Exception as exc:
         raise _assist_errors(exc)
+    await tracking.record_shown(db, f"draft_{kind}", current_user.id, ref=ref_id)
+    await db.commit()
+    return result
+
+
+@router.post("/suggestions/used", status_code=status.HTTP_204_NO_CONTENT)
+async def suggestion_used(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """The page says a draft was sent (largely as written). Only drafts are
+    reported this way; every other use is recorded by the action itself."""
+    from app.ai import tracking
+
+    feature = str(body.get("feature") or "")
+    if not feature.startswith("draft_") or feature not in tracking.FEATURES:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unknown feature")
+    await tracking.record_used(db, feature, current_user.id, ref=str(body.get("ref") or "")[:100] or None)
+    await db.commit()
