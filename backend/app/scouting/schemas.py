@@ -91,6 +91,8 @@ class ShortlistSummaryResponse(BaseModel):
     item_count: int = 0
     created_at: datetime
     updated_at: datetime
+    # Set only when the list was asked about a player (`?player_id=`).
+    contains_player: bool | None = None
     model_config = {"from_attributes": True}
 
 

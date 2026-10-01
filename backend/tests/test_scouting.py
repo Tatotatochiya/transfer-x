@@ -128,6 +128,22 @@ async def test_add_player_to_shortlist(client: AsyncClient, scout_user: dict):
 
 
 @pytest.mark.asyncio
+async def test_list_says_which_shortlists_already_hold_a_player(client: AsyncClient, scout_user: dict):
+    """The add-to-shortlist menu ticks the lists he is already on."""
+    headers = _auth_headers(scout_user)
+    player = await _create_player(client, headers)
+    on = await _create_shortlist(client, headers, name="Left-backs")
+    await _create_shortlist(client, headers, name="Strikers")
+    resp = await client.post(f"/scouting/shortlists/{on['id']}/items", json={"player_id": player["id"]}, headers=headers)
+    assert resp.status_code == 201
+
+    asked = (await client.get(f"/scouting/shortlists?player_id={player['id']}", headers=headers)).json()
+    assert {sl["name"]: sl["contains_player"] for sl in asked} == {"Left-backs": True, "Strikers": False}
+    plain = (await client.get("/scouting/shortlists", headers=headers)).json()
+    assert all(sl["contains_player"] is None for sl in plain)
+
+
+@pytest.mark.asyncio
 async def test_add_same_player_twice_fails(client: AsyncClient, scout_user: dict):
     headers = _auth_headers(scout_user)
     player = await _create_player(client, headers)

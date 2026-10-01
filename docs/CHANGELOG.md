@@ -125,6 +125,11 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Create a shortlist without leaving the page.** The bookmark menu on player cards, list rows and the player page now has "+ New shortlist". Name it, press Enter, and the shortlist is created and the player added ("✓ Added to Summer targets").
+  - With no shortlists yet, the menu opens straight to naming the first one. Before, "Create one →" went to the Shortlists page and you had to come back to add the player.
+  - Lists the player is already on are ticked ("Already on it") and can't be picked again. Before, picking one failed silently.
+  - Errors show in the menu ("You already have a shortlist called…"). If a list is created but adding the player fails, the list is kept and "Try adding again" adds him without creating it twice.
+  - `GET /scouting/shortlists?player_id=` returns `contains_player` for each list.
 - **Smarter AI player search.** It now understands price or value ("under £10m", "£5–8m", "free"), contracts ending ("out of contract next summer"), wages ("under £50k a week") and league. Each result shows his price (asking or estimate) and why he matched.
 - **Less filler in AI advice.** The advisor prompt forbids generic tips, and the deal brief may give none. Tips that restate a step, or match common filler ("act today", "delay risks the deal"), are dropped in code from deal advice, offer watch-outs, the morning briefing and listing tips. Ask's facts also say the remaining budget already accounts for offers and deals in progress; the model had claimed a committed fee was "not yet deducted".
 - **Clearer medical check on the deal page.**

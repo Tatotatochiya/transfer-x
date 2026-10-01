@@ -1021,6 +1021,8 @@ export interface ShortlistSummary {
   item_count: number;
   created_at: string;
   updated_at: string;
+  /** Whether the player asked about (`?player_id=`) is already on it. */
+  contains_player?: boolean | null;
 }
 
 export interface PlayerInterest {
