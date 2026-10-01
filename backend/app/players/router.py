@@ -136,8 +136,9 @@ async def player_market_detail(
 
     active_contract = next((c for c in player.contracts if c.is_active), None)
     data = PlayerDetailResponse.model_validate(player)
-    if active_contract and current_user is not None:
-        data.active_contract = ContractResponse.model_validate(active_contract)
+    # Rival clubs see the release clause and end date, never his wage or the
+    # holding club's own valuation (players.service.contract_for_viewer).
+    data.active_contract = await players_service.contract_for_viewer(db, current_user, active_contract)
 
     deal = await deals_service.get_active_deal_for_player(db, player_id)
     if deal:

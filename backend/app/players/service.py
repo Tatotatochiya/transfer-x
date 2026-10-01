@@ -657,3 +657,51 @@ def compute_wage_fit(
         return None
     room_after = club_wage_remaining_weekly - player_wage_weekly
     return WageFit(fits=room_after >= 0, wage_room_after=room_after)
+
+
+# ── Contract confidentiality ────────────────────────────────────────────────
+
+# A contract's private terms: what the club pays him, when it signed him, its
+# own valuation of him and its notes. Release clause and end date are not
+# private: a buyer needs the clause to trigger it, and the end date drives
+# the market.
+PRIVATE_CONTRACT_FIELDS = ("wage_weekly", "start_date", "club_valuation", "notes")
+
+
+async def can_see_contract_terms(db: AsyncSession, user, contract) -> bool:
+    """Whether `user` may see a contract's private terms: the club that holds
+    it (any of its members), TransferX staff, the player himself, or his agent
+    under an active mandate. Never a rival club."""
+    if user is None or contract is None:
+        return False
+    if user.is_superuser:
+        return True
+    from app.auth.models import AgentProfile, PlayerProfile
+    from app.clubs.service import get_club_for_user
+    from app.mandates.models import Mandate, MandateStatus
+
+    club = await get_club_for_user(db, user.id)
+    if club is not None:
+        return club.id == contract.club_id
+    if (await db.execute(select(PlayerProfile.id).where(
+            PlayerProfile.user_id == user.id, PlayerProfile.player_id == contract.player_id))).first():
+        return True
+    return (await db.execute(
+        select(Mandate.id).join(AgentProfile, AgentProfile.id == Mandate.agent_id).where(
+            AgentProfile.user_id == user.id, Mandate.player_id == contract.player_id,
+            Mandate.status == MandateStatus.ACTIVE)
+    )).first() is not None
+
+
+async def contract_for_viewer(db: AsyncSession, user, contract):
+    """The contract as `user` may see it: private terms blanked unless
+    `can_see_contract_terms`. None for a signed-out visitor."""
+    from app.players.schemas import ContractResponse
+
+    if contract is None or user is None:
+        return None
+    data = ContractResponse.model_validate(contract)
+    if not await can_see_contract_terms(db, user, contract):
+        for field in PRIVATE_CONTRACT_FIELDS:
+            setattr(data, field, None)
+    return data

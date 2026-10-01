@@ -130,7 +130,10 @@ def _strs(value, limit: int) -> list[str]:
 # ── Shared fact builders ───────────────────────────────────────────────────────
 
 
-async def _player_facts(db: AsyncSession, player_id: uuid.UUID) -> dict:
+async def _player_facts(db: AsyncSession, player_id: uuid.UUID, viewer_club_id: uuid.UUID | None = None) -> dict:
+    """Public facts about a player, for any club's assistant. His wage is the
+    contract wage only for the club holding the contract; any other club gets
+    the public estimate, flagged as one (a rival's contract is confidential)."""
     """Public facts about a player: profile, contract, the fee model."""
     from app.players.models import Contract, Player
     from app.valuation.service import get_latest_valuation
@@ -153,7 +156,9 @@ async def _player_facts(db: AsyncSession, player_id: uuid.UUID) -> dict:
             max(0, (contract_end.year - date.today().year) * 12 + contract_end.month - date.today().month)
             if contract_end else None
         ),
-        "current_wage_weekly": _num(contract.wage_weekly) if contract else None,
+        **({"current_wage_weekly": _num(contract.wage_weekly), "current_wage_is_estimate": False}
+           if contract is not None and contract.club_id == viewer_club_id else
+           {"current_wage_weekly": _num(player.wage_weekly), "current_wage_is_estimate": True}),
         "fee_model": {
             "fair_value": _num(valuation.fair_value),
             "range_low": _num(valuation.fair_value_low),
@@ -314,8 +319,9 @@ def check_terms(terms: dict, *, role: str, player: dict, budget: dict | None,
     # ── Wage and contract ───────────────────────────────────────────────────
     current_wage = player.get("current_wage_weekly")
     if not loan and wage is not None and current_wage and wage < current_wage * 0.9:
+        current = "estimated current" if player.get("current_wage_is_estimate") else "current"
         warn("medium", "wage_below_current",
-             f"The wage is below his current {fmt(current_wage)}/wk — personal terms may be hard to agree.")
+             f"The wage is below his {current} {fmt(current_wage)}/wk — personal terms may be hard to agree.")
     if years:
         if years > _MAX_CONTRACT_YEARS:
             warn("high", "contract_too_long", f"Contracts run at most {_MAX_CONTRACT_YEARS} years.")
@@ -388,7 +394,7 @@ async def check_offer_terms(db: AsyncSession, *, viewer_club_id: uuid.UUID, term
     capture the action, from the same rule the offer endpoints apply."""
     player_id = offer.player_id if offer is not None else uuid.UUID(str(terms["player_id"]))
     role = "buyer" if offer is None or offer.from_club_id == viewer_club_id else "seller"
-    player = await _player_facts(db, player_id)
+    player = await _player_facts(db, player_id, viewer_club_id)
     own_budget = await _budget_facts(db, viewer_club_id)
     budget = own_budget if role == "buyer" else None
     current = None
@@ -400,8 +406,14 @@ async def check_offer_terms(db: AsyncSession, *, viewer_club_id: uuid.UUID, term
         terms = merged
     if terms.get("deal_type") == "LOAN" and terms.get("wage_weekly") is None:
         # A loan's wage is his contract wage, filled in by the offer paths
-        # (offers.service.loan_wage_basis); the draft never carries it.
-        terms = {**terms, "wage_weekly": player.get("current_wage_weekly")}
+        # (offers.service.loan_wage_basis); the draft never carries it. Read
+        # here for the arithmetic only, so the money panel matches the
+        # refusal; it is not put into any model's facts.
+        from app.players.models import Contract
+        contract_wage = (await db.execute(
+            select(Contract.wage_weekly).where(Contract.player_id == player_id, Contract.is_active.is_(True))
+        )).scalars().first()
+        terms = {**terms, "wage_weekly": _num(contract_wage)}
     money = money_effect(terms, role=role, budget=own_budget, reserved=current)
     money["requires_approval"] = False
     if user is not None and club is not None:
@@ -476,7 +488,7 @@ async def offer_facts(db: AsyncSession, offer, viewer_club_id: uuid.UUID) -> dic
     from app.offers.models import OfferEventType, OfferStatus
 
     role = "buyer" if viewer_club_id == offer.from_club_id else "seller"
-    player = await _player_facts(db, offer.player_id)
+    player = await _player_facts(db, offer.player_id, viewer_club_id)
     guide = await _guide_price(db, offer.player_id)
     terms = _offer_terms(offer)
     loan = terms["deal_type"] == "LOAN"
@@ -1150,7 +1162,7 @@ async def listing_advice(db: AsyncSession, player_id: uuid.UUID, *, viewer_club_
     target = (await db.execute(select(Player).where(Player.id == player_id))).scalar_one_or_none()
     if target is None or await get_owning_club_id(db, target) != viewer_club_id:
         raise LookupError("Player not found")
-    player = await _player_facts(db, player_id)
+    player = await _player_facts(db, player_id, viewer_club_id)
     comps = await _comparables(db, player, player_id)
     model = player.get("fee_model") or {}
     fair = model.get("fair_value")

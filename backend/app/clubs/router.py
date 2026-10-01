@@ -504,10 +504,8 @@ async def get_club_squad(
     items = []
     for player in players:
         data = PlayerDetailResponse.model_validate(player)
-        if current_user is not None:
-            active = next((c for c in player.contracts if c.is_active), None)
-            if active:
-                data.active_contract = ContractResponse.model_validate(active)
+        active = next((c for c in player.contracts if c.is_active), None)
+        data.active_contract = await players_service.contract_for_viewer(db, current_user, active)
         deal = deal_map.get(uuid.UUID(str(player.id)))
         if deal:
             data.active_deal = ActiveDealStub.model_validate(deal)

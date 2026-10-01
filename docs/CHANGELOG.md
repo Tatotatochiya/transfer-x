@@ -158,6 +158,10 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **A club's contract terms were visible to rival clubs.** Any signed-in user received another club's contract for its players on the player page and the club squad list: wage, signing date, the club's own private valuation and its notes. The AI was also given them for rival players; offer advice quoted "his £12k/wk wage" from the selling club's contract.
+  - Those terms now go only to the holding club, TransferX staff, the player and his mandated agent (`players.service.contract_for_viewer`).
+  - Everyone else gets the release clause and end date, and the public wage estimate labelled as one.
+  - A loan's money check still uses the real wage for its arithmetic, since a loan is a share of it.
 - **The offer advisor read a club's own offer as the other club's.** Tottenham, waiting on its own £4m offer, was told "Manchester United have sent terms… the ball is in your court".
   - When it isn't your move, the advisor now says where the offer stands in code, with no model call: "You sent a £4m offer… It's Manchester United's move". It adds the expiry and how the fee compares with the model.
   - The model's facts now say plainly who sent the current terms and who must reply.

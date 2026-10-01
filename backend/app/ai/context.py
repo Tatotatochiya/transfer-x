@@ -80,8 +80,10 @@ async def build_squad_context(db: AsyncSession, club_id: uuid.UUID) -> dict:
     }
 
 
-async def build_player_context(db: AsyncSession, player_id: uuid.UUID) -> dict:
-    """Assemble player stats/profile for LLM context."""
+async def build_player_context(db: AsyncSession, player_id: uuid.UUID, viewer_club_id: uuid.UUID | None = None) -> dict:
+    """Assemble player stats/profile for LLM context. His contract wage and
+    the holding club's valuation are included only when `viewer_club_id`
+    holds the contract; another club gets the public wage estimate."""
     from app.clubs.models import Club
     from app.players.models import Contract, Player
     from app.stats.models import PlayerForm, PlayerStats
@@ -144,9 +146,13 @@ async def build_player_context(db: AsyncSession, player_id: uuid.UUID) -> dict:
         "height": player.height,
         "weight": player.weight,
         "contract_end": contract.end_date.isoformat() if contract and contract.end_date else None,
-        "wage_weekly": float(contract.wage_weekly) if contract and contract.wage_weekly else None,
+        **({
+            "wage_weekly": float(contract.wage_weekly) if contract.wage_weekly else None,
+            "club_valuation": float(contract.club_valuation) if contract.club_valuation else None,
+        } if contract is not None and contract.club_id == viewer_club_id else {
+            "wage_weekly_estimate": float(player.wage_weekly) if player.wage_weekly else None,
+        }),
         "release_clause": float(contract.release_clause) if contract and contract.release_clause else None,
-        "club_valuation": float(contract.club_valuation) if contract and contract.club_valuation else None,
         "form_score": float(form.form_score) if form else None,
         "form_trend": float(form.trend) if form and form.trend else None,
         "stats": stats_dict,

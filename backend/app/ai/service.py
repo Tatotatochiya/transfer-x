@@ -185,7 +185,7 @@ async def assess_player_fit(
             return result
 
     player_data, squad_data = await asyncio.gather(
-        build_player_context(db, player_id),
+        build_player_context(db, player_id, viewer_club_id=club_id),
         build_squad_context(db, club_id),
     )
     if not player_data:
