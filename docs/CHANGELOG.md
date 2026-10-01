@@ -115,6 +115,10 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Clearer medical check on the deal page.**
+  - The result is a coloured block: "Medical passed", "Medical failed", "Medical in progress" or "Not recorded yet". The old grey link is now a "Record medical result" button.
+  - Recording it means choosing Passed, Failed or Still in progress from three large options, each saying what it does to the deal. The button names the result ("Record: passed").
+  - "Record medical ↓" on the Paperwork checklist opens the form directly.
 - **Clearer "Next steps" and Paperwork checklist on the deal page.** Each step is its own numbered row with its owner ("Your move", "Their move", or the agent's name) beside it. Your open steps are highlighted, the assistant's advice has its own heading, and each paperwork step's button sits inside its row. "Record medical ↓" jumps to the Medical Check panel.
 - **Agent-stage next steps follow the negotiation.** First the agent proposes the commission, then the buying club answers, then either club moves the deal on. Before, the buying club was always shown as the one to act, even before the agent had proposed anything. The agent lane also shows from the start of that stage.
 - **"War Room" is now "Dashboard"** in the sidebar, on the page itself and in Ask TransferX's links.

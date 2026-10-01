@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
@@ -475,11 +475,38 @@ function SetPersonalTermsForm({ dealId }: { dealId: string }) {
 
 // ── Medical check (TRA-61) ──────────────────────────────────────────────────
 
-const MEDICAL_STATUS_STYLE: Record<string, string> = {
-  PASSED:  "text-success-text",
-  FAILED:  "text-danger-text",
-  PENDING: "text-warning-text",
+type MedicalStatus = "PENDING" | "PASSED" | "FAILED";
+
+/** How each result reads, in the panel and as a choice in the form. */
+const MEDICAL: Record<MedicalStatus, { title: string; choice: string; effect: string; icon: string; box: string; dot: string }> = {
+  PASSED: {
+    title: "Medical passed",
+    choice: "Passed",
+    effect: "Completes the medical step on the Paperwork checklist. If it is the last step, the deal is confirmed.",
+    icon: "✓",
+    box: "bg-success/10 ring-success/30 text-success-text",
+    dot: "bg-success-text text-white",
+  },
+  FAILED: {
+    title: "Medical failed",
+    choice: "Failed",
+    effect: "Stops the deal moving on. Record a new result if it is retaken, or collapse the deal.",
+    icon: "✕",
+    box: "bg-danger-bg ring-danger-border text-danger-text",
+    dot: "bg-danger-text text-white",
+  },
+  PENDING: {
+    title: "Medical in progress",
+    choice: "Still in progress",
+    effect: "Booked or under way, with no result yet. The medical step stays open.",
+    icon: "…",
+    box: "bg-warning-bg ring-warning-fill/30 text-warning-text",
+    dot: "bg-warning-fill text-white",
+  },
 };
+
+/** The Paperwork checklist's "Record medical" button opens the form with this. */
+const OPEN_MEDICAL_FORM = "transferx:open-medical-form";
 
 function MedicalCheckPanel({
   dealId,
@@ -494,10 +521,21 @@ function MedicalCheckPanel({
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const [editing, setEditing] = useState(false);
-  const [statusDraft, setStatusDraft] = useState<"PENDING" | "PASSED" | "FAILED">(
-    medicalCheck?.status ?? "PENDING"
-  );
+  const [statusDraft, setStatusDraft] = useState<MedicalStatus | null>(null);
   const [notesDraft, setNotesDraft] = useState(medicalCheck?.notes ?? "");
+
+  const openForm = useCallback(() => {
+    setStatusDraft(medicalCheck?.status === "PENDING" ? null : medicalCheck?.status ?? null);
+    setNotesDraft(medicalCheck?.notes ?? "");
+    setEditing(true);
+  }, [medicalCheck]);
+
+  useEffect(() => {
+    if (!canRecord) return;
+    const open = () => openForm();
+    window.addEventListener(OPEN_MEDICAL_FORM, open);
+    return () => window.removeEventListener(OPEN_MEDICAL_FORM, open);
+  }, [canRecord, openForm]);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -511,76 +549,95 @@ function MedicalCheckPanel({
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       setEditing(false);
-      addToast("Medical recorded.", "success");
+      addToast(statusDraft ? `Medical recorded: ${MEDICAL[statusDraft].choice.toLowerCase()}.` : "Medical recorded.", "success");
     },
     onError: (err: unknown) => addToast(getApiError(err, "Failed to save medical check."), "error"),
   });
 
   if (!canRecord && !medicalCheck) return null;
+  const current = medicalCheck ? MEDICAL[medicalCheck.status] : null;
 
   return (
     <div id="medical-check" className="scroll-mt-6">
     <Panel title="Medical Check">
       {!editing ? (
-        <>
-          {medicalCheck ? (
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-              <dt className="text-text-muted">Status</dt>
-              <dd className={`font-semibold ${MEDICAL_STATUS_STYLE[medicalCheck.status] ?? "text-text-secondary"}`}>
-                {medicalCheck.status}
-              </dd>
-              {medicalCheck.notes && (
-                <><dt className="text-text-muted">Notes</dt><dd className="text-text">{medicalCheck.notes}</dd></>
-              )}
-              <dt className="text-text-muted">Last updated</dt>
-              <dd className="text-text-muted">{formatDate(medicalCheck.updated_at)}</dd>
-            </dl>
+        <div className="space-y-3">
+          {/* The result, impossible to miss. */}
+          {current && medicalCheck ? (
+            <div className={`flex items-start gap-3 rounded-lg px-4 py-3 ring-1 ${current.box}`} role="status">
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base font-bold ${current.dot}`} aria-hidden>
+                {current.icon}
+              </span>
+              <div className="min-w-0">
+                <p className="text-base font-bold">{current.title}</p>
+                <p className="text-[13px] opacity-90">Recorded {formatDate(medicalCheck.updated_at)}</p>
+                {medicalCheck.notes && <p className="mt-1 text-sm text-text">{medicalCheck.notes}</p>}
+                {medicalCheck.status === "FAILED" && <p className="mt-1 text-[13px]">{MEDICAL.FAILED.effect}</p>}
+              </div>
+            </div>
           ) : (
-            <p className="text-sm text-text-muted pb-1">Not recorded yet. The buying club records it at the paperwork stage.</p>
-          )}
-          {medicalCheck?.status === "FAILED" && (
-            <p className="mt-2 text-[13px] text-danger-text">A failed medical stops the deal moving on. Record a new result, or collapse the deal.</p>
+            <div className="flex items-start gap-3 rounded-lg bg-surface-inset px-4 py-3 ring-1 ring-border">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base text-text-muted ring-1 ring-border" aria-hidden>?</span>
+              <div>
+                <p className="text-base font-bold text-text">Not recorded yet</p>
+                <p className="text-[13px] text-text-muted">The buying club records the result at the paperwork stage.</p>
+              </div>
+            </div>
           )}
           {canRecord && (
-            <button
-              onClick={() => {
-                setStatusDraft(medicalCheck?.status ?? "PENDING");
-                setNotesDraft(medicalCheck?.notes ?? "");
-                setEditing(true);
-              }}
-              className="mt-2 text-xs text-text-muted hover:text-accent transition-colors"
+            <Button
+              variant={medicalCheck?.status === "PASSED" ? "secondary" : "primary"}
+              size="sm"
+              onClick={openForm}
             >
-              {medicalCheck ? "Update →" : "Record medical check"}
-            </button>
+              {!medicalCheck || medicalCheck.status === "PENDING" ? "Record medical result" : "Change result"}
+            </Button>
           )}
-        </>
+        </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-4">
+          <fieldset>
+            <legend className="mb-2 text-sm font-semibold text-text">What was the result?</legend>
+            <div className="grid gap-2 sm:grid-cols-3" role="radiogroup">
+              {(["PASSED", "FAILED", "PENDING"] as MedicalStatus[]).map((s) => {
+                const selected = statusDraft === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setStatusDraft(s)}
+                    className={`flex flex-col items-start gap-1 rounded-lg px-3 py-3 text-left ring-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                      selected ? `${MEDICAL[s].box} ring-2` : "bg-surface ring-border hover:ring-accent"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-bold">
+                      <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${selected ? MEDICAL[s].dot : "ring-1 ring-border text-text-muted"}`} aria-hidden>
+                        {selected ? MEDICAL[s].icon : ""}
+                      </span>
+                      <span className={selected ? "" : "text-text"}>{MEDICAL[s].choice}</span>
+                    </span>
+                    <span className={`text-[12px] leading-snug ${selected ? "" : "text-text-muted"}`}>{MEDICAL[s].effect}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
           <div>
-            <label className="mb-1 block text-xs text-text-muted">Status</label>
-            <select
-              value={statusDraft}
-              onChange={(e) => setStatusDraft(e.target.value as "PENDING" | "PASSED" | "FAILED")}
-              className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
-            >
-              <option value="PENDING">Pending</option>
-              <option value="PASSED">Passed</option>
-              <option value="FAILED">Failed</option>
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-text-muted">Notes</label>
+            <label htmlFor="medical-notes" className="mb-1 block text-sm font-semibold text-text">Notes <span className="font-normal text-text-muted">(optional)</span></label>
             <textarea
+              id="medical-notes"
               value={notesDraft}
               onChange={(e) => setNotesDraft(e.target.value)}
               rows={3}
-              placeholder="Optional notes…"
-              className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
+              placeholder="e.g. Carried out at the training ground by the club doctor; no concerns."
+              className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
             />
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="primary" size="sm" loading={mutation.isPending} onClick={() => mutation.mutate()}>
-              Save
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="primary" size="sm" loading={mutation.isPending} disabled={!statusDraft} onClick={() => mutation.mutate()}>
+              {statusDraft ? `Record: ${MEDICAL[statusDraft].choice.toLowerCase()}` : "Choose a result"}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
           </div>
@@ -713,7 +770,10 @@ function PaperworkChecklist({
                   <Button
                     size="sm"
                     variant="primary"
-                    onClick={() => document.getElementById("medical-check")?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                    onClick={() => {
+                      window.dispatchEvent(new Event(OPEN_MEDICAL_FORM));
+                      document.getElementById("medical-check")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }}
                   >
                     Record medical ↓
                   </Button>
