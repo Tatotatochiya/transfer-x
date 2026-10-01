@@ -134,6 +134,8 @@ SYSTEM_ADVISOR = (
     "Never pad with generic advice such as 'act promptly', 'avoid delays', 'communicate clearly' or "
     "'delay risks the deal': every tip must rest on a specific fact given to you (a name, figure, date, "
     "clause or step). If you have nothing specific to add, give fewer tips or none. "
+    "Write for people, not code: never quote field names, status codes or true/false values "
+    "(say 'they haven't replied yet', not 'status is SENT and your_turn is false'). "
     "Always respond with a single valid JSON object and nothing else."
 )
 

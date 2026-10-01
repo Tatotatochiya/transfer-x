@@ -488,16 +488,27 @@ async def offer_facts(db: AsyncSession, offer, viewer_club_id: uuid.UUID) -> dic
     )
     rounds = sum(1 for e in offer.events if e.event_type in (OfferEventType.COUNTERED, OfferEventType.IMPROVED))
     expires = _utc(offer.expires_at)
+    other_name = (("an undisclosed club" if _masked(offer, viewer_club_id) else offer.from_club.name)
+                  if role == "seller" else (offer.to_club.name if offer.to_club else "the selling club"))
+    # Who made the terms on the table: the last club to act, else the buyer
+    # who sent the offer. Spelled out, because a model left to infer it from
+    # role and turn got it backwards.
+    last_actor = offer.last_actor_club_id or offer.from_club_id
+    terms_from = "you" if last_actor == viewer_club_id else "them"
 
     facts: dict = {
         "currency": CURRENCY,
         "viewer_role": role,
+        "you_are": f"the {'buying' if role == 'buyer' else 'selling'} club",
+        "current_terms_were_sent_by": terms_from,
+        "waiting_for": ("you to accept, counter or reject" if your_turn
+                        else f"{other_name} to reply" if offer.status in (OfferStatus.SENT, OfferStatus.COUNTERED)
+                        else "nobody: the offer is closed"),
         "status": offer.status.value,
         "your_turn": your_turn,
         "counter_rounds_so_far": rounds,
         "expires_in_days": round((expires - datetime.now(timezone.utc)).total_seconds() / 86400, 1) if expires else None,
-        "other_club": ("an undisclosed club" if _masked(offer, viewer_club_id) else offer.from_club.name)
-        if role == "seller" else (offer.to_club.name if offer.to_club else None),
+        "other_club": other_name,
         "player": player,
         "current_terms": terms,
         "listing_guide_price": guide,
@@ -559,6 +570,11 @@ async def offer_advice(db: AsyncSession, offer_id: uuid.UUID, *, viewer_club_id:
         budget=facts.get("your_budget"), guide_price=facts["listing_guide_price"],
         current={"transfer": offer.reserved_transfer_amount, "wage": offer.reserved_wage_weekly},
     )
+    if not facts["your_turn"]:
+        # Nothing to decide: say where it stands from the facts, without a
+        # model call (and without using the user's AI allowance).
+        return {**_waiting_advice(facts), "checks": checks, "facts": _public_offer_facts(facts), "cached": False}
+
     key = f"advice:{offer.id}:{viewer_club_id}:{offer.last_action_at.isoformat()}"
     if refresh:
         _cache.pop(key, None)
@@ -583,6 +599,40 @@ async def offer_advice(db: AsyncSession, offer_id: uuid.UUID, *, viewer_club_id:
 
     result, cached = await _cached(key, produce)
     return {**result, "checks": checks, "facts": _public_offer_facts(facts), "cached": cached}
+
+
+def _waiting_advice(facts: dict) -> dict:
+    """The advisor's answer when it is the other club's move, in code."""
+    terms = facts["current_terms"]
+    loan = terms.get("deal_type") == "LOAN"
+    fee = terms.get("loan_fee") if loan else terms.get("fee_amount")
+    player = facts["player"].get("name") or "the player"
+    other = facts["other_club"] or "the other club"
+    what = (f"a {_short_money(fee)} {'loan' if loan else 'offer'}" if fee
+            else ("a loan" if loan else "an offer"))
+    if facts["status"] not in ("SENT", "COUNTERED"):
+        summary = f"This offer for {player} is {facts['status'].lower()}, so there is nothing to answer."
+    elif facts["current_terms_were_sent_by"] == "you":
+        summary = f"You sent {what} for {player}. It's {other}'s move: they can accept, counter or reject it."
+    else:
+        summary = f"These terms for {player} are with {other}, so it's their move."
+    reasons = []
+    expires = facts.get("expires_in_days")
+    if expires is not None and facts["status"] in ("SENT", "COUNTERED"):
+        reasons.append(f"It expires in {expires:g} day{'' if expires == 1 else 's'} if they don't answer."
+                       if expires > 0 else "It is due to expire now if they don't answer.")
+    model = facts["player"].get("fee_model") or {}
+    pct = facts.get("fee_vs_model_pct")
+    if fee and pct is not None and model.get("fair_value"):
+        side = "above" if pct >= 0 else "below"
+        reasons.append(f"The {_short_money(fee)} fee is {abs(pct):.0f}% {side} the model's fair value of "
+                       f"{_short_money(model['fair_value'])}"
+                       + (f" (range {_short_money(model['range_low'])}–{_short_money(model['range_high'])})."
+                          if model.get("range_low") and model.get("range_high") else "."))
+    if facts["status"] in ("SENT", "COUNTERED"):
+        reasons.append("If they counter, you'll be able to answer here, and the advisor will weigh their terms.")
+    return {"summary": summary, "recommendation": "wait", "suggested_terms": None,
+            "reasons": reasons, "watch_outs": []}
 
 
 def _public_offer_facts(facts: dict) -> dict:
