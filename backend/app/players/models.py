@@ -197,6 +197,8 @@ class PlayerInjury(Base):
     injury_type: Mapped[str | None] = mapped_column(String(200), nullable=True)  # e.g. "Knee Injury"
     reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     games_absent: Mapped[int | None] = mapped_column(nullable=True)
+    # From /sidelined: when the absence ended (null while ongoing). Migration 0087.
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

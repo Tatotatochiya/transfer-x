@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
-from sqlalchemy import DateTime, ForeignKey, JSON, Numeric, String, UniqueConstraint, Uuid, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, UniqueConstraint, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -66,6 +66,12 @@ class PlayerStats(Base):
     passes_total: Mapped[int | None] = mapped_column(nullable=True)
     dribbles_past: Mapped[int | None] = mapped_column(nullable=True)  # times dribbled past (defensive)
     position_played: Mapped[str | None] = mapped_column(String(10), nullable=True)  # position for this league/season
+    # Player profile ledger (migration 0087): competition and club labels for
+    # each row, and whether the season was a loan spell.
+    league_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    league_logo: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    team_logo: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    is_loan: Mapped[bool | None] = mapped_column(nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     # No DB-level unique constraint here — handle in service with IS NULL logic
 
@@ -116,3 +122,70 @@ class VendorSyncRun(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     duration_ms: Mapped[int] = mapped_column(nullable=False)
+
+
+# ── Player profile ledger history (migration 0087) ───────────────────────────
+
+
+class PlayerInjuryFixture(Base):
+    """One match a player missed through injury or suspension, from
+    API-Football's /injuries. Grouping them gives games missed per injury and
+    a season's availability."""
+    __tablename__ = "player_injury_fixtures"
+    __table_args__ = (UniqueConstraint("player_id", "fixture_vendor_id", name="uq_injury_fixture_player"),)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    fixture_vendor_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    fixture_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    league_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    league_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    season: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    team_vendor_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    injury_type: Mapped[str | None] = mapped_column(String(100), nullable=True)  # "Missing Fixture" / "Questionable"
+    reason: Mapped[str | None] = mapped_column(String(200), nullable=True)  # e.g. "Hamstring Injury"
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class PlayerFixtureRating(Base):
+    """A player's rating in one recent match, for the form strip's last-5 chips."""
+    __tablename__ = "player_fixture_ratings"
+    __table_args__ = (UniqueConstraint("player_id", "fixture_vendor_id", name="uq_fixture_rating_player"),)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    player_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    fixture_vendor_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    fixture_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    league_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    team_vendor_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    opponent_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    opponent_logo: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    home: Mapped[bool | None] = mapped_column(nullable=True)
+    minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rating: Mapped[Decimal | None] = mapped_column(Numeric(4, 2), nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class TeamSeasonFixtures(Base):
+    """How many matches a club played in one competition-season, for the
+    availability figure (games missed against games played)."""
+    __tablename__ = "team_season_fixtures"
+    __table_args__ = (UniqueConstraint("team_vendor_id", "league_id", "season", name="uq_team_season_fixtures"),)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    team_vendor_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    league_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    season: Mapped[str] = mapped_column(String(20), nullable=False)
+    played: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class VendorFetchLog(Base):
+    """What a history backfill has already fetched, by key (e.g.
+    "player-season:<id>:2023"), so it can stop and resume and a re-run makes
+    no repeat calls, including for answers that were empty."""
+    __tablename__ = "vendor_fetch_log"
+    key: Mapped[str] = mapped_column(String(200), primary_key=True)
+    results: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

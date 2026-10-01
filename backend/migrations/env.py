@@ -23,7 +23,7 @@ from app.offers.models import Offer, OfferEvent, OfferMessage  # noqa: F401
 from app.players.models import Contract, Player, PlayerInjury, PlayerTransfer  # noqa: F401
 from app.sales.models import Bid, Sale, SaleEvent  # noqa: F401
 from app.scouting.models import PlayerInterest, Shortlist, ShortlistItem  # noqa: F401
-from app.stats.models import PlayerForm, PlayerStats, PlayerStatsSnapshot, VendorSyncState  # noqa: F401
+from app.stats.models import PlayerForm, PlayerStats, PlayerStatsSnapshot, VendorSyncState, PlayerInjuryFixture, PlayerFixtureRating, TeamSeasonFixtures, VendorFetchLog  # noqa: F401
 from app.world.models import WorldLeague, WorldTeam  # noqa: F401
 from app.analytics.models import AnalyticsEvent  # noqa: F401
 from app.transfer_window.models import TransferWindow  # noqa: F401
