@@ -222,15 +222,18 @@ async def _offer_page(db: AsyncSession, offers, viewer_club_id: uuid.UUID) -> li
 
 
 async def _audit_ai_used(db: AsyncSession, *, entity_type: str, entity_id, user: User, feature: str,
-                         description: str) -> None:
+                         description: str, ref=None) -> None:
     """The action started from the assistant's suggestion (ADR 0006): recorded,
-    never binding."""
+    never binding, and counted as used (ai/tracking.py) against `ref`, the
+    subject the suggestion was shown for."""
+    from app.ai import tracking
     from app.audit import service as audit_service
 
     await audit_service.emit(
         db, entity_type=entity_type, entity_id=entity_id, action="AI_SUGGESTION_USED",
         actor_user_id=user.id, payload={"feature": feature}, description=description,
     )
+    await tracking.record_used(db, feature, user.id, ref=ref if ref is not None else entity_id)
 
 
 @router.get("/offers/competition/{player_id}", response_model=OrderBookResponse)
@@ -441,7 +444,8 @@ async def create_offer(
     if approval is not None:
         if body.ai_assisted:
             await _audit_ai_used(db, entity_type="APPROVAL", entity_id=approval.id, user=current_user,
-                                 feature="lite_action_card", description="Offer started from the assistant's suggestion")
+                                 feature="ask_proposal", description="Offer started from the assistant's suggestion",
+                                 ref=body.player_id)
         await db.commit()
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,
@@ -485,7 +489,8 @@ async def create_offer(
         await _notify_player_of_offer(db, offer)
         if body.ai_assisted:
             await _audit_ai_used(db, entity_type="OFFER", entity_id=offer.id, user=current_user,
-                                 feature="lite_action_card", description="Offer started from the assistant's suggestion")
+                                 feature="ask_proposal", description="Offer started from the assistant's suggestion",
+                                 ref=body.player_id)
         await db.commit()
     except ValueError as exc:
         await db.rollback()
@@ -549,7 +554,8 @@ async def counter_offer(
         )
         if body.ai_assisted:
             await _audit_ai_used(db, entity_type="OFFER", entity_id=offer.id, user=current_user,
-                                 feature="counter_advisor", description="Counter offer started from the assistant's suggestion")
+                                 feature=body.ai_feature or "counter_advisor",
+                                 description="Counter offer started from the assistant's suggestion", ref=offer.id)
         await db.commit()
     except ValueError as exc:
         await db.rollback()
@@ -649,7 +655,8 @@ async def accept_offer(
     if approval is not None:
         if ai_assisted:
             await _audit_ai_used(db, entity_type="APPROVAL", entity_id=approval.id, user=current_user,
-                                 feature="lite_action_card", description="Acceptance started from the assistant's suggestion")
+                                 feature="ask_proposal", description="Acceptance started from the assistant's suggestion",
+                                 ref=offer_id)
         await db.commit()
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,
@@ -666,7 +673,8 @@ async def accept_offer(
         )
         if ai_assisted:
             await _audit_ai_used(db, entity_type="OFFER", entity_id=offer.id, user=current_user,
-                                 feature="lite_action_card", description="Acceptance started from the assistant's suggestion")
+                                 feature="ask_proposal", description="Acceptance started from the assistant's suggestion",
+                                 ref=offer_id)
         await db.commit()
         await db.refresh(deal)
     except ValueError as exc:
@@ -701,7 +709,8 @@ async def reject_offer(
         )
         if body and body.ai_assisted:
             await _audit_ai_used(db, entity_type="OFFER", entity_id=offer.id, user=current_user,
-                                 feature="lite_action_card", description="Rejection started from the assistant's suggestion")
+                                 feature="ask_proposal", description="Rejection started from the assistant's suggestion",
+                                 ref=offer_id)
         await db.commit()
     except ValueError as exc:
         await db.rollback()

@@ -279,6 +279,8 @@ async def create_sale(
                 actor_user_id=current_user.id, payload={"feature": "listing_assistant"},
                 description="Guide price taken from the listing assistant",
             )
+            from app.ai import tracking
+            await tracking.record_used(db, "listing_assistant", current_user.id, ref=body.player_id)
         await db.commit()
         await db.refresh(sale)
     except ValueError as exc:

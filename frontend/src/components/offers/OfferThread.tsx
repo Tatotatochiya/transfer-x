@@ -5,6 +5,7 @@ import type { Offer, OfferMessage, OfferEvent } from "../../types/api";
 import type { OfferEventType } from "../../types/enums";
 import { formatDateTime, getApiError } from "../../lib/utils";
 import Button from "../ui/Button";
+import { DraftButton, useDraftTracking } from "../ai/DraftButton";
 
 // ── Event label helpers ───────────────────────────────────────────────────────
 
@@ -117,6 +118,7 @@ export default function OfferThread({
   const queryClient = useQueryClient();
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const draftTracking = useDraftTracking("counter_note", offer.id);
 
   const items = buildThread(offer);
 
@@ -125,8 +127,9 @@ export default function OfferThread({
       api
         .post(`/offers/${offer.id}/messages`, { body: text })
         .then((r) => r.data),
-    onSuccess: () => {
+    onSuccess: (_data, text) => {
       queryClient.invalidateQueries({ queryKey: ["offers", offer.id] });
+      draftTracking.sent(text);
       setBody("");
       setError(null);
     },
@@ -167,22 +170,25 @@ export default function OfferThread({
 
       {/* Message form */}
       {canMessage && (
-        <form onSubmit={handleSend} className="flex gap-2 pt-2">
-          <input
-            type="text"
+        <form onSubmit={handleSend} className="space-y-2 pt-2">
+          <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Write a message…"
-            className="flex-1 rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+            rows={2}
+            placeholder="Write a message… (e.g. why your latest terms are fair)"
+            className="w-full resize-y rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
           />
-          <Button
-            type="submit"
-            variant="primary"
-            size="sm"
-            loading={mutation.isPending}
-          >
-            Send
-          </Button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <DraftButton kind="counter_note" id={offer.id} current={body} onDraft={setBody} onDrafted={draftTracking.drafted} />
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={mutation.isPending}
+            >
+              Send
+            </Button>
+          </div>
         </form>
       )}
       {error && <p className="text-xs text-danger-text">{error}</p>}

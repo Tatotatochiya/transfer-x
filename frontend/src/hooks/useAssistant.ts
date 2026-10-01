@@ -8,7 +8,9 @@ import type {
   ListingAdvice,
   NegotiationSummary,
   OfferAdvice,
+  DraftKind,
   OfferCheckResponse,
+  SuggestionStat,
   PotentialBuyers,
 } from "../types/api";
 
@@ -104,5 +106,33 @@ export function useAsk() {
   return useMutation<AskAnswer, Error, string>({
     mutationFn: (question: string) => api.post<AskAnswer>("/ai/ask", { question }).then((r) => r.data),
     retry: false,
+  });
+}
+
+/** Ask in Lite: short answers, Lite links, and checked proposals. */
+export function useLiteAsk() {
+  return useMutation<AskAnswer, Error, { question: string; input: "text" | "voice" }>({
+    mutationFn: (body) => api.post<AskAnswer>("/ai/ask", { ...body, lite: true }).then((r) => r.data),
+    retry: false,
+  });
+}
+
+/** A draft for the user to edit and send themselves (POST /ai/draft). */
+export function useDraft() {
+  return useMutation<{ kind: DraftKind; text: string }, Error, { kind: DraftKind; id: string; channel?: string; intent?: string }>({
+    mutationFn: (body) => api.post<{ kind: DraftKind; text: string }>("/ai/draft", body).then((r) => r.data),
+    retry: false,
+  });
+}
+
+/** Tell TransferX a draft was sent largely as written (suggestion tracking). */
+export function reportDraftUsed(kind: DraftKind, ref: string) {
+  return api.post("/ai/suggestions/used", { feature: `draft_${kind}`, ref }).catch(() => undefined);
+}
+
+export function useSuggestionStats(days: number) {
+  return useQuery<{ days: number; features: SuggestionStat[] }>({
+    queryKey: ["ai", "suggestion-stats", days],
+    queryFn: () => api.get("/ai/suggestions/stats", { params: { days } }).then((r) => r.data),
   });
 }

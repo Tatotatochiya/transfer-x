@@ -81,6 +81,11 @@ class ParsedFilters(BaseModel):
     min_height_cm: int | None = None
     open_to_offers: bool | None = None
     buyable: bool = False
+    min_value: float | None = None
+    max_value: float | None = None
+    contract_ends_within_months: int | None = None
+    max_wage_weekly: float | None = None
+    league: str | None = None
     interpreted_as: str
 
 
@@ -93,6 +98,14 @@ class NLPlayerSearchResult(BaseModel):
     current_club: str | None
     form_score: float | None
     open_to_offers: bool
+    # His price: the listing's asking price, else the fee model ("model"); a
+    # free agent is "free agent". None when there is neither.
+    price: float | None = None
+    price_basis: str | None = None
+    contract_ends: str | None = None
+    wage_weekly: float | None = None
+    # Why he matched, in plain words, one per filter that applied.
+    why: list[str] = []
 
 
 class NLSearchResponse(BaseModel):

@@ -56,6 +56,12 @@ The branches this once waited on (`player-invitations`, PR #9, `username-login-p
   - **Free agents:** there is no club to make an offer to, so their Buy result links to their page ("See how to sign him").
   - **Approvals:** the button reads "Send for approval" rather than naming the approver. Approval requests go to the owner and every sporting director.
   - **Starting counter:** a seller starts at the higher of the listing price, the fee model and the offer plus 10%, rounded up to £0.5m. A buyer answering a counter starts 5% lower. Both come from code; the assistant's counter advice is not used here, so opening a card uses no AI allowance.
+- **L5 built (2026-10-01).** `/ai/ask` with `lite: true`, as BACKEND.md §3: Lite pages and Buy-results links in the facts, `ASK_LITE_USER` (plain language, three sentences), a checked `proposal`, a separate rate-limit bucket (40/hour), and `assistant_queries` logging (`question`, `input`, `lite`, `had_proposal`, `links_count`, `fallback`, migration `0086`). `GET /lite/ask/suggestions` builds four questions from the club's state with no model call. Frontend: the Screen 4 Ask page (suggestions, voice, thread, proposal card, fallback); the bid and offer cards take `?fee=`, `?action=`, `?amount=` and `from=ask`, and confirm with `ai_assisted`. The admin AI page lists questions Ask couldn't answer.
+- **Deviations in L5:**
+  - **Proposal kinds:** bid, counter, accept and reject, the actions with Lite cards. List and approval proposals wait for Lite cards of their own; Ask links to the page instead.
+  - **Answer text:** when a proposal is involved, the answer comes from code ("I've prepared a £6m bid for … for you to check", or why it couldn't be prepared). The model can't know the outcome of the check, and in testing it contradicted it.
+  - **Plain bid requests** ("bid £6m for De Cuyper") are also read in code when the model gives no proposal (it sometimes declined because the player isn't in the club's own data). They are checked the same way.
+  - **Fallback:** no "Send to {Sam}" (L7). Admin fallbacks are listed newest first, not grouped by similar text.
 - **Still open:** users have no first name on record, so the greeting uses the club's name ("Good afternoon, Liverpool"). "Good morning, {first name}" needs a name field, on the user or the club staff record.
 
 **Why this order:**

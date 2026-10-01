@@ -295,6 +295,20 @@ async def recommend_market_players(
 
 # ── Natural Language Player Search ─────────────────────────────────────────────
 
+def _number(v) -> float | None:
+    """A model-supplied number, or None if it isn't one (or is negative)."""
+    try:
+        n = float(v)
+    except (TypeError, ValueError):
+        return None
+    return n if n >= 0 else None
+
+
+def _int(v) -> int | None:
+    n = _number(v)
+    return int(n) if n is not None and 0 < n <= 120 else None
+
+
 async def nl_player_search(
     db: AsyncSession,
     query: str,
@@ -323,14 +337,22 @@ async def nl_player_search(
         min_height_cm=data.get("min_height_cm"),
         open_to_offers=data.get("open_to_offers"),
         buyable=buyable,
+        min_value=_number(data.get("min_value")),
+        max_value=_number(data.get("max_value")),
+        contract_ends_within_months=_int(data.get("contract_ends_within_months")),
+        max_wage_weekly=_number(data.get("max_wage_weekly")),
+        league=(str(data["league"]).strip() or None) if data.get("league") else None,
         interpreted_as=data.get("interpreted_as", query),
     )
 
     # Step 2: Build DB query from parsed filters
+    from app.world.models import WorldTeam
+
     stmt = (
-        select(Player, PlayerForm, Club)
+        select(Player, PlayerForm, Club, WorldTeam)
         .outerjoin(PlayerForm, PlayerForm.player_id == Player.id)
         .outerjoin(Club, Club.id == Player.current_club_id)
+        .outerjoin(WorldTeam, WorldTeam.id == Player.world_team_id)
     )
 
     if parsed.position:
@@ -362,24 +384,87 @@ async def nl_player_search(
         # The same rule as the market's buyable filter (players.service).
         from app.players.models import PlayerStatus
         stmt = stmt.where(Player.status.in_([PlayerStatus.CONTRACTED, PlayerStatus.FREE_AGENT]))
+    if parsed.league:
+        from sqlalchemy import or_
+        # A TransferX club's league, else the vendor team's competition.
+        stmt = stmt.where(or_(Club.league_name.ilike(f"%{parsed.league}%"),
+                              WorldTeam.league_name.ilike(f"%{parsed.league}%")))
 
-    stmt = stmt.order_by(nullslast(PlayerForm.form_score.desc())).limit(20)
-
+    # Price, contract and wage are worked out per player below, so take a
+    # wider pool when one of them filters.
+    later = any(v is not None for v in (parsed.min_value, parsed.max_value,
+                                        parsed.contract_ends_within_months, parsed.max_wage_weekly))
+    stmt = stmt.order_by(nullslast(PlayerForm.form_score.desc()), Player.name).limit(2000 if later else 20)
     rows = (await db.execute(stmt)).all()
 
-    players = [
-        NLPlayerSearchResult(
+    # Step 3: price, contract end and wage for each, the filters that need
+    # them, and why each player matched.
+    from datetime import date, timedelta
+
+    from app.ai.assist import _contract_ends
+    from app.lite.service import player_prices
+    from app.players.models import Contract
+
+    pool = [p for p, *_ in rows]
+    prices = await player_prices(db, pool)
+    ends = await _contract_ends(db, pool)
+    wages = dict((await db.execute(
+        select(Contract.player_id, Contract.wage_weekly).where(
+            Contract.player_id.in_([p.id for p in pool]), Contract.is_active.is_(True))
+    )).all()) if pool else {}
+    horizon = (date.today() + timedelta(days=30 * parsed.contract_ends_within_months)
+               if parsed.contract_ends_within_months is not None else None)
+
+    def money(v: float) -> str:
+        return f"£{v / 1e6:.1f}m".replace(".0m", "m") if v >= 1e6 else f"£{v / 1e3:.0f}k"
+
+    players = []
+    for p, form, club, team in rows:
+        price, basis, _ = prices.get(p.id, (None, None, None))
+        end = ends.get(p.id) or p.contract_expiry
+        wage = float(wages[p.id]) if wages.get(p.id) is not None else None
+        if parsed.min_value is not None and (price is None or price < parsed.min_value):
+            continue
+        if parsed.max_value is not None and (price is None or price > parsed.max_value):
+            continue
+        if horizon is not None and (end is None or end > horizon):
+            continue
+        if parsed.max_wage_weekly is not None and (wage is None or wage > parsed.max_wage_weekly):
+            continue
+        why = []
+        if parsed.position and p.position:
+            why.append(p.position.value)
+        if (parsed.min_age is not None or parsed.max_age is not None) and p.age:
+            why.append(f"aged {p.age}")
+        if parsed.nationalities and p.nationality:
+            why.append(p.nationality)
+        if parsed.min_form_score is not None and form:
+            why.append(f"form {float(form.form_score):.0f}")
+        if (parsed.min_value is not None or parsed.max_value is not None) and price is not None:
+            why.append("free agent" if basis == "free agent" else f"{money(price)}{'' if basis == 'listed' else ' (estimate)'}")
+        if horizon is not None and end:
+            why.append(f"contract ends {end.strftime('%b %Y')}")
+        if parsed.max_wage_weekly is not None and wage is not None:
+            why.append(f"{money(wage)} a week")
+        if parsed.league:
+            why.append((club.league_name if club and club.league_name else team.league_name if team else None) or parsed.league)
+        players.append(NLPlayerSearchResult(
             player_id=str(p.id),
             name=p.name,
             age=p.age,
             position=p.position.value if p.position else None,
             nationality=p.nationality,
-            current_club=club.name if club else None,
+            current_club=club.name if club else (team.name if team else None),
             form_score=float(form.form_score) if form else None,
             open_to_offers=p.open_to_offers,
-        )
-        for p, form, club in rows
-    ]
+            price=round(price) if price is not None else None,
+            price_basis=basis,
+            contract_ends=end.isoformat() if end else None,
+            wage_weekly=wage,
+            why=why,
+        ))
+        if len(players) == 20:
+            break
 
     return NLSearchResponse(players=players, filters=parsed, total=len(players))
 

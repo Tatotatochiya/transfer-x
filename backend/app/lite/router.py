@@ -142,3 +142,16 @@ async def offer_card(
         return await service.offer_card(db, current_user, offer_id=offer_id)
     except LookupError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offer not found")
+
+
+@router.get("/lite/ask/suggestions")
+async def ask_suggestions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Questions to tap before the first one is asked, from the club's state.
+    No model call."""
+    try:
+        return {"suggestions": await service.ask_suggestions(db, current_user)}
+    except LookupError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lite mode is for club members")

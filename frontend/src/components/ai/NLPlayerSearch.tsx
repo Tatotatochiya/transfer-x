@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { useNLPlayerSearch } from "../../hooks/useAI";
 import { positionVariant } from "../../lib/badges";
+import { formatCurrency } from "../../lib/utils";
 import type { NLParsedFilters, NLPlayerSearchResult } from "../../types/api";
 import type { PlayerPosition } from "../../types/enums";
 import Badge from "../ui/Badge";
@@ -27,6 +28,14 @@ function FilterChips({ filters }: { filters: NLParsedFilters }) {
   if (filters.nationalities?.length) chips.push(filters.nationalities.join(" / "));
   if (filters.open_to_offers) chips.push("listed");
   if (filters.buyable) chips.push("buyable on TransferX");
+  const m = (v: number) => (v >= 1e6 ? `£${+(v / 1e6).toFixed(1)}m` : `£${Math.round(v / 1e3)}k`);
+  if (filters.max_value === 0) chips.push("free");
+  else if (filters.min_value != null && filters.max_value != null) chips.push(`${m(filters.min_value)}–${m(filters.max_value)}`);
+  else if (filters.max_value != null) chips.push(`under ${m(filters.max_value)}`);
+  else if (filters.min_value != null) chips.push(`over ${m(filters.min_value)}`);
+  if (filters.contract_ends_within_months != null) chips.push(`contract ends within ${filters.contract_ends_within_months} months`);
+  if (filters.max_wage_weekly != null) chips.push(`wage ≤ ${m(filters.max_wage_weekly)}/wk`);
+  if (filters.league) chips.push(filters.league);
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -67,7 +76,20 @@ function PlayerRow({ player }: { player: NLPlayerSearchResult }) {
               .filter(Boolean)
               .join(" · ")}
           </p>
+          {player.why && player.why.length > 0 && (
+            <p className="mt-0.5 text-xs text-role-agent-text truncate">Matched: {player.why.join(" · ")}</p>
+          )}
         </div>
+        {player.price != null && (
+          <span className="shrink-0 text-right text-xs">
+            <span className="block font-semibold text-text tabular-nums">
+              {player.price_basis === "free agent" ? "Free" : formatCurrency(player.price)}
+            </span>
+            <span className="block text-text-muted">
+              {player.price_basis === "listed" ? "asking" : player.price_basis === "free agent" ? "free agent" : "estimate"}
+            </span>
+          </span>
+        )}
         <FormPip score={player.form_score} />
       </Link>
     </li>

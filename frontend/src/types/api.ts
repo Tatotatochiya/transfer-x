@@ -1484,6 +1484,11 @@ export interface NLParsedFilters {
   min_height_cm: number | null;
   open_to_offers: boolean | null;
   buyable?: boolean;
+  min_value?: number | null;
+  max_value?: number | null;
+  contract_ends_within_months?: number | null;
+  max_wage_weekly?: number | null;
+  league?: string | null;
   interpreted_as: string;
 }
 
@@ -1496,6 +1501,13 @@ export interface NLPlayerSearchResult {
   current_club: string | null;
   form_score: number | null;
   open_to_offers: boolean;
+  /** Asking price, else the fee model; a free agent is "free agent". */
+  price?: number | null;
+  price_basis?: string | null;
+  contract_ends?: string | null;
+  wage_weekly?: number | null;
+  /** Why he matched, one plain phrase per filter that applied. */
+  why?: string[];
 }
 
 export interface NLSearchResponse {
@@ -1709,8 +1721,33 @@ export interface PotentialBuyers {
   clubs: { club_id: string; club: string; reason: string }[];
 }
 
+/** Something Ask prepared for the user to confirm on a Lite action card,
+ *  checked by TransferX first. Nothing is sent until they confirm. */
+export interface AskProposal {
+  kind: "bid" | "counter" | "accept" | "reject";
+  player: string | null;
+  club: string | null;
+  amount: number | null;
+  player_id?: string;
+  offer_id?: string;
+  card_path: string;
+}
+
 export interface AskAnswer {
-  answer: string;
+  /** Null when Lite falls back (the assistant couldn't answer). */
+  answer: string | null;
   links: { label: string; path: string }[];
+  proposal?: AskProposal | null;
+  fallback?: boolean;
   cached: boolean;
+}
+
+export type DraftKind = "deal_message" | "counter_note" | "enquiry_reply";
+
+export interface SuggestionStat {
+  feature: string;
+  label: string;
+  shown: number;
+  used: number;
+  used_pct: number | null;
 }

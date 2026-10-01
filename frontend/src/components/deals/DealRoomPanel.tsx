@@ -5,6 +5,7 @@ import type { CommentAudience, DealAttachment, DealComment, DealParticipant } fr
 import Button from "../ui/Button";
 import Spinner from "../ui/Spinner";
 import NegotiationMessageThread from "./NegotiationMessageThread";
+import { DraftButton, useDraftTracking } from "../ai/DraftButton";
 import { formatDateTime, getApiError } from "../../lib/utils";
 import { useAuthStore } from "../../store/auth";
 import { useToast } from "../../context/ToastContext";
@@ -80,6 +81,7 @@ function CommentThread({
   const [body, setBody] = useState("");
   const [replyTo, setReplyTo] = useState<DealComment | null>(null);
   const [mentions, setMentions] = useState<DealParticipant[]>([]);
+  const draftTracking = useDraftTracking("deal_message", dealId);
 
   const { data: allComments = [], isLoading } = useQuery<DealComment[]>({
     queryKey: ["deals", dealId, "comments"],
@@ -100,8 +102,9 @@ function CommentThread({
         mentioned_user_ids: mentions.map((m) => m.user_id),
         audience,
       }).then((r) => r.data),
-    onSuccess: () => {
+    onSuccess: (sent) => {
       queryClient.invalidateQueries({ queryKey: ["deals", dealId, "comments"] });
+      draftTracking.sent(sent.body);
       setBody("");
       setReplyTo(null);
       setMentions([]);
@@ -177,7 +180,15 @@ function CommentThread({
               ))}
             </div>
           )}
-          <div className="mt-2 flex justify-end">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <DraftButton
+              kind="deal_message"
+              id={dealId}
+              channel={audience === "SHARED" ? "SHARED" : "CLUB_ONLY"}
+              current={body}
+              onDraft={setBody}
+              onDrafted={draftTracking.drafted}
+            />
             <Button type="submit" variant="primary" size="sm" loading={mutation.isPending} disabled={!body.trim()}>
               Post
             </Button>

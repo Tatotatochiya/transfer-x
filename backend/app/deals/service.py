@@ -1768,3 +1768,28 @@ async def mark_instalment_paid(
         description=f"Instalment of {inst.amount:,.0f} marked paid",
     )
     return inst
+
+
+async def deal_agent(db: AsyncSession, deal) -> dict | None:
+    """The player's agent on this deal: the one invited to it, else the agent
+    of his active mandate (exclusive first), as `maybe_invite_agent_for_deal`
+    picks him."""
+    from app.agents.models import AgentDealInvitation
+    from app.auth.models import AgentProfile
+    from app.mandates.models import Mandate, MandateStatus
+
+    agent_id = (await db.execute(
+        select(AgentDealInvitation.agent_id).where(AgentDealInvitation.deal_id == deal.id)
+        .order_by(AgentDealInvitation.created_at.desc()).limit(1)
+    )).scalar_one_or_none()
+    if agent_id is None:
+        agent_id = (await db.execute(
+            select(Mandate.agent_id).where(Mandate.player_id == deal.player_id, Mandate.status == MandateStatus.ACTIVE)
+            .order_by(Mandate.exclusive.desc(), Mandate.created_at.desc()).limit(1)
+        )).scalar_one_or_none()
+    if agent_id is None:
+        return None
+    row = (await db.execute(
+        select(AgentProfile.id, AgentProfile.display_name, AgentProfile.agency_name).where(AgentProfile.id == agent_id)
+    )).one_or_none()
+    return {"id": row[0], "display_name": row[1], "agency_name": row[2]} if row else None

@@ -307,6 +307,10 @@ async def _prices(db: AsyncSession, players, owned: set | frozenset = frozenset(
     return out
 
 
+# The price TransferX shows for a player, shared with the AI player search.
+player_prices = _prices
+
+
 def _in_band(price: float, band: str, *, loanable: bool, free_agent: bool) -> bool:
     if band == "free":
         return free_agent or loanable
@@ -610,3 +614,39 @@ async def offer_card(db: AsyncSession, user, *, offer_id: uuid.UUID) -> dict:
         "disabled_reason": disabled,
         "expires_at": offer.expires_at.isoformat() if offer.expires_at else None,
     }
+
+
+# ── Ask anything suggestions (L5, README "Screen 4") ─────────────────────────
+
+_POSITION_WORD = {"GK": "goalkeeper", "DEF": "defender", "MID": "midfielder", "FWD": "forward"}
+
+
+async def ask_suggestions(db: AsyncSession, user) -> list[str]:
+    """Four questions worth tapping, from the club's own state; no model call.
+    An offer waiting on the club comes first, then its thinnest position at a
+    price it can afford, then money and the day's to-do."""
+    from app.ai.assist import _budget_facts
+    from app.clubs.service import get_club_and_role_for_user
+    from app.offers.models import Offer, OfferStatus
+    from sqlalchemy.orm import selectinload
+
+    club, _ = await get_club_and_role_for_user(db, user.id)
+    if club is None:
+        raise LookupError("No club")
+    out: list[str] = []
+    waiting = (await db.execute(
+        select(Offer).where(Offer.to_club_id == club.id, Offer.status.in_([OfferStatus.SENT, OfferStatus.COUNTERED]),
+                            (Offer.last_actor_club_id.is_(None)) | (Offer.last_actor_club_id != club.id))
+        .options(selectinload(Offer.player)).order_by(Offer.last_action_at.desc()).limit(1)
+    )).scalars().first()
+    if waiting is not None and waiting.player is not None:
+        out.append(f"What's happening with {waiting.player.name}?")
+    counts = await squad_counts(db, club.id)
+    thinnest = min(_POSITION_WORD, key=lambda p: counts.get(p, 0) - TYPICAL_DEPTH.get(p, 6))
+    budget = await _budget_facts(db, club.id) or {}
+    room = budget.get("transfer_budget_remaining") or 0
+    price = "under £10m" if room >= 10_000_000 else "under £5m" if room >= 5_000_000 else "on a free or a loan"
+    out.append(f"Find me a {_POSITION_WORD[thinnest]} {price}")
+    out.append("How much can we still spend?")
+    out.append("What needs me today?")
+    return out[:4]

@@ -25,6 +25,16 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **AI drafts.** "Draft with AI" in the deal room, on an offer's message box and on an enquiry reply.
+  - It writes a message from that deal's, offer's or enquiry's facts. Anything already typed is used as what to say ("Polish with AI").
+  - The user edits and sends it. Nothing is sent by the assistant (`POST /ai/draft`).
+  - In code: a sentence quoting a £ figure that isn't in the facts is dropped, and an undisclosed club stays undisclosed. The offer note never sees the club's budget or rival bids.
+- **Ask anything in Lite (L5).**
+  - Suggested questions; a Speak button that uses the browser's speech recognition.
+  - Short plain answers with shortcut buttons.
+  - Proposals ("bid £6m for De Cuyper", "counter at £7m", "accept it") that open the Lite action card pre-filled for the user to check and confirm. Each is checked in code first: the player or offer, an amount between half and double his price, and the user's role.
+  - Ask has its own allowance of 40 questions an hour.
+- **Which AI suggestions are used** (`ai_suggestion_events`, migration `0086`). Counter advice, the listing guide price, drafts and Ask proposals record when they are shown and when they are used. The admin AI page shows shown, used and % used for each feature, and the questions Ask couldn't answer (`assistant_queries`).
 - **Every TransferX player has an agent** (demo data, `backend/scripts/allocate_players_to_agents.py`).
   - Each contracted player or free agent without a mandate gets an exclusive two-year mandate with one of the existing agents, shared out evenly.
   - New deals for them start at the agent negotiation stage and invite that agent. Deals already under way, and players at clubs outside TransferX, are untouched.
@@ -115,6 +125,8 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Smarter AI player search.** It now understands price or value ("under £10m", "£5–8m", "free"), contracts ending ("out of contract next summer"), wages ("under £50k a week") and league. Each result shows his price (asking or estimate) and why he matched.
+- **Less filler in AI advice.** The advisor prompt forbids generic tips, and the deal brief may give none. Tips that restate a step, or match common filler ("act today", "delay risks the deal"), are dropped in code from deal advice, offer watch-outs, the morning briefing and listing tips. Ask's facts also say the remaining budget already accounts for offers and deals in progress; the model had claimed a committed fee was "not yet deducted".
 - **Clearer medical check on the deal page.**
   - The result is a coloured block: "Medical passed", "Medical failed", "Medical in progress" or "Not recorded yet". The old grey link is now a "Record medical result" button.
   - Recording it means choosing Passed, Failed or Still in progress from three large options, each saying what it does to the deal. The button names the result ("Record: passed").
