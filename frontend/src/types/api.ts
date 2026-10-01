@@ -95,6 +95,13 @@ export interface MandateResponse {
   created_at: string;
 }
 
+/** A mandate on a player's page: who holds it, and whether it's yours. */
+export interface PlayerRepresentation extends MandateResponse {
+  agent_name: string;
+  agency_name: string;
+  is_mine: boolean;
+}
+
 export type ClientStatus =
   | "ACTIVE"
   | "SEEKING_MOVE"
@@ -1752,4 +1759,91 @@ export interface SuggestionStat {
   shown: number;
   used: number;
   used_pct: number | null;
+}
+
+// ── Player profile ledger (GET /players/market/{id}/ledger) ──────────────────
+
+export interface LedgerStats {
+  apps: number;
+  starts: number;
+  minutes: number;
+  goals: number;
+  assists: number;
+  shots: number;
+  key_passes: number;
+  passes: number;
+  tackles: number;
+  interceptions: number;
+  duels_won: number;
+  duels_total: number;
+  yellow_cards: number;
+  red_cards: number;
+  /** Weighted by minutes. */
+  pass_accuracy: number | null;
+  /** Weighted by appearances. */
+  rating: number | null;
+}
+
+export interface LedgerCompetition extends LedgerStats {
+  name: string;
+  logo: string | null;
+}
+
+export interface LedgerSeason {
+  season: string;
+  label: string;
+  club: string;
+  club_logo: string | null;
+  is_loan: boolean;
+  totals: LedgerStats;
+  competitions: LedgerCompetition[];
+}
+
+export interface LedgerTransfer {
+  date: string | null;
+  season: string | null;
+  type: string | null;
+  fee: string | null;
+  from: string | null;
+  from_logo: string | null;
+  to: string | null;
+  to_logo: string | null;
+}
+
+export interface LedgerInjury {
+  start: string;
+  end: string | null;
+  type: string | null;
+  season: string;
+  games_missed: number;
+  severe: boolean;
+}
+
+export interface LedgerInjurySeason {
+  injuries: number;
+  games_missed: number;
+  longest: number;
+  /** Percent; null when the club's match count isn't known. */
+  availability: number | null;
+}
+
+export interface LedgerRecentGame {
+  date: string | null;
+  opponent: string | null;
+  opponent_logo: string | null;
+  home: boolean | null;
+  minutes: number | null;
+  rating: number | null;
+  competition: string | null;
+}
+
+export interface PlayerLedger {
+  player_id: string;
+  seasons: LedgerSeason[];
+  career: LedgerStats | null;
+  internationals: LedgerSeason[];
+  transfers: LedgerTransfer[];
+  /** Null for signed-out visitors. */
+  injuries: { periods: LedgerInjury[]; by_season: Record<string, LedgerInjurySeason> } | null;
+  form: { score: number | null; trend: number | null; recent: LedgerRecentGame[] };
 }

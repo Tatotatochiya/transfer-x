@@ -25,6 +25,16 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Player Profile v2: the season ledger** ([spec](./feature_spec/player-profile-ledger/README.md)).
+  - **Layout:** a compact header, and a facts strip with model value, market value, contract, wage, release clause (or your own club's private valuation, editable) and form.
+  - **Tabs:** Overview, Career and Injuries, each a season-by-season table with a career total.
+    - **Overview** switches between Output, Passing and Defending stats, and opens a season into its competitions. Under it are the last five games with their ratings.
+    - **Career** lists each transfer under its season, with the fee or "Undisclosed".
+    - **Injuries** shows the injuries, games missed, longest absence and availability per season.
+  - **Data:** history is backfilled from API-Football for TransferX players, the current season plus three before it (`scripts/backfill_player_history.py`, migration `0087`).
+  - **Own club** gets an Offers panel.
+  - **Agents** see whether they or another agent represent the player.
+  - **Read-only staff** see Make Offer disabled with the reason.
 - **AI drafts.** "Draft with AI" in the deal room, on an offer's message box and on an enquiry reply.
   - It writes a message from that deal's, offer's or enquiry's facts. Anything already typed is used as what to say ("Polish with AI").
   - The user edits and sends it. Nothing is sent by the assistant (`POST /ai/draft`).

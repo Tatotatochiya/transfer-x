@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+body { margin: 0; background: #020617; }
+* { box-sizing: border-box; }
+a { color: #34d399; text-decoration: none; }
+a:hover { color: #6ee7b7; text-decoration: underline; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+</style>
+</helmet>
+
+<div style="display:flex;min-height:100vh;background:#020617;color:#f8fafc;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:14px;">
+  <aside style="width:60px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:12px;background:#0f172a;border-right:1px solid rgba(255,255,255,0.08);position:sticky;top:0;height:100vh;">
+    <div style="width:32px;height:32px;border-radius:8px;background:rgba(16,185,129,0.2);display:flex;align-items:center;justify-content:center;margin-bottom:10px;">
+      <svg style="width:20px;height:20px;color:#34d399;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+    </div>
+    <div style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#64748b;"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg></div>
+    <div style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(16,185,129,0.15);color:#34d399;"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></div>
+    <div style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#64748b;"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></div>
+  </aside>
+
+  <main style="flex:1;min-width:0;padding:20px 28px 48px;">
+    <div style="max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#64748b;">
+        <span style="cursor:pointer;" style-hover="color:#f8fafc;">← Back</span><span>·</span><span>Market</span><span>/</span><span style="color:#94a3b8;">Tomás Varela</span>
+      </div>
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div style="width:52px;height:52px;border-radius:50%;background:rgba(16,185,129,0.15);color:#34d399;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;box-shadow:0 0 0 2px rgba(255,255,255,0.08);flex-shrink:0;">T</div>
+        <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:4px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:22px;font-weight:700;">Tomás Varela</span>
+            <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(52,211,153,0.15);color:#34d399;">MID</span>
+            <span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px;background:rgba(96,165,250,0.15);color:#93c5fd;">Contracted</span>
+            <sc-if value="{{ isOwn }}" hint-placeholder-val="{{ false }}">
+              <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:rgba(16,185,129,0.15);color:#34d399;"><span style="width:6px;height:6px;border-radius:50%;background:#10b981;"></span>Listed</span>
+              <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:rgba(129,140,248,0.15);color:#a5b4fc;cursor:pointer;"><span style="width:6px;height:6px;border-radius:50%;background:#818cf8;"></span>2 active offers</span>
+            </sc-if>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;color:#94a3b8;font-size:13px;">
+            <span style="color:#e2e8f0;font-weight:500;">Real Betis</span><span>·</span><span>26 yrs</span><span>·</span><span>Spain</span><span>·</span><span>1.79 m · 72 kg</span><span>·</span><span>Born 14 Mar 2000, Vigo</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <span style="padding:8px 12px;border-radius:8px;background:#1e293b;color:#cbd5e1;font-size:13px;font-weight:500;box-shadow:0 0 0 1px #334155;cursor:pointer;">Compare</span>
+          <sc-if value="{{ isBuyer }}" hint-placeholder-val="{{ true }}">
+            <span style="padding:8px 12px;border-radius:8px;background:#1e293b;color:#cbd5e1;font-size:13px;font-weight:500;box-shadow:0 0 0 1px #334155;cursor:pointer;">Shortlist</span>
+            <span style="padding:8px 12px;border-radius:8px;background:#1e293b;color:#cbd5e1;font-size:13px;font-weight:500;box-shadow:0 0 0 1px #334155;cursor:pointer;">Ask about him</span>
+            <span style="padding:8px 12px;border-radius:8px;background:rgba(239,68,68,0.12);color:#fca5a5;font-size:13px;font-weight:600;box-shadow:0 0 0 1px rgba(239,68,68,0.3);cursor:pointer;">Trigger clause £30m</span>
+            <span style="padding:8px 14px;border-radius:8px;background:#10b981;color:#022c22;font-size:13px;font-weight:700;cursor:pointer;">Make offer</span>
+          </sc-if>
+          <sc-if value="{{ isOwn }}" hint-placeholder-val="{{ false }}">
+            <span style="padding:8px 14px;border-radius:8px;background:#1e293b;color:#f8fafc;font-size:13px;font-weight:600;box-shadow:0 0 0 1px #334155;cursor:pointer;">View listing</span>
+          </sc-if>
+          <sc-if value="{{ isAgent }}" hint-placeholder-val="{{ false }}">
+            <span style="padding:8px 12px;border-radius:8px;background:#1e293b;color:#cbd5e1;font-size:13px;font-weight:500;box-shadow:0 0 0 1px #334155;cursor:pointer;">Shortlist</span>
+          </sc-if>
+        </div>
+      </div>
+
+      <sc-if value="{{ showDeal }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;background:rgba(245,158,11,0.1);box-shadow:0 0 0 1px rgba(245,158,11,0.25);font-size:13px;">
+          <span style="font-weight:700;color:#fbbf24;">Transfer in progress</span>
+          <span style="color:#cbd5e1;">Real Betis → Aston Villa · Stage: Medical</span>
+          <span style="color:#94a3b8;margin-left:auto;">New offers and listings are paused while a deal is active</span>
+        </div>
+      </sc-if>
+
+      <!-- Facts -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));background:#0f172a;border-radius:10px;box-shadow:0 0 0 1px rgba(255,255,255,0.08);overflow:hidden;">
+        <sc-for list="{{ facts }}" as="f" hint-placeholder-count="6">
+          <div style="padding:10px 14px;display:flex;flex-direction:column;gap:2px;box-shadow:-1px 0 0 rgba(255,255,255,0.06);">
+            <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748b;">{{ f.label }}</span>
+            <span style="font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;color:{{ f.color }};">{{ f.value }}</span>
+            <span style="font-size:12px;color:#64748b;">{{ f.sub }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Body -->
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;margin-top:4px;">
+        <div style="display:flex;flex-direction:column;gap:12px;min-width:0;">
+          <div style="display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,0.08);">
+            <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+              <span onClick="{{ t.onClick }}" style="display:flex;align-items:center;gap:6px;padding:8px 12px;font-weight:500;cursor:pointer;color:{{ t.color }};box-shadow:{{ t.ink }};">{{ t.label }}<span style="font-size:11px;font-weight:600;color:#64748b;">{{ t.count }}</span></span>
+            </sc-for>
+          </div>
+
+          <div style="background:#0f172a;border-radius:14px;box-shadow:0 0 0 1px rgba(255,255,255,0.08);padding:16px;display:flex;flex-direction:column;gap:14px;">
+            <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <div style="display:flex;gap:2px;background:#020617;padding:3px;border-radius:8px;">
+                  <sc-for list="{{ setTabs }}" as="t" hint-placeholder-count="3">
+                    <span onClick="{{ t.onClick }}" style="padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:{{ t.bg }};color:{{ t.color }};">{{ t.label }}</span>
+                  </sc-for>
+                </div>
+                <span style="font-size:12px;color:#64748b;">Apps (starts) · per 90 where noted · tap a season for competitions</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isMedical }}" hint-placeholder-val="{{ false }}">
+              <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:rgba(255,255,255,0.06);border-radius:10px;overflow:hidden;">
+                <sc-for list="{{ medSummary }}" as="m" hint-placeholder-count="4">
+                  <div style="background:#020617;padding:10px 12px;display:flex;flex-direction:column;gap:2px;">
+                    <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748b;">{{ m.label }}</span>
+                    <span style="font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;color:{{ m.color }};">{{ m.value }}</span>
+                    <span style="font-size:12px;color:#64748b;">{{ m.sub }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <div style="display:flex;flex-direction:column;overflow-x:auto;">
+              <div style="display:grid;grid-template-columns:{{ cols }};gap:8px;padding:0 10px 8px;border-bottom:1px solid rgba(255,255,255,0.08);font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b;min-width:640px;">
+                <span>Season</span><span>Club</span>
+                <sc-for list="{{ head }}" as="h" hint-placeholder-count="7"><span style="text-align:right;">{{ h }}</span></sc-for>
+              </div>
+              <sc-for list="{{ rows }}" as="r" hint-placeholder-count="7">
+                <div style="display:flex;flex-direction:column;min-width:640px;">
+                  <sc-if value="{{ r.isEvent }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;align-items:center;gap:10px;padding:7px 10px 7px 30px;font-size:12px;color:#94a3b8;background:#020617;border-bottom:1px solid rgba(255,255,255,0.05);">
+                      <span style="font-weight:700;color:#cbd5e1;font-variant-numeric:tabular-nums;width:62px;">{{ r.date }}</span>
+                      <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:{{ r.typeBg }};color:{{ r.typeColor }};">{{ r.type }}</span>
+                      <span>{{ r.from }}</span><span style="color:#475569;">→</span><span style="color:#f8fafc;font-weight:600;">{{ r.to }}</span>
+                      <span style="margin-left:auto;font-weight:600;color:{{ r.feeColor }};">{{ r.fee }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ r.isSeason }}" hint-placeholder-val="{{ true }}">
+                    <div onClick="{{ r.toggle }}" style="display:grid;grid-template-columns:{{ cols }};gap:8px;padding:9px 10px;align-items:center;cursor:{{ r.cursor }};font-variant-numeric:tabular-nums;border-bottom:1px solid rgba(255,255,255,0.05);background:{{ r.bg }};" style-hover="background:rgba(255,255,255,0.03);">
+                      <span style="display:flex;align-items:center;gap:6px;font-weight:600;"><span style="color:#64748b;font-size:10px;width:8px;">{{ r.caret }}</span>{{ r.season }}</span>
+                      <span style="display:flex;align-items:center;gap:6px;min-width:0;"><span style="width:8px;height:8px;border-radius:2px;flex-shrink:0;background:{{ r.clubColor }};"></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#cbd5e1;">{{ r.club }}</span><span style="font-size:10px;font-weight:700;color:#fbbf24;">{{ r.loan }}</span></span>
+                      <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="7"><span style="text-align:right;font-weight:{{ c.weight }};color:{{ c.color }};">{{ c.v }}</span></sc-for>
+                    </div>
+                    <sc-if value="{{ r.open }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;padding:2px 0 6px;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <sc-for list="{{ r.subs }}" as="cp" hint-placeholder-count="2">
+                          <div style="display:grid;grid-template-columns:{{ cols }};gap:8px;padding:5px 10px;font-size:13px;color:#94a3b8;font-variant-numeric:tabular-nums;align-items:center;">
+                            <span style="padding-left:14px;font-size:12px;">{{ cp.lead }}</span>
+                            <span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span style="font-size:12px;font-weight:600;padding:{{ cp.chipPad }};border-radius:999px;background:{{ cp.chipBg }};color:{{ cp.chipColor }};">{{ cp.name }}</span></span>
+                            <sc-for list="{{ cp.cells }}" as="c" hint-placeholder-count="7"><span style="text-align:right;">{{ c.v }}</span></sc-for>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <div style="display:grid;grid-template-columns:{{ cols }};gap:8px;padding:10px;font-variant-numeric:tabular-nums;background:#020617;border-radius:0 0 8px 8px;min-width:640px;">
+                <span style="font-weight:700;">{{ footLabel }}</span><span style="color:#64748b;">{{ footSub }}</span>
+                <sc-for list="{{ foot }}" as="c" hint-placeholder-count="7"><span style="text-align:right;font-weight:700;color:{{ c.color }};">{{ c.v }}</span></sc-for>
+              </div>
+            </div>
+
+            <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 12px;border-radius:10px;background:#020617;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
+                <div style="display:flex;flex-direction:column;gap:1px;">
+                  <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748b;">Form score</span>
+                  <span style="font-size:12px;color:#64748b;">Last 5 games</span>
+                </div>
+                <span style="font-size:20px;font-weight:800;color:#34d399;font-variant-numeric:tabular-nums;">72 <span style="font-size:13px;">▲ 4</span></span>
+                <div style="display:flex;gap:6px;margin-left:auto;">
+                  <sc-for list="{{ lastGames }}" as="g" hint-placeholder-count="5">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 8px;border-radius:6px;background:#0f172a;">
+                      <span style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:{{ g.color }};">{{ g.r }}</span>
+                      <span style="font-size:10px;color:#64748b;">{{ g.opp }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <!-- Right column: role-specific -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <sc-if value="{{ isBuyer }}" hint-placeholder-val="{{ true }}">
+            <div style="background:#0f172a;border-radius:12px;box-shadow:0 0 0 1px rgba(255,255,255,0.08);overflow:hidden;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;">
+                <span style="font-size:14px;font-weight:600;">✦ AI fit score</span>
+                <sc-if value="{{ fitIdle }}" hint-placeholder-val="{{ true }}">
+                  <span onClick="{{ runFit }}" style="padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(167,139,250,0.15);color:#c4b5fd;box-shadow:0 0 0 1px rgba(167,139,250,0.3);cursor:pointer;">Analyse</span>
+                </sc-if>
+              </div>
+              <sc-if value="{{ fitIdle }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:0 14px 12px;font-size:13px;color:#64748b;">Check how well he fits your squad.</div>
+              </sc-if>
+              <sc-if value="{{ fitDone }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;border-top:1px solid rgba(255,255,255,0.06);">
+                  <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;">
+                    <span style="font-size:26px;font-weight:800;color:#34d399;font-variant-numeric:tabular-nums;">78</span>
+                    <div style="display:flex;flex-direction:column;"><span style="font-weight:700;color:#34d399;font-size:13px;">Good fit</span><span style="font-size:12px;color:#64748b;">Squad fit score / 100</span></div>
+                  </div>
+                  <div style="padding:0 14px 12px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:#cbd5e1;">
+                    <span><span style="color:#34d399;">✓</span> Covers your thin central midfield (2 senior options)</span>
+                    <span><span style="color:#34d399;">✓</span> Pass accuracy above your current starters</span>
+                    <span><span style="color:#fbbf24;">⚠</span> Wage would be your 4th highest</span>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isOwn }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#0f172a;border-radius:12px;box-shadow:0 0 0 1px rgba(255,255,255,0.08);padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:14px;font-weight:600;">Offers</span><span style="font-size:12px;color:#34d399;cursor:pointer;">Open inbox →</span></div>
+              <sc-for list="{{ offers }}" as="o" hint-placeholder-count="2">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:6px 0;border-top:1px solid rgba(255,255,255,0.05);">
+                  <span>{{ o.club }}</span><span style="font-weight:700;font-variant-numeric:tabular-nums;">{{ o.fee }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="background:#0f172a;border-radius:12px;box-shadow:0 0 0 1px rgba(255,255,255,0.08);padding:12px 14px;display:flex;flex-direction:column;gap:6px;">
+              <span style="font-size:14px;font-weight:600;">Player account</span>
+              <span style="font-size:13px;color:#94a3b8;">Invited 12 Sep · not joined yet. Until he joins, his agent answers personal terms.</span>
+              <span style="font-size:12px;color:#34d399;cursor:pointer;">Resend invitation</span>
+            </div>
+            <div style="background:#0f172a;border-radius:12px;box-shadow:0 0 0 1px rgba(255,255,255,0.08);padding:12px 14px;display:flex;flex-direction:column;gap:8px;">
+              <span style="font-size:14px;font-weight:600;">Potential buyers</span>
+              <span style="font-size:12px;color:#64748b;">Clubs short in central midfield</span>
+              <sc-for list="{{ buyers }}" as="b" hint-placeholder-count="3">
+                <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-top:1px solid rgba(255,255,255,0.05);">
+                  <span>{{ b.club }}</span><span style="color:#94a3b8;">{{ b.why }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isAgent }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#0f172a;border-radius:12px;box-shadow:0 0 0 1px rgba(255,255,255,0.08);padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748b;">Representation</span>
+              <span style="font-size:13px;color:#94a3b8;">You don't represent him yet.</span>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#cbd5e1;"><input type="checkbox" style="accent-color:#10b981;" />Exclusive mandate</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#64748b;">Start<span style="padding:6px 8px;border-radius:6px;background:#020617;box-shadow:0 0 0 1px #334155;color:#cbd5e1;">01/10/2026</span></div>
+                <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#64748b;">End<span style="padding:6px 8px;border-radius:6px;background:#020617;box-shadow:0 0 0 1px #334155;color:#64748b;">dd/mm/yyyy</span></div>
+              </div>
+              <span style="padding:8px;border-radius:8px;background:#10b981;color:#022c22;font-size:13px;font-weight:700;text-align:center;cursor:pointer;">Represent this player</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;viewer&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Buying club&quot;,&quot;Own player&quot;,&quot;Agent&quot;],&quot;default&quot;:&quot;Buying club&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;View as&quot;},&quot;showDealBanner&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;View as&quot;}}">
+const RAW = [
+  { s: "2025/26", club: "Real Betis", c: "#34d399", comps: [
+    { n: "La Liga", apps: 7, st: 6, min: 548, g: 2, a: 3, sh: 14, kp: 17, pa: 88, dw: 31, dt: 58, tk: 12, it: 5, yc: 1, r: 7.41 },
+    { n: "Europa League", apps: 2, st: 2, min: 171, g: 0, a: 1, sh: 3, kp: 5, pa: 90, dw: 9, dt: 16, tk: 4, it: 2, yc: 0, r: 7.12 }] },
+  { s: "2024/25", club: "Real Betis", c: "#34d399", comps: [
+    { n: "La Liga", apps: 34, st: 30, min: 2680, g: 6, a: 9, sh: 52, kp: 71, pa: 87, dw: 160, dt: 301, tk: 58, it: 27, yc: 7, r: 7.28 },
+    { n: "Conference League", apps: 9, st: 7, min: 640, g: 2, a: 2, sh: 13, kp: 19, pa: 89, dw: 41, dt: 74, tk: 15, it: 6, yc: 1, r: 7.20 },
+    { n: "Copa del Rey", apps: 3, st: 2, min: 205, g: 1, a: 0, sh: 5, kp: 4, pa: 86, dw: 12, dt: 25, tk: 5, it: 2, yc: 0, r: 7.05 }] },
+  { s: "2023/24", club: "Real Betis", c: "#34d399", comps: [
+    { n: "La Liga", apps: 31, st: 24, min: 2140, g: 4, a: 6, sh: 41, kp: 52, pa: 86, dw: 128, dt: 251, tk: 49, it: 22, yc: 6, r: 7.02 },
+    { n: "Europa League", apps: 6, st: 4, min: 390, g: 0, a: 1, sh: 6, kp: 9, pa: 85, dw: 22, dt: 45, tk: 9, it: 4, yc: 2, r: 6.81 }] },
+  { s: "2022/23", club: "Real Betis", c: "#34d399", comps: [
+    { n: "La Liga", apps: 14, st: 6, min: 702, g: 1, a: 1, sh: 11, kp: 13, pa: 84, dw: 39, dt: 82, tk: 16, it: 7, yc: 3, r: 6.64 }] },
+  { s: "2021/22", club: "Girona FC", loan: "LOAN", c: "#fbbf24", comps: [
+    { n: "Segunda División", apps: 36, st: 33, min: 2905, g: 7, a: 8, sh: 60, kp: 66, pa: 83, dw: 170, dt: 322, tk: 64, it: 31, yc: 9, r: 7.15 }] },
+  { s: "2020/21", club: "CD Leganés", c: "#94a3b8", comps: [
+    { n: "Segunda División", apps: 27, st: 18, min: 1690, g: 2, a: 4, sh: 28, kp: 31, pa: 81, dw: 90, dt: 186, tk: 37, it: 18, yc: 5, r: 6.78 },
+    { n: "Copa del Rey", apps: 2, st: 2, min: 180, g: 0, a: 1, sh: 2, kp: 4, pa: 83, dw: 10, dt: 19, tk: 4, it: 1, yc: 0, r: 6.90 }] },
+  { s: "2019/20", club: "CD Leganés", c: "#94a3b8", comps: [
+    { n: "La Liga", apps: 9, st: 2, min: 288, g: 0, a: 0, sh: 3, kp: 4, pa: 79, dw: 15, dt: 34, tk: 7, it: 3, yc: 1, r: 6.42 }] },
+];
+const TRANSFERS = [
+  { date: "Jul 2022", from: "CD Leganés", to: "Real Betis", type: "Transfer", fee: "€6.5m", season: "2022/23" },
+  { date: "Jun 2022", from: "Girona FC", to: "CD Leganés", type: "End of loan", fee: "", season: "2021/22" },
+  { date: "Aug 2021", from: "CD Leganés", to: "Girona FC", type: "Loan", fee: "", season: "2021/22" },
+  { date: "Jul 2019", from: "Celta Vigo B", to: "CD Leganés", type: "Transfer", fee: "€400k", season: "2019/20" },
+];
+const INJ = [
+  { date: "Jan 2025", type: "Hamstring strain", games: 4, league: "La Liga", season: "2024/25" },
+  { date: "Oct 2023", type: "Ankle sprain", games: 6, league: "La Liga", season: "2023/24" },
+  { date: "Mar 2023", type: "Muscle fatigue", games: 2, league: "La Liga", season: "2022/23" },
+  { date: "Sep 2022", type: "Knee ligament", games: 11, league: "La Liga", season: "2022/23" },
+  { date: "Nov 2020", type: "Hamstring strain", games: 3, league: "Segunda División", season: "2020/21" },
+];
+
+function agg(list) {
+  const t = { apps: 0, st: 0, min: 0, g: 0, a: 0, sh: 0, kp: 0, dw: 0, dt: 0, tk: 0, it: 0, yc: 0, paW: 0, rW: 0 };
+  list.forEach(c => { ["apps","st","min","g","a","sh","kp","dw","dt","tk","it","yc"].forEach(k => t[k] += c[k]); t.paW += c.pa * c.min; t.rW += c.r * c.apps; });
+  t.pa = t.min ? t.paW / t.min : 0; t.r = t.apps ? t.rW / t.apps : 0;
+  t.p90 = k => t.min ? (t[k] / t.min) * 90 : 0;
+  t.du = t.dt ? (t.dw / t.dt) * 100 : 0;
+  t.stp = t.apps ? (t.st / t.apps) * 100 : 0;
+  return t;
+}
+const SEASONS = RAW.map(x => ({ ...x, tot: agg(x.comps) }));
+const f2 = v => v.toFixed(2), f0 = v => Math.round(v).toString(), fMin = v => v.toLocaleString("en-GB");
+const isEuro = n => /Europa|Conference|Champions/.test(n), isCup = n => /Copa|Cup/.test(n) && !isEuro(n);
+
+const SETS = {
+  output: { label: "Output", head: ["Apps", "Min", "G", "A", "G+A/90", "Shots/90", "Rating"],
+    cells: t => [`${t.apps} (${t.st})`, fMin(t.min), t.g, t.a, f2(((t.g + t.a) / Math.max(t.min, 1)) * 90), f2(t.p90("sh")), f2(t.r)] },
+  passing: { label: "Passing", head: ["Apps", "Min", "Key p.", "KP/90", "Pass %", "Assists", "Rating"],
+    cells: t => [`${t.apps} (${t.st})`, fMin(t.min), t.kp, f2(t.p90("kp")), f0(t.pa) + "%", t.a, f2(t.r)] },
+  defending: { label: "Defending", head: ["Apps", "Min", "Tackles", "Int.", "Tkl+Int/90", "Duels %", "YC"],
+    cells: t => [`${t.apps} (${t.st})`, fMin(t.min), t.tk, t.it, f2(((t.tk + t.it) / Math.max(t.min, 1)) * 90), f0(t.du) + "%", t.yc] },
+};
+const LEAGUE_GAMES = { "La Liga": 38, "Segunda División": 42 };
+
+class Component extends DCLogic {
+  state = { tab: "overview", set: "output", open: { "2025/26": true }, medOpen: { "2022/23": true }, fit: false };
+
+  renderVals() {
+    const st = this.state, viewer = this.props.viewer ?? "Buying club";
+    const isOwn = viewer === "Own player", isAgent = viewer === "Agent", isBuyer = !isOwn && !isAgent;
+    const tab = st.tab;
+    const hl = (i, n) => i === n - 1 ? "#fbbf24" : "#f8fafc";
+    const CAREER = agg(SEASONS.flatMap(x => x.comps));
+    const base = x => ({ isSeason: true, isEvent: false, season: x.s, club: x.club, loan: x.loan || "", clubColor: x.c });
+    let cols, head, rows, foot, footLabel = "Career", footSub = "3 clubs";
+
+    if (tab === "overview") {
+      const set = SETS[st.set];
+      cols = "86px 1.4fr repeat(7, minmax(0,1fr))"; head = set.head;
+      rows = SEASONS.map(x => { const open = !!st.open[x.s]; return { ...base(x), open, caret: open ? "▾" : "▸", cursor: "pointer", bg: open ? "rgba(255,255,255,0.025)" : "transparent",
+        toggle: () => this.setState(s => ({ open: { ...s.open, [x.s]: !s.open[x.s] } })),
+        cells: set.cells(x.tot).map((v, i, arr) => ({ v, weight: 500, color: hl(i, arr.length) })),
+        subs: x.comps.map(c => ({ lead: "", name: c.n, chipPad: "0", chipBg: "transparent", chipColor: "#94a3b8", cells: set.cells(agg([c])).map(v => ({ v })) })) }; });
+      foot = set.cells(CAREER).map(v => ({ v, color: "#f8fafc" }));
+    } else if (tab === "career") {
+      cols = "86px 1.4fr repeat(5, minmax(0,1fr))"; head = ["Apps", "Starts", "Min", "G", "A"];
+      rows = [];
+      SEASONS.forEach(x => {
+        rows.push({ ...base(x), open: false, caret: "", cursor: "default", bg: "transparent", toggle: null,
+          cells: [x.tot.apps, x.tot.st, fMin(x.tot.min), x.tot.g, x.tot.a].map(v => ({ v, weight: 500, color: "#f8fafc" })), subs: [] });
+        TRANSFERS.filter(t => t.season === x.s).forEach(t => {
+          const loan = /loan/i.test(t.type);
+          rows.push({ isEvent: true, isSeason: false, ...t, fee: t.fee || (loan ? "" : "Undisclosed"), feeColor: t.fee ? "#34d399" : "#64748b",
+            typeBg: loan ? "rgba(245,158,11,0.12)" : "rgba(96,165,250,0.12)", typeColor: loan ? "#fbbf24" : "#93c5fd" });
+        });
+      });
+      foot = [CAREER.apps, CAREER.st, fMin(CAREER.min), CAREER.g, CAREER.a].map(v => ({ v, color: "#f8fafc" }));
+      footSub = "4 moves · €6.9m in fees";
+    } else {
+      cols = "86px 1.4fr repeat(5, minmax(0,1fr))"; head = ["Injuries", "Missed", "Avail.", "Longest", "Apps"];
+      rows = SEASONS.map(x => {
+        const inj = INJ.filter(i => i.season === x.s), missed = inj.reduce((a, i) => a + i.games, 0);
+        const lg = LEAGUE_GAMES[x.comps[0].n] || 38, played = x.s === "2025/26" ? 7 : lg;
+        const avail = Math.round((1 - missed / played) * 100), longest = inj.length ? Math.max(...inj.map(i => i.games)) : 0;
+        const open = !!st.medOpen[x.s] && inj.length > 0;
+        return { ...base(x), open, caret: inj.length ? (open ? "▾" : "▸") : "", cursor: inj.length ? "pointer" : "default", bg: open ? "rgba(255,255,255,0.025)" : "transparent",
+          toggle: () => inj.length && this.setState(s => ({ medOpen: { ...s.medOpen, [x.s]: !s.medOpen[x.s] } })),
+          cells: [
+            { v: inj.length || "—", weight: 500, color: inj.length ? "#f8fafc" : "#475569" },
+            { v: missed ? missed + " g" : "—", weight: 600, color: missed >= 10 ? "#fca5a5" : missed ? "#fbbf24" : "#475569" },
+            { v: avail + "%", weight: 600, color: avail >= 90 ? "#34d399" : avail >= 75 ? "#f8fafc" : "#fca5a5" },
+            { v: longest ? longest + " g" : "—", weight: 500, color: longest ? "#f8fafc" : "#475569" },
+            { v: x.tot.apps, weight: 500, color: "#94a3b8" }],
+          subs: inj.map(i => { const severe = /knee|ankle/i.test(i.type); return { lead: i.date, name: i.type, chipPad: "2px 8px", chipBg: severe ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.12)", chipColor: severe ? "#fca5a5" : "#fbbf24", cells: [{ v: "" }, { v: i.games + " g" }, { v: "" }, { v: "" }, { v: i.league }] }; }) };
+      });
+      const tm = INJ.reduce((a, i) => a + i.games, 0);
+      foot = [{ v: INJ.length, color: "#f8fafc" }, { v: tm + " g", color: "#f8fafc" }, { v: "91%", color: "#34d399" }, { v: "11 g", color: "#fca5a5" }, { v: CAREER.apps, color: "#94a3b8" }];
+      footSub = "Since 2019/20";
+    }
+
+    const own = isOwn;
+    return {
+      isOwn, isAgent, isBuyer, showDeal: !!this.props.showDealBanner,
+      facts: [
+        { label: "Model value", value: "£15.8m", sub: "Range £13.9–18.1m", color: "#f8fafc" },
+        { label: "Market value", value: "€18m", sub: "Transfermarkt · Sep 2026", color: "#f8fafc" },
+        { label: "Contract", value: "Jun 2028", sub: own ? "Started Jul 2022" : "1 yr 9 mo left", color: "#f8fafc" },
+        { label: "Wage", value: "£45k/wk", sub: own ? "Contract" : "Capology est.", color: "#34d399" },
+        own ? { label: "Club valuation", value: "£22m ✎", sub: "Only your club sees this", color: "#f8fafc" }
+            : { label: "Release clause", value: "£30m", sub: "Can be triggered", color: "#f8fafc" },
+        { label: "Form", value: "72 ▲", sub: "Last 5 games", color: "#34d399" },
+      ],
+      tabs: [["overview", "Overview", ""], ["career", "Career", "4 moves"], ["medical", "Medical", INJ.length + ""]].map(([id, label, count]) => ({
+        label, count, color: tab === id ? "#f8fafc" : "#64748b", ink: tab === id ? "inset 0 -2px 0 #10b981" : "none", onClick: () => this.setState({ tab: id }),
+      })),
+      isOverview: tab === "overview", isCareer: tab === "career", isMedical: tab === "medical",
+      setTabs: Object.entries(SETS).map(([id, s]) => ({ label: s.label, bg: st.set === id ? "#1e293b" : "transparent", color: st.set === id ? "#f8fafc" : "#64748b", onClick: () => this.setState({ set: id }) })),
+      cols, head, rows, foot, footLabel, footSub,
+      medSummary: [
+        { label: "Injuries", value: INJ.length, sub: "Since 2019/20", color: "#f8fafc" },
+        { label: "Games missed", value: INJ.reduce((a, i) => a + i.games, 0), sub: "≈ 4 per season", color: "#f8fafc" },
+        { label: "Last injury", value: "Jan 2025", sub: "Hamstring · 4 games", color: "#f8fafc" },
+        { label: "Longest", value: "11 games", sub: "Knee ligament · 2022", color: "#fca5a5" },
+      ],
+      lastGames: [["7.6", "SEV"], ["7.1", "VIL"], ["6.8", "RSO"], ["7.9", "OSA"], ["7.3", "GIR"]].map(([r, opp]) => ({ r, opp, color: +r >= 7.5 ? "#34d399" : +r >= 7 ? "#f8fafc" : "#fbbf24" })),
+      fitIdle: !st.fit, fitDone: st.fit, runFit: () => this.setState({ fit: true }),
+      offers: [{ club: "Aston Villa", fee: "£19.5m" }, { club: "Sevilla FC", fee: "£16.0m" }],
+      buyers: [{ club: "Fulham", why: "1 senior CM" }, { club: "Valencia CF", why: "CM out till Jan" }, { club: "Brighton", why: "Sold 2 CMs" }],
+    };
+  }
+}
+</script>
+</body>
+</html>

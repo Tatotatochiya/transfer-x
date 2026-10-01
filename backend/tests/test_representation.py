@@ -151,3 +151,19 @@ async def test_club_cannot_revoke_player_mandate(client: AsyncClient, db: AsyncS
         headers=_headers(club_tokens),
     )
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_representation_names_the_agent_and_says_whose_it_is(client: AsyncClient, db: AsyncSession):
+    """On a player's page an agent can tell their own mandate from another
+    agent's: each is named, and only one's own is marked as theirs."""
+    player = await _make_player(db)
+    holder = await _register_agent(client, "holder_rep@agents.com")
+    other = await _register_agent(client, "other_rep@agents.com")
+    await _create_mandate(client, holder, str(player.id), exclusive=True)
+
+    as_holder = (await client.get(f"/players/{player.id}/representation", headers=_headers(holder))).json()
+    as_other = (await client.get(f"/players/{player.id}/representation", headers=_headers(other))).json()
+    assert [(m["is_mine"], m["exclusive"]) for m in as_holder] == [(True, True)]
+    assert [m["is_mine"] for m in as_other] == [False]
+    assert as_other[0]["agent_name"] and as_other[0]["agency_name"]

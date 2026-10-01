@@ -466,48 +466,11 @@ async def get_player_transfers(
     if not is_fresh and player.vendor_id and settings.apisports_key:
         client = ApiFootballClient(settings.apisports_key, settings.api_football_base_url)
         try:
-            resp = await client.get_player_transfers(int(player.vendor_id))
-            now = datetime.now(timezone.utc)
-            # Delete old records and re-insert
-            from sqlalchemy import delete
-            await db.execute(delete(PlayerTransfer).where(PlayerTransfer.player_id == player_id))
-            for item in resp.get("response") or []:
-                for t in item.get("transfers") or []:
-                    teams = t.get("teams") or {}
-                    team_in = teams.get("in") or {}
-                    team_out = teams.get("out") or {}
-                    date_raw = t.get("date")
-                    transfer_date = None
-                    if date_raw:
-                        try:
-                            from datetime import date as ddate
-                            transfer_date = ddate.fromisoformat(date_raw)
-                        except ValueError:
-                            pass
-                    # API uses "type" for both the label AND fee:
-                    # "Loan" → type=Loan, fee=None
-                    # "€ 42M" / "Free" / "N/A" → type=Transfer, fee=value
-                    raw_type = t.get("type") or ""
-                    is_loan = raw_type.lower() == "loan"
-                    transfer_type = "Loan" if is_loan else "Transfer"
-                    fee_display = None if is_loan or raw_type in ("", "N/A") else raw_type
-                    db.add(PlayerTransfer(
-                        player_id=player_id,
-                        vendor=VENDOR,
-                        transfer_date=transfer_date,
-                        transfer_type=transfer_type,
-                        team_in_vendor_id=str(team_in.get("id")) if team_in.get("id") else None,
-                        team_in_name=team_in.get("name"),
-                        team_in_crest_url=team_in.get("logo"),
-                        team_out_vendor_id=str(team_out.get("id")) if team_out.get("id") else None,
-                        team_out_name=team_out.get("name"),
-                        team_out_crest_url=team_out.get("logo"),
-                        fee_display=fee_display,
-                        fetched_at=now,
-                    ))
+            from app.vendor.history import refresh_transfers
+            await refresh_transfers(db, player, client)
             await db.commit()
         except Exception:
-            pass  # serve whatever is cached
+            await db.rollback()  # serve whatever is cached
 
     result = await db.execute(
         select(PlayerTransfer)
@@ -546,35 +509,11 @@ async def get_player_injuries(
     if not is_fresh and player.vendor_id and settings.apisports_key:
         client = ApiFootballClient(settings.apisports_key, settings.api_football_base_url)
         try:
-            resp = await client.get_player_sidelined(int(player.vendor_id))
-            now = datetime.now(timezone.utc)
-            from sqlalchemy import delete
-            await db.execute(delete(PlayerInjury).where(PlayerInjury.player_id == player_id))
-            # API response: each item in "response" IS the sidelined record
-            # Format: {"type": "Muscle Injury", "start": "2024-02-18", "end": "2024-03-06"}
-            for s in resp.get("response") or []:
-                date_raw = s.get("start")
-                fixture_date = None
-                if date_raw:
-                    try:
-                        from datetime import date as ddate
-                        fixture_date = ddate.fromisoformat(str(date_raw)[:10])
-                    except ValueError:
-                        pass
-                db.add(PlayerInjury(
-                    player_id=player_id,
-                    vendor=VENDOR,
-                    league_name=None,
-                    season=None,
-                    fixture_date=fixture_date,
-                    injury_type=s.get("type"),
-                    reason=s.get("reason"),
-                    games_absent=None,
-                    fetched_at=now,
-                ))
+            from app.vendor.history import refresh_sidelined
+            await refresh_sidelined(db, player, client)
             await db.commit()
         except Exception:
-            pass
+            await db.rollback()  # serve whatever is cached
 
     result = await db.execute(
         select(PlayerInjury)
@@ -582,6 +521,30 @@ async def get_player_injuries(
         .order_by(PlayerInjury.fixture_date.desc().nulls_last())
     )
     return [PlayerInjuryResponse.model_validate(r) for r in result.scalars()]
+
+
+@router.get("/market/{player_id}/ledger")
+async def get_player_ledger(
+    player_id: uuid.UUID,
+    current_user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """The profile's season ledger: club seasons with competition sub-rows, a
+    career total, internationals, transfers by season, injury periods with
+    games missed and availability (signed-in users only, as the injuries
+    tab), and his last five games. Same visibility as the player page."""
+    from app.players.ledger import build_ledger
+    from app.players.models import PlayerVisibility
+
+    player = await players_service.get_player_by_id(db, player_id)
+    if player is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    if player.visibility == PlayerVisibility.PRIVATE and (
+            current_user is None or player.created_by_user_id != current_user.id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    if player.visibility == PlayerVisibility.CLUBS_ONLY and current_user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Login required")
+    return await build_ledger(db, player, include_injuries=current_user is not None)
 
 
 # ── Representation (mandates) ─────────────────────────────────────────────────
@@ -593,16 +556,24 @@ async def get_player_representation(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list:
+    """His active mandates, each naming its agent and saying whether it is
+    the caller's, so an agent can tell their own representation from
+    another agent's (and only revoke their own)."""
     from sqlalchemy import select as sa_select
+    from app.auth.models import AgentProfile
     from app.mandates.models import Mandate, MandateStatus
     from app.mandates.schemas import MandateResponse
-    result = await db.execute(
-        sa_select(Mandate).where(
+    rows = (await db.execute(
+        sa_select(Mandate, AgentProfile).join(AgentProfile, AgentProfile.id == Mandate.agent_id).where(
             Mandate.player_id == player_id,
             Mandate.status == MandateStatus.ACTIVE,
         )
-    )
-    return [MandateResponse.model_validate(m) for m in result.scalars()]
+    )).all()
+    return [
+        {**MandateResponse.model_validate(m).model_dump(mode="json"),
+         "agent_name": a.display_name, "agency_name": a.agency_name, "is_mine": a.user_id == current_user.id}
+        for m, a in rows
+    ]
 
 
 @router.post("/{player_id}/representation/{mandate_id}/revoke")
