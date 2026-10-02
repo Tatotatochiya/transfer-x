@@ -168,6 +168,10 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **The admin Analytics tab was always empty, locally and on Railway.** No page view was ever recorded.
+  - **Cause:** the tracker posted to a hard-coded `/api/analytics/events`, a path only the local dev server's proxy serves. A built frontend answered it itself with the web page, so every event was silently lost.
+  - **Fix:** it now posts to the API's real address, like every other call, with the user's token, so the Users report isn't all anonymous.
+  - **Also:** the two reporting queries written in Postgres-only SQL (7-day active users and the daily trend) are now portable, and are covered by new tests (`tests/test_analytics.py`). The 7-day average shows one decimal place, so a quiet week no longer reads 0.
 - **A club's contract terms were visible to rival clubs.** Any signed-in user received another club's contract for its players on the player page and the club squad list: wage, signing date, the club's own private valuation and its notes. The AI was also given them for rival players; offer advice quoted "his £12k/wk wage" from the selling club's contract.
   - Those terms now go only to the holding club, TransferX staff, the player and his mandated agent (`players.service.contract_for_viewer`).
   - Everyone else gets the release clause and end date, and the public wage estimate labelled as one.
