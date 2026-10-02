@@ -25,6 +25,24 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Phone notifications, phase 2: turn them on** ([spec](./feature_spec/mobile-notifications/README.md)).
+  - TransferX can be installed to the Home Screen (manifest and icons). A service worker shows pushes and opens the right page when one is tapped.
+  - Account settings has an "On this phone" card:
+    - turn notifications on for the device;
+    - choose Sound, Silent or Off for "Your move" and "Heads-up";
+    - quiet hours;
+    - hide amounts on the lock screen;
+    - send a test;
+    - remove other devices.
+
+    The notification table gains a Push column. On iPhone in Safari, the card explains the Home Screen step first.
+  - Signing out stops pushes to that device. The app icon's badge counts what is waiting on you.
+- **Phone notifications, phase 1: the backend** ([spec](./feature_spec/mobile-notifications/README.md)). Nothing reaches a phone until phase 2 adds the service worker and the settings card.
+  - Every notification type is in one of three tiers: "Your move" (pushed with sound), "Heads-up" (pushed silently) and "FYI" (never pushed).
+  - Quiet hours (22:00 to 07:00 in the person's timezone by default) hold pushes until morning. A "your move" push still comes through when its deadline would pass before then.
+  - "Hide amounts on lock screen": the push then says only what happened, never the figures.
+  - Devices subscribe at `/notifications/push/subscriptions`. A device that has unsubscribed, or fails five times in a row, is removed. Tapping a push marks the notification read.
+  - Needs `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` on the API service (`scripts/generate_vapid_keys.py`); without them nothing is pushed. Migration `0088`.
 - **My Club: compact squad list** ([spec](./feature_spec/my-club-compact-squad/README.md)).
   - The Squad tab's player cards are now one table: a 40px row per player, column labels once (Player, Contract, Wage/wk, Model, Yours, Form, Status) and thin position bands. A 25-man squad takes about half the height it did. The same table shows on other clubs' pages and world team pages, with Player, Form and Status only.
   - A Compact / Comfortable switch (40px or 48px rows) is remembered per browser. Touch screens always get 48px rows.
@@ -179,6 +197,8 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **Email and daily summary switches were unreachable.** The full notification settings (every type, an Email column, the daily summary) were on a page no link reached; Account settings showed an older in-app-only list of 15 types. Account settings now has the full table.
+- **The hourly reminders repeated every hour.** "Your offer is expiring soon" was sent every hour for the offer's last 24 hours, and "Instalment due" every hour from three days before the due date until it was paid. Each person now gets each reminder once, and an instalment one more when it goes overdue.
 - **Typing "18" as a club valuation on the squad list saved £18.** The squad list kept only the digits, so "18" and "£18m" both saved £18. It now shares the player profile's parser: a plain number under 1,000 is millions, "m" and "k" work, a larger plain number is pounds, and anything else keeps the old value (`lib/money.ts`).
 - **On a phone, My Club's header buttons covered the club name.** The buttons now drop below the name.
 - **Clubs created before the Premier League onboarding had no crest** (Arsenal, Chelsea and Liverpool on Railway), so their initial showed instead, for example in notifications. `backend/scripts/backfill_club_crests.py` fills a missing crest from the API-Football team of the same name. It never replaces an existing crest, and is safe to re-run.

@@ -1328,6 +1328,19 @@ export interface NotificationPreferenceItem {
   type: string;
   enabled: boolean;
   email_enabled: boolean;
+  push_enabled: boolean;
+  /** FYI is never pushed (mobile notifications §2). */
+  tier: "YOUR_MOVE" | "HEADS_UP" | "FYI";
+}
+
+/** A device that receives push notifications (GET /notifications/push/subscriptions). */
+export interface PushDevice {
+  id: string;
+  platform: "IOS_HOME_SCREEN" | "ANDROID" | "DESKTOP" | "OTHER";
+  label: string;
+  endpoint: string;
+  created_at: string;
+  last_success_at: string | null;
 }
 
 export interface NotificationPreferencesResponse {

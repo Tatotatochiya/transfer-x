@@ -75,6 +75,8 @@ Two things to know before re-running the seed there:
 
 Locally, email goes to Mailpit (`http://localhost:8025`). A deployed environment has to set real SMTP settings on the API service: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_USE_TLS`, and `FRONTEND_BASE_URL` so the links in emails point at that environment's front end. Without `SMTP_HOST` every send is skipped and logged. That includes the per-event notification emails and the daily "waiting on you" digest (hourly job, one email per person per day, after 07:00 UTC).
 
+Phone notifications (Web Push, [spec](../feature_spec/mobile-notifications/README.md)) need a VAPID key pair on the API service: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (a `mailto:` address). Generate them once per environment with `python scripts/generate_vapid_keys.py`. Changing them later cuts off every device until it turns notifications on again. Without them, nothing is pushed and the app says push is off; in-app and email are unaffected.
+
 > **TODO:** Railway has no SMTP configured, so no email is sent there. Decide on a provider (and a sending domain) before any real club uses it.
 
 ## Pending data repairs on Railway
