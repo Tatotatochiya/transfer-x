@@ -1,4 +1,5 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../hooks/useAuth";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
@@ -151,7 +152,11 @@ interface SidebarProps {
   onMobileClose: () => void;
 }
 
-function NotificationNavItem() {
+/**
+ * The notifications bell: in the sidebar's logo row, and in the phone and
+ * tablet top bar (AppShell). One query, shared by both through its key.
+ */
+export function NotificationBell({ size = "sm" }: { size?: "sm" | "touch" }) {
   const { data } = useQuery<UnreadCount>({
     queryKey: ["notifications", "unread-count"],
     queryFn: () => api.get<UnreadCount>("/notifications/unread-count").then((r) => r.data),
@@ -159,66 +164,53 @@ function NotificationNavItem() {
     staleTime: 60_000,
   });
   const count = data?.count ?? 0;
-
   return (
     <NavLink
       to="/notifications"
+      title="Notifications"
+      aria-label={count > 0 ? `Notifications, ${count} unread` : "Notifications"}
       className={({ isActive }) =>
-        `min-h-12 lg:min-h-0 flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors no-underline ${
-          isActive ? "bg-accent-bg" : "hover:bg-surface-inset"
-        }`
+        `relative flex shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+          size === "touch" ? "h-11 w-11" : "h-8 w-8"
+        } ${isActive ? "bg-accent-bg text-accent ring-accent/30" : "text-text-secondary ring-border hover:bg-surface-inset"}`
       }
     >
-      {({ isActive }) => (
-        <>
-          <div
-            className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors ${
-              isActive ? "bg-danger/15 text-danger-text" : "bg-surface-inset text-text-muted"
-            }`}
-          >
-            <Icon name="bell" className="h-4 w-4" />
-            {count > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger px-1 text-[11px] font-bold text-white leading-none">
-                {count > 99 ? "99+" : count}
-              </span>
-            )}
-          </div>
-          <span className={isActive ? "text-accent font-semibold" : "text-text-secondary"}>
-            Notifications
-          </span>
-        </>
+      <Icon name="bell" className={size === "touch" ? "h-5 w-5" : "h-4 w-4"} />
+      {count > 0 && (
+        <span
+          aria-hidden
+          className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger px-1 text-[11px] font-bold leading-none text-white"
+        >
+          {count > 99 ? "99+" : count}
+        </span>
       )}
     </NavLink>
   );
 }
+
+// 32px rows on desktop; 48px touch rows in the drawer below 1024px.
+const ROW = "flex min-h-12 items-center gap-2.5 rounded-[7px] px-2 text-[15px] font-medium no-underline transition-colors lg:h-8 lg:min-h-0 lg:text-[13.5px]";
+// An inset outline, so the nav's overflow-y-auto never clips it.
+const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent";
+const ROW_ICON = "h-[18px] w-[18px] shrink-0 lg:h-4 lg:w-4";
 
 function SidebarLink({ item, waiting = 0 }: { item: NavItem; waiting?: number }) {
   return (
     <NavLink
       to={item.to}
       end={item.end}
-      className={({ isActive }) =>
-        `min-h-12 lg:min-h-0 flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors no-underline ${
-          isActive ? "bg-accent-bg" : "hover:bg-surface-inset"
-        }`
-      }
+      className={({ isActive }) => `${ROW} ${FOCUS} ${isActive ? "bg-accent-bg" : "hover:bg-surface-inset"}`}
     >
       {({ isActive }) => (
         <>
-          <div
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors ${
-              isActive ? "bg-accent-bg text-accent" : "bg-surface-inset text-text-muted"
-            }`}
-          >
-            <Icon name={item.icon} className="h-4 w-4" />
-          </div>
-          <span className={isActive ? "text-accent font-semibold" : "text-text-secondary"}>
+          <Icon name={item.icon} className={`${ROW_ICON} ${isActive ? "text-accent" : "text-text-muted"}`} />
+          <span className={`whitespace-nowrap ${isActive ? "text-accent font-semibold" : "text-text-secondary"}`}>
             {item.label}
           </span>
           {/* A count, not a bare dot: TOKENS/CLAUDE.md rule 10 says colour is
               never the only carrier of meaning, and the number is its own
-              label. Same danger red the Notifications badge already uses, so
-              "red in the nav" keeps meaning exactly one thing. */}
+              label. Same danger red the bell's badge uses, so "red in the
+              nav" keeps meaning exactly one thing. */}
           {waiting > 0 && (
             <span
               className="ml-auto flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger px-1 text-[11px] font-bold text-white leading-none"
@@ -233,9 +225,155 @@ function SidebarLink({ item, waiting = 0 }: { item: NavItem; waiting?: number })
   );
 }
 
+// ── Account menu (the footer) ────────────────────────────────────────────────
+
+const MENU_ITEM = `flex min-h-12 w-full items-center rounded-lg px-2.5 text-left text-[15px] text-text no-underline hover:bg-surface-inset disabled:opacity-50 lg:min-h-9 lg:text-[13.5px] ${FOCUS}`;
+
+/**
+ * One button that opens upwards: Settings, Notification settings, Switch to
+ * Lite mode (clubs only) and Log out. Keyboard: arrows, Home and End move
+ * between items; Escape closes it and returns focus to the button. Escape
+ * is stopped here, so inside the phone drawer it closes only the menu, not
+ * the drawer behind it (whose focus trap also listens for Escape).
+ */
+function AccountMenu({ onLogout }: { onLogout: () => void }) {
+  const { user, userType } = useAuth();
+  const identity = useIdentity();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const switchToLite = useUpdatePreferences();
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const focusFirst = useRef(false);
+
+  useEffect(() => setOpen(false), [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const items = () =>
+    Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? []);
+
+  // Opened from the keyboard: focus the first item.
+  useEffect(() => {
+    if (open && focusFirst.current) items()[0]?.focus();
+    focusFirst.current = false;
+  }, [open]);
+
+  function close() {
+    setOpen(false);
+    buttonRef.current?.focus();
+  }
+
+  function onButtonKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      focusFirst.current = true;
+      setOpen(true);
+    } else if (e.key === "Escape" && open) {
+      e.stopPropagation();
+      close();
+    }
+  }
+
+  function onMenuKeyDown(e: React.KeyboardEvent) {
+    const list = items();
+    const i = list.indexOf(document.activeElement as HTMLElement);
+    const go = (n: number) => { e.preventDefault(); list[(n + list.length) % list.length]?.focus(); };
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
+    else if (e.key === "ArrowDown") go(i + 1);
+    else if (e.key === "ArrowUp") go(i - 1);
+    else if (e.key === "Home") go(0);
+    else if (e.key === "End") go(list.length - 1);
+    else if (e.key === "Tab") setOpen(false);
+  }
+
+  const name = identity.name ?? user?.email ?? "";
+  const subLine = identity.subLabel ?? (identity.role ? ROLE_LABEL[identity.role] : null);
+
+  return (
+    <div ref={wrapperRef} className="relative border-t border-border px-2.5 py-2">
+      {open && (
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label="Account"
+          onKeyDown={onMenuKeyDown}
+          className="absolute bottom-[calc(100%+6px)] left-2.5 right-2.5 z-50 rounded-xl bg-surface p-1.5 shadow-xl ring-1 ring-border"
+        >
+          <NavLink to="/account" role="menuitem" tabIndex={-1} className={MENU_ITEM}>Settings</NavLink>
+          <Link to="/account#notifications" role="menuitem" tabIndex={-1} className={MENU_ITEM}>Notification settings</Link>
+          {userType === "CLUB" && (
+            <button
+              type="button"
+              role="menuitem"
+              tabIndex={-1}
+              disabled={switchToLite.isPending}
+              onClick={() => switchToLite.mutate({ lite_mode: true }, { onSuccess: () => navigate("/lite") })}
+              className={MENU_ITEM}
+            >
+              Switch to Lite mode
+            </button>
+          )}
+          <div role="separator" className="my-1 h-px bg-rule" />
+          <button
+            type="button"
+            role="menuitem"
+            tabIndex={-1}
+            onClick={() => { setOpen(false); onLogout(); }}
+            className={`${MENU_ITEM} text-danger-text-alt`}
+          >
+            Log out
+          </button>
+        </div>
+      )}
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={(e) => {
+          focusFirst.current = e.detail === 0; // Enter or Space, not a pointer
+          setOpen((o) => !o);
+        }}
+        onKeyDown={onButtonKeyDown}
+        className={`flex min-h-12 w-full items-center gap-2.5 rounded-lg bg-surface-inset px-2 text-left transition-colors hover:bg-border/40 lg:h-11 lg:min-h-0 ${FOCUS}`}
+      >
+        <Avatar
+          name={name}
+          crestUrl={identity.crestUrl}
+          role={identity.role}
+          isSuperuser={identity.isSuperuser}
+          size="sm"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13px] font-semibold text-text">{name}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            {subLine && <span className="truncate text-[11.5px] text-text-muted">{subLine}</span>}
+            {identity.isSuperuser && (
+              <span className="shrink-0 rounded px-1.5 py-px text-[10px] font-bold uppercase tracking-wider bg-danger/15 text-danger-text">
+                Staff
+              </span>
+            )}
+          </span>
+        </span>
+        {/* Up while closed: the menu opens upwards. */}
+        <Icon name="chevron-up" className={`h-3.5 w-3.5 shrink-0 text-text-muted transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+    </div>
+  );
+}
+
 export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const { user, isAuthenticated, logout, userType } = useAuth();
-  const identity = useIdentity();
   const { can, role } = useClubCapabilities();
   const navigate = useNavigate();
 
@@ -270,8 +408,6 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   // false on desktop under normal use (see AppShell's route-change effect).
   const drawerRef = useFocusTrap(mobileOpen, onMobileClose);
 
-  const switchToLite = useUpdatePreferences();
-
   async function handleLogout() {
     await logout();
     navigate("/login");
@@ -288,36 +424,38 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       )}
 
       {/* Persistent 232px sidebar at >=1024px; 280px off-canvas drawer below it.
-          No icon-only collapsed state at any width — RESPONSIVE.md bans it. */}
+          No icon-only collapsed state at any width — RESPONSIVE.md bans it.
+          Compact rows (docs/feature_spec/compact-sidebar) so a club's whole
+          nav fits a 13-inch laptop without scrolling. */}
       <aside
         ref={drawerRef as React.RefObject<HTMLElement>}
         className={`fixed top-0 left-0 z-50 flex h-full w-[280px] flex-col border-r border-border bg-surface transition-transform duration-200
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:w-[232px]`}
       >
-        {/* Logo */}
-        <div className="flex h-[60px] items-center gap-3 border-b border-border px-5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent">
-            <Icon name="bolt" className="h-4 w-4 text-white" />
+        {/* Logo, and the notifications bell */}
+        <div className="flex h-[52px] shrink-0 items-center gap-2.5 border-b border-border pl-[18px] pr-3">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-accent">
+            <Icon name="bolt" className="h-3.5 w-3.5 text-white" />
           </div>
-          <span className="text-[15px] font-bold text-text whitespace-nowrap">TransferX</span>
+          <Link to="/dashboard" className={`flex-1 rounded text-[15px] font-bold text-text whitespace-nowrap no-underline ${FOCUS}`}>
+            TransferX
+          </Link>
+          {isAuthenticated && <NotificationBell />}
         </div>
 
-        {/* Nav — no overflow-y-auto so focus outlines aren't clipped */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-          {isAuthenticated && (
-            <div className="space-y-0.5">
-              <NotificationNavItem />
-            </div>
-          )}
+        {/* Nav. It scrolls only when the window is shorter than the nav
+            (Admin group, short laptop screens); focus outlines are inset so
+            the scroll container never clips them. */}
+        <nav className="flex flex-1 flex-col gap-3 overflow-y-auto px-2.5 py-2.5">
           {navGroups.map((group) => {
             if (group.authRequired && !isAuthenticated) return null;
             if (group.superuserOnly && !user?.is_superuser) return null;
             return (
               <div key={group.title}>
-                <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-muted">
+                <p className="flex h-[22px] items-center px-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-muted">
                   {group.title}
                 </p>
-                <div className="space-y-0.5">
+                <div className="flex flex-col">
                   {group.items.map((item) => (
                     <SidebarLink key={item.to} item={item} waiting={waitingByRoute[item.to] ?? 0} />
                   ))}
@@ -327,84 +465,17 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="border-t border-border px-3 py-3 space-y-0.5">
-          {/* Lite mode (docs/feature_spec/lite-mode): the way back is always one tap. */}
-          {isAuthenticated && userType === "CLUB" && (
-            <button
-              type="button"
-              onClick={() => switchToLite.mutate({ lite_mode: true }, { onSuccess: () => navigate("/lite") })}
-              disabled={switchToLite.isPending}
-              className="min-h-12 lg:min-h-0 flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm font-medium transition-colors hover:bg-surface-inset"
-            >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-text-muted">
-                <Icon name="home" className="h-4 w-4" />
-              </div>
-              <span className="text-text-secondary">Switch to Lite mode</span>
-            </button>
-          )}
-          {isAuthenticated && (
-            <NavLink
-              to="/account"
-              className={({ isActive }) =>
-                `min-h-12 lg:min-h-0 flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors no-underline ${
-                  isActive ? "bg-accent-bg" : "hover:bg-surface-inset"
-                }`
-              }
-            >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-text-muted">
-                <Icon name="settings" className="h-4 w-4" />
-              </div>
-              <span className="text-text-secondary">Settings</span>
-            </NavLink>
-          )}
-
-          {isAuthenticated ? (
-            <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
-              <Avatar
-                name={identity.name ?? user?.email}
-                crestUrl={identity.crestUrl}
-                role={identity.role}
-                isSuperuser={identity.isSuperuser}
-                size="sm"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-text">{identity.name ?? user?.email}</p>
-                <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                  {identity.role && (
-                    <span className="text-[11px] font-medium text-text-muted">
-                      {ROLE_LABEL[identity.role]}
-                    </span>
-                  )}
-                  {identity.isSuperuser && (
-                    <span className="rounded px-1.5 py-px text-[11px] font-bold uppercase tracking-wider bg-danger/15 text-danger-text">
-                      Staff
-                    </span>
-                  )}
-                  {identity.subLabel && (
-                    <span className="truncate text-[11px] text-text-muted">{identity.subLabel}</span>
-                  )}
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="mt-0.5 text-[11px] text-text-muted hover:text-text-secondary transition-colors"
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-          ) : (
-            <NavLink
-              to="/login"
-              className="min-h-12 lg:min-h-0 flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm text-text-secondary hover:bg-surface-inset no-underline"
-            >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-inset">
-                <Icon name="log-out" className="h-4 w-4" />
-              </div>
+        {/* Footer: the account menu, or Login when signed out */}
+        {isAuthenticated ? (
+          <AccountMenu onLogout={handleLogout} />
+        ) : (
+          <div className="border-t border-border px-2.5 py-2">
+            <NavLink to="/login" className={`${ROW} ${FOCUS} text-text-secondary hover:bg-surface-inset`}>
+              <Icon name="log-out" className={`${ROW_ICON} text-text-muted`} />
               <span>Login</span>
             </NavLink>
-          )}
-        </div>
+          </div>
+        )}
       </aside>
     </>
   );

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e9ebef;font-family:Inter,system-ui,sans-serif;color:#14171f;-webkit-font-smoothing:antialiased}
+a{color:#215fbc;text-decoration:none}a:hover{color:#0347a2}
+</style>
+</helmet>
+<div style="padding:56px 64px 120px;display:flex;flex-direction:column;gap:80px;">
+
+  <div style="display:flex;flex-direction:column;gap:12px;max-width:860px;">
+    <div style="font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#667085;">TransferX · Navigation</div>
+    <h1 style="margin:0;font-size:40px;font-weight:800;letter-spacing:-0.02em;line-height:1.1;">A sidebar that fits a 13-inch laptop, and three ways to navigate</h1>
+    <p style="margin:0;font-size:17px;line-height:1.55;color:#475467;text-wrap:pretty;">The current sidebar is about 1,056px tall for a club account. A 13-inch MacBook Air shows about 790px of page in Chrome, so the footer and the Club group sit below the fold. Every option below keeps labels visible at all times, as RESPONSIVE.md requires.</p>
+  </div>
+
+  <section id="0" style="display:flex;flex-direction:column;gap:24px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:13px;font-weight:700;padding:3px 9px;border-radius:7px;background:#14171f;color:#fff;">Now</span>
+      <h2 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.01em;">Where the height goes</h2>
+    </div>
+    <div style="display:flex;gap:56px;align-items:flex-start;flex-wrap:wrap;">
+      <div style="position:relative;width:232px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;display:flex;flex-direction:column;">
+        <div style="height:60px;border-bottom:1px solid #e4e7ec;display:flex;align-items:center;gap:12px;padding:0 20px;">
+          <span style="width:28px;height:28px;border-radius:8px;background:#215fbc;"></span>
+          <span style="font-size:15px;font-weight:700;">TransferX</span>
+        </div>
+        <div style="padding:16px 12px;display:flex;flex-direction:column;gap:20px;">
+          <div style="display:flex;align-items:center;gap:12px;height:40px;padding:0 8px;">
+            <span style="width:28px;height:28px;border-radius:8px;background:#f2f4f7;position:relative;"><span style="position:absolute;right:-4px;top:-4px;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 4px;line-height:16px;">3</span></span>
+            <span style="font-size:14px;font-weight:500;color:#475467;">Notifications</span>
+          </div>
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="4">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#667085;padding:0 8px 4px;">{{ g.title }}</div>
+              <sc-for list="{{ g.items }}" as="i" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:12px;height:40px;padding:0 8px;border-radius:8px;background:{{ i.bg }};">
+                  <span style="width:28px;height:28px;border-radius:8px;background:{{ i.tile }};flex:0 0 28px;"></span>
+                  <span style="font-size:14px;font-weight:{{ i.fw }};color:{{ i.color }};">{{ i.label }}</span>
+                  <sc-if value="{{ i.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ i.badge }}</span></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+        <div style="border-top:1px solid #e4e7ec;padding:12px;display:flex;flex-direction:column;gap:2px;">
+          <div style="display:flex;align-items:center;gap:12px;height:40px;padding:0 8px;"><span style="width:28px;height:28px;border-radius:8px;background:#f2f4f7;"></span><span style="font-size:14px;color:#475467;">Switch to Lite mode</span></div>
+          <div style="display:flex;align-items:center;gap:12px;height:40px;padding:0 8px;"><span style="width:28px;height:28px;border-radius:8px;background:#f2f4f7;"></span><span style="font-size:14px;color:#475467;">Settings</span></div>
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:6px 8px;"><span style="width:28px;height:28px;border-radius:50%;background:#dfe3e8;flex:0 0 28px;"></span><div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:12px;font-weight:600;">Riverside Athletic</span><span style="font-size:11px;color:#667085;">Club · Rob Hale</span><span style="font-size:11px;color:#667085;">Logout</span></div></div>
+        </div>
+        <div style="position:absolute;left:-16px;right:-16px;top:790px;border-top:2px dashed #c53637;"></div>
+        <div style="position:absolute;left:250px;top:778px;font-size:12px;font-weight:700;color:#ac1922;white-space:nowrap;">13-inch fold · 790px</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;max-width:420px;padding-top:4px;">
+        <sc-for list="{{ budget }}" as="b" hint-placeholder-count="5">
+          <div style="display:flex;gap:16px;align-items:baseline;border-bottom:1px solid #d9dde3;padding-bottom:12px;">
+            <span style="flex:0 0 64px;font-size:20px;font-weight:700;">{{ b.px }}</span>
+            <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:15px;font-weight:600;">{{ b.what }}</span><span style="font-size:13px;color:#667085;line-height:1.45;">{{ b.note }}</span></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section id="1a" style="display:flex;flex-direction:column;gap:24px;">
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:13px;font-weight:700;padding:3px 9px;border-radius:7px;background:#215fbc;color:#fff;">1a</span>
+        <h2 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.01em;">Compact sidebar</h2>
+      </div>
+      <p style="margin:0;font-size:15px;color:#475467;max-width:820px;line-height:1.5;">The same groups and labels, at about 705px. Rows drop from 40px to 32px and lose the icon tiles. Notifications moves to a bell beside the logo. Lite mode, Settings and Logout go into one account menu. Phones and iPad keep the drawer, with 44px rows for touch. The smallest change, and nothing to relearn.</p>
+    </div>
+    <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">Laptop · 1440 × 790 (cropped to 1180)</div>
+        <div style="width:1180px;height:790px;overflow:hidden;border-radius:12px;box-shadow:0 0 0 1px #d0d5dd,0 18px 40px rgba(16,24,40,0.12);background:#f7f8fa;display:flex;position:relative;">
+          <div style="width:232px;flex:0 0 232px;background:#fff;border-right:1px solid #e4e7ec;display:flex;flex-direction:column;">
+            <div style="height:52px;border-bottom:1px solid #e4e7ec;display:flex;align-items:center;gap:10px;padding:0 12px 0 18px;">
+              <span style="width:24px;height:24px;border-radius:7px;background:#215fbc;"></span>
+              <span style="font-size:15px;font-weight:700;flex:1;">TransferX</span>
+              <span style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:inset 0 0 0 1px #e4e7ec;"><span style="width:14px;height:14px;border:1.5px solid #475467;border-radius:7px 7px 3px 3px;box-sizing:border-box;"></span><span style="position:absolute;right:-5px;top:-5px;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 4px;line-height:16px;">3</span></span>
+            </div>
+            <div style="flex:1;padding:10px;display:flex;flex-direction:column;gap:12px;">
+              <sc-for list="{{ groups }}" as="g" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;">
+                  <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#667085;padding:0 8px;height:22px;display:flex;align-items:center;">{{ g.title }}</div>
+                  <sc-for list="{{ g.items }}" as="i" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border-radius:7px;background:{{ i.bg }};">
+                      <span style="width:16px;height:16px;border-radius:4px;box-shadow:inset 0 0 0 1.5px {{ i.icon }};flex:0 0 16px;"></span>
+                      <span style="font-size:13.5px;font-weight:{{ i.fw }};color:{{ i.color }};white-space:nowrap;">{{ i.label }}</span>
+                      <sc-if value="{{ i.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ i.badge }}</span></sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:1px solid #e4e7ec;padding:8px 10px;">
+              <div style="display:flex;align-items:center;gap:10px;height:44px;padding:0 8px;border-radius:8px;background:#f2f4f7;">
+                <span style="width:28px;height:28px;border-radius:50%;background:#dfe3e8;flex:0 0 28px;"></span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;"><span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Riverside Athletic</span><span style="font-size:11.5px;color:#667085;">Rob Hale · Sporting Director</span></div>
+                <span style="font-size:12px;color:#667085;">⌃</span>
+              </div>
+            </div>
+          </div>
+          <div style="flex:1;padding:24px 32px;display:flex;flex-direction:column;gap:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:22px;font-weight:700;">{{ activeLabel }}</span><span style="width:260px;height:36px;border-radius:8px;background:#fff;box-shadow:inset 0 0 0 1px #d0d5dd;"></span></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;"><span style="height:96px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span><span style="height:96px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span><span style="height:96px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span></div>
+            <span style="height:300px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span>
+          </div>
+          <div style="position:absolute;left:250px;bottom:72px;width:232px;background:#fff;border-radius:12px;box-shadow:0 0 0 1px #e4e7ec,0 12px 28px rgba(16,24,40,0.16);padding:6px;display:flex;flex-direction:column;">
+            <span style="font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#98a2b3;padding:6px 10px 4px;">Account menu, open</span>
+            <span style="font-size:13.5px;padding:8px 10px;">Settings</span>
+            <span style="font-size:13.5px;padding:8px 10px;">Notification settings</span>
+            <span style="font-size:13.5px;padding:8px 10px;">Switch to Lite mode</span>
+            <span style="font-size:13.5px;padding:8px 10px;border-top:1px solid #f0f1f3;color:#9b1e22;">Log out</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">iPad portrait · drawer open (scrolls on phones)</div>
+        <div style="width:560px;height:900px;border-radius:30px;background:#0b0d12;padding:12px;box-sizing:border-box;">
+          <div style="height:100%;border-radius:20px;overflow:hidden;background:#f7f8fa;position:relative;display:flex;flex-direction:column;">
+            <div style="height:56px;background:#fff;border-bottom:1px solid #e4e7ec;display:flex;align-items:center;gap:8px;padding:0 12px;"><span style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:20px;">☰</span><span style="font-size:16px;font-weight:700;">TransferX</span><span style="font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px;background:#ffdcd8;color:#970818;">4</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:12px;"><span style="height:90px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span><span style="height:240px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span></div>
+            <div style="position:absolute;inset:0;background:rgba(20,23,31,0.4);"></div>
+            <div style="position:absolute;left:0;top:0;bottom:0;width:280px;background:#fff;display:flex;flex-direction:column;">
+              <div style="height:56px;border-bottom:1px solid #e4e7ec;display:flex;align-items:center;gap:10px;padding:0 12px 0 18px;"><span style="width:24px;height:24px;border-radius:7px;background:#215fbc;"></span><span style="font-size:15px;font-weight:700;flex:1;">TransferX</span><span style="font-size:13px;color:#475467;">Bell · 3</span></div>
+              <div style="flex:1;padding:8px 10px;display:flex;flex-direction:column;gap:8px;overflow:hidden;">
+                <sc-for list="{{ groups }}" as="g" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;">
+                    <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#667085;padding:0 10px;height:24px;display:flex;align-items:center;">{{ g.title }}</div>
+                    <sc-for list="{{ g.items }}" as="i" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:12px;height:44px;padding:0 10px;border-radius:8px;background:{{ i.bg }};">
+                        <span style="width:18px;height:18px;border-radius:5px;box-shadow:inset 0 0 0 1.5px {{ i.icon }};flex:0 0 18px;"></span>
+                        <span style="font-size:15px;font-weight:{{ i.fw }};color:{{ i.color }};">{{ i.label }}</span>
+                        <sc-if value="{{ i.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ i.badge }}</span></sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="border-top:1px solid #e4e7ec;padding:8px 10px;"><div style="display:flex;align-items:center;gap:10px;height:48px;padding:0 10px;border-radius:8px;background:#f2f4f7;"><span style="width:28px;height:28px;border-radius:50%;background:#dfe3e8;"></span><span style="font-size:14px;font-weight:600;flex:1;">Riverside Athletic</span><span style="color:#667085;">⌃</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="1b" style="display:flex;flex-direction:column;gap:24px;">
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:13px;font-weight:700;padding:3px 9px;border-radius:7px;background:#215fbc;color:#fff;">1b</span>
+        <h2 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.01em;">Sections that fold, and a tab bar on touch screens</h2>
+      </div>
+      <p style="margin:0;font-size:15px;color:#475467;max-width:820px;line-height:1.5;">On a laptop, only the section you're in stays open. A folded section shows its waiting count, so nothing urgent is hidden. On iPad and phones, the four sections become a bottom tab bar within thumb reach, and each section's pages sit in a chip row under the title. No hamburger.</p>
+    </div>
+    <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">Laptop · sidebar only</div>
+        <div style="width:232px;height:790px;border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px #d0d5dd,0 18px 40px rgba(16,24,40,0.12);background:#fff;display:flex;flex-direction:column;">
+          <div style="height:52px;border-bottom:1px solid #e4e7ec;display:flex;align-items:center;gap:10px;padding:0 12px 0 18px;">
+            <span style="width:24px;height:24px;border-radius:7px;background:#215fbc;"></span>
+            <span style="font-size:15px;font-weight:700;flex:1;">TransferX</span>
+            <span style="width:32px;height:32px;border-radius:8px;position:relative;box-shadow:inset 0 0 0 1px #e4e7ec;"><span style="position:absolute;right:-5px;top:-5px;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 4px;line-height:16px;">3</span></span>
+          </div>
+          <div style="flex:1;padding:10px;display:flex;flex-direction:column;gap:4px;">
+            <sc-for list="{{ bGroups }}" as="g" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;">
+                <div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 8px;border-radius:7px;">
+                  <span style="font-size:10px;color:#98a2b3;width:10px;">{{ g.chev }}</span>
+                  <span style="font-size:13px;font-weight:700;color:#344054;">{{ g.title }}</span>
+                  <sc-if value="{{ g.showTotal }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ g.total }}</span></sc-if>
+                </div>
+                <sc-if value="{{ g.open }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;flex-direction:column;padding-bottom:6px;">
+                    <sc-for list="{{ g.items }}" as="i" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:10px;height:32px;padding:0 8px 0 26px;border-radius:7px;background:{{ i.bg }};">
+                        <span style="font-size:13.5px;font-weight:{{ i.fw }};color:{{ i.color }};white-space:nowrap;">{{ i.label }}</span>
+                        <sc-if value="{{ i.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ i.badge }}</span></sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <div style="border-top:1px solid #e4e7ec;padding:8px 10px;">
+            <div style="display:flex;align-items:center;gap:10px;height:44px;padding:0 8px;border-radius:8px;background:#f2f4f7;">
+              <span style="width:28px;height:28px;border-radius:50%;background:#dfe3e8;flex:0 0 28px;"></span>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;"><span style="font-size:13px;font-weight:600;">Riverside Athletic</span><span style="font-size:11.5px;color:#667085;">Rob Hale · Sporting Director</span></div>
+              <span style="font-size:12px;color:#667085;">⌃</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">iPad portrait · tab bar</div>
+        <div style="width:560px;height:790px;border-radius:30px;background:#0b0d12;padding:12px;box-sizing:border-box;">
+          <div style="height:100%;border-radius:20px;overflow:hidden;background:#f7f8fa;display:flex;flex-direction:column;">
+            <div style="background:#fff;border-bottom:1px solid #e4e7ec;padding:12px 20px 12px;display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;font-weight:700;flex:1;">{{ activeGroup }}</span><span style="width:40px;height:40px;border-radius:10px;box-shadow:inset 0 0 0 1px #e4e7ec;"></span><span style="width:40px;height:40px;border-radius:10px;box-shadow:inset 0 0 0 1px #e4e7ec;position:relative;"><span style="position:absolute;right:-5px;top:-5px;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 4px;line-height:16px;">3</span></span></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <sc-for list="{{ subPages }}" as="s" hint-placeholder-count="4">
+                  <span style="height:36px;display:flex;align-items:center;gap:6px;padding:0 14px;border-radius:18px;font-size:14px;font-weight:600;background:{{ s.chipBg }};color:{{ s.chipColor }};box-shadow:inset 0 0 0 1px {{ s.chipRing }};">{{ s.label }}<sc-if value="{{ s.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ s.badge }}</span></sc-if></span>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:1;padding:20px;display:flex;flex-direction:column;gap:12px;"><span style="height:90px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span><span style="height:280px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span></div>
+            <div style="height:68px;background:#fff;border-top:1px solid #e4e7ec;display:flex;justify-content:center;gap:24px;padding:0 20px;">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+                <div style="width:76px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative;">
+                  <span style="width:22px;height:22px;border-radius:6px;box-shadow:inset 0 0 0 2px {{ t.color }};"></span>
+                  <span style="font-size:12px;font-weight:600;color:{{ t.color }};">{{ t.label }}</span>
+                  <sc-if value="{{ t.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:8px;left:44px;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ t.badge }}</span></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">Phone · tab bar</div>
+        <div style="width:375px;height:790px;border-radius:48px;background:#0b0d12;padding:10px;box-sizing:border-box;">
+          <div style="height:100%;border-radius:38px;overflow:hidden;background:#f7f8fa;display:flex;flex-direction:column;">
+            <div style="height:44px;"></div>
+            <div style="background:#fff;border-bottom:1px solid #e4e7ec;padding:4px 16px 12px;display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:22px;font-weight:700;flex:1;">{{ activeGroup }}</span><span style="width:44px;height:44px;border-radius:10px;box-shadow:inset 0 0 0 1px #e4e7ec;"></span><span style="width:44px;height:44px;border-radius:10px;box-shadow:inset 0 0 0 1px #e4e7ec;position:relative;"><span style="position:absolute;right:-4px;top:-4px;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 4px;line-height:16px;">3</span></span></div>
+              <div style="display:flex;gap:8px;overflow:hidden;">
+                <sc-for list="{{ subPages }}" as="s" hint-placeholder-count="4">
+                  <span style="height:40px;flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:0 14px;border-radius:20px;font-size:14px;font-weight:600;white-space:nowrap;background:{{ s.chipBg }};color:{{ s.chipColor }};box-shadow:inset 0 0 0 1px {{ s.chipRing }};">{{ s.label }}<sc-if value="{{ s.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ s.badge }}</span></sc-if></span>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;"><span style="height:110px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span><span style="height:110px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span><span style="height:110px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span></div>
+            <div style="height:84px;background:#fff;border-top:1px solid #e4e7ec;display:flex;padding:0 6px 20px;">
+              <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative;">
+                  <span style="width:22px;height:22px;border-radius:6px;box-shadow:inset 0 0 0 2px {{ t.color }};"></span>
+                  <span style="font-size:11px;font-weight:600;color:{{ t.color }};">{{ t.label }}</span>
+                  <sc-if value="{{ t.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:6px;left:calc(50% + 6px);font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ t.badge }}</span></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;max-width:260px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">More tab</div>
+        <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;display:flex;flex-direction:column;">
+          <sc-for list="{{ moreItems }}" as="m" hint-placeholder-count="5">
+            <span style="height:48px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid #f0f1f3;font-size:15px;">{{ m }}</span>
+          </sc-for>
+        </div>
+        <span style="font-size:13px;color:#667085;line-height:1.45;">Account, settings, Lite mode, notifications and log out. Admin appears here for staff.</span>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="1c" style="display:flex;flex-direction:column;gap:24px;">
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:13px;font-weight:700;padding:3px 9px;border-radius:7px;background:#215fbc;color:#fff;">1c</span>
+        <h2 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.01em;">Top navigation, the same on every device</h2>
+      </div>
+      <p style="margin:0;font-size:15px;color:#475467;max-width:820px;line-height:1.5;">No sidebar. The four sections are tabs in the top bar, and the current section's pages sit in a second row. Content gets the full 1440px width, which helps tables like the squad list. The same two rows shrink to fit iPad and phone, so there is one model to learn. This replaces the persistent sidebar that RESPONSIVE.md specifies, so it needs that rule changed.</p>
+    </div>
+    <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">Laptop · 1440 × 790 (cropped to 1180)</div>
+        <div style="width:1180px;height:790px;overflow:hidden;border-radius:12px;box-shadow:0 0 0 1px #d0d5dd,0 18px 40px rgba(16,24,40,0.12);background:#f7f8fa;display:flex;flex-direction:column;">
+          <div style="background:#fff;border-bottom:1px solid #e4e7ec;">
+            <div style="height:56px;display:flex;align-items:center;gap:28px;padding:0 24px;">
+              <div style="display:flex;align-items:center;gap:10px;"><span style="width:24px;height:24px;border-radius:7px;background:#215fbc;"></span><span style="font-size:15px;font-weight:700;">TransferX</span></div>
+              <div style="display:flex;gap:4px;height:100%;">
+                <sc-for list="{{ cSections }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:6px;padding:0 12px;height:100%;box-shadow:inset 0 -2px 0 {{ s.bar }};">
+                    <span style="font-size:14px;font-weight:600;color:{{ s.color }};">{{ s.title }}</span>
+                    <sc-if value="{{ s.hasTotal }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ s.total }}</span></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <span style="margin-left:auto;width:280px;height:36px;border-radius:8px;background:#f7f8fa;box-shadow:inset 0 0 0 1px #d0d5dd;display:flex;align-items:center;padding:0 12px;font-size:13px;color:#98a2b3;box-sizing:border-box;">Search players, clubs, pages   ⌘K</span>
+              <span style="width:36px;height:36px;border-radius:8px;box-shadow:inset 0 0 0 1px #e4e7ec;position:relative;"><span style="position:absolute;right:-5px;top:-5px;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 4px;line-height:16px;">3</span></span>
+              <span style="width:32px;height:32px;border-radius:50%;background:#dfe3e8;"></span>
+            </div>
+            <div style="height:44px;display:flex;align-items:center;gap:6px;padding:0 20px;border-top:1px solid #f0f1f3;">
+              <sc-for list="{{ subPages }}" as="p" hint-placeholder-count="4">
+                <span style="height:30px;display:flex;align-items:center;gap:6px;padding:0 12px;border-radius:7px;font-size:13.5px;font-weight:{{ p.fw }};color:{{ p.color }};background:{{ p.bg }};">{{ p.label }}<sc-if value="{{ p.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ p.badge }}</span></sc-if></span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="flex:1;padding:24px 32px;display:flex;flex-direction:column;gap:16px;">
+            <span style="font-size:22px;font-weight:700;">{{ activeLabel }}</span>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;"><span style="height:96px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span><span style="height:96px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span><span style="height:96px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span><span style="height:96px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span></div>
+            <span style="height:340px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">iPad portrait</div>
+        <div style="width:560px;height:790px;border-radius:30px;background:#0b0d12;padding:12px;box-sizing:border-box;">
+          <div style="height:100%;border-radius:20px;overflow:hidden;background:#f7f8fa;display:flex;flex-direction:column;">
+            <div style="background:#fff;border-bottom:1px solid #e4e7ec;">
+              <div style="height:56px;display:flex;align-items:center;gap:6px;padding:0 12px 0 16px;">
+                <span style="width:24px;height:24px;border-radius:7px;background:#215fbc;margin-right:8px;"></span>
+                <sc-for list="{{ cSections }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:5px;padding:0 10px;height:56px;box-shadow:inset 0 -2px 0 {{ s.bar }};">
+                    <span style="font-size:14px;font-weight:600;color:{{ s.color }};">{{ s.title }}</span>
+                    <sc-if value="{{ s.hasTotal }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ s.total }}</span></sc-if>
+                  </div>
+                </sc-for>
+                <span style="margin-left:auto;width:40px;height:40px;border-radius:9px;box-shadow:inset 0 0 0 1px #e4e7ec;"></span>
+                <span style="width:40px;height:40px;border-radius:9px;box-shadow:inset 0 0 0 1px #e4e7ec;position:relative;"><span style="position:absolute;right:-4px;top:-4px;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 4px;line-height:16px;">3</span></span>
+                <span style="width:32px;height:32px;border-radius:50%;background:#dfe3e8;"></span>
+              </div>
+              <div style="height:48px;display:flex;align-items:center;gap:6px;padding:0 12px;border-top:1px solid #f0f1f3;overflow:hidden;">
+                <sc-for list="{{ subPages }}" as="p" hint-placeholder-count="4">
+                  <span style="height:36px;flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:0 12px;border-radius:8px;font-size:14px;white-space:nowrap;font-weight:{{ p.fw }};color:{{ p.color }};background:{{ p.bg }};">{{ p.label }}<sc-if value="{{ p.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ p.badge }}</span></sc-if></span>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:1;padding:20px;display:flex;flex-direction:column;gap:12px;"><span style="font-size:20px;font-weight:700;">{{ activeLabel }}</span><span style="height:90px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span><span style="height:300px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">Phone</div>
+        <div style="width:375px;height:790px;border-radius:48px;background:#0b0d12;padding:10px;box-sizing:border-box;">
+          <div style="height:100%;border-radius:38px;overflow:hidden;background:#f7f8fa;display:flex;flex-direction:column;">
+            <div style="height:44px;background:#fff;"></div>
+            <div style="background:#fff;border-bottom:1px solid #e4e7ec;">
+              <div style="height:52px;display:flex;align-items:center;gap:6px;padding:0 10px 0 16px;">
+                <span style="width:24px;height:24px;border-radius:7px;background:#215fbc;"></span>
+                <span style="font-size:16px;font-weight:700;flex:1;margin-left:6px;">TransferX</span>
+                <span style="width:44px;height:44px;border-radius:10px;box-shadow:inset 0 0 0 1px #e4e7ec;"></span>
+                <span style="width:44px;height:44px;border-radius:10px;box-shadow:inset 0 0 0 1px #e4e7ec;position:relative;"><span style="position:absolute;right:-4px;top:-4px;font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 4px;line-height:16px;">3</span></span>
+                <span style="width:32px;height:32px;border-radius:50%;background:#dfe3e8;margin-left:4px;"></span>
+              </div>
+              <div style="margin:0 12px;padding:3px;border-radius:10px;background:#eef0f3;display:flex;">
+                <sc-for list="{{ cSections }}" as="s" hint-placeholder-count="4">
+                  <div style="flex:1;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:4px;background:{{ s.segBg }};box-shadow:{{ s.segShadow }};">
+                    <span style="font-size:13px;font-weight:600;color:{{ s.color }};">{{ s.title }}</span>
+                    <sc-if value="{{ s.hasTotal }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:700;color:#fff;background:#c53637;border-radius:7px;padding:0 4px;line-height:14px;">{{ s.total }}</span></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:6px;padding:10px 12px;overflow:hidden;">
+                <sc-for list="{{ subPages }}" as="p" hint-placeholder-count="4">
+                  <span style="height:40px;flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:0 14px;border-radius:20px;font-size:14px;font-weight:600;white-space:nowrap;background:{{ p.chipBg }};color:{{ p.chipColor }};box-shadow:inset 0 0 0 1px {{ p.chipRing }};">{{ p.label }}<sc-if value="{{ p.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:700;color:#fff;background:#c53637;border-radius:8px;padding:0 5px;line-height:16px;">{{ p.badge }}</span></sc-if></span>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;"><span style="font-size:20px;font-weight:700;">{{ activeLabel }}</span><span style="height:110px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span><span style="height:110px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></span></div>
+          </div>
+        </div>
+        <span style="font-size:13px;color:#667085;max-width:375px;line-height:1.45;">Costs about 150px of header on a phone. Account and settings live behind the avatar.</span>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="cmp" style="display:flex;flex-direction:column;gap:20px;max-width:1100px;">
+    <h2 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.01em;">Side by side</h2>
+    <div style="background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;display:grid;grid-template-columns:minmax(0,1.1fr) repeat(3,minmax(0,1fr));">
+      <span style="padding:12px 16px;font-size:12px;font-weight:700;color:#667085;border-bottom:1px solid #e4e7ec;"></span>
+      <span style="padding:12px 16px;font-size:13px;font-weight:700;border-bottom:1px solid #e4e7ec;"><a href="#1a">1a</a> Compact sidebar</span>
+      <span style="padding:12px 16px;font-size:13px;font-weight:700;border-bottom:1px solid #e4e7ec;"><a href="#1b">1b</a> Folding + tab bar</span>
+      <span style="padding:12px 16px;font-size:13px;font-weight:700;border-bottom:1px solid #e4e7ec;"><a href="#1c">1c</a> Top navigation</span>
+      <sc-for list="{{ compare }}" as="r" hint-placeholder-count="5">
+        <span style="padding:12px 16px;font-size:13px;font-weight:600;color:#475467;border-bottom:1px solid #f0f1f3;">{{ r.k }}</span>
+        <span style="padding:12px 16px;font-size:13px;line-height:1.45;border-bottom:1px solid #f0f1f3;">{{ r.a }}</span>
+        <span style="padding:12px 16px;font-size:13px;line-height:1.45;border-bottom:1px solid #f0f1f3;">{{ r.b }}</span>
+        <span style="padding:12px 16px;font-size:13px;line-height:1.45;border-bottom:1px solid #f0f1f3;">{{ r.c }}</span>
+      </sc-for>
+    </div>
+  </section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Dashboard&quot;,&quot;Browse Players&quot;,&quot;Offers Received&quot;,&quot;Approvals&quot;],&quot;default&quot;:&quot;Dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;collapseInactive&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const NAV = [
+  { title: "Home", items: [["Dashboard"], ["Transfers in progress", 1], ["Enquiries"]] },
+  { title: "Buying", items: [["Browse Players"], ["Listings"], ["Shortlists"], ["My Offers"], ["Recent Transfers"]] },
+  { title: "Selling", items: [["My Listings"], ["Offers Received", 2]] },
+  { title: "Club", items: [["My Club"], ["Finance"], ["Team"], ["Approvals", 1]] },
+];
+const ACCENT = "#215fbc";
+
+class Component extends DCLogic {
+  renderVals() {
+    const active = this.props.active ?? "Dashboard";
+    const collapse = this.props.collapseInactive ?? true;
+    const item = ([label, badge]) => {
+      const on = label === active;
+      return {
+        label, badge: badge || 0, hasBadge: !!badge,
+        bg: on ? "#eaf1fb" : "transparent", color: on ? ACCENT : "#475467", fw: on ? 600 : 500,
+        tile: on ? "#dbe7fb" : "#f2f4f7", icon: on ? ACCENT : "#98a2b3",
+        chipBg: on ? "#14171f" : "#fff", chipColor: on ? "#fff" : "#344054", chipRing: on ? "#14171f" : "#d0d5dd",
+      };
+    };
+    const groups = NAV.map(g => ({ title: g.title, items: g.items.map(item), total: g.items.reduce((s, i) => s + (i[1] || 0), 0) }));
+    const activeG = groups.find(g => g.items.some(i => i.label === active)) || groups[0];
+    return {
+      activeLabel: active,
+      activeGroup: activeG.title,
+      groups,
+      bGroups: groups.map(g => {
+        const open = !collapse || g === activeG;
+        return { ...g, open, chev: open ? "▼" : "▶", showTotal: !open && g.total > 0 };
+      }),
+      subPages: activeG.items,
+      cSections: groups.map(g => {
+        const on = g === activeG;
+        return { title: g.title, total: g.total, hasTotal: g.total > 0, color: on ? "#14171f" : "#667085", bar: on ? ACCENT : "transparent", segBg: on ? "#fff" : "transparent", segShadow: on ? "0 1px 2px rgba(16,24,40,0.1)" : "none" };
+      }),
+      tabs: [...groups.map(g => ({ label: g.title, badge: g.total, hasBadge: g.total > 0, color: g === activeG ? ACCENT : "#667085" })), { label: "More", badge: 0, hasBadge: false, color: "#667085" }],
+      moreItems: ["Riverside Athletic · Rob Hale", "Notifications", "Settings", "Switch to Lite mode", "Log out"],
+      budget: [
+        { px: "600", what: "15 rows at 40px", note: "Each row carries a 28px icon tile. Rows can be 32px on a laptop and still be easy to click." },
+        { px: "173", what: "Footer", note: "Lite mode, Settings and a three-line user card. These are used rarely and can share one menu." },
+        { px: "80", what: "Gaps between groups", note: "20px each. 12px keeps the groups distinct." },
+        { px: "61", what: "Logo row", note: "Can hold the Notifications bell, which saves a 40px row plus a 20px gap." },
+        { px: "90", what: "Group labels and nav padding", note: "Little to gain here." },
+      ],
+      compare: [
+        { k: "Laptop height", a: "About 705px. Fits with about 85px to spare", b: "About 470px with sections folded", c: "100px of top bar, no sidebar" },
+        { k: "Content width at 1440", a: "1208px (unchanged)", b: "1208px (unchanged)", c: "1440px" },
+        { k: "iPad and phone", a: "Drawer behind a hamburger, as today", b: "Bottom tab bar with chips for each section's pages", c: "The same top tabs, condensed" },
+        { k: "Taps to reach Approvals on a phone", a: "2 (menu, then Approvals)", b: "2 (Club, then Approvals)", c: "2 (Club, then Approvals)" },
+        { k: "Urgent counts visible", a: "On rows; in the top-bar total on touch", b: "Rolled up onto folded sections and tabs", c: "On section tabs and page tabs" },
+        { k: "Change to RESPONSIVE.md", a: "Row heights only", b: "Tab bar replaces the drawer below 1024px", c: "Replaces the persistent sidebar" },
+        { k: "Effort", a: "Small: Sidebar.tsx only", b: "Medium: Sidebar.tsx plus a new TabBar and section header", c: "Large: new AppShell and page headers" },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
