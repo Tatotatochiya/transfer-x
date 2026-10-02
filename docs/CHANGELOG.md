@@ -158,6 +158,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **TransferX staff start on the admin panel.** Signing in as a superuser, or opening `/`, now goes to `/admin` instead of the club Dashboard.
 - **A compact sidebar** ([spec](./feature_spec/compact-sidebar/README.md)).
   - The whole club nav now fits a 13-inch laptop without scrolling: 705px tall, down from 1,074px.
   - Rows are 32px, and Notifications is a bell with its unread count next to the logo, also in the phone top bar.
@@ -202,6 +203,11 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **The desktop search box covered page buttons.** It was pinned to the window's corner, over My Club's "Team" and "Edit profile", "+ New listing", "+ New shortlist", "Mark all as read" and the Player Market title. It now sits in a slim row above the page.
+- **My Club's contract cliff showed "—" for every window.** It added up the old vendor market value, which most players don't have; it now uses the model valuation, falling back to the market value.
+- **An empty squad showed a blank link instead of "Browse players".**
+- **The phone top bar's "waiting on you" count was never shown** (it was hard-wired to 0). It now counts the Dashboard's "waiting on you".
+- Team and Browse Players no longer share an icon in the sidebar, and the Notifications page's "Preferences" link opens the notification settings section.
 - **Email and daily summary switches were unreachable.** The full notification settings (every type, an Email column, the daily summary) were on a page no link reached; Account settings showed an older in-app-only list of 15 types. Account settings now has the full table.
 - **The hourly reminders repeated every hour.** "Your offer is expiring soon" was sent every hour for the offer's last 24 hours, and "Instalment due" every hour from three days before the due date until it was paid. Each person now gets each reminder once, and an instalment one more when it goes overdue.
 - **Typing "18" as a club valuation on the squad list saved £18.** The squad list kept only the digits, so "18" and "£18m" both saved £18. It now shares the player profile's parser: a plain number under 1,000 is millions, "m" and "k" work, a larger plain number is pounds, and anything else keeps the old value (`lib/money.ts`).

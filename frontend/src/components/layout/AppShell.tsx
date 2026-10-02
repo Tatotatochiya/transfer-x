@@ -40,10 +40,9 @@ export default function AppShell({ children }: AppShellProps) {
     setMobileOpen(false);
   }, [pathname]);
 
-  // TODO(Phase 4): wire to the real whose-move aggregate (backend item B2)
-  // once it exists. Zero renders no badge at all, matching the "no
-  // background when absent" rule the per-item nav badges already follow.
-  const yourMoveCount = 0;
+  // What is waiting on this person (the Dashboard's "waiting on you").
+  // Zero renders no badge at all, matching the per-item nav badges.
+  const yourMoveCount = dashboard?.waiting_on_you.length ?? 0;
 
   return (
     <div className="min-h-screen bg-page">
@@ -61,7 +60,11 @@ export default function AppShell({ children }: AppShellProps) {
         </button>
         <span className="text-base font-bold text-text shrink-0">TransferX</span>
         {isAuthenticated && yourMoveCount > 0 && (
-          <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-danger-bg-badge px-1.5 text-[11px] font-bold text-danger-heading">
+          <span
+            aria-label={`${yourMoveCount} waiting on you`}
+            title={`${yourMoveCount} waiting on you`}
+            className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-danger-bg-badge px-1.5 text-[11px] font-bold text-danger-heading"
+          >
             {yourMoveCount > 99 ? "99+" : yourMoveCount}
           </span>
         )}
@@ -82,16 +85,18 @@ export default function AppShell({ children }: AppShellProps) {
         )}
       </header>
 
-      {/* Desktop search bar — top-right, >=1024px only */}
-      <div className="hidden lg:flex fixed top-3 right-6 z-40">
-        <GlobalSearch />
-      </div>
-
       <Sidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
 
       {/* Main content */}
       <main className="pt-14 lg:pt-0 lg:ml-[232px]">
-        <div className="mx-auto max-w-[1280px] px-4 py-6 md:px-6 lg:px-8">
+        {/* Desktop search, >=1024px: a slim row above the page, in the flow.
+            It used to be pinned to the window's corner, where it covered
+            page headers' buttons (My Club's Team and Edit profile, "+ New
+            listing", "Mark all as read"…). ⌘K still opens it from anywhere. */}
+        <div className="mx-auto hidden h-14 max-w-[1280px] items-center justify-end px-8 lg:flex">
+          <GlobalSearch />
+        </div>
+        <div className="mx-auto max-w-[1280px] px-4 py-6 md:px-6 lg:px-8 lg:pt-1">
           {children}
         </div>
       </main>

@@ -407,11 +407,7 @@ export default function MyClubPage() {
                 <EmptyState
                   title="No players in squad"
                   body="Add players to your squad to see them here."
-                  action={
-                    <Button variant="primary" onClick={() => navigate("/players/market")}>
-                      Browse players
-                    </Button>
-                  }
+                  action={{ label: "Browse players", to: "/players/market" }}
                 />
               ) : (
                 <>
@@ -528,7 +524,7 @@ export default function MyClubPage() {
 
         {/* Sidebar */}
         <aside className="h-fit max-w-full flex-[1_1_260px] space-y-3 lg:sticky lg:top-6">
-          {tab === "squad" && players.length > 0 && <SquadRail players={players} />}
+          {tab === "squad" && players.length > 0 && <SquadRail players={players} fairValues={fairValues} />}
           <ClubInfoPanel
             club={club}
             squadSize={squadData?.total ?? null}

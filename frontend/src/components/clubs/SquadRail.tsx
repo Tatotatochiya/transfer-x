@@ -1,4 +1,4 @@
-import type { ActiveDealStub, PlayerDetail } from "../../types/api";
+import type { ActiveDealStub, FairValueSignal, PlayerDetail } from "../../types/api";
 import Card from "../ui/Card";
 import { formatCurrency } from "../../lib/utils";
 
@@ -26,7 +26,12 @@ function monthsUntil(iso: string): number {
   return (new Date(iso).getTime() - Date.now()) / (30 * 86_400_000);
 }
 
-function ContractCliff({ players }: { players: SquadPlayer[] }) {
+/** Each player's value: the fair-value model's figure when it has one, else
+ *  the vendor market value (ADR 0002). Most squads have model values only,
+ *  so reading market_value alone left every cliff row at "—". */
+type ValueOf = (p: SquadPlayer) => number;
+
+function ContractCliff({ players, valueOf }: { players: SquadPlayer[]; valueOf: ValueOf }) {
   const withContract = players.filter((p) => p.active_contract?.end_date);
   const windows = CLIFF_WINDOWS.map((w, i) => {
     const prevMax = i === 0 ? 0 : CLIFF_WINDOWS[i - 1].maxMonths;
@@ -34,7 +39,7 @@ function ContractCliff({ players }: { players: SquadPlayer[] }) {
       const m = monthsUntil(p.active_contract!.end_date!);
       return m >= prevMax && m < w.maxMonths;
     });
-    const valueAtRisk = inWindow.reduce((sum, p) => sum + Number(p.market_value ?? 0), 0);
+    const valueAtRisk = inWindow.reduce((sum, p) => sum + valueOf(p), 0);
     return { ...w, count: inWindow.length, valueAtRisk };
   });
 
@@ -47,7 +52,7 @@ function ContractCliff({ players }: { players: SquadPlayer[] }) {
             <span className="min-w-0 truncate text-text">
               {w.label} · <span className="text-text-muted">{w.count}</span>
             </span>
-            <span className="shrink-0 font-semibold text-text">
+            <span className="shrink-0 font-semibold text-text" title="Model value of the players whose contracts end in this window">
               {w.valueAtRisk > 0 ? formatCurrency(w.valueAtRisk) : "—"}
             </span>
           </div>
@@ -107,10 +112,15 @@ function AgeProfile({ players }: { players: SquadPlayer[] }) {
   );
 }
 
-export default function SquadRail({ players }: { players: SquadPlayer[] }) {
+export default function SquadRail({ players, fairValues }: {
+  players: SquadPlayer[];
+  /** Model valuations by player id (GET /valuations/batch), as on the squad table. */
+  fairValues?: Record<string, FairValueSignal>;
+}) {
+  const valueOf: ValueOf = (p) => Number(fairValues?.[p.id]?.fair_value ?? p.market_value ?? 0);
   return (
     <div className="space-y-3">
-      <ContractCliff players={players} />
+      <ContractCliff players={players} valueOf={valueOf} />
       <WageBillByPosition players={players} />
       <AgeProfile players={players} />
     </div>
