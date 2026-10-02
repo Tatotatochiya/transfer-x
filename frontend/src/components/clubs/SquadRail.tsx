@@ -40,17 +40,14 @@ function ContractCliff({ players }: { players: SquadPlayer[] }) {
 
   return (
     <Card tier={4} noPadding>
-      <div className="px-[18px] py-[13px]">
+      <div className="flex flex-col gap-2 px-[18px] py-[13px]">
         <p className="text-[13px] font-semibold text-text-secondary">Contract cliff</p>
-      </div>
-      <div className="px-[18px] pb-3">
         {windows.map((w) => (
-          <div key={w.label} className="flex items-center justify-between py-[9px]">
-            <div className="min-w-0">
-              <p className="text-[13px] text-text">{w.label}</p>
-              <p className="text-[11px] text-text-muted">{w.count} player{w.count === 1 ? "" : "s"}</p>
-            </div>
-            <span className="shrink-0 text-[13px] font-semibold text-text">
+          <div key={w.label} className="flex items-center justify-between gap-2 whitespace-nowrap text-[13px]">
+            <span className="min-w-0 truncate text-text">
+              {w.label} · <span className="text-text-muted">{w.count}</span>
+            </span>
+            <span className="shrink-0 font-semibold text-text">
               {w.valueAtRisk > 0 ? formatCurrency(w.valueAtRisk) : "—"}
             </span>
           </div>
@@ -69,10 +66,8 @@ function WageBillByPosition({ players }: { players: SquadPlayer[] }) {
 
   return (
     <Card tier={4} noPadding>
-      <div className="px-[18px] py-[13px]">
+      <div className="flex flex-col gap-2 px-[18px] py-[13px]">
         <p className="text-[13px] font-semibold text-text-secondary">Wage bill by position</p>
-      </div>
-      <div className="px-[18px] pb-3 space-y-2.5">
         {byPos.map((p) => (
           <div key={p.pos}>
             <div className="flex items-center justify-between text-[13px]">
@@ -96,10 +91,8 @@ function AgeProfile({ players }: { players: SquadPlayer[] }) {
 
   return (
     <Card tier={4} noPadding>
-      <div className="px-[18px] py-[13px]">
+      <div className="flex flex-col gap-2 px-[18px] py-[13px]">
         <p className="text-[13px] font-semibold text-text-secondary">Age profile</p>
-      </div>
-      <div className="px-[18px] pb-3 space-y-2">
         {bands.map((b) => (
           <div key={b.label} className="flex items-center gap-2.5">
             <span className="w-16 shrink-0 text-[11px] text-text-muted">{b.label}</span>
@@ -116,7 +109,7 @@ function AgeProfile({ players }: { players: SquadPlayer[] }) {
 
 export default function SquadRail({ players }: { players: SquadPlayer[] }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <ContractCliff players={players} />
       <WageBillByPosition players={players} />
       <AgeProfile players={players} />

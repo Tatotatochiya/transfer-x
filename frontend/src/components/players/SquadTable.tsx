@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { ActiveDealStub, FairValueSignal, Player, PlayerDetail } from "../../types/api";
+import { parseValuation } from "../../lib/money";
 import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
-import Button from "../ui/Button";
+import PlayerLink from "../ui/PlayerLink";
+
+/**
+ * The squad as one compact table (docs/feature_spec/my-club-compact-squad):
+ * a row per player (40px, or 48px "comfortable" and on touch screens),
+ * column labels once, position groups as thin bands. Every field, rule and
+ * action of the old card rows is kept; only the layout changed.
+ */
 
 const POSITION_TARGETS = [
   { pos: "GK", min: 2, label: "Goalkeepers" },
@@ -17,6 +25,14 @@ const POSITION_COLOUR: Record<string, string> = {
   MID: "bg-pos-mid-bg text-pos-mid-text",
   FWD: "bg-pos-fwd-bg text-pos-fwd-text",
 };
+
+/** Player · Contract · Wage/wk · Model · Yours · Form · Status. Shared by the
+ *  header and every row so the two can't drift. */
+export const SQUAD_COLS = "minmax(240px,2.4fr) 104px 72px 64px 104px 56px 150px";
+/** Without contract details (another club's squad): Player · Form · Status. */
+export const SQUAD_COLS_PUBLIC = "minmax(240px,1fr) 56px 150px";
+
+export type SquadDensity = "compact" | "comfortable";
 
 type SquadPlayer = Player & { active_contract?: PlayerDetail["active_contract"]; active_deal?: ActiveDealStub | null };
 
@@ -41,6 +57,10 @@ interface Props {
    *  the server already refuses to let us list or sell them, and the row
    *  should not offer to either. */
   loanedIn?: Map<string, { endDate: string; parentClubName: string | null }>;
+  /** Row height: 40px (default) or 48px. Touch screens always get 48px. */
+  density?: SquadDensity;
+  /** When set, the toolbar offers a Compact / Comfortable switch. */
+  onDensityChange?: (density: SquadDensity) => void;
 }
 
 type ChipKey = "all" | "risk" | "listed";
@@ -48,6 +68,8 @@ type ChipKey = "all" | "risk" | "listed";
 function monthsUntil(iso: string): number {
   return (new Date(iso).getTime() - Date.now()) / (30 * 86_400_000);
 }
+
+const monthYear = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
 
 // Ports the server's divergence banding (`backend/app/valuation/constants.py`)
 // so a gap computed here lands where the API would have put it: −10..+10 is in
@@ -59,11 +81,19 @@ function valuationGap(pct: number): "in-line" | "notable" | "wide" {
   return "in-line";
 }
 
+const ROW_HEIGHT: Record<SquadDensity, string> = {
+  compact: "h-10 pointer-coarse:h-12",
+  comfortable: "h-12",
+};
+
+// A hit area that reaches 44px without making the 40px row taller.
+const HIT = "-my-2 py-2";
+
 // ── Player row ────────────────────────────────────────────────────────────────
 
 function PlayerRow({
   player, showContractDetails, formScore, fairValue, listingId, loan,
-  onUnlist, unlisting, onSetValuation, onList, listBlockedReason,
+  onUnlist, unlisting, onSetValuation, onList, listBlockedReason, density, cols,
 }: {
   player: SquadPlayer;
   showContractDetails: boolean;
@@ -71,12 +101,13 @@ function PlayerRow({
   fairValue?: FairValueSignal;
   listingId?: string;
   loan?: { endDate: string; parentClubName: string | null };
-  /** Withdraw a player's listing — the "unlist" half of List / Unlist. */
   onUnlist?: (saleId: string, player: { id: string; name: string }) => void;
   unlisting?: boolean;
   onSetValuation?: (playerId: string, value: number | null) => void;
   onList?: (player: { id: string; name: string }) => void;
   listBlockedReason?: string | null;
+  density: SquadDensity;
+  cols: string;
 }) {
   const [editingValuation, setEditingValuation] = useState(false);
   const [draft, setDraft] = useState("");
@@ -88,20 +119,12 @@ function PlayerRow({
     : contractMonths < 12 ? "text-warning-text"
     : "text-text-secondary";
 
-  // Prefer the fair-value model (real, ~30% coverage today) over the legacy
-  // vendor market_value field (currently 0% populated — enrichment is a
-  // documented no-op with no source configured) — same source order as B6's
-  // contract-cliff value-at-risk (ADR 0002), applied here too since the model
-  // figure was being computed and passed in but never actually displayed.
-  const market = (fairValue ? Number(fairValue.fair_value) : null) ?? player.market_value ?? null;
-  const valuation = player.active_contract?.club_valuation ?? null;
+  // The fair-value model first, then the legacy vendor market_value (ADR 0002).
+  const market = (fairValue ? Number(fairValue.fair_value) : null) ?? (player.market_value != null ? Number(player.market_value) : null);
+  const valuation = player.active_contract?.club_valuation != null ? Number(player.active_contract.club_valuation) : null;
   const pct = market && valuation ? ((valuation - market) / market) * 100 : null;
-  // Only a real gap is worth pixels; narrowing here also keeps the JSX free of
-  // non-null assertions.
-  const gap =
-    pct != null && valuationGap(pct) !== "in-line"
-      ? { pct, wide: valuationGap(pct) === "wide" }
-      : null;
+  const gap = pct != null && valuationGap(pct) !== "in-line" ? { pct, wide: valuationGap(pct) === "wide" } : null;
+  const wage = player.active_contract?.wage_weekly != null ? Number(player.active_contract.wage_weekly) : null;
 
   const flag = loan
     ? { label: "On loan", colour: "text-accent" }
@@ -113,274 +136,210 @@ function PlayerRow({
 
   function commitValuation() {
     if (!onSetValuation) return;
-    const parsed = draft.trim() === "" ? null : Number(draft.replace(/[^0-9.]/g, ""));
-    onSetValuation(player.id, parsed != null && !isNaN(parsed) ? parsed : null);
+    const value = parseValuation(draft);
+    if (value !== undefined) onSetValuation(player.id, value); // not a figure: keep the old one
     setEditingValuation(false);
   }
 
+  const meta = [player.age ? `${player.age}` : null, player.nationality].filter(Boolean).join(" · ");
+  const editable = !!onSetValuation && !loan;
+  const valuationButton = "rounded font-bold underline decoration-dotted decoration-1 underline-offset-[3px] transition-colors";
+
   return (
-    <div className="rounded-xl bg-surface ring-1 ring-border px-5 py-3.5">
-      <div className="flex flex-wrap items-center gap-[18px]">
-        {/* Avatar */}
-        <div className="shrink-0">
-          {player.photo_url ? (
-            <img src={player.photo_url} alt={player.name} loading="lazy" className="h-[38px] w-[38px] rounded-full object-cover ring-1 ring-border" />
-          ) : (
-            <div className={`flex h-[38px] w-[38px] items-center justify-center rounded-full text-sm font-bold ${player.position ? POSITION_COLOUR[player.position] : "bg-surface-inset text-text-muted"}`}>
-              {player.name[0]?.toUpperCase()}
-            </div>
-          )}
-        </div>
-
-        {/* Identity */}
-        <div className="flex-1 basis-[170px] min-w-0">
-          <Link to={`/players/market/${player.id}`} className="text-[15px] font-semibold text-text hover:text-accent transition-colors">
-            {player.name}
-          </Link>
-          <p className="text-xs text-text-muted">
-            {[player.age ? `${player.age}y` : null, player.nationality].filter(Boolean).join(" · ") || "—"}
-          </p>
-        </div>
-
-        {/* Contract */}
-        {showContractDetails && (
-          <div className="basis-[120px] shrink">
-            <p className="text-[11px] text-text-muted">Contract ends</p>
-            <p className={`text-sm font-semibold ${contractColour}`}>
-              {contractEnd ? new Date(contractEnd).toLocaleDateString("en-GB", { month: "short", year: "numeric" }) : "—"}
-            </p>
-          </div>
+    <div
+      role="row"
+      style={{ gridTemplateColumns: cols }}
+      className={`grid items-center gap-x-3 px-4 text-[13px] tabular-nums whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-rule-faint)] transition-colors duration-150 hover:bg-surface-inset ${ROW_HEIGHT[density]}`}
+    >
+      {/* Player */}
+      <div role="cell" className="flex min-w-0 items-center gap-2.5">
+        {player.photo_url ? (
+          <img src={player.photo_url} alt="" loading="lazy" className="h-[26px] w-[26px] shrink-0 rounded-full object-cover object-top ring-1 ring-border" />
+        ) : (
+          <span className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-xs font-bold ${player.position ? POSITION_COLOUR[player.position] : "bg-surface-inset text-text-muted"}`}>
+            {player.name[0]?.toUpperCase()}
+          </span>
         )}
+        <PlayerLink id={player.id} name={player.name} title={player.name} className="min-w-0 truncate text-sm font-semibold text-text" />
+        {meta && <span className="shrink-0 text-text-muted">{meta}</span>}
+      </div>
 
-        {/* Wage */}
-        {showContractDetails && (
-          <div className="basis-[90px] shrink">
-            <p className="text-[11px] text-text-muted">Wage / wk</p>
-            <p className="text-sm font-semibold text-text">
-              {player.active_contract?.wage_weekly ? formatCurrency(player.active_contract.wage_weekly) : "—"}
-            </p>
+      {showContractDetails && (
+        <>
+          {/* Contract */}
+          <div role="cell" className={loan ? "text-text-secondary" : `font-semibold ${contractColour}`}>
+            {loan ? `Loan · ${monthYear(loan.endDate)}` : contractEnd ? monthYear(contractEnd) : "—"}
           </div>
-        )}
 
-        {/* Valuation — two aligned rows, the model's figure always on top and the
-            club's own beneath it, so the figures line up as a column you can
-            scan down the squad. Replaced a uniform three-line widget that spent
-            most of its space on the rows with the least to say: `club_valuation`
-            is only ever set by hand, so a row nobody had valued still rendered
-            an empty comparison bar and a "set yours" hint.
+          {/* Wage/wk */}
+          <div role="cell" className="text-right text-text">{wage ? formatCompactCurrency(wage) : "—"}</div>
 
-            The model row renders even when there is no model figure, because
-            that absence is itself information rather than a hole —
-            `valuation/service.py:51` refuses a row for a player under 450
-            minutes, with no position, or with no vendor stats, "never a made-up
-            number", so a dash here reads as fringe/injured/new rather than as a
-            bug. The 14px/600 weight goes to whichever figure is the club's best
-            answer — its own valuation where one exists, the model's otherwise —
-            so the cell always carries exactly one value-sized figure like the
-            Contract and Wage cells beside it.
+          {/* Model */}
+          <div role="cell" className="text-right">
+            {market != null ? (
+              <span
+                className="text-text-secondary"
+                title={fairValue ? `${formatCurrency(market)} · ${fairValue.confidence.toLowerCase()} confidence · range ${formatCompactCurrency(fairValue.fair_value_low)}–${formatCompactCurrency(fairValue.fair_value_high)}` : formatCurrency(market)}
+              >
+                {formatCompactCurrency(market)}
+              </span>
+            ) : (
+              <span className="text-text-muted" title="No model valuation. The model needs a position, vendor stats and 450+ minutes played, and never estimates without them.">—</span>
+            )}
+          </div>
 
-            Colour tracks the *size* of the gap, not its direction: for a player
-            you already own, carrying him above or below the model are both
-            merely facts, and D5's copy rule is that the model never renders a
-            verdict. */}
-        {showContractDetails && (
-          <div className="hidden md:block basis-[170px] shrink">
-            {/* Model — always present, dash and all. */}
-            <div className="flex items-baseline gap-x-1.5">
-              <span className="w-[38px] shrink-0 text-[13px] text-text-muted">model</span>
-              {market != null ? (
-                <span
-                  className={`tabular-nums ${valuation == null ? "text-sm font-semibold text-text" : "text-[13px] text-text-secondary"}`}
-                  title={fairValue ? `${formatCurrency(market)} · ${fairValue.confidence.toLowerCase()} confidence · range ${formatCompactCurrency(fairValue.fair_value_low)}–${formatCompactCurrency(fairValue.fair_value_high)}` : formatCurrency(market)}
-                >
-                  {formatCompactCurrency(market)}
-                </span>
-              ) : (
-                <span
-                  className="text-[13px] text-text-muted"
-                  title="No model valuation. The model needs a position, vendor stats and 450+ minutes played, and never estimates without them."
-                >
-                  —
-                </span>
-              )}
-            </div>
-
-            {/* The club's own. */}
-            {editingValuation ? (
+          {/* Yours: the club's own valuation, the gap to the model first */}
+          <div role="cell" className="flex items-center justify-end gap-1.5">
+            {loan ? (
+              <span className="text-text-muted">—</span>
+            ) : editingValuation ? (
               <input
-                autoFocus type="text" inputMode="numeric" value={draft}
+                autoFocus
+                type="text"
+                inputMode="decimal"
+                aria-label={`Your valuation of ${player.name}`}
+                value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={commitValuation}
                 onKeyDown={(e) => { if (e.key === "Enter") commitValuation(); if (e.key === "Escape") setEditingValuation(false); }}
-                placeholder={market != null ? formatCompactCurrency(market) : "Amount"}
-                className="mt-0.5 w-full rounded bg-surface-inset px-1.5 py-1 text-[13px] text-text ring-1 ring-accent focus:outline-none"
+                placeholder={market != null ? formatCompactCurrency(market) : "e.g. 18m"}
+                className="w-16 rounded-md bg-surface px-1.5 py-[3px] text-right text-[13px] text-text ring-1 ring-inset ring-accent focus:outline-none"
               />
-            ) : valuation == null ? (
-              <div className="flex items-baseline gap-x-1.5">
-                <span className="w-[38px] shrink-0 text-[13px] text-text-muted">yours</span>
-                {onSetValuation ? (
-                  // Deliberately the same weight as the edit affordance below
-                  // rather than a full button: a 44px button (rule 6) would add
-                  // 26px to the *majority* of rows, and it would be the only
-                  // rule-6-compliant control in a table whose open-to-offers
-                  // toggle is 20×36px. The negative margin buys hit area
-                  // without costing row height. Touch targets here need a
-                  // table-wide decision, not one compliant outlier.
+            ) : (
+              <>
+                {gap && valuation != null && (
+                  <span
+                    className={`font-semibold ${gap.wide ? "text-warning-text" : "text-text-secondary"}`}
+                    title={`Your valuation is ${Math.abs(Math.round(gap.pct))}% ${gap.pct >= 0 ? "above" : "below"} the model${fairValue ? ` (${fairValue.confidence.toLowerCase()} confidence)` : ""}`}
+                  >
+                    {gap.pct >= 0 ? "▲" : "▼"}{Math.abs(Math.round(gap.pct))}%
+                  </span>
+                )}
+                {valuation != null ? (
+                  editable ? (
+                    <button
+                      type="button"
+                      onClick={() => { setEditingValuation(true); setDraft(String(+(valuation / 1e6).toFixed(2)) + "m"); }}
+                      title={`Edit — currently ${formatCurrency(valuation)}`}
+                      className={`${HIT} ${valuationButton} text-text hover:text-accent`}
+                    >
+                      {formatCompactCurrency(valuation)}
+                    </button>
+                  ) : (
+                    <span className="font-bold text-text">{formatCompactCurrency(valuation)}</span>
+                  )
+                ) : editable ? (
                   <button
+                    type="button"
                     onClick={() => { setEditingValuation(true); setDraft(""); }}
                     title={market != null ? `Set your valuation — the model says ${formatCurrency(market)}` : "Set your valuation"}
-                    className="-my-1 rounded px-1.5 py-1 text-[13px] font-semibold text-accent underline decoration-dotted decoration-1 underline-offset-[3px] transition-colors hover:bg-surface-inset"
+                    className={`${HIT} ${valuationButton} font-semibold text-accent`}
                   >
                     + set
                   </button>
                 ) : (
-                  <span className="text-[13px] text-text-muted">—</span>
+                  <span className="text-text-muted">—</span>
                 )}
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-baseline gap-x-1.5">
-                <span className="w-[38px] shrink-0 text-[13px] text-text-muted">yours</span>
-                {onSetValuation ? (
-                  <button
-                    onClick={() => { setEditingValuation(true); setDraft(String(valuation)); }}
-                    title={`Edit — currently ${formatCurrency(valuation)}`}
-                    className="text-sm font-semibold text-text underline decoration-dotted decoration-1 underline-offset-[3px] transition-colors hover:text-accent"
-                  >
-                    {formatCompactCurrency(valuation)}
-                  </button>
-                ) : (
-                  <span className="text-sm font-semibold text-text tabular-nums">{formatCompactCurrency(valuation)}</span>
-                )}
-                {gap && (
-                  <span
-                    className={`text-[13px] font-semibold tabular-nums ${gap.wide ? "text-warning-text" : "text-text-secondary"}`}
-                    title={`Your valuation is ${Math.abs(Math.round(gap.pct))}% ${gap.pct >= 0 ? "above" : "below"} the model${fairValue ? ` (${fairValue.confidence.toLowerCase()} confidence)` : ""}`}
-                  >
-                    {gap.pct >= 0 ? "▲" : "▼"} {Math.abs(Math.round(gap.pct))}%
-                  </span>
-                )}
-              </div>
+              </>
             )}
           </div>
-        )}
+        </>
+      )}
 
-        {/* Flag / listing action + open-to-offers toggle. Below ~1440px the
-            row's columns overflow and this cell wraps to a line of its own;
-            ml-auto keeps it at the row's end there. On one line the identity
-            column's flex-1 takes the free space first, so it is a no-op. */}
-        <div className="ml-auto flex shrink-0 basis-[110px] items-center justify-end gap-3">
-          {loan ? (
-            <span
-              className="text-xs font-semibold text-accent"
-              title={`On loan${loan.parentClubName ? ` from ${loan.parentClubName}` : ""} until ${new Date(loan.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}. He is not ours to sell.`}
-            >
-              On loan
-            </span>
-          ) : onUnlist ? (
-            <>
-            {/* Listing from the row: the state that blocks it is what shows
-                instead — his live listing, or the deal already under way. */}
-            {/* List / Unlist is the only availability control: the separate
-                "open to offers" switch is gone, because a player is
-                available exactly when he is listed. */}
-            {onList && (
-              listingId ? (
-                <span className="inline-flex items-center gap-2">
-                  <Link
-                    to={`/sales/${listingId}`}
-                    className="inline-flex min-h-11 items-center text-xs font-semibold text-accent hover:underline lg:min-h-0"
-                  >
-                    Listed →
-                  </Link>
-                  {onUnlist && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="min-w-11 lg:min-w-0"
-                      loading={unlisting}
-                      onClick={() => onUnlist(listingId, { id: player.id, name: player.name })}
-                    >
-                      Unlist
-                    </Button>
-                  )}
-                </span>
-              ) : player.active_deal?.status === "IN_PROGRESS" ? (
-                <span className="text-xs font-semibold text-warning-text">Transfer pending</span>
-              ) : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="min-w-11 lg:min-w-0"
-                  disabled={!!listBlockedReason}
-                  title={listBlockedReason ?? `List ${player.name} for sale`}
-                  onClick={() => onList({ id: player.id, name: player.name })}
-                >
-                  List
-                </Button>
-              )
-            )}
-            </>
-          ) : flag ? (
-            <span className={`text-xs font-semibold ${flag.colour}`}>{flag.label}</span>
-          ) : (
-            <span className="text-xs text-text-muted">—</span>
-          )}
-        </div>
+      {/* Form */}
+      <div role="cell" className="text-right">
+        {formScore != null ? (
+          <span className="font-semibold text-text">
+            {formScore.score.toFixed(0)}
+            {formScore.trend != null && formScore.trend > 0 && <span className="ml-[3px] text-success-text" aria-label="rising">▲</span>}
+            {formScore.trend != null && formScore.trend < 0 && <span className="ml-[3px] text-danger-text" aria-label="falling">▼</span>}
+          </span>
+        ) : (
+          <span className="text-text-muted">—</span>
+        )}
       </div>
 
-      {/* Form score, shown as a secondary line to avoid crowding the primary row */}
-      {formScore != null && (
-        <p className="mt-1.5 text-[11px] text-text-muted">Form {formScore.score.toFixed(0)}{formScore.trend != null && (formScore.trend > 0 ? " ↑" : formScore.trend < 0 ? " ↓" : "")}</p>
-      )}
+      {/* Status: on loan, listed (+ Unlist), transfer pending, List, or the flag */}
+      <div role="cell" className="flex items-center justify-end gap-2">
+        {loan ? (
+          <span
+            className="font-semibold text-accent"
+            title={`On loan${loan.parentClubName ? ` from ${loan.parentClubName}` : ""} until ${new Date(loan.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}. He is not ours to sell.`}
+          >
+            On loan
+          </span>
+        ) : onUnlist ? (
+          // A writer's row. List / Unlist wait for the listings to load
+          // (onList is undefined until then), so a listed player is never
+          // briefly offered "List".
+          onList ? (
+            listingId ? (
+              <>
+                <Link to={`/sales/${listingId}`} className={`${HIT} font-semibold text-accent hover:underline`}>Listed →</Link>
+                <button
+                  type="button"
+                  disabled={unlisting}
+                  onClick={() => onUnlist(listingId, { id: player.id, name: player.name })}
+                  className={`${HIT} font-semibold text-text-muted hover:text-text disabled:opacity-50`}
+                >
+                  {unlisting ? "Unlisting…" : "Unlist"}
+                </button>
+              </>
+            ) : player.active_deal?.status === "IN_PROGRESS" ? (
+              <span className="font-semibold text-warning-text">Transfer pending</span>
+            ) : (
+              <button
+                type="button"
+                disabled={!!listBlockedReason}
+                title={listBlockedReason ?? `List ${player.name} for sale`}
+                onClick={() => onList({ id: player.id, name: player.name })}
+                className="rounded-lg bg-surface px-2.5 py-[3px] text-[13px] font-semibold text-text-secondary ring-1 ring-inset ring-input-border hover:bg-surface-inset disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                List
+              </button>
+            )
+          ) : flag ? (
+            <span className={`font-semibold ${flag.colour}`}>{flag.label}</span>
+          ) : null
+        ) : flag ? (
+          <span className={`font-semibold ${flag.colour}`}>{flag.label}</span>
+        ) : (
+          <span className="text-text-muted">—</span>
+        )}
+      </div>
     </div>
   );
 }
 
-// ── Position group ────────────────────────────────────────────────────────────
+// ── Position group: a band, then its rows ─────────────────────────────────────
 
-function PositionGroup({
-  pos, label, min, total, players, ...rowProps
-}: {
-  pos: string; label: string; min: number; total: number; players: SquadPlayer[];
-} & Omit<Parameters<typeof PlayerRow>[0], "player" | "listingId" | "toggling" | "formScore" | "fairValue" | "loan">
-  & { openListings: Map<string, string>; formScores?: Record<string, { score: number; trend: number | null }>; fairValues?: Record<string, FairValueSignal>; unlistingIds?: Set<string>; loanedIn?: Map<string, { endDate: string; parentClubName: string | null }> }) {
+function PositionBand({ label, min, total }: { label: string; min: number; total: number }) {
   // total is the whole squad's count for this position, independent of the
   // active filter chip — depth coverage shouldn't flip to "priority gap"
   // just because a filter (e.g. "Contract risk") happens to hide everyone.
   const covered = total >= min;
-
   return (
-    <div className="mb-[22px]">
-      <div className="mb-2.5 flex items-center gap-2.5">
-        <h3 className="text-[15px] font-bold text-text">{label}</h3>
-        <span className={`text-[13px] font-semibold ${covered ? "text-success-text" : "text-danger-text"}`}>
-          {total} of {min} minimum — {covered ? "covered" : "priority gap"}
-        </span>
-      </div>
-      {players.length === 0 ? (
-        <p className="text-sm text-text-muted">
-          {total === 0 ? `No ${label.toLowerCase()} in the squad.` : `No ${label.toLowerCase()} match this filter.`}
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {players.map((p) => (
-            <PlayerRow
-              key={p.id}
-              player={p}
-              showContractDetails={rowProps.showContractDetails}
-              formScore={rowProps.formScores?.[p.id]}
-              fairValue={rowProps.fairValues?.[p.id]}
-              listingId={rowProps.openListings.get(p.id)}
-              loan={rowProps.loanedIn?.get(p.id)}
-              onUnlist={rowProps.onUnlist}
-              unlisting={rowProps.unlistingIds?.has(p.id)}
-              onSetValuation={rowProps.onSetValuation}
-              onList={rowProps.onList}
-              listBlockedReason={rowProps.listBlockedReason}
-            />
-          ))}
+    <div role="row" className="flex min-h-8 items-center gap-2.5 whitespace-nowrap bg-surface-quiet px-4 shadow-[inset_0_-1px_0_var(--color-rule)]">
+      <span className="text-[13px] font-bold text-text">{label}</span>
+      <span className={`text-[13px] font-semibold ${covered ? "text-success-text" : "text-danger-text"}`}>
+        {total} of {min} minimum — {covered ? "covered" : "priority gap"}
+      </span>
+    </div>
+  );
+}
+
+// ── Loading ───────────────────────────────────────────────────────────────────
+
+/** Eight static grey rows the height of the real ones (no shimmer). */
+export function SquadTableSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading squad" className="overflow-hidden rounded-xl bg-surface ring-1 ring-border">
+      <div className="h-[34px] bg-surface-header shadow-[inset_0_-1px_0_var(--color-rule)]" />
+      {Array.from({ length: 8 }, (_, i) => (
+        <div key={i} className="flex h-10 items-center px-4 shadow-[inset_0_-1px_0_var(--color-rule-faint)]">
+          <div className="h-3 w-full rounded bg-surface-inset" />
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -390,6 +349,7 @@ function PositionGroup({
 export default function SquadTable({
   players, showContractDetails = false, formScores, fairValues,
   onUnlist, unlistingIds, onSetValuation, openListings, loanedIn, onList, listBlockedReason,
+  density = "compact", onDensityChange,
 }: Props) {
   const [chip, setChip] = useState<ChipKey>("all");
   const listed = openListings ?? new Map<string, string>();
@@ -410,12 +370,26 @@ export default function SquadTable({
     return true;
   });
 
+  // Contract months ascending; no contract last.
+  const byContract = (a: SquadPlayer, b: SquadPlayer) => {
+    const am = a.active_contract?.end_date ? monthsUntil(a.active_contract.end_date) : Infinity;
+    const bm = b.active_contract?.end_date ? monthsUntil(b.active_contract.end_date) : Infinity;
+    return am - bm;
+  };
+
   const groups = POSITION_TARGETS.map((t) => ({
-    ...t,
+    key: t.pos, label: t.label, min: t.min,
     total: players.filter((p) => p.position === t.pos).length,
-    players: filtered.filter((p) => p.position === t.pos),
+    players: filtered.filter((p) => p.position === t.pos).sort(byContract),
   }));
   const unpositioned = filtered.filter((p) => !p.position);
+  if (unpositioned.length > 0) {
+    groups.push({
+      key: "none", label: "Unpositioned", min: 0,
+      total: players.filter((p) => !p.position).length,
+      players: [...unpositioned].sort(byContract),
+    });
+  }
 
   const chips: { key: ChipKey; label: string }[] = [
     { key: "all", label: `All ${counts.all}` },
@@ -423,69 +397,94 @@ export default function SquadTable({
     { key: "listed", label: `Listed ${counts.listed}` },
   ];
 
+  const cols = showContractDetails ? SQUAD_COLS : SQUAD_COLS_PUBLIC;
+  const headers = showContractDetails
+    ? ["Player", "Contract", "Wage/wk", "Model", "Yours", "Form", "Status"]
+    : ["Player", "Form", "Status"];
+  const rightFrom = showContractDetails ? 2 : 1; // Wage/wk onwards (or Form onwards) align right
+
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+    <div className="flex flex-col gap-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-2">
           {chips.map((c) => (
             <button
               key={c.key}
               onClick={() => setChip(c.key)}
-              className={`rounded-lg px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
-                chip === c.key ? "bg-ink text-white" : "bg-surface text-text-secondary ring-1 ring-input-border hover:ring-accent"
+              aria-pressed={chip === c.key}
+              className={`whitespace-nowrap rounded-[20px] px-3 py-[5px] text-[13px] font-semibold transition-colors ${
+                chip === c.key ? "bg-ink text-white" : "bg-surface text-text-secondary ring-1 ring-inset ring-input-border hover:ring-accent"
               }`}
             >
               {c.label}
             </button>
           ))}
         </div>
-        <span className="text-[13px] text-text-muted">Sorted by contract risk</span>
+        <div className="flex items-center gap-3">
+          <span className="whitespace-nowrap text-[13px] text-text-muted">Sorted by contract risk</span>
+          {onDensityChange && (
+            <div role="group" aria-label="Row height" className="flex rounded-lg bg-surface-inset p-0.5">
+              {(["compact", "comfortable"] as const).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={density === d}
+                  onClick={() => onDensityChange(d)}
+                  className={`rounded-md px-2 py-0.5 text-xs font-semibold capitalize transition-colors ${
+                    density === d ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
+                  }`}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {groups.map((g) => (
-        <PositionGroup
-          key={g.pos}
-          pos={g.pos}
-          label={g.label}
-          min={g.min}
-          total={g.total}
-          players={[...g.players].sort((a, b) => {
-            const am = a.active_contract?.end_date ? monthsUntil(a.active_contract.end_date) : Infinity;
-            const bm = b.active_contract?.end_date ? monthsUntil(b.active_contract.end_date) : Infinity;
-            return am - bm;
-          })}
-          showContractDetails={showContractDetails}
-          formScores={formScores}
-          fairValues={fairValues}
-          onUnlist={onUnlist}
-          unlistingIds={unlistingIds}
-          onSetValuation={onSetValuation}
-          openListings={listed}
-          loanedIn={loanedIn}
-          onList={onList}
-          listBlockedReason={listBlockedReason}
-        />
-      ))}
+      <div className="overflow-x-auto rounded-xl bg-surface ring-1 ring-border">
+        <div role="table" aria-label="Squad" className={showContractDetails ? "min-w-[860px]" : "min-w-[520px]"}>
+          <div
+            role="row"
+            style={{ gridTemplateColumns: cols }}
+            className="grid h-[34px] items-center gap-x-3 bg-surface-header px-4 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-muted shadow-[inset_0_-1px_0_var(--color-rule)]"
+          >
+            {headers.map((h, i) => (
+              <span key={h} role="columnheader" className={i >= rightFrom ? "text-right" : ""}>{h}</span>
+            ))}
+          </div>
 
-      {unpositioned.length > 0 && (
-        <PositionGroup
-          pos="—"
-          label="Unpositioned"
-          min={0}
-          total={players.filter((p) => !p.position).length}
-          players={unpositioned}
-          showContractDetails={showContractDetails}
-          formScores={formScores}
-          fairValues={fairValues}
-          onUnlist={onUnlist}
-          unlistingIds={unlistingIds}
-          onSetValuation={onSetValuation}
-          openListings={listed}
-          loanedIn={loanedIn}
-          onList={onList}
-          listBlockedReason={listBlockedReason}
-        />
-      )}
+          {groups.map((g) => (
+            <div key={g.key} role="rowgroup">
+              <PositionBand label={g.label} min={g.min} total={g.total} />
+              {g.players.length === 0 ? (
+                <div role="row" className={`flex items-center px-4 text-[13px] text-text-muted shadow-[inset_0_-1px_0_var(--color-rule-faint)] ${ROW_HEIGHT[density]}`}>
+                  {g.total === 0 ? `No ${g.label.toLowerCase()} in the squad.` : `No ${g.label.toLowerCase()} match this filter.`}
+                </div>
+              ) : (
+                g.players.map((p) => (
+                  <PlayerRow
+                    key={p.id}
+                    player={p}
+                    showContractDetails={showContractDetails}
+                    formScore={formScores?.[p.id]}
+                    fairValue={fairValues?.[p.id]}
+                    listingId={listed.get(p.id)}
+                    loan={loanedIn?.get(p.id)}
+                    onUnlist={onUnlist}
+                    unlisting={unlistingIds?.has(p.id)}
+                    onSetValuation={onSetValuation}
+                    onList={onList}
+                    listBlockedReason={listBlockedReason}
+                    density={density}
+                    cols={cols}
+                  />
+                ))
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
