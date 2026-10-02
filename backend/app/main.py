@@ -71,6 +71,22 @@ async def _expire_stale_offers_job() -> None:
             logger.exception("Error in expire_stale_offers job")
 
 
+async def _release_held_pushes_job() -> None:
+    """Mobile notifications: send the pushes quiet hours held back."""
+    from app.notifications.push import release_held_pushes, vapid_configured
+
+    if not vapid_configured():
+        return
+    async with AsyncSessionLocal() as db:
+        try:
+            async with db.begin():
+                count = await release_held_pushes(db, datetime.now(timezone.utc))
+            if count:
+                logger.info("Released %d held pushes", count)
+        except Exception:
+            logger.exception("Error in release_held_pushes job")
+
+
 async def _notify_upcoming_events_job() -> None:
     from app.notifications.service import notify_upcoming_events
 
@@ -214,6 +230,10 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(
         _expire_stale_offers_job, "interval", minutes=5, id="expire_stale_offers",
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=3),
+    )
+    _scheduler.add_job(
+        _release_held_pushes_job, "interval", minutes=5, id="release_held_pushes",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=20),
     )
     _scheduler.add_job(
         _notify_upcoming_events_job, "interval", hours=1, id="notify_upcoming_events",

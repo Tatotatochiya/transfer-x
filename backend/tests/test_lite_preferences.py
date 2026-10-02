@@ -21,7 +21,8 @@ def role_default_on(monkeypatch):
 async def test_off_for_everyone_while_the_role_default_is_off(client: AsyncClient):
     owner = await _register(client, "owner_lite@clubs-example.com", club_name="Lite FC")
     prefs = await _prefs(client, owner)
-    assert prefs == {"lite_mode": False, "lite_mode_is_default": True, "text_scale": "NORMAL"}
+    lite = {k: prefs[k] for k in ("lite_mode", "lite_mode_is_default", "text_scale")}
+    assert lite == {"lite_mode": False, "lite_mode_is_default": True, "text_scale": "NORMAL"}
 
 
 @pytest.mark.asyncio

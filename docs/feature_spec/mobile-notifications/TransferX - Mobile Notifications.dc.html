@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#eef0f3;font-family:Inter,system-ui,sans-serif;color:#14171f;-webkit-font-smoothing:antialiased}
+a{color:#215fbc;text-decoration:none}a:hover{color:#0347a2}
+</style>
+</helmet>
+<div style="padding:56px 64px 96px;display:flex;flex-direction:column;gap:72px;max-width:1560px;">
+
+  <div style="display:flex;flex-direction:column;gap:12px;max-width:820px;">
+    <div style="font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#667085;">TransferX · Mobile notifications</div>
+    <h1 style="margin:0;font-size:40px;font-weight:800;letter-spacing:-0.02em;line-height:1.1;">Notifications that reach the phone and can be acted on</h1>
+    <p style="margin:0;font-size:17px;line-height:1.55;color:#475467;text-wrap:pretty;">TransferX is a web app, so phone notifications come through Web Push. On Android this works from Chrome straight away. On iPhone and iPad it only works once TransferX is added to the Home Screen, so the install step is part of the design.</p>
+  </div>
+
+  <section id="1" style="display:flex;flex-direction:column;gap:24px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:13px;font-weight:700;padding:3px 9px;border-radius:7px;background:#14171f;color:#fff;">1</span>
+      <h2 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.01em;">What to change</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+      <sc-for list="{{ principles }}" as="p" hint-placeholder-count="6">
+        <div style="background:#fff;border-radius:14px;padding:20px 22px;box-shadow:0 0 0 1px #e4e7ec;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:13px;font-weight:700;color:#98a2b3;">{{ p.n }}</div>
+          <div style="font-size:16px;font-weight:700;line-height:1.35;">{{ p.title }}</div>
+          <div style="font-size:14px;line-height:1.55;color:#475467;text-wrap:pretty;">{{ p.body }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section id="2" style="display:flex;flex-direction:column;gap:24px;">
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:13px;font-weight:700;padding:3px 9px;border-radius:7px;background:#14171f;color:#fff;">2</span>
+        <h2 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.01em;">Three tiers</h2>
+      </div>
+      <p style="margin:0;font-size:15px;color:#475467;max-width:760px;">Every notification type belongs to one tier. The tier decides sound, timing, quiet hours and whether it counts towards the app badge.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
+      <sc-for list="{{ tiers }}" as="t" hint-placeholder-count="3">
+        <div style="background:#fff;border-radius:14px;padding:20px 22px;box-shadow:0 0 0 1px #e4e7ec;display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:{{ t.dot }};"></span>
+            <span style="font-size:17px;font-weight:700;">{{ t.name }}</span>
+          </div>
+          <div style="font-size:14px;line-height:1.5;color:#475467;">{{ t.desc }}</div>
+          <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid #f0f1f3;padding-top:12px;">
+            <sc-for list="{{ t.rules }}" as="r" hint-placeholder-count="4">
+              <div style="display:flex;gap:10px;font-size:13px;line-height:1.45;">
+                <span style="flex:0 0 92px;color:#667085;">{{ r.k }}</span>
+                <span style="color:#14171f;font-weight:500;">{{ r.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section id="3" style="display:flex;flex-direction:column;gap:24px;">
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:13px;font-weight:700;padding:3px 9px;border-radius:7px;background:#14171f;color:#fff;">3</span>
+        <h2 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.01em;">Notification types</h2>
+      </div>
+      <p style="margin:0;font-size:15px;color:#475467;max-width:760px;">The title says what happened and to whom. The body gives the number and the deadline. Buttons show on Android and desktop; on iPhone a tap opens the same decision in the app.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">
+      <sc-for list="{{ kinds }}" as="k" hint-placeholder-count="8">
+        <div style="background:#fff;border-radius:16px;box-shadow:0 0 0 1px #e4e7ec;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="padding:16px 18px 0;display:flex;align-items:center;gap:8px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:{{ k.dot }};"></span>
+            <span style="font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#475467;">{{ k.tier }}</span>
+            <span style="margin-left:auto;font-size:12px;color:#98a2b3;font-family:ui-monospace,Menlo,monospace;">{{ k.type }}</span>
+          </div>
+          <div style="font-size:17px;font-weight:700;padding:6px 18px 14px;">{{ k.name }}</div>
+          <div style="margin:0 14px;padding:14px;border-radius:14px;background:linear-gradient(160deg,#2b3446,#1a1f2b);">
+            <div style="background:rgba(246,246,248,0.94);border-radius:18px;padding:11px 13px;display:flex;gap:10px;">
+              <div style="flex:0 0 34px;height:34px;border-radius:8px;background:#215fbc;color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;">T</div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;">
+                <div style="display:flex;gap:8px;align-items:baseline;">
+                  <span style="font-size:14px;font-weight:600;flex:1;line-height:1.3;">{{ k.title }}</span>
+                  <span style="font-size:12px;color:#8a8f98;">{{ k.when }}</span>
+                </div>
+                <span style="font-size:14px;line-height:1.35;color:#1c1f26;">{{ k.body }}</span>
+              </div>
+            </div>
+            <sc-if value="{{ k.hasActions }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;gap:6px;margin-top:6px;">
+                <sc-for list="{{ k.actions }}" as="a" hint-placeholder-count="2">
+                  <span style="flex:1;text-align:center;background:rgba(246,246,248,0.94);border-radius:12px;padding:9px 6px;font-size:13px;font-weight:600;color:#215fbc;">{{ a }}</span>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+          <div style="padding:14px 18px 18px;display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;gap:10px;font-size:13px;line-height:1.45;"><span style="flex:0 0 70px;color:#667085;">Tap opens</span><span>{{ k.tap }}</span></div>
+            <div style="display:flex;gap:10px;font-size:13px;line-height:1.45;"><span style="flex:0 0 70px;color:#667085;">Replaces</span><span>{{ k.tag }}</span></div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section id="4" style="display:flex;flex-direction:column;gap:24px;">
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:13px;font-weight:700;padding:3px 9px;border-radius:7px;background:#14171f;color:#fff;">4</span>
+        <h2 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.01em;">On the phone</h2>
+      </div>
+      <p style="margin:0;font-size:15px;color:#475467;max-width:760px;">The same morning on iPhone and Android. Older notifications for the same offer are replaced, so the lock screen shows the latest state of each deal.</p>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start;">
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">4a · iPhone lock screen</div>
+        <div style="width:320px;height:680px;border-radius:50px;background:#0b0d12;padding:10px;box-sizing:border-box;box-shadow:0 20px 50px rgba(16,24,40,0.18);">
+          <div style="height:100%;border-radius:40px;overflow:hidden;background:{{ wallpaper }};display:flex;flex-direction:column;position:relative;">
+            <div style="display:flex;justify-content:space-between;padding:14px 26px 0;font-size:14px;font-weight:600;color:#fff;"><span>9:41</span><span>●●● ▮</span></div>
+            <div style="text-align:center;color:#fff;margin-top:26px;">
+              <div style="font-size:16px;font-weight:600;opacity:0.9;">Friday 2 October</div>
+              <div style="font-size:78px;font-weight:700;letter-spacing:-0.03em;line-height:1;">9:41</div>
+            </div>
+            <div style="margin-top:auto;padding:0 10px 30px;display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:0 6px;color:#fff;">
+                <span style="font-size:17px;font-weight:700;">Notification Centre</span>
+                <span style="font-size:12px;padding:3px 9px;border-radius:10px;background:rgba(255,255,255,0.22);">Show less</span>
+              </div>
+              <sc-for list="{{ iosStack }}" as="n" hint-placeholder-count="3">
+                <div style="background:rgba(246,246,248,0.9);border-radius:20px;padding:11px 12px;display:flex;gap:10px;">
+                  <div style="flex:0 0 32px;height:32px;border-radius:8px;background:#215fbc;color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;">T</div>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;">
+                    <div style="display:flex;gap:6px;align-items:baseline;"><span style="font-size:13px;font-weight:600;flex:1;line-height:1.3;">{{ n.title }}</span><span style="font-size:11px;color:#8a8f98;">{{ n.when }}</span></div>
+                    <span style="font-size:13px;line-height:1.35;color:#1c1f26;">{{ n.body }}</span>
+                  </div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ stacked }}" hint-placeholder-val="{{ false }}">
+                <div style="margin:-14px 14px 0;height:14px;border-radius:0 0 16px 16px;background:rgba(246,246,248,0.6);"></div>
+                <div style="text-align:center;font-size:12px;color:#fff;opacity:0.85;margin-top:2px;">4 more from TransferX</div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">4b · Android notification shade</div>
+        <div style="width:320px;height:680px;border-radius:40px;background:#0b0d12;padding:10px;box-sizing:border-box;box-shadow:0 20px 50px rgba(16,24,40,0.18);">
+          <div style="height:100%;border-radius:32px;overflow:hidden;background:#111317;display:flex;flex-direction:column;gap:10px;padding:0 10px;">
+            <div style="display:flex;justify-content:space-between;padding:14px 12px 0;font-size:13px;color:#e6e8ec;"><span>9:41</span><span>▾ ▮</span></div>
+            <div style="padding:6px 12px 4px;color:#e6e8ec;"><div style="font-size:30px;font-weight:500;">9:41</div><div style="font-size:13px;color:#a7adb8;">Fri, 2 Oct</div></div>
+            <sc-for list="{{ androidStack }}" as="n" hint-placeholder-count="3">
+              <div style="background:#23262d;border-radius:22px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#a7adb8;">
+                  <span style="width:20px;height:20px;border-radius:50%;background:#9ec2ff;color:#0b2a5c;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;">T</span>
+                  <span>TransferX · {{ n.when }}</span>
+                </div>
+                <div style="font-size:14px;font-weight:600;color:#f1f3f6;line-height:1.3;">{{ n.title }}</div>
+                <div style="font-size:13px;color:#c5cad3;line-height:1.4;">{{ n.body }}</div>
+                <sc-if value="{{ n.hasActions }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+                    <sc-for list="{{ n.actions }}" as="a" hint-placeholder-count="2">
+                      <span style="padding:7px 12px;border-radius:16px;background:#33373f;font-size:12px;font-weight:600;color:#9ec2ff;">{{ a }}</span>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">4c · After a tap: the decision sheet</div>
+        <div style="width:320px;height:680px;border-radius:50px;background:#0b0d12;padding:10px;box-sizing:border-box;box-shadow:0 20px 50px rgba(16,24,40,0.18);">
+          <div style="height:100%;border-radius:40px;overflow:hidden;background:#f7f8fa;display:flex;flex-direction:column;">
+            <div style="display:flex;justify-content:space-between;padding:14px 26px 0;font-size:14px;font-weight:600;"><span>9:42</span><span>●●● ▮</span></div>
+            <div style="padding:18px 20px 0;display:flex;align-items:center;gap:10px;font-size:14px;color:#667085;"><span style="font-size:20px;">‹</span><span>Waiting on you · 1 of 3</span></div>
+            <div style="padding:14px 20px 0;display:flex;flex-direction:column;gap:4px;">
+              <span style="font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#ac1922;">Offer received · 2 days left</span>
+              <span style="font-size:22px;font-weight:700;letter-spacing:-0.01em;">Marcus Webb</span>
+              <span style="font-size:14px;color:#475467;">Ashfield United offered £18m</span>
+            </div>
+            <div style="margin:16px 16px 0;background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;display:grid;grid-template-columns:1fr 1fr;">
+              <div style="padding:12px 14px;border-right:1px solid #f0f1f3;border-bottom:1px solid #f0f1f3;"><div style="font-size:11px;color:#667085;">Their offer</div><div style="font-size:17px;font-weight:700;">£18m</div></div>
+              <div style="padding:12px 14px;border-bottom:1px solid #f0f1f3;"><div style="font-size:11px;color:#667085;">Your valuation</div><div style="font-size:17px;font-weight:700;">£21m</div></div>
+              <div style="padding:12px 14px;border-right:1px solid #f0f1f3;"><div style="font-size:11px;color:#667085;">Reply by</div><div style="font-size:15px;font-weight:700;color:#ac1922;">Fri 18:00</div></div>
+              <div style="padding:12px 14px;"><div style="font-size:11px;color:#667085;">Budget if accepted</div><div style="font-size:15px;font-weight:700;color:#006925;">£22m → £40m</div></div>
+            </div>
+            <div style="margin-top:auto;padding:16px;display:flex;flex-direction:column;gap:8px;">
+              <span style="text-align:center;padding:14px;border-radius:12px;background:#215fbc;color:#fff;font-size:15px;font-weight:600;">Ask for £21m</span>
+              <span style="text-align:center;padding:14px;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1px #d0d5dd;font-size:15px;font-weight:600;color:#344054;">Accept £18m</span>
+              <span style="text-align:center;padding:10px;font-size:14px;font-weight:600;color:#9b1e22;">Turn down</span>
+              <span style="text-align:center;font-size:12px;color:#667085;">You can undo for 10 seconds after sending.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="5" style="display:flex;flex-direction:column;gap:24px;">
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:13px;font-weight:700;padding:3px 9px;border-radius:7px;background:#14171f;color:#fff;">5</span>
+        <h2 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.01em;">Getting set up on a phone</h2>
+      </div>
+      <p style="margin:0;font-size:15px;color:#475467;max-width:760px;">Ask at a moment when the value is obvious, such as the first offer arriving, never on the first visit. On iPhone, the install step comes first; the system permission prompt only appears after a tap on our button.</p>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start;">
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">5a · The ask, after the first offer</div>
+        <div style="width:320px;height:680px;border-radius:50px;background:#0b0d12;padding:10px;box-sizing:border-box;box-shadow:0 20px 50px rgba(16,24,40,0.18);">
+          <div style="height:100%;border-radius:40px;overflow:hidden;background:#f7f8fa;display:flex;flex-direction:column;position:relative;">
+            <div style="display:flex;justify-content:space-between;padding:14px 26px 0;font-size:14px;font-weight:600;"><span>9:41</span><span>●●● ▮</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:10px;opacity:0.45;">
+              <div style="font-size:22px;font-weight:700;">Offers</div>
+              <div style="height:84px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></div>
+              <div style="height:84px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;"></div>
+            </div>
+            <div style="position:absolute;inset:0;background:rgba(16,24,40,0.35);"></div>
+            <div style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:26px 26px 0 0;padding:22px 20px 26px;display:flex;flex-direction:column;gap:12px;">
+              <div style="width:40px;height:5px;border-radius:3px;background:#d0d5dd;align-self:center;"></div>
+              <div style="font-size:20px;font-weight:700;line-height:1.25;">Get offers on this phone</div>
+              <div style="font-size:14px;line-height:1.5;color:#475467;">Ashfield United just made an offer for Marcus Webb. We can tell you about the next one straight away, so you can reply before the deadline.</div>
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#344054;">
+                <span>• Offers and approvals: straight away</span>
+                <span>• Everything else: one morning summary</span>
+              </div>
+              <span style="text-align:center;padding:14px;border-radius:12px;background:#215fbc;color:#fff;font-size:15px;font-weight:600;margin-top:4px;">Turn on notifications</span>
+              <span style="text-align:center;padding:6px;font-size:14px;font-weight:600;color:#667085;">Not now</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">5b · iPhone only: add to Home Screen</div>
+        <div style="width:320px;height:680px;border-radius:50px;background:#0b0d12;padding:10px;box-sizing:border-box;box-shadow:0 20px 50px rgba(16,24,40,0.18);">
+          <div style="height:100%;border-radius:40px;overflow:hidden;background:#fff;display:flex;flex-direction:column;">
+            <div style="display:flex;justify-content:space-between;padding:14px 26px 0;font-size:14px;font-weight:600;"><span>9:41</span><span>●●● ▮</span></div>
+            <div style="padding:28px 22px 0;display:flex;flex-direction:column;gap:10px;">
+              <div style="font-size:22px;font-weight:700;line-height:1.25;">Add TransferX to your Home Screen</div>
+              <div style="font-size:14px;line-height:1.5;color:#475467;">iPhone only sends notifications to web apps opened from the Home Screen. It takes three taps.</div>
+            </div>
+            <div style="padding:22px 22px 0;display:flex;flex-direction:column;gap:16px;">
+              <sc-for list="{{ installSteps }}" as="s" hint-placeholder-count="3">
+                <div style="display:flex;gap:14px;align-items:flex-start;">
+                  <span style="flex:0 0 28px;height:28px;border-radius:50%;background:#eaf1fb;color:#215fbc;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;">{{ s.n }}</span>
+                  <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:15px;font-weight:600;">{{ s.title }}</span><span style="font-size:13px;color:#667085;line-height:1.4;">{{ s.hint }}</span></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="margin-top:auto;padding:0 22px 14px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:#667085;">Share is in the bar below</span>
+              <span style="font-size:22px;color:#215fbc;">↓</span>
+            </div>
+            <div style="height:54px;background:#f2f2f7;border-top:1px solid #e4e7ec;display:flex;justify-content:space-around;align-items:center;font-size:18px;color:#215fbc;">
+              <span>‹</span><span>›</span><span style="padding:4px 10px;border-radius:8px;background:#dbe7fb;">⎙</span><span>▢</span><span>⧉</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:14px;font-weight:700;color:#475467;">5c · Notification settings</div>
+        <div style="width:320px;height:680px;border-radius:50px;background:#0b0d12;padding:10px;box-sizing:border-box;box-shadow:0 20px 50px rgba(16,24,40,0.18);">
+          <div style="height:100%;border-radius:40px;overflow:hidden;background:#f7f8fa;display:flex;flex-direction:column;">
+            <div style="display:flex;justify-content:space-between;padding:14px 26px 0;font-size:14px;font-weight:600;"><span>9:41</span><span>●●● ▮</span></div>
+            <div style="padding:18px 20px 8px;font-size:22px;font-weight:700;">Notifications</div>
+            <div style="margin:0 14px;background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;display:flex;flex-direction:column;">
+              <sc-for list="{{ settingsRows }}" as="r" hint-placeholder-count="3">
+                <div style="padding:13px 14px;border-bottom:1px solid #f0f1f3;display:flex;gap:10px;align-items:center;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:{{ r.dot }};flex:0 0 8px;"></span>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:14px;font-weight:600;">{{ r.name }}</span><span style="font-size:12px;color:#667085;">{{ r.how }}</span></div>
+                  <span style="font-size:13px;color:#215fbc;font-weight:600;">Edit</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="margin:12px 14px 0;background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:13px 14px;display:flex;flex-direction:column;gap:4px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:14px;font-weight:600;">Quiet hours</span><span style="width:44px;height:26px;border-radius:13px;background:#215fbc;position:relative;"><span style="position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;"></span></span></div>
+              <span style="font-size:13px;color:#344054;">22:00 to 07:00</span>
+              <span style="font-size:12px;color:#667085;line-height:1.4;">Deadlines under 2 hours still come through.</span>
+            </div>
+            <div style="margin:12px 14px 0;background:#fff;border-radius:14px;box-shadow:0 0 0 1px #e4e7ec;padding:13px 14px;display:flex;flex-direction:column;gap:8px;">
+              <span style="font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#667085;">This device</span>
+              <div style="display:flex;justify-content:space-between;font-size:14px;"><span>iPhone · Home Screen app</span><span style="color:#006925;font-weight:600;">On</span></div>
+              <span style="font-size:13px;color:#215fbc;font-weight:600;">Send a test notification</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;grouping&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Expanded&quot;,&quot;Stacked&quot;],&quot;default&quot;:&quot;Expanded&quot;,&quot;tsType&quot;:&quot;'Expanded'|'Stacked'&quot;},&quot;wallpaper&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Dark&quot;,&quot;Light&quot;],&quot;default&quot;:&quot;Dark&quot;,&quot;tsType&quot;:&quot;'Dark'|'Light'&quot;}}">
+const RED = "#c53637", AMBER = "oklch(70% 0.15 70)", GREY = "#98a2b3";
+
+const KINDS = [
+  { tier: "Your move", dot: RED, type: "OFFER_RECEIVED", name: "Offer received", title: "Offer for Marcus Webb: £18m", body: "Ashfield United · your valuation £21m · reply by Fri 18:00", when: "now", actions: ["Ask for £21m", "Accept", "Open"], tap: "Decision sheet for this offer", tag: "Any older notification for this offer" },
+  { tier: "Your move", dot: RED, type: "OFFER_COUNTERED", name: "Counter-offer", title: "Ashfield countered at £19.5m", body: "Marcus Webb · up from £18m · 6 hours left to reply", when: "now", actions: ["Accept £19.5m", "Open"], tap: "Decision sheet with the negotiation history", tag: "The original offer notification" },
+  { tier: "Your move", dot: RED, type: "APPROVAL_REQUESTED", name: "Approval requested", title: "Approve a £4.2m bid for Joel Okafor?", body: "Sam Reid, Head of Recruitment · budget after £9.8m", when: "2m", actions: ["Approve", "Open"], tap: "Approval sheet with budget effect", tag: "Earlier reminders for this request" },
+  { tier: "Heads-up", dot: AMBER, type: "AUCTION_ENDING", name: "Deadline soon", title: "1 hour left on the Yannick Sorel auction", body: "Highest bid £6.5m from Castlebrook · 6 bids", when: "now", actions: ["Open"], tap: "Auction with bids and accept/hold", tag: "Earlier ending alerts for this auction" },
+  { tier: "Heads-up", dot: AMBER, type: "OUTBID", name: "Outbid", title: "You've been outbid on Theo Marsh", body: "Northgate bid £3.4m · ends in 1d 4h", when: "5m", actions: ["Bid £3.6m", "Open"], tap: "Bid sheet, prefilled with the next step", tag: "Previous outbid alerts for this listing" },
+  { tier: "Heads-up", dot: AMBER, type: "NEGOTIATION_MESSAGE", name: "New message", title: "Dan Okoro (agent)", body: "Can we talk about wages before Friday? He's keen.", when: "12m", actions: ["Reply", "Open"], tap: "The negotiation thread", tag: "Earlier unread messages in the thread" },
+  { tier: "FYI", dot: GREY, type: "DEAL_PAPERWORK", name: "Deal progress", title: "Medical booked for Marcus Webb", body: "The deal moves to Registration after Thu 10:00", when: "1h", actions: [], tap: "Plain-word deal progress", tag: "Earlier progress for this deal" },
+  { tier: "FYI", dot: GREY, type: "DAILY_DIGEST", name: "Morning summary", title: "3 things are waiting on you", body: "2 offers and 1 approval · first deadline Fri 18:00", when: "08:00", actions: ["Open"], tap: "Waiting on you list", tag: "Yesterday's summary" },
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    const stacked = (this.props.grouping ?? "Expanded") === "Stacked";
+    const dark = (this.props.wallpaper ?? "Dark") === "Dark";
+    const lock = [KINDS[1], KINDS[2], KINDS[3], KINDS[4]];
+    return {
+      wallpaper: dark ? "linear-gradient(170deg,#3b4a66 0%,#1d2433 55%,#0f131b 100%)" : "linear-gradient(170deg,#c9d6ea 0%,#8aa1c4 60%,#5d7397 100%)",
+      stacked,
+      iosStack: (stacked ? lock.slice(0, 1) : lock.slice(0, 3)).map(k => ({ title: k.title, body: k.body, when: k.when })),
+      androidStack: [KINDS[1], KINDS[2], KINDS[4]].map(k => ({ ...k, hasActions: k.actions.length > 0 })),
+      kinds: KINDS.map(k => ({ ...k, hasActions: k.actions.length > 0 })),
+      principles: [
+        { n: "01", title: "Make Home Screen install part of setup", body: "iPhone and iPad only deliver web push to apps added to the Home Screen. Add a web app manifest and a short install guide that only iPhone users see." },
+        { n: "02", title: "Ask at a useful moment", body: "Show our own prompt when the first offer or approval arrives. The system prompt needs a tap, and a refusal is hard to undo, so never ask on page load." },
+        { n: "03", title: "Sort every type into a tier", body: "Your move sends straight away with sound. Heads-up sends straight away without sound. FYI waits for the morning summary." },
+        { n: "04", title: "Put the decision in the notification", body: "Player, club, amount and deadline fit in the title and body. A tap opens one decision sheet, not the dashboard." },
+        { n: "05", title: "Replace, don't pile up", body: "Each offer, auction and thread has one tag. A new event replaces the old notification, so the lock screen shows the current state." },
+        { n: "06", title: "Badge the app icon", body: "The Home Screen icon shows how many items are waiting on you, and clears when they're done in any channel, including email." },
+      ],
+      tiers: [
+        { name: "Your move", dot: RED, desc: "Something only you can unblock, usually with a deadline.", rules: [{ k: "Delivery", v: "Straight away, with sound" }, { k: "Quiet hours", v: "Held until 07:00, unless under 2h left" }, { k: "Badge", v: "Counts" }, { k: "Fallback", v: "Email after 30 min if not opened" }] },
+        { name: "Heads-up", dot: AMBER, desc: "Time-sensitive, but nobody is waiting on you yet.", rules: [{ k: "Delivery", v: "Straight away, silent" }, { k: "Quiet hours", v: "Held until 07:00" }, { k: "Badge", v: "Does not count" }, { k: "Fallback", v: "None" }] },
+        { name: "FYI", dot: GREY, desc: "Progress and news. Useful to know, no action needed.", rules: [{ k: "Delivery", v: "Morning summary at 08:00" }, { k: "Quiet hours", v: "Not affected" }, { k: "Badge", v: "Does not count" }, { k: "Fallback", v: "Shown in the in-app list" }] },
+      ],
+      installSteps: [
+        { n: "1", title: "Tap Share", hint: "The square with an arrow, in Safari's bar" },
+        { n: "2", title: "Tap Add to Home Screen", hint: "Scroll down the list if you can't see it" },
+        { n: "3", title: "Open TransferX from your Home Screen", hint: "Then tap Turn on notifications" },
+      ],
+      settingsRows: [
+        { name: "Your move", dot: RED, how: "Straight away, with sound" },
+        { name: "Heads-up", dot: AMBER, how: "Straight away, silent" },
+        { name: "FYI", dot: GREY, how: "Morning summary at 08:00" },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

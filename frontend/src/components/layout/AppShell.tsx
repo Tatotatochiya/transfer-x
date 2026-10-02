@@ -6,6 +6,8 @@ import Sidebar from "./Sidebar";
 import Icon from "./Icon";
 import GlobalSearch from "./GlobalSearch";
 import Avatar from "../ui/Avatar";
+import { useClubDashboard } from "../../hooks/useClubDashboard";
+import { markOpenedFromUrl, setAppBadge, syncSubscription } from "../../lib/push";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -14,8 +16,24 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { pathname } = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userType } = useAuth();
   const identity = useIdentity();
+
+  // Phone notifications (docs/feature_spec/mobile-notifications §7.2): once
+  // signed in, re-send this device's subscription (renews a replaced one),
+  // and mark read a push that opened the app without the service worker.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    syncSubscription();
+    markOpenedFromUrl(window.location.search);
+  }, [isAuthenticated]);
+
+  // The app icon's badge counts what is waiting on this person. Same query
+  // as the sidebar, so no extra request; it refetches when the app regains focus.
+  const { data: dashboard } = useClubDashboard(isAuthenticated && userType === "CLUB");
+  useEffect(() => {
+    if (dashboard) setAppBadge(dashboard.waiting_on_you.length);
+  }, [dashboard]);
 
   // Close mobile menu on route change
   useEffect(() => {

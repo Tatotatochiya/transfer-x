@@ -123,6 +123,14 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
     frontend_base_url: str = "http://localhost:5173"
 
+    # Web Push (docs/feature_spec/mobile-notifications §5). Leave unset to
+    # disable pushes (dev/test default), as with SMTP. Generate a key pair
+    # with `python scripts/generate_vapid_keys.py`. VAPID_SUBJECT is a
+    # "mailto:" address push services can contact about our traffic.
+    vapid_public_key: str | None = None
+    vapid_private_key: str | None = None
+    vapid_subject: str | None = None
+
     # Clubs join by invitation (clubs/service.create_club_invitation). Public
     # club sign-up is off unless this is set — the test suite sets it, since
     # its fixtures register clubs directly; real environments leave it off.

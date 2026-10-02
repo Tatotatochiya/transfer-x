@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import api from "../../lib/api";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import Card from "../../components/ui/Card";
 import PageHeader from "../../components/ui/PageHeader";
-import Spinner from "../../components/ui/Spinner";
 import { getApiError } from "../../lib/utils";
 import { useAuthStore } from "../../store/auth";
 import { useTheme, type Theme } from "../../context/ThemeContext";
@@ -15,7 +14,8 @@ import {
   type MarketView,
   type DateFormat,
 } from "../../store/preferences";
-import type { NotificationPreferencesResponse } from "../../types/api";
+import NotificationTypesTable from "../../components/notifications/NotificationTypesTable";
+import PushSettingsCard from "../../components/notifications/PushSettingsCard";
 
 // ── Segmented control ─────────────────────────────────────────────────────────
 
@@ -44,65 +44,6 @@ function SegmentedControl<T extends string>({
         </button>
       ))}
     </div>
-  );
-}
-
-// ── Notification type labels / groups ─────────────────────────────────────────
-
-const TYPE_LABELS: Record<string, string> = {
-  OUTBID:               "Outbid on an auction",
-  OFFER_RECEIVED:       "Offer received",
-  OFFER_ACCEPTED:       "Offer accepted",
-  OFFER_REJECTED:       "Offer rejected",
-  OFFER_COUNTERED:      "Counter-offer received",
-  OFFER_WITHDRAWN:      "Offer withdrawn by other party",
-  OFFER_EXPIRING:       "Offer expiring soon",
-  OFFER_MESSAGE:        "New message in a negotiation",
-  AUCTION_BID_RECEIVED: "Bid received on your auction",
-  AUCTION_ENDING:       "Auction ending soon",
-  AUCTION_BID_ACCEPTED: "Your auction bid accepted",
-  DEAL_COMPLETED:       "Deal completed",
-  DEAL_COLLAPSED:       "Deal collapsed",
-  PLAYER_AVAILABLE:     "Shortlisted player becomes available",
-};
-
-const TYPE_GROUPS: { label: string; types: string[] }[] = [
-  {
-    label: "Auctions",
-    types: ["AUCTION_BID_RECEIVED", "AUCTION_ENDING", "AUCTION_BID_ACCEPTED", "OUTBID"],
-  },
-  {
-    label: "Offers",
-    types: ["OFFER_RECEIVED", "OFFER_ACCEPTED", "OFFER_REJECTED", "OFFER_COUNTERED", "OFFER_WITHDRAWN", "OFFER_EXPIRING", "OFFER_MESSAGE"],
-  },
-  {
-    label: "Deals",
-    types: ["DEAL_COMPLETED", "DEAL_COLLAPSED"],
-  },
-  {
-    label: "Scouting",
-    types: ["PLAYER_AVAILABLE"],
-  },
-];
-
-// ── Toggle ─────────────────────────────────────────────────────────────────────
-
-function Toggle({ enabled, disabled, onToggle, label }: { enabled: boolean; disabled: boolean; onToggle: () => void; label: string }) {
-  return (
-    <button
-      disabled={disabled}
-      onClick={onToggle}
-      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50 ${
-        enabled ? "bg-success" : "bg-border"
-      }`}
-      aria-label={label}
-    >
-      <span
-        className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow ring-0 transition-transform ${
-          enabled ? "translate-x-4" : "translate-x-0"
-        }`}
-      />
-    </button>
   );
 }
 
@@ -151,29 +92,6 @@ export default function AccountSettingsPage() {
     if (mismatch || !next) return;
     passwordMutation.mutate();
   }
-
-  // ── Notification preferences ──────────────────────────────────────────────
-  const queryClient = useQueryClient();
-
-  const { data: notifData, isLoading: notifLoading } = useQuery<NotificationPreferencesResponse>({
-    queryKey: ["notifications", "preferences"],
-    queryFn: () =>
-      api.get<NotificationPreferencesResponse>("/notifications/preferences").then((r) => r.data),
-  });
-
-  const notifMutation = useMutation({
-    mutationFn: ({ type, enabled }: { type: string; enabled: boolean }) =>
-      api
-        .patch<NotificationPreferencesResponse>(`/notifications/preferences/${type}`, { enabled })
-        .then((r) => r.data),
-    onSuccess: (newData) => {
-      queryClient.setQueryData(["notifications", "preferences"], newData);
-    },
-  });
-
-  const prefMap = Object.fromEntries(
-    (notifData?.preferences ?? []).map((p) => [p.type, p.enabled])
-  );
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -273,54 +191,20 @@ export default function AccountSettingsPage() {
           </Card>
         </Section>
 
+        {/* Phone notifications (docs/feature_spec/mobile-notifications §7.3) */}
+        <Section
+          title="On this phone"
+          subtitle="Notifications on this device's lock screen, and how each kind arrives."
+        >
+          <PushSettingsCard />
+        </Section>
+
         {/* Notification preferences */}
         <Section
           title="Notification preferences"
-          subtitle="Choose which events trigger a notification."
+          subtitle="Choose which events reach you, and how: in the app, by email, or as a push."
         >
-          {notifLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Spinner size="sm" />
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {TYPE_GROUPS.map((group) => (
-                <Card key={group.label} noPadding>
-                  <div className="border-b border-rule px-5 py-2.5">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      {group.label}
-                    </p>
-                  </div>
-                  <div className="divide-y divide-rule-faint">
-                    {group.types.map((type) => {
-                      const enabled = prefMap[type] ?? true;
-                      const isPending =
-                        notifMutation.isPending &&
-                        (notifMutation.variables as { type: string } | undefined)?.type === type;
-                      return (
-                        <div key={type} className="flex items-center justify-between px-5 py-3">
-                          <span className="text-sm text-text">
-                            {TYPE_LABELS[type] ?? type}
-                          </span>
-                          <Toggle
-                            enabled={enabled}
-                            disabled={isPending}
-                            onToggle={() => notifMutation.mutate({ type, enabled: !enabled })}
-                            label={enabled ? `Disable ${type}` : `Enable ${type}`}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-              ))}
-              {notifMutation.isError && (
-                <p className="text-sm text-danger-text">
-                  {getApiError(notifMutation.error, "Failed to save preference.")}
-                </p>
-              )}
-            </div>
-          )}
+          <NotificationTypesTable />
         </Section>
 
         {/* Change password */}

@@ -33,15 +33,26 @@ async def get_row(db: AsyncSession, user_id: uuid.UUID) -> UserPreference | None
 async def get_preferences(db: AsyncSession, user) -> dict:
     row = await get_row(db, user.id)
     chosen = row.lite_mode if row is not None else None
-    return {
+    out = {
         "lite_mode": chosen if chosen is not None else await role_default(db, user),
         "lite_mode_is_default": chosen is None,
         "text_scale": row.text_scale if row is not None else TextScale.NORMAL,
     }
+    if row is not None:  # no row: the schema's defaults are the column defaults
+        out.update({f: getattr(row, f) for f in PUSH_FIELDS})
+    return out
+
+
+# Phone notification settings (mobile notifications §4.1), stored on the same row.
+PUSH_FIELDS = (
+    "push_your_move", "push_heads_up", "push_summary", "summary_local_time",
+    "quiet_hours_enabled", "quiet_start", "quiet_end", "timezone", "push_hide_amounts",
+)
 
 
 async def update_preferences(
     db: AsyncSession, user, *, lite_mode: bool | None = None, text_scale: TextScale | None = None,
+    **push_settings,
 ) -> dict:
     """Set the fields given. Changing Lite mode is audited, so adoption can be
     measured; the text scale is a comfort setting and is not."""
@@ -56,6 +67,9 @@ async def update_preferences(
         row.lite_mode = lite_mode
     if text_scale is not None:
         row.text_scale = text_scale
+    for field, value in push_settings.items():
+        if field in PUSH_FIELDS and value is not None:
+            setattr(row, field, value)
     await db.flush()
     if lite_mode is not None and lite_mode != before:
         await audit_service.emit(

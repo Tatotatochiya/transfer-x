@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react"; // useRef kept — guard
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../store/auth";
 import api, { refreshAccessToken } from "../lib/api";
+import { unsubscribe as unsubscribePush } from "../lib/push";
 import type { TokenResponse, User } from "../types/api";
 
 /**
@@ -61,6 +62,9 @@ export function useAuth() {
 
   const logoutAndRevoke = useCallback(async () => {
     try {
+      // First, while still signed in: this device stops getting this
+      // person's pushes, so the next person to sign in on it doesn't see them.
+      await unsubscribePush().catch(() => {});
       if (refreshToken) {
         await api.post("/auth/logout", { refresh_token: refreshToken });
       }

@@ -3,6 +3,10 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App.tsx";
 import "./index.css";
+import { registerServiceWorker } from "./lib/push";
+
+// Shows phone and desktop notifications (public/sw.js). It caches nothing.
+registerServiceWorker();
 
 const queryClient = new QueryClient({
   defaultOptions: {
