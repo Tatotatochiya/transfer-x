@@ -8,6 +8,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.filters import apply_date_range
+from app.notifications import push
 from app.notifications.models import Notification, NotificationPreference, NotificationType
 
 
@@ -23,7 +24,33 @@ async def create_notification(
     link: str | None = None,
     related_player_id: uuid.UUID | None = None,
     related_club_id: uuid.UUID | None = None,
+    title: str | None = None,
+    body: str | None = None,
+    group_key: str | None = None,
+    deadline_at: datetime | None = None,
+    actions: list[dict] | None = None,
+    once: bool = False,
 ) -> Notification | None:
+    """Create an in-app notification, and fire its WebSocket refresh, email
+    and phone push.
+
+    `title`, `body`, `group_key`, `deadline_at` and `actions` shape the push
+    (docs/feature_spec/mobile-notifications §3); all optional. With `once`,
+    a notification already sent to this person of this type about this
+    `group_key` means this one is skipped: the scheduled reminders use it so
+    an hourly job tells each person once rather than every hour.
+    """
+    if once and group_key:
+        already = await db.execute(
+            select(Notification.id).where(
+                Notification.recipient_user_id == recipient_user_id,
+                Notification.type == type,
+                Notification.group_key == group_key,
+            ).limit(1)
+        )
+        if already.first() is not None:
+            return None
+
     pref = await db.execute(
         select(NotificationPreference).where(
             NotificationPreference.user_id == recipient_user_id,
@@ -42,9 +69,17 @@ async def create_notification(
         is_read=False,
         related_player_id=related_player_id,
         related_club_id=related_club_id,
+        title=title[:120] if title else None,
+        body=body[:240] if body else None,
+        group_key=group_key,
+        deadline_at=deadline_at,
+        actions_json=actions[:2] if actions else None,
     )
     db.add(n)
     await db.flush()
+
+    # Sent once the caller's transaction commits (push.queue_push).
+    push.queue_push(db, n.id)
 
     # Push a WS event so the client can refresh the notification bell without polling
     from app.ws.manager import manager as ws_manager
@@ -163,8 +198,10 @@ async def notify_club(
     link: str | None = None,
     related_player_id: uuid.UUID | None = None,
     related_club_id: uuid.UUID | None = None,
+    **push_fields,
 ) -> None:
-    """Create one notification per role-mapped club member (TRA-152)."""
+    """Create one notification per role-mapped club member (TRA-152).
+    `push_fields` are create_notification's push and `once` arguments."""
     for user_id in await club_recipient_user_ids(db, club_id, type):
         await create_notification(
             db,
@@ -174,6 +211,7 @@ async def notify_club(
             link=link,
             related_player_id=related_player_id,
             related_club_id=related_club_id,
+            **push_fields,
         )
 
 
@@ -275,6 +313,9 @@ async def _notify_instalments_due(db: AsyncSession, now: datetime) -> None:
     for inst, deal in rows:
         overdue = inst.due_date < now.date()
         amount_str = f"£{inst.amount:,.0f}"
+        # The job runs hourly: tell each person once when the instalment
+        # falls due soon, and once more if it goes overdue.
+        key = f"instalment:{inst.id}:{'overdue' if overdue else 'due'}"
         await notify_club(
             db,
             uuid.UUID(str(deal.buyer_club_id)),
@@ -284,6 +325,8 @@ async def _notify_instalments_due(db: AsyncSession, now: datetime) -> None:
             ),
             link=f"/deals/{deal.id}",
             related_player_id=deal.player_id,
+            group_key=key,
+            once=True,
         )
         if deal.seller_club_id:
             await notify_club(
@@ -296,6 +339,8 @@ async def _notify_instalments_due(db: AsyncSession, now: datetime) -> None:
                 ),
                 link=f"/deals/{deal.id}",
                 related_player_id=deal.player_id,
+                group_key=key,
+                once=True,
             )
 
 
@@ -324,6 +369,10 @@ async def _notify_expiring_offers(db: AsyncSession, now: datetime) -> None:
                 message="Your offer is expiring soon",
                 link=f"/offers/{offer.id}",
                 related_player_id=offer.player_id,
+                # The job runs hourly with a 24-hour window: once per offer.
+                group_key=f"offer:{offer.id}",
+                deadline_at=offer.expires_at,
+                once=True,
             )
 
 
@@ -365,6 +414,9 @@ async def _notify_ending_auctions(db: AsyncSession, now: datetime) -> None:
                 message="Auction ending soon",
                 link=f"/sales/{sale.id}",
                 related_player_id=sale.player_id,
+                group_key=f"sale:{sale.id}",
+                deadline_at=sale.deadline,
+                once=True,
             )
 
         # Notify all active bidders
@@ -377,6 +429,9 @@ async def _notify_ending_auctions(db: AsyncSession, now: datetime) -> None:
                     message="Auction you're bidding on is ending soon",
                     link=f"/sales/{sale.id}",
                     related_player_id=sale.player_id,
+                    group_key=f"sale:{sale.id}",
+                    deadline_at=sale.deadline,
+                    once=True,
                 )
 
 
@@ -426,6 +481,21 @@ async def set_preference(
     """Enable or disable in-app delivery of a notification type for a user."""
     row = await _get_or_create_preference(db, user_id, type)
     row.enabled = enabled
+    await db.flush()
+
+
+async def get_push_disabled_types(db: AsyncSession, user_id: uuid.UUID) -> set[NotificationType]:
+    """Return the set of notification types the user has switched phone pushes off for."""
+    prefs = await get_preference_map(db, user_id)
+    return {t for t, p in prefs.items() if not p.push_enabled}
+
+
+async def set_push_preference(
+    db: AsyncSession, user_id: uuid.UUID, type: NotificationType, push_enabled: bool
+) -> None:
+    """Switch phone pushes for a notification type on or off for a user."""
+    row = await _get_or_create_preference(db, user_id, type)
+    row.push_enabled = push_enabled
     await db.flush()
 
 

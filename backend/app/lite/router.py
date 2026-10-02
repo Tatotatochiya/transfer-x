@@ -34,6 +34,7 @@ async def update_my_preferences(
 ):
     prefs = await service.update_preferences(
         db, current_user, lite_mode=body.lite_mode, text_scale=body.text_scale,
+        **body.model_dump(include=set(service.PUSH_FIELDS), exclude_none=True),
     )
     await db.commit()
     return prefs

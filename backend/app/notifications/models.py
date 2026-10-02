@@ -2,8 +2,9 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, Uuid, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, Uuid, func
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -79,6 +80,17 @@ class Notification(Base):
     related_club_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("clubs.id", ondelete="SET NULL"), nullable=True
     )
+    # Web Push (migration 0088, docs/feature_spec/mobile-notifications). The
+    # push shows `title` (falling back to `message`) and `body`. `group_key`
+    # names the subject ("offer:{id}", "sale:{id}", "deal:{id}"…): it is the
+    # push tag, so a newer push about the same subject replaces the older one,
+    # and the scheduled reminders use it to tell each person only once.
+    title: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    body: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    group_key: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Up to two {action, title, url}. They only ever open a page (ADR 0006).
+    actions_json: Mapped[list | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
@@ -107,6 +119,72 @@ class NotificationPreference(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     # TRA-44: independent email opt-out — only meaningful while `enabled` is True.
     email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+# ── Web Push (migration 0088) ─────────────────────────────────────────────────
+
+
+class PushPlatform(str, enum.Enum):
+    IOS_HOME_SCREEN = "IOS_HOME_SCREEN"
+    ANDROID = "ANDROID"
+    DESKTOP = "DESKTOP"
+    OTHER = "OTHER"
+
+
+class PushDeliveryStatus(str, enum.Enum):
+    SENT = "SENT"
+    HELD = "HELD"                            # quiet hours: sent once send_after passes
+    SKIPPED_DUPLICATE = "SKIPPED_DUPLICATE"  # the same subject was pushed recently
+    SKIPPED = "SKIPPED"                      # held, but read before it was released
+    FAILED = "FAILED"
+
+
+class PushSubscription(Base):
+    """One browser or Home Screen app that has said yes to notifications."""
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    endpoint: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    p256dh: Mapped[str] = mapped_column(String(200), nullable=False)
+    auth: Mapped[str] = mapped_column(String(200), nullable=False)
+    platform: Mapped[PushPlatform] = mapped_column(
+        SAEnum(PushPlatform, name="pushplatform"), nullable=False, default=PushPlatform.OTHER, server_default="OTHER"
+    )
+    user_agent: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_failure_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failure_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+
+
+class PushDelivery(Base):
+    """What was decided for one notification and one person: sent, held for
+    quiet hours, skipped as a repeat, or failed. Also the record of when a
+    push was opened."""
+
+    __tablename__ = "push_deliveries"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    notification_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("notifications.id", ondelete="CASCADE"), nullable=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    type: Mapped[NotificationType | None] = mapped_column(SAEnum(NotificationType, name="notificationtype"), nullable=True)
+    group_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    status: Mapped[PushDeliveryStatus] = mapped_column(
+        SAEnum(PushDeliveryStatus, name="pushdeliverystatus"), nullable=False
+    )
+    send_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
