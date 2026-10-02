@@ -5,6 +5,7 @@ import type { Offer, OfferMessage, OfferEvent } from "../../types/api";
 import type { OfferEventType } from "../../types/enums";
 import { formatDateTime, getApiError } from "../../lib/utils";
 import Button from "../ui/Button";
+import ClubLink from "../ui/ClubLink";
 import { DraftButton, useDraftTracking } from "../ai/DraftButton";
 
 // ── Event label helpers ───────────────────────────────────────────────────────
@@ -74,7 +75,8 @@ function MessageBubble({
       >
         {!isMine && msg.sender_club && (
           <p className="mb-1 text-xs font-semibold text-text-muted">
-            {msg.sender_club.name}
+            {/* An anonymous buyer's messages arrive with no sender club (offers router _mask_buyer). */}
+            <ClubLink id={msg.sender_club.id} name={msg.sender_club.name} crestUrl={msg.sender_club.crest_url ?? null} />
           </p>
         )}
         <p>{msg.body}</p>

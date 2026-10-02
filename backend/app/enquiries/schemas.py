@@ -22,6 +22,8 @@ class EnquiryParty(BaseModel):
     the asking club is anonymous and the viewer is the owning club."""
     id: uuid.UUID | None
     name: str
+    # Null when masked, as the id is.
+    crest_url: str | None = None
 
 
 class EnquiryMessageResponse(BaseModel):

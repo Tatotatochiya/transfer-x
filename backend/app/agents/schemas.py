@@ -101,6 +101,12 @@ class DealSummary(BaseModel):
     buyer_club_name: str | None = None
     seller_club_name: str | None = None
     player_name: str | None = None
+    # For links and crests on the agent's pages.
+    player_id: uuid.UUID | None = None
+    buyer_club_id: uuid.UUID | None = None
+    seller_club_id: uuid.UUID | None = None
+    buyer_club_crest: str | None = None
+    seller_club_crest: str | None = None
 
 
 class InvitationResponse(BaseModel):
@@ -120,6 +126,11 @@ class PipelineDealItem(BaseModel):
     player_photo_url: str | None
     buyer_club_name: str | None
     seller_club_name: str | None
+    # For links and crests on the agent's pages.
+    buyer_club_id: uuid.UUID | None = None
+    seller_club_id: uuid.UUID | None = None
+    buyer_club_crest: str | None = None
+    seller_club_crest: str | None = None
     stage: str
     deal_status: str
     agreed_fee: Decimal | None

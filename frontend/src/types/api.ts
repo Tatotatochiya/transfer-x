@@ -863,6 +863,11 @@ export interface DealInvitationDealSummary {
   buyer_club_name: string | null;
   seller_club_name: string | null;
   player_name: string | null;
+  player_id?: string | null;
+  buyer_club_id?: string | null;
+  seller_club_id?: string | null;
+  buyer_club_crest?: string | null;
+  seller_club_crest?: string | null;
 }
 
 export interface AgentDealInvitation {
@@ -882,6 +887,10 @@ export interface PipelineDealItem {
   player_photo_url: string | null;
   buyer_club_name: string | null;
   seller_club_name: string | null;
+  buyer_club_id?: string | null;
+  seller_club_id?: string | null;
+  buyer_club_crest?: string | null;
+  seller_club_crest?: string | null;
   stage: string;
   deal_status: string;
   agreed_fee: number | null;
@@ -1257,6 +1266,9 @@ export interface Notification {
   related_player_id: string | null;
   related_club_id: string | null;
   created_at: string;
+  /** The player and club it's about, for links and pictures (never an anonymous buyer). */
+  player?: { id: string; name: string; image_url: string | null } | null;
+  club?: { id: string; name: string; image_url: string | null } | null;
 }
 
 export interface UnreadCount {
@@ -1275,6 +1287,8 @@ export interface UnreadCount {
 export interface EnquiryParty {
   id: string | null;
   name: string;
+  /** Null when the club is masked. */
+  crest_url?: string | null;
 }
 
 export interface Enquiry {

@@ -119,6 +119,11 @@ async def list_invitations(
                 buyer_club_name=inv.deal.buyer_club.name if inv.deal.buyer_club else None,
                 seller_club_name=inv.deal.seller_club.name if inv.deal.seller_club else None,
                 player_name=inv.deal.player.name if inv.deal.player else None,
+                player_id=inv.deal.player_id,
+                buyer_club_id=inv.deal.buyer_club_id,
+                seller_club_id=inv.deal.seller_club_id,
+                buyer_club_crest=inv.deal.buyer_club.crest_url if inv.deal.buyer_club else None,
+                seller_club_crest=inv.deal.seller_club.crest_url if inv.deal.seller_club else None,
             ) if inv.deal else None,
         )
         for inv in invitations

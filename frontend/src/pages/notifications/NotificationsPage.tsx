@@ -11,6 +11,8 @@ import PageHeader from "../../components/ui/PageHeader";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import { formatDateTime } from "../../lib/utils";
+import ClubLink from "../../components/ui/ClubLink";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 // ── Notification type labels + colours ───────────────────────────────────────
 
@@ -177,6 +179,16 @@ function NotificationRow({
           </span>
         </div>
         <p className="mt-0.5 text-sm text-text-secondary">{notification.message}</p>
+        {(notification.player || notification.club) && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-medium text-text">
+            {notification.player && (
+              <PlayerLink id={notification.player.id} name={notification.player.name} photoUrl={notification.player.image_url} />
+            )}
+            {notification.club && (
+              <ClubLink id={notification.club.id} name={notification.club.name} crestUrl={notification.club.image_url} />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

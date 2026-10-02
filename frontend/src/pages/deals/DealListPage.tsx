@@ -16,6 +16,7 @@ import StageTracker from "../../components/deals/StageTracker";
 import { dealStatusVariant } from "../../lib/badges";
 import { formatCurrency, formatDate } from "../../lib/utils";
 import { dealWhoseMove, dealWhoseMoveReason } from "../../lib/whoseMove";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 const CHIPS: { label: string; value: DealStatus | "" }[] = [
   { label: "All",                value: "" },
@@ -44,9 +45,9 @@ function DealCard({ deal, myClubId }: { deal: Deal; myClubId: string | undefined
     >
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex-1 basis-[240px]">
-          <p className="text-base font-bold text-text">{deal.player?.name ?? "Unknown"}</p>
+          <p className="text-base font-bold text-text"><PlayerLink id={deal.player?.id ?? deal.player_id} name={deal.player?.name ?? "Unknown"} /></p>
           <p className="text-[13px] text-text-secondary">
-            {deal.seller_club?.name ?? "?"} → {deal.buyer_club?.name ?? "?"}
+            <span className="inline-flex flex-wrap items-center gap-1.5"><ClubLink id={deal.seller_club?.id} name={deal.seller_club?.name} crestUrl={deal.seller_club?.crest_url ?? null} fallback="?" /><span aria-hidden="true">→</span><ClubLink id={deal.buyer_club?.id} name={deal.buyer_club?.name} crestUrl={deal.buyer_club?.crest_url ?? null} fallback="?" /></span>
           </p>
         </div>
         <div className="basis-[120px] shrink">
@@ -91,7 +92,7 @@ function ClosedDealsTable({ deals }: { deals: Deal[] }) {
 
   const columns: ResponsiveColumn<ClosedRow>[] = [
     { key: "player", header: "Player", priority: 1, render: ({ deal }) => (
-      <span className="font-medium text-text">{deal.player?.name ?? "—"}</span>
+      <span className="font-medium text-text"><PlayerLink id={deal.player?.id ?? deal.player_id} name={deal.player?.name} /></span>
     ) },
     { key: "route", header: "Route", priority: 3, render: ({ deal }) => (
       <span className="text-text-secondary">
@@ -120,10 +121,10 @@ function ClosedDealsTable({ deals }: { deals: Deal[] }) {
         renderCard={({ deal }) => (
           <div className="px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-text">{deal.player?.name ?? "—"}</span>
+              <span className="text-sm font-semibold text-text"><PlayerLink id={deal.player?.id ?? deal.player_id} name={deal.player?.name} /></span>
               <span className="text-sm font-bold text-text">{formatCurrency(deal.agreed_fee)}</span>
             </div>
-            <p className="mt-0.5 text-xs text-text-muted">{deal.seller_club?.name ?? "?"} → {deal.buyer_club?.name ?? "?"}</p>
+            <p className="mt-0.5 text-xs text-text-muted"><span className="inline-flex flex-wrap items-center gap-1.5"><ClubLink id={deal.seller_club?.id} name={deal.seller_club?.name} crestUrl={deal.seller_club?.crest_url ?? null} fallback="?" /><span aria-hidden="true">→</span><ClubLink id={deal.buyer_club?.id} name={deal.buyer_club?.name} crestUrl={deal.buyer_club?.crest_url ?? null} fallback="?" /></span></p>
             <div className="mt-1 flex items-center justify-between">
               <Badge variant={dealStatusVariant(deal.status)}>{deal.status === "COMPLETED" ? "Completed" : "Collapsed"}</Badge>
               <span className="text-xs text-text-muted">{formatDate(deal.completed_at ?? deal.updated_at)}</span>

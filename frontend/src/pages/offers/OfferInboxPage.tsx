@@ -16,6 +16,7 @@ import { offerWhoseMove } from "../../lib/whoseMove";
 import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 import { formatCurrency, formatDate } from "../../lib/utils";
 import { isLoan, offerHeadline, purchaseClause, wageSharePct } from "../../lib/offerTerms";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 // ── Filter chips ──────────────────────────────────────────────────────────────
 
@@ -98,7 +99,7 @@ function YourMoveRow({
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex-1 basis-[260px]">
           <p className="text-base font-bold text-text">
-            {offer.player?.name ?? "Unknown player"}
+            <PlayerLink id={offer.player?.id ?? offer.player_id} name={offer.player?.name ?? "Unknown player"} />
             {offer.player?.position && (
               <span className="ml-2 text-[11px] font-bold text-text-muted">{offer.player.position}</span>
             )}
@@ -332,7 +333,7 @@ function InboxSection({
           <div className="px-4 py-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-text">
-                {g.best.offer.player?.name ?? "—"}
+                <PlayerLink id={g.best.offer.player?.id ?? g.best.offer.player_id} name={g.best.offer.player?.name} />
                 {g.best.offer.player?.position && (
                   <span className="ml-1.5 text-xs text-text-muted">{g.best.offer.player.position}</span>
                 )}
@@ -436,7 +437,7 @@ export default function OfferInboxPage() {
   const columns: ResponsiveColumn<PlayerGroup>[] = [
     { key: "player", header: "Player", priority: 1, render: (g) => (
       <span className="font-medium text-text">
-        {g.best.offer.player?.name ?? "—"}
+        <PlayerLink id={g.best.offer.player?.id ?? g.best.offer.player_id} name={g.best.offer.player?.name} />
         {g.best.offer.player?.position && (
           <span className="ml-2 text-xs text-text-muted">{g.best.offer.player.position}</span>
         )}

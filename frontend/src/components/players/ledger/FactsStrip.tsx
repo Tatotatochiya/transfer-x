@@ -104,12 +104,18 @@ export default function FactsStrip({
               }}
               disabled={!contract}
               title={contract ? "Edit your valuation" : "Record his contract first"}
-              className="truncate text-left text-[15px] font-bold tabular-nums text-text hover:text-accent disabled:cursor-default disabled:hover:text-text"
+              className={contract?.club_valuation != null
+                ? "truncate text-left text-[15px] font-bold tabular-nums text-text hover:text-accent disabled:cursor-default disabled:hover:text-text"
+                : "self-start rounded-md bg-accent-bg px-2 py-0.5 text-[13px] font-semibold text-accent ring-1 ring-accent/30 hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-60"}
             >
-              {contract?.club_valuation != null ? formatCurrency(contract.club_valuation) : "Not set"} <span aria-hidden="true">✎</span>
+              {contract?.club_valuation != null
+                ? <>{formatCurrency(contract.club_valuation)} <span aria-hidden="true">✎</span></>
+                : "Set valuation"}
             </button>
           )}
-          <span className="truncate text-xs text-text-muted">Only your club sees this</span>
+          <span className="truncate text-xs text-text-muted">
+            {contract ? "Only your club sees this" : "Needs his contract on record"}
+          </span>
         </div>
       ) : (
         <Cell label="Release clause" value={contract?.release_clause != null ? money(contract.release_clause) : "None"}

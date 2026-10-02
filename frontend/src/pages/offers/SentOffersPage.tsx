@@ -5,7 +5,6 @@ import api from "../../lib/api";
 import type { Offer, Paginated } from "../../types/api";
 import type { OfferStatus } from "../../types/enums";
 import Badge from "../../components/ui/Badge";
-import Button from "../../components/ui/Button";
 import ClubLink from "../../components/ui/ClubLink";
 import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import PageHeader from "../../components/ui/PageHeader";
@@ -86,12 +85,7 @@ export default function SentOffersPage() {
     <div>
       <PageHeader
         title="My Offers"
-        subtitle="Offers you've made for other clubs' players"
-        actions={
-          <Button variant="primary" onClick={() => navigate("/offers/new")}>
-            + New offer
-          </Button>
-        }
+        subtitle="Offers you've made for other clubs' players. Make a new one from a player's page."
       />
 
       <div className="mb-4 flex flex-wrap gap-2">

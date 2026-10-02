@@ -53,6 +53,11 @@ async def _db_notify_offer(
     (TRA-152). Must be called before commit."""
     if recipient_club_id is None:
         return
+    # The club on the other side, for the notification's crest and link;
+    # never an anonymous buyer while he is still masked from the seller.
+    other = offer.from_club_id if str(recipient_club_id) == str(offer.to_club_id) else offer.to_club_id
+    if other == offer.from_club_id and offer.is_anonymous and offer.status != OfferStatus.ACCEPTED:
+        other = None
     await notif_service.notify_club(
         db,
         uuid.UUID(str(recipient_club_id)),
@@ -60,6 +65,7 @@ async def _db_notify_offer(
         message=message,
         link=f"/offers/{offer.id}",
         related_player_id=offer.player_id,
+        related_club_id=other,
     )
 
 

@@ -436,3 +436,27 @@ async def set_email_preference(
     row = await _get_or_create_preference(db, user_id, type)
     row.email_enabled = email_enabled
     await db.flush()
+
+
+async def with_subjects(db: AsyncSession, notifications) -> list:
+    """Notifications as responses, each with the player and club it is about
+    (name and picture), loaded in one query each for the page."""
+    from app.clubs.models import Club
+    from app.notifications.schemas import NotificationResponse, NotificationSubject
+    from app.players.models import Player
+
+    player_ids = {n.related_player_id for n in notifications if n.related_player_id}
+    club_ids = {n.related_club_id for n in notifications if n.related_club_id}
+    players = {r.id: r for r in (await db.execute(
+        select(Player.id, Player.name, Player.photo_url).where(Player.id.in_(player_ids)))).all()} if player_ids else {}
+    clubs = {r.id: r for r in (await db.execute(
+        select(Club.id, Club.name, Club.crest_url).where(Club.id.in_(club_ids)))).all()} if club_ids else {}
+    out = []
+    for n in notifications:
+        resp = NotificationResponse.model_validate(n)
+        if (p := players.get(n.related_player_id)) is not None:
+            resp.player = NotificationSubject(id=p.id, name=p.name, image_url=p.photo_url)
+        if (c := clubs.get(n.related_club_id)) is not None:
+            resp.club = NotificationSubject(id=c.id, name=c.name, image_url=c.crest_url)
+        out.append(resp)
+    return out
