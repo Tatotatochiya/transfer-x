@@ -161,6 +161,8 @@ function SmartRedirect() {
   const { user, accessToken, refreshToken, isBootstrapping } = useAuthStore();
   if (isBootstrapping) return <LoadingScreen />;
   if (!accessToken && !refreshToken) return <Navigate to="/login" replace />;
+  // TransferX staff start on the admin panel, whatever their account type.
+  if (user?.is_superuser) return <Navigate to="/admin" replace />;
   if (user?.user_type === "AGENT") return <Navigate to="/agent/pipeline" replace />;
   if (user?.user_type === "PLAYER") return <Navigate to="/player/profile" replace />;
   return <Navigate to="/dashboard" replace />;

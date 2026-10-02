@@ -139,7 +139,7 @@ function getNavGroups(userType: UserType | null): NavGroup[] {
       items: [
         { label: "My Club",   to: "/club",           icon: "shield", end: true },
         { label: "Finance",   to: "/club/finance",   icon: "wallet" },
-        { label: "Team",      to: "/club/team",      icon: "users", gate: "TEAM_MANAGE" },
+        { label: "Team",      to: "/club/team",      icon: "user-plus", gate: "TEAM_MANAGE" },
         { label: "Approvals", to: "/club/approvals", icon: "check", gate: "APPROVALS" },
       ],
     },

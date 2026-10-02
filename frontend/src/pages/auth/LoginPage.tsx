@@ -24,9 +24,11 @@ export default function LoginPage() {
       let dest = me.user_type === "AGENT" ? "/agent/dashboard"
                : me.user_type === "PLAYER" ? "/player/profile"
                : "/dashboard";
+      // TransferX staff start on the admin panel, whatever their account type.
+      if (me.is_superuser) dest = "/admin";
       // Club members with Lite mode on land on the Lite home. If the
       // preference can't be read, the full app is the safe default.
-      if (me.user_type === "CLUB") {
+      else if (me.user_type === "CLUB") {
         const prefs = await api.get<{ lite_mode: boolean }>("/users/me/preferences").then((r) => r.data).catch(() => null);
         if (prefs?.lite_mode) dest = "/lite";
       }

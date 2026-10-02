@@ -247,7 +247,7 @@ export default function NotificationsPage() {
         actions={
           <div className="flex items-center gap-2">
             <Link
-              to="/account"
+              to="/account#notifications"
               className="text-sm text-text-muted hover:text-text transition-colors"
             >
               Preferences
