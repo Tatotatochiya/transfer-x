@@ -404,7 +404,14 @@ async def _notify_ending_auctions(db: AsyncSession, now: datetime) -> None:
     for bid in all_bids:
         bids_by_sale.setdefault(uuid.UUID(str(bid.sale_id)), []).append(bid)
 
+    from app.notifications import copy as push_copy
+    from app.players.models import Player
+
     for sale in sales:
+        bids = bids_by_sale.get(uuid.UUID(str(sale.id)), [])
+        best = max((b.amount for b in bids), default=None)
+        player = (await db.execute(select(Player.name).where(Player.id == sale.player_id))).scalar_one_or_none() or "a player"
+
         # Notify seller
         if sale.seller_club_id:
             await notify_club(
@@ -414,25 +421,28 @@ async def _notify_ending_auctions(db: AsyncSession, now: datetime) -> None:
                 message="Auction ending soon",
                 link=f"/sales/{sale.id}",
                 related_player_id=sale.player_id,
-                group_key=f"sale:{sale.id}",
-                deadline_at=sale.deadline,
                 once=True,
+                **push_copy.auction_ending(sale=sale, player=player, seller_view=True, best=best,
+                                           bids=len(bids), own_bid=None),
             )
 
-        # Notify all active bidders
-        for bid in bids_by_sale.get(uuid.UUID(str(sale.id)), []):
-            if bid.buyer_club_id:
-                await notify_club(
-                    db,
-                    uuid.UUID(str(bid.buyer_club_id)),
-                    type=NotificationType.AUCTION_ENDING,
-                    message="Auction you're bidding on is ending soon",
-                    link=f"/sales/{sale.id}",
-                    related_player_id=sale.player_id,
-                    group_key=f"sale:{sale.id}",
-                    deadline_at=sale.deadline,
-                    once=True,
-                )
+        # Notify all active bidders, once per club with its best bid
+        own: dict[str, object] = {}
+        for bid in bids:
+            if bid.buyer_club_id and (str(bid.buyer_club_id) not in own or bid.amount > own[str(bid.buyer_club_id)]):
+                own[str(bid.buyer_club_id)] = bid.amount
+        for club_id, own_bid in own.items():
+            await notify_club(
+                db,
+                uuid.UUID(club_id),
+                type=NotificationType.AUCTION_ENDING,
+                message="Auction you're bidding on is ending soon",
+                link=f"/sales/{sale.id}",
+                related_player_id=sale.player_id,
+                once=True,
+                **push_copy.auction_ending(sale=sale, player=player, seller_view=False, best=best,
+                                           bids=len(bids), own_bid=own_bid),
+            )
 
 
 # ── Notification preferences ──────────────────────────────────────────────────
@@ -521,9 +531,25 @@ async def with_subjects(db: AsyncSession, notifications) -> list:
         select(Player.id, Player.name, Player.photo_url).where(Player.id.in_(player_ids)))).all()} if player_ids else {}
     clubs = {r.id: r for r in (await db.execute(
         select(Club.id, Club.name, Club.crest_url).where(Club.id.in_(club_ids)))).all()} if club_ids else {}
+    # The push wording's deadlines, written in each recipient's timezone.
+    from app.lite.models import UserPreference
+    from app.notifications.copy import render
+    from app.notifications.push import _zone
+    from app.notifications.tiers import tier_of
+
+    recipients = {n.recipient_user_id for n in notifications}
+    zones = {r.user_id: _zone(r.timezone) for r in (await db.execute(
+        select(UserPreference.user_id, UserPreference.timezone).where(UserPreference.user_id.in_(recipients))
+    )).all()} if recipients else {}
+    now = datetime.now(timezone.utc)
+
     out = []
     for n in notifications:
         resp = NotificationResponse.model_validate(n)
+        zone = zones.get(n.recipient_user_id, _zone(None))
+        resp.title = render(n.title, n.deadline_at, zone, now)
+        resp.body = render(n.body, n.deadline_at, zone, now)
+        resp.tier = tier_of(n.type).value
         if (p := players.get(n.related_player_id)) is not None:
             resp.player = NotificationSubject(id=p.id, name=p.name, image_url=p.photo_url)
         if (c := clubs.get(n.related_club_id)) is not None:

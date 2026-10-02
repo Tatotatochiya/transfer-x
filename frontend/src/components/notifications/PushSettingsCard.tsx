@@ -16,6 +16,7 @@ import type { PushDevice } from "../../types/api";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
 import Spinner from "../ui/Spinner";
+import InstallGuide from "./InstallGuide";
 import { MiniToggle } from "./NotificationTypesTable";
 
 /**
@@ -83,8 +84,9 @@ function Row({ children }: { children: React.ReactNode }) {
 
 // ── This device ───────────────────────────────────────────────────────────────
 
-function ThisDevice({ state, onTurnOn, busy, device, onTest, onTurnOff }: {
+function ThisDevice({ state, onTurnOn, busy, device, onTest, onTurnOff, onShowGuide }: {
   state: PushState;
+  onShowGuide: () => void;
   onTurnOn: () => void;
   busy: boolean;
   device: PushDevice | undefined;
@@ -102,11 +104,7 @@ function ThisDevice({ state, onTurnOn, busy, device, onTest, onTurnOff }: {
       <div className="space-y-2 text-sm text-text-secondary">
         <p className="font-semibold text-text">Add TransferX to your Home Screen first</p>
         <p>On iPhone and iPad, notifications only work in the TransferX app opened from the Home Screen.</p>
-        <ol className="list-decimal space-y-1 pl-5">
-          <li>Tap Share in Safari's toolbar (the square with an arrow).</li>
-          <li>Tap Add to Home Screen.</li>
-          <li>Open TransferX from your Home Screen and come back here.</li>
-        </ol>
+        <Button variant="primary" size="sm" onClick={onShowGuide}>Show me how</Button>
       </div>
     );
   }
@@ -154,6 +152,7 @@ export default function PushSettingsCard() {
   const { data: prefs } = usePreferences();
   const update = useUpdatePreferences();
   const [busy, setBusy] = useState(false);
+  const [guide, setGuide] = useState(false);
 
   const { data: devices, refetch: refetchDevices } = useQuery<PushDevice[]>({
     queryKey: ["notifications", "push", "devices"],
@@ -220,6 +219,7 @@ export default function PushSettingsCard() {
             device={thisDevice}
             onTest={() => test.mutate()}
             onTurnOff={turnOff}
+            onShowGuide={() => setGuide(true)}
           />
         )}
       </div>
@@ -321,6 +321,7 @@ export default function PushSettingsCard() {
           </ul>
         </div>
       )}
+      <InstallGuide open={guide} onClose={() => setGuide(false)} />
     </Card>
   );
 }

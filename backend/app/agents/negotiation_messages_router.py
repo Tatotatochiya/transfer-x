@@ -83,7 +83,8 @@ async def post_negotiation_message(
         sender_user_id=current_user.id,
         body=body.body.strip(),
     )
-    await service.notify_counterparty(db, negotiation=negotiation, deal=deal, thread=body.thread, sender=current_user)
+    await service.notify_counterparty(db, negotiation=negotiation, deal=deal, thread=body.thread, sender=current_user,
+                                      text=body.body.strip())
     await db.commit()
     await db.refresh(msg)
     return await _to_response(db, msg)

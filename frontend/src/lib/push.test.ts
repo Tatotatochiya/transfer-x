@@ -56,3 +56,26 @@ describe("markOpenedFromUrl", () => {
     expect(api.post).not.toHaveBeenCalled();
   });
 });
+
+import { canAsk } from "./push";
+
+describe("canAsk (the soft ask's frequency rules)", () => {
+  const now = Date.UTC(2026, 9, 2);
+  const day = 86_400_000;
+  const fresh = { dismissedAt: null, dismissals: 0 };
+
+  it("never asks in the first session", () => {
+    expect(canAsk({ record: fresh, sessions: 1, now, fromHomeScreen: false })).toBe(false);
+    expect(canAsk({ record: fresh, sessions: 2, now, fromHomeScreen: false })).toBe(true);
+  });
+
+  it("waits 14 days after Not now, and stops after three", () => {
+    expect(canAsk({ record: { dismissedAt: now - 13 * day, dismissals: 1 }, sessions: 5, now, fromHomeScreen: false })).toBe(false);
+    expect(canAsk({ record: { dismissedAt: now - 14 * day, dismissals: 1 }, sessions: 5, now, fromHomeScreen: false })).toBe(true);
+    expect(canAsk({ record: { dismissedAt: now - 90 * day, dismissals: 3 }, sessions: 5, now, fromHomeScreen: false })).toBe(false);
+  });
+
+  it("asks straight away on the Home Screen app's first launch", () => {
+    expect(canAsk({ record: { dismissedAt: now, dismissals: 3 }, sessions: 1, now, fromHomeScreen: true })).toBe(true);
+  });
+});

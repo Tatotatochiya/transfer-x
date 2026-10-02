@@ -71,7 +71,7 @@ async def mark_read(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
     await db.commit()
     await db.refresh(n)
-    return NotificationResponse.model_validate(n)
+    return (await service.with_subjects(db, [n]))[0]
 
 
 @router.post("/read-all", response_model=UnreadCountResponse)

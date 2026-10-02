@@ -13,6 +13,9 @@ from app.main import app
 settings.allow_club_self_registration = True
 # Likewise players: real environments invite them from their club.
 settings.allow_player_self_registration = True
+# No phone pushes from tests: a commit would start a real send, in its own
+# session on the real database. tests/test_push.py turns them on for itself.
+settings.vapid_public_key = settings.vapid_private_key = settings.vapid_subject = None
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 

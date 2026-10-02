@@ -18,6 +18,7 @@ from app.database import get_db
 from app.deals.models import DealType
 from app.clubs.capabilities import Capability, require_club_capability
 from app.deps import get_buyer_user, get_current_user, get_optional_user
+from app.notifications import copy as push_copy
 from app.notifications import service as notif_service
 from app.transfer_window import service as window_service
 from app.notifications.models import NotificationType
@@ -48,15 +49,19 @@ async def _db_notify_offer(
     recipient_club_id,
     ntype: NotificationType,
     message: str,
+    push: dict | None = None,
 ) -> None:
     """Create DB notifications for an offer event, role-routed per club
-    (TRA-152). Must be called before commit."""
+    (TRA-152). Must be called before commit. `push` is the push wording
+    from app.notifications.copy."""
     if recipient_club_id is None:
         return
     # The club on the other side, for the notification's crest and link;
     # never an anonymous buyer while he is still masked from the seller.
+    from app.common.masking import buyer_is_masked
+
     other = offer.from_club_id if str(recipient_club_id) == str(offer.to_club_id) else offer.to_club_id
-    if other == offer.from_club_id and offer.is_anonymous and offer.status != OfferStatus.ACCEPTED:
+    if other == offer.from_club_id and buyer_is_masked(offer, recipient_club_id):
         other = None
     await notif_service.notify_club(
         db,
@@ -66,6 +71,7 @@ async def _db_notify_offer(
         link=f"/offers/{offer.id}",
         related_player_id=offer.player_id,
         related_club_id=other,
+        **(push or {}),
     )
 
 
@@ -491,6 +497,7 @@ async def create_offer(
             recipient_club_id=offer.to_club_id,
             ntype=NotificationType.OFFER_RECEIVED,
             message="You have received a new offer",
+            push=await push_copy.offer_received(db, offer),
         )
         await _notify_player_of_offer(db, offer)
         if body.ai_assisted:
@@ -520,6 +527,7 @@ async def counter_offer(
 ):
     club = await _get_club_or_403(db, current_user)
     offer = await _get_offer_or_404(db, offer_id)
+    previous = push_copy.offer_amount(offer)[0]
 
     try:
         await service.counter_offer(
@@ -557,6 +565,7 @@ async def counter_offer(
             recipient_club_id=other_club_id,
             ntype=NotificationType.OFFER_COUNTERED,
             message="A counter offer has been submitted",
+            push=await push_copy.offer_countered(db, offer, recipient_club_id=other_club_id, previous=previous),
         )
         if body.ai_assisted:
             await _audit_ai_used(db, entity_type="OFFER", entity_id=offer.id, user=current_user,
@@ -589,6 +598,7 @@ async def improve_offer(
     """Item 2: the buyer raises their own pending offer without waiting for a reply."""
     club = await _get_club_or_403(db, current_user)
     offer = await _get_offer_or_404(db, offer_id)
+    previous = push_copy.offer_amount(offer)[0]
 
     try:
         await service.improve_own_offer(
@@ -605,6 +615,7 @@ async def improve_offer(
             recipient_club_id=offer.to_club_id,
             ntype=NotificationType.OFFER_COUNTERED,
             message="The buyer has raised their offer",
+            push=await push_copy.offer_countered(db, offer, recipient_club_id=offer.to_club_id, previous=previous, raised=True),
         )
         await db.commit()
     except ValueError as exc:
@@ -782,6 +793,7 @@ async def add_message(
             recipient_club_id=other_club_id,
             ntype=NotificationType.OFFER_MESSAGE,
             message="New message in your negotiation",
+            push=await push_copy.offer_message(db, offer, sender_club_id=club.id, text=body.body),
         )
         await db.commit()
         await db.refresh(msg)

@@ -1266,6 +1266,13 @@ export interface Notification {
   related_player_id: string | null;
   related_club_id: string | null;
   created_at: string;
+  /** The push wording (mobile notifications §3), deadlines already written out. */
+  title?: string | null;
+  body?: string | null;
+  group_key?: string | null;
+  deadline_at?: string | null;
+  /** YOUR_MOVE, HEADS_UP or FYI. */
+  tier?: "YOUR_MOVE" | "HEADS_UP" | "FYI" | null;
   /** The player and club it's about, for links and pictures (never an anonymous buyer). */
   player?: { id: string; name: string; image_url: string | null } | null;
   club?: { id: string; name: string; image_url: string | null } | null;

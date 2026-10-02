@@ -62,3 +62,35 @@ Also decided while building:
     - an offer-received notification created on the server was pushed after commit and shown with its title, body, `offer:` tag and both buttons;
     - signing out removed the device on the server and in the browser.
   - Not yet checked on a real iPhone or Android phone.
+- **2026-10-02, phase 3 built** (branch `notifications-phase-3`):
+  - **One masking rule**, `app/common/masking.py` (`buyer_is_masked`, `masked_name`, `buyer_name`). The order book, the assistant and the offer notifications now use it, instead of three copies.
+  - **Push wording**, `app/notifications/copy.py`, at each place these are created:
+
+    | Type | Title, body |
+    |---|---|
+    | Offer received | "Offer for {player}: £5m" · "{buyer} · your valuation £8m · reply by Fri 18:00". The buyer is masked while anonymous; a loan, free transfer or pre-contract is named as such. |
+    | Counter, or the buyer raising | "{club} countered at £7m" · "{player} · up from £5m · 5 hours left to reply" |
+    | Message on an offer | "{club} · {player}", then the message's first 120 characters |
+    | Negotiation and deal-room messages | "{sender} ({role})", then the message |
+    | Auction ending | "47 minutes left on the {player} auction". The seller sees the best bid and the number of bids; a bidder sees its own bid against the best. |
+    | Outbid | "You've been outbid on {player}" · "Highest bid now £3.4m · ends in 50 minutes" |
+    | Approval requested | "Approve a £4.2m offer for {player}?" (worded per kind of approval) · "{requester}, Manager · budget after £95.8m" |
+  - **Deadlines** are tokens in the stored text (`{deadline}`, `{time_left}`, `{time_remaining}`), written out per recipient in their timezone when the push is sent and when the list is read. One notification can go to several staff in different timezones.
+  - **Action buttons:**
+    - "Ask for £8m" and "Accept £7m" open the Lite offer card with that action chosen. The card still asks once more before anything is sent.
+    - "Bid £3.6m" opens the sale with the bid box filled (`?bid=`).
+    - Messages get "Reply".
+  - **In-app:** the list shows the new title and body, and the API gives each notification's tier.
+  - **Soft ask** (`PushSoftAsk`), on phones and tablets for club members:
+    - It appears when an unread "your move" notification arrives and this device can get notifications but doesn't.
+    - Never in the first session; 14 days after "Not now"; at most three times.
+    - The Home Screen app's first launch (`?source=homescreen`) asks straight away.
+    - If permission is blocked, it says how to unblock it.
+  - **Install guide** (`InstallGuide`): the three steps, with the Share pointer at the bottom on iPhone and top right on iPad. It opens from the soft ask and from Settings ("Show me how").
+  - **Analytics:** `push_ask_shown`, `push_ask_dismissed` and `push_install_guide_shown` are recorded as click events.
+  - **Tests:** `tests/test_push_copy.py` (23), `PushSoftAsk.test.tsx`, and the ask rules in `lib/push.test.ts`. The test suite now switches pushes off globally (`tests/conftest.py`): with VAPID keys in a developer's `.env`, every test commit used to start a real push task against the development database.
+- **Deviations in phase 3:**
+  - **Outbid** doesn't name the rival club, as the handoff's "{club} bid £3.4m" did. Bidders see the book anonymised, so naming the rival in a push would leak who is bidding.
+  - **Approvals:** the requester is named by username and staff role, since users have no first name on record. The button is "Review", opening the approvals page; there is no page for one approval yet.
+  - **The soft ask's second line** reads "Everything else: in the app, when you look" until the morning summary exists (phase 4).
+  - **Deal paperwork and other FYI types** are never pushed, so their wording is unchanged.

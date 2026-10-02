@@ -295,13 +295,20 @@ def _url(path: str | None, nid: uuid.UUID, extra: dict | None = None) -> str:
     return f"{base}{'&' if '?' in base else '?'}{urlencode(params)}"
 
 
-def build_payload(n: Notification, *, tier: Tier, silent: bool, hide_amounts: bool, badge: int | None) -> dict:
+def build_payload(
+    n: Notification, *, tier: Tier, silent: bool, hide_amounts: bool, badge: int | None,
+    tz: ZoneInfo | None = None, now: datetime | None = None,
+) -> dict:
+    from app.notifications.copy import render
+
     if hide_amounts:
         title, body = hidden_title(n.type), HIDDEN_BODY
         actions = []  # an action's label can carry a figure ("Ask for £21m")
     else:
-        title = (n.title or n.message)[:120]
-        body = n.body
+        # Deadlines are written in the recipient's own timezone (copy.render).
+        zone, at = tz or _zone(None), now or datetime.now(timezone.utc)
+        title = render(n.title or n.message, n.deadline_at, zone, at)[:120]
+        body = render(n.body, n.deadline_at, zone, at)
         actions = [
             {"action": a["action"], "title": a["title"], "navigate": _url(a["url"], n.id)}
             for a in (n.actions_json or [])[:2]
@@ -375,6 +382,8 @@ async def _send_to_devices(
         silent=_mode(prefs, tier) is not PushMode.SOUND,
         hide_amounts=prefs.push_hide_amounts if prefs is not None else False,
         badge=await _badge_count(db, n.recipient_user_id),
+        tz=_zone(prefs.timezone if prefs is not None else None),
+        now=now,
     )
     headers = {"Urgency": "high" if tier is Tier.YOUR_MOVE else "normal"}
     if (topic := topic_for(n.group_key)) is not None:

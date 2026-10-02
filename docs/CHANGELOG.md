@@ -25,6 +25,12 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Phone notifications, phase 3: pushes worth reading** ([spec](./feature_spec/mobile-notifications/README.md)).
+  - **Wording.** Offers, counters, messages, auctions ending, outbids and approval requests now say who, how much and by when, e.g. "Offer for Marcus Webb: £18m · Ashfield United · your valuation £21m · reply by Fri 18:00". Deadlines are in each person's own timezone.
+  - **Masking.** An anonymous buyer is still only "A Premier League club", through one shared masking rule.
+  - **Buttons.** They open the right screen ready to confirm: the Lite offer card for "Ask for £21m" or "Accept", the bid box filled for "Bid £3.6m". Nothing is sent from the lock screen.
+  - **In-app.** The notification list shows the same wording.
+  - **"Get offers on this phone".** Club members on a phone or tablet are asked once something is their move (never in the first session, at most three times). On iPhone they get the Add to Home Screen guide, also reachable from Settings.
 - **Phone notifications, phase 2: turn them on** ([spec](./feature_spec/mobile-notifications/README.md)).
   - TransferX can be installed to the Home Screen (manifest and icons). A service worker shows pushes and opens the right page when one is tapped.
   - Account settings has an "On this phone" card:

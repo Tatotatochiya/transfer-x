@@ -128,13 +128,22 @@ async def notify_counterparty(
     deal: Deal,
     thread: NegotiationThread,
     sender: User,
+    text: str = "",
 ) -> None:
-    """TRA-136: notify whoever is on 'the other end' of this thread."""
+    """TRA-136: notify whoever is on 'the other end' of this thread.
+    `text` is the message, for the push (sender, then the first 120 characters)."""
+    from app.notifications import copy as push_copy
     from app.notifications import service as notif_service
     from app.notifications.models import NotificationType
 
     link = f"/deals/{deal.id}"
     message = "New message in your negotiation"
+    label = await sender_label(db, sender)  # "Agent — Sofia Reyes", "Club — Arsenal", "Player"
+    who, _, name = label.partition(" — ")
+    push = push_copy.negotiation_message(
+        deal_id=deal.id, sender=name or ("The player" if who == "Player" else who),
+        role=who.lower() if name else None, text=text,
+    )
 
     if sender.user_type == UserType.AGENT:
         if thread == NegotiationThread.CLUB_SIDE:
@@ -143,7 +152,7 @@ async def notify_counterparty(
                 await notif_service.notify_club(
                     db, uuid.UUID(str(club_id)),
                     type=NotificationType.NEGOTIATION_MESSAGE, message=message, link=link,
-                    related_player_id=deal.player_id,
+                    related_player_id=deal.player_id, **push,
                 )
         else:
             from app.auth.models import PlayerProfile
@@ -153,7 +162,7 @@ async def notify_counterparty(
                 await notif_service.create_notification(
                     db, recipient_user_id=pp.user_id,
                     type=NotificationType.NEGOTIATION_MESSAGE, message=message, link="/player/profile",
-                    related_player_id=deal.player_id,
+                    related_player_id=deal.player_id, **{**push, "actions": None},
                 )
         return
 
@@ -165,5 +174,5 @@ async def notify_counterparty(
         await notif_service.create_notification(
             db, recipient_user_id=agent.user_id,
             type=NotificationType.NEGOTIATION_MESSAGE, message=message, link=link,
-            related_player_id=deal.player_id,
+            related_player_id=deal.player_id, **push,
         )

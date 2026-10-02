@@ -6,6 +6,7 @@ import Sidebar, { NotificationBell } from "./Sidebar";
 import Icon from "./Icon";
 import GlobalSearch from "./GlobalSearch";
 import Avatar from "../ui/Avatar";
+import PushSoftAsk from "../notifications/PushSoftAsk";
 import { useClubDashboard } from "../../hooks/useClubDashboard";
 import { markOpenedFromUrl, setAppBadge, syncSubscription } from "../../lib/push";
 
@@ -86,6 +87,9 @@ export default function AppShell({ children }: AppShellProps) {
       </header>
 
       <Sidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
+
+      {/* "Get offers on this phone", for club members on phones and tablets */}
+      {isAuthenticated && <PushSoftAsk />}
 
       {/* Main content */}
       <main className="pt-14 lg:pt-0 lg:ml-[232px]">

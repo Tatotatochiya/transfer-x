@@ -31,6 +31,8 @@ class NotificationResponse(BaseModel):
     body: str | None = None
     group_key: str | None = None
     deadline_at: datetime | None = None
+    # YOUR_MOVE, HEADS_UP or FYI (app/notifications/tiers.py).
+    tier: str | None = None
     player: NotificationSubject | None = None
     club: NotificationSubject | None = None
     model_config = {"from_attributes": True}

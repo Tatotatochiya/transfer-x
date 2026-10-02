@@ -105,6 +105,9 @@ async def _notify_approvers(db: AsyncSession, approval: PendingApproval, club: C
         )
     )
     recipient_ids += [uuid.UUID(str(uid)) for uid in staff_result.scalars()]
+    from app.notifications import copy as push_copy
+
+    push = await push_copy.approval_requested(db, approval, club)
     for uid in recipient_ids:
         await create_notification(
             db,
@@ -112,6 +115,7 @@ async def _notify_approvers(db: AsyncSession, approval: PendingApproval, club: C
             type=NotificationType.APPROVAL_REQUESTED,
             message=f"Approval needed: {approval.summary or approval.action_type.value} (£{approval.amount:,.0f})",
             link="/club/approvals",
+            **push,
         )
 
 
@@ -329,6 +333,8 @@ async def _execute(db: AsyncSession, approval: PendingApproval) -> None:
             sell_on_pct=_dec("sell_on_pct"),
         )
         if offer.to_club_id:
+            from app.notifications import copy as push_copy
+
             await notify_club(
                 db,
                 uuid.UUID(str(offer.to_club_id)),
@@ -336,6 +342,7 @@ async def _execute(db: AsyncSession, approval: PendingApproval) -> None:
                 message="You have received a new offer",
                 link=f"/offers/{offer.id}",
                 related_player_id=offer.player_id,
+                **await push_copy.offer_received(db, offer),
             )
 
     elif approval.action_type == ApprovalActionType.ACCEPT_OFFER:

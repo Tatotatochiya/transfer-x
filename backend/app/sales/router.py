@@ -414,6 +414,8 @@ async def place_bid(
             )
             # OUTBID: notify the previously-best competing bidder if new bid beats them
             if prev_best_bid and bid.amount > prev_best_bid.amount:
+                from app.notifications import copy as push_copy
+
                 await notif_service.notify_club(
                     db,
                     uuid.UUID(str(prev_best_bid.buyer_club_id)),
@@ -421,6 +423,8 @@ async def place_bid(
                     message=f"You have been outbid on {player_name}",
                     link=f"/sales/{sale_id}",
                     related_player_id=_sale.player_id,
+                    **push_copy.outbid(sale=_sale, player=player_name, best=bid.amount,
+                                       next_bid=bid.amount + _sale.min_increment),
                 )
 
         await db.commit()
