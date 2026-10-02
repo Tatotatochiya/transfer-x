@@ -465,9 +465,9 @@ def _offer_terms(offer) -> dict:
 
 def _masked(offer, viewer_club_id: uuid.UUID) -> bool:
     """An anonymous buyer stays hidden from the seller until acceptance."""
-    from app.offers.models import OfferStatus
+    from app.common.masking import buyer_is_masked
 
-    return bool(offer.is_anonymous) and viewer_club_id != offer.from_club_id and offer.status != OfferStatus.ACCEPTED
+    return buyer_is_masked(offer, viewer_club_id)
 
 
 async def _load_offer(db: AsyncSession, offer_id: uuid.UUID, viewer_club_id: uuid.UUID):

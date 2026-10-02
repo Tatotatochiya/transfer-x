@@ -178,7 +178,16 @@ function NotificationRow({
             {formatDateTime(notification.created_at)}
           </span>
         </div>
-        <p className="mt-0.5 text-sm text-text-secondary">{notification.message}</p>
+        {/* The push wording when there is one (who, how much, by when), else
+            the plain message. */}
+        {notification.title ? (
+          <>
+            <p className="mt-0.5 text-sm font-medium text-text">{notification.title}</p>
+            {notification.body && <p className="text-sm text-text-secondary">{notification.body}</p>}
+          </>
+        ) : (
+          <p className="mt-0.5 text-sm text-text-secondary">{notification.message}</p>
+        )}
         {(notification.player || notification.club) && (
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-medium text-text">
             {notification.player && (

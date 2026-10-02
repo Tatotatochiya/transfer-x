@@ -210,3 +210,65 @@ export function setAppBadge(count: number): void {
   if (!nav.setAppBadge) return;
   (count > 0 ? nav.setAppBadge(count) : nav.clearAppBadge?.())?.catch(() => {});
 }
+
+// ── The soft ask (mobile notifications §7.3, 5a) ─────────────────────────────
+
+/** How often the "Get offers on this phone" sheet may appear: never in the
+ *  first session, again 14 days after "Not now", and at most three times.
+ *  Opening the Home Screen app for the first time skips these rules. */
+export const ASK_GAP_DAYS = 14;
+export const ASK_MAX = 3;
+
+export interface AskRecord {
+  dismissedAt: number | null;
+  dismissals: number;
+}
+
+export function canAsk({ record, sessions, now, fromHomeScreen }: {
+  record: AskRecord; sessions: number; now: number; fromHomeScreen: boolean;
+}): boolean {
+  if (fromHomeScreen) return true;
+  if (sessions < 2) return false;
+  if (record.dismissals >= ASK_MAX) return false;
+  if (record.dismissedAt != null && now - record.dismissedAt < ASK_GAP_DAYS * 86_400_000) return false;
+  return true;
+}
+
+const ASK_KEY = "push_ask";
+const SESSIONS_KEY = "push_sessions";
+
+export function readAskRecord(): AskRecord {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ASK_KEY) ?? "null");
+    return { dismissedAt: Number(raw?.dismissedAt) || null, dismissals: Number(raw?.dismissals) || 0 };
+  } catch {
+    return { dismissedAt: null, dismissals: 0 };
+  }
+}
+
+export function recordDismissal(now = Date.now()): void {
+  const r = readAskRecord();
+  try {
+    localStorage.setItem(ASK_KEY, JSON.stringify({ dismissedAt: now, dismissals: r.dismissals + 1 }));
+  } catch { /* private mode: it may ask again next time */ }
+}
+
+/** Sessions seen on this device, counted once per browser session. */
+export function countSession(): number {
+  try {
+    let n = Number(localStorage.getItem(SESSIONS_KEY)) || 0;
+    if (!sessionStorage.getItem(SESSIONS_KEY)) {
+      n += 1;
+      localStorage.setItem(SESSIONS_KEY, String(n));
+      sessionStorage.setItem(SESSIONS_KEY, "1");
+    }
+    return n;
+  } catch {
+    return 0;
+  }
+}
+
+/** iPad shows Safari's Share button at the top right; iPhone at the bottom. */
+export function isIPad(userAgent = navigator.userAgent, maxTouchPoints = navigator.maxTouchPoints ?? 0): boolean {
+  return /iPad/.test(userAgent) || (maxTouchPoints > 1 && /Macintosh/.test(userAgent));
+}

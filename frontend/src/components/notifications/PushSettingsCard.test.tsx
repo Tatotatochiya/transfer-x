@@ -15,7 +15,9 @@ vi.mock("../../lib/push", () => ({
   useRefreshPush: () => () => {},
   subscribe,
   unsubscribe: vi.fn(),
+  isIPad: () => false,
 }));
+vi.mock("../../lib/analytics", () => ({ trackClick: vi.fn() }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 
 const PREFS = {
@@ -60,6 +62,8 @@ describe("PushSettingsCard", () => {
     pushState.value = "needs-install";
     const { unmount } = renderWithProviders(<PushSettingsCard />);
     expect(screen.getByText("Add TransferX to your Home Screen first")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show me how" }));
+    expect(screen.getByRole("dialog", { name: "Add TransferX to your Home Screen" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Turn on notifications" })).not.toBeInTheDocument();
     unmount();
 

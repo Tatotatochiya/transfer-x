@@ -241,6 +241,7 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
             message="This sale has been withdrawn by the seller",
             link=f"/sales/{sale.id}",
             related_player_id=sale.player_id,
+            group_key=f"sale:{sale.id}",
         )
 
     # Item 1: direct offers made against this listing (OPEN_TO_OFFERS sales)
@@ -518,6 +519,7 @@ async def accept_bid(
                 message="Your bid was not accepted — this sale has closed",
                 link=f"/sales/{sale_id}",
                 related_player_id=sale.player_id,
+                group_key=f"sale:{sale_id}",
             )
 
     # Commit winning bid budget
@@ -630,6 +632,7 @@ async def close_sale_after_offer_accepted(
             message="Your bid was not accepted — this sale has closed",
             link=f"/sales/{sale.id}",
             related_player_id=sale.player_id,
+            group_key=f"sale:{sale.id}",
         )
 
     sale.status = SaleStatus.CLOSED
@@ -696,6 +699,7 @@ async def close_expired_sales(db: AsyncSession) -> int:
                     message="This auction closed with no accepted bid — your reservation has been released",
                     link=f"/sales/{sale.id}",
                     related_player_id=sale.player_id,
+                    group_key=f"sale:{sale.id}",
                 )
         sale.status = SaleStatus.EXPIRED
         db.add(SaleEvent(sale_id=sale.id, event_type=SaleEventType.SALE_EXPIRED))

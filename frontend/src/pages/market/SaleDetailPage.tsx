@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Bid, Club, Sale } from "../../types/api";
@@ -78,6 +78,10 @@ function ResolutionNote({ sale, onOpenDeal }: { sale: Sale; onOpenDeal: (dealId:
 }
 
 export default function SaleDetailPage() {
+  // "Bid £3.6m" on an outbid push opens this page with ?bid=3600000: the
+  // bid box starts there, and the person still sends it themselves.
+  const [searchParams] = useSearchParams();
+  const suggestedBid = Number(searchParams.get("bid")) > 0 ? Number(searchParams.get("bid")) : null;
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -259,7 +263,7 @@ export default function SaleDetailPage() {
           <BidLadder sale={sale} isSeller={false} />
           {isOpen && canMarketWrite && (
             <div className="border-t border-rule pt-4">
-              <BidForm sale={sale} existingBid={myActiveBid} />
+              <BidForm sale={sale} existingBid={myActiveBid} suggestedAmount={suggestedBid} />
             </div>
           )}
         </div>

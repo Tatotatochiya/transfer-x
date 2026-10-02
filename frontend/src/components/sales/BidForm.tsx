@@ -11,14 +11,17 @@ interface BidFormProps {
   sale: Sale;
   /** The buyer's own existing active bid, if any (used to show "Replace" UI). */
   existingBid?: Bid;
+  /** A figure to start from, e.g. "Bid £3.6m" on an outbid push (?bid=).
+   *  Only fills the box; nothing is sent until the form is submitted. */
+  suggestedAmount?: number | null;
 }
 
-export default function BidForm({ sale, existingBid }: BidFormProps) {
+export default function BidForm({ sale, existingBid, suggestedAmount }: BidFormProps) {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
 
   const [amount, setAmount] = useState(
-    existingBid ? String(Math.round(existingBid.amount)) : ""
+    suggestedAmount ? String(Math.round(suggestedAmount)) : existingBid ? String(Math.round(existingBid.amount)) : ""
   );
   const [notes, setNotes] = useState(existingBid?.notes ?? "");
   const [fieldError, setFieldError] = useState<string | null>(null);
