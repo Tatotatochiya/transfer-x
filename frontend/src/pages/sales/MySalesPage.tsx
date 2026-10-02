@@ -17,6 +17,7 @@ import { saleStatusLabel, saleStatusVariant, saleTypeLabel, saleTypeVariant } fr
 import { formatCurrency, formatDeadline } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 const STATUS_TABS: { label: string; value: SaleStatus | "" }[] = [
   { label: "All",      value: "" },
@@ -143,7 +144,7 @@ export default function MySalesPage() {
               {
                 key: "player", header: "Player", priority: 1, render: (sale) => (
                   <>
-                    <p className="font-medium text-text">{sale.player?.name ?? "—"}</p>
+                    <p className="font-medium text-text"><PlayerLink id={sale.player?.id ?? sale.player_id} name={sale.player?.name} /></p>
                     {sale.player?.position && (
                       <p className="text-xs text-text-muted">{sale.player.position}</p>
                     )}

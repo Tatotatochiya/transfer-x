@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import OnboardingChecklist from "../../components/OnboardingChecklist";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import ClubLink from "../../components/ui/ClubLink";
+import PlayerLink from "../../components/ui/PlayerLink";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type {
@@ -43,11 +45,38 @@ const COLUMN_CARD: Record<StageKey, string> = {
   COMPLETED:         "ring-border bg-surface",
 };
 
+// A whole card that opens the deal, with real links inside it (a link can't
+// sit inside another link, so the card navigates on click instead).
+function CardLink({ to, children }: { to: string; children: ReactNode }) {
+  const navigate = useNavigate();
+  return (
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={() => navigate(to)}
+      onKeyDown={(e) => { if (e.key === "Enter") navigate(to); }}
+      className="block cursor-pointer rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      {children}
+    </div>
+  );
+}
+
+function DealParties({ item, className = "" }: { item: PipelineDealItem; className?: string }) {
+  return (
+    <p className={`flex min-w-0 items-center gap-1.5 text-xs text-text-muted ${className}`}>
+      <ClubLink id={item.seller_club_id} name={item.seller_club_name} crestUrl={item.seller_club_crest ?? null} fallback="?" />
+      <span aria-hidden="true">→</span>
+      <ClubLink id={item.buyer_club_id} name={item.buyer_club_name} crestUrl={item.buyer_club_crest ?? null} fallback="?" />
+    </p>
+  );
+}
+
 // ── Kanban card ───────────────────────────────────────────────────────────────
 
 function DealCard({ item, stageKey }: { item: PipelineDealItem; stageKey: StageKey }) {
   return (
-    <Link to={`/deals/${item.deal_id}`} className="block">
+    <CardLink to={`/deals/${item.deal_id}`}>
       <div
         className={`rounded-xl px-4 py-3 ring-1 transition-all hover:ring-success/30 ${
           item.action_required
@@ -57,7 +86,7 @@ function DealCard({ item, stageKey }: { item: PipelineDealItem; stageKey: StageK
       >
         <div className="flex items-start justify-between gap-2 mb-1.5">
           <p className="flex items-center gap-1.5 text-sm font-semibold text-text truncate">
-            <span className="truncate">{item.player_name}</span>
+            <PlayerLink id={item.player_id} name={item.player_name} className="truncate" />
             {item.has_unread_messages && (
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" title="New messages" />
             )}
@@ -68,9 +97,7 @@ function DealCard({ item, stageKey }: { item: PipelineDealItem; stageKey: StageK
             </span>
           )}
         </div>
-        <p className="text-xs text-text-muted truncate">
-          {item.seller_club_name ?? "?"} → {item.buyer_club_name ?? "?"}
-        </p>
+        <DealParties item={item} />
         {item.agreed_fee != null && (
           <p className="mt-1.5 text-xs font-semibold text-text tabular-nums">
             {formatCurrency(item.agreed_fee)}
@@ -82,7 +109,7 @@ function DealCard({ item, stageKey }: { item: PipelineDealItem; stageKey: StageK
           </p>
         )}
       </div>
-    </Link>
+    </CardLink>
   );
 }
 
@@ -404,7 +431,7 @@ export default function AgentPipelinePage() {
         /* List */
         <div className="space-y-2">
           {items.map((item) => (
-            <Link key={item.deal_id} to={`/deals/${item.deal_id}`} className="block">
+            <CardLink key={item.deal_id} to={`/deals/${item.deal_id}`}>
               <div
                 className={`rounded-xl px-4 py-3 ring-1 transition-all hover:ring-success/30 ${
                   item.action_required
@@ -416,7 +443,7 @@ export default function AgentPipelinePage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-semibold text-text">
-                        {item.player_name}
+                        <PlayerLink id={item.player_id} name={item.player_name} />
                       </p>
                       {item.has_unread_messages && (
                         <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" title="New messages" />
@@ -427,9 +454,7 @@ export default function AgentPipelinePage() {
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-text-muted">
-                      {item.seller_club_name ?? "?"} → {item.buyer_club_name ?? "?"}
-                    </p>
+                    <DealParties item={item} className="mt-0.5" />
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-xs font-medium text-text-muted">
@@ -443,7 +468,7 @@ export default function AgentPipelinePage() {
                   </div>
                 </div>
               </div>
-            </Link>
+            </CardLink>
           ))}
         </div>
       )}

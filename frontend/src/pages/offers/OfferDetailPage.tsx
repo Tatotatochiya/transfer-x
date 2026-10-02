@@ -9,6 +9,7 @@ import Button from "../../components/ui/Button";
 import CurrencyInput from "../../components/ui/CurrencyInput";
 import Card from "../../components/ui/Card";
 import ClubLink from "../../components/ui/ClubLink";
+import PlayerLink from "../../components/ui/PlayerLink";
 import Metric from "../../components/ui/Metric";
 import Spinner from "../../components/ui/Spinner";
 import OfferThread from "../../components/offers/OfferThread";
@@ -502,7 +503,9 @@ export default function OfferDetailPage() {
       {/* Player + status */}
       <Card>
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Offer</p>
-        <p className="text-lg font-semibold text-text">{offer.player?.name ?? "Unknown player"}</p>
+        <p className="text-lg font-semibold text-text">
+          <PlayerLink id={offer.player?.id ?? offer.player_id} name={offer.player?.name ?? "Unknown player"} />
+        </p>
         {offer.player?.position && <p className="text-xs text-text-muted mt-0.5">{offer.player.position}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge variant={outcome.variant}>{outcome.label}</Badge>
@@ -547,11 +550,11 @@ export default function OfferDetailPage() {
                   </span>
                 </span>
               ) : (
-                <ClubLink id={offer.from_club?.id} name={offer.from_club?.name} />
+                <ClubLink id={offer.from_club?.id} name={offer.from_club?.name} crestUrl={offer.from_club?.crest_url ?? null} />
               )
             }
           />
-          <Metric label="Selling club" valueNode={<ClubLink id={offer.to_club?.id}   name={offer.to_club?.name} />} />
+          <Metric label="Selling club" valueNode={<ClubLink id={offer.to_club?.id} name={offer.to_club?.name} crestUrl={offer.to_club?.crest_url ?? null} />} />
           <Metric label="Date"         value={formatDate(offer.created_at)} />
         </div>
       </Card>

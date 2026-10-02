@@ -35,7 +35,7 @@ class AnalyticsOverview(BaseModel):
     unique_sessions_today: int
     unique_sessions_7d: int
     dau_today: int       # distinct user_ids with a session today
-    dau_7d: int          # avg daily active users over last 7 days
+    dau_7d: float          # avg daily active users over last 7 days
     page_views_today: int
     page_views_7d: int
 

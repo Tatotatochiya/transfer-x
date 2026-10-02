@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select, distinct, text
+from sqlalchemy import case, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.models import AnalyticsEvent, EventType
@@ -91,14 +91,15 @@ async def get_overview(db: AsyncSession) -> AnalyticsOverview:
         )
         return (await db.execute(q)).scalar_one()
 
-    # avg DAU over last 7 days = distinct (date, user_id) pairs / 7
-    dau_7d_q = text(
-        "SELECT COUNT(DISTINCT (DATE(created_at AT TIME ZONE 'UTC'), user_id)) / 7.0 "
-        "FROM analytics_events "
-        "WHERE created_at >= :since AND user_id IS NOT NULL"
+    # avg DAU over last 7 days = distinct (day, user) pairs / 7. Portable SQL
+    # (it was raw Postgres, so the SQLite test suite couldn't run it).
+    pairs = (
+        select(func.date(AnalyticsEvent.created_at).label("day"), AnalyticsEvent.user_id)
+        .where(AnalyticsEvent.created_at >= d7, AnalyticsEvent.user_id.isnot(None))
+        .distinct()
+        .subquery()
     )
-    dau_7d_raw = (await db.execute(dau_7d_q, {"since": _days_ago(7)})).scalar()
-    dau_7d = int(dau_7d_raw or 0)
+    dau_7d = round((await db.execute(select(func.count()).select_from(pairs))).scalar_one() / 7, 1)
 
     return AnalyticsOverview(
         total_events_today=await _count(today),
@@ -252,24 +253,25 @@ async def get_recent_sessions(
 
 
 async def get_daily_trend(db: AsyncSession, days: int = 30) -> list[DailyCount]:
+    """Page views and unique sessions per day. Portable SQL (it was raw
+    Postgres, so the SQLite test suite couldn't run it)."""
     since = _days_ago(days)
-    q = text(
-        """
-        SELECT
-            DATE(created_at AT TIME ZONE 'UTC') AS day,
-            COUNT(*) FILTER (WHERE event_type = 'PAGE_VIEW') AS page_views,
-            COUNT(DISTINCT session_id) AS unique_sessions
-        FROM analytics_events
-        WHERE created_at >= :since
-        GROUP BY day
-        ORDER BY day
-        """
+    day = func.date(AnalyticsEvent.created_at).label("day")
+    q = (
+        select(
+            day,
+            func.sum(case((AnalyticsEvent.event_type == EventType.PAGE_VIEW, 1), else_=0)).label("page_views"),
+            func.count(distinct(AnalyticsEvent.session_id)).label("unique_sessions"),
+        )
+        .where(AnalyticsEvent.created_at >= since)
+        .group_by(day)
+        .order_by(day)
     )
-    rows = (await db.execute(q, {"since": since})).fetchall()
+    rows = (await db.execute(q)).fetchall()
     return [
         DailyCount(
             date=str(r.day),
-            page_views=r.page_views,
+            page_views=int(r.page_views or 0),
             unique_sessions=r.unique_sessions,
         )
         for r in rows

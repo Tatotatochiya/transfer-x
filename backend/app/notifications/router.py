@@ -36,7 +36,7 @@ async def list_notifications(
         db, current_user.id, date_from=date_from, date_to=date_to, page=page, page_size=page_size
     )
     return Paginated(
-        items=[NotificationResponse.model_validate(n) for n in notifications],
+        items=await service.with_subjects(db, notifications),
         total=total,
         page=page,
         page_size=page_size,

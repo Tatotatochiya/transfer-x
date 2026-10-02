@@ -29,6 +29,8 @@ export default function ClubLink({
   className = "",
 }: ClubLinkProps) {
   if (!name) return <span className={className}>{fallback}</span>;
+  // An anonymous club ("an undisclosed club", "A Premier League club"): never a link, never a crest.
+  if (/^an? (undisclosed\b|.+ club$)/i.test(name)) return <span className={className}>{name}</span>;
 
   const showCrestSlot = crestUrl !== undefined;
   const base = `${showCrestSlot ? "inline-flex items-center gap-1.5 " : ""}hover:text-accent transition-colors ${className}`;

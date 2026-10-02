@@ -49,8 +49,10 @@ def to_response(enquiry: Enquiry, viewer_club_id: uuid.UUID, *, with_messages: b
         league = enquiry.from_club.masking_league if enquiry.from_club else None
         asking = EnquiryParty(id=None, name=f"A {league} club" if league else "An undisclosed club")
     else:
-        asking = EnquiryParty(id=enquiry.from_club_id, name=enquiry.from_club.name if enquiry.from_club else "")
-    owning = EnquiryParty(id=enquiry.to_club_id, name=enquiry.to_club.name if enquiry.to_club else "")
+        asking = EnquiryParty(id=enquiry.from_club_id, name=enquiry.from_club.name if enquiry.from_club else "",
+                              crest_url=enquiry.from_club.crest_url if enquiry.from_club else None)
+    owning = EnquiryParty(id=enquiry.to_club_id, name=enquiry.to_club.name if enquiry.to_club else "",
+                          crest_url=enquiry.to_club.crest_url if enquiry.to_club else None)
     messages = enquiry.messages or []
     return EnquiryResponse(
         id=enquiry.id,

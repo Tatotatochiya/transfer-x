@@ -10,6 +10,8 @@ import { useToast } from "../../context/ToastContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { formatDateTime, getApiError } from "../../lib/utils";
 import { DraftButton, useDraftTracking } from "../../components/ai/DraftButton";
+import ClubLink from "../../components/ui/ClubLink";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 /**
  * One enquiry's thread. The asking club can move to a formal offer from here
@@ -61,9 +63,13 @@ export default function EnquiryDetailPage() {
       </button>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-text">{e.player_name ?? "Player"}</h1>
-          <p className="mt-1 text-sm text-text-muted">
-            {e.role === "owning" ? `${other.name} is asking about your player` : `You asked ${other.name}`}
+          <h1 className="text-2xl font-bold text-text"><PlayerLink id={e.player_id} name={e.player_name ?? "Player"} /></h1>
+          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-text-muted">
+            {e.role === "owning" ? (
+              <><ClubLink id={other.id} name={other.name} crestUrl={other.id ? other.crest_url ?? null : undefined} /> is asking about your player</>
+            ) : (
+              <>You asked <ClubLink id={other.id} name={other.name} crestUrl={other.id ? other.crest_url ?? null : undefined} /></>
+            )}
             {e.is_anonymous && (e.role === "owning" ? " — anonymously" : " — anonymously; they see only your league")}
           </p>
         </div>

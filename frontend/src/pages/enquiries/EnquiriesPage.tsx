@@ -7,6 +7,8 @@ import PageHeader from "../../components/ui/PageHeader";
 import EmptyState from "../../components/ui/EmptyState";
 import { ListSkeleton } from "../../components/ui/Skeleton";
 import { formatDate } from "../../lib/utils";
+import ClubLink from "../../components/ui/ClubLink";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 type Box = "" | "received" | "sent";
 
@@ -61,10 +63,11 @@ export default function EnquiriesPage() {
                 className="flex w-full flex-wrap items-center justify-between gap-3 border-b border-rule-faint px-5 py-3.5 text-left last:border-b-0 hover:bg-surface-inset"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-text">
-                    {e.player_name ?? "Player"}
-                    <span className="ml-2 font-normal text-text-muted">
-                      {e.role === "owning" ? `asked by ${other.name}` : `asked of ${other.name}`}
+                  <p className="flex flex-wrap items-center gap-x-2 text-sm font-semibold text-text">
+                    <PlayerLink id={e.player_id} name={e.player_name ?? "Player"} />
+                    <span className="inline-flex items-center gap-1.5 font-normal text-text-muted">
+                      {e.role === "owning" ? "asked by" : "asked of"}
+                      <ClubLink id={other.id} name={other.name} crestUrl={other.id ? other.crest_url ?? null : undefined} />
                     </span>
                   </p>
                   {e.last_message && <p className="mt-0.5 truncate text-[13px] text-text-muted">{e.last_message}</p>}

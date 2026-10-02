@@ -135,6 +135,12 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Player and club links across the app.**
+  - **Shared links:** a `PlayerLink` component (name, optional photo, links to the profile) joins `ClubLink`.
+  - **Where:** notifications (the player and, from now on, the other club, with photo and crest), enquiries, the agent's pipeline, the offer page and its message thread, the transfers list, the offers inbox and My Listings.
+  - **Anonymous clubs are never linked:** `ClubLink` renders "an undisclosed club" and "A Premier League club" as plain text.
+  - **Offer notifications record the other club**, except a still-masked anonymous buyer. The agent pipeline and invitations carry club ids and crests.
+- **My Offers no longer has a "New offer" button.** It didn't know which player the offer was for; offers start from a player's page.
 - **Create a shortlist without leaving the page.** The bookmark menu on player cards, list rows and the player page now has "+ New shortlist". Name it, press Enter, and the shortlist is created and the player added ("✓ Added to Summer targets").
   - With no shortlists yet, the menu opens straight to naming the first one. Before, "Create one →" went to the Shortlists page and you had to come back to add the player.
   - Lists the player is already on are ticked ("Already on it") and can't be picked again. Before, picking one failed silently.
@@ -168,6 +174,12 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **Clubs created before the Premier League onboarding had no crest** (Arsenal, Chelsea and Liverpool on Railway), so their initial showed instead, for example in notifications. `backend/scripts/backfill_club_crests.py` fills a missing crest from the API-Football team of the same name. It never replaces an existing crest, and is safe to re-run.
+- **Setting a club valuation could fail silently.** If the save was refused (no contract on record, or a role without permission), nothing was shown and the old value stayed. The page now shows why, and confirms a successful save. An unset valuation shows a "Set valuation" button instead of "Not set ✎", which didn't look clickable.
+- **The admin Analytics tab was always empty, locally and on Railway.** No page view was ever recorded.
+  - **Cause:** the tracker posted to a hard-coded `/api/analytics/events`, a path only the local dev server's proxy serves. A built frontend answered it itself with the web page, so every event was silently lost.
+  - **Fix:** it now posts to the API's real address, like every other call, with the user's token, so the Users report isn't all anonymous.
+  - **Also:** the two reporting queries written in Postgres-only SQL (7-day active users and the daily trend) are now portable, and are covered by new tests (`tests/test_analytics.py`). The 7-day average shows one decimal place, so a quiet week no longer reads 0.
 - **A club's contract terms were visible to rival clubs.** Any signed-in user received another club's contract for its players on the player page and the club squad list: wage, signing date, the club's own private valuation and its notes. The AI was also given them for rival players; offer advice quoted "his £12k/wk wage" from the selling club's contract.
   - Those terms now go only to the holding club, TransferX staff, the player and his mandated agent (`players.service.contract_for_viewer`).
   - Everyone else gets the release clause and end date, and the public wage estimate labelled as one.

@@ -6,6 +6,13 @@ from pydantic import BaseModel
 from app.notifications.models import NotificationType
 
 
+class NotificationSubject(BaseModel):
+    """The player or club a notification is about, for its link and picture."""
+    id: uuid.UUID
+    name: str
+    image_url: str | None = None
+
+
 class NotificationResponse(BaseModel):
     id: uuid.UUID
     recipient_user_id: uuid.UUID
@@ -16,6 +23,8 @@ class NotificationResponse(BaseModel):
     related_player_id: uuid.UUID | None
     related_club_id: uuid.UUID | None
     created_at: datetime
+    player: NotificationSubject | None = None
+    club: NotificationSubject | None = None
     model_config = {"from_attributes": True}
 
 

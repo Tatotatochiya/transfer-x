@@ -1,9 +1,16 @@
 /**
  * Client-side analytics — session management, event buffering, and flush.
  *
- * Events are buffered locally and sent in batches to POST /api/analytics/events.
+ * Events are buffered locally and sent in batches to POST /analytics/events on
+ * the API (the same base URL as every other call: a hard-coded "/api" path only
+ * worked behind the Vite dev proxy; a built frontend answered it itself with
+ * index.html, so no event ever arrived). Sent with the user's token when signed
+ * in, so the admin's per-user activity isn't all anonymous.
  * The session ID is a UUID generated once per browser and persisted in localStorage.
  */
+
+import { API_BASE_URL } from "./api";
+import { useAuthStore } from "../store/auth";
 
 const SESSION_KEY = "transferx-session-id";
 const FLUSH_INTERVAL_MS = 5_000;
@@ -52,9 +59,10 @@ async function flush(): Promise<void> {
   if (buffer.length === 0) return;
   const batch = buffer.splice(0, buffer.length);
   try {
-    await fetch("/api/analytics/events", {
+    const token = useAuthStore.getState().accessToken;
+    await fetch(`${API_BASE_URL}/analytics/events`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify({ events: batch }),
       keepalive: true, // allows the request to outlive the page
     });

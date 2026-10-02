@@ -16,7 +16,7 @@ import {
   playerStatusLabel,
   playerStatusVariant,
 } from "../../lib/badges";
-import { formatCurrency } from "../../lib/utils";
+import { formatCurrency, getApiError } from "../../lib/utils";
 import AddToShortlistButton from "../../components/scouting/AddToShortlistButton";
 import AskAboutPlayerModal from "../../components/enquiries/AskAboutPlayerModal";
 import { PotentialBuyersPanel } from "../../components/ai/Assistant";
@@ -27,6 +27,7 @@ import FactsStrip from "../../components/players/ledger/FactsStrip";
 import { CareerLedger, InjuriesLedger, OverviewLedger, type StatSet } from "../../components/players/ledger/LedgerTabs";
 import { PlayerFitCard } from "../../components/ai/PlayerFitCard";
 import { useConfirm } from "../../context/ConfirmContext";
+import { useToast } from "../../context/ToastContext";
 
 // ── Deal banner ───────────────────────────────────────────────────────────────
 
@@ -327,6 +328,7 @@ export default function PlayerMarketDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
+  const { addToast } = useToast();
   const { accessToken, user } = useAuthStore();
   const { can } = useClubCapabilities();
   const isAuthenticated = !!accessToken;
@@ -471,7 +473,12 @@ export default function PlayerMarketDetailPage() {
   const valuationMutation = useMutation({
     mutationFn: (value: number | null) =>
       api.patch(`/clubs/me/players/${id}`, { club_valuation: value }).then((r) => r.data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["players", "market", id] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["players", "market", id] });
+      addToast("Club valuation saved.", "success");
+    },
+    // Say why, rather than leaving the old value as if nothing happened.
+    onError: (err: unknown) => addToast(getApiError(err, "Couldn't save the club valuation."), "error"),
   });
 
   if (isLoading) {
