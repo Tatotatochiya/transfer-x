@@ -158,6 +158,11 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **A compact sidebar** ([spec](./feature_spec/compact-sidebar/README.md)).
+  - The whole club nav now fits a 13-inch laptop without scrolling: 705px tall, down from 1,074px.
+  - Rows are 32px, and Notifications is a bell with its unread count next to the logo, also in the phone top bar.
+  - Settings, Notification settings, Switch to Lite mode and Log out are in one account menu at the bottom.
+  - Groups, labels, badges and who sees what are unchanged. The phone drawer keeps 48px rows.
 - **Player and club links across the app.**
   - **Shared links:** a `PlayerLink` component (name, optional photo, links to the profile) joins `ClubLink`.
   - **Where:** notifications (the player and, from now on, the other club, with photo and crest), enquiries, the agent's pipeline, the offer page and its message thread, the transfers list, the offers inbox and My Listings.

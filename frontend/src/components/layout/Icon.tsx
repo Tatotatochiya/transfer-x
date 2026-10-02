@@ -8,7 +8,7 @@ interface IconProps {
 export type IconName =
   | "users" | "tag" | "user-plus" | "gavel" | "inbox" | "bell"
   | "send" | "layout-dashboard" | "shield" | "wallet" | "crosshair"
-  | "list" | "settings" | "log-out" | "menu" | "x" | "chevron-right"
+  | "list" | "settings" | "log-out" | "menu" | "x" | "chevron-right" | "chevron-up"
   | "chevrons-right" | "chevrons-left" | "bolt" | "check" | "arrow-right-left"
   | "user" | "briefcase" | "message" | "home";
 
@@ -36,6 +36,7 @@ const paths: Record<IconName, React.ReactNode> = {
   "chevrons-left": <><path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7M19 19l-7-7 7-7" /></>,
   bolt: <><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></>,
   check: <><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></>,
+  "chevron-up": <><path strokeLinecap="round" strokeLinejoin="round" d="M6 15l6-6 6 6" /></>,
   "arrow-right-left": <><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 3M21 7.5H7.5" /></>,
   user: <><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></>,
   briefcase: <><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></>,

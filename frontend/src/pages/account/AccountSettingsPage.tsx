@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import api from "../../lib/api";
 import Button from "../../components/ui/Button";
@@ -49,9 +50,9 @@ function SegmentedControl<T extends string>({
 
 // ── Section wrapper ───────────────────────────────────────────────────────────
 
-function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function Section({ id, title, subtitle, children }: { id?: string; title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div id={id} className="scroll-mt-20">
       <div className="mb-3">
         <h2 className="text-sm font-semibold text-text">{title}</h2>
         {subtitle && <p className="mt-0.5 text-xs text-text-muted">{subtitle}</p>}
@@ -65,6 +66,28 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 
 export default function AccountSettingsPage() {
   const { user } = useAuthStore();
+  const { hash } = useLocation();
+
+  // "Notification settings" in the account menu links to #notifications;
+  // the router doesn't scroll to an anchor by itself. The cards above it
+  // load their data after the first paint and push it down, so scroll again
+  // as they settle, unless the person has started scrolling themselves.
+  useEffect(() => {
+    if (!hash) return;
+    const target = () => document.getElementById(hash.slice(1));
+    let userScrolled = false;
+    const stop = () => { userScrolled = true; };
+    window.addEventListener("wheel", stop, { passive: true });
+    window.addEventListener("touchmove", stop, { passive: true });
+    const timers = [0, 300, 800].map((ms) =>
+      window.setTimeout(() => { if (!userScrolled) target()?.scrollIntoView({ block: "start" }); }, ms),
+    );
+    return () => {
+      timers.forEach(clearTimeout);
+      window.removeEventListener("wheel", stop);
+      window.removeEventListener("touchmove", stop);
+    };
+  }, [hash]);
   const { theme, setTheme } = useTheme();
   const { currency, defaultMarketView, dateFormat, setCurrency, setDefaultMarketView, setDateFormat } =
     usePreferencesStore();
@@ -199,8 +222,9 @@ export default function AccountSettingsPage() {
           <PushSettingsCard />
         </Section>
 
-        {/* Notification preferences */}
+        {/* Notification preferences — the account menu's "Notification settings" links here */}
         <Section
+          id="notifications"
           title="Notification preferences"
           subtitle="Choose which events reach you, and how: in the app, by email, or as a push."
         >

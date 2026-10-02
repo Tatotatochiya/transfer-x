@@ -26,13 +26,25 @@ Design at 1280px. The design files are drawn at desktop width.
 No icon-only rail — icon rails cost recognition for infrequent users, which is exactly this
 audience.
 
+Compact since 2026-10-02 ([spec](../feature_spec/compact-sidebar/README.md)), so a club's whole
+nav fits a 13-inch laptop (about 790px of page) without scrolling:
+
+- Rows are 32px, with a bare 16px icon (no tile), and 12px between groups.
+- Notifications is a bell with its unread count in the 52px logo row, not a nav row.
+- The footer is one account button opening a menu upwards: Settings, Notification settings,
+  Switch to Lite mode (clubs only) and Log out.
+- The nav still scrolls when the window is shorter than it; focus outlines are inset so the
+  scroll container never clips them.
+
 **Tablet and mobile (<1024px):** the sidebar becomes an off-canvas drawer.
 
 - A sticky top app bar appears, 56px tall, white, `1px solid #e4e7ec` bottom border, containing:
   hamburger (44×44 target) · TransferX logotype · a badge showing total "your move" count ·
-  search icon · avatar.
+  search icon · notifications bell (44×44) · avatar.
 - The drawer slides from the left, 280px wide, full height, with the **same content and the same
-  labels** as the desktop sidebar. Never a condensed version.
+  labels** as the desktop sidebar. Never a condensed version. Its rows, the account button and the
+  account menu's items stay 48px tall for touch. Escape with the account menu open closes only
+  the menu.
 - Backdrop `rgba(20,23,31,0.4)`. Tapping it or pressing Escape closes the drawer.
 - The drawer traps focus while open and returns focus to the hamburger on close.
 - Body scroll locks while the drawer is open.

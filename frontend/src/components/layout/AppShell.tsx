@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useIdentity } from "../../hooks/useIdentity";
-import Sidebar from "./Sidebar";
+import Sidebar, { NotificationBell } from "./Sidebar";
 import Icon from "./Icon";
 import GlobalSearch from "./GlobalSearch";
 import Avatar from "../ui/Avatar";
@@ -69,6 +69,7 @@ export default function AppShell({ children }: AppShellProps) {
         <div className="shrink-0">
           <GlobalSearch />
         </div>
+        {isAuthenticated && <NotificationBell size="touch" />}
         {isAuthenticated && (
           <Avatar
             name={identity.name}
