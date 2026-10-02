@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f7f8fa;font-family:Inter,system-ui,sans-serif;color:#14171f;-webkit-font-smoothing:antialiased}
+a{color:#215fbc;text-decoration:none}a:hover{color:#0347a2}
+input:focus{outline:none}
+</style>
+</helmet>
+<div style="padding:28px 32px 64px;max-width:1440px;margin:0 auto;box-sizing:border-box;display:flex;flex-direction:column;gap:18px;">
+
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div style="width:56px;height:56px;border-radius:14px;background:#f9fafb;box-shadow:0 0 0 1px #e4e7ec;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#667085;">R</div>
+    <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:4px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <h1 style="margin:0;font-size:24px;font-weight:700;letter-spacing:-0.01em;line-height:1.35;">Riverside Athletic</h1>
+        <span style="font-size:13px;font-weight:600;padding:2px 8px;border-radius:8px;background:#f2f4f7;color:#475467;">Club</span>
+      </div>
+      <div style="font-size:13px;color:#667085;">Championship · Bristol · England · 24 players in squad</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <span style="padding:8px 14px;border-radius:8px;background:#fff;box-shadow:inset 0 0 0 1px #d0d5dd;font-size:14px;font-weight:600;color:#344054;white-space:nowrap;">Team</span>
+      <span style="padding:8px 14px;border-radius:8px;background:#fff;box-shadow:inset 0 0 0 1px #d0d5dd;font-size:14px;font-weight:600;color:#344054;white-space:nowrap;">Edit profile</span>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;">
+    <div style="display:flex;flex-direction:column;gap:14px;min-width:0;flex:999 1 640px;">
+
+      <div style="display:flex;gap:4px;padding:4px;border-radius:12px;background:#eef0f3;width:fit-content;">
+        <span style="padding:6px 16px;border-radius:8px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,0.06);font-size:14px;font-weight:600;display:flex;gap:6px;align-items:center;">Squad<span style="font-size:12px;padding:1px 6px;border-radius:9px;background:#f2f4f7;color:#475467;">24</span></span>
+        <span style="padding:6px 16px;font-size:14px;font-weight:500;color:#667085;">Stats</span>
+        <span style="padding:6px 16px;font-size:14px;font-weight:500;color:#667085;display:flex;gap:6px;align-items:center;">Listings<span style="font-size:12px;padding:1px 6px;border-radius:9px;background:#eaf2ff;color:#0347a2;">3</span></span>
+        <span style="padding:6px 16px;font-size:14px;font-weight:500;color:#667085;">Fixtures</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;overflow:hidden;">
+        <div style="padding:12px 16px;display:flex;flex-direction:column;gap:2px;"><span style="font-size:12px;font-weight:600;color:#475467;">Contracts &lt; 12mo</span><span style="font-size:20px;font-weight:700;color:#7a4a00;">5</span></div>
+        <div style="padding:12px 16px;display:flex;flex-direction:column;gap:2px;box-shadow:inset 1px 0 0 #f0f1f3;"><span style="font-size:12px;font-weight:600;color:#475467;">Listed</span><span style="font-size:20px;font-weight:700;">3</span></div>
+        <div style="padding:12px 16px;display:flex;flex-direction:column;gap:2px;box-shadow:inset 1px 0 0 #f0f1f3;"><span style="font-size:12px;font-weight:600;color:#475467;">Average age</span><span style="font-size:20px;font-weight:700;">26.4</span></div>
+        <div style="padding:12px 16px;display:flex;flex-direction:column;gap:2px;box-shadow:inset 1px 0 0 #f0f1f3;"><span style="font-size:12px;font-weight:600;color:#475467;">Wage room</span><span style="font-size:20px;font-weight:700;">£38k<span style="font-size:13px;font-weight:400;color:#667085;"> /wk</span></span></div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="3">
+            <span onClick="{{ c.onClick }}" style="cursor:pointer;padding:5px 12px;border-radius:20px;font-size:13px;font-weight:600;background:{{ c.bg }};color:{{ c.fg }};box-shadow:{{ c.ring }};white-space:nowrap;">{{ c.label }}</span>
+          </sc-for>
+        </div>
+        <span style="font-size:13px;color:#667085;white-space:nowrap;">Sorted by contract risk</span>
+      </div>
+
+      <div style="border-radius:12px;background:#fff;box-shadow:0 0 0 1px #e4e7ec;overflow-x:auto;">
+        <div style="min-width:860px;">
+          <div style="display:grid;grid-template-columns:{{ cols }};column-gap:12px;align-items:center;padding:0 16px;height:34px;background:#fafbfc;box-shadow:inset 0 -1px 0 #f0f1f3;font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#667085;">
+            <span>Player</span><span>Contract</span><span style="text-align:right;">Wage/wk</span><span style="text-align:right;">Model</span><span style="text-align:right;">Yours</span><span style="text-align:right;">Form</span><span style="text-align:right;">Status</span>
+          </div>
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="4">
+            <div style="display:flex;align-items:baseline;gap:10px;padding:0 16px;min-height:32px;align-items:center;white-space:nowrap;background:#fbfbfc;box-shadow:inset 0 -1px 0 #f0f1f3;">
+              <span style="font-size:13px;font-weight:700;">{{ g.label }}</span>
+              <span style="font-size:13px;font-weight:600;color:{{ g.statusColor }};">{{ g.status }}</span>
+            </div>
+            <sc-if value="{{ g.empty }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:0 16px;height:{{ rowH }};display:flex;align-items:center;font-size:13px;color:#667085;box-shadow:inset 0 -1px 0 #f5f6f7;">{{ g.emptyText }}</div>
+            </sc-if>
+            <sc-for list="{{ g.rows }}" as="p" hint-placeholder-count="5">
+              <div style="display:grid;grid-template-columns:{{ cols }};column-gap:12px;align-items:center;padding:0 16px;height:{{ rowH }};box-shadow:inset 0 -1px 0 #f5f6f7;font-size:13px;font-variant-numeric:tabular-nums;" style-hover="background:#f9fafb;">
+                <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                  <span style="width:26px;height:26px;flex-shrink:0;border-radius:50%;background:{{ p.avBg }};color:{{ p.avFg }};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">{{ p.initial }}</span>
+                  <a href="#" style="font-size:14px;font-weight:600;color:#14171f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;" style-hover="color:#215fbc;">{{ p.name }}</a>
+                  <span style="color:#667085;white-space:nowrap;flex-shrink:0;">{{ p.meta }}</span>
+                </div>
+                <span style="font-weight:600;color:{{ p.contractColor }};white-space:nowrap;">{{ p.contract }}</span>
+                <span style="text-align:right;color:#14171f;">{{ p.wage }}</span>
+                <span style="text-align:right;color:#475467;">{{ p.model }}</span>
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:6px;white-space:nowrap;">
+                  <sc-if value="{{ p.editing }}" hint-placeholder-val="{{ false }}">
+                    <input autoFocus="{{ true }}" defaultValue="{{ p.draft }}" placeholder="{{ p.model }}" onBlur="{{ p.commit }}" onKeyDown="{{ p.key }}" style="width:64px;padding:3px 6px;border-radius:6px;border:none;box-shadow:inset 0 0 0 1px #215fbc;font:inherit;font-size:13px;text-align:right;">
+                  </sc-if>
+                  <sc-if value="{{ p.showYours }}" hint-placeholder-val="{{ true }}">
+                    <sc-if value="{{ p.gap }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-weight:600;color:{{ p.gapColor }};">{{ p.gap }}</span>
+                    </sc-if>
+                    <span onClick="{{ p.edit }}" style="cursor:pointer;font-weight:{{ p.yoursWeight }};color:{{ p.yoursColor }};text-decoration:underline dotted 1px;text-underline-offset:3px;">{{ p.yours }}</span>
+                  </sc-if>
+                </div>
+                <span style="text-align:right;font-weight:600;white-space:nowrap;">{{ p.form }}<span style="color:{{ p.trendColor }};margin-left:3px;">{{ p.trend }}</span></span>
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;white-space:nowrap;">
+                  <sc-if value="{{ p.isList }}" hint-placeholder-val="{{ true }}">
+                    <span style="cursor:pointer;padding:3px 10px;border-radius:8px;background:#fff;box-shadow:inset 0 0 0 1px #d0d5dd;font-size:13px;font-weight:600;color:#344054;" style-hover="background:#f9fafb;">List</span>
+                  </sc-if>
+                  <sc-if value="{{ p.isListed }}" hint-placeholder-val="{{ false }}">
+                    <a href="#" style="font-size:13px;font-weight:600;color:#215fbc;">Listed →</a>
+                    <span style="cursor:pointer;font-size:13px;font-weight:600;color:#667085;" style-hover="color:#14171f;">Unlist</span>
+                  </sc-if>
+                  <sc-if value="{{ p.label }}" hint-placeholder-val="{{ false }}">
+                    <span title="{{ p.labelTitle }}" style="font-size:13px;font-weight:600;color:{{ p.labelColor }};">{{ p.label }}</span>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;flex:1 1 260px;max-width:100%;">
+      <div style="border-radius:12px;background:#fbfbfc;box-shadow:0 0 0 1px #eaecf0;padding:13px 18px;display:flex;flex-direction:column;gap:8px;">
+        <span style="font-size:13px;font-weight:600;color:#475467;">Contract cliff</span>
+        <sc-for list="{{ cliff }}" as="c" hint-placeholder-count="3">
+          <div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;white-space:nowrap;"><span>{{ c.label }} <span style="color:#667085;">· {{ c.count }}</span></span><span style="font-weight:600;">{{ c.value }}</span></div>
+        </sc-for>
+      </div>
+      <div style="border-radius:12px;background:#fbfbfc;box-shadow:0 0 0 1px #eaecf0;padding:13px 18px;display:flex;flex-direction:column;gap:8px;">
+        <span style="font-size:13px;font-weight:600;color:#475467;">Wage bill by position</span>
+        <sc-for list="{{ wageBill }}" as="w" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;"><span>{{ w.pos }}</span><span style="font-weight:600;">{{ w.total }}</span></div>
+            <div style="height:6px;border-radius:3px;background:#eaecf0;overflow:hidden;"><div style="height:100%;width:{{ w.pct }};background:#407ede;"></div></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Compact&quot;,&quot;Comfortable&quot;],&quot;default&quot;:&quot;Compact&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const P = [
+  ["Tom Hale","GK",29,"ENG",20,18,4.2,null,68,0,null],
+  ["Jakub Novák","GK",22,"CZE",44,6,1.1,null,null,null,null],
+  ["Luca Ferri","DEF",26,"ITA",9,32,7.4,9,71,1,null],
+  ["Sam Okafor","DEF",31,"NGA",4,28,2.1,3.5,64,-1,"listed"],
+  ["Ryan Doyle","DEF",24,"IRL",33,22,5.8,null,74,1,null],
+  ["Marco Silva","DEF",28,"POR",15,26,6.3,6,69,0,null],
+  ["Ben Walsh","DEF",20,"ENG",10,8,null,null,null,null,"loan"],
+  ["Daniel Reyes","MID",25,"ESP",21,45,15.8,22,72,1,"pending"],
+  ["Kofi Mensah","MID",27,"GHA",7,30,8.9,null,70,-1,null],
+  ["Owen Price","MID",33,"WAL",3,24,0.9,1.5,58,-1,"listed"],
+  ["Elias Berg","MID",23,"SWE",38,16,6.1,null,75,1,null],
+  ["Harry Cole","MID",29,"ENG",16,35,5.2,5,66,0,null],
+  ["Yusuf Demir","MID",19,"TUR",50,4,2.4,null,null,null,null],
+  ["Andre Lopes","FWD",27,"BRA",11,40,11.2,14,77,1,null],
+  ["Jamie Reid","FWD",30,"SCO",5,33,3.6,3,61,-1,"listed"],
+];
+const POS = [["GK","Goalkeepers",2],["DEF","Defenders",4],["MID","Midfielders",4],["FWD","Forwards",3]];
+const AV = { GK:["#faf0dd","#7a4a00"], DEF:["#e2ecfb","#1050ac"], MID:["#e0f0e6","#005a1c"], FWD:["#fbe6e3","#9b1e22"] };
+const m = v => v == null ? "—" : "£" + (v >= 10 ? v.toFixed(0) : v.toFixed(1)).replace(/\.0$/,"") + "m";
+const endLabel = mo => { const d = new Date(2026, 9 + mo, 1); return d.toLocaleDateString("en-GB",{month:"short",year:"numeric"}); };
+
+class Component extends DCLogic {
+  state = { chip: "all", yours: Object.fromEntries(P.map(p => [p[0], p[7]])), editing: null };
+  renderVals() {
+    const { chip, yours, editing } = this.state;
+    const dense = (this.props.density ?? "Compact") === "Compact";
+    const showForm = this.props.showForm ?? true;
+    const players = P.map(p => ({ name:p[0], pos:p[1], age:p[2], nat:p[3], mo:p[4], wage:p[5], model:p[6], form:p[8], tr:p[9], status:p[10] }));
+    const risk = players.filter(p => p.mo < 12), listed = players.filter(p => p.status === "listed");
+    const chips = [["all",`All ${players.length}`],["risk",`Contract risk ${risk.length}`],["listed",`Listed ${listed.length}`]].map(([k,l]) => ({
+      label:l, onClick:()=>this.setState({chip:k}),
+      bg: chip===k?"#14171f":"#fff", fg: chip===k?"#fff":"#475467", ring: chip===k?"none":"inset 0 0 0 1px #d0d5dd" }));
+    const filt = players.filter(p => chip==="risk" ? p.mo<12 : chip==="listed" ? p.status==="listed" : true);
+    const row = p => {
+      const y = yours[p.name];
+      const pct = y != null && p.model ? (y - p.model) / p.model * 100 : null;
+      const band = pct == null ? null : (pct <= -25 || pct >= 30) ? "wide" : (pct <= -10 || pct >= 10) ? "notable" : null;
+      const loan = p.status === "loan", pending = p.status === "pending";
+      const commit = e => { const v = e.target.value.trim(); const n = v === "" ? null : Number(v.replace(/[^0-9.]/g,"")); this.setState(s => ({ editing:null, yours:{...s.yours,[p.name]: n!=null&&!isNaN(n)?n:null} })); };
+      return {
+        name:p.name, initial:p.name[0], avBg:AV[p.pos][0], avFg:AV[p.pos][1], meta:`${p.age} · ${p.nat}`,
+        contract: loan ? "Loan · Jun 2027" : endLabel(p.mo),
+        contractColor: loan ? "#475467" : p.mo<6 ? "#ac1922" : p.mo<12 ? "#7a4a00" : "#475467",
+        wage:`£${p.wage}k`, model:m(p.model),
+        editing: editing===p.name, showYours: editing!==p.name, draft: y ?? "",
+        yours: loan ? "—" : y == null ? "+ set" : m(y),
+        yoursWeight: y == null ? 600 : 700, yoursColor: loan ? "#667085" : y == null ? "#215fbc" : "#14171f",
+        edit: () => !loan && this.setState({editing:p.name}),
+        commit, key: e => { if (e.key==="Enter") commit(e); if (e.key==="Escape") this.setState({editing:null}); },
+        gap: band ? `${pct>=0?"▲":"▼"}${Math.abs(Math.round(pct))}%` : null, gapColor: band==="wide" ? "#7a4a00" : "#475467",
+        form: p.form ?? "—", trend: p.tr>0?"▲":p.tr<0?"▼":"", trendColor: p.tr>0?"#006925":"#ac1922",
+        isList: !p.status, isListed: p.status==="listed",
+        label: loan ? "On loan" : pending ? "Transfer pending" : null,
+        labelColor: loan ? "#215fbc" : "#7a4a00",
+        labelTitle: loan ? "On loan from Westbrook City until Jun 2027. He is not ours to sell." : "Deal in progress",
+      };
+    };
+    const groups = POS.map(([pos,label,min]) => {
+      const total = players.filter(p=>p.pos===pos).length;
+      const rows = filt.filter(p=>p.pos===pos).sort((a,b)=>a.mo-b.mo).map(row);
+      const ok = total >= min;
+      return { label, status:`${total} of ${min} minimum — ${ok?"covered":"priority gap"}`, statusColor: ok?"#006925":"#ac1922",
+        rows, empty: rows.length===0, emptyText:`No ${label.toLowerCase()} match this filter.` };
+    });
+    const cols = showForm
+      ? "minmax(240px,2.4fr) 104px 72px 64px 104px 56px 150px"
+      : "minmax(220px,2.4fr) 104px 72px 64px 104px 150px";
+    const cliffW = [["Under 6 months",0,6],["6–12 months",6,12],["12–24 months",12,24]].map(([l,a,b]) => {
+      const ps = players.filter(p=>p.mo>=a&&p.mo<b); const v = ps.reduce((s,p)=>s+(p.model||0),0);
+      return { label:l, count:`${ps.length}`, value: v ? m(v) : "—" };
+    });
+    const wb = POS.map(([pos]) => ({ pos, t: players.filter(p=>p.pos===pos).reduce((s,p)=>s+p.wage,0) }));
+    const mx = Math.max(...wb.map(w=>w.t));
+    return {
+      chips, groups, rowH: dense ? "40px" : "48px", cols: showForm ? cols : cols, showForm,
+      cliff: cliffW, wageBill: wb.map(w => ({ pos:w.pos, total:`£${w.t}k`, pct:`${w.t/mx*100}%` })),
+    };
+  }
+}
+</script>
+</body>
+</html>

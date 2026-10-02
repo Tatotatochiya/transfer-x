@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 
+import { parseValuation } from "../../../lib/money";
 import { formatCurrency } from "../../../lib/utils";
 import type { FairValueSignal, PlayerDetail } from "../../../types/api";
 
@@ -62,8 +63,9 @@ export default function FactsStrip({
     ? `${SOURCE[player.wage_source ?? ""] ?? "Estimate"} est.` : "No public estimate";
 
   const save = () => {
-    const parsed = draft.trim() === "" ? null : Number(draft.replace(/[^0-9.]/g, ""));
-    onSaveValuation(parsed != null && !Number.isNaN(parsed) ? (parsed < 1000 ? parsed * 1e6 : parsed) : null);
+    const value = parseValuation(draft);
+    if (value === undefined) return; // not a figure: leave the box open
+    onSaveValuation(value);
     setEditing(false);
   };
 
@@ -89,7 +91,7 @@ export default function FactsStrip({
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Escape") setEditing(false); }}
-                placeholder="e.g. 22"
+                placeholder="e.g. 22m"
                 className="w-20 rounded-md bg-surface-inset px-2 py-0.5 text-sm tabular-nums text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
               />
               <span className="text-xs text-text-muted">m</span>

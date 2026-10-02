@@ -8,6 +8,8 @@ interface PlayerLinkProps {
   photoUrl?: string | null;
   fallback?: string;
   className?: string;
+  /** Hover text, e.g. the full name where the name is truncated. */
+  title?: string;
 }
 
 /**
@@ -15,7 +17,7 @@ interface PlayerLinkProps {
  * ClubLink. Without an id it renders plain text. Clicks don't bubble, so it
  * is safe inside clickable rows and cards.
  */
-export default function PlayerLink({ id, name, photoUrl, fallback = "—", className = "" }: PlayerLinkProps) {
+export default function PlayerLink({ id, name, photoUrl, fallback = "—", className = "", title }: PlayerLinkProps) {
   if (!name) return <span className={className}>{fallback}</span>;
   const showPhoto = photoUrl !== undefined;
   const content = showPhoto ? (
@@ -34,6 +36,7 @@ export default function PlayerLink({ id, name, photoUrl, fallback = "—", class
   return (
     <Link
       to={`/players/market/${id}`}
+      title={title}
       onClick={(e) => e.stopPropagation()}
       className={`${showPhoto ? "inline-flex items-center gap-1.5 " : ""}hover:text-accent transition-colors ${className}`}
     >

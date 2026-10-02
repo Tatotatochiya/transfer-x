@@ -1,6 +1,6 @@
 ---
 title: "Changelog"
-last_updated: 2026-09-27
+last_updated: 2026-10-02
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -25,6 +25,11 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **My Club: compact squad list** ([spec](./feature_spec/my-club-compact-squad/README.md)).
+  - The Squad tab's player cards are now one table: a 40px row per player, column labels once (Player, Contract, Wage/wk, Model, Yours, Form, Status) and thin position bands. A 25-man squad takes about half the height it did. The same table shows on other clubs' pages and world team pages, with Player, Form and Status only.
+  - A Compact / Comfortable switch (40px or 48px rows) is remembered per browser. Touch screens always get 48px rows.
+  - The four figure cards are one strip. The right-hand rail drops below the table once the main column would be narrower than the table, so the table never scrolls sideways on a laptop.
+  - Loading shows eight grey rows instead of a spinner.
 - **Player Profile v2: the season ledger** ([spec](./feature_spec/player-profile-ledger/README.md)).
   - **Layout:** a compact header, and a facts strip with model value, market value, contract, wage, release clause (or your own club's private valuation, editable) and form.
   - **Tabs:** Overview, Career and Injuries, each a season-by-season table with a career total.
@@ -174,6 +179,8 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **Typing "18" as a club valuation on the squad list saved £18.** The squad list kept only the digits, so "18" and "£18m" both saved £18. It now shares the player profile's parser: a plain number under 1,000 is millions, "m" and "k" work, a larger plain number is pounds, and anything else keeps the old value (`lib/money.ts`).
+- **On a phone, My Club's header buttons covered the club name.** The buttons now drop below the name.
 - **Clubs created before the Premier League onboarding had no crest** (Arsenal, Chelsea and Liverpool on Railway), so their initial showed instead, for example in notifications. `backend/scripts/backfill_club_crests.py` fills a missing crest from the API-Football team of the same name. It never replaces an existing crest, and is safe to re-run.
 - **Setting a club valuation could fail silently.** If the save was refused (no contract on record, or a role without permission), nothing was shown and the old value stayed. The page now shows why, and confirms a successful save. An unset valuation shows a "Set valuation" button instead of "Not set ✎", which didn't look clickable.
 - **The admin Analytics tab was always empty, locally and on Railway.** No page view was ever recorded.
