@@ -17,6 +17,7 @@ const NAV_LINKS = [
   { to: "/admin/verification", label: "Verification", icon: "✅" },
   { to: "/admin/health",     label: "Health",      icon: "🩺" },
   { to: "/admin/ai",         label: "AI",          icon: "✦"  },
+  { to: "/admin/audit",      label: "Audit log",   icon: "📜" },
 ];
 
 export default function AdminLayout() {
@@ -38,6 +39,13 @@ export default function AdminLayout() {
         </div>
       </div>
     );
+  }
+
+  // A staff account's main sidebar already lists these pages (Sidebar
+  // STAFF_GROUPS), so a second menu here would only repeat it. A superuser
+  // who also belongs to a club keeps it: their sidebar is the club's.
+  if (!user.has_club) {
+    return <div className="min-h-[calc(100vh-4rem)]"><Outlet /></div>;
   }
 
   return (

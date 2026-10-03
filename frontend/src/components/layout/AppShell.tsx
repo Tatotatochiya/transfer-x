@@ -7,6 +7,8 @@ import Icon from "./Icon";
 import GlobalSearch from "./GlobalSearch";
 import Avatar from "../ui/Avatar";
 import PushSoftAsk from "../notifications/PushSoftAsk";
+import ViewAsBanner from "./ViewAsBanner";
+import { useAuthStore } from "../../store/auth";
 import { useClubDashboard } from "../../hooks/useClubDashboard";
 import { markOpenedFromUrl, setAppBadge, syncSubscription } from "../../lib/push";
 
@@ -17,21 +19,23 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { pathname } = useLocation();
-  const { isAuthenticated, userType } = useAuth();
+  const { isAuthenticated, userType, hasClub, viewedBy } = useAuth();
   const identity = useIdentity();
 
   // Phone notifications (docs/feature_spec/mobile-notifications §7.2): once
   // signed in, re-send this device's subscription (renews a replaced one),
   // and mark read a push that opened the app without the service worker.
   useEffect(() => {
-    if (!isAuthenticated) return;
+    // Not in a read-only view-as tab: it can't write, and this browser's
+    // subscription belongs to the staff member, not the club.
+    if (!isAuthenticated || useAuthStore.getState().viewAs) return;
     syncSubscription();
     markOpenedFromUrl(window.location.search);
   }, [isAuthenticated]);
 
   // The app icon's badge counts what is waiting on this person. Same query
   // as the sidebar, so no extra request; it refetches when the app regains focus.
-  const { data: dashboard } = useClubDashboard(isAuthenticated && userType === "CLUB");
+  const { data: dashboard } = useClubDashboard(isAuthenticated && userType === "CLUB" && hasClub);
   useEffect(() => {
     if (dashboard) setAppBadge(dashboard.waiting_on_you.length);
   }, [dashboard]);
@@ -47,6 +51,7 @@ export default function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen bg-page">
+      {viewedBy && <ViewAsBanner />}
       {/* Sticky top app bar — tablet and mobile only (<1024px), per
           docs/design_handoff_transferx/RESPONSIVE.md */}
       <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-surface px-3 lg:hidden">

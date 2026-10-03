@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 async def get_current_user(
+    request: Request,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
@@ -28,6 +29,13 @@ async def get_current_user(
             raise credentials_exc
     except JWTError:
         raise credentials_exc
+    # "View as this club" (admin panel): staff see the club's own screens,
+    # but nothing can be changed. Every request that could change something
+    # is refused here, before any endpoint runs.
+    if payload.get("ro"):
+        if request.method not in auth_service.SAFE_METHODS:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=auth_service.READ_ONLY_DETAIL)
+        request.state.view_as_by = payload.get("act")
 
     user = await auth_service.get_user_by_id(db, uuid.UUID(user_id_str))
     if user is None or not user.is_active:

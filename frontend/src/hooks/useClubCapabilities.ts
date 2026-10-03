@@ -19,7 +19,7 @@ export interface ClubCapabilities {
  * client-side. Superusers bypass every check, mirroring the backend order.
  */
 export function useClubCapabilities(): ClubCapabilities {
-  const { isAuthenticated, isClub, isSuperuser } = useAuth();
+  const { isAuthenticated, isClub, isSuperuser, hasClub } = useAuth();
 
   const query = useQuery<ClubMembership | null>({
     queryKey: ["clubs", "me", "membership"],
@@ -28,7 +28,7 @@ export function useClubCapabilities(): ClubCapabilities {
         .get<ClubMembership>("/clubs/me/membership")
         .then((r) => r.data)
         .catch(() => null), // 404 = no club membership; never blocks a page
-    enabled: isAuthenticated && isClub,
+    enabled: isAuthenticated && isClub && hasClub,
     staleTime: 60_000,
   });
 

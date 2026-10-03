@@ -91,6 +91,9 @@ if (typeof window !== "undefined") {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 function push(event: Omit<AnalyticsEventIn, "session_id">): void {
+  // A read-only "view as" tab is TransferX staff looking, not the club using
+  // the app: don't count it (and the server would refuse the write anyway).
+  if (useAuthStore.getState().viewAs) return;
   ensureFlushTimer();
   buffer.push({ session_id: getSessionId(), ...event });
   if (buffer.length >= MAX_BUFFER) {

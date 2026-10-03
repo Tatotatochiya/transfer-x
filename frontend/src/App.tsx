@@ -63,9 +63,11 @@ const AdminTransferWindowPage   = lazy(() => import("./pages/admin/AdminTransfer
 const AdminVerificationPage     = lazy(() => import("./pages/admin/AdminVerificationPage"));
 const AdminHealthPage           = lazy(() => import("./pages/admin/AdminHealthPage"));
 const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage"));
+const AdminAuditLogPage = lazy(() => import("./pages/admin/AdminAuditLogPage"));
 const TeamPage                  = lazy(() => import("./pages/club/TeamPage"));
 const ApprovalsPage             = lazy(() => import("./pages/club/ApprovalsPage"));
 const AcceptInvitePage          = lazy(() => import("./pages/auth/AcceptInvitePage"));
+const ResetPasswordPage         = lazy(() => import("./pages/auth/ResetPasswordPage"));
 const JoinClubPage              = lazy(() => import("./pages/auth/JoinClubPage"));
 const JoinPlayerPage            = lazy(() => import("./pages/auth/JoinPlayerPage"));
 const LiteHomePage              = lazy(() => import("./pages/lite/LiteHomePage"));
@@ -196,6 +198,9 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           {/* Staff invitation acceptance — public tokenised link, not open signup (D6) */}
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          {/* A view-as tab arrives here; the token was taken from the URL by the auth store. */}
+          <Route path="/view-as" element={<Navigate to="/dashboard" replace />} />
           <Route path="/join" element={<JoinClubPage />} />
           <Route path="/join/player" element={<JoinPlayerPage />} />
           <Route path="/lite" element={<LiteRoute><LiteHomePage /></LiteRoute>} />
@@ -282,6 +287,7 @@ export default function App() {
             <Route path="verification"   element={<AdminVerificationPage />} />
             <Route path="health"         element={<AdminHealthPage />} />
             <Route path="ai"             element={<AdminAIPage />} />
+            <Route path="audit"          element={<AdminAuditLogPage />} />
           </Route>
 
           {/* ── Defaults ── */}

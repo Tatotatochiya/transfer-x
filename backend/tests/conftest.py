@@ -16,6 +16,9 @@ settings.allow_player_self_registration = True
 # No phone pushes from tests: a commit would start a real send, in its own
 # session on the real database. tests/test_push.py turns them on for itself.
 settings.vapid_public_key = settings.vapid_private_key = settings.vapid_subject = None
+# No live API-Football calls (the admin Health page asks it for today's
+# usage); the vendor tests set a key and mock the client themselves.
+settings.apisports_key = None
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 

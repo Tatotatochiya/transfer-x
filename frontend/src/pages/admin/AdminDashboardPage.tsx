@@ -5,6 +5,7 @@ import api from "../../lib/api";
 import type { ActivityItem, AdminStats } from "../../types/api";
 import Spinner from "../../components/ui/Spinner";
 import Button from "../../components/ui/Button";
+import { useConfirm } from "../../context/ConfirmContext";
 import { formatDateTime, getApiError } from "../../lib/utils";
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
@@ -218,6 +219,7 @@ function ActivityFeed() {
 
 function BroadcastPanel() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const [message, setMessage] = useState("");
   const [link, setLink]       = useState("");
   const [open, setOpen]       = useState(false);
@@ -250,7 +252,15 @@ function BroadcastPanel() {
       {open && (
         <div className="border-t border-rule px-6 py-4">
           <form
-            onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
+            onSubmit={async (e) => {
+              e.preventDefault();
+              // Reaches every active user at once, and can't be taken back.
+              if (await confirm({
+                title: "Send to every user?",
+                message: `"${message.trim()}" goes to every active user's notifications now. It can't be unsent.`,
+                confirmLabel: "Send broadcast",
+              })) mutation.mutate();
+            }}
             className="space-y-3"
           >
             <div>
@@ -270,7 +280,7 @@ function BroadcastPanel() {
                 type="text"
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
-                placeholder="/transfers or https://..."
+                placeholder="/transfers (a TransferX page)"
                 className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>

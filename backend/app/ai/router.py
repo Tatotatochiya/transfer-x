@@ -281,13 +281,18 @@ async def update_prompt(
     key: str,
     body: PromptOverrideRequest,
     current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
 ) -> PromptInfo:
     """Override a prompt template in memory. Resets on server restart. Superuser only."""
+    from app.admin.audit import record
     from app.ai.prompts import set_override, list_prompts as _list
     try:
         set_override(key, body.content)
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    await record(db, current_user, "ai_prompt.overridden", entity_type="ai_prompt", entity_id=current_user.id,
+                 description=f"Overrode the AI prompt {key}", details={"key": key, "content": body.content[:2000]})
+    await db.commit()
     return PromptInfo(**next(p for p in _list() if p["key"] == key))
 
 
@@ -295,10 +300,15 @@ async def update_prompt(
 async def reset_prompt(
     key: str,
     current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
 ) -> None:
     """Reset a prompt override back to the built-in default. Superuser only."""
+    from app.admin.audit import record
     from app.ai.prompts import reset_override
     reset_override(key)
+    await record(db, current_user, "ai_prompt.reset", entity_type="ai_prompt", entity_id=current_user.id,
+                 description=f"Reset the AI prompt {key} to its default", details={"key": key})
+    await db.commit()
 
 
 # ── Workflow assistant (ai/assist.py) ─────────────────────────────────────────

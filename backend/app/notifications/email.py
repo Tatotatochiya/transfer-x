@@ -188,6 +188,22 @@ async def send_club_invitation_email(to_email: str, club_name: str, accept_url: 
         logger.exception("Failed to send club invitation email")
 
 
+async def send_password_reset_email(to_email: str, reset_url: str) -> None:
+    """Fire-and-forget password reset link (admin panel). Never logs the URL
+    (it embeds the raw token)."""
+    try:
+        message = (
+            "TransferX staff have sent you a link to choose a new password. "
+            "It works once and expires in 24 hours. If you didn't ask for this, "
+            "you can ignore this email; your password stays as it is."
+        )
+        await asyncio.to_thread(
+            _send_sync, to_email, "TransferX — choose a new password", _render_html(message, reset_url)
+        )
+    except Exception:
+        logger.exception("Failed to send password reset email")
+
+
 async def maybe_send_notification_email(
     recipient_user_id: uuid.UUID,
     type_: NotificationType,

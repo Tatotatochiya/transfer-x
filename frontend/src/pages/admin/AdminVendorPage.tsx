@@ -4,6 +4,7 @@ import api from "../../lib/api";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Spinner from "../../components/ui/Spinner";
+import { useConfirm } from "../../context/ConfirmContext";
 import { formatDate, getApiError } from "../../lib/utils";
 
 interface VendorSyncState {
@@ -92,6 +93,7 @@ function formatDuration(ms: number): string {
 }
 
 export default function AdminVendorPage() {
+  const confirm = useConfirm();
   // Sync status
   const { data: states, isLoading: statesLoading, refetch: refetchStates } = useQuery<VendorSyncState[]>({
     queryKey: ["vendor", "status"],
@@ -278,8 +280,9 @@ export default function AdminVendorPage() {
             Fetches all teams + players for a league/season from API-Football. Can take several minutes on large leagues.
           </p>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
+              if (!(await confirm({ title: "Sync a whole league?", message: "This fetches every team and player for the league from API-Football. It can take several minutes and uses a lot of the daily API allowance.", confirmLabel: "Start" }))) return;
               leagueMutation.mutate({
                 league_id: parseInt(leagueId),
                 season: parseInt(season),
@@ -336,8 +339,9 @@ export default function AdminVendorPage() {
             Fetches stats for all players of a single team. Faster than a full league sync.
           </p>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
+              if (!(await confirm({ title: "Sync this team?", message: "This fetches stats for every player in the team from API-Football, using part of the daily API allowance.", confirmLabel: "Start" }))) return;
               teamMutation.mutate({
                 team_id: parseInt(teamId),
                 season: parseInt(teamSeason),
@@ -384,8 +388,9 @@ export default function AdminVendorPage() {
             Recalculates form scores for all players based on existing stats snapshots. No API calls made.
           </p>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
+              if (!(await confirm({ title: "Recompute form?", message: "This recalculates every player's form from the stored stats. It makes no API calls but can take a minute.", confirmLabel: "Start" }))) return;
               formMutation.mutate({
                 ...(formSeason && { season: formSeason }),
                 window_games: parseInt(windowGames),

@@ -42,6 +42,24 @@ def create_access_token(user_id: uuid.UUID, email: str) -> str:
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
+VIEW_AS_MINUTES = 30
+SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+READ_ONLY_DETAIL = "This is a read-only view for TransferX staff. Nothing can be changed here."
+
+
+def create_view_as_token(club_owner_id: uuid.UUID, email: str, *, staff_user_id: uuid.UUID) -> tuple[str, datetime]:
+    """A short-lived, read-only access token that signs in as a club's owner,
+    for TransferX staff to see exactly what the club sees ("view as this
+    club"). `ro` makes every non-GET request fail (get_current_user); `act`
+    names the staff member. No refresh token: it ends after 30 minutes."""
+    expire = datetime.now(UTC) + timedelta(minutes=VIEW_AS_MINUTES)
+    payload = {
+        "sub": str(club_owner_id), "email": email, "exp": expire, "type": "access",
+        "ro": True, "act": str(staff_user_id),
+    }
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm), expire
+
+
 def decode_access_token(token: str) -> dict:
     """Decode and validate an access token. Raises JWTError on failure."""
     payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
@@ -217,3 +235,59 @@ async def create_player_profile(
     db.add(profile)
     await db.flush()
     return profile
+
+
+# ── Password reset links (migration 0089) ────────────────────────────────────
+
+RESET_LINK_HOURS = 24
+MIN_PASSWORD_LENGTH = 8
+
+
+async def create_password_reset(db: AsyncSession, user: User, *, created_by_user_id: uuid.UUID | None) -> tuple[str, datetime]:
+    """A new one-time reset token for `user`, replacing any unused one.
+    Returns (raw token, expiry); only its hash is stored."""
+    from sqlalchemy import update
+
+    from app.auth.models import PasswordResetToken
+
+    now = datetime.now(UTC)
+    await db.execute(update(PasswordResetToken).where(
+        PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None),
+    ).values(used_at=now))
+    raw = secrets.token_urlsafe(32)
+    expires_at = now + timedelta(hours=RESET_LINK_HOURS)
+    db.add(PasswordResetToken(user_id=user.id, token_hash=_hash_token(raw), expires_at=expires_at,
+                              created_by_user_id=created_by_user_id))
+    await db.flush()
+    return raw, expires_at
+
+
+async def live_password_reset(db: AsyncSession, raw: str):
+    """The unused, unexpired token for `raw`, or None (no hint as to why)."""
+    from app.auth.models import PasswordResetToken
+
+    row = (await db.execute(select(PasswordResetToken).where(
+        PasswordResetToken.token_hash == _hash_token(raw)))).scalar_one_or_none()
+    if row is None or row.used_at is not None or row.expires_at.replace(tzinfo=UTC) < datetime.now(UTC):
+        return None
+    return row
+
+
+async def complete_password_reset(db: AsyncSession, raw: str, new_password: str) -> User:
+    """Set the new password, use up the token, and sign the person out
+    everywhere: every refresh token is deleted, so a stolen session ends."""
+    from sqlalchemy import delete
+
+    if len(new_password) < MIN_PASSWORD_LENGTH:
+        raise ValueError(f"Use at least {MIN_PASSWORD_LENGTH} characters")
+    row = await live_password_reset(db, raw)
+    if row is None:
+        raise LookupError("This link has expired or has already been used")
+    user = await db.get(User, row.user_id)
+    if user is None or not user.is_active:
+        raise LookupError("This link has expired or has already been used")
+    user.hashed_password = hash_password(new_password)
+    row.used_at = datetime.now(UTC)
+    await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
+    await db.flush()
+    return user

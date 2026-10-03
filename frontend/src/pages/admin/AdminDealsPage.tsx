@@ -8,6 +8,7 @@ import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../compone
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import ObligationDecisionsPanel from "../../components/admin/ObligationDecisionsPanel";
+import { useConfirm } from "../../context/ConfirmContext";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
 
 const DEAL_STATUSES = ["IN_PROGRESS", "PENDING_COMPLETION", "COMPLETED", "COLLAPSED"];
@@ -242,6 +243,19 @@ export default function AdminDealsPage() {
 
   const isPending = advanceMutation.isPending || completeMutation.isPending || collapseMutation.isPending;
 
+  // Each of these moves a live deal for both clubs (completing it moves the
+  // money and the player), so ask first. The deal's audit log records who.
+  const confirm = useConfirm();
+  const ACTIONS = {
+    advance: { run: advanceMutation, title: "Advance this deal", message: "Move the deal to its next stage for both clubs?", label: "Advance", danger: false },
+    complete: { run: completeMutation, title: "Complete this deal", message: "Complete the transfer now? The fee is moved, the player joins the buying club and both clubs are told. This can't be undone.", label: "Complete deal", danger: true },
+    collapse: { run: collapseMutation, title: "Collapse this deal", message: "End the deal for both clubs? Held budgets are released and both clubs are told. This can't be undone.", label: "Collapse deal", danger: true },
+  } as const;
+  async function act(kind: keyof typeof ACTIONS, id: string) {
+    const a = ACTIONS[kind];
+    if (await confirm({ title: a.title, message: a.message, confirmLabel: a.label, danger: a.danger })) a.run.mutate(id);
+  }
+
   return (
     <div>
       <ObligationDecisionsPanel />
@@ -298,9 +312,9 @@ export default function AdminDealsPage() {
       {/* Pipeline view */}
       {view === "pipeline" && (
         <PipelineView
-          onAdvance={(id) => advanceMutation.mutate(id)}
-          onComplete={(id) => completeMutation.mutate(id)}
-          onCollapse={(id) => collapseMutation.mutate(id)}
+          onAdvance={(id) => act("advance", id)}
+          onComplete={(id) => act("complete", id)}
+          onCollapse={(id) => act("collapse", id)}
           isPending={isPending}
         />
       )}
@@ -353,9 +367,9 @@ export default function AdminDealsPage() {
                         <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <DealActions
                             deal={d}
-                            onAdvance={(id) => advanceMutation.mutate(id)}
-                            onComplete={(id) => completeMutation.mutate(id)}
-                            onCollapse={(id) => collapseMutation.mutate(id)}
+                            onAdvance={(id) => act("advance", id)}
+                            onComplete={(id) => act("complete", id)}
+                            onCollapse={(id) => act("collapse", id)}
                             isPending={isPending}
                           />
                         </td>

@@ -100,7 +100,7 @@ export default function AdminHealthPage() {
         <div>
           <h1 className="text-2xl font-bold text-text">System Health</h1>
           <p className="mt-1 text-sm text-text-muted">
-            Data integrity checks across deals, sales, and contracts
+            Services, scheduled jobs, and data integrity checks across deals, sales and contracts
           </p>
           {dataUpdatedAt > 0 && (
             <p className="mt-0.5 text-xs text-text-muted">
@@ -126,6 +126,61 @@ export default function AdminHealthPage() {
         </div>
       ) : (
         <>
+          {/* Services: what the platform depends on */}
+          {data.services && data.services.length > 0 && (
+            <section className="mb-6">
+              <h2 className="mb-2 text-sm font-semibold text-text">Services</h2>
+              <div className="divide-y divide-rule-faint rounded-xl bg-surface ring-1 ring-border">
+                {data.services.map((s) => (
+                  <div key={s.key} className="flex items-start gap-3 px-5 py-3">
+                    <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${s.ok ? "bg-success" : "bg-warning-fill"}`} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-text">
+                        {s.label} <span className="sr-only">{s.ok ? "working" : "needs attention"}</span>
+                      </p>
+                      <p className="text-xs text-text-muted">{s.detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Scheduled jobs */}
+          {data.jobs && data.jobs.length > 0 && (
+            <section className="mb-6">
+              <h2 className="mb-1 text-sm font-semibold text-text">Scheduled jobs</h2>
+              <p className="mb-2 text-xs text-text-muted">Last runs are counted since the API last restarted.</p>
+              <div className="overflow-x-auto rounded-xl bg-surface ring-1 ring-border">
+                <table className="w-full min-w-[640px] text-sm">
+                  <thead>
+                    <tr className="border-b border-rule text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                      <th className="px-4 py-2">Job</th><th className="px-4 py-2">Every</th>
+                      <th className="px-4 py-2">Last run</th><th className="px-4 py-2">Next run</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-rule-faint">
+                    {data.jobs.map((j) => (
+                      <tr key={j.id}>
+                        <td className="px-4 py-2 text-text">{j.label}</td>
+                        <td className="px-4 py-2 text-text-muted">{j.every}</td>
+                        <td className="px-4 py-2">
+                          {j.last_run_at ? (
+                            <span className={j.last_ok === false ? "text-danger-text" : "text-text-secondary"} title={j.last_error ?? undefined}>
+                              {formatDateTime(j.last_run_at)}{j.last_ok === false ? " · failed" : ""}
+                            </span>
+                          ) : <span className="text-text-muted">Not since restart</span>}
+                        </td>
+                        <td className="px-4 py-2 text-text-muted">{j.next_run_at ? formatDateTime(j.next_run_at) : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          <h2 className="mb-2 text-sm font-semibold text-text">Data integrity</h2>
           {/* Summary banner */}
           {data.healthy ? (
             <div className="mb-6 rounded-xl bg-success/10 ring-1 ring-success/20 px-6 py-4 flex items-center gap-3">

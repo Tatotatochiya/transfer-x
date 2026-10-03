@@ -148,6 +148,10 @@ async def approve_verification_request(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
     try:
         req = await service.approve_request(db, req, reviewed_by_user_id=admin.id)
+        from app.admin.audit import record
+
+        await record(db, admin, "verification.approved", entity_type="verification_request", entity_id=req.id,
+                     description="Approved a verification request", details={"club_id": getattr(req, "club_id", None)})
         await db.commit()
         await db.refresh(req)
     except ValueError as exc:
@@ -170,6 +174,11 @@ async def reject_verification_request(
         req = await service.reject_request(
             db, req, reviewed_by_user_id=admin.id, review_notes=body.review_notes
         )
+        from app.admin.audit import record
+
+        await record(db, admin, "verification.rejected", entity_type="verification_request", entity_id=req.id,
+                     description="Rejected a verification request", reason=body.review_notes,
+                     details={"club_id": getattr(req, "club_id", None)})
         await db.commit()
         await db.refresh(req)
     except ValueError as exc:

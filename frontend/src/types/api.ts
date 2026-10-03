@@ -52,6 +52,10 @@ export interface User {
   is_superuser: boolean;
   user_type: UserType;
   created_at: string;
+  /** Owner or staff of a club. TransferX staff accounts have none. */
+  has_club?: boolean;
+  /** Set in a read-only "view as this club" session: the staff member looking. */
+  viewed_by?: string | null;
 }
 
 export interface TokenResponse {
@@ -1079,6 +1083,13 @@ export interface AdminUser {
   is_active: boolean;
   is_superuser: boolean;
   created_at: string;
+  user_type?: "CLUB" | "AGENT" | "PLAYER" | null;
+  last_active_at?: string | null;
+  /** Their club and role, agency, or player name. */
+  club_name?: string | null;
+  club_id?: string | null;
+  role?: string | null;
+  profile_label?: string | null;
 }
 
 export interface AdminClubFinance {
@@ -1151,6 +1162,10 @@ export interface HealthReport {
   issues: HealthIssue[];
   checked_at: string;
   healthy: boolean;
+  /** What the platform depends on, and whether each works. */
+  services?: { key: string; label: string; ok: boolean; detail: string }[];
+  /** Scheduled jobs: when each last ran and runs next. */
+  jobs?: { id: string; label: string; every: string; last_run_at: string | null; last_ok: boolean | null; last_error: string | null; next_run_at: string | null }[];
 }
 
 export interface ClubStaffUser {

@@ -9,9 +9,11 @@ import Input from "../../components/ui/Input";
 import Pagination from "../../components/ui/Pagination";
 import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import Spinner from "../../components/ui/Spinner";
-import { formatDate, getApiError } from "../../lib/utils";
+import { formatDate, formatDateTime, getApiError } from "../../lib/utils";
+import Modal from "../../components/ui/Modal";
 import { useAuthStore } from "../../store/auth";
-import { useConfirm } from "../../context/ConfirmContext";
+import { useAskReason, useConfirm } from "../../context/ConfirmContext";
+import { Link } from "react-router-dom";
 
 function ToggleSwitch({
   value, disabled, onChange,
@@ -52,120 +54,97 @@ function CopyUuid({ id }: { id: string }) {
 
 // ── Inline password reset ─────────────────────────────────────────────────────
 
-function ResetPasswordRow({ userId }: { userId: string }) {
-  const [open, setOpen] = useState(false);
-  const [pw, setPw]     = useState("");
-
+/**
+ * A one-time link (24 hours) for the person to choose a new password. Staff
+ * never set or see it. Emailed when email is set up; shown here to copy and
+ * share by hand either way. Using it signs them out everywhere.
+ */
+function ResetLinkButton({ user }: { user: AdminUser }) {
+  const confirm = useConfirm();
+  const [link, setLink] = useState<{ url: string; expires_at: string; emailed: boolean } | null>(null);
+  const [copied, setCopied] = useState(false);
   const mutation = useMutation({
     mutationFn: () =>
-      api.post(`/admin/users/${userId}/reset-password`, { new_password: pw }).then((r) => r.data),
-    onSuccess: () => { setOpen(false); setPw(""); },
+      api.post<{ url: string; expires_at: string; emailed: boolean }>(`/admin/users/${user.id}/reset-link`, {})
+        .then((r) => r.data),
+    onSuccess: (data) => setLink(data),
   });
 
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="text-xs text-text-muted hover:text-warning-text transition-colors"
-      >
-        Reset pw
-      </button>
-    );
+  async function start() {
+    const ok = await confirm({
+      title: "Send a password reset link",
+      message: `Create a one-time link for ${user.email} to choose a new password? It lasts 24 hours, and using it signs them out on every device.`,
+      confirmLabel: "Create link",
+    });
+    if (ok) mutation.mutate();
+  }
+
+  function close() {
+    setLink(null);
+    setCopied(false);
   }
 
   return (
-    <form
-      onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
-      className="flex items-center gap-1.5"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <input
-        type="password"
-        value={pw}
-        onChange={(e) => setPw(e.target.value)}
-        placeholder="new password"
-        required
-        autoFocus
-        className="w-28 rounded bg-surface px-2 py-1 text-xs text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
-      />
-      <button
-        type="submit"
-        disabled={mutation.isPending || !pw}
-        className="text-xs text-accent hover:text-accent-hover disabled:opacity-40"
-      >
-        Set
+    <>
+      <button onClick={start} disabled={mutation.isPending}
+        className="text-xs text-text-muted hover:text-warning-text transition-colors disabled:opacity-40">
+        Reset link
       </button>
-      <button
-        type="button"
-        onClick={() => { setOpen(false); setPw(""); }}
-        className="text-xs text-text-muted hover:text-text"
-      >
-        ✕
-      </button>
-      {mutation.isError && (
-        <span className="text-xs text-danger-text">{getApiError(mutation.error, "Failed")}</span>
-      )}
-    </form>
+      {mutation.isError && <span className="ml-2 text-xs text-danger-text">{getApiError(mutation.error, "Failed")}</span>}
+      <Modal open={link !== null} onClose={close} size="sm">
+        {link && (
+          <div className="p-6">
+            <h3 className="mb-2 text-base font-bold text-text">Reset link for {user.email}</h3>
+            <p className="text-sm text-text-secondary">
+              {link.emailed
+                ? "We've emailed it to them. You can also copy it and send it another way."
+                : "Email isn't set up, so send them this link yourself."}{" "}
+              It works once, until {formatDateTime(link.expires_at)}.
+            </p>
+            <div className="mt-3 break-all rounded-lg bg-surface-inset px-3 py-2 font-mono text-xs text-text">{link.url}</div>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={() => { navigator.clipboard?.writeText(link.url); setCopied(true); }}>
+                {copied ? "Copied" : "Copy link"}
+              </Button>
+              <Button variant="primary" size="sm" onClick={close}>Done</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 }
 
-// ── Create user form ──────────────────────────────────────────────────────────
+const TYPE_LABEL: Record<string, string> = { CLUB: "Club", AGENT: "Agent", PLAYER: "Player" };
 
-function CreateUserPanel({ onCreated }: { onCreated: () => void }) {
-  const [email, setEmail] = useState("");
-  const [pw,    setPw]    = useState("");
-
-  const mutation = useMutation({
-    mutationFn: () =>
-      api.post("/admin/users", { email, password: pw }).then((r) => r.data),
-    onSuccess: () => { setEmail(""); setPw(""); onCreated(); },
-  });
-
+/** Who someone is on TransferX: their club and role, agency, or player. */
+function WhoCell({ user: u }: { user: AdminUser }) {
+  const role = u.role ? u.role.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) : null;
+  const detail = u.club_name ? `${u.club_name}${role ? ` · ${role}` : ""}` : u.profile_label;
   return (
-    <form
-      onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
-      className="flex flex-wrap items-end gap-3"
-    >
-      <Input
-        label="Email"
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="user@example.com"
-        wrapperClassName="w-56"
-      />
-      <Input
-        label="Password"
-        type="password"
-        required
-        value={pw}
-        onChange={(e) => setPw(e.target.value)}
-        wrapperClassName="w-40"
-      />
-      <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}>
-        Create user
-      </Button>
-      {mutation.isError && (
-        <p className="w-full text-xs text-danger-text">{getApiError(mutation.error, "Create failed.")}</p>
+    <span className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
+      {u.is_superuser && !u.club_name ? (
+        <Badge variant="warning">TransferX staff</Badge>
+      ) : (
+        u.user_type && <Badge variant="neutral">{TYPE_LABEL[u.user_type] ?? u.user_type}</Badge>
       )}
-      {mutation.isSuccess && (
-        <p className="w-full text-xs text-success-text">User created.</p>
+      {detail ? (
+        u.club_id ? <Link to={`/admin/clubs/${u.club_id}`} className="truncate text-text hover:underline">{detail}</Link>
+          : <span className="truncate text-text">{detail}</span>
+      ) : (
+        !u.is_superuser && <span className="text-text-muted">No club or profile</span>
       )}
-    </form>
+    </span>
   );
 }
-
-// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminUsersPage() {
   const queryClient = useQueryClient();
   const { user: me } = useAuthStore();
-  const confirm = useConfirm();
+  const askReason = useAskReason();
   const [search, setSearch] = useState("");
   const [dateRange, setDateRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [page,   setPage]   = useState(1);
-  const [showCreate, setShowCreate] = useState(false);
 
   const { data, isLoading } = useQuery<Paginated<AdminUser>>({
     queryKey: ["admin", "users", { search, ...dateRange, page }],
@@ -188,18 +167,47 @@ export default function AdminUsersPage() {
   }
 
   const deleteMutation = useMutation({
-    mutationFn: (userId: string) => api.delete(`/admin/users/${userId}`),
+    mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
+      api.delete(`/admin/users/${userId}`, { data: { reason } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 
   async function handleDeleteUser(userId: string, email: string) {
-    const ok = await confirm({
+    const reason = await askReason({
       title: "Delete user",
-      message: `Permanently delete "${email}"? Their club and all associated data will also be removed.`,
+      message: `Permanently delete "${email}"? This can't be undone. Someone with deals, offers or a club can't be deleted; deactivate them instead.`,
+      reasonLabel: "Why are you deleting this account?",
       confirmLabel: "Delete",
       danger: true,
     });
-    if (ok) deleteMutation.mutate(userId);
+    if (reason) deleteMutation.mutate({ userId, reason });
+  }
+
+  // Granting or removing staff rights, and deactivating someone, need a
+  // reason (recorded in the audit log). Reactivating doesn't.
+  async function setFlag(u: AdminUser, field: "is_active" | "is_superuser", next: boolean) {
+    if (field === "is_active" && next) {
+      toggleMutation.mutate({ userId: u.id, patch: { is_active: true } });
+      return;
+    }
+    const reason = await askReason(field === "is_superuser"
+      ? {
+          title: next ? "Grant TransferX staff rights" : "Remove TransferX staff rights",
+          message: next
+            ? `${u.email} will be able to see and change everything in the admin panel.`
+            : `${u.email} will lose access to the admin panel.`,
+          reasonLabel: "Why?",
+          confirmLabel: next ? "Grant rights" : "Remove rights",
+          danger: true,
+        }
+      : {
+          title: "Deactivate account",
+          message: `${u.email} won't be able to sign in until reactivated.`,
+          reasonLabel: "Why are you deactivating them?",
+          confirmLabel: "Deactivate",
+          danger: true,
+        });
+    if (reason) toggleMutation.mutate({ userId: u.id, patch: { [field]: next, reason } });
   }
 
   const toggleMutation = useMutation({
@@ -224,7 +232,7 @@ export default function AdminUsersPage() {
         <ToggleSwitch
           value={u.is_active}
           disabled={u.id === me?.id || toggleMutation.isPending}
-          onChange={(next) => toggleMutation.mutate({ userId: u.id, patch: { is_active: next } })}
+          onChange={(next) => setFlag(u, "is_active", next)}
         />
       ),
     },
@@ -234,17 +242,25 @@ export default function AdminUsersPage() {
         <ToggleSwitch
           value={u.is_superuser}
           disabled={u.id === me?.id || toggleMutation.isPending}
-          onChange={(next) => toggleMutation.mutate({ userId: u.id, patch: { is_superuser: next } })}
+          onChange={(next) => setFlag(u, "is_superuser", next)}
         />
       ),
     },
     {
-      key: "joined", header: "Joined", priority: 4,
-      render: (u) => <span className="text-text-muted text-xs">{formatDate(u.created_at)}</span>,
+      key: "who", header: "Who", priority: 2,
+      render: (u) => <WhoCell user={u} />,
+    },
+    {
+      key: "active_at", header: "Last active", priority: 4,
+      render: (u) => (
+        <span className="text-xs text-text-muted" title={`Joined ${formatDate(u.created_at)}`}>
+          {u.last_active_at ? formatDateTime(u.last_active_at) : "Never"}
+        </span>
+      ),
     },
     {
       key: "password", header: "Password",
-      render: (u) => (u.id === me?.id ? null : <ResetPasswordRow userId={u.id} />),
+      render: (u) => (u.id === me?.id ? null : <ResetLinkButton user={u} />),
     },
     {
       key: "uuid", header: "",
@@ -280,9 +296,13 @@ export default function AdminUsersPage() {
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             wrapperClassName="w-56"
           />
-          <Button variant="primary" size="sm" onClick={() => setShowCreate((v) => !v)}>
-            {showCreate ? "Hide" : "Create user"}
-          </Button>
+          {/* Accounts are created by invitation, so each arrives with its
+              club, role or player record: clubs from Clubs, staff by their
+              club, players by their club or agent. */}
+          <Link to="/admin/clubs" className="whitespace-nowrap text-sm font-semibold text-accent hover:underline">
+            Invite a club →
+          </Link>
+
         </div>
       </div>
 
@@ -290,14 +310,6 @@ export default function AdminUsersPage() {
         <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} accent="amber" />
       </div>
 
-      {showCreate && (
-        <div className="mb-6 rounded-xl bg-surface ring-1 ring-border px-5 py-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">New user account</p>
-          <CreateUserPanel onCreated={() => {
-            queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-          }} />
-        </div>
-      )}
 
       {isLoading && <div className="flex justify-center py-12"><Spinner size="lg" /></div>}
 
@@ -315,15 +327,18 @@ export default function AdminUsersPage() {
                     {u.email}
                     {u.id === me?.id && <Badge variant="warning" className="ml-2">You</Badge>}
                   </span>
-                  <span className="text-xs text-text-muted">{formatDate(u.created_at)}</span>
+                  <span className="text-xs text-text-muted">
+                    {u.last_active_at ? `Active ${formatDateTime(u.last_active_at)}` : "Never signed in"}
+                  </span>
                 </div>
+                <WhoCell user={u} />
                 <div className="flex items-center gap-4 text-xs text-text-muted">
                   <label className="flex items-center gap-1.5">
                     Active
                     <ToggleSwitch
                       value={u.is_active}
                       disabled={u.id === me?.id || toggleMutation.isPending}
-                      onChange={(next) => toggleMutation.mutate({ userId: u.id, patch: { is_active: next } })}
+                      onChange={(next) => setFlag(u, "is_active", next)}
                     />
                   </label>
                   <label className="flex items-center gap-1.5">
@@ -331,13 +346,13 @@ export default function AdminUsersPage() {
                     <ToggleSwitch
                       value={u.is_superuser}
                       disabled={u.id === me?.id || toggleMutation.isPending}
-                      onChange={(next) => toggleMutation.mutate({ userId: u.id, patch: { is_superuser: next } })}
+                      onChange={(next) => setFlag(u, "is_superuser", next)}
                     />
                   </label>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {u.id !== me?.id && <ResetPasswordRow userId={u.id} />}
+                    {u.id !== me?.id && <ResetLinkButton user={u} />}
                     <CopyUuid id={u.id} />
                   </div>
                   {u.id !== me?.id && (

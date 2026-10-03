@@ -5,6 +5,7 @@ import api from "../../lib/api";
 import Modal from "../ui/Modal";
 import type { Club, ClubPublic, Player } from "../../types/api";
 import { useAIStatus, useAsk } from "../../hooks/useAssistant";
+import { useAuth } from "../../hooks/useAuth";
 import { getApiError } from "../../lib/utils";
 
 interface SearchResults {
@@ -29,6 +30,7 @@ const positionColour: Record<string, string> = {
 };
 
 export default function GlobalSearch() {
+  const { hasClub } = useAuth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -77,7 +79,7 @@ export default function GlobalSearch() {
     queryKey: ["clubs", "me"],
     queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
     staleTime: 60_000,
-    enabled: open,
+    enabled: open && hasClub,
     retry: false,
   });
   const ask = useAsk();

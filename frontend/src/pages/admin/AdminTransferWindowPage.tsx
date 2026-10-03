@@ -5,6 +5,7 @@ import type { TransferWindowResponse, TransferWindowStatus } from "../../types/a
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Spinner from "../../components/ui/Spinner";
+import { useAskReason } from "../../context/ConfirmContext";
 import { formatDate, getApiError } from "../../lib/utils";
 
 function WindowStatusBanner({ status }: { status: TransferWindowStatus }) {
@@ -72,8 +73,9 @@ export default function AdminTransferWindowPage() {
     onError: (err) => setFormError(getApiError(err, "Failed to create window.")),
   });
 
+  const askReason = useAskReason();
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/transfers/window/${id}`),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => api.delete(`/transfers/window/${id}`, { data: { reason } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "transfer-windows"] });
       qc.invalidateQueries({ queryKey: ["transfer-window", "status"] });
@@ -170,7 +172,16 @@ export default function AdminTransferWindowPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => deleteMutation.mutate(w.id)}
+                  onClick={async () => {
+                    // Changes when every club can list and bid.
+                    const reason = await askReason({
+                      title: `Delete ${w.name}`,
+                      message: "Every club's listing and bidding follow the transfer windows. Delete this one?",
+                      reasonLabel: "Why are you deleting it?",
+                      confirmLabel: "Delete window", danger: true,
+                    });
+                    if (reason) deleteMutation.mutate({ id: w.id, reason });
+                  }}
                   disabled={deleteMutation.isPending}
                   className="rounded px-2 py-1 text-xs text-danger-text hover:bg-danger/10 transition-colors disabled:opacity-40"
                 >

@@ -272,6 +272,12 @@ async def lifespan(app: FastAPI):
         _daily_digest_job, "interval", hours=1, id="daily_digest",
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=20),
     )
+    # The admin Health page shows when each job last ran (app/common/jobs.py).
+    from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
+
+    from app.common.jobs import on_job_event
+
+    _scheduler.add_listener(on_job_event, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
     _scheduler.start()
     logger.info("APScheduler started")
     yield
