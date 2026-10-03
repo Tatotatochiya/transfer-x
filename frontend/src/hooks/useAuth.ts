@@ -15,12 +15,21 @@ import type { TokenResponse, User } from "../types/api";
  * out. Now it runs once and shares the client's single refresh.
  */
 export function useAuthBootstrap() {
-  const { accessToken, refreshToken, setUser, setBootstrapping, logout } = useAuthStore();
+  const { accessToken, refreshToken, setUser, setBootstrapping, logout, viewAs } = useAuthStore();
   const bootstrapped = useRef(false);
 
   useEffect(() => {
     if (bootstrapped.current) return;
     bootstrapped.current = true;
+
+    // A view-as tab arrives with its access token and nothing else.
+    if (viewAs && accessToken) {
+      api.get<User>("/auth/me")
+        .then((res) => setUser(res.data))
+        .catch(() => logout())
+        .finally(() => setBootstrapping(false));
+      return;
+    }
 
     if (!refreshToken || accessToken) {
       setBootstrapping(false);
@@ -64,7 +73,8 @@ export function useAuth() {
     try {
       // First, while still signed in: this device stops getting this
       // person's pushes, so the next person to sign in on it doesn't see them.
-      await unsubscribePush().catch(() => {});
+      // Not in a view-as tab: this browser's subscription is the staff member's.
+      if (!useAuthStore.getState().viewAs) await unsubscribePush().catch(() => {});
       if (refreshToken) {
         await api.post("/auth/logout", { refresh_token: refreshToken });
       }
@@ -81,6 +91,12 @@ export function useAuth() {
     isSuperuser: user?.is_superuser ?? false,
     userType: user?.user_type ?? null,
     isClub: user?.user_type === "CLUB",
+    /** Owner or staff of a club: only then do club-only requests make sense. */
+    hasClub: !!user?.has_club,
+    /** A TransferX staff account with no club: gets the admin sidebar. */
+    isStaffAccount: !!user?.is_superuser && !user?.has_club,
+    /** The staff member looking, in a read-only view-as tab. */
+    viewedBy: user?.viewed_by ?? null,
     isAgent: user?.user_type === "AGENT",
     isPlayer: user?.user_type === "PLAYER",
     login,

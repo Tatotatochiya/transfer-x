@@ -2,7 +2,21 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+
+
+class AdminReasonRequest(BaseModel):
+    """Why an admin is doing something destructive. Recorded in the audit
+    trail, and shown to the clubs affected where they are told."""
+    reason: str = Field(min_length=5, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _trimmed(cls, v: str) -> str:
+        v = " ".join(v.split())
+        if len(v) < 5:
+            raise ValueError("Give a reason of at least 5 characters")
+        return v
 
 
 # ── User schemas ──────────────────────────────────────────────────────────────
@@ -16,20 +30,32 @@ class AdminUserResponse(BaseModel):
     is_active: bool
     is_superuser: bool
     created_at: datetime
+    user_type: str | None = None
+    last_active_at: datetime | None = None
+    # Who they are on TransferX: their club and role, agency, or player.
+    club_name: str | None = None
+    club_id: uuid.UUID | None = None
+    role: str | None = None
+    profile_label: str | None = None
 
 
 class AdminUserUpdateRequest(BaseModel):
     is_active: bool | None = None
     is_superuser: bool | None = None
+    # Required when deactivating someone or changing their staff rights.
+    reason: str | None = Field(default=None, max_length=500)
 
 
-class AdminCreateUserRequest(BaseModel):
-    email: str
-    password: str
+class AdminResetLinkRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
 
 
-class AdminResetPasswordRequest(BaseModel):
-    new_password: str
+class AdminResetLinkResponse(BaseModel):
+    """A one-time link for the person to choose a new password. Emailed when
+    email is set up, and returned here so it can be shared by hand."""
+    url: str
+    expires_at: datetime
+    emailed: bool
 
 
 # ── Club schemas ──────────────────────────────────────────────────────────────
@@ -83,8 +109,9 @@ class AdminCreateClubRequest(BaseModel):
 
 
 class AdminFinancesUpdateRequest(BaseModel):
-    transfer_budget_total: Decimal | None = None
-    wage_budget_total_weekly: Decimal | None = None
+    transfer_budget_total: Decimal | None = Field(default=None, ge=0)
+    wage_budget_total_weekly: Decimal | None = Field(default=None, ge=0)
+    reason: str = Field(min_length=5, max_length=500)
 
 
 # ── Staff schemas ─────────────────────────────────────────────────────────────
@@ -111,9 +138,25 @@ class ClubStaffResponse(BaseModel):
 
 
 class CreateStaffRequest(BaseModel):
+    """Invite someone to a club's staff. They choose their own password from
+    the invitation link; staff never set one for them."""
+    email: str = Field(min_length=3, max_length=254)
+    role: str = "READONLY"  # SPORTING_DIRECTOR, MANAGER, SCOUT or READONLY
+
+
+class StaffInvitationResult(BaseModel):
     email: str
-    password: str
-    role: str = "READONLY"  # MANAGER or READONLY
+    role: str
+    accept_url: str
+    expires_at: datetime
+    emailed: bool
+
+
+class ViewAsResponse(BaseModel):
+    """A 30-minute, read-only session as the club's owner."""
+    access_token: str
+    expires_at: datetime
+    club_name: str
 
 
 class UpdateStaffRoleRequest(BaseModel):
@@ -193,8 +236,10 @@ class ActivityItem(BaseModel):
 
 
 class BroadcastRequest(BaseModel):
-    message: str
-    link: str | None = None
+    message: str = Field(min_length=5, max_length=500)
+    # A page inside TransferX ("/sales/…"), never an outside address: a
+    # broadcast reaches every user, so it must not be usable for phishing.
+    link: str | None = Field(default=None, max_length=300, pattern=r"^/[^/\\].*$|^/$")
 
 
 class BroadcastResponse(BaseModel):
@@ -212,10 +257,29 @@ class HealthIssue(BaseModel):
     details: list[dict]    # list of { id, label } for linking
 
 
+class ServiceStatus(BaseModel):
+    key: str
+    label: str
+    ok: bool
+    detail: str
+
+
+class JobStatus(BaseModel):
+    id: str
+    label: str
+    every: str
+    last_run_at: datetime | None
+    last_ok: bool | None
+    last_error: str | None
+    next_run_at: datetime | None
+
+
 class HealthReport(BaseModel):
     issues: list[HealthIssue]
     checked_at: datetime
     healthy: bool
+    services: list[ServiceStatus] = []
+    jobs: list[JobStatus] = []
 
 
 # ── Paginated responses ───────────────────────────────────────────────────────

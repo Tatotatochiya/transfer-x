@@ -9,6 +9,8 @@ from app.deps import get_current_superuser
 from app.transfer_window import service
 from app.transfer_window.schemas import TransferWindowCreate, TransferWindowResponse, TransferWindowStatus
 
+from app.admin.schemas import AdminReasonRequest  # noqa: E402
+
 router = APIRouter(prefix="/transfers/window", tags=["transfer-window"])
 
 
@@ -50,9 +52,14 @@ async def list_windows(
 async def create_window(
     body: TransferWindowCreate,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_superuser),
+    admin=Depends(get_current_superuser),
 ):
+    from app.admin.audit import record
+
     w = await service.create_window(db, name=body.name, opens_at=body.opens_at, closes_at=body.closes_at)
+    await record(db, admin, "transfer_window.created", entity_type="transfer_window", entity_id=w.id,
+                 description=f"Created the transfer window {body.name}",
+                 details={"opens_at": body.opens_at, "closes_at": body.closes_at})
     await db.commit()
     await db.refresh(w)
     return _to_response(w)
@@ -61,10 +68,17 @@ async def create_window(
 @router.delete("/{window_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_window(
     window_id: uuid.UUID,
+    body: AdminReasonRequest,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_superuser),
+    admin=Depends(get_current_superuser),
 ):
+    """Deleting a window changes when every club can list and bid, so it
+    needs a reason, which goes in the audit trail."""
+    from app.admin.audit import record
+
     deleted = await service.delete_window(db, window_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Window not found")
+    await record(db, admin, "transfer_window.deleted", entity_type="transfer_window", entity_id=window_id,
+                 description="Deleted a transfer window", reason=body.reason)
     await db.commit()

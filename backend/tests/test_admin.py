@@ -102,7 +102,7 @@ async def test_update_user_deactivate(client: AsyncClient, superuser: dict, regu
 
     resp = await client.patch(
         f"/admin/users/{user.id}",
-        json={"is_active": False},
+        json={"is_active": False, "reason": "Left the club"},
         headers=_su_headers(superuser),
     )
     assert resp.status_code == 200
@@ -162,7 +162,7 @@ async def test_update_club_finances(client: AsyncClient, superuser: dict):
 
     resp = await client.put(
         f"/admin/clubs/{club_id}/finances",
-        json={"transfer_budget_total": 50000000},
+        json={"transfer_budget_total": 50000000, "reason": "New season budget"},
         headers=_su_headers(superuser),
     )
     assert resp.status_code == 200

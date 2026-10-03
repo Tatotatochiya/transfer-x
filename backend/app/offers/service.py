@@ -1257,6 +1257,37 @@ async def withdraw_offer(
     return offer
 
 
+async def staff_withdraw_offer(db: AsyncSession, offer: Offer, *, reason: str) -> Offer:
+    """TransferX staff withdraw an open offer (admin panel). Same effect as
+    the buyer withdrawing it: the buyer's reserved fee and wage are released.
+    Both clubs are told why. The caller writes the audit event."""
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
+    await _lock_offer(db, offer)
+    if _is_terminal(offer.status):
+        raise ValueError(f"This offer has already been {offer.status.value.lower()} — it can no longer be withdrawn")
+    await _release_offer_budget(db, offer)
+    offer.status = OfferStatus.WITHDRAWN
+    db.add(OfferEvent(
+        offer_id=offer.id,
+        event_type=OfferEventType.WITHDRAWN,
+        actor_club_id=None,
+        payload={"admin_action": True, "reason": reason},
+    ))
+    for club_id in {offer.from_club_id, offer.to_club_id} - {None}:
+        await notif_service.notify_club(
+            db, uuid.UUID(str(club_id)),
+            type=NotificationType.OFFER_WITHDRAWN,
+            message=f"TransferX staff withdrew this offer: {reason}",
+            link=f"/offers/{offer.id}",
+            related_player_id=offer.player_id,
+            group_key=f"offer:{offer.id}",
+        )
+    await db.flush()
+    return offer
+
+
 async def add_message(
     db: AsyncSession,
     offer: Offer,

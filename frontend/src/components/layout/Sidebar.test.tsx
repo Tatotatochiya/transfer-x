@@ -13,6 +13,8 @@ const auth = vi.hoisted(() => ({
     user: { email: "owner@club.test", is_superuser: false },
     isAuthenticated: true as boolean,
     userType: "CLUB" as string | null,
+    hasClub: true as boolean,
+    isStaffAccount: false as boolean,
     logout: vi.fn(),
   },
 }));
@@ -44,7 +46,7 @@ describe("Sidebar", () => {
   beforeEach(() => {
     api.get.mockReset();
     api.get.mockResolvedValue({ data: { count: 0 } });
-    auth.value = { ...auth.value, userType: "CLUB", isAuthenticated: true };
+    auth.value = { ...auth.value, userType: "CLUB", isAuthenticated: true, hasClub: true, isStaffAccount: false };
     caps.can = () => true;
     caps.role = "OWNER";
     dashboard.waiting = [];
@@ -188,5 +190,17 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: "Login" })).toHaveAttribute("href", "/login");
     expect(screen.queryByRole("button", { name: /Riverside Athletic/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Notifications/ })).not.toBeInTheDocument();
+  });
+
+  it("gives a TransferX staff account the admin pages, not a club's nav", async () => {
+    auth.value = { ...auth.value, hasClub: false, isStaffAccount: true };
+    renderSidebar("/admin");
+    for (const label of ["Overview", "Users", "Clubs", "Audit log", "Health", "Verification"]) {
+      expect(screen.getByRole("link", { name: new RegExp(`^${label}`) })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("link", { name: /^My Club/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Finance/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Riverside Athletic/ }));
+    expect(screen.queryByRole("menuitem", { name: "Switch to Lite mode" })).not.toBeInTheDocument();
   });
 });

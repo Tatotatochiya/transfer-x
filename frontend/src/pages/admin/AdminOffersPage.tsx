@@ -9,6 +9,7 @@ import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import { formatDate, getApiError } from "../../lib/utils";
 import type { OfferStatus } from "../../types/enums";
+import { useAskReason } from "../../context/ConfirmContext";
 import { offerHeadline } from "../../lib/offerTerms";
 
 const OFFER_STATUSES = ["SENT", "COUNTERED", "ACCEPTED", "REJECTED", "WITHDRAWN", "EXPIRED"];
@@ -51,11 +52,25 @@ export default function AdminOffersPage() {
     setPage(1);
   }
 
+  const askReason = useAskReason();
   const withdrawMutation = useMutation({
-    mutationFn: (offerId: string) =>
-      api.post(`/admin/offers/${offerId}/force-withdraw`).then((r) => r.data),
+    mutationFn: ({ offerId, reason }: { offerId: string; reason: string }) =>
+      api.post(`/admin/offers/${offerId}/force-withdraw`, { reason }).then((r) => r.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "offers"] }),
   });
+
+  // Same effect as the buyer withdrawing it: the reserved fee and wage are
+  // released, and both clubs are told why.
+  async function forceWithdraw(offerId: string) {
+    const reason = await askReason({
+      title: "Withdraw this offer",
+      message: "Withdraw the offer for both clubs? The buyer's reserved budget is released and both clubs are told, with your reason.",
+      reasonLabel: "Why are you withdrawing it?",
+      confirmLabel: "Withdraw offer",
+      danger: true,
+    });
+    if (reason) withdrawMutation.mutate({ offerId, reason });
+  }
 
   return (
     <div>
@@ -124,7 +139,7 @@ export default function AdminOffersPage() {
                       {!TERMINAL.has(o.status) && (
                         <button
                           disabled={withdrawMutation.isPending}
-                          onClick={() => withdrawMutation.mutate(o.id)}
+                          onClick={() => forceWithdraw(o.id)}
                           className="rounded bg-danger/10 px-2 py-1 text-xs text-danger-text hover:bg-danger/20 transition-colors disabled:opacity-40"
                         >
                           Force withdraw

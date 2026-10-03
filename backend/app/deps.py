@@ -4,7 +4,7 @@ Shared FastAPI dependencies — import from here rather than individual modules.
 
 import uuid
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,14 +28,21 @@ _optional_bearer = HTTPBearer(auto_error=False)
 
 
 async def get_optional_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_optional_bearer),
     db: AsyncSession = Depends(get_db),
 ) -> User | None:
-    """Returns the authenticated user, or None if no/invalid token provided."""
+    """Returns the authenticated user, or None if no/invalid token provided.
+    A read-only "view as" token can't change anything here either."""
     if credentials is None:
         return None
     try:
         payload = auth_service.decode_access_token(credentials.credentials)
+    except Exception:
+        return None
+    if payload.get("ro") and request.method not in auth_service.SAFE_METHODS:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=auth_service.READ_ONLY_DETAIL)
+    try:
         user = await auth_service.get_user_by_id(db, uuid.UUID(payload["sub"]))
         return user if (user and user.is_active) else None
     except Exception:

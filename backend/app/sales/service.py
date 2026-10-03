@@ -204,8 +204,16 @@ async def list_sales(
     return list(rows.scalars()), total
 
 
-async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) -> Sale:
-    """Withdraw an OPEN sale. Releases all active bid reservations."""
+async def withdraw_sale(
+    db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID | None, *, staff_reason: str | None = None,
+) -> Sale:
+    """Withdraw an OPEN sale. Releases all active bid reservations and the
+    budget held by offers made against it, and tells everyone affected.
+
+    With `staff_reason`, TransferX staff are cancelling it (admin panel): the
+    messages say who and why, and the seller is told too. The sale ends
+    WITHDRAWN either way (there is no separate cancelled status); the admin
+    audit event records that staff did it."""
     # Lock the sale row so concurrent bid placements are blocked until we finish
     locked_result = await db.execute(
         select(Sale).where(Sale.id == sale.id).with_for_update()
@@ -225,6 +233,7 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
     )
     active_bids = list(active_bids_result.scalars())
 
+    by_staff = f"TransferX staff cancelled this sale: {staff_reason}" if staff_reason else None
     for bid in active_bids:
         bid.status = BidStatus.WITHDRAWN
         await clubs_module.service.release_budget(
@@ -238,7 +247,7 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
             db,
             bid.buyer_club_id,
             type=NotificationType.OUTBID,
-            message="This sale has been withdrawn by the seller",
+            message=by_staff or "This sale has been withdrawn by the seller",
             link=f"/sales/{sale.id}",
             related_player_id=sale.player_id,
             group_key=f"sale:{sale.id}",
@@ -252,26 +261,36 @@ async def withdraw_sale(db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID) 
             Offer.status.in_([OfferStatus.SENT, OfferStatus.COUNTERED]),
         )
     )
+    from app.offers.service import _release_offer_budget
+
     for offer in linked_offers_result.scalars():
-        reserved = offer.reserved_transfer_amount
-        if reserved and reserved > 0:
-            await clubs_module.service.release_budget(
-                db, club_id=offer.from_club_id, transfer_amount=reserved
-            )
-            offer.reserved_transfer_amount = Decimal("0")
+        # Both the fee and the wage held for the offer (the wage used to be
+        # left reserved).
+        await _release_offer_budget(db, offer)
         offer.status = OfferStatus.REJECTED
         db.add(OfferEvent(
             offer_id=offer.id,
             event_type=OfferEventType.REJECTED,
-            payload={"reason": "sale_withdrawn"},
+            payload={"reason": "sale_withdrawn", **({"staff_reason": staff_reason} if staff_reason else {})},
         ))
         await notif_service.notify_club(
             db,
             offer.from_club_id,
             type=NotificationType.OFFER_REJECTED,
-            message="The sale you offered on has been withdrawn by the seller",
+            message=by_staff or "The sale you offered on has been withdrawn by the seller",
             link=f"/offers/{offer.id}",
             related_player_id=offer.player_id,
+        )
+
+    if staff_reason and sale.seller_club_id:
+        await notif_service.notify_club(
+            db,
+            sale.seller_club_id,
+            # A message from TransferX staff; there is no sale-cancelled type.
+            type=NotificationType.SYSTEM_BROADCAST,
+            message=f"TransferX staff cancelled your listing: {staff_reason}",
+            link=f"/sales/{sale.id}",
+            related_player_id=sale.player_id,
         )
 
     sale.status = SaleStatus.WITHDRAWN

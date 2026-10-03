@@ -7,15 +7,18 @@ import Badge from "../../components/ui/Badge";
 import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../components/ui/DateRangeFilter";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
+import { useAskReason } from "../../context/ConfirmContext";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
 
-const STATUSES = ["OPEN", "CLOSED", "CANCELLED", "SOLD"];
+// The sale statuses that exist (sales/models.py SaleStatus). "CANCELLED"
+// and "SOLD" were listed here but never existed, so those filters matched nothing.
+const STATUSES = ["OPEN", "CLOSED", "WITHDRAWN", "EXPIRED"];
 
 const STATUS_VARIANT: Record<string, "success" | "info" | "warning" | "neutral" | "danger"> = {
   OPEN:      "success",
   CLOSED:    "neutral",
-  CANCELLED: "danger",
-  SOLD:      "info",
+  WITHDRAWN: "warning",
+  EXPIRED:   "neutral",
 };
 
 export default function AdminSalesPage() {
@@ -45,11 +48,25 @@ export default function AdminSalesPage() {
     setPage(1);
   }
 
+  const askReason = useAskReason();
   const cancelMutation = useMutation({
-    mutationFn: (saleId: string) =>
-      api.post(`/admin/sales/${saleId}/cancel`).then((r) => r.data),
+    mutationFn: ({ saleId, reason }: { saleId: string; reason: string }) =>
+      api.post(`/admin/sales/${saleId}/cancel`, { reason }).then((r) => r.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "sales"] }),
   });
+
+  // Same effect as the seller withdrawing it: every bidder's reserved budget
+  // is released, and the seller and bidders are told why.
+  async function cancelSale(saleId: string, player?: string) {
+    const reason = await askReason({
+      title: "Cancel this sale",
+      message: `Cancel the sale${player ? ` of ${player}` : ""}? Every bid is released and the seller and bidders are told, with your reason.`,
+      reasonLabel: "Why are you cancelling it?",
+      confirmLabel: "Cancel sale",
+      danger: true,
+    });
+    if (reason) cancelMutation.mutate({ saleId, reason });
+  }
 
   return (
     <div>
@@ -122,7 +139,7 @@ export default function AdminSalesPage() {
                       {s.status === "OPEN" && (
                         <button
                           disabled={cancelMutation.isPending}
-                          onClick={() => cancelMutation.mutate(s.id)}
+                          onClick={() => cancelSale(s.id, s.player?.name)}
                           className="rounded bg-danger/10 px-2 py-1 text-xs text-danger-text hover:bg-danger/20 transition-colors disabled:opacity-40"
                         >
                           Cancel

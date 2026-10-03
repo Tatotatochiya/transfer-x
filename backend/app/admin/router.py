@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.admin import audit as admin_audit
 from app.admin import service as admin_service
 from app.admin.schemas import (
     ActivityItem,
@@ -16,11 +17,14 @@ from app.admin.schemas import (
     AdminClubResponse,
     AdminClubUpdateRequest,
     AdminCreateClubRequest,
-    AdminCreateUserRequest,
     AdminDealResponse,
     AdminFinancesUpdateRequest,
     AdminPlayerUpdateRequest,
-    AdminResetPasswordRequest,
+    AdminReasonRequest,
+    StaffInvitationResult,
+    ViewAsResponse,
+    AdminResetLinkRequest,
+    AdminResetLinkResponse,
     AdminStatsResponse,
     AdminUserResponse,
     AdminUserUpdateRequest,
@@ -70,8 +74,17 @@ async def list_users(
     users, total = await admin_service.list_users(
         db, search=search, date_from=date_from, date_to=date_to, page=page, page_size=page_size
     )
+    described = await admin_service.describe_users(db, users)
+
+    def _row(u):
+        r = AdminUserResponse.model_validate(u)
+        r.user_type = getattr(u.user_type, "value", u.user_type)
+        for k, v in described.get(u.id, {}).items():
+            setattr(r, k, v)
+        return r
+
     return PaginatedUsers(
-        items=[AdminUserResponse.model_validate(u) for u in users],
+        items=[_row(u) for u in users],
         total=total,
         page=page,
         page_size=page_size,
@@ -90,41 +103,48 @@ async def get_user(
     return AdminUserResponse.model_validate(user)
 
 
-@router.post("/users", response_model=AdminUserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(
-    body: AdminCreateUserRequest,
-    current_user: User = Depends(get_current_superuser),
-    db: AsyncSession = Depends(get_db),
-) -> AdminUserResponse:
-    try:
-        user = await admin_service.create_user(db, body.email, body.password)
-        await db.commit()
-        await db.refresh(user)
-    except ValueError as exc:
-        await db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    return AdminUserResponse.model_validate(user)
-
-
-@router.post("/users/{user_id}/reset-password", response_model=AdminUserResponse)
-async def reset_password(
+@router.post("/users/{user_id}/reset-link", response_model=AdminResetLinkResponse)
+async def create_reset_link(
     user_id: uuid.UUID,
-    body: AdminResetPasswordRequest,
+    body: AdminResetLinkRequest,
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
-) -> AdminUserResponse:
+) -> AdminResetLinkResponse:
+    """A one-time link (24 hours) for the person to choose a new password.
+    Staff never set or see the password. Emailed when email is set up, and
+    returned so it can be shared by hand where it isn't."""
+    from app.auth import service as auth_service
+    from app.config import settings
+    from app.notifications.email import send_password_reset_email
+
     user = await admin_service.get_user_by_id(db, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    await admin_service.reset_password(db, user, body.new_password)
+    raw, expires_at = await auth_service.create_password_reset(db, user, created_by_user_id=current_user.id)
+    await admin_audit.record(
+        db, current_user, "user.reset_link_created", entity_type="user", entity_id=user.id,
+        description=f"Password reset link created for {user.email}", reason=body.reason,
+    )
     await db.commit()
-    await db.refresh(user)
-    return AdminUserResponse.model_validate(user)
+    url = f"{settings.frontend_base_url}/reset-password?token={raw}"
+    emailed = bool(settings.smtp_host)
+    if emailed:
+        asyncio.create_task(send_password_reset_email(user.email, url))
+    return AdminResetLinkResponse(url=url, expires_at=expires_at, emailed=emailed)
+
+
+async def _other_active_superusers(db: AsyncSession, user_id: uuid.UUID) -> int:
+    from sqlalchemy import func
+
+    return (await db.execute(select(func.count()).select_from(User).where(
+        User.is_superuser.is_(True), User.is_active.is_(True), User.id != user_id,
+    ))).scalar_one()
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: uuid.UUID,
+    body: AdminReasonRequest,
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> None:
@@ -135,14 +155,22 @@ async def delete_user(
     user = await admin_service.get_user_by_id(db, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user.is_superuser and user.is_active and await _other_active_superusers(db, user.id) == 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete the last active TransferX staff account")
     try:
+        # Written first, in the same transaction: the event outlives the user.
+        await admin_audit.record(
+            db, current_user, "user.deleted", entity_type="user", entity_id=user.id,
+            description=f"Deleted user {user.email}", reason=body.reason,
+            details={"email": user.email, "user_type": user.user_type, "was_superuser": user.is_superuser},
+        )
         await admin_service.delete_user(db, user)
         await db.commit()
     except IntegrityError:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete: user has associated data (deals, sales, etc.). Remove those first.",
+            detail="Cannot delete: user has associated data (deals, sales, etc.). Deactivate them instead.",
         )
 
 
@@ -156,9 +184,34 @@ async def update_user(
     user = await admin_service.get_user_by_id(db, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    rights_change = body.is_superuser is not None and body.is_superuser != user.is_superuser
+    deactivating = body.is_active is False and user.is_active
+    if user.id == current_user.id and (deactivating or body.is_superuser is False):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="You can't deactivate yourself or remove your own staff rights")
+    if user.is_superuser and user.is_active and (deactivating or body.is_superuser is False) \
+            and await _other_active_superusers(db, user.id) == 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="TransferX needs at least one active staff account")
+    reason = " ".join((body.reason or "").split())
+    if (rights_change or deactivating) and len(reason) < 5:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail="Give a reason of at least 5 characters")
+    before = {"is_active": user.is_active, "is_superuser": user.is_superuser}
     await admin_service.update_user(
         db, user, is_active=body.is_active, is_superuser=body.is_superuser
     )
+    changed = admin_audit.changes(before, {"is_active": user.is_active, "is_superuser": user.is_superuser})
+    if changed:
+        what = []
+        if "is_superuser" in changed:
+            what.append("granted TransferX staff rights" if user.is_superuser else "removed TransferX staff rights")
+        if "is_active" in changed:
+            what.append("reactivated" if user.is_active else "deactivated")
+        await admin_audit.record(
+            db, current_user, "user.updated", entity_type="user", entity_id=user.id,
+            description=f"{user.email}: {', '.join(what)}", reason=reason or None, details={"changes": changed},
+        )
     await db.commit()
     await db.refresh(user)
     return AdminUserResponse.model_validate(user)
@@ -183,6 +236,11 @@ async def create_club(
             league_name=body.league_name,
             transfer_budget=body.transfer_budget,
             wage_budget=body.wage_budget,
+        )
+        await admin_audit.record(
+            db, current_user, "club.created", entity_type="club", entity_id=club.id,
+            description=f"Created club {body.name}",
+            details={"transfer_budget": body.transfer_budget, "wage_budget": body.wage_budget},
         )
         await db.commit()
     except ValueError as exc:
@@ -210,6 +268,10 @@ async def invite_club(
         inv, raw_token = await clubs_service.create_club_invitation(
             db, email=body.email, club_name=body.club_name, invited_by_user_id=current_user.id
         )
+        await admin_audit.record(
+            db, current_user, "club_invitation.created", entity_type="club_invitation", entity_id=inv.id,
+            description=f"Invited {inv.email} to bring {inv.club_name} onto TransferX",
+        )
         await db.commit()
     except ValueError as exc:
         await db.rollback()
@@ -233,10 +295,14 @@ async def list_club_invitations(
 async def revoke_club_invitation(
     invitation_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_superuser),
+    current_user: User = Depends(get_current_superuser),
 ):
     try:
         inv = await clubs_service.revoke_club_invitation(db, invitation_id)
+        await admin_audit.record(
+            db, current_user, "club_invitation.revoked", entity_type="club_invitation", entity_id=inv.id,
+            description=f"Revoked the invitation for {inv.email} ({inv.club_name})",
+        )
         await db.commit()
     except ValueError as exc:
         await db.rollback()
@@ -280,6 +346,7 @@ async def get_club(
 @router.delete("/clubs/{club_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_club(
     club_id: uuid.UUID,
+    body: AdminReasonRequest,
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> None:
@@ -289,6 +356,10 @@ async def delete_club(
     if club is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
     try:
+        await admin_audit.record(
+            db, current_user, "club.deleted", entity_type="club", entity_id=club.id,
+            description=f"Deleted club {club.name}", reason=body.reason, details={"name": club.name},
+        )
         await admin_service.delete_club(db, club)
         await db.commit()
     except IntegrityError:
@@ -309,7 +380,14 @@ async def update_club(
     club = await admin_service.get_club_by_id(db, club_id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+    before = {"name": club.name, "role": club.role, "country": club.country}
     await admin_service.update_club(db, club, name=body.name, role=body.role, country=body.country)
+    changed = admin_audit.changes(before, {"name": club.name, "role": club.role, "country": club.country})
+    if changed:
+        await admin_audit.record(
+            db, current_user, "club.updated", entity_type="club", entity_id=club.id,
+            description=f"Edited club {club.name}", details={"changes": changed},
+        )
     await db.commit()
     await db.refresh(club)
     return AdminClubResponse.model_validate(club)
@@ -325,12 +403,21 @@ async def update_club_finances(
     club = await admin_service.get_club_by_id(db, club_id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
-    finance = await admin_service.update_club_finances(
-        db,
-        club,
-        transfer_budget_total=body.transfer_budget_total,
-        wage_budget_total_weekly=body.wage_budget_total_weekly,
-    )
+    try:
+        finance, changed = await admin_service.update_club_finances(
+            db,
+            club,
+            transfer_budget_total=body.transfer_budget_total,
+            wage_budget_total_weekly=body.wage_budget_total_weekly,
+        )
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    if changed:
+        await admin_audit.record(
+            db, current_user, "club.finances_updated", entity_type="club", entity_id=club.id,
+            description=f"Changed {club.name}'s budgets", reason=body.reason, details={"changes": changed},
+        )
     await db.commit()
     await db.refresh(finance)
     return AdminClubFinanceResponse.model_validate(finance)
@@ -385,6 +472,8 @@ async def update_player(
     player = await admin_service.admin_get_player(db, player_id)
     if player is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    fields = body.model_dump(exclude_unset=True)
+    before = {k: getattr(player, k, None) for k in fields if hasattr(player, k)}
     try:
         await admin_service.admin_update_player(
             db, player,
@@ -399,6 +488,13 @@ async def update_player(
             current_club_id=body.current_club_id,
             clear_club=body.clear_club,
         )
+        changed = admin_audit.changes(before, {k: getattr(player, k, None) for k in before})
+        if changed or body.clear_club:
+            await admin_audit.record(
+                db, current_user, "player.updated", entity_type="player", entity_id=player.id,
+                description=f"Edited player {player.name}",
+                details={"changes": changed, **({"cleared_club": True} if body.clear_club else {})},
+            )
         await db.commit()
     except (ValueError, Exception) as exc:
         await db.rollback()
@@ -434,9 +530,13 @@ async def list_all_sales(
 @router.post("/sales/{sale_id}/cancel", response_model=SaleResponse)
 async def cancel_sale(
     sale_id: uuid.UUID,
+    body: AdminReasonRequest,
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> SaleResponse:
+    """Cancel an open sale as TransferX staff. Same effect as the seller
+    withdrawing it: every bidder's reservation and every linked offer's
+    held budget is released, and the seller and buyers are told why."""
     from app.sales.service import get_sale_by_id
     from app.sales.router import _enrich_sale_response
 
@@ -444,7 +544,12 @@ async def cancel_sale(
     if sale is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
     try:
-        await admin_service.admin_cancel_sale(db, sale)
+        await admin_service.admin_cancel_sale(db, sale, reason=body.reason)
+        player = sale.player.name if sale.player else None
+        await admin_audit.record(
+            db, current_user, "sale.cancelled", entity_type="sale", entity_id=sale.id,
+            description=f"Cancelled the sale of {player}" if player else "Cancelled a sale", reason=body.reason,
+        )
         await db.commit()
     except ValueError as exc:
         await db.rollback()
@@ -500,6 +605,10 @@ async def import_world_team_as_club(
             transfer_budget=body.transfer_budget,
             wage_budget=body.wage_budget,
         )
+        await admin_audit.record(
+            db, current_user, "club.imported", entity_type="club", entity_id=club.id,
+            description=f"Imported {club.name} from API-Football", details={"world_team_id": team_id},
+        )
         await db.commit()
     except ValueError as exc:
         await db.rollback()
@@ -518,6 +627,10 @@ async def import_world_team_squad(
     try:
         result = await admin_service.import_world_team_squad(
             db, world_team_id=team_id, club_id=body.club_id
+        )
+        await admin_audit.record(
+            db, current_user, "club.squad_imported", entity_type="club", entity_id=body.club_id,
+            description="Imported a squad from API-Football", details={"world_team_id": team_id, "result": result},
         )
         await db.commit()
     except ValueError as exc:
@@ -553,16 +666,24 @@ async def list_all_offers(
 @router.post("/offers/{offer_id}/force-withdraw", response_model=OfferResponse)
 async def force_withdraw_offer(
     offer_id: uuid.UUID,
+    body: AdminReasonRequest,
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> OfferResponse:
+    """Withdraw an open offer as TransferX staff. Same effect as the buyer
+    withdrawing it (the reserved fee and wage are released); both clubs are
+    told why."""
     from app.offers.service import get_offer_by_id
 
     offer = await get_offer_by_id(db, offer_id)
     if offer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offer not found")
     try:
-        await admin_service.admin_force_withdraw_offer(db, offer)
+        await admin_service.admin_force_withdraw_offer(db, offer, reason=body.reason)
+        await admin_audit.record(
+            db, current_user, "offer.withdrawn", entity_type="offer", entity_id=offer.id,
+            description="Withdrew an offer", reason=body.reason,
+        )
         await db.commit()
     except ValueError as exc:
         await db.rollback()
@@ -586,37 +707,76 @@ async def list_club_staff(
 
 @router.post(
     "/clubs/{club_id}/staff",
-    response_model=ClubStaffResponse,
+    response_model=StaffInvitationResult,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_club_staff(
+async def invite_club_staff(
     club_id: uuid.UUID,
     body: CreateStaffRequest,
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
-) -> ClubStaffResponse:
-    # Verify club exists
+) -> StaffInvitationResult:
+    """Invite someone to a club's staff, the same invitation the club's own
+    Team page sends. They choose their password from the link; staff never
+    set one. Emailed when email is set up, and returned to share by hand."""
+    from app.clubs.models import StaffRole
+    from app.config import settings
+    from app.notifications.email import send_staff_invitation_email
+
     club = await admin_service.get_club_by_id(db, club_id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
-
     try:
-        staff, _user = await admin_service.create_staff_user(
-            db,
-            club_id=club_id,
-            email=body.email,
-            password=body.password,
-            role=body.role,
-            created_by_user_id=current_user.id,
+        role = StaffRole(body.role)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown role: {body.role}")
+    try:
+        inv, raw = await clubs_service.create_staff_invitation(
+            db, club_id=club.id, email=body.email, role=role, invited_by_user_id=current_user.id,
+        )
+        await admin_audit.record(
+            db, current_user, "staff.invited", entity_type="club", entity_id=club.id,
+            description=f"Invited {inv.email} to {club.name}'s staff as {role.value.replace('_', ' ').title()}",
         )
         await db.commit()
-        await db.refresh(staff)
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    accept_url = f"{settings.frontend_base_url}/accept-invite?token={raw}"
+    emailed = bool(settings.smtp_host)
+    if emailed:
+        asyncio.create_task(send_staff_invitation_email(inv.email, club.name, role.value, accept_url))
+    return StaffInvitationResult(email=inv.email, role=role.value, accept_url=accept_url,
+                                 expires_at=inv.expires_at, emailed=emailed)
 
-    staff = await admin_service.get_staff_by_id(db, staff.id)
-    return ClubStaffResponse.model_validate(staff)
+
+@router.post("/clubs/{club_id}/view-as", response_model=ViewAsResponse)
+async def view_as_club(
+    club_id: uuid.UUID,
+    body: AdminReasonRequest,
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> ViewAsResponse:
+    """See the app exactly as the club's owner does, for 30 minutes, without
+    being able to change anything. For support ("why can't I…"). Needs a
+    reason, and is audited: looking at a club's private data is itself an
+    action worth a record."""
+    from app.auth import service as auth_service
+
+    club = await admin_service.get_club_by_id(db, club_id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+    owner = await db.get(User, club.user_id)
+    if owner is None or not owner.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This club's owner account is not active")
+    token, expires_at = auth_service.create_view_as_token(owner.id, owner.email, staff_user_id=current_user.id)
+    await admin_audit.record(
+        db, current_user, "club.viewed_as", entity_type="club", entity_id=club.id,
+        description=f"Viewed TransferX as {club.name} (read-only)", reason=body.reason,
+        details={"expires_at": expires_at},
+    )
+    await db.commit()
+    return ViewAsResponse(access_token=token, expires_at=expires_at, club_name=club.name)
 
 
 @router.patch("/clubs/{club_id}/staff/{staff_id}", response_model=ClubStaffResponse)
@@ -632,7 +792,13 @@ async def update_club_staff(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
 
     try:
+        old_role = staff.role
         staff = await admin_service.update_staff_role(db, staff, body.role)
+        await admin_audit.record(
+            db, current_user, "staff.role_changed", entity_type="club", entity_id=club_id,
+            description=f"Changed a staff member's role to {body.role}",
+            details={"staff_id": staff.id, "user_id": staff.user_id, "changes": {"role": [old_role, staff.role]}},
+        )
         await db.commit()
         await db.refresh(staff)
     except ValueError as exc:
@@ -654,6 +820,10 @@ async def delete_club_staff(
     if staff is None or staff.club_id != uuid.UUID(str(club_id)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
 
+    await admin_audit.record(
+        db, current_user, "staff.removed", entity_type="club", entity_id=club_id,
+        description="Removed a staff member", details={"staff_id": staff.id, "user_id": staff.user_id, "role": staff.role},
+    )
     await admin_service.delete_staff(db, staff)
     await db.commit()
 
@@ -693,6 +863,10 @@ async def broadcast_notification(
     db: AsyncSession = Depends(get_db),
 ) -> BroadcastResponse:
     count = await admin_service.broadcast_notification(db, message=body.message, link=body.link)
+    await admin_audit.record(
+        db, current_user, "broadcast.sent", entity_type="user", entity_id=current_user.id,
+        description=f"Sent a broadcast to {count} users", details={"message": body.message, "link": body.link, "recipients": count},
+    )
     await db.commit()
     return BroadcastResponse(recipients=count)
 
@@ -706,7 +880,8 @@ async def health_check(
     db: AsyncSession = Depends(get_db),
 ) -> HealthReport:
     report = await admin_service.get_health_report(db)
-    return HealthReport(**report)
+    services, jobs = await admin_service.get_services_and_jobs(db)
+    return HealthReport(**report, services=services, jobs=jobs)
 
 
 # ── Player invitations for free agents (migration 0083) ──────────────────────
@@ -797,3 +972,77 @@ async def revoke_free_agent_invitation(
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     return PlayerInvitationResponse.model_validate(inv)
+
+
+# ── Audit log (admin panel page and Excel export) ────────────────────────────
+
+
+def _audit_filters(
+    q: str | None = Query(None, max_length=200),
+    action: str | None = Query(None, max_length=100),
+    entity_type: str | None = Query(None, max_length=50),
+    actor_id: uuid.UUID | None = Query(None),
+    entity_id: uuid.UUID | None = Query(None),
+    admin_only: bool = Query(False),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+):
+    from app.admin.audit_log import AuditFilters
+
+    return AuditFilters(q=q, action=action, entity_type=entity_type, actor_id=actor_id, entity_id=entity_id,
+                        admin_only=admin_only, date_from=date_from, date_to=date_to)
+
+
+@router.get("/audit-log")
+async def audit_log(
+    filters=Depends(_audit_filters),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Every audit event, newest first, with who did it and why."""
+    from app.admin.audit_log import list_events
+
+    items, total = await list_events(db, filters, page, page_size)
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
+@router.get("/audit-log/facets")
+async def audit_log_facets(
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """The actions and entity types present, for the page's filters."""
+    from app.admin.audit_log import facets
+
+    return await facets(db)
+
+
+@router.get("/audit-log/export.xlsx")
+async def audit_log_export(
+    filters=Depends(_audit_filters),
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+):
+    """The filtered log as an Excel workbook (up to 50,000 rows). The export
+    is itself recorded: who took a copy of the log, and of what."""
+    from datetime import datetime, timezone
+
+    from fastapi.responses import Response
+
+    from app.admin.audit_log import export_xlsx
+
+    data, rows, truncated = await export_xlsx(db, filters, exported_by=current_user.email)
+    await admin_audit.record(
+        db, current_user, "audit_log.exported", entity_type="user", entity_id=current_user.id,
+        description=f"Exported {rows:,} audit log {'row' if rows == 1 else 'rows'} to Excel",
+        details={"filters": dict(filters.describe()), "rows": rows, "truncated": truncated},
+    )
+    await db.commit()
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="transferx-audit-log-{stamp}.xlsx"'},
+    )

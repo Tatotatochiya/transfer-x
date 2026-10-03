@@ -21,12 +21,12 @@ export interface Identity {
  * re-deriving it from scratch.
  */
 export function useIdentity(): Identity {
-  const { isAuthenticated, isSuperuser, isClub, isAgent, isPlayer } = useAuth();
+  const { isAuthenticated, isSuperuser, isClub, isAgent, isPlayer, hasClub, isStaffAccount, user } = useAuth();
 
   const clubQuery = useQuery<Club>({
     queryKey: ["clubs", "me"],
     queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
-    enabled: isAuthenticated && isClub,
+    enabled: isAuthenticated && isClub && hasClub,
     staleTime: 60_000,
   });
 
@@ -44,6 +44,10 @@ export function useIdentity(): Identity {
     staleTime: 60_000,
   });
 
+  // A TransferX staff account has no club: say so, rather than ask for one.
+  if (isStaffAccount) {
+    return { role: null, name: user?.email ?? null, subLabel: "TransferX staff", crestUrl: null, isSuperuser, isLoading: false };
+  }
   if (isClub) {
     // TRA-151: staff members see their role in the identity footer —
     // "Staff: Sporting Director" — the owner keeps a clean club label.

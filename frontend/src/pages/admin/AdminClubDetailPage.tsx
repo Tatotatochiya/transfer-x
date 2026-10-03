@@ -9,7 +9,7 @@ import Card from "../../components/ui/Card";
 import Metric from "../../components/ui/Metric";
 import Spinner from "../../components/ui/Spinner";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
-import { useConfirm } from "../../context/ConfirmContext";
+import { useAskReason, useConfirm } from "../../context/ConfirmContext";
 
 const ROLES = ["BUYER", "SELLER", "BOTH", "ADMIN"];
 
@@ -17,7 +17,6 @@ export default function AdminClubDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const confirm = useConfirm();
 
   const { data: club, isLoading } = useQuery<AdminClubDetail>({
     queryKey: ["admin", "clubs", id],
@@ -70,22 +69,51 @@ export default function AdminClubDetailPage() {
     },
   });
 
+  const askReason = useAskReason();
   const deleteMutation = useMutation({
-    mutationFn: () => api.delete(`/admin/clubs/${id}`),
+    mutationFn: (reason: string) => api.delete(`/admin/clubs/${id}`, { data: { reason } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "clubs"] });
       navigate("/admin/clubs");
     },
   });
 
+  // "View as this club": the app as the club's owner sees it, read-only, for
+  // 30 minutes, in a new tab. Needs a reason; recorded in the audit log.
+  const [viewAsLink, setViewAsLink] = useState<string | null>(null);
+  const viewAsMutation = useMutation({
+    mutationFn: (reason: string) =>
+      api.post<{ access_token: string }>(`/admin/clubs/${id}/view-as`, { reason }).then((r) => r.data),
+    onSuccess: ({ access_token }) => {
+      // In the fragment, so the token never reaches a server log.
+      const url = `/view-as#view_as=${access_token}`;
+      // Not "noopener": with it, window.open returns null even when the tab
+      // opens, so a blocked tab couldn't be told apart. The opener is cut here.
+      const tab = window.open(url, "_blank");
+      if (tab) tab.opener = null;
+      setViewAsLink(tab ? null : url);
+    },
+  });
+  async function viewAs() {
+    const reason = await askReason({
+      title: `View TransferX as ${club?.name ?? "this club"}`,
+      message: "Opens a new tab showing exactly what the club's owner sees, for 30 minutes. Nothing can be changed there.",
+      reasonLabel: "Why do you need to see it?",
+      placeholder: "e.g. Club reports it can't see an offer",
+      confirmLabel: "Open their view",
+    });
+    if (reason) viewAsMutation.mutate(reason);
+  }
+
   async function handleDelete() {
-    const ok = await confirm({
+    const reason = await askReason({
       title: "Delete club",
       message: `Permanently delete "${club?.name}"? This cannot be undone. The club must have no active sales, deals, or contracted players.`,
+      reasonLabel: "Why are you deleting this club?",
       confirmLabel: "Delete",
       danger: true,
     });
-    if (ok) deleteMutation.mutate();
+    if (reason) deleteMutation.mutate(reason);
   }
 
   if (isLoading) {
@@ -124,6 +152,10 @@ export default function AdminClubDetailPage() {
             <p className="text-xs text-text-muted">ID: {club.id}</p>
           </div>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        <Button variant="secondary" size="sm" onClick={viewAs} loading={viewAsMutation.isPending}>
+          View as this club
+        </Button>
         <button
           onClick={handleDelete}
           disabled={deleteMutation.isPending}
@@ -131,7 +163,18 @@ export default function AdminClubDetailPage() {
         >
           Delete club
         </button>
+        </div>
       </div>
+      {viewAsMutation.isError && (
+        <div className="mb-4 rounded-lg bg-danger/10 px-4 py-2 text-xs text-danger-text ring-1 ring-danger/20">
+          {getApiError(viewAsMutation.error, "Couldn't open the club's view.")}
+        </div>
+      )}
+      {viewAsLink && (
+        <div className="mb-4 rounded-lg bg-surface-inset px-4 py-2 text-sm text-text-secondary ring-1 ring-border">
+          Your browser blocked the new tab. <a href={viewAsLink} target="_blank" rel="noopener" className="font-semibold text-accent">Open the club's view</a>
+        </div>
+      )}
       {deleteMutation.isError && (
         <div className="mb-4 rounded-lg bg-danger/10 px-4 py-2 text-xs text-danger-text ring-1 ring-danger/20">
           {getApiError(deleteMutation.error, "Delete failed.")}
@@ -228,11 +271,21 @@ export default function AdminClubDetailPage() {
             </div>
           ) : (
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
+                // Budgets change what a club can bid; the reason goes in the audit log.
+                const reason = await askReason({
+                  title: `Change ${club?.name ?? "the club"}'s budgets`,
+                  message: "A budget can't go below what is already held, committed or spent against it.",
+                  reasonLabel: "Why are the budgets changing?",
+                  placeholder: "e.g. Owner approved the January budget",
+                  confirmLabel: "Save budgets",
+                });
+                if (!reason) return;
                 financeMutation.mutate({
                   transfer_budget_total: parseFloat(fTransfer),
                   wage_budget_total_weekly: parseFloat(fWage),
+                  reason,
                 });
               }}
               className="space-y-3"
@@ -275,26 +328,30 @@ export default function AdminClubDetailPage() {
 
 // ── Staff panel ───────────────────────────────────────────────────────────────
 
+type StaffRoleOption = "SPORTING_DIRECTOR" | "MANAGER" | "SCOUT" | "READONLY";
+
 function StaffPanel({ clubId }: { clubId: string }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [email,    setEmail]    = useState("");
-  const [password, setPassword] = useState("");
-  const [role,     setRole]     = useState<"MANAGER" | "READONLY">("READONLY");
+  const [role,     setRole]     = useState<StaffRoleOption>("READONLY");
+  const [invite,   setInvite]   = useState<{ email: string; accept_url: string; emailed: boolean } | null>(null);
 
   const { data: staff, isLoading } = useQuery<ClubStaff[]>({
     queryKey: ["admin", "clubs", clubId, "staff"],
     queryFn: () => api.get<ClubStaff[]>(`/admin/clubs/${clubId}/staff`).then((r) => r.data),
   });
 
+  // An invitation, as the club's own Team page sends: they choose their own
+  // password from the link. Staff never set one.
   const createMutation = useMutation({
     mutationFn: (body: object) =>
-      api.post<ClubStaff>(`/admin/clubs/${clubId}/staff`, body).then((r) => r.data),
-    onSuccess: () => {
+      api.post<{ email: string; accept_url: string; emailed: boolean }>(`/admin/clubs/${clubId}/staff`, body).then((r) => r.data),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "clubs", clubId, "staff"] });
+      setInvite(data);
       setShowForm(false);
       setEmail("");
-      setPassword("");
       setRole("READONLY");
     },
   });
@@ -307,6 +364,7 @@ function StaffPanel({ clubId }: { clubId: string }) {
     },
   });
 
+  const confirmRemove = useConfirm();
   const deleteMutation = useMutation({
     mutationFn: (staffId: string) =>
       api.delete(`/admin/clubs/${clubId}/staff/${staffId}`),
@@ -321,26 +379,40 @@ function StaffPanel({ clubId }: { clubId: string }) {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Staff Accounts</p>
           <p className="mt-0.5 text-xs text-text-muted">
-            Staff can log in with their own credentials. Managers can bid/offer; Read-only can only view.
+            Invite someone by email. They choose their own password from the link; it lasts 7 days.
           </p>
         </div>
         {!showForm && (
           <Button variant="primary" size="sm" onClick={() => setShowForm(true)}>
-            Add staff
+            Invite staff
           </Button>
         )}
       </div>
+
+      {invite && (
+        <div className="mb-5 rounded-lg bg-success-bg px-4 py-3 text-sm ring-1 ring-border">
+          <p className="font-semibold text-text">Invitation for {invite.email} created</p>
+          <p className="mt-0.5 text-text-secondary">
+            {invite.emailed ? "We've emailed it. You can also send this link yourself:" : "Email isn't set up, so send them this link:"}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 break-all rounded bg-surface px-2 py-1 text-xs text-text">{invite.accept_url}</code>
+            <Button variant="secondary" size="sm" onClick={() => navigator.clipboard?.writeText(invite.accept_url)}>Copy</Button>
+            <Button variant="ghost" size="sm" onClick={() => setInvite(null)}>Done</Button>
+          </div>
+        </div>
+      )}
 
       {/* Create form */}
       {showForm && (
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            createMutation.mutate({ email, password, role });
+            createMutation.mutate({ email, role });
           }}
           className="mb-5 rounded-lg bg-surface-inset p-4 space-y-3 ring-1 ring-border"
         >
-          <p className="text-xs font-semibold text-text-secondary">New staff account</p>
+          <p className="text-xs font-semibold text-text-secondary">Invite to the staff</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs text-text-muted">Email</label>
@@ -352,34 +424,26 @@ function StaffPanel({ clubId }: { clubId: string }) {
                 className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs text-text-muted">Password</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
-              />
-            </div>
           </div>
           <div>
             <label className="mb-1 block text-xs text-text-muted">Role</label>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as "MANAGER" | "READONLY")}
+              onChange={(e) => setRole(e.target.value as StaffRoleOption)}
               className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
             >
+              <option value="SPORTING_DIRECTOR">Sporting director — decides deals and approvals</option>
               <option value="MANAGER">Manager — can bid, offer &amp; cancel</option>
+              <option value="SCOUT">Scout — shortlists and scouting</option>
               <option value="READONLY">Read-only — view only</option>
             </select>
           </div>
           {createMutation.isError && (
-            <p className="text-xs text-danger-text">{getApiError(createMutation.error, "Create failed.")}</p>
+            <p className="text-xs text-danger-text">{getApiError(createMutation.error, "Couldn't create the invitation.")}</p>
           )}
           <div className="flex gap-2">
             <Button type="submit" variant="primary" size="sm" loading={createMutation.isPending}>
-              Create account
+              Send invitation
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)}>
               Cancel
@@ -430,7 +494,13 @@ function StaffPanel({ clubId }: { clubId: string }) {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button
-                      onClick={() => deleteMutation.mutate(s.id)}
+                      onClick={async () => {
+                        if (await confirmRemove({
+                          title: "Remove staff member",
+                          message: `Remove ${s.user?.email ?? "this person"} from the club's staff? They lose access to the club straight away.`,
+                          confirmLabel: "Remove", danger: true,
+                        })) deleteMutation.mutate(s.id);
+                      }}
                       disabled={deleteMutation.isPending}
                       className="text-xs text-danger-text hover:text-danger-text-alt transition-colors disabled:opacity-40"
                     >

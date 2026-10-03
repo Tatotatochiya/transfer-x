@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -116,6 +119,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
         )
     access_token = auth_service.create_access_token(user.id, user.email)
     refresh_token = await auth_service.create_refresh_token(db, user.id)
+    user.last_active_at = datetime.now(timezone.utc)
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
@@ -128,6 +132,7 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)) -> T
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
 
     access_token = auth_service.create_access_token(user.id, user.email)
+    user.last_active_at = datetime.now(timezone.utc)
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=new_refresh_token)
 
@@ -163,6 +168,46 @@ async def preview_invitation(token: str, db: AsyncSession = Depends(get_db)) -> 
 
 
 # ── Club invitations: how a club joins TransferX ─────────────────────────────
+
+
+class PasswordResetPreview(BaseModel):
+    email: str
+    expires_at: datetime
+
+
+class PasswordResetRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=200)
+    new_password: str = Field(min_length=8, max_length=200)
+
+
+@router.get("/password-reset/{token}", response_model=PasswordResetPreview)
+async def preview_password_reset(token: str, db: AsyncSession = Depends(get_db)):
+    """What the reset page shows: whose password this sets. 404 for any link
+    that is not live, with no hint as to why."""
+    row = await auth_service.live_password_reset(db, token)
+    user = await db.get(User, row.user_id) if row else None
+    if row is None or user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This link has expired or has already been used")
+    return PasswordResetPreview(email=user.email, expires_at=row.expires_at)
+
+
+@router.post("/password-reset", status_code=status.HTTP_204_NO_CONTENT)
+async def complete_password_reset(body: PasswordResetRequest, db: AsyncSession = Depends(get_db)) -> None:
+    """Choose a new password with a one-time link. Signs the person out on
+    every device; they then sign in with the new password."""
+    from app.audit import service as audit_service
+
+    try:
+        user = await auth_service.complete_password_reset(db, body.token, body.new_password)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    await audit_service.emit(
+        db, entity_type="user", entity_id=user.id, action="password_reset_completed", actor_user_id=user.id,
+        description="Password changed with a reset link; signed out everywhere",
+    )
+    await db.commit()
 
 
 @router.get("/club-invitations/{token}", response_model=ClubInvitationPreviewResponse)
@@ -317,8 +362,21 @@ async def accept_invitation(
 
 
 @router.get("/me", response_model=UserResponse)
-async def me(current_user: User = Depends(get_current_user)) -> User:
-    return current_user
+async def me(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    club, _role = await clubs_service.get_club_and_role_for_user(db, current_user.id)
+    resp = UserResponse.model_validate(current_user)
+    resp.has_club = club is not None
+    staff_id = getattr(request.state, "view_as_by", None)
+    if staff_id:
+        import uuid as _uuid
+
+        staff = await db.get(User, _uuid.UUID(staff_id))
+        resp.viewed_by = staff.email if staff else "TransferX staff"
+    return resp
 
 
 @router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)

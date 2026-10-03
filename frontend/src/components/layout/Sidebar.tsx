@@ -57,7 +57,47 @@ const ADMIN_GROUP: NavGroup = {
   ],
 };
 
-function getNavGroups(userType: UserType | null): NavGroup[] {
+/** A TransferX staff account (superuser, no club): the admin panel's pages,
+ *  instead of a club's nav that would only fail for them. */
+const STAFF_GROUPS: NavGroup[] = [
+  {
+    title: "Admin",
+    authRequired: true,
+    items: [
+      { label: "Overview",   to: "/admin",         icon: "layout-dashboard", end: true },
+      { label: "Users",      to: "/admin/users",   icon: "user" },
+      { label: "Clubs",      to: "/admin/clubs",   icon: "shield" },
+      { label: "Players",    to: "/admin/players", icon: "users" },
+      { label: "Sales",      to: "/admin/sales",   icon: "tag" },
+      { label: "Deals",      to: "/admin/deals",   icon: "arrow-right-left" },
+      { label: "Offers",     to: "/admin/offers",  icon: "send" },
+      { label: "Audit log",  to: "/admin/audit",   icon: "list" },
+    ],
+  },
+  {
+    title: "Operations",
+    authRequired: true,
+    items: [
+      { label: "Verification",     to: "/admin/verification", icon: "check" },
+      { label: "Transfer windows", to: "/admin/windows",      icon: "gavel" },
+      { label: "Health",           to: "/admin/health",       icon: "bolt" },
+      { label: "Analytics",        to: "/admin/analytics",    icon: "crosshair" },
+      { label: "AI",               to: "/admin/ai",           icon: "message" },
+      { label: "Vendor sync",      to: "/admin/vendor",       icon: "inbox" },
+      { label: "Import",           to: "/admin/import",       icon: "user-plus" },
+    ],
+  },
+  {
+    title: "Market",
+    items: [
+      { label: "Browse Players",   to: "/players/market", icon: "users" },
+      { label: "Recent Transfers", to: "/transfers",      icon: "crosshair" },
+    ],
+  },
+];
+
+function getNavGroups(userType: UserType | null, staffAccount = false): NavGroup[] {
+  if (staffAccount) return STAFF_GROUPS;
   if (userType === "AGENT") {
     return [
       {
@@ -237,7 +277,7 @@ const MENU_ITEM = `flex min-h-12 w-full items-center rounded-lg px-2.5 text-left
  * the drawer behind it (whose focus trap also listens for Escape).
  */
 function AccountMenu({ onLogout }: { onLogout: () => void }) {
-  const { user, userType } = useAuth();
+  const { user, userType, hasClub } = useAuth();
   const identity = useIdentity();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -311,7 +351,7 @@ function AccountMenu({ onLogout }: { onLogout: () => void }) {
         >
           <NavLink to="/account" role="menuitem" tabIndex={-1} className={MENU_ITEM}>Settings</NavLink>
           <Link to="/account#notifications" role="menuitem" tabIndex={-1} className={MENU_ITEM}>Notification settings</Link>
-          {userType === "CLUB" && (
+          {userType === "CLUB" && hasClub && (
             <button
               type="button"
               role="menuitem"
@@ -373,7 +413,7 @@ function AccountMenu({ onLogout }: { onLogout: () => void }) {
 }
 
 export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
-  const { user, isAuthenticated, logout, userType } = useAuth();
+  const { user, isAuthenticated, logout, userType, hasClub, isStaffAccount } = useAuth();
   const { can, role } = useClubCapabilities();
   const navigate = useNavigate();
 
@@ -386,13 +426,13 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     if (item.gate === "TEAM_MANAGE") return can("TEAM_MANAGE");
     return can("APPROVE_ACTIONS") || role === "MANAGER";
   };
-  const navGroups = getNavGroups(userType)
+  const navGroups = getNavGroups(userType, isStaffAccount)
     .map((g) => ({ ...g, items: g.items.filter(itemVisible) }))
     .filter((g) => g.items.length > 0);
 
   // B2: one aggregate call, counted per section. Club accounts only — agents
   // and player accounts have no club dashboard, and asking for one 403s.
-  const { data: dashboard } = useClubDashboard(isAuthenticated && userType === "CLUB");
+  const { data: dashboard } = useClubDashboard(isAuthenticated && userType === "CLUB" && hasClub);
   const waitingByRoute = (() => {
     const byKind = countByKind(dashboard?.waiting_on_you);
     const byRoute: Record<string, number> = {};

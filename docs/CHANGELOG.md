@@ -25,6 +25,17 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Admin clean-up.**
+  - **Sidebar:** TransferX staff accounts get an admin sidebar (Overview, Users, Clubs, … Audit log, Health) instead of a club's, and no longer fire failing club requests on every page.
+  - **Users page:** shows each person's type, club and role (or agency or player), and when they were last active.
+  - **Staff invitations:** "Invite staff" on a club sends an invitation link instead of creating an account with a typed password.
+  - **Health:** shows whether email, phone notifications, the AI assistant and API-Football are set up, with today's API usage; and each scheduled job's last and next run.
+  - **View as this club:** opens a 30-minute, read-only tab showing exactly what the club's owner sees, for support. It needs a reason, is recorded in the audit log, and nothing can be changed in it.
+- **Admin audit trail and Audit log page.** Every change TransferX staff make in the admin panel is recorded with who, when and why.
+  - Destructive actions ask for a reason first: deleting, deactivating, staff rights, cancelling a sale, withdrawing an offer, changing a budget, deleting a window.
+  - A new Audit log page lists every event (staff actions, deals, offers, loans) with search, filters and a link to each item.
+  - **Export to Excel** downloads the current view, with an "About" sheet saying who exported it and with which filters. The export is recorded too.
+- **Password reset links.** Staff now send a one-time link (24 hours) instead of typing a password for someone; it's emailed when email is set up and shown to copy either way. Using it signs the person out on every device.
 - **Phone notifications, phase 3: pushes worth reading** ([spec](./feature_spec/mobile-notifications/README.md)).
   - **Wording.** Offers, counters, messages, auctions ending, outbids and approval requests now say who, how much and by when, e.g. "Offer for Marcus Webb: £18m · Ashfield United · your valuation £21m · reply by Fri 18:00". Deadlines are in each person's own timezone.
   - **Masking.** An anonymous buyer is still only "A Premier League club", through one shared masking rule.
@@ -164,6 +175,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Admin "Create user" is removed.** It made an account with no club, role or player record. Accounts come from invitations instead.
 - **TransferX staff start on the admin panel.** Signing in as a superuser, or opening `/`, now goes to `/admin` instead of the club Dashboard.
 - **A compact sidebar** ([spec](./feature_spec/compact-sidebar/README.md)).
   - The whole club nav now fits a 13-inch laptop without scrolling: 705px tall, down from 1,074px.
@@ -209,6 +221,14 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **Admin "Cancel sale" never worked, and leaked money.** It crashed on a status that doesn't exist. Its intended effect would also only have marked the sale cancelled. It now does what a seller's withdrawal does: every bidder's reserved budget and every linked offer's held budget is released, and the seller and bidders are told why. Offers linked to a withdrawn sale now also release their reserved wage, which they used to keep.
+- **Admin "Force withdraw" left the buyer's budget reserved forever** and told no one. It now releases the reserved fee and wage, and tells both clubs why.
+- **Admin budget edits** could go negative, or below what's already held, committed or spent. Both are refused now.
+- **An admin could remove their own staff rights or deactivate themselves**, including as the last staff account. Both are blocked.
+- **Broadcasts** bypassed notification preferences and the live bell, had no confirmation, and could link anywhere. They now go through the normal notification path, ask before sending, and only link to TransferX pages.
+- **The admin Sales filter** offered "Cancelled" and "Sold", which don't exist, and missed Withdrawn and Expired.
+- **One-click admin actions now ask first:** completing, collapsing or advancing a deal; removing a club's staff member; vendor syncs (which use the daily API allowance).
+
 - **The desktop search box covered page buttons.** It was pinned to the window's corner, over My Club's "Team" and "Edit profile", "+ New listing", "+ New shortlist", "Mark all as read" and the Player Market title. It now sits in a slim row above the page.
 - **My Club's contract cliff showed "—" for every window.** It added up the old vendor market value, which most players don't have; it now uses the model valuation, falling back to the market value.
 - **An empty squad showed a blank link instead of "Browse players".**

@@ -75,3 +75,32 @@ Two further, narrower patterns layered on top of the above:
 - [`../product/personas.md`](../product/personas.md) — what these roles mean at a product level
 - [`../security-and-compliance/permissions-model.md`](../security-and-compliance/permissions-model.md) — confidentiality posture and known gaps
 - [`backend-architecture.md`](./backend-architecture.md) — the `auth` module this document describes
+
+## TransferX staff (admin panel) safeguards
+
+Added 2026-10-03. Every admin endpoint requires a superuser (`get_current_superuser`). On top of that:
+
+- **Audit trail.** Every change made from the admin panel writes an `AuditEvent` with an `admin.` action (`app/admin/audit.py`), in the same transaction as the change. That covers:
+  - users: deletes, (de)activation, staff rights, reset links;
+  - clubs: create, edit, delete and budgets;
+  - club invitations, players, staff, broadcasts and imports;
+  - cancelled sales and withdrawn offers;
+  - transfer windows, verification decisions and AI prompt overrides.
+
+  Vendor syncs keep their own record (`vendor_sync_runs`, with who started each run). Deal staff actions were already audited in the deals service.
+- **Reasons.** Destructive actions require a reason of at least 5 characters, stored in the event's payload:
+  - deleting a user or club;
+  - deactivating a user, or granting or removing staff rights;
+  - cancelling a sale, or withdrawing an offer;
+  - changing a budget;
+  - deleting a transfer window.
+- **Lockout guards.** Nobody can deactivate themselves or remove their own staff rights. The last active staff account can't be deactivated, demoted or deleted.
+- **Passwords.** Staff never set or see a password. They create a one-time reset link (`password_reset_tokens`, hashed, 24 hours, migration 0089). It is emailed when SMTP is set and shown to copy otherwise. Using it sets the password (8+ characters) and deletes every refresh token, signing the person out everywhere.
+- **No bare accounts.** The admin "Create user" endpoint is removed: accounts come from invitations, so each arrives with its club, staff role or player record.
+- **Staff are invited, not created.** "Invite staff" on a club's admin page sends the same `ClubStaffInvitation` as the club's own Team page (`POST /admin/clubs/{id}/staff`, `{email, role}`); the person chooses their password from the link. The old typed-password staff creation is gone.
+- **View as this club** (`POST /admin/clubs/{id}/view-as`, reason required, audited as `admin.club.viewed_as`) mints a 30-minute access token as the club's owner with `ro` (read-only) and `act` (the staff member) claims, and no refresh token.
+  - `get_current_user` and `get_optional_user` refuse every non-GET request on such a token with 403, before any endpoint runs.
+  - The frontend opens it in a new tab via the URL fragment (`/view-as#view_as=…`), holds it in memory only, never touches the stored refresh token, and shows a read-only banner. `/auth/me` returns `viewed_by`.
+- **Staff accounts.** `/auth/me` returns `has_club`. A superuser with no club gets the admin sidebar, and the app skips club-only requests for them (`/clubs/me`, membership, dashboard), which used to 404 or 403 on every page.
+- **Audit log page.** `/admin/audit` (`GET /admin/audit-log`, `/facets`, `/export.xlsx`) lists every audit event, filterable. The Excel export (up to 50,000 rows) is itself audited.
+
