@@ -62,6 +62,22 @@ The branches this once waited on (`player-invitations`, PR #9, `username-login-p
   - **Answer text:** when a proposal is involved, the answer comes from code ("I've prepared a £6m bid for … for you to check", or why it couldn't be prepared). The model can't know the outcome of the check, and in testing it contradicted it.
   - **Plain bid requests** ("bid £6m for De Cuyper") are also read in code when the model gives no proposal (it sometimes declined because the player isn't in the club's own data). They are checked the same way.
   - **Fallback:** no "Send to {Sam}" (L7). Admin fallbacks are listed newest first, not grouped by similar text.
+- **L6 built (2026-10-03).** Held sends for undo, as BACKEND.md §5 and architecture [ADR 0007](../../architecture/decisions/0007-held-sends-for-undo.md).
+  - **Backend:**
+    - `held_actions` (migration `0090`);
+    - `POST /lite/actions`, which checks now and holds for 10 seconds;
+    - `POST /lite/actions/{id}/undo` (409 once sent), and `GET /lite/actions/{id}` with five plain steps;
+    - `GET /lite/deals/{id}/progress`;
+    - an executor every 2 seconds, which runs the normal offers endpoint as the person who confirmed it.
+  - **Frontend:**
+    - Screen 6 (`/lite/actions/:id`): the stepper, the money card, and the undo bar counting down from `execute_at` with a 5px bar;
+    - Undo shows "Cancelled. Nothing was sent." for 3 seconds, then goes back to the card with the same values;
+    - the bid and offer cards now hold rather than call the endpoints.
+- **Deviations in L6:**
+  - **Checks at hold time** are the endpoints' rules read without side effects: window, one open offer, no deal in progress, `check_new_offer`, party and turn, and budget unless approval applies. The endpoints notify and email, so they can't be dry-run. If something changes in the ten seconds, the send fails with the endpoint's reason and the screen says so.
+  - **"Message {Sam} about this"** waits for L7.
+  - **The reply-time hint** ("Clubs usually reply in 1 to 2 days") is hidden below 20 answered offers, as specified, which is the case in the demo data.
+  - **Step labels** follow BACKEND.md §5. Approval reads "Waiting for your owner or sporting director to approve", since requests go to all of them.
 - **Still open:** users have no first name on record, so the greeting uses the club's name ("Good afternoon, Liverpool"). "Good morning, {first name}" needs a name field, on the user or the club staff record.
 
 **Why this order:**

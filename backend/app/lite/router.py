@@ -156,3 +156,95 @@ async def ask_suggestions(
         return {"suggestions": await service.ask_suggestions(db, current_user)}
     except LookupError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lite mode is for club members")
+
+
+# ── Held sends for undo and plain progress (L6, architecture ADR 0007) ───────
+
+from datetime import datetime, timezone  # noqa: E402
+
+from pydantic import BaseModel, Field  # noqa: E402
+
+
+class HoldRequest(BaseModel):
+    kind: str = Field(pattern="^(bid|counter|accept|reject)$")
+    # bid: the offer's terms (as POST /offers); counter: {offer_id, fee_amount};
+    # accept and reject: {offer_id}.
+    payload: dict
+    ai_assisted: bool = False
+
+
+async def _action_view(db: AsyncSession, action, now: datetime) -> dict:
+    from app.lite import held
+
+    return {
+        "id": str(action.id),
+        "kind": action.kind,
+        "status": action.status.value,
+        "execute_at": held._utc(action.execute_at).isoformat(),
+        "result": action.result_json,
+        "error": action.error,
+        "progress": await held.progress(db, action, now),
+    }
+
+
+@router.post("/lite/actions", status_code=status.HTTP_201_CREATED)
+async def hold_action(
+    body: HoldRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Confirm a Lite action: checked now (an error shows on the card), then
+    held for 10 seconds before it is sent, so it can be undone. Nothing is
+    sent, notified or reserved while it is held."""
+    from app.lite import held
+
+    action = await held.hold(db, current_user, kind=body.kind, payload=body.payload, ai_assisted=body.ai_assisted)
+    await db.commit()
+    return await _action_view(db, action, datetime.now(timezone.utc))
+
+
+@router.post("/lite/actions/{action_id}/undo")
+async def undo_action(
+    action_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Cancel a held action before it is sent. 409 once it has been."""
+    from app.lite import held
+
+    action = await held.undo(db, current_user, action_id)
+    await db.commit()
+    return await _action_view(db, action, datetime.now(timezone.utc))
+
+
+@router.get("/lite/actions/{action_id}")
+async def get_action(
+    action_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """The action's status and its five plain progress steps."""
+    from app.lite.models import HeldAction
+
+    action = await db.get(HeldAction, action_id)
+    if action is None or action.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return await _action_view(db, action, datetime.now(timezone.utc))
+
+
+@router.get("/lite/deals/{deal_id}/progress")
+async def deal_progress(
+    deal_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """A deal's plain steps, for a club that is party to it."""
+    from app.clubs import service as clubs_service
+    from app.deals import service as deals_service
+    from app.lite import held
+
+    club = await clubs_service.get_club_for_user(db, current_user.id)
+    deal = await deals_service.get_deal_by_id(db, deal_id)
+    if deal is None or club is None or club.id not in (deal.buyer_club_id, deal.seller_club_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deal not found")
+    return await held.deal_progress(db, deal, club.id)

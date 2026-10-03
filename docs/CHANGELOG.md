@@ -25,6 +25,17 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Phone notifications, phase 4** ([spec](./feature_spec/mobile-notifications/README.md)).
+  - **Decision sheet.** Tapping an offer notification on a phone opens a one-screen decision with:
+    - where it is in your queue ("Waiting on you · 1 of 3", Next), and how long is left;
+    - your valuation, "Ask for £21m", Accept and Say no, with 10 seconds to undo;
+    - a clear note if the offer changed since the notification.
+  - **Morning summary.** One push a day at your chosen time, only when something is waiting ("3 things waiting on you · first deadline today 19:00"), with its switch and time in Settings.
+  - **Email fallback.** If your phone gets the "your move" push, the email waits 30 minutes and goes only if you haven't opened it.
+- **Lite: undo, and where the deal is** (L6, [ADR 0007](./architecture/decisions/0007-held-sends-for-undo.md)).
+  - **Undo:** confirming a bid, counter, acceptance or refusal in Lite now waits 10 seconds with an "Undo" bar before anything is sent. Undoing in time leaves no trace for the other club.
+  - **Progress:** the Sent screen follows the deal in five plain steps: you approved it, sent, waiting for their reply (or your turn), medical and personal terms, signed. Its hints come from the deal page's own next steps.
+  - **Checks:** problems are found when you confirm. If something changes in the ten seconds, the screen says it wasn't sent, and why.
 - **Admin clean-up.**
   - **Sidebar:** TransferX staff accounts get an admin sidebar (Overview, Users, Clubs, … Audit log, Health) instead of a club's, and no longer fire failing club requests on every page.
   - **Users page:** shows each person's type, club and role (or agency or player), and when they were last active.

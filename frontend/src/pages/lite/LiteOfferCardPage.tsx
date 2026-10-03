@@ -3,19 +3,18 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
-  ActionCardShell, Done, FactRow, FeeStepper, MoneyPanel, Notes,
+  ActionCardShell, FactRow, FeeStepper, MoneyPanel, Notes,
   dangerBtn, primaryBtn, secondaryBtn, textBtn, useDebounced,
 } from "../../components/lite/ActionCard";
 import Spinner from "../../components/ui/Spinner";
 import { useOfferCheck } from "../../hooks/useAssistant";
-import { CLUB_DASHBOARD_KEY } from "../../hooks/useClubDashboard";
+import { CLUB_DASHBOARD_KEY, useClubDashboard } from "../../hooks/useClubDashboard";
 import { useLiteOfferCard } from "../../hooks/useLite";
-import api from "../../lib/api";
+import { holdAndOpen } from "./LiteSentPage";
 import { liteMoney, liteWage } from "../../lib/liteMoney";
 import { getApiError } from "../../lib/utils";
 
 type Mode = "answer" | "accept" | "counter" | "reject";
-type Result = { kind: "accepted"; dealId: string } | { kind: "approval" } | { kind: "countered" } | { kind: "rejected" };
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const shortDate = (iso: string | null) =>
@@ -38,15 +37,16 @@ export default function LiteOfferCardPage() {
   // recorded as the assistant's suggestion when confirmed.
   const [params] = useSearchParams();
   const fromAsk = params.get("from") === "ask";
+  // Opened from a phone notification: this card is the decision sheet
+  // (mobile notifications §7.3, 4c).
+  const fromPush = params.get("from") === "push";
   const proposed = params.get("action");
   const [mode, setMode] = useState<Mode>(
     proposed === "accept" || proposed === "reject" || proposed === "counter" ? proposed : "answer",
   );
   const [counterFee, setCounterFee] = useState<number | null>(Number(params.get("amount")) || null);
-  const aiBody = fromAsk ? { ai_assisted: true } : {};
   const [busy, setBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
-  const [result, setResult] = useState<Result | null>(null);
 
   const counter = counterFee ?? card?.counter_suggestion ?? null;
   const body = useMemo(
@@ -70,48 +70,30 @@ export default function LiteOfferCardPage() {
   }
 
   const player = card.player_name ?? "your player";
+  const open = card.status === "SENT" || card.status === "COUNTERED";
+  const left = timeLeft(card.expires_at);
+  const askingValuation = card.side === "seller" && card.your_valuation != null && card.counter_suggestion === card.your_valuation;
   const loan = card.deal_type === "LOAN";
   const other = card.other_club;
-  if (result) {
-    const back = { to: "/lite/offers", label: "Back to offers" };
-    if (result.kind === "accepted") {
-      return <Done title="Accepted" body={`You agreed ${liteMoney(card.fee)} for ${player} with ${other}. Next come the medical and personal terms.`}
-        links={[back, { to: `/deals/${result.dealId}`, label: "Open the deal" }]} />;
-    }
-    if (result.kind === "approval") {
-      return <Done title="Sent for approval" body={`Accepting ${liteMoney(card.fee)} for ${player} waits for your owner or sporting director to approve it.`} links={[back]} />;
-    }
-    if (result.kind === "countered") {
-      return <Done title={`Counter sent to ${other}`} body={`You asked for ${liteMoney(counter)} for ${player}. We'll tell you when they reply.`} links={[back]} />;
-    }
-    return <Done title="You said no" body={`${cap(other)} has been told you turned down the offer for ${player}.`} links={[back]} />;
-  }
-
-  const run = async (fn: () => Promise<Result>) => {
+  // Confirming holds the action for 10 seconds (L6, ADR 0007) and opens the
+  // Sent screen; Undo there comes back here with the same choice made.
+  const run = async (kind: "accept" | "counter" | "reject", extra: Record<string, unknown> = {}) => {
     setBusy(true);
     setSendError(null);
     try {
-      setResult(await fn());
+      const back = new URLSearchParams({ action: kind, ...(kind === "counter" && counter ? { amount: String(counter) } : {}) });
+      await holdAndOpen(navigate, { kind, payload: { offer_id: card.offer_id, ...extra }, ai_assisted: fromAsk },
+        `/lite/offers/${card.offer_id}?${back}`);
       queryClient.invalidateQueries({ queryKey: ["lite"] });
       queryClient.invalidateQueries({ queryKey: CLUB_DASHBOARD_KEY });
     } catch (err) {
       setSendError(getApiError(err, "That didn't go through."));
-    } finally {
       setBusy(false);
     }
   };
-  const accept = () => run(async () => {
-    const r = await api.post(`/offers/${card.offer_id}/accept`, aiBody);
-    return r.status === 202 ? { kind: "approval" } : { kind: "accepted", dealId: r.data.id };
-  });
-  const sendCounter = () => run(async () => {
-    await api.post(`/offers/${card.offer_id}/counter`, { fee_amount: counter, ...(fromAsk ? { ai_assisted: true, ai_feature: "ask_proposal" } : {}) });
-    return { kind: "countered" };
-  });
-  const reject = () => run(async () => {
-    await api.post(`/offers/${card.offer_id}/reject`, aiBody);
-    return { kind: "rejected" };
-  });
+  const accept = () => run("accept");
+  const sendCounter = () => run("counter", { fee_amount: counter });
+  const reject = () => run("reject");
 
   const buyerOverBudget = card.side === "buyer" && !!money?.over_budget;
   const title = card.side === "seller"
@@ -123,6 +105,18 @@ export default function LiteOfferCardPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      {fromPush && <WaitingHeader offerId={card.offer_id} />}
+      {fromPush && !open && (
+        <div role="status" className="rounded-2xl bg-warning-bg px-5 py-4 text-[1.0625rem] text-text ring-1 ring-border">
+          This has changed since we told you: the offer has been {card.status.toLowerCase()}.{" "}
+          <Link to={`/offers/${card.offer_id}`} className="font-bold text-accent">See what happened</Link>
+        </div>
+      )}
+      {fromPush && open && left && (
+        <p className={`text-[0.8125rem] font-bold uppercase tracking-wider ${left.urgent ? "text-danger-text" : "text-text-muted"}`}>
+          {card.side === "seller" ? "Offer received" : "Reply to your offer"} · {left.text}
+        </p>
+      )}
       <ActionCardShell
         pill={pill}
         tone={card.side === "seller" ? "received" : "ready"}
@@ -133,6 +127,14 @@ export default function LiteOfferCardPage() {
           <FactRow label="Player">{player}</FactRow>
           <FactRow label={card.side === "seller" ? "From" : "Selling club"}>{cap(other)}</FactRow>
           <FactRow label={loan ? "Loan fee" : "Fee"}>{liteMoney(card.fee)}</FactRow>
+          {card.your_valuation != null && <FactRow label="Your valuation">{liteMoney(card.your_valuation)}</FactRow>}
+          {open && card.expires_at && (
+            <FactRow label="Reply by">
+              <span className={left?.urgent ? "font-bold text-danger-text" : undefined}>
+                {new Date(card.expires_at).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </FactRow>
+          )}
           {loan ? (
             <>
               <FactRow label="Wages paid by them">{card.wage_split_pct != null ? `${Math.round(card.wage_split_pct * 100)}%` : "All of them"}</FactRow>
@@ -179,7 +181,7 @@ export default function LiteOfferCardPage() {
                 </button>
                 {card.counter_suggestion != null ? (
                   <button type="button" className={secondaryBtn} onClick={() => setMode("counter")}>
-                    Counter at {liteMoney(card.counter_suggestion)}
+                    {askingValuation ? `Ask for ${liteMoney(card.counter_suggestion)}` : `Counter at ${liteMoney(card.counter_suggestion)}`}
                   </button>
                 ) : loan && (
                   <Link to={`/offers/${card.offer_id}`} className={`${secondaryBtn} flex items-center justify-center no-underline`}>
@@ -216,10 +218,49 @@ export default function LiteOfferCardPage() {
             )}
           </div>
         )}
+        {open && card.your_move && <p className="text-[0.9375rem] text-text-muted">You can undo for 10 seconds after sending.</p>}
         {mode === "answer" && (
-          <button type="button" className={`${textBtn} self-start`} onClick={() => navigate("/lite/offers")}>Back to offers</button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className={`${textBtn} self-start`} onClick={() => navigate("/lite/offers")}>Back to offers</button>
+            {fromPush && <Link to={`/offers/${card.offer_id}`} className={`${textBtn} flex items-center no-underline`}>See full details</Link>}
+          </div>
         )}
       </ActionCardShell>
+    </div>
+  );
+}
+
+
+/** "2 days left", "5 hours left"; urgent under 24 hours. */
+function timeLeft(iso: string | null): { text: string; urgent: boolean } | null {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return { text: "time's up", urgent: true };
+  const hours = ms / 3_600_000;
+  if (hours < 1) return { text: `${Math.max(1, Math.round(ms / 60_000))} minutes left`, urgent: true };
+  if (hours < 24) return { text: `${Math.floor(hours)} hour${Math.floor(hours) === 1 ? "" : "s"} left`, urgent: true };
+  const days = Math.floor(hours / 24);
+  return { text: `${days} day${days === 1 ? "" : "s"} left`, urgent: false };
+}
+
+/** "Waiting on you · 2 of 3" and Next, from the Dashboard's waiting list, so
+ *  a director can work through everything from one notification. */
+function WaitingHeader({ offerId }: { offerId: string }) {
+  const { data } = useClubDashboard(true);
+  const items = data?.waiting_on_you ?? [];
+  const i = items.findIndex((it) => it.kind === "offer" && it.id === offerId);
+  if (items.length === 0) return null;
+  const next = items[(i + 1) % items.length];
+  const nextHref = next && next.id !== offerId
+    ? (next.kind === "offer" ? `/lite/offers/${next.id}?from=push` : next.link)
+    : null;
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <Link to="/lite" className="text-[1.0625rem] font-semibold text-text-secondary no-underline">‹ Home</Link>
+      <span className="text-[1rem] font-semibold text-text-secondary">
+        Waiting on you{i >= 0 ? ` · ${i + 1} of ${items.length}` : ` · ${items.length}`}
+      </span>
+      {nextHref ? <Link to={nextHref} className="text-[1.0625rem] font-bold text-accent no-underline">Next ›</Link> : <span />}
     </div>
   );
 }

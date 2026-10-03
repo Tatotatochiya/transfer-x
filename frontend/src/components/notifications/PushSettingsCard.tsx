@@ -250,9 +250,23 @@ export default function PushSettingsCard() {
             <div className="flex min-w-0 flex-[1_1_16rem] gap-2.5">
               <Dot className="bg-text-muted" />
               <div>
-                <p className="text-sm font-semibold text-text">FYI</p>
-                <p className="text-xs text-text-muted">Completed deals, loans and the like. Not pushed; they stay in the app.</p>
+                <p className="text-sm font-semibold text-text">FYI, and a morning summary</p>
+                <p className="text-xs text-text-muted">
+                  Completed deals, loans and the like stay in the app. One push each morning says what's waiting on you, only when something is.
+                </p>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {prefs.push_summary && (
+                <TimeInput key={`m${prefs.summary_local_time}`} label="Morning summary time" value={prefs.summary_local_time}
+                  onCommit={(v) => save({ summary_local_time: v })} />
+              )}
+              <MiniToggle
+                value={prefs.push_summary}
+                disabled={update.isPending}
+                onChange={() => save({ push_summary: !prefs.push_summary })}
+                label="Morning summary"
+              />
             </div>
           </Row>
           <Row>

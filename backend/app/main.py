@@ -160,6 +160,40 @@ async def _valuation_compute_job() -> None:
             logger.exception("Error in valuation compute job")
 
 
+async def _execute_held_actions_job() -> None:
+    """Lite L6 (ADR 0007): send the held actions whose undo window has
+    closed, each in its own transaction, as the user who confirmed it."""
+    from app.lite.held import due_ids, execute_one
+
+    now = datetime.now(timezone.utc)
+    try:
+        async with AsyncSessionLocal() as db:
+            ids = await due_ids(db, now)
+        for action_id in ids:
+            async with AsyncSessionLocal() as db:
+                await execute_one(db, action_id, now)
+    except Exception:
+        logger.exception("Error in execute_held_actions job")
+
+
+async def _push_summaries_and_fallbacks_job(which: str) -> None:
+    """Mobile notifications phase 4: the morning summary push (every 15
+    minutes) and the 30-minute email fallback (every 5)."""
+    from app.notifications import push
+
+    now = datetime.now(timezone.utc)
+    async with AsyncSessionLocal() as db:
+        try:
+            async with db.begin():
+                if which == "summary":
+                    if push.vapid_configured():
+                        await push.send_morning_summaries(db, now)
+                else:
+                    await push.send_email_fallbacks(db, now)
+        except Exception:
+            logger.exception("Error in %s job", which)
+
+
 async def _approval_expiry_job() -> None:
     """Phase 5 (club-team-roles): expire stale pending approvals and notify requesters."""
     from app.approvals.service import expire_stale_approvals
@@ -230,6 +264,21 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(
         _expire_stale_offers_job, "interval", minutes=5, id="expire_stale_offers",
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=3),
+    )
+    # Every 2 seconds: a held Lite action goes out within ~2s of its undo
+    # window closing. One instance at a time, so an action is never sent twice.
+    _scheduler.add_job(
+        _execute_held_actions_job, "interval", seconds=2, id="execute_held_actions",
+        max_instances=1, coalesce=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+    )
+    _scheduler.add_job(
+        _push_summaries_and_fallbacks_job, "interval", minutes=15, id="morning_summary", args=["summary"],
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=40),
+    )
+    _scheduler.add_job(
+        _push_summaries_and_fallbacks_job, "interval", minutes=5, id="email_fallback", args=["fallback"],
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=45),
     )
     _scheduler.add_job(
         _release_held_pushes_job, "interval", minutes=5, id="release_held_pushes",

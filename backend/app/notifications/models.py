@@ -91,6 +91,10 @@ class Notification(Base):
     deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Up to two {action, title, url}. They only ever open a page (ADR 0006).
     actions_json: Mapped[list | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
+    # Phase 4 email fallback (migration 0091): with a phone to push to, a
+    # "your move" email waits until this time and goes only if still unread.
+    email_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    emailed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )

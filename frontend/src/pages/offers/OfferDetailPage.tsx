@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Club, Offer } from "../../types/api";
@@ -390,6 +390,16 @@ export default function OfferDetailPage() {
   const [showCounter, setShowCounter] = useState(false);
   const [prefill, setPrefill] = useState<SuggestedTerms | null>(null);
   const [mobileSection, setMobileSection] = useState<"detail" | "context">("detail");
+
+  // A push tapped on a phone opens the one-screen decision (the Lite offer
+  // card) rather than this full page (mobile notifications §7.3, 4c). Wider
+  // screens, and "See full details" from the card, stay here.
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("from") === "push" && id && window.matchMedia?.("(max-width: 639px)").matches) {
+      navigate(`/lite/offers/${id}?from=push`, { replace: true });
+    }
+  }, [id, navigate, searchParams]);
 
   const { data: offer, isLoading, isError } = useQuery<Offer>({
     queryKey: ["offers", id],

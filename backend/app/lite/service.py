@@ -584,9 +584,24 @@ async def offer_card(db: AsyncSession, user, *, offer_id: uuid.UUID) -> dict:
     open_ = offer.status in (OfferStatus.SENT, OfferStatus.COUNTERED)
     your_move = open_ and offer.last_actor_club_id != club.id
 
+    # The selling club's own valuation of its player: confidential, so only
+    # on the seller's card (the holding club's contract; contract_for_viewer).
+    valuation = None
+    if side == "seller":
+        from app.players.models import Contract
+
+        v = (await db.execute(select(Contract.club_valuation).where(
+            Contract.player_id == offer.player_id, Contract.club_id == club.id, Contract.is_active.is_(True),
+        ))).scalars().first()
+        valuation = float(v) if v is not None else None
+
     counter = None
     if your_move and not loan:
-        if side == "seller":
+        if side == "seller" and valuation and valuation > fee:
+            # The club has said what he's worth: ask for that (the push's
+            # "Ask for £21m" opens this card with the same figure).
+            counter = valuation
+        elif side == "seller":
             anchors = [fee * 1.1]
             vals = await get_latest_valuations(db, [offer.player_id])
             if offer.player_id in vals:
@@ -627,6 +642,7 @@ async def offer_card(db: AsyncSession, user, *, offer_id: uuid.UUID) -> dict:
         "counter_suggestion": counter,
         "disabled_reason": disabled,
         "expires_at": offer.expires_at.isoformat() if offer.expires_at else None,
+        "your_valuation": valuation,
     }
 
 
