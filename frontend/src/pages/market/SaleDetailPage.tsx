@@ -203,7 +203,7 @@ export default function SaleDetailPage() {
             valueColour={deadline.state === "danger" ? "text-danger-text" : undefined}
           />
         )}
-        {sale.best_bid != null && <FigureCard label="Best bid" value={<Money value={sale.best_bid} />} />}
+        {sale.best_bid != null && <FigureCard label="Best bid" value={<Money value={sale.best_bid} stacked />} />}
         {isSeller && sale.reserve_price != null && (
           <FigureCard
             label="Reserve"
@@ -212,10 +212,10 @@ export default function SaleDetailPage() {
           />
         )}
         {sale.minimum_next_bid != null && isOpen && (
-          <FigureCard label="Minimum next bid" value={<Money value={sale.minimum_next_bid} />} />
+          <FigureCard label="Minimum next bid" value={<Money value={sale.minimum_next_bid} stacked />} />
         )}
         {sale.asking_price != null && sale.sale_type !== "AUCTION" && (
-          <FigureCard label="Asking price" value={<Money value={sale.asking_price} />} />
+          <FigureCard label="Asking price" value={<Money value={sale.asking_price} stacked />} />
         )}
       </div>
 
@@ -302,7 +302,7 @@ export default function SaleDetailPage() {
       {sale.sale_type === "FIXED_PRICE" && (
         <div className="border-t border-rule pt-3">
           {sale.asking_price != null && (
-            <p className="text-2xl font-bold text-text mb-3"><Money value={sale.asking_price} /></p>
+            <p className="text-2xl font-bold text-text mb-3"><Money value={sale.asking_price} stacked /></p>
           )}
           {isAuthenticated && canMarketWrite ? (
             <Button variant="primary" onClick={() => navigate(`/offers/new?player_id=${sale.player_id}&sale_id=${sale.id}`)}>

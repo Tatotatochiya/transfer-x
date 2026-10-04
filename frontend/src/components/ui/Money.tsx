@@ -8,12 +8,15 @@ export default function Money({
   value,
   compact = false,
   format,
+  stacked = false,
   className = "",
 }: {
   value: number | string | null | undefined;
   compact?: boolean;
   /** Overrides how the £ figure is written (e.g. liteMoney). */
   format?: (v: number | null | undefined) => string;
+  /** Puts the estimate on its own, smaller line: for big headline figures. */
+  stacked?: boolean;
   className?: string;
 }) {
   const n = value == null || value === "" ? null : Number(value);
@@ -21,13 +24,13 @@ export default function Money({
   return (
     <span className={className}>
       {pounds}
-      <Estimate value={n} />
+      <Estimate value={n} stacked={stacked} />
     </span>
   );
 }
 
 /** Just the "≈ €21.1m" part, for a £ figure written elsewhere. */
-export function Estimate({ value }: { value: number | string | null | undefined }) {
+export function Estimate({ value, stacked = false }: { value: number | string | null | undefined; stacked?: boolean }) {
   const currency = usePreferencesStore((s) => s.currency);
   const rates = useFxStore((s) => s.rates);
   const asOf = useFxStore((s) => s.asOf);
@@ -37,7 +40,9 @@ export function Estimate({ value }: { value: number | string | null | undefined 
   const basis = source === "ECB" && asOf ? `the ECB rate of ${asOf}` : "an approximate rate";
   return (
     <span
-      className="ml-1 whitespace-nowrap text-[0.8em] font-normal text-text-muted"
+      className={stacked
+        ? "block text-sm font-normal tracking-normal text-text-muted"
+        : "ml-1 whitespace-nowrap text-[0.8em] font-normal text-text-muted"}
       title={`Estimate at ${basis}. Amounts are agreed in pounds.`}
     >
       {estimate}

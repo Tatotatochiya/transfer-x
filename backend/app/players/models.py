@@ -154,6 +154,12 @@ class Contract(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # "Check your squad" (clubs/squad_check.py, migration 0094): when the club
+    # confirmed this contract's dates, wage and valuation, and who did.
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    confirmed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     player: Mapped["Player"] = relationship("Player", back_populates="contracts")
     club: Mapped["app.clubs.models.Club"] = relationship("Club", foreign_keys=[club_id])  # type: ignore[name-defined]

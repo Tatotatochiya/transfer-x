@@ -86,6 +86,13 @@ export default function MyClubPage() {
 
   // ── Squad ─────────────────────────────────────────────────────────────────
 
+  // Check your squad (Phase 1): players without a contract, end date or wage.
+  const { data: squadCheck } = useQuery<{ needs_attention: number; without_contract: number }>({
+    queryKey: ["clubs", "me", "squad-check"],
+    queryFn: () => api.get("/clubs/me/squad-check").then((r) => r.data),
+    staleTime: 60_000,
+  });
+
   const { data: squadData, isLoading: squadLoading } = useQuery<Paginated<PlayerDetail>>({
     queryKey: ["clubs", club?.id, "squad"],
     queryFn: () =>
@@ -401,6 +408,18 @@ export default function MyClubPage() {
           {/* Squad tab */}
           {tab === "squad" && (
             <>
+              {(squadCheck?.needs_attention ?? 0) > 0 && (
+                <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-warning-fill/15 px-4 py-3 text-sm text-warning-text ring-1 ring-warning-fill/30">
+                  <p className="flex-1">
+                    {squadCheck!.without_contract > 0
+                      ? `${squadCheck!.without_contract} player${squadCheck!.without_contract === 1 ? " has" : "s have"} no contract on TransferX.`
+                      : `${squadCheck!.needs_attention} player${squadCheck!.needs_attention === 1 ? " is" : "s are"} missing a contract date or wage.`}
+                  </p>
+                  <button type="button" onClick={() => navigate("/club/squad-check")} className="font-semibold hover:underline">
+                    Check your squad
+                  </button>
+                </div>
+              )}
               {squadLoading ? (
                 <SquadTableSkeleton />
               ) : players.length === 0 ? (

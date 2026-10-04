@@ -77,7 +77,7 @@ function StandingFiguresTier({ myClub, squadCount, squadNote, windowStatus }: {
     <div className="mb-[18px] grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
       <FigureCard
         label="Transfer budget free"
-        value={<Money value={transferFree} />}
+        value={<Money value={transferFree} stacked />}
         note={`of ${formatCurrency(transferTotal)}`}
         bar={{ pct: transferTotal > 0 ? (transferFree / transferTotal) * 100 : 0, colour: "bg-success" }}
       />
