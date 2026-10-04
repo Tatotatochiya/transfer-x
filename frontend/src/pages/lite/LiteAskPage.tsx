@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { useAIStatus, useLiteAsk } from "../../hooks/useAssistant";
-import { useLiteAskSuggestions } from "../../hooks/useLite";
+import { useLiteAskSuggestions, useTeamContact } from "../../hooks/useLite";
 import { liteMoney } from "../../lib/liteMoney";
 import type { AskProposal } from "../../types/api";
+import AskTeamButton from "../../components/lite/AskTeamButton";
 
 interface Turn {
   question: string;
@@ -53,6 +54,7 @@ export default function LiteAskPage() {
   const { data: suggestions } = useLiteAskSuggestions();
   const ask = useLiteAsk();
   const [text, setText] = useState("");
+  const contactLabel = useTeamContact().data?.label ?? "your team";
   const [thread, setThread] = useState<Turn[]>([]);
   const [listening, setListening] = useState(false);
   const recognition = useRef<Recognition | null>(null);
@@ -195,7 +197,7 @@ export default function LiteAskPage() {
               <div className="rounded-[20px] bg-surface px-6 py-5 ring-1 ring-border">
                 <p className="text-[1.3125rem] leading-normal text-text">
                   {turn.error ?? (turn.fallback || !turn.answer
-                    ? "I don't have an answer for that yet. These might help."
+                    ? `I don't have an answer for that yet. These might help, or I can pass the question to ${contactLabel}.`
                     : turn.answer)}
                 </p>
 
@@ -230,8 +232,25 @@ export default function LiteAskPage() {
                     ))}
                   </div>
                 )}
+                {!turn.error && (turn.fallback || !turn.answer) && (
+                  <AskTeamButton
+                    subject={{ type: "general" }}
+                    verb="Send to"
+                    sendNow
+                    draft={turn.question}
+                    className="mt-3 min-h-[3.25rem] rounded-[13px] bg-accent px-5 text-[1.0625rem] font-bold text-white"
+                  />
+                )}
                 {!turn.error && !turn.fallback && turn.answer && (
-                  <p className="mt-4 text-[0.9375rem] text-text-muted">✓ Based on your club&rsquo;s own data on TransferX, as of now.</p>
+                  <p className="mt-4 flex flex-wrap items-center gap-x-3 text-[0.9375rem] text-text-muted">
+                    <span>✓ Based on your club&rsquo;s own data on TransferX, as of now.</span>
+                    <AskTeamButton
+                      subject={{ type: "general" }}
+                      suffix=" to check first →"
+                      draft={`Can you check this? I asked: "${turn.question}" and was told: "${turn.answer}"`}
+                      className="text-[1rem] font-bold text-accent"
+                    />
+                  </p>
                 )}
               </div>
             )}

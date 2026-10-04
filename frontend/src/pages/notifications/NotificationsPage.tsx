@@ -54,6 +54,7 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   DEAL_PAPERWORK:             "Paperwork",
   ENQUIRY_RECEIVED:           "Enquiry received",
   ENQUIRY_REPLIED:            "Enquiry reply",
+  LITE_QUESTION:              "Question from your team",
   APPROVAL_DECIDED:           "Approval decided",
 };
 
@@ -97,6 +98,7 @@ const TYPE_COLOURS: Record<NotificationType, string> = {
   DEAL_PAPERWORK:           "text-accent",
   ENQUIRY_RECEIVED:         "text-accent",
   ENQUIRY_REPLIED:          "text-text-secondary",
+  LITE_QUESTION:            "text-text-secondary",
   APPROVAL_DECIDED:         "text-success-text",
 };
 

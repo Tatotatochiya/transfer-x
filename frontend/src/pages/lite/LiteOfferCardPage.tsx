@@ -15,6 +15,7 @@ import { liteMoney, liteWage } from "../../lib/liteMoney";
 import { getApiError } from "../../lib/utils";
 import Money from "../../components/ui/Money";
 import { timeLeft } from "../../lib/timeLeft";
+import AskTeamButton from "../../components/lite/AskTeamButton";
 
 type Mode = "answer" | "accept" | "counter" | "reject";
 
@@ -225,6 +226,8 @@ export default function LiteOfferCardPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" className={`${textBtn} self-start`} onClick={() => navigate("/lite/offers")}>Back to offers</button>
             {fromPush && <Link to={`/offers/${card.offer_id}`} className={`${textBtn} flex items-center no-underline`}>See full details</Link>}
+            <AskTeamButton subject={{ type: "offer", id: card.offer_id }} suffix=" about this" className={textBtn}
+              draft={`What do you think of this offer for ${player}?`} />
           </div>
         )}
       </ActionCardShell>

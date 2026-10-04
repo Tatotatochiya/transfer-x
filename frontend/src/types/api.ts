@@ -278,6 +278,8 @@ export interface ClubStaffMember {
   user_id: string;
   email: string;
   name?: string | null;
+  /** Lite's "Ask {name}" goes to this person (L7). */
+  is_lite_contact?: boolean;
   role: StaffRole;
   created_at: string;
 }

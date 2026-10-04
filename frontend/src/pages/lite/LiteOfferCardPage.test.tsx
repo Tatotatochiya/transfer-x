@@ -5,7 +5,11 @@ import LiteOfferCardPage from "./LiteOfferCardPage";
 import { Route, Routes } from "react-router-dom";
 
 const card = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
-vi.mock("../../hooks/useLite", () => ({ useLiteOfferCard: () => ({ data: card.value, isLoading: false, error: null }) }));
+vi.mock("../../hooks/useLite", () => ({
+  useLiteOfferCard: () => ({ data: card.value, isLoading: false, error: null }),
+  useTeamContact: () => ({ data: { name: "Sam", label: "Sam" } }),
+}));
+vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock("../../hooks/useAssistant", () => ({ useOfferCheck: () => ({ data: undefined, isFetching: false }) }));
 vi.mock("../../hooks/useClubDashboard", () => ({
   CLUB_DASHBOARD_KEY: ["clubs", "me", "dashboard"],

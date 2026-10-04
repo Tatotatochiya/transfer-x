@@ -76,6 +76,7 @@ export const TYPE_LABELS: Record<string, string> = {
   LOAN_CONVERTED: "A loan is turning into a permanent transfer",
   ENQUIRY_RECEIVED: "A club asks about one of your players",
   ENQUIRY_REPLIED: "A reply in one of your enquiries",
+  LITE_QUESTION: "A colleague asks you something from Lite",
   DEAL_PAPERWORK: "The other club completes a paperwork step, or the paperwork is done",
   DAILY_DIGEST: "A morning email of what is waiting on you — sent only when something is",
   APPROVAL_DECIDED: "Your spending request is decided",
@@ -98,7 +99,7 @@ const TYPE_GROUPS: { label: string; types: string[] }[] = [
   { label: "Representation", types: ["REPRESENTATION_STARTED", "REPRESENTATION_REVOKED", "REPRESENTATION_EXPIRED"] },
   { label: "Client intelligence", types: ["CLIENT_ALERT"] },
   { label: "Verification", types: ["VERIFICATION_APPROVED", "VERIFICATION_REJECTED"] },
-  { label: "Team & approvals", types: ["STAFF_INVITATION", "APPROVAL_REQUESTED", "APPROVAL_DECIDED"] },
+  { label: "Team & approvals", types: ["STAFF_INVITATION", "APPROVAL_REQUESTED", "APPROVAL_DECIDED", "LITE_QUESTION"] },
   { label: "Loans", types: ["LOAN_STARTED", "LOAN_ENDING_SOON", "LOAN_ENDED", "LOAN_RECALLED", "LOAN_CONVERTED"] },
 ];
 

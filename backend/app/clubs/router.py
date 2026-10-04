@@ -253,6 +253,7 @@ def _staff_member_response(staff) -> ClubStaffMemberResponse:
         user_id=staff.user_id,
         email=staff.user.email if staff.user else "",
         name=staff.user.full_name if staff.user else None,
+        is_lite_contact=staff.is_lite_contact,
         role=staff.role,
         created_at=staff.created_at,
     )
@@ -373,6 +374,43 @@ async def change_staff_role(
         actor_user_id=current_user.id,
         payload={"staff_user_id": str(staff.user_id), "from": old_role, "to": body.role.value},
         description=f"Changed {staff.user.display_label if staff.user else staff.user_id} from {old_role} to {body.role.value}",
+    )
+    await db.commit()
+    await db.refresh(staff)
+    return _staff_member_response(staff)
+
+
+class _LiteContactBody(BaseModel):
+    on: bool
+
+
+@router.put("/me/staff/{staff_id}/lite-contact", response_model=ClubStaffMemberResponse)
+async def set_lite_contact(
+    staff_id: uuid.UUID,
+    body: _LiteContactBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    _manage: User = Depends(_team_manage),
+) -> ClubStaffMemberResponse:
+    """Lite's "Ask {name}" goes to this person (one per club). Turning it on
+    for one member turns it off for the others."""
+    from sqlalchemy import update
+
+    from app.audit import service as audit_service
+    from app.clubs.models import ClubStaff
+
+    club = await _get_my_club_or_403(db, current_user)
+    staff = await clubs_service.get_staff_with_user(db, staff_id, club.id)
+    if staff is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff member not found")
+    if body.on:
+        await db.execute(update(ClubStaff).where(ClubStaff.club_id == club.id).values(is_lite_contact=False))
+    staff.is_lite_contact = body.on
+    await audit_service.emit(
+        db, entity_type="CLUB", entity_id=club.id, action="LITE_CONTACT_SET", actor_user_id=current_user.id,
+        payload={"staff_user_id": str(staff.user_id), "on": body.on},
+        description=(f"Made {staff.user.display_label} the team contact" if body.on
+                     else f"{staff.user.display_label} is no longer the team contact") if staff.user else "Changed the team contact",
     )
     await db.commit()
     await db.refresh(staff)
