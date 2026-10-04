@@ -28,6 +28,7 @@ class AdminUserResponse(BaseModel):
     id: uuid.UUID
     email: str
     full_name: str | None = None
+    deleted_at: datetime | None = None
     is_active: bool
     is_superuser: bool
     created_at: datetime

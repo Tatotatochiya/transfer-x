@@ -41,6 +41,9 @@ class User(Base):
     # name, never who inside it acted (deals/room_service.label_for_user).
     first_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     last_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # Closed at the person's request (auth/privacy.py, migration 0096): the
+    # row stays, anonymised, for the records that point at it.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_digest_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

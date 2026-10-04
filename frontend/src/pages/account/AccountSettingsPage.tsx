@@ -19,6 +19,7 @@ import NotificationTypesTable from "../../components/notifications/NotificationT
 import PushSettingsCard from "../../components/notifications/PushSettingsCard";
 import YourNameCard from "../../components/account/YourNameCard";
 import SessionsCard from "../../components/account/SessionsCard";
+import YourDataCard from "../../components/account/YourDataCard";
 
 // ── Segmented control ─────────────────────────────────────────────────────────
 
@@ -307,6 +308,9 @@ export default function AccountSettingsPage() {
           </Card>
         </Section>
 
+        <Section id="your-data" title="Your data">
+          <YourDataCard />
+        </Section>
       </div>
     </div>
   );

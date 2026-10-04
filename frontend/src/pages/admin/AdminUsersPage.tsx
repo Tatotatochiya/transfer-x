@@ -224,6 +224,7 @@ export default function AdminUsersPage() {
           {u.full_name ?? u.email}
           {u.id === me?.id && <Badge variant="warning" className="ml-2">You</Badge>}
           {u.full_name && <span className="block text-xs font-normal text-text-muted">{u.email}</span>}
+          {u.deleted_at && <Badge variant="neutral" className="ml-2">Account closed</Badge>}
         </span>
       ),
     },

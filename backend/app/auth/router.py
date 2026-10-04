@@ -515,3 +515,79 @@ async def sign_out_other_sessions(
     ended = await _end_sessions(db, current_user, keep=_current_sid(request))
     await db.commit()
     return {"signed_out": ended}
+
+
+# ── Your data (GDPR, Phase 1) ─────────────────────────────────────────────────
+
+
+class _CloseAccountBody(BaseModel):
+    password: str
+    confirm: str
+
+
+@router.get("/me/export")
+async def export_my_data(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Your personal data as a JSON file."""
+    import json
+
+    from fastapi.responses import Response
+
+    from app.audit import service as audit_service
+    from app.auth import privacy
+
+    data = await privacy.export_user_data(db, current_user)
+    await audit_service.emit(
+        db, entity_type="USER", entity_id=current_user.id, action="DATA_EXPORTED",
+        actor_user_id=current_user.id, description="Downloaded their personal data",
+    )
+    await db.commit()
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return Response(
+        content=json.dumps(data, indent=2, ensure_ascii=False, default=str),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="transferx-my-data-{day}.json"'},
+    )
+
+
+@router.get("/me/close-check")
+async def can_close_account(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Whether this account can be closed here, and if not, why."""
+    from app.auth import privacy
+
+    try:
+        await privacy.check_can_close(db, current_user)
+        return {"can_close": True, "reason": None}
+    except privacy.CannotClose as exc:
+        return {"can_close": False, "reason": str(exc)}
+
+
+@router.post("/me/close", status_code=status.HTTP_204_NO_CONTENT)
+async def close_my_account(
+    body: _CloseAccountBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Close your account: your details are erased; the records others rely
+    on (audit trail, deal comments, messages) stay, without your name."""
+    from app.audit import service as audit_service
+    from app.auth import privacy
+
+    if body.confirm.strip().upper() != "DELETE":
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail='Type DELETE to confirm')
+    if not auth_service.verify_password(body.password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="That password isn't right")
+    try:
+        await privacy.close_account(db, current_user)
+    except privacy.CannotClose as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    await audit_service.emit(
+        db, entity_type="USER", entity_id=current_user.id, action="ACCOUNT_CLOSED",
+        actor_user_id=current_user.id, description="Closed their account and erased their personal details",
+    )
+    await db.commit()
