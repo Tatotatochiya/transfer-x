@@ -84,3 +84,28 @@ async def test_enquiries_sit_in_talking_and_strangers_get_nothing(client: AsyncC
 
     stranger = _auth_headers(await _register(client, "board_stranger@test.com", club_name="Strangers"))
     assert _cards(await _board(client, stranger)) == []
+
+
+async def test_history_keeps_everything_that_ended_and_can_be_searched(client: AsyncClient, db):
+    seller = _auth_headers(await _register(client, "hist_seller@test.com", club_name="History Sellers"))
+    buyer = _auth_headers(await _register(client, "hist_buyer@test.com", club_name="History Buyers"))
+    await _give_budget(db)
+    player = await _create_player_for_seller(client, seller)
+    seller_club = await _get_club_id(client, seller)
+    enquiry = (await client.post("/enquiries", json={"player_id": player["id"], "body": "Available?"}, headers=buyer)).json()
+    assert (await client.post(f"/enquiries/{enquiry['id']}/close", headers=seller)).status_code == 200
+    offer = (await client.post("/offers", json={"player_id": player["id"], "to_club_id": seller_club,
+                                                "fee_amount": 3_000_000}, headers=buyer)).json()
+    assert (await client.post(f"/offers/{offer['id']}/reject", headers=seller)).status_code == 200
+
+    hist = (await client.get("/board/history", headers=buyer)).json()
+    assert hist["total"] == 2
+    assert {c["detail"] for c in hist["items"]} == {"Enquiry closed", "Offer rejected"}
+    # The active board doesn't show the closed enquiry; history does.
+    assert all(c["kind"] != "enquiry" for c in (await client.get("/board", headers=buyer)).json()["closed"])
+
+    assert (await client.get("/board/history", params={"q": "nobody"}, headers=buyer)).json()["total"] == 0
+    assert (await client.get("/board/history", params={"q": "history sell"}, headers=buyer)).json()["total"] == 2
+    assert (await client.get("/board/history", params={"outcome": "completed"}, headers=buyer)).json()["total"] == 0
+    assert (await client.get("/board/history", params={"side": "SELLING"}, headers=buyer)).json()["total"] == 0
+    assert (await client.get("/board/history", params={"side": "SELLING"}, headers=seller)).json()["total"] == 2

@@ -176,19 +176,6 @@ function getNavGroups(userType: UserType | null, staffAccount = false): NavGroup
         { label: "Approvals", to: "/club/approvals", icon: "check", gate: "APPROVALS" },
       ],
     },
-    {
-      // The pages the Transfers board replaces, until it covers everything
-      // they do (product ADR 0008).
-      title: "Classic views",
-      authRequired: true,
-      items: [
-        { label: "Transfers in progress", to: "/deals",           icon: "arrow-right-left" },
-        { label: "Enquiries",             to: "/enquiries",       icon: "message" },
-        { label: "My Offers",             to: "/offers/sent",     icon: "send" },
-        { label: "Offers Received",       to: "/offers/received", icon: "inbox" },
-        { label: "My Listings",           to: "/sales/mine",      icon: "gavel" },
-      ],
-    },
     ADMIN_GROUP,
   ];
 }

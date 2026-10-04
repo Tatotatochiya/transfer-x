@@ -57,9 +57,13 @@ describe("Sidebar", () => {
 
   it("keeps every club item and its label, and hides gated ones without the capability", () => {
     renderSidebar();
-    for (const label of ["Dashboard", "Transfers in progress", "Enquiries", "Browse Players", "Listings", "Shortlists",
-      "My Offers", "Recent Transfers", "My Listings", "Offers Received", "My Club", "Finance", "Team", "Approvals"]) {
-      expect(screen.getByRole("link", { name: new RegExp(`^${label}`) })).toBeInTheDocument();
+    for (const label of ["Dashboard", "Transfers", "Browse Players", "Listings", "Shortlists",
+      "Recent Transfers", "My Club", "Finance", "Team", "Approvals"]) {
+      expect(screen.getAllByRole("link", { name: new RegExp(`^${label}`) }).length).toBeGreaterThan(0);
+    }
+    // The Transfers board replaced the separate offer, listing, deal and enquiry lists.
+    for (const gone of ["Transfers in progress", "Enquiries", "My Offers", "Offers Received", "My Listings"]) {
+      expect(screen.queryByRole("link", { name: new RegExp(`^${gone}`) })).not.toBeInTheDocument();
     }
     // The Notifications row became the bell; Settings and Lite moved into the account menu.
     expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();

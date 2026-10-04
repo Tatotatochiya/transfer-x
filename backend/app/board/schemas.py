@@ -44,3 +44,10 @@ class BoardResponse(BaseModel):
     columns: list[BoardColumn]
     closed: list[BoardCard]
     counts: dict[str, int]  # buying / selling / your_move
+
+
+class BoardHistoryResponse(BaseModel):
+    items: list[BoardCard]
+    total: int
+    page: int
+    page_size: int

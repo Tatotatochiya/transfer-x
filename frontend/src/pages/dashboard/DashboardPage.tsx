@@ -128,7 +128,7 @@ function CompletedTransfersTable({ deals, total }: { deals: Deal[]; total: numbe
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-lg font-bold text-text">Completed transfers</h2>
         {total > rows.length && (
-          <button onClick={() => navigate("/deals")} className="text-xs font-semibold text-accent hover:text-accent-hover">
+          <button onClick={() => navigate("/board")} className="text-xs font-semibold text-accent hover:text-accent-hover">
             View all {total} →
           </button>
         )}

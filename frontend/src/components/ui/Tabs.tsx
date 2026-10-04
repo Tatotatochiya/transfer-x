@@ -12,7 +12,7 @@ interface TabsProps {
 
 /**
  * Underline tab bar — replaces the hand-rolled tab-state pattern duplicated
- * across OfferInboxPage, DealListPage, MySalesPage, MyClubPage, and others.
+ * across MyClubPage and others.
  * Controlled: the caller owns the active key.
  */
 export default function Tabs({ tabs, active, onChange, className = "" }: TabsProps) {

@@ -19,8 +19,8 @@ export default function CreateSalePage() {
       <Card>
         <ListPlayerForm
           defaultPlayerId={searchParams.get("player_id") ?? undefined}
-          onDone={() => navigate("/sales/mine")}
-          onCancel={() => navigate("/sales/mine")}
+          onDone={() => navigate("/board?side=SELLING")}
+          onCancel={() => navigate(-1)}
         />
       </Card>
     </div>

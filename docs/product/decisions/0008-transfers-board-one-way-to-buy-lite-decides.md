@@ -37,3 +37,12 @@ A club's transfers were spread over six pages: Listings, My Listings, Offers sen
 - The anonymous-buyer rules apply on the board exactly as elsewhere: a masked buyer shows as "A {league} club" until acceptance.
 - Lite stays small. Features that operate a transfer (paperwork, documents, the conversation) are built for the full app.
 - Retiring the old pages waits on the single conversation (Phase 3, item 2). Until then both exist.
+
+## Update, 2026-10-04: the classic pages are retired
+
+The board now covers what the five list pages did:
+- full history at `/board/history` (`GET /board/history`), searchable by player or club, filtered by side and outcome, including closed enquiries;
+- a search box on the board;
+- "+ New listing" and "History" in its header.
+
+So the pages are gone. Their addresses redirect to the board: `/offers/received` and `/sales/mine` with Selling chosen, `/offers/sent` with Buying, and `/deals` and `/enquiries` with Both. The detail pages (an offer, a deal, an enquiry, a listing) are unchanged. The public Listings browse stays under "Find players".

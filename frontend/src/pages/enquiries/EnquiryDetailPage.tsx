@@ -58,8 +58,8 @@ export default function EnquiryDetailPage() {
 
   return (
     <div className="max-w-2xl">
-      <button onClick={() => navigate("/enquiries")} className="mb-6 text-sm text-text-muted hover:text-text">
-        ← Enquiries
+      <button onClick={() => navigate("/board")} className="mb-6 text-sm text-text-muted hover:text-text">
+        ← Transfers
       </button>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>

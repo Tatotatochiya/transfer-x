@@ -1429,9 +1429,13 @@ async def ask_facts(db: AsyncSession, club, user) -> dict:
         ][:60],
         "pages": [
             {"label": "Dashboard", "path": "/dashboard"}, {"label": "Browse players", "path": "/players/market"},
-            {"label": "Listings", "path": "/sales"}, {"label": "My listings", "path": "/sales/mine"},
-            {"label": "Offers received", "path": "/offers/received"}, {"label": "My offers", "path": "/offers/sent"},
-            {"label": "Transfers in progress", "path": "/deals"}, {"label": "Enquiries", "path": "/enquiries"},
+            {"label": "Listings", "path": "/sales"},
+            # The Transfers board replaced the separate offer, listing, deal
+            # and enquiry lists (product ADR 0008).
+            {"label": "Transfers board", "path": "/board"},
+            {"label": "Players you're buying", "path": "/board?side=BUYING"},
+            {"label": "Players you're selling", "path": "/board?side=SELLING"},
+            {"label": "Transfer history", "path": "/board/history"},
             {"label": "My club", "path": "/club"}, {"label": "Finance", "path": "/club/finance"},
         ],
     }

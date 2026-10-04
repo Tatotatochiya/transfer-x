@@ -45,7 +45,7 @@ DEAL_COLUMN = {
 }
 DONE_FOR = timedelta(days=120)    # completed transfers stay in Done this long
 CLOSED_FOR = timedelta(days=60)   # and ended items in the Closed drawer
-_PAGE = 300
+_PAGE = 1000
 _PAPERWORK = {
     "agreement_buyer": "sign the transfer agreement",
     "agreement_seller": "sign the transfer agreement",
@@ -85,7 +85,7 @@ def _money(v) -> str:
     return f"£{n / 1e6:.1f}m".replace(".0m", "m") if n >= 1e6 else f"£{round(n / 1e3)}k"
 
 
-async def _offer_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime) -> list[BoardCard]:
+async def _offer_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, history: bool = False) -> list[BoardCard]:
     offers, _ = await offers_service.list_offers(db, club_id=club_id, direction="all", page=1, page_size=_PAGE)
     cards = []
     for o in offers:
@@ -95,7 +95,7 @@ async def _offer_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime) -> l
         other = o.to_club.name if (buying and o.to_club) else (None if buying else buyer_name(o, o.from_club, club_id))
         open_ = o.status in (OfferStatus.SENT, OfferStatus.COUNTERED)
         updated = _aware(o.last_action_at) or _aware(o.created_at)
-        if not open_ and (updated is None or now - updated > CLOSED_FOR):
+        if not open_ and not history and (updated is None or now - updated > CLOSED_FOR):
             continue
         move = offers_service.compute_offer_whose_move(o, club_id) if open_ else WhoseMove.NEITHER
         if open_:
@@ -113,7 +113,7 @@ async def _offer_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime) -> l
     return cards
 
 
-async def _deal_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime) -> list[BoardCard]:
+async def _deal_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, history: bool = False) -> list[BoardCard]:
     deals, _ = await deals_service.list_deals(db, club_id=club_id, page=1, page_size=_PAGE)
     cards = []
     for d in deals:
@@ -124,11 +124,11 @@ async def _deal_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime) -> li
         other = other_club.name if other_club else None
         updated = _aware(d.updated_at)
         if d.status == DealStatus.COLLAPSED:
-            if updated is None or now - updated > CLOSED_FOR:
+            if not history and (updated is None or now - updated > CLOSED_FOR):
                 continue
             column, move, detail = "closed", WhoseMove.NEITHER, "Deal collapsed"
         elif d.status == DealStatus.COMPLETED or d.stage == DealStage.COMPLETED:
-            if updated is not None and now - updated > DONE_FOR:
+            if not history and updated is not None and now - updated > DONE_FOR:
                 continue
             column, move, detail = "done", WhoseMove.NEITHER, "Transfer complete"
         else:
@@ -155,28 +155,33 @@ async def _deal_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime) -> li
     return cards
 
 
-async def _enquiry_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime) -> list[BoardCard]:
+async def _enquiry_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, history: bool = False) -> list[BoardCard]:
     from app.enquiries import service as enquiries_service
     from app.enquiries.models import EnquiryStatus
 
     cards = []
     for e in await enquiries_service.list_enquiries(db, club_id):
-        if e.status != EnquiryStatus.OPEN or e.player is None:
-            continue  # a closed enquiry either became an offer or went nowhere
+        if e.player is None:
+            continue
+        # A closed enquiry either became an offer or went nowhere: the board
+        # shows only open ones; history shows every one.
+        if e.status != EnquiryStatus.OPEN and not history:
+            continue
         resp = enquiries_service.to_response(e, club_id, with_messages=False)
         selling = resp.role == "owning"
         other = (resp.asking_club if selling else resp.owning_club).name
-        move = enquiries_service.whose_move(e, club_id)
+        open_ = e.status == EnquiryStatus.OPEN
+        move = enquiries_service.whose_move(e, club_id) if open_ else WhoseMove.NEITHER
+        detail = ("Enquiry" + (" · your reply" if move == WhoseMove.YOUR else f" · waiting on {other}")) if open_ else "Enquiry closed"
         cards.append(BoardCard(**_player(dict(
             key=f"{'SELLING' if selling else 'BUYING'}:{e.player_id}", side="SELLING" if selling else "BUYING",
-            column="talking", kind="enquiry", entity_id=e.id, counterparty=other,
-            detail="Enquiry" + (" · your reply" if move == WhoseMove.YOUR else f" · waiting on {other}"),
-            whose_move=move, link=f"/enquiries/{e.id}", updated_at=_aware(e.updated_at),
+            column="talking" if open_ else "closed", kind="enquiry", entity_id=e.id, counterparty=other,
+            detail=detail, whose_move=move, link=f"/enquiries/{e.id}", updated_at=_aware(e.updated_at),
         ), e.player)))
     return cards
 
 
-async def _listing_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime) -> list[BoardCard]:
+async def _listing_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, history: bool = False) -> list[BoardCard]:
     cards = []
     sales, _ = await sales_service.list_sales(db, seller_club_id=club_id, page=1, page_size=_PAGE)
     for s in sales:
@@ -186,7 +191,7 @@ async def _listing_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime) ->
         base = dict(key=f"SELLING:{s.player_id}", side="SELLING", entity_id=s.id, link=f"/sales/{s.id}",
                     updated_at=updated)
         if s.status != SaleStatus.OPEN:
-            if updated is None or now - updated > CLOSED_FOR:
+            if not history and (updated is None or now - updated > CLOSED_FOR):
                 continue
             cards.append(BoardCard(**_player(dict(
                 base, column="closed", kind="listing",
@@ -279,3 +284,31 @@ async def get_board(db: AsyncSession, club_id: uuid.UUID, side: str = "BOTH") ->
             "your_move": sum(c.whose_move == WhoseMove.YOUR for c in shown),
         },
     )
+
+
+HISTORY_OUTCOMES = {"completed": "done", "ended": "closed"}
+
+
+async def get_history(
+    db: AsyncSession, club_id: uuid.UUID, *, side: str = "BOTH", q: str | None = None,
+    outcome: str | None = None, page: int = 1, page_size: int = 30,
+) -> dict:
+    """Every transfer that finished or went nowhere, newest first: completed
+    deals, collapsed deals, offers rejected, withdrawn or expired, closed
+    enquiries and ended listings. One row per item, not per player."""
+    now = datetime.now(timezone.utc)
+    cards = (
+        await _deal_cards(db, club_id, now, history=True) + await _offer_cards(db, club_id, now, history=True)
+        + await _enquiry_cards(db, club_id, now, history=True) + await _listing_cards(db, club_id, now, history=True)
+    )
+    cards = [c for c in cards if c.column in ("done", "closed")]
+    if side in ("BUYING", "SELLING"):
+        cards = [c for c in cards if c.side == side]
+    if outcome in HISTORY_OUTCOMES:
+        cards = [c for c in cards if c.column == HISTORY_OUTCOMES[outcome]]
+    if q and q.strip():
+        needle = q.strip().lower()
+        cards = [c for c in cards if needle in c.player_name.lower() or needle in (c.counterparty or "").lower()]
+    cards.sort(key=lambda c: _aware(c.updated_at) or now, reverse=True)
+    start = (max(page, 1) - 1) * page_size
+    return {"items": cards[start:start + page_size], "total": len(cards), "page": page, "page_size": page_size}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import api from "../../lib/api";
@@ -139,7 +139,14 @@ function CardDetail({ card, onClose }: { card: BoardCard; onClose: () => void })
 }
 
 export default function BoardPage() {
-  const [side, setSideState] = useState<Side>(readSide);
+  const navigate = useNavigate();
+  // ?side= wins (links from the old list pages, the assistant), else the
+  // choice remembered in this browser.
+  const [params] = useSearchParams();
+  const urlSide = params.get("side");
+  const [side, setSideState] = useState<Side>(() =>
+    urlSide === "BUYING" || urlSide === "SELLING" || urlSide === "BOTH" ? urlSide : readSide());
+  const [search, setSearch] = useState("");
   const [showClosed, setShowClosed] = useState(false);
   const [opened, setOpened] = useState<BoardCard | null>(null);
   const setSide = (s: Side) => {
@@ -152,6 +159,9 @@ export default function BoardPage() {
     refetchInterval: 60_000,
   });
   const total = data ? data.columns.reduce((n, c) => n + c.cards.length, 0) : 0;
+  const needle = search.trim().toLowerCase();
+  const matches = (c: BoardCard) =>
+    !needle || c.player_name.toLowerCase().includes(needle) || (c.counterparty ?? "").toLowerCase().includes(needle);
 
   return (
     <div>
@@ -159,6 +169,9 @@ export default function BoardPage() {
         title="Transfers"
         subtitle={data ? `${data.counts.your_move} waiting on you · ${data.counts.buying} buying · ${data.counts.selling} selling` : undefined}
         actions={
+          <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => navigate("/board/history")}>History</Button>
+          <Button size="sm" onClick={() => navigate("/sales/new")}>+ New listing</Button>
           <div role="radiogroup" aria-label="Show" className="flex rounded-lg bg-surface-inset p-0.5 ring-1 ring-border">
             {(["BOTH", "BUYING", "SELLING"] as Side[]).map((s) => (
               <button
@@ -172,8 +185,20 @@ export default function BoardPage() {
               </button>
             ))}
           </div>
+          </div>
         }
       />
+
+      {total > 0 && (
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Find a player or club on the board"
+          aria-label="Find a player or club on the board"
+          className="mb-4 w-full max-w-sm rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+        />
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
@@ -195,11 +220,11 @@ export default function BoardPage() {
               <section key={col.key} aria-label={col.label} className="w-[260px] shrink-0 snap-start lg:w-auto lg:min-w-0 lg:flex-1">
                 <h2 className="mb-2 flex items-baseline justify-between px-1 text-xs font-bold uppercase tracking-[0.06em] text-text-muted">
                   {col.label}
-                  <span className="tabular-nums">{col.cards.length}</span>
+                  <span className="tabular-nums">{col.cards.filter(matches).length}</span>
                 </h2>
                 <div className="flex flex-col gap-2">
-                  {col.cards.map((c) => <Card key={c.key} card={c} showSide={side === "BOTH"} onOpen={setOpened} />)}
-                  {col.cards.length === 0 && (
+                  {col.cards.filter(matches).map((c) => <Card key={c.key} card={c} showSide={side === "BOTH"} onOpen={setOpened} />)}
+                  {col.cards.filter(matches).length === 0 && (
                     <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-text-muted">None</p>
                   )}
                 </div>
@@ -216,6 +241,9 @@ export default function BoardPage() {
                 className="text-sm font-semibold text-text-secondary hover:text-text"
               >
                 Closed ({data.closed.length}) {showClosed ? "▾" : "▸"}
+              </button>
+              <button type="button" onClick={() => navigate("/board/history")} className="ml-4 text-sm font-semibold text-accent hover:underline">
+                Full history →
               </button>
               {showClosed && (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">

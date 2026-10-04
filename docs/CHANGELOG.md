@@ -18,13 +18,16 @@ Out of scope: internal refactors with no behaviour change, minor documentation w
 
 ## Format
 
-Follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/): most recent changes at the top, grouped under `### Added` / `### Changed` / `### Fixed` / `### Removed`, with unreleased work under `## [Unreleased]`.
+Follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/): most recent changes at the top, grouped under `### Added` / `### Changed` / `### Fixed` / `### Removed
+- **The classic list pages** (Transfers in progress, Enquiries, My Offers, Offers Received, My Listings) and their "Classic views" sidebar group. Their addresses redirect to the board, with Buying or Selling chosen. Detail pages are unchanged.
+, with unreleased work under `## [Unreleased]`.
 
 Maintained by the [`documentation-standards`](../.claude/skills/documentation-standards/SKILL.md) skill — update it as part of any session that ships a real change, not in a batch after the fact.
 
 ## [Unreleased]
 
 ### Added
+- **Transfer history** at `/board/history`: every completed transfer and everything that ended without one (collapsed deals, offers rejected, withdrawn or expired, closed enquiries, ended listings). It's searchable by player or club, and filtered by side and outcome. The board also gets a search box, "+ New listing" and "History".
 - **Ask Sam** (Lite L7). Lite's "Ask {name}" buttons send a question to the club's team contact (chosen on the Team page), else a director or manager, else everyone who can act. Questions arrive as a new `LITE_QUESTION` notification linking to the player, offer or deal.
 - **Decisions from email** (Lite L8). Offer emails and the daily digest carry "Ask for £Xm", "Accept £Ym" and "Say no". Each opens a confirm page that changes nothing until you confirm, then holds the action for 10 seconds with undo. Accepting or countering needs you signed in. Links are single-use, last 24 hours, and are refused if the offer has changed.
 - **Approval decision sheet.** An approval push opens that approval: on a phone, a one-screen sheet with the player, budget after and time left, plus Approve (asks once more) and Decline (optional reason). Decision sheets opened from a push can be swiped between.
