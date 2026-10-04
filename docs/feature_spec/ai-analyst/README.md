@@ -179,11 +179,49 @@ Role rules follow the app: a scout sees what a scout can see today.
 - The existing per-user rate limit, with its own bucket.
 - Answers cached for 10 minutes per user, question and data version.
 
+## 7a. Known failure: the model's own football knowledge (found 2026-10-04)
+
+**What happened.** Signed in as Chelsea, in ⌘K: "place 8m bid on Havertz". The answer:
+
+> "K. Havertz is already in your squad, so you can't bid for him. If you meant to offer him to another club, he isn't listed for sale. Your transfer budget remaining is £111.9m, so an £8m bid would be affordable if a target existed."
+
+Havertz is under contract with **Arsenal** on TransferX (active contract to 30 June 2030). He played for Chelsea from 2020 to 2023.
+
+**Why.** Investigated without code changes:
+
+1. **The data was right.** The squad sent to the model is `Player.current_club_id == Chelsea`, which doesn't include Havertz. He wasn't in the facts at all.
+2. **The model answered from its own training.** With the player missing from the facts, it used what it "knew": an out-of-date club. The prompt says "answer only from these facts", but nothing checks claims about players who aren't in them.
+3. **"He isn't listed for sale" was unfounded.** The only listings in the snapshot are Chelsea's own, so the model reasoned from the wrong list.
+4. **⌘K has no action path.** In the full app, Ask never prepares an action. Only Lite mode resolves "bid £8m for X" on the server: it finds the player, his club and any listing, and returns a card to confirm (`bid_from_question`, `resolve_proposal`). In ⌘K the request fell through to free text.
+
+**What the new design must guarantee:**
+
+- **Every player named is resolved by a tool.** Before the model says anything about a player, it calls `get_player` or `search_players`. Squad membership comes only from the `squad` tool. No tool result for a player means the answer says "I can't find K. Havertz on TransferX" and offers a search.
+- **The check rejects unsupported claims.** Every player named in the answer must appear in a tool result. A claim about a player's club, contract or listing must match that result, or the answer is regenerated once and then replaced with a plain lookup ("K. Havertz: Arsenal, contract to 2030, not listed") built by code.
+- **The prompt says so plainly.** "Your football knowledge is out of date. Transfers, clubs and contracts come only from TransferX's tools; never from memory."
+- **Action requests work the same everywhere.** ⌘K, `/ask` and Lite all send "bid / offer / counter / accept / reject" through the server-side resolver. For this question as Chelsea that means:
+  - Havertz belongs to Arsenal and isn't listed, so the answer is: "K. Havertz plays for Arsenal and isn't listed. Make Arsenal an offer of £8m?";
+  - the card opens the offer form filled in (player, Arsenal, £8m) for the user to check and send;
+  - nothing is sent from Ask (ADR 0006).
+- **Listings are searched, not inferred.** "Is he for sale?" calls `search_listings` across the market, never just the club's own listings.
+- **The evaluation set includes this case** and its variants:
+  - Chelsea asking to bid for a player who used to be theirs (Havertz, Mount);
+  - a player at the asking club;
+  - a free agent;
+  - a player at a club outside TransferX;
+  - a misspelled name ("Havetz");
+  - two players with the same surname.
+
+**Interim fix, before Phase A.** Small enough to do on its own:
+- route ⌘K's action requests through the existing Lite resolver;
+- add the "out-of-date knowledge" rule to `ASK_USER`;
+- when a question names a player the facts don't contain, add a server lookup of that name to the facts.
+
 ## 8. Effort and build order
 
 | Phase | What | Size |
 |---|---|---|
-| **A. Foundation** | The tool-use loop and checks; the answer blocks (text, table, metric, sources); the `/ask` page and the ⌘K entry. Tools: `search_players`, `get_player`, `search_listings`, `squad`, `money`, `transfers`, `history`, `interest_in_my_players` (enquiries, offers, bids, shortlist adds). The evaluation set (first 60 questions). | L |
+| **A. Foundation** | The interim fix from §7a first. Then the tool-use loop and checks (including §7a's player-claim check); the answer blocks (text, table, metric, sources); the `/ask` page and the ⌘K entry. Tools: `search_players`, `get_player`, `search_listings`, `squad`, `money`, `transfers`, `history`, `interest_in_my_players` (enquiries, offers, bids, shortlist adds). The evaluation set (first 60 questions). | L |
 | **B. Depth** | `compare_players`, `player_stats`, `injuries`, `recent_transfers`, `comparable_transfers`, `loans`, `approvals`, `team_activity`, `conversation`. Charts, export, follow-ups with context, "Ask about this" on pages. Profile-view recording. | M–L |
 | **C. Proactive** | Saved questions (scheduled into the morning summary), alerts ("tell me when…"), pinning to the dashboard, a weekly summary. | M |
 | **D. Executive assistant** | Reminders and follow-ups, meeting-notes-to-actions, then calendar and email connectors. | M, then L |
