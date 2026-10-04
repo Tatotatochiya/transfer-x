@@ -24,6 +24,7 @@ In scope: system-design decisions (e.g. choice of database, a module boundary, a
 - [0005 — A loan separates registration from ownership, without a second active contract](./0005-loan-registration-separate-from-ownership.md)
 - [0006 — The AI assistant advises from server-scoped facts, and never acts](./0006-ai-assistant-advises-from-scoped-facts.md)
 - [0007 — Held sends for undo](./0007-held-sends-for-undo.md)
+- [0008 — One conversation per transfer, read across the existing message stores](./0008-one-conversation-read-across-existing-messages.md)
 
 > **TODO:** Add further decisions here as `NNNN-short-title.md`, following the short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
 >

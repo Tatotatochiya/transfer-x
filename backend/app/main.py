@@ -42,6 +42,7 @@ from app.valuation import router as valuation_router
 from app.approvals import router as approvals_router
 from app.dashboard import router as dashboard_router
 from app.board import router as board_router  # after the models it reads are registered
+from app.conversation import router as conversation_router
 
 logger = logging.getLogger(__name__)
 
@@ -405,3 +406,4 @@ app.include_router(valuation_router.router, prefix="/valuation")
 app.include_router(approvals_router.router, prefix="")
 app.include_router(dashboard_router.router, prefix="")
 app.include_router(board_router.router)
+app.include_router(conversation_router.router)

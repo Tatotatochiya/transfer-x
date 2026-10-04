@@ -414,3 +414,25 @@ async def withdraw_offer(db: AsyncSession, user: User, club, offer) -> ActionRes
     offer = await service.get_offer_by_id(db, offer_id)
     await broadcast(db, offer_id)
     return ActionResult(offer=offer)
+
+
+# ── Messages ──────────────────────────────────────────────────────────────────
+
+
+async def add_message(db: AsyncSession, user: User, club, offer, body: str):
+    """A message on the offer, to the other club. Returns the message."""
+    try:
+        msg = await service.add_message(db, offer, sender_club_id=club.id, body=body)
+        other_club_id = offer.to_club_id if offer.from_club_id == club.id else offer.from_club_id
+        await notify_offer(
+            db, offer, recipient_club_id=other_club_id, ntype=NotificationType.OFFER_MESSAGE,
+            message="New message in your negotiation",
+            push=await push_copy.offer_message(db, offer, sender_club_id=club.id, text=body),
+        )
+        await db.commit()
+        await db.refresh(msg)
+    except ValueError as exc:
+        await db.rollback()
+        raise OfferActionError(400, str(exc))
+    await broadcast(db, offer.id)
+    return msg

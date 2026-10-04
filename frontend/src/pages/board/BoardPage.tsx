@@ -9,6 +9,9 @@ import { Estimate } from "../../components/ui/Money";
 import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
+import Button from "../../components/ui/Button";
+import Modal from "../../components/ui/Modal";
+import ConversationPanel, { type ConversationContext } from "../../components/conversation/ConversationPanel";
 
 /**
  * The Transfers board (Phase 3, product ADR 0008): every player the club is
@@ -54,14 +57,13 @@ function readSide(): Side {
   }
 }
 
-function Card({ card, showSide }: { card: BoardCard; showSide: boolean }) {
-  const navigate = useNavigate();
+function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; onOpen: (c: BoardCard) => void }) {
   const yours = card.whose_move === "your";
   const left = timeLeft(card.deadline);
   return (
     <button
       type="button"
-      onClick={() => navigate(card.link)}
+      onClick={() => onOpen(card)}
       className={`w-full rounded-xl bg-surface p-3 text-left ring-1 transition-colors hover:ring-accent/50 focus-visible:outline-2 focus-visible:outline-accent ${
         yours ? "ring-accent/40" : "ring-border"
       }`}
@@ -97,9 +99,49 @@ function Card({ card, showSide }: { card: BoardCard; showSide: boolean }) {
   );
 }
 
+const OPEN_LABEL: Record<BoardCard["kind"], string> = {
+  enquiry: "Open the enquiry", offer: "Open the offer", deal: "Open the deal", listing: "Open the listing", bid: "Open the auction",
+};
+
+/** A card opened: its summary, a way to the full page, and the transfer's
+ *  conversation (enquiries, offers and deals have one; listings don't). */
+function CardDetail({ card, onClose }: { card: BoardCard; onClose: () => void }) {
+  const navigate = useNavigate();
+  const context: ConversationContext | null =
+    card.kind === "offer" ? { offerId: card.entity_id }
+      : card.kind === "deal" ? { dealId: card.entity_id }
+      : card.kind === "enquiry" ? { enquiryId: card.entity_id } : null;
+  return (
+    <Modal open onClose={onClose} title={card.player_name} size="lg">
+      <div className="space-y-4 px-6 py-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm">
+            <p className="text-text-secondary">
+              {card.side === "BUYING" ? "Buying" : "Selling"}
+              {card.counterparty && (card.side === "BUYING" ? ` from ${card.counterparty}` : ` to ${card.counterparty}`)}
+              {card.amount != null && <> · <span className="font-semibold text-text">{formatCompactCurrency(Number(card.amount))}</span></>}
+            </p>
+            <p className={card.whose_move === "your" ? "font-semibold text-accent" : "text-text-muted"}>{card.detail}</p>
+          </div>
+          <Button size="sm" onClick={() => navigate(card.link)}>{OPEN_LABEL[card.kind]}</Button>
+        </div>
+        {context ? (
+          <div className="border-t border-rule-faint pt-4">
+            <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.06em] text-text-muted">Conversation</h3>
+            <ConversationPanel context={context} compact />
+          </div>
+        ) : (
+          <p className="text-sm text-text-muted">Conversations start with an enquiry or an offer.</p>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 export default function BoardPage() {
   const [side, setSideState] = useState<Side>(readSide);
   const [showClosed, setShowClosed] = useState(false);
+  const [opened, setOpened] = useState<BoardCard | null>(null);
   const setSide = (s: Side) => {
     setSideState(s);
     try { localStorage.setItem(SIDE_KEY, s); } catch { /* the choice still applies here */ }
@@ -156,7 +198,7 @@ export default function BoardPage() {
                   <span className="tabular-nums">{col.cards.length}</span>
                 </h2>
                 <div className="flex flex-col gap-2">
-                  {col.cards.map((c) => <Card key={c.key} card={c} showSide={side === "BOTH"} />)}
+                  {col.cards.map((c) => <Card key={c.key} card={c} showSide={side === "BOTH"} onOpen={setOpened} />)}
                   {col.cards.length === 0 && (
                     <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-text-muted">None</p>
                   )}
@@ -177,13 +219,14 @@ export default function BoardPage() {
               </button>
               {showClosed && (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  {data.closed.map((c) => <Card key={`${c.key}:${c.entity_id}`} card={c} showSide={side === "BOTH"} />)}
+                  {data.closed.map((c) => <Card key={`${c.key}:${c.entity_id}`} card={c} showSide={side === "BOTH"} onOpen={setOpened} />)}
                 </div>
               )}
             </div>
           )}
         </>
       )}
+      {opened && <CardDetail card={opened} onClose={() => setOpened(null)} />}
     </div>
   );
 }
