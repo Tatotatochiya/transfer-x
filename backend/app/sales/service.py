@@ -294,6 +294,7 @@ async def withdraw_sale(
         )
 
     sale.status = SaleStatus.WITHDRAWN
+    sale.staff_cancel_reason = staff_reason[:500] if staff_reason else None
     await db.flush()
     await sync_listed_flag(db, sale.player_id)
     db.add(

@@ -1,6 +1,6 @@
 ---
 title: "Changelog"
-last_updated: 2026-10-02
+last_updated: 2026-10-04
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -186,6 +186,9 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Agents start on Pipeline** after signing in, instead of My Roster.
+- **Health keeps its job history across restarts.** Each scheduled job's last run, outcome and error are saved (migration `0092`), at most once a minute per job or when the outcome changes.
+- **Staff-cancelled sales say so.** A sale cancelled from the admin panel is marked (migration `0092`, `sales.staff_cancel_reason`). The admin Sales page shows "Cancelled by TransferX"; the sale page tells the seller why, and other clubs only that TransferX cancelled it.
 - **Admin "Create user" is removed.** It made an account with no club, role or player record. Accounts come from invitations instead.
 - **TransferX staff start on the admin panel.** Signing in as a superuser, or opening `/`, now goes to `/admin` instead of the club Dashboard.
 - **A compact sidebar** ([spec](./feature_spec/compact-sidebar/README.md)).
@@ -232,6 +235,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **Two tabs could sign each other out.** When two tabs refreshed the sign-in at once, the one that lost used a spent token and was signed out. A tab now picks up the newer token another tab saved, and retries once.
 - **Admin "Cancel sale" never worked, and leaked money.** It crashed on a status that doesn't exist. Its intended effect would also only have marked the sale cancelled. It now does what a seller's withdrawal does: every bidder's reserved budget and every linked offer's held budget is released, and the seller and bidders are told why. Offers linked to a withdrawn sale now also release their reserved wage, which they used to keep.
 - **Admin "Force withdraw" left the buyer's budget reserved forever** and told no one. It now releases the reserved fee and wage, and tells both clubs why.
 - **Admin budget edits** could go negative, or below what's already held, committed or spent. Both are refused now.

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { User } from "../types/api";
 
-const REFRESH_TOKEN_KEY = "transferx-refresh";
+export const REFRESH_TOKEN_KEY = "transferx-refresh";
 
 /**
  * "View as this club" (admin panel) opens a tab at /view-as#view_as=<token>:

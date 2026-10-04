@@ -13,23 +13,25 @@ From the product and code review of 3 October 2026 (shareable page: https://clau
 
 Goal: everything built in the last fortnight reaches Railway and real phones.
 
-- [ ] **Commit and PR Lite L6 and notifications phase 4** (S). Branch `lite-l6-undo`, uncommitted, 747 backend tests passing. It covers:
+- [x] **Commit and PR Lite L6 and notifications phase 4** (S). Branch `lite-l6-undo`, 749 backend tests passing. It covers:
   - held sends with a 10-second undo, the Sent screen and progress;
   - the decision sheet from a push;
   - the morning summary push and the 30-minute email fallback.
 
-  Still to do: a phone-width check of the decision sheet. Migrations `0090`, `0091`. Specs: [`lite-mode/SESSIONS.md`](../lite-mode/SESSIONS.md), [`mobile-notifications/README.md`](../mobile-notifications/README.md), [ADR 0007](../../architecture/decisions/0007-held-sends-for-undo.md).
+  The decision sheet was checked at phone width. Migrations `0090`, `0091`. Specs: [`lite-mode/SESSIONS.md`](../lite-mode/SESSIONS.md), [`mobile-notifications/README.md`](../mobile-notifications/README.md), [ADR 0007](../../architecture/decisions/0007-held-sends-for-undo.md).
 - [ ] **Deploy merged PRs #20–#24 to Railway** (S):
   - run migrations `0088` and `0089`;
   - install the new dependencies `pywebpush` and `openpyxl`;
   - set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` on the API service.
 - [ ] **Real-phone notification test** (S): an iPhone (Home Screen app, iOS 18.4+) and an Android phone in Chrome. Check the test push, an offer push, the decision sheet, quiet hours and the morning summary.
-- [ ] **Loose ends** (S):
-  - decide the agents' start page (My Roster or Pipeline);
-  - fix the flaky `test_seller_and_third_club_cannot_record_consent`;
+- [x] **Loose ends** (S):
+  - decide the agents' start page: **Pipeline** (decided 2026-10-03);
+  - the flaky `test_seller_and_third_club_cannot_record_consent`: not reproduced in later runs; left as is, watch for it;
   - refresh `PRODUCT_SPEC.md`;
-  - persist the Health page's job history, which resets on restart;
-  - mark staff-cancelled sales as distinct from a seller's withdrawal.
+  - persist the Health page's job history, which resets on restart (migration `0092`);
+  - mark staff-cancelled sales as distinct from a seller's withdrawal (migration `0092`).
+
+  The deploy and the real-phone test follow [the Phase 0 runbook](./phase-0-runbook.md).
 
 Done when: Railway runs the latest main, a real iPhone and an Android phone each receive and act on an offer push, and nothing is left on a branch.
 
@@ -100,9 +102,8 @@ Done when: a club can plan its next window in TransferX (renew, sell, buy) withi
 
 - **Business model:** club subscription, a fee per transfer, or data licensing. [`business-model.md`](../../business/business-model.md) is still TODO. This decides the paying user and which phases matter most.
 - **Pilot with 2–3 clubs** before Phase 1 ends, with analytics and AI usage reviewed after four weeks.
-- **Agents' start page** (Phase 0).
 - **Data sources** (Phase 2): the Transfermarkt licence, and whether API-Football covers history, injuries and comparables.
 
 ## Progress
 
-- (none yet)
+- **2026-10-04 — Phase 0 code done.** L6, notifications phase 4 and the loose ends are in one PR from `lite-l6-undo`. Also fixed: two tabs refreshing the sign-in at once could sign one out. Still to do, by someone with Railway access and phones: the deploy and the real-phone test ([runbook](./phase-0-runbook.md)).

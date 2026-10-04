@@ -21,7 +21,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const me = await login(email, password);
-      let dest = me.user_type === "AGENT" ? "/agent/dashboard"
+      // Agents start on their pipeline, as "/" does (product decision, 2026-10-03).
+      let dest = me.user_type === "AGENT" ? "/agent/pipeline"
                : me.user_type === "PLAYER" ? "/player/profile"
                : "/dashboard";
       // TransferX staff start on the admin panel, whatever their account type.

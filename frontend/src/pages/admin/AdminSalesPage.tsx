@@ -128,6 +128,11 @@ export default function AdminSalesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={STATUS_VARIANT[s.status] ?? "neutral"}>{s.status}</Badge>
+                      {s.cancelled_by_staff && (
+                        <span className="ml-1" title={s.staff_cancel_reason ?? undefined}>
+                          <Badge variant="danger">Cancelled by TransferX</Badge>
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-text-muted text-xs">
                       {s.sale_type === "AUCTION"

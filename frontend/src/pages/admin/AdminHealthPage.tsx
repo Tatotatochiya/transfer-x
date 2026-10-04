@@ -150,7 +150,7 @@ export default function AdminHealthPage() {
           {data.jobs && data.jobs.length > 0 && (
             <section className="mb-6">
               <h2 className="mb-1 text-sm font-semibold text-text">Scheduled jobs</h2>
-              <p className="mb-2 text-xs text-text-muted">Last runs are counted since the API last restarted.</p>
+              <p className="mb-2 text-xs text-text-muted">Last runs are kept across restarts.</p>
               <div className="overflow-x-auto rounded-xl bg-surface ring-1 ring-border">
                 <table className="w-full min-w-[640px] text-sm">
                   <thead>
@@ -169,7 +169,7 @@ export default function AdminHealthPage() {
                             <span className={j.last_ok === false ? "text-danger-text" : "text-text-secondary"} title={j.last_error ?? undefined}>
                               {formatDateTime(j.last_run_at)}{j.last_ok === false ? " · failed" : ""}
                             </span>
-                          ) : <span className="text-text-muted">Not since restart</span>}
+                          ) : <span className="text-text-muted">Not yet</span>}
                         </td>
                         <td className="px-4 py-2 text-text-muted">{j.next_run_at ? formatDateTime(j.next_run_at) : "—"}</td>
                       </tr>

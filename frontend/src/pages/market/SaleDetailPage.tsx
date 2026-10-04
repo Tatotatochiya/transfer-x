@@ -54,6 +54,11 @@ function ResolutionNote({ sale, onOpenDeal }: { sale: Sale; onOpenDeal: (dealId:
     body = stage
       ? `An offer from ${buyer} was accepted. The transfer is at ${stage}.`
       : `An offer from ${buyer} was accepted and the transfer is in progress.`;
+  } else if (sale.status === "WITHDRAWN" && sale.cancelled_by_staff) {
+    // The reason comes back for the seller and staff only.
+    body = sale.staff_cancel_reason
+      ? `TransferX staff cancelled this listing: ${sale.staff_cancel_reason}`
+      : "TransferX staff cancelled this listing. No transfer resulted from it.";
   } else if (sale.status === "WITHDRAWN") {
     body = "The seller withdrew this listing. No transfer resulted from it.";
   } else if (sale.status === "EXPIRED") {

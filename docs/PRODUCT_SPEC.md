@@ -1,6 +1,6 @@
 ---
 title: "TransferX Product Specification"
-last_updated: 2026-08-13
+last_updated: 2026-10-03
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -47,11 +47,16 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 |---|---|---|
 | Backend | FastAPI (Python), SQLAlchemy async, PostgreSQL | [`architecture/backend-architecture.md`](./architecture/backend-architecture.md) |
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS v4 | [`architecture/frontend-architecture.md`](./architecture/frontend-architecture.md) |
-| Database migrations | 88 files, head at `0086` (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
+| Database migrations | 94 files, head at `0092` (Alembic) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
 | User types | Club (owner + 4 staff roles), Agent, Player, Admin | [`product/personas.md`](./product/personas.md) |
 | Deal stages | AGREEMENT → AGENT_NEGOTIATION → PERSONAL_TERMS → PAPERWORK → CONFIRMED → COMPLETED (or COLLAPSED) | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
 | Deal types | PERMANENT, LOAN (both offerable); FREE_TRANSFER, PRE_CONTRACT (derived by the signing paths) | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
-| Deployed environment | Railway — live, at migration `0069`, with demo data covering all seven deal stages; not a formally promoted staging or production environment | [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md) |
+| Deployed environment | Railway: live with demo data for the Premier League clubs; deployed from `main` by hand. Not a formally promoted staging or production environment. Check its migration head before relying on a feature from `0088` onwards (phone notifications, admin audit, Lite undo). | [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md) |
+| Interfaces | The full app, and **Lite mode** for club directors (big-type home, Buy flow, action cards with a 10-second undo, Ask anything). Lite is opt-in per person. | [`feature_spec/lite-mode/`](./feature_spec/lite-mode/README.md) |
+| Notifications | In-app (bell and live refresh), email (per type, plus the daily digest), and **phone push** (Web Push: tiers, quiet hours, a morning summary, a decision sheet, and the 30-minute email fallback) | [`feature_spec/mobile-notifications/`](./feature_spec/mobile-notifications/README.md) |
+| AI assistant | Advises and never acts (ADR 0006): offer advisor, negotiation summary, terms checks, pricing, briefing, Ask anything, drafts | [`architecture/decisions/0006-ai-assistant-advises-from-scoped-facts.md`](./architecture/decisions/0006-ai-assistant-advises-from-scoped-facts.md) |
+| Admin and accountability | Admin panel for TransferX staff; every admin change audited with a reason; Audit log page with Excel export; read-only "view as this club" | [`architecture/authentication-and-permissions.md`](./architecture/authentication-and-permissions.md) |
+| Current plan | Phase 0 (ship what's in flight) to Phase 5, from the 3 October 2026 review | [`feature_spec/phased-plan-2026-q4/`](./feature_spec/phased-plan-2026-q4/README.md) |
 
 > **TODO:** Keep this table in sync as the product evolves. It should always reflect *current, verified* state — if you're not sure a row is still accurate, check the code before trusting it.
 
@@ -122,6 +127,13 @@ TransferX is a web platform for football (soccer) player transfers. It connects 
 - [`feature_spec/fair-value-vs-asking-signal.md`](./feature_spec/fair-value-vs-asking-signal.md) — fair-value-vs-asking valuation signal (TRA-91/TRA-92) — **implemented 2026-07-07**
 - [`feature_spec/injury-availability-risk-profile.md`](./feature_spec/injury-availability-risk-profile.md) — injury-availability risk profile (no ticket yet)
 - [`feature_spec/club-team-roles-and-onboarding.md`](./feature_spec/club-team-roles-and-onboarding.md) — club team accounts, roles & onboarding (TRA-151/146/152/86 + two proposed) — **implemented 2026-07-10**
+- [`feature_spec/loan-transfers.md`](./feature_spec/loan-transfers.md) — loans with options and obligations
+- [`feature_spec/lite-mode/`](./feature_spec/lite-mode/README.md) — Lite mode for directors (L1–L6 built; L7 team contact and L8 decisions from email to come)
+- [`feature_spec/player-profile-ledger/`](./feature_spec/player-profile-ledger/README.md) — the player profile's season ledger, career and injuries
+- [`feature_spec/mobile-notifications/`](./feature_spec/mobile-notifications/README.md) — phone notifications, phases 1–4 built
+- [`feature_spec/my-club-compact-squad/`](./feature_spec/my-club-compact-squad/README.md) — My Club's compact squad table
+- [`feature_spec/compact-sidebar/`](./feature_spec/compact-sidebar/README.md) — the compact sidebar
+- [`feature_spec/phased-plan-2026-q4/`](./feature_spec/phased-plan-2026-q4/README.md) — **the current plan**: Phase 0 to Phase 5 and the decisions needed
 
 ### UI redesign (shipped)
 *Full frontend visual redesign — light theme with dark mode as a togglable preference (Account Settings), a four-tier information hierarchy, and a server-derived "whose move" state on every negotiation row. **Merged to `main` and deployed 2026-08-13**; the `redesign/ui-light-theme` branch is a full ancestor of `main`.*

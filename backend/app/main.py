@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.common import jobs as _jobs  # noqa: F401 — registers SchedulerJobRun
 from app.admin import router as admin_router
 from app.ai import router as ai_router
 from app.analytics import router as analytics_router

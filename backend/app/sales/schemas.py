@@ -77,6 +77,10 @@ class SaleResponse(BaseModel):
     fair_value_signal: ValuationResponse | None = None
     # B1
     whose_move: WhoseMove = WhoseMove.NEITHER
+    # Withdrawn by TransferX staff rather than the seller. The reason is for
+    # the seller and staff only.
+    cancelled_by_staff: bool = False
+    staff_cancel_reason: str | None = None
     # Populated on the detail endpoint only, like fair_value_signal. Answers the
     # question a resolved listing otherwise leaves open — *why* is this closed?
     # Player-scoped (not sale-scoped) on purpose: it stays correct for listings

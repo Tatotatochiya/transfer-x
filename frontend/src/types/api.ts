@@ -455,6 +455,8 @@ export interface SellerClubSummary {
 }
 
 export interface Sale {
+  cancelled_by_staff?: boolean;
+  staff_cancel_reason?: string | null;
   id: string;
   player_id: string;
   seller_club_id: string;

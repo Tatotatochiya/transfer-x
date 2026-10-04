@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { AxiosRequestConfig } from "axios";
-import { useAuthStore } from "../store/auth";
+import { REFRESH_TOKEN_KEY, useAuthStore } from "../store/auth";
 
 // Explicit VITE_API_BASE_URL wins (Railway prod build). Otherwise: the Vite
 // dev server proxies /api/* to the backend (vite.config.ts), but a built
@@ -47,13 +47,33 @@ let _refreshing: Promise<string> | null = null;
 export function refreshAccessToken(): Promise<string> {
   if (!_refreshing) {
     _refreshing = (async () => {
-      const refreshToken: string | null = useAuthStore.getState().refreshToken;
-      if (!refreshToken) throw new Error("No refresh token");
+      // The stored token is shared by every tab, so it is the freshest one:
+      // another tab may have rotated it since this tab loaded. (A read-only
+      // "view as" tab has no refresh token of its own and never reads it.)
+      const viewAs = useAuthStore.getState().viewAs;
+      const stored = () => (viewAs ? null : safeStored());
+      const used = stored() ?? useAuthStore.getState().refreshToken;
+      if (!used) throw new Error("No refresh token");
 
-      const { data } = await axios.post<{
-        access_token: string;
-        refresh_token: string;
-      }>(`${_baseURL}/auth/refresh`, { refresh_token: refreshToken });
+      const swap = (token: string) => axios.post<{ access_token: string; refresh_token: string }>(
+        `${_baseURL}/auth/refresh`, { refresh_token: token },
+      );
+      let data;
+      try {
+        ({ data } = await swap(used));
+      } catch (err) {
+        // Two tabs refreshed at the same moment with the same token: the
+        // other one won and stored the new token. Use that, once, instead of
+        // signing this tab out.
+        // Its response may still be on the way, so give it a moment to land.
+        let now = stored();
+        for (let i = 0; i < 3 && (!now || now === used); i++) {
+          await new Promise((r) => setTimeout(r, 500));
+          now = stored();
+        }
+        if (!now || now === used) throw err;
+        ({ data } = await swap(now));
+      }
 
       useAuthStore.getState().setTokens(data.access_token, data.refresh_token);
       return data.access_token;
@@ -96,3 +116,12 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+
+function safeStored(): string | null {
+  try {
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
