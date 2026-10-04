@@ -53,7 +53,6 @@ export default function StageTracker({ stage, status }: StageTrackerProps) {
         {STAGES.map((s, idx) => {
           const isPast    = idx < currentIdx;
           const isCurrent = idx === currentIdx && !isCollapsed;
-          const isFuture  = idx > currentIdx;
 
           const pillClass = isCollapsed
             ? "text-text-muted"

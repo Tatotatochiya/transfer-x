@@ -179,6 +179,13 @@ function ClubChecklist({ userId }: { userId: string }) {
     staleTime: 60_000,
   });
 
+  const { data: squadCheck } = useQuery<{ total: number; needs_attention: number; confirmed: number }>({
+    queryKey: ["clubs", "me", "squad-check"],
+    queryFn: () => api.get("/clubs/me/squad-check").then((r) => r.data),
+    enabled: isOwner,
+    staleTime: 60_000,
+  });
+
   if (!club || !role) return null;
 
   if (isOwner) {
@@ -189,6 +196,12 @@ function ClubChecklist({ userId }: { userId: string }) {
         label: "Complete your club profile (crest and country)",
         done: !!club.crest_url && !!club.country,
         to: "/club",
+      },
+      {
+        id: "club-squad",
+        label: "Check your squad: each player's contract, wage and valuation",
+        done: !!squadCheck && squadCheck.total > 0 && squadCheck.confirmed === squadCheck.total,
+        to: "/club/squad-check",
       },
       {
         id: "club-budgets",

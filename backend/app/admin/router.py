@@ -52,7 +52,7 @@ from app.clubs.schemas import (
 from app.database import get_db
 from app.deps import get_current_superuser
 from app.offers.schemas import OfferResponse
-from app.players.schemas import PlayerResponse
+from app.players.schemas import ContractResponse, PlayerResponse
 from app.sales.schemas import SaleResponse
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -450,16 +450,21 @@ async def list_all_players(
     }
 
 
-@router.get("/players/{player_id}", response_model=PlayerResponse)
+class AdminPlayerResponse(PlayerResponse):
+    # Every contract, past and present: the admin page's Contracts card.
+    contracts: list[ContractResponse] = []
+
+
+@router.get("/players/{player_id}", response_model=AdminPlayerResponse)
 async def get_player(
     player_id: uuid.UUID,
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
-) -> PlayerResponse:
+) -> AdminPlayerResponse:
     player = await admin_service.admin_get_player(db, player_id)
     if player is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
-    return PlayerResponse.model_validate(player)
+    return AdminPlayerResponse.model_validate(player)
 
 
 @router.patch("/players/{player_id}", response_model=PlayerResponse)

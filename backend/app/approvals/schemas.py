@@ -16,6 +16,7 @@ class PendingApprovalResponse(BaseModel):
     amount: Decimal
     requested_by_user_id: uuid.UUID
     requested_by_email: str | None = None  # set by router
+    requested_by_name: str | None = None  # set by router
     status: ApprovalStatus
     decided_by_user_id: uuid.UUID | None
     decided_at: datetime | None

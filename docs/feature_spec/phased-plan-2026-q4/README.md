@@ -39,12 +39,14 @@ Done when: Railway runs the latest main, a real iPhone and an Android phone each
 
 Goal: nothing a club's finance or legal team would reject on day one.
 
-- [ ] **Currency that converts, or no currency setting** (S–M). Today `formatCurrency` swaps the symbol only, so £18m shows as €18m.
+- [x] **Currency that converts, or no currency setting** (S–M). Decided 2026-10-04: amounts stay in pounds everywhere, since deals are agreed in pounds. Picking EUR or USD adds "≈ €21.1m" next to headline figures, at the ECB's daily rate (`GET /fx/rates`).
 - [ ] **Two-factor sign-in and signed-in devices** (M). Two-factor is required for anyone who can approve or complete deals; devices get "Sign out everywhere".
-- [ ] **People's names** (S): first and last name on users and staff, used in greetings, approvals, audit entries and notifications.
-- [ ] **"Check your squad" at sign-up** (M): confirm each player's contract, wage and valuation, and flag what's missing.
-- [ ] **GDPR data export and deletion** (S–M). Audit records are kept.
-- [ ] **Code health** (S): clear the 41 TypeScript errors; move offer logic from `offers/router.py` into the service (Lite's executor calls router functions directly).
+  - [x] Signed-in devices, with sign out per device and "Sign out everywhere else" (migration `0095`). Signing out takes effect at once.
+  - [ ] Two-factor sign-in: deferred.
+- [x] **People's names** (S): first and last name on users and staff, used in the team list, approvals, approval pushes, audit entries and the admin pages (migration `0093`). Other clubs still see only the club.
+- [x] **"Check your squad" at sign-up** (M): `/club/squad-check` confirms each player's contract, wage and valuation, flags what's missing, and creates the contract when there is none (migration `0094`). It's in the first-run checklist, and My Club warns about gaps.
+- [x] **GDPR data export and deletion** (S–M): Account settings → Your data. Closing an account erases personal details and keeps audit records (migration `0096`). Club owners and agents with active mandates are sent to TransferX.
+- [x] **Code health** (S): 0 TypeScript errors (from 41), and the frontend build now type-checks. Offer logic moved from `offers/router.py` into `offers/actions.py`, which Lite's held sends now call directly.
 
 Done when: a pilot club sees amounts in its own currency, every approver uses two-factor sign-in, and no squad shows a contracted player without a contract.
 
@@ -106,4 +108,5 @@ Done when: a club can plan its next window in TransferX (renew, sell, buy) withi
 
 ## Progress
 
+- **2026-10-04 — Phase 1 done except two-factor sign-in.** On branch `phase-1-trust`, stacked on `lite-l6-undo`. Migrations `0093`–`0096`.
 - **2026-10-04 — Phase 0 code done.** L6, notifications phase 4 and the loose ends are in one PR from `lite-l6-undo`. Also fixed: two tabs refreshing the sign-in at once could sign one out. Still to do, by someone with Railway access and phones: the deploy and the real-phone test ([runbook](./phase-0-runbook.md)).

@@ -30,6 +30,7 @@ import { isLoan, loanPeriod, offerHeadline, purchaseClause, wageSharePct } from 
 import { NegotiationSummaryPanel, OfferAdvisor, TermsWarnings } from "../../components/ai/Assistant";
 import { useOfferCheck } from "../../hooks/useAssistant";
 import type { SuggestedTerms } from "../../types/api";
+import { Estimate } from "../../components/ui/Money";
 
 /** The value after it has stopped changing for `ms` — for the live terms check. */
 function useDebounced<T>(value: T, ms = 400): T {
@@ -303,7 +304,7 @@ function OfferTerms({ offer }: { offer: Offer }) {
     const clauses = offer.clauses ?? [];
     return (
       <div className="space-y-2">
-        <Metric label="Transfer fee" value={offerHeadline(offer)} />
+        <Metric label="Transfer fee" valueNode={<>{offerHeadline(offer)}<Estimate value={offer.deal_type === "LOAN" ? offer.loan_fee : offer.fee_amount} /></>} />
         <Metric
           label="Payment"
           value={instalments.length === 0 ? "On completion" : `${instalments.length} instalments`}

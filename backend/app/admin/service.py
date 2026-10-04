@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -27,7 +27,8 @@ async def list_users(
 
     q = select(User)
     if search:
-        q = q.where(User.email.ilike(f"%{search}%"))
+        like = f"%{search}%"
+        q = q.where(or_(User.email.ilike(like), User.first_name.ilike(like), User.last_name.ilike(like)))
     q = apply_date_range(q, User.created_at, date_from, date_to)
 
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()

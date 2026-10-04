@@ -8,6 +8,7 @@ import Button from "../../components/ui/Button";
 import Icon from "../../components/layout/Icon";
 import Spinner from "../../components/ui/Spinner";
 import { getApiError, formatDateTime } from "../../lib/utils";
+import NameFields from "../../components/auth/NameFields";
 
 interface ClubInvitationPreview {
   club_name: string;
@@ -28,6 +29,8 @@ export default function JoinClubPage() {
   const token = params.get("token") ?? "";
   const { setTokens, setUser } = useAuthStore();
 
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +46,10 @@ export default function JoinClubPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("Enter your first and last name.");
+      return;
+    }
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
@@ -53,7 +60,7 @@ export default function JoinClubPage() {
     }
     setSubmitting(true);
     try {
-      const { data } = await api.post<TokenResponse>(`/auth/club-invitations/${token}/accept`, { password });
+      const { data } = await api.post<TokenResponse>(`/auth/club-invitations/${token}/accept`, { password, first_name: firstName.trim(), last_name: lastName.trim() });
       setTokens(data.access_token, data.refresh_token);
       const { data: me } = await api.get<User>("/auth/me");
       setUser(me);
@@ -118,6 +125,7 @@ export default function JoinClubPage() {
                     className="w-full rounded-lg bg-surface-inset px-3 py-2.5 text-sm text-text-muted ring-1 ring-input-border"
                   />
                 </div>
+                <NameFields first={firstName} last={lastName} onFirst={setFirstName} onLast={setLastName} />
                 <div>
                   <label htmlFor="pw" className="mb-1.5 block text-sm font-medium text-text-secondary">
                     Choose a password

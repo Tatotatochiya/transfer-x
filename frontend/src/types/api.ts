@@ -52,6 +52,9 @@ export interface User {
   is_superuser: boolean;
   user_type: UserType;
   created_at: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  full_name?: string | null;
   /** Owner or staff of a club. TransferX staff accounts have none. */
   has_club?: boolean;
   /** Set in a read-only "view as this club" session: the staff member looking. */
@@ -274,6 +277,7 @@ export interface ClubStaffMember {
   id: string;
   user_id: string;
   email: string;
+  name?: string | null;
   role: StaffRole;
   created_at: string;
 }
@@ -313,6 +317,7 @@ export interface PendingApproval {
   amount: number;
   requested_by_user_id: string;
   requested_by_email: string | null;
+  requested_by_name?: string | null;
   status: ApprovalStatus;
   decided_by_user_id: string | null;
   decided_at: string | null;
@@ -1022,6 +1027,9 @@ export interface ShortlistItem {
     status: string | null;
     open_to_offers: boolean;
     team_name: string | null;
+    market_value?: number | string | null;
+    /** Transfermarkt values are in EUR. */
+    market_value_currency?: string | null;
   } | null;
 }
 
@@ -1082,6 +1090,8 @@ export interface TargetPlayer {
 export interface AdminUser {
   id: string;
   email: string;
+  full_name?: string | null;
+  deleted_at?: string | null;
   is_active: boolean;
   is_superuser: boolean;
   created_at: string;
@@ -1131,6 +1141,7 @@ export interface AdminDeal {
   status: DealStatus;
   stage: DealStage;
   created_at: string;
+  updated_at?: string | null;
   completed_at: string | null;
 }
 

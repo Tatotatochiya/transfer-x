@@ -327,7 +327,7 @@ export default function AdminVendorPage() {
               Run League Sync
             </Button>
           </form>
-          {leagueResult && <ResultBox data={leagueResult} />}
+          {leagueResult != null && <ResultBox data={leagueResult} />}
         </Card>
 
         {/* ── Sync Team ── */}
@@ -376,7 +376,7 @@ export default function AdminVendorPage() {
               Run Team Sync
             </Button>
           </form>
-          {teamResult && <ResultBox data={teamResult} />}
+          {teamResult != null && <ResultBox data={teamResult} />}
         </Card>
 
         {/* ── Compute Form ── */}
@@ -424,7 +424,7 @@ export default function AdminVendorPage() {
               Compute Form
             </Button>
           </form>
-          {formResult && <ResultBox data={formResult} />}
+          {formResult != null && <ResultBox data={formResult} />}
         </Card>
       </div>
     </div>

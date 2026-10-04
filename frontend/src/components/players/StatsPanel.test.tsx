@@ -3,7 +3,8 @@ import { render, screen } from "@testing-library/react";
 import StatsPanel from "./StatsPanel";
 import type { PlayerStats, PlayerForm } from "../../types/api";
 
-const BASE_STATS: PlayerStats = {
+// Only the fields StatsPanel reads; the rest of PlayerStats doesn't matter here.
+const BASE_STATS = {
   id: "s1",
   player_id: "p1",
   vendor: "api_sports_v3",
@@ -39,7 +40,7 @@ const BASE_STATS: PlayerStats = {
   penalty_scored: null,
   penalty_missed: null,
   updated_at: "2025-01-01T00:00:00Z",
-};
+} as unknown as PlayerStats;
 
 const BASE_FORM: PlayerForm = {
   id: "f1",

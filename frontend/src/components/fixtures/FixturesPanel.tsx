@@ -21,7 +21,7 @@ const LEAGUE_NAMES: Record<string, string> = {
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
-function StatusBadge({ short, long }: { short: string; long: string | null }) {
+function StatusBadge({ short }: { short: string; long: string | null }) {
   const isLive = ["1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT"].includes(short);
   const isFinished = ["FT", "AET", "PEN"].includes(short);
 

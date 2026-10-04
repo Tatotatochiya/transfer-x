@@ -136,7 +136,7 @@ export default function TeamPage() {
       <EmptyState
         title="Owner only"
         body="Only the club owner can manage the team."
-        action={<Button variant="secondary" onClick={() => navigate("/club")}>Back to My Club</Button>}
+        action={{ label: "Back to My Club", onClick: () => navigate("/club") }}
       />
     );
   }
@@ -177,7 +177,8 @@ export default function TeamPage() {
                 {staff.map((member) => (
                   <div key={member.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-text">{member.email}</p>
+                      <p className="truncate text-sm font-medium text-text">{member.name ?? member.email}</p>
+                      {member.name && <p className="truncate text-xs text-text-muted">{member.email}</p>}
                       <p className="mt-0.5 text-xs text-text-muted">
                         Joined {formatDateTime(member.created_at)}
                       </p>

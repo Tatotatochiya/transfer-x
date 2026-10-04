@@ -31,7 +31,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 # ── JWT ───────────────────────────────────────────────────────────────────────
 
 
-def create_access_token(user_id: uuid.UUID, email: str) -> str:
+def create_access_token(user_id: uuid.UUID, email: str, sid: uuid.UUID | None = None) -> str:
     expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_access_token_expire_minutes)
     payload = {
         "sub": str(user_id),
@@ -39,6 +39,8 @@ def create_access_token(user_id: uuid.UUID, email: str) -> str:
         "exp": expire,
         "type": "access",
     }
+    if sid is not None:
+        payload["sid"] = str(sid)
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
@@ -75,19 +77,44 @@ def _new_refresh_token_string() -> str:
     return secrets.token_urlsafe(32)  # 43 URL-safe chars
 
 
-async def create_refresh_token(db: AsyncSession, user_id: uuid.UUID) -> str:
+async def create_refresh_token(
+    db: AsyncSession, user_id: uuid.UUID, *, session_id: uuid.UUID | None = None,
+    user_agent: str | None = None, signed_in_at: datetime | None = None,
+) -> str:
     token_str = _new_refresh_token_string()
     token_hash = _hash_token(token_str)
-    expires_at = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_token_expire_days)
-    db.add(RefreshToken(user_id=user_id, token=token_hash, expires_at=expires_at))
+    now = datetime.now(UTC)
+    expires_at = now + timedelta(days=settings.jwt_refresh_token_expire_days)
+    db.add(RefreshToken(
+        user_id=user_id, token=token_hash, expires_at=expires_at, session_id=session_id or uuid.uuid4(),
+        user_agent=(user_agent or "")[:300] or None, signed_in_at=signed_in_at or now, last_used_at=now,
+    ))
     await db.flush()
     return token_str  # return raw; only the hash is stored
 
 
-async def rotate_refresh_token(db: AsyncSession, old_token_str: str) -> tuple[str, "User"]:
+async def start_session(db: AsyncSession, user: User, user_agent: str | None = None) -> tuple[str, str]:
+    """A new signed-in device: (access token, refresh token)."""
+    sid = uuid.uuid4()
+    refresh = await create_refresh_token(db, user.id, session_id=sid, user_agent=user_agent)
+    return create_access_token(user.id, user.email, sid=sid), refresh
+
+
+async def session_alive(db: AsyncSession, sid: str) -> bool:
+    try:
+        sid_uuid = uuid.UUID(sid)
+    except ValueError:
+        return False
+    found = await db.execute(select(RefreshToken.id).where(RefreshToken.session_id == sid_uuid).limit(1))
+    return found.first() is not None
+
+
+async def rotate_refresh_token(
+    db: AsyncSession, old_token_str: str, user_agent: str | None = None,
+) -> tuple[str, "User", uuid.UUID]:
     """
-    Validate old refresh token, delete it, issue a new one.
-    Returns (new_token_str, user). Raises ValueError if invalid/expired.
+    Validate old refresh token, delete it, issue a new one in the same session.
+    Returns (new_token_str, user, session_id). Raises ValueError if invalid/expired.
     """
     result = await db.execute(
         select(RefreshToken).where(RefreshToken.token == _hash_token(old_token_str))
@@ -104,9 +131,13 @@ async def rotate_refresh_token(db: AsyncSession, old_token_str: str) -> tuple[st
     if user is None or not user.is_active:
         raise ValueError("User not found or inactive")
 
+    sid, signed_in_at = rt.session_id, rt.signed_in_at or rt.created_at
     await db.delete(rt)
-    new_token_str = await create_refresh_token(db, user.id)
-    return new_token_str, user
+    await db.flush()
+    new_token_str = await create_refresh_token(
+        db, user.id, session_id=sid, user_agent=user_agent or rt.user_agent, signed_in_at=signed_in_at,
+    )
+    return new_token_str, user, sid
 
 
 async def revoke_refresh_token(db: AsyncSession, token_str: str) -> None:

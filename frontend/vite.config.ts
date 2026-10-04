@@ -2,6 +2,9 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+// Node's process, without pulling in @types/node for one line.
+declare const process: { env: Record<string, string | undefined> };
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {

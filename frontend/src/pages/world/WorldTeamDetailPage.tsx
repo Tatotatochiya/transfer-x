@@ -6,10 +6,8 @@ import type { Club, FairValueSignal, Paginated, Player, PlayerForm, PlayerStats,
 import { useAuthStore } from "../../store/auth";
 import SquadTable from "../../components/players/SquadTable";
 import FormBadge from "../../components/players/FormBadge";
-import StatsPanel from "../../components/players/StatsPanel";
 import Spinner from "../../components/ui/Spinner";
 import EmptyState from "../../components/ui/EmptyState";
-import SectionHeader from "../../components/ui/SectionHeader";
 import Badge from "../../components/ui/Badge";
 import FixturesPanel from "../../components/fixtures/FixturesPanel";
 

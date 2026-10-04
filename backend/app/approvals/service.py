@@ -108,12 +108,16 @@ async def _notify_approvers(db: AsyncSession, approval: PendingApproval, club: C
     from app.notifications import copy as push_copy
 
     push = await push_copy.approval_requested(db, approval, club)
+    from app.auth.models import User
+
+    requester = await db.get(User, approval.requested_by_user_id) if approval.requested_by_user_id else None
     for uid in recipient_ids:
         await create_notification(
             db,
             recipient_user_id=uid,
             type=NotificationType.APPROVAL_REQUESTED,
-            message=f"Approval needed: {approval.summary or approval.action_type.value} (£{approval.amount:,.0f})",
+            message=f"Approval needed: {approval.summary or approval.action_type.value} (£{approval.amount:,.0f})"
+            + (f" · asked by {requester.full_name}" if requester is not None and requester.full_name else ""),
             link="/club/approvals",
             **push,
         )

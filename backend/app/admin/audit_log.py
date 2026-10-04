@@ -56,7 +56,7 @@ class AuditFilters:
 
 
 def _query(f: AuditFilters):
-    q = select(AuditEvent, User.email).outerjoin(User, User.id == AuditEvent.actor_user_id)
+    q = select(AuditEvent, User.email, User.first_name, User.last_name).outerjoin(User, User.id == AuditEvent.actor_user_id)
     if f.admin_only:
         q = q.where(AuditEvent.action.startswith(ADMIN_PREFIX))
     if f.action:
@@ -75,12 +75,17 @@ def _query(f: AuditFilters):
         like = f"%{f.q.strip()}%"
         q = q.where(or_(
             AuditEvent.description.ilike(like), AuditEvent.action.ilike(like), User.email.ilike(like),
+            User.first_name.ilike(like), User.last_name.ilike(like),
             cast(AuditEvent.entity_id, String).ilike(like),
         ))
     return q
 
 
-def _row(event: AuditEvent, email: str | None) -> dict:
+def _name(first: str | None, last: str | None) -> str | None:
+    return " ".join(p for p in (first, last) if p) or None
+
+
+def _row(event: AuditEvent, email: str | None, first: str | None = None, last: str | None = None) -> dict:
     payload = event.payload_json or {}
     link = ENTITY_LINKS.get(event.entity_type)
     return {
@@ -88,6 +93,7 @@ def _row(event: AuditEvent, email: str | None) -> dict:
         "created_at": event.created_at,
         "actor_user_id": event.actor_user_id,
         "actor_email": email,
+        "actor_name": _name(first, last),
         "action": event.action,
         "entity_type": event.entity_type,
         "entity_id": event.entity_id,
@@ -105,7 +111,7 @@ async def list_events(db: AsyncSession, f: AuditFilters, page: int, page_size: i
     rows = (await db.execute(
         q.order_by(AuditEvent.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     )).all()
-    return [_row(e, email) for e, email in rows], total
+    return [_row(e, email, first, last) for e, email, first, last in rows], total
 
 
 async def facets(db: AsyncSession) -> dict:
@@ -150,7 +156,8 @@ async def export_xlsx(db: AsyncSession, f: AuditFilters, *, exported_by: str) ->
     for cell in ws[1]:
         cell.font = Font(bold=True)
         cell.fill = head_fill
-    for event, email in rows:
+    for event, email, first, last in rows:
+        name = _name(first, last)
         payload = dict(event.payload_json or {})
         reason = payload.pop("reason", None)
         payload.pop("admin_action", None)
@@ -158,7 +165,8 @@ async def export_xlsx(db: AsyncSession, f: AuditFilters, *, exported_by: str) ->
         if when.tzinfo is not None:
             when = when.astimezone(timezone.utc).replace(tzinfo=None)
         ws.append([
-            when, email or ("System" if event.actor_user_id is None else str(event.actor_user_id)),
+            when, (f"{name} ({email})" if name and email else email)
+            or ("System" if event.actor_user_id is None else str(event.actor_user_id)),
             _readable(event.action), event.action, event.entity_type, str(event.entity_id),
             event.description or "", reason or "",
             json.dumps(payload, ensure_ascii=False, default=str) if payload else "",

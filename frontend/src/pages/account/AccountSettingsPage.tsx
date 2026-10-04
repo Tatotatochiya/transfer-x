@@ -17,6 +17,9 @@ import {
 } from "../../store/preferences";
 import NotificationTypesTable from "../../components/notifications/NotificationTypesTable";
 import PushSettingsCard from "../../components/notifications/PushSettingsCard";
+import YourNameCard from "../../components/account/YourNameCard";
+import SessionsCard from "../../components/account/SessionsCard";
+import YourDataCard from "../../components/account/YourDataCard";
 
 // ── Segmented control ─────────────────────────────────────────────────────────
 
@@ -126,10 +129,11 @@ export default function AccountSettingsPage() {
         {/* Profile */}
         <Card className="flex items-center gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-inset text-lg font-bold text-text-secondary ring-1 ring-border">
-            {user?.email?.[0]?.toUpperCase() ?? "?"}
+            {(user?.first_name ?? user?.email)?.[0]?.toUpperCase() ?? "?"}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-text">{user?.email}</p>
+            <p className="truncate text-sm font-semibold text-text">{user?.full_name ?? user?.email}</p>
+            {user?.full_name && <p className="truncate text-xs text-text-muted">{user.email}</p>}
             <p className="mt-0.5 text-xs text-text-muted">
               Member since{" "}
               {user?.created_at
@@ -142,6 +146,10 @@ export default function AccountSettingsPage() {
           </div>
           {user?.is_superuser && <Badge variant="warning">Admin</Badge>}
         </Card>
+
+        <Section id="name" title="Your name">
+          <YourNameCard />
+        </Section>
 
         {/* Display preferences */}
         <Section
@@ -167,14 +175,16 @@ export default function AccountSettingsPage() {
 
             <div className="flex items-center justify-between px-5 py-4">
               <div>
-                <p className="text-sm text-text">Currency</p>
-                <p className="mt-0.5 text-xs text-text-muted">Applied to all transfer fees and wages</p>
+                <p className="text-sm text-text">Estimates in another currency</p>
+                <p className="mt-0.5 text-xs text-text-muted">
+                  Amounts are agreed in pounds. Pick a currency to see an estimate next to fees, valuations and budgets.
+                </p>
               </div>
               <SegmentedControl<Currency>
                 value={currency}
                 onChange={setCurrency}
                 options={[
-                  { value: "GBP", label: "£ GBP" },
+                  { value: "GBP", label: "None" },
                   { value: "EUR", label: "€ EUR" },
                   { value: "USD", label: "$ USD" },
                 ]}
@@ -232,6 +242,10 @@ export default function AccountSettingsPage() {
         </Section>
 
         {/* Change password */}
+        <Section id="devices" title="Signed-in devices" subtitle="Where you're signed in. Sign out a device you don't recognise.">
+          <SessionsCard />
+        </Section>
+
         <Section title="Change password">
           <Card>
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
@@ -294,6 +308,9 @@ export default function AccountSettingsPage() {
           </Card>
         </Section>
 
+        <Section id="your-data" title="Your data">
+          <YourDataCard />
+        </Section>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -14,6 +15,7 @@ from app.auth.schemas import (
     RefreshRequest,
     RegisterRequest,
     TokenResponse,
+    UpdateMeRequest,
     UserResponse,
 )
 from app.clubs import service as clubs_service
@@ -29,8 +31,16 @@ from app.database import get_db
 router = APIRouter(tags=["auth"])
 
 
+def _set_names(user: User, first: str, last: str) -> None:
+    """Names given while joining; blank ones are asked for later."""
+    if first.strip():
+        user.first_name = first.strip()
+    if last.strip():
+        user.last_name = last.strip()
+
+
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+async def register(body: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     from app.auth.models import UserType
 
     # Clubs join by invitation only: public club sign-up let anyone claim to
@@ -56,6 +66,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    _set_names(user, body.first_name, body.last_name)
 
     if body.user_type == UserType.CLUB:
         club_name = body.club_name.strip() or body.email.split("@")[0]
@@ -93,14 +104,13 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
 
-    access_token = auth_service.create_access_token(user.id, user.email)
-    refresh_token = await auth_service.create_refresh_token(db, user.id)
+    access_token, refresh_token = await auth_service.start_session(db, user, request.headers.get("user-agent"))
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     """Sign in with an email address or a username (the part of the email
     before the "@")."""
     try:
@@ -117,21 +127,22 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
             detail="Incorrect email, username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = auth_service.create_access_token(user.id, user.email)
-    refresh_token = await auth_service.create_refresh_token(db, user.id)
+    access_token, refresh_token = await auth_service.start_session(db, user, request.headers.get("user-agent"))
     user.last_active_at = datetime.now(timezone.utc)
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+async def refresh(body: RefreshRequest, request: Request, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     try:
-        new_refresh_token, user = await auth_service.rotate_refresh_token(db, body.refresh_token)
+        new_refresh_token, user, sid = await auth_service.rotate_refresh_token(
+            db, body.refresh_token, request.headers.get("user-agent"),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
 
-    access_token = auth_service.create_access_token(user.id, user.email)
+    access_token = auth_service.create_access_token(user.id, user.email, sid=sid)
     user.last_active_at = datetime.now(timezone.utc)
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=new_refresh_token)
@@ -222,7 +233,7 @@ async def preview_club_invitation(token: str, db: AsyncSession = Depends(get_db)
 
 @router.post("/club-invitations/{token}/accept", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def accept_club_invitation(
-    token: str, body: InvitationAcceptRequest, db: AsyncSession = Depends(get_db)
+    token: str, body: InvitationAcceptRequest, request: Request, db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
     """Accept a club invitation: creates the owner's account, the club and its
     finance, and signs the owner straight in."""
@@ -234,6 +245,7 @@ async def accept_club_invitation(
         user = await clubs_service.accept_club_invitation(db, token, password=body.password)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    _set_names(user, body.first_name, body.last_name)
     club = await clubs_service.get_club_for_user(db, user.id)
     await audit_service.emit(
         db,
@@ -244,8 +256,7 @@ async def accept_club_invitation(
         payload={"email": user.email},
         description=f"{club.name} joined TransferX by invitation",
     )
-    access_token = auth_service.create_access_token(user.id, user.email)
-    refresh_token = await auth_service.create_refresh_token(db, user.id)
+    access_token, refresh_token = await auth_service.start_session(db, user, request.headers.get("user-agent"))
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
@@ -267,7 +278,7 @@ async def preview_player_invitation(token: str, db: AsyncSession = Depends(get_d
 
 @router.post("/player-invitations/{token}/accept", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def accept_player_invitation(
-    token: str, body: InvitationAcceptRequest, db: AsyncSession = Depends(get_db)
+    token: str, body: InvitationAcceptRequest, request: Request, db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
     """Accept a player invitation: creates the player's account, linked to his
     player record, and signs him straight in."""
@@ -282,6 +293,7 @@ async def accept_player_invitation(
         user = await clubs_service.accept_player_invitation(db, token, password=body.password)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    _set_names(user, body.first_name, body.last_name)
     await audit_service.emit(
         db, entity_type="PLAYER", entity_id=inv.player_id, action="PLAYER_JOINED",
         actor_user_id=user.id,
@@ -305,11 +317,10 @@ async def accept_player_invitation(
     if recipient is not None:
         await notif_service.create_notification(
             db, recipient_user_id=recipient, type=NotificationType.STAFF_INVITATION,
-            message=f"{user.email} accepted your invitation and now has a player account",
+            message=f"{user.display_label} accepted your invitation and now has a player account",
             link=f"/players/market/{inv.player_id}", related_player_id=inv.player_id,
         )
-    access_token = auth_service.create_access_token(user.id, user.email)
-    refresh_token = await auth_service.create_refresh_token(db, user.id)
+    access_token, refresh_token = await auth_service.start_session(db, user, request.headers.get("user-agent"))
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
@@ -318,6 +329,7 @@ async def accept_player_invitation(
 async def accept_invitation(
     token: str,
     body: InvitationAcceptRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     """Accept a staff invitation: creates the User (explicit user_type=CLUB, D9)
@@ -334,6 +346,7 @@ async def accept_invitation(
         user, staff = await clubs_service.accept_staff_invitation(db, invitation, body.password)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    _set_names(user, body.first_name, body.last_name)
 
     club = await clubs_service.get_club_by_id(db, invitation.club_id)
     await audit_service.emit(
@@ -343,7 +356,7 @@ async def accept_invitation(
         action="STAFF_JOINED",
         actor_user_id=user.id,
         payload={"email": user.email, "role": staff.role.value},
-        description=f"{user.email} joined as {staff.role.value}",
+        description=f"{user.display_label} joined as {staff.role.value}",
     )
     # Account/administrative event → owner only (D5).
     if club is not None:
@@ -351,12 +364,11 @@ async def accept_invitation(
             db,
             recipient_user_id=club.user_id,
             type=NotificationType.STAFF_INVITATION,
-            message=f"{user.email} accepted your invitation and joined as {staff.role.value.replace('_', ' ').title()}",
+            message=f"{user.display_label} accepted your invitation and joined as {staff.role.value.replace('_', ' ').title()}",
             link="/club/team",
         )
 
-    access_token = auth_service.create_access_token(user.id, user.email)
-    refresh_token = await auth_service.create_refresh_token(db, user.id)
+    access_token, refresh_token = await auth_service.start_session(db, user, request.headers.get("user-agent"))
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
@@ -375,8 +387,24 @@ async def me(
         import uuid as _uuid
 
         staff = await db.get(User, _uuid.UUID(staff_id))
-        resp.viewed_by = staff.email if staff else "TransferX staff"
+        resp.viewed_by = staff.display_label if staff else "TransferX staff"
     return resp
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    body: UpdateMeRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    """Set your first and last name."""
+    first, last = body.first_name.strip(), body.last_name.strip()
+    if not first or not last:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter your first and last name")
+    current_user.first_name, current_user.last_name = first, last
+    await db.commit()
+    return await me(request, current_user, db)
 
 
 @router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)
@@ -390,3 +418,176 @@ async def change_password(
         await db.commit()
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+# ── Signed-in devices (Phase 1) ───────────────────────────────────────────────
+
+
+def _device_label(ua: str | None) -> str:
+    """'Chrome on Mac', 'Safari on iPhone', or 'Unknown device'."""
+    if not ua:
+        return "Unknown device"
+    os_name = next((name for key, name in (
+        ("iPhone", "iPhone"), ("iPad", "iPad"), ("Android", "Android"), ("Windows", "Windows"),
+        ("Macintosh", "Mac"), ("CrOS", "ChromeOS"), ("Linux", "Linux"),
+    ) if key in ua), None)
+    browser = next((name for key, name in (
+        ("Edg/", "Edge"), ("OPR/", "Opera"), ("Firefox/", "Firefox"), ("CriOS/", "Chrome"),
+        ("Chrome/", "Chrome"), ("Safari/", "Safari"),
+    ) if key in ua), None)
+    if browser and os_name:
+        return f"{browser} on {os_name}"
+    return browser or os_name or "Unknown device"
+
+
+def _current_sid(request: Request) -> str | None:
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        return None
+    try:
+        return auth_service.decode_access_token(auth[7:]).get("sid")
+    except Exception:
+        return None
+
+
+@router.get("/sessions")
+async def list_sessions(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    """Where you're signed in, most recently used first."""
+    from app.auth.models import RefreshToken
+
+    rows = (await db.execute(
+        select(RefreshToken).where(RefreshToken.user_id == current_user.id)
+    )).scalars().all()
+    current = _current_sid(request)
+    sessions: dict = {}
+    for rt in rows:  # one row per session normally; keep the latest if not
+        s = sessions.get(rt.session_id)
+        if s is None or (rt.last_used_at or rt.created_at) > (s.last_used_at or s.created_at):
+            sessions[rt.session_id] = rt
+    out = [{
+        "id": str(rt.session_id),
+        "device": _device_label(rt.user_agent),
+        "signed_in_at": rt.signed_in_at or rt.created_at,
+        "last_used_at": rt.last_used_at or rt.created_at,
+        "current": current is not None and str(rt.session_id) == current,
+    } for rt in sessions.values()]
+    out.sort(key=lambda s: (not s["current"], -s["last_used_at"].timestamp()))
+    return out
+
+
+async def _end_sessions(db: AsyncSession, user: User, keep: str | None = None, only: uuid.UUID | None = None) -> int:
+    from sqlalchemy import delete
+
+    from app.auth.models import RefreshToken
+
+    q = delete(RefreshToken).where(RefreshToken.user_id == user.id)
+    if only is not None:
+        q = q.where(RefreshToken.session_id == only)
+    if keep:
+        q = q.where(RefreshToken.session_id != uuid.UUID(keep))
+    result = await db.execute(q)
+    return result.rowcount or 0
+
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def sign_out_session(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Sign out one device. It stops working at its next request."""
+    if not await _end_sessions(db, current_user, only=session_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That device is already signed out")
+    await db.commit()
+
+
+@router.post("/sessions/sign-out-others")
+async def sign_out_other_sessions(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Sign out everywhere except this device."""
+    ended = await _end_sessions(db, current_user, keep=_current_sid(request))
+    await db.commit()
+    return {"signed_out": ended}
+
+
+# ── Your data (GDPR, Phase 1) ─────────────────────────────────────────────────
+
+
+class _CloseAccountBody(BaseModel):
+    password: str
+    confirm: str
+
+
+@router.get("/me/export")
+async def export_my_data(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Your personal data as a JSON file."""
+    import json
+
+    from fastapi.responses import Response
+
+    from app.audit import service as audit_service
+    from app.auth import privacy
+
+    data = await privacy.export_user_data(db, current_user)
+    await audit_service.emit(
+        db, entity_type="USER", entity_id=current_user.id, action="DATA_EXPORTED",
+        actor_user_id=current_user.id, description="Downloaded their personal data",
+    )
+    await db.commit()
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return Response(
+        content=json.dumps(data, indent=2, ensure_ascii=False, default=str),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="transferx-my-data-{day}.json"'},
+    )
+
+
+@router.get("/me/close-check")
+async def can_close_account(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Whether this account can be closed here, and if not, why."""
+    from app.auth import privacy
+
+    try:
+        await privacy.check_can_close(db, current_user)
+        return {"can_close": True, "reason": None}
+    except privacy.CannotClose as exc:
+        return {"can_close": False, "reason": str(exc)}
+
+
+@router.post("/me/close", status_code=status.HTTP_204_NO_CONTENT)
+async def close_my_account(
+    body: _CloseAccountBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Close your account: your details are erased; the records others rely
+    on (audit trail, deal comments, messages) stay, without your name."""
+    from app.audit import service as audit_service
+    from app.auth import privacy
+
+    if body.confirm.strip().upper() != "DELETE":
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail='Type DELETE to confirm')
+    if not auth_service.verify_password(body.password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="That password isn't right")
+    try:
+        await privacy.close_account(db, current_user)
+    except privacy.CannotClose as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    await audit_service.emit(
+        db, entity_type="USER", entity_id=current_user.id, action="ACCOUNT_CLOSED",
+        actor_user_id=current_user.id, description="Closed their account and erased their personal details",
+    )
+    await db.commit()

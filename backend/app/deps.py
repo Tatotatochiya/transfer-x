@@ -42,6 +42,8 @@ async def get_optional_user(
         return None
     if payload.get("ro") and request.method not in auth_service.SAFE_METHODS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=auth_service.READ_ONLY_DETAIL)
+    if payload.get("sid") and not await auth_service.session_alive(db, payload["sid"]):
+        return None
     try:
         user = await auth_service.get_user_by_id(db, uuid.UUID(payload["sub"]))
         return user if (user and user.is_active) else None

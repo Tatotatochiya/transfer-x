@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -252,6 +252,7 @@ def _staff_member_response(staff) -> ClubStaffMemberResponse:
         id=staff.id,
         user_id=staff.user_id,
         email=staff.user.email if staff.user else "",
+        name=staff.user.full_name if staff.user else None,
         role=staff.role,
         created_at=staff.created_at,
     )
@@ -371,7 +372,7 @@ async def change_staff_role(
         action="STAFF_ROLE_CHANGED",
         actor_user_id=current_user.id,
         payload={"staff_user_id": str(staff.user_id), "from": old_role, "to": body.role.value},
-        description=f"Changed {staff.user.email if staff.user else staff.user_id} from {old_role} to {body.role.value}",
+        description=f"Changed {staff.user.display_label if staff.user else staff.user_id} from {old_role} to {body.role.value}",
     )
     await db.commit()
     await db.refresh(staff)
@@ -394,6 +395,7 @@ async def remove_staff_member(
     if staff is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff member not found")
     staff_email = staff.user.email if staff.user else str(staff.user_id)
+    staff_label = staff.user.display_label if staff.user else staff_email
     staff_user_id = staff.user_id
     await clubs_service.remove_club_staff(db, staff)
     await audit_service.emit(
@@ -403,7 +405,7 @@ async def remove_staff_member(
         action="STAFF_REMOVED",
         actor_user_id=current_user.id,
         payload={"staff_user_id": str(staff_user_id), "email": staff_email},
-        description=f"Removed {staff_email} from the team",
+        description=f"Removed {staff_label} from the team",
     )
     await db.commit()
 
@@ -743,3 +745,68 @@ async def revoke_player_invitation(
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     return PlayerInvitationResponse.model_validate(inv)
+
+
+# ── Check your squad (Phase 1) ────────────────────────────────────────────────
+
+
+class _SquadConfirmBody(BaseModel):
+    start_date: date | None = None
+    end_date: date
+    wage_weekly: Decimal = Field(gt=0)
+    club_valuation: Decimal | None = Field(default=None, ge=0)
+
+
+@router.get("/me/squad-check")
+async def get_squad_check(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Each squad player's contract, wage and valuation, and what's missing.
+    Wages are the club's own figures, so this is for the club's people only."""
+    from app.clubs import squad_check
+
+    club, _ = await clubs_service.get_club_and_role_for_user(db, current_user.id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+    return await squad_check.check(db, club.id)
+
+
+@router.post("/me/squad-check/{player_id}/confirm")
+async def confirm_squad_player(
+    player_id: uuid.UUID,
+    body: _SquadConfirmBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    # Contract dates and wages are the club's books: owner and sporting director.
+    _admin: User = Depends(require_club_capability(Capability.CLUB_ADMIN)),
+) -> dict:
+    """Confirm (or correct) a player's contract, wage and valuation. Creates the
+    contract when he's in the squad without one."""
+    from app.audit import service as audit_service
+    from app.clubs import squad_check
+
+    club, _ = await clubs_service.get_club_and_role_for_user(db, current_user.id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+    try:
+        contract, changes = await squad_check.confirm(
+            db, club.id, player_id, current_user.id, start_date=body.start_date, end_date=body.end_date,
+            wage_weekly=body.wage_weekly, club_valuation=body.club_valuation,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+    player = await players_service.get_player_by_id(db, player_id)
+    await audit_service.emit(
+        db, entity_type="PLAYER", entity_id=player_id, action="SQUAD_CONTRACT_CONFIRMED",
+        actor_user_id=current_user.id, payload={"club_id": str(club.id), "changes": changes},
+        description=f"{current_user.display_label} confirmed {player.name if player else 'a player'}'s contract"
+        + (" (created it)" if changes.get("contract") == "created" else ""),
+    )
+    await db.commit()
+    result = await squad_check.check(db, club.id)
+    return next(p for p in result["players"] if str(p["player_id"]) == str(player_id))

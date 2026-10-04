@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, field_validator
 
@@ -13,6 +14,9 @@ class PlayerSummary(BaseModel):
     status: str | None = None
     open_to_offers: bool = False
     team_name: str | None = None
+    # Public market value and its currency (Transfermarkt values are in EUR).
+    market_value: Decimal | None = None
+    market_value_currency: str | None = None
     model_config = {"from_attributes": True}
 
 

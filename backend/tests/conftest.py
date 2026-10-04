@@ -19,6 +19,8 @@ settings.vapid_public_key = settings.vapid_private_key = settings.vapid_subject 
 # No live API-Football calls (the admin Health page asks it for today's
 # usage); the vendor tests set a key and mock the client themselves.
 settings.apisports_key = None
+# No live exchange-rate fetches: the estimates use the fallback rates.
+settings.fx_rates_url = None
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 

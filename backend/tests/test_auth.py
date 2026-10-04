@@ -163,11 +163,11 @@ async def test_logout_unknown_token_is_silent(client: AsyncClient):
 # ── Access token still works after logout ─────────────────────────────────────
 
 
-async def test_access_token_valid_after_logout(client: AsyncClient):
+async def test_access_token_stops_working_after_logout(client: AsyncClient):
     """
-    Logging out invalidates the refresh token but not the in-flight access token.
-    Access tokens are short-lived JWTs — no server-side revocation in M1.
-    This is by design; revisit if a blocklist is needed later.
+    Logging out ends the session: the refresh token is gone, and the access
+    token, which carries the session id, stops working at once (Phase 1,
+    signed-in devices). It used to stay valid until it expired.
     """
     tokens = await register(client, "afterlogout@example.com", "password123")
     await client.post("/auth/logout", json={"refresh_token": tokens["refresh_token"]})
@@ -175,7 +175,7 @@ async def test_access_token_valid_after_logout(client: AsyncClient):
     resp = await client.get(
         "/auth/me", headers={"Authorization": f"Bearer {tokens['access_token']}"}
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 401
 
 
 # ── Service-layer unit tests ──────────────────────────────────────────────────
