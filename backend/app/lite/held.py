@@ -18,7 +18,6 @@ FAILED with the endpoint's reason.
 for the Sent screen. The current step's hint comes from `assist.deal_steps`,
 so Lite and the deal page never disagree.
 """
-import json
 import logging
 import time as _time
 import uuid
@@ -192,49 +191,47 @@ async def undo(db: AsyncSession, user, action_id: uuid.UUID) -> HeldAction:
 # ── Executing ─────────────────────────────────────────────────────────────────
 
 
-def _response_body(resp) -> dict:
-    """An endpoint's return value as plain data (a model, or a 202 JSONResponse)."""
-    if hasattr(resp, "body") and hasattr(resp, "status_code"):
-        data = json.loads(resp.body or b"{}")
-        if resp.status_code == status.HTTP_202_ACCEPTED:
-            return {"approval_id": data.get("approval_id"), "pending_approval": True}
-        return data
-    if hasattr(resp, "model_dump"):
-        return resp.model_dump(mode="json")
-    return {}
-
-
 async def _run(db: AsyncSession, action: HeldAction, user) -> dict:
-    """Call the normal endpoint as `user`. Its capability dependencies don't
-    run on a direct call, so they are checked here first."""
+    """Do the action as `user`, through the same offer actions the endpoints
+    use (offers/actions.py). The endpoints' permission dependencies don't
+    apply here, so they are checked first."""
+    from app.clubs import service as clubs_service
     from app.clubs.capabilities import Capability, ensure_club_capability
     from app.deps import get_buyer_user
-    from app.offers import router as offers_router
-    from app.offers.schemas import OfferCounterRequest, OfferCreateRequest, OfferDecisionRequest
+    from app.offers import actions
+    from app.offers import service as offers_service
+    from app.offers.schemas import OfferCounterRequest, OfferCreateRequest
 
     await ensure_club_capability(db, user, Capability.MARKET_WRITE)
+    club = await clubs_service.get_club_for_user(db, user.id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
     p = action.payload_json
-    if action.kind == "bid":
-        await get_buyer_user(current_user=user, db=db)
-        body = OfferCreateRequest(**p, ai_assisted=action.ai_assisted)
-        result = _response_body(await offers_router.create_offer(body=body, db=db, current_user=user, _write=user))
-        return {"offer_id": result.get("id"), **({"approval_id": result["approval_id"]} if result.get("approval_id") else {})}
-    offer_id = uuid.UUID(str(p["offer_id"]))
-    if action.kind == "counter":
-        body = OfferCounterRequest(fee_amount=Decimal(str(p["fee_amount"])),
-                                   **({"ai_assisted": True, "ai_feature": "ask_proposal"} if action.ai_assisted else {}))
-        await offers_router.counter_offer(offer_id=offer_id, body=body, db=db, current_user=user, _write=user)
+    try:
+        if action.kind == "bid":
+            await get_buyer_user(current_user=user, db=db)
+            result = await actions.create_offer(db, user, club, OfferCreateRequest(**p, ai_assisted=action.ai_assisted))
+            if result.approval is not None:
+                return {"approval_id": str(result.approval.id)}
+            return {"offer_id": str(result.offer.id)}
+        offer_id = uuid.UUID(str(p["offer_id"]))
+        offer = await offers_service.get_offer_by_id(db, offer_id)
+        if offer is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offer not found")
+        if action.kind == "counter":
+            body = OfferCounterRequest(fee_amount=Decimal(str(p["fee_amount"])),
+                                       **({"ai_assisted": True, "ai_feature": "ask_proposal"} if action.ai_assisted else {}))
+            await actions.counter_offer(db, user, club, offer, body)
+            return {"offer_id": str(offer_id)}
+        if action.kind == "accept":
+            result = await actions.accept_offer(db, user, club, offer, ai_assisted=action.ai_assisted)
+            if result.approval is not None:
+                return {"offer_id": str(offer_id), "approval_id": str(result.approval.id)}
+            return {"offer_id": str(offer_id), "deal_id": str(result.deal.id)}
+        await actions.reject_offer(db, user, club, offer, ai_assisted=action.ai_assisted)
         return {"offer_id": str(offer_id)}
-    if action.kind == "accept":
-        result = _response_body(await offers_router.accept_offer(
-            offer_id=offer_id, body=OfferDecisionRequest(ai_assisted=action.ai_assisted), db=db,
-            current_user=user, _write=user))
-        if result.get("approval_id"):
-            return {"offer_id": str(offer_id), "approval_id": result["approval_id"]}
-        return {"offer_id": str(offer_id), "deal_id": result.get("id")}
-    await offers_router.reject_offer(offer_id=offer_id, body=OfferDecisionRequest(ai_assisted=action.ai_assisted),
-                                     db=db, current_user=user, _write=user)
-    return {"offer_id": str(offer_id)}
+    except actions.OfferActionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
 
 async def execute_one(db: AsyncSession, action_id: uuid.UUID, now: datetime) -> HeldActionStatus | None:
