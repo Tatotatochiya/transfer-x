@@ -30,6 +30,7 @@ import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 import type { DealStage, PlayerPosition } from "../../types/enums";
 import Money from "../../components/ui/Money";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 function FigureCard({ label, value, valueColour }: { label: string; value: ReactNode; valueColour?: string }) {
   return (
@@ -154,16 +155,15 @@ export default function SaleDetailPage() {
     <div className="space-y-4">
       {/* Player header */}
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-inset text-base font-bold text-text-muted">
-          {sale.player?.name?.[0]?.toUpperCase() ?? "?"}
-        </div>
+        {sale.player?.photo_url ? (
+          <img src={sale.player.photo_url} alt="" className="h-11 w-11 shrink-0 rounded-full bg-surface-inset object-cover object-top" />
+        ) : (
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-inset text-base font-bold text-text-muted">
+            {sale.player?.name?.[0]?.toUpperCase() ?? "?"}
+          </div>
+        )}
         <div className="min-w-0">
-          <button
-            onClick={() => sale.player_id && navigate(`/players/market/${sale.player_id}`)}
-            className="truncate font-semibold text-text hover:text-accent transition-colors text-left"
-          >
-            {sale.player?.name ?? "Unknown"}
-          </button>
+          <PlayerLink id={sale.player_id} name={sale.player?.name} fallback="Unknown" className="block truncate font-semibold text-text" />
           <div className="flex items-center gap-2 mt-0.5">
             {sale.player?.position && (
               <Badge variant={positionVariant(sale.player.position as PlayerPosition)}>{sale.player.position}</Badge>

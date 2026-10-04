@@ -12,6 +12,7 @@ import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useToast } from "../../context/ToastContext";
 import { formatCurrency, formatWage, getApiError } from "../../lib/utils";
 import { isLoan } from "../../lib/offerTerms";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 // ── Budget card — four-segment bar (spent / committed / reserved / free) ─────
 
@@ -166,6 +167,8 @@ function ApprovalPolicyCard() {
 interface CommitmentRow {
   key: string;
   name: string;
+  playerId: string | null;
+  photoUrl: string | null;
   type: "Deal" | "Offer" | "Loan offer";
   amount: number;
   releasesWhen: string;
@@ -194,7 +197,7 @@ function CommitmentsTable({ clubId }: { clubId: string }) {
       .filter((d) => d.buyer_club_id === clubId && Number(d.agreed_fee) > 0)
       .map((d) => ({
         key: `deal-${d.id}`,
-        name: d.player?.name ?? "Deal",
+        name: d.player?.name ?? "Deal", playerId: d.player?.id ?? null, photoUrl: d.player?.photo_url ?? null,
         type: "Deal",
         amount: Number(d.agreed_fee),
         releasesWhen: "Deal completes or collapses",
@@ -205,7 +208,7 @@ function CommitmentsTable({ clubId }: { clubId: string }) {
       .filter((o) => (o.status === "SENT" || o.status === "COUNTERED") && (isLoan(o) ? o.loan_fee : o.fee_amount) != null)
       .map((o) => ({
         key: `offer-${o.id}`,
-        name: o.player?.name ?? "Offer",
+        name: o.player?.name ?? "Offer", playerId: o.player?.id ?? null, photoUrl: o.player?.photo_url ?? null,
         type: isLoan(o) ? "Loan offer" : "Offer",
         amount: Number(isLoan(o) ? o.loan_fee : o.fee_amount),
         releasesWhen: "Offer resolves",
@@ -220,7 +223,7 @@ function CommitmentsTable({ clubId }: { clubId: string }) {
   const totalCommitted = rows.reduce((sum, r) => sum + r.amount, 0);
 
   const columns: ResponsiveColumn<CommitmentRow>[] = [
-    { key: "name", header: "Commitment", priority: 1, render: (r) => <span className="font-medium text-text">{r.name}</span> },
+    { key: "name", header: "Commitment", priority: 1, render: (r) => <PlayerLink id={r.playerId} name={r.name} photoUrl={r.photoUrl} className="font-medium text-text" /> },
     { key: "type", header: "Type", priority: 3, render: (r) => <span className="text-text-muted">{r.type}</span> },
     { key: "amount", header: "Amount", priority: 2, className: "text-right", render: (r) => <span className="font-bold text-text">{formatCurrency(r.amount)}</span> },
     { key: "releases", header: "Releases when", priority: 4, render: (r) => <span className="text-text-muted">{r.releasesWhen}</span> },
@@ -240,7 +243,7 @@ function CommitmentsTable({ clubId }: { clubId: string }) {
         renderCard={(r) => (
           <div className="px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-text">{r.name}</span>
+              <PlayerLink id={r.playerId} name={r.name} photoUrl={r.photoUrl} className="text-sm font-semibold text-text" />
               <span className="text-sm font-bold text-text">{formatCurrency(r.amount)}</span>
             </div>
             <div className="mt-0.5 flex items-center justify-between text-xs text-text-muted">

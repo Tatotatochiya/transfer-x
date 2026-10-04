@@ -1,10 +1,13 @@
 import Card from "../ui/Card";
 import { formatCurrency } from "../../lib/utils";
 import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
+import PlayerLink from "../ui/PlayerLink";
 
 export interface WaitingItem {
   key: string;
   title: string;
+  /** When the item is about a player: a link to his profile, with his photo. */
+  player?: { id: string; photoUrl: string | null };
   description: string;
   amount: number | null;
   deadline: string | null;
@@ -68,7 +71,9 @@ export default function WaitingOnYouBand({
         {shown.map((item) => (
           <div key={item.key} className="flex flex-wrap items-center gap-4 border-b border-rule px-4 py-4 last:border-b-0 sm:px-5 sm:py-3.5">
             <div className="flex-1 basis-full sm:basis-[300px]">
-              <p className="text-[17px] font-bold text-text sm:text-[15px] sm:font-semibold">{item.title}</p>
+              <p className="text-[17px] font-bold text-text sm:text-[15px] sm:font-semibold">
+                {item.player ? <PlayerLink id={item.player.id} name={item.title} photoUrl={item.player.photoUrl} size="md" /> : item.title}
+              </p>
               <p className="line-clamp-2 text-[13px] text-text-muted sm:line-clamp-none">{item.description}</p>
             </div>
             <div className="basis-[130px] shrink">

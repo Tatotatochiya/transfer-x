@@ -55,6 +55,7 @@ import ListPlayerModal from "../../components/sales/ListPlayerModal";
 import { useOpenListings } from "../../hooks/useListing";
 import { offerHeadline } from "../../lib/offerTerms";
 import Money from "../../components/ui/Money";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 // ── Tier 2 — Standing figures ────────────────────────────────────────────────
 
@@ -102,18 +103,18 @@ const POSITION_TARGETS = [
 
 // ── Completed transfers ──────────────────────────────────────────────────────
 
-interface CompletedRow { id: string; player: string; position: string | null; from: Deal["seller_club"]; to: Deal["buyer_club"]; fee: number; completedAt: string | null; }
+interface CompletedRow { id: string; player: string; playerId: string | null; photoUrl: string | null; position: string | null; from: Deal["seller_club"]; to: Deal["buyer_club"]; fee: number; completedAt: string | null; }
 
 function CompletedTransfersTable({ deals, total }: { deals: Deal[]; total: number }) {
   const navigate = useNavigate();
   const rows: CompletedRow[] = deals.map((d) => ({
-    id: d.id, player: d.player?.name ?? "—", position: d.player?.position ?? null,
+    id: d.id, player: d.player?.name ?? "—", playerId: d.player?.id ?? null, photoUrl: d.player?.photo_url ?? null, position: d.player?.position ?? null,
     from: d.seller_club, to: d.buyer_club, fee: d.agreed_fee, completedAt: d.completed_at,
   }));
 
   const columns: ResponsiveColumn<CompletedRow>[] = [
     { key: "player", header: "Player", priority: 1, render: (r) => (
-      <span className="font-medium text-text">{r.player}{r.position && <span className="ml-2 text-xs text-text-muted">{r.position}</span>}</span>
+      <span className="inline-flex items-center gap-2 font-medium text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-xs text-text-muted">{r.position}</span>}</span>
     ) },
     { key: "from", header: "From", priority: 4, render: (r) => r.from ? <ClubLink id={r.from.id} name={r.from.name} /> : <span className="text-text-muted">Free agent</span> },
     { key: "to", header: "To", priority: 3, render: (r) => r.to ? <ClubLink id={r.to.id} name={r.to.name} /> : "—" },
@@ -141,7 +142,7 @@ function CompletedTransfersTable({ deals, total }: { deals: Deal[]; total: numbe
         renderCard={(r) => (
           <div className="px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-text">{r.player}{r.position && <span className="ml-1.5 text-xs text-text-muted">{r.position}</span>}</span>
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-xs text-text-muted">{r.position}</span>}</span>
               <span className="text-sm font-bold text-text">{formatCurrency(r.fee)}</span>
             </div>
             <p className="mt-0.5 text-xs text-text-muted">
@@ -273,6 +274,7 @@ export default function DashboardPage() {
   const waitingItems: WaitingItem[] = (dashboard?.waiting_on_you ?? []).map((item) => ({
     key: `${item.kind}-${item.id}`,
     title: item.player_name ?? WAITING_FALLBACK_TITLE[item.kind],
+    player: item.player_id && item.player_name ? { id: item.player_id, photoUrl: item.player_photo_url ?? null } : undefined,
     description: item.club_name ? `${item.reason} · ${item.club_name}` : item.reason,
     amount: item.amount,
     deadline: item.deadline,
@@ -288,20 +290,20 @@ export default function DashboardPage() {
   // ── Tier 3 ──
   const listingRows = sales.slice(0, 3).map((s) => ({
     key: s.id, onClick: () => navigate(`/sales/${s.id}`),
-    name: s.player?.name ?? "—", sub: s.bid_count ? `${s.bid_count} bid${s.bid_count === 1 ? "" : "s"}` : "No bids yet",
+    name: s.player?.name ?? "—", player: { id: s.player?.id, photoUrl: s.player?.photo_url }, sub: s.bid_count ? `${s.bid_count} bid${s.bid_count === 1 ? "" : "s"}` : "No bids yet",
     value: s.best_bid != null ? formatCurrency(s.best_bid) : s.asking_price != null ? formatCurrency(s.asking_price) : "—",
     move: saleWhoseMove(s),
   }));
   const offerRows = offers.slice(0, 3).map((o) => ({
     key: o.id, onClick: () => navigate(`/offers/${o.id}`),
-    name: o.player?.name ?? "—",
+    name: o.player?.name ?? "—", player: { id: o.player?.id, photoUrl: o.player?.photo_url },
     sub: o.from_club_id === myClubId ? `to ${o.to_club?.name ?? "—"}` : `from ${buyerLabel(o, "—")}`,
     value: offerHeadline(o),
     move: offerWhoseMove(o, myClubId),
   }));
   const dealRows = deals.slice(0, 3).map((d) => ({
     key: d.id, onClick: () => navigate(`/deals/${d.id}`),
-    name: d.player?.name ?? "—", sub: d.stage.replace(/_/g, " ").toLowerCase(),
+    name: d.player?.name ?? "—", player: { id: d.player?.id, photoUrl: d.player?.photo_url }, sub: d.stage.replace(/_/g, " ").toLowerCase(),
     value: formatCurrency(d.agreed_fee), move: dealWhoseMove(d, myClubId),
   }));
 
@@ -359,9 +361,9 @@ export default function DashboardPage() {
       />
 
       <div className="mb-[18px] grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-        <WorkingPanel title="My open listings" linkTo="/sales/mine" rows={listingRows} />
-        <WorkingPanel title="Active offers" linkTo="/offers/received" rows={offerRows} />
-        <WorkingPanel title="Active deals" linkTo="/deals" rows={dealRows} />
+        <WorkingPanel title="My open listings" linkTo="/board?side=SELLING" rows={listingRows} />
+        <WorkingPanel title="Active offers" linkTo="/board" rows={offerRows} />
+        <WorkingPanel title="Active deals" linkTo="/board" rows={dealRows} />
       </div>
 
       <div className="mb-[18px] grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>

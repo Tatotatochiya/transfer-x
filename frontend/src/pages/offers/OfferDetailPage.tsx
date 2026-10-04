@@ -527,7 +527,8 @@ export default function OfferDetailPage() {
       <Card>
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Offer</p>
         <p className="text-lg font-semibold text-text">
-          <PlayerLink id={offer.player?.id ?? offer.player_id} name={offer.player?.name ?? "Unknown player"} />
+          <PlayerLink id={offer.player?.id ?? offer.player_id} name={offer.player?.name ?? "Unknown player"}
+            photoUrl={offer.player?.photo_url ?? null} size="lg" />
         </p>
         {offer.player?.position && <p className="text-xs text-text-muted mt-0.5">{offer.player.position}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-2">

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 import api from "../../lib/api";
 import type { Paginated, TransferActivity, TransferAnalytics } from "../../types/api";
 import Badge from "../../components/ui/Badge";
@@ -12,6 +11,7 @@ import ClubLink from "../../components/ui/ClubLink";
 import { formatCurrency, formatDate } from "../../lib/utils";
 import { positionVariant } from "../../lib/badges";
 import type { PlayerPosition } from "../../types/enums";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 const PAGE_SIZE = 30;
 
@@ -52,12 +52,7 @@ function TransferRow({ t }: { t: TransferActivity }) {
     <tr className="border-b border-rule-faint transition-colors hover:bg-surface-inset">
       <td className="px-4 py-3">
         {t.player ? (
-          <Link
-            to={`/players/market/${t.player.id}`}
-            className="font-medium text-text hover:text-accent transition-colors"
-          >
-            {t.player.name}
-          </Link>
+          <PlayerLink id={t.player.id} name={t.player.name} photoUrl={t.player.photo_url ?? null} size="md" className="font-medium text-text" />
         ) : (
           <span className="text-text-muted">Unknown</span>
         )}
@@ -227,12 +222,7 @@ function TopTransferRow({ t, rank }: { t: TransferActivity; rank: number }) {
       <span className="w-5 text-center text-sm font-bold text-text-muted tabular-nums shrink-0">{rank}</span>
       <div className="flex-1 min-w-0">
         {t.player ? (
-          <Link
-            to={`/players/market/${t.player.id}`}
-            className="text-sm font-medium text-text hover:text-accent transition-colors"
-          >
-            {t.player.name}
-          </Link>
+          <PlayerLink id={t.player.id} name={t.player.name} photoUrl={t.player.photo_url ?? null} size="md" className="text-sm font-medium text-text" />
         ) : (
           <span className="text-sm text-text-muted">Unknown</span>
         )}

@@ -21,6 +21,7 @@ class PendingApprovalResponse(BaseModel):
     # decision sheet's facts.
     player_id: uuid.UUID | None = None
     player_name: str | None = None
+    player_photo_url: str | None = None
     budget_after: Decimal | None = None
     status: ApprovalStatus
     decided_by_user_id: uuid.UUID | None

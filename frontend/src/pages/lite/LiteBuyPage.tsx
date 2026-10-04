@@ -148,11 +148,15 @@ function CandidateCard({ p }: { p: LiteCandidate }) {
   return (
     <div className="flex flex-col gap-4 rounded-3xl bg-surface p-6 ring-1 ring-border">
       <div className="flex items-center gap-3">
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-bg text-[1.25rem] font-extrabold text-accent">
-          {initials(p.name)}
-        </span>
+        {p.photo_url ? (
+          <img src={p.photo_url} alt="" className="h-14 w-14 shrink-0 rounded-full bg-surface-inset object-cover object-top" />
+        ) : (
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-bg text-[1.25rem] font-extrabold text-accent">
+            {initials(p.name)}
+          </span>
+        )}
         <span className="min-w-0">
-          <span className="block truncate text-[1.375rem] font-extrabold text-text">{p.name}</span>
+          <Link to={`/players/market/${p.player_id}`} className="block truncate text-[1.375rem] font-extrabold text-text no-underline hover:text-accent">{p.name}</Link>
           <span className="block truncate text-base text-text-muted">{p.club ?? "No club"}</span>
         </span>
       </div>

@@ -17,6 +17,7 @@ import Money from "../../components/ui/Money";
 import { timeLeft } from "../../lib/timeLeft";
 import AskTeamButton from "../../components/lite/AskTeamButton";
 import { SwipeNav, WaitingHeader } from "../../components/lite/WaitingNav";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 type Mode = "answer" | "accept" | "counter" | "reject";
 
@@ -131,6 +132,9 @@ export default function LiteOfferCardPage() {
         <div>
           <FactRow label="Player">{player}</FactRow>
           <FactRow label={card.side === "seller" ? "From" : "Selling club"}>{cap(other)}</FactRow>
+          <FactRow label="Player">
+            <PlayerLink id={card.player_id} name={card.player_name} photoUrl={card.player_photo_url ?? null} size="md" className="font-semibold" />
+          </FactRow>
           <FactRow label={loan ? "Loan fee" : "Fee"}><Money value={card.fee} format={liteMoney} /></FactRow>
           {card.your_valuation != null && <FactRow label="Your valuation"><Money value={card.your_valuation} format={liteMoney} /></FactRow>}
           {open && card.expires_at && (

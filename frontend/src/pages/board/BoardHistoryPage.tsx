@@ -8,6 +8,7 @@ import EmptyState from "../../components/ui/EmptyState";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import type { BoardCard } from "./BoardPage";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 /**
  * Transfer history (product ADR 0008): every completed transfer and
@@ -99,16 +100,18 @@ export default function BoardHistoryPage() {
           <p className="mb-2 text-xs text-text-muted">{data.total} {data.total === 1 ? "item" : "items"}</p>
           <div className="divide-y divide-rule-faint rounded-xl bg-surface ring-1 ring-border">
             {data.items.map((c) => (
-              <button
+              <div
                 key={`${c.kind}:${c.entity_id}`}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => navigate(c.link)}
-                className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left hover:bg-surface-inset"
+                onKeyDown={(e) => { if (e.target === e.currentTarget && e.key === "Enter") navigate(c.link); }}
+                className="flex w-full cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left hover:bg-surface-inset"
               >
                 <span className="min-w-0 flex-1 basis-48">
-                  <span className="block truncate text-sm font-semibold text-text">
-                    {c.player_name}
-                    {c.player_position && <span className="ml-1.5 text-xs font-normal text-text-muted">{c.player_position}</span>}
+                  <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-text">
+                    <PlayerLink id={c.player_id} name={c.player_name} photoUrl={c.player_photo_url ?? null} size="md" />
+                    {c.player_position && <span className="shrink-0 text-xs font-normal text-text-muted">{c.player_position}</span>}
                   </span>
                   <span className="block truncate text-xs text-text-muted">
                     {c.side === "BUYING" ? "Buying" : "Selling"}
@@ -120,7 +123,7 @@ export default function BoardHistoryPage() {
                   {c.amount != null ? formatCompactCurrency(Number(c.amount)) : "—"}
                 </span>
                 <span className="w-24 text-right text-xs text-text-muted">{c.updated_at ? formatDate(c.updated_at) : ""}</span>
-              </button>
+              </div>
             ))}
           </div>
           {pages > 1 && (

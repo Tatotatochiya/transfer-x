@@ -12,6 +12,7 @@ import Spinner from "../../components/ui/Spinner";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import ConversationPanel, { type ConversationContext } from "../../components/conversation/ConversationPanel";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 /**
  * The Transfers board (Phase 3, product ADR 0008): every player the club is
@@ -30,6 +31,7 @@ export interface BoardCard {
   player_id: string;
   player_name: string;
   player_position: string | null;
+  player_photo_url?: string | null;
   counterparty: string | null;
   amount: string | number | null;
   detail: string;
@@ -61,17 +63,22 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
   const yours = card.whose_move === "your";
   const left = timeLeft(card.deadline);
   return (
-    <button
-      type="button"
+    // A clickable card rather than a <button>: the player's name inside is
+    // a link to his profile, and a link can't sit inside a button.
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`${card.player_name}: ${card.detail}`}
       onClick={() => onOpen(card)}
-      className={`w-full rounded-xl bg-surface p-3 text-left ring-1 transition-colors hover:ring-accent/50 focus-visible:outline-2 focus-visible:outline-accent ${
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(card); } }}
+      className={`w-full cursor-pointer rounded-xl bg-surface p-3 text-left ring-1 transition-colors hover:ring-accent/50 focus-visible:outline-2 focus-visible:outline-accent ${
         yours ? "ring-accent/40" : "ring-border"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 truncate text-sm font-semibold text-text">
-          {card.player_name}
-          {card.player_position && <span className="ml-1.5 text-xs font-normal text-text-muted">{card.player_position}</span>}
+        <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-text">
+          <PlayerLink id={card.player_id} name={card.player_name} photoUrl={card.player_photo_url ?? null} size="md" />
+          {card.player_position && <span className="shrink-0 text-xs font-normal text-text-muted">{card.player_position}</span>}
         </p>
         {yours && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Your move" />}
       </div>
@@ -95,7 +102,7 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
           {card.others > 0 && <span>+{card.others} more</span>}
         </p>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -116,6 +123,8 @@ function CardDetail({ card, onClose }: { card: BoardCard; onClose: () => void })
       <div className="space-y-4 px-6 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm">
+            <PlayerLink id={card.player_id} name={card.player_name} photoUrl={card.player_photo_url ?? null} size="lg"
+              className="mb-2 text-base font-semibold text-text" />
             <p className="text-text-secondary">
               {card.side === "BUYING" ? "Buying" : "Selling"}
               {card.counterparty && (card.side === "BUYING" ? ` from ${card.counterparty}` : ` to ${card.counterparty}`)}

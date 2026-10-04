@@ -55,7 +55,7 @@ export default function EnquiryDetailPage() {
       </button>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-text"><PlayerLink id={e.player_id} name={e.player_name ?? "Player"} /></h1>
+          <h1 className="text-2xl font-bold text-text"><PlayerLink id={e.player_id} name={e.player_name ?? "Player"} photoUrl={e.player_photo_url ?? null} size="lg" /></h1>
           <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-text-muted">
             {e.role === "owning" ? (
               <><ClubLink id={other.id} name={other.name} crestUrl={other.id ? other.crest_url ?? null : undefined} /> is asking about your player</>

@@ -11,6 +11,7 @@ class PlayerSummary(BaseModel):
     id: uuid.UUID
     name: str
     position: str | None = None
+    photo_url: str | None = None  # his photo, wherever his name is shown
     status: str | None = None
     open_to_offers: bool = False
     team_name: str | None = None
