@@ -1,5 +1,6 @@
 """Lite mode routes (docs/feature_spec/lite-mode)."""
 import uuid
+from decimal import Decimal
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -7,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, get_optional_user
 from app.lite import service
 from app.lite.schemas import (
     LiteHomeResponse,
@@ -306,3 +307,49 @@ async def ask_team(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
     await db.commit()
     return result
+
+
+# ── Decisions from email (BACKEND.md §7, L8) ─────────────────────────────────
+
+
+class EmailConfirmRequest(BaseModel):
+    action: Literal["counter", "accept", "reject"]
+    amount: Decimal | None = None
+
+
+@router.get("/lite/confirm/{token}")
+async def view_email_decision(
+    token: str,
+    action: Literal["counter", "accept", "reject"],
+    amount: Decimal | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+) -> dict:
+    """What an email button would do. Changes nothing: mail scanners open links."""
+    from app.lite import email_actions
+
+    return await email_actions.view(db, token, action, amount, current_user)
+
+
+@router.post("/lite/confirm/{token}")
+async def confirm_email_decision(
+    token: str,
+    body: EmailConfirmRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+) -> dict:
+    """Hold the decision for 10 seconds, like any Lite send. Accepting or
+    countering needs the email's recipient signed in; saying no doesn't."""
+    from app.lite import email_actions
+
+    result = await email_actions.confirm(db, token, body.action, body.amount, current_user)
+    await db.commit()
+    return result
+
+
+@router.post("/lite/confirm/{token}/undo", status_code=status.HTTP_204_NO_CONTENT)
+async def undo_email_decision(token: str, db: AsyncSession = Depends(get_db)) -> None:
+    from app.lite import email_actions
+
+    await email_actions.undo(db, token)
+    await db.commit()

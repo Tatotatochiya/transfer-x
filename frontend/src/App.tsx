@@ -72,6 +72,7 @@ const BoardPage                 = lazy(() => import("./pages/board/BoardPage"));
 const ApprovalsPage             = lazy(() => import("./pages/club/ApprovalsPage"));
 const AcceptInvitePage          = lazy(() => import("./pages/auth/AcceptInvitePage"));
 const ResetPasswordPage         = lazy(() => import("./pages/auth/ResetPasswordPage"));
+const LiteConfirmPage           = lazy(() => import("./pages/lite/LiteConfirmPage"));
 const JoinClubPage              = lazy(() => import("./pages/auth/JoinClubPage"));
 const JoinPlayerPage            = lazy(() => import("./pages/auth/JoinPlayerPage"));
 const LiteHomePage              = lazy(() => import("./pages/lite/LiteHomePage"));
@@ -209,6 +210,8 @@ export default function App() {
           {/* Staff invitation acceptance — public tokenised link, not open signup (D6) */}
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          {/* A decision from an email (Lite L8): works signed out, for saying no. */}
+          <Route path="/lite/confirm/:token" element={<LiteConfirmPage />} />
           {/* A view-as tab arrives here; the token was taken from the URL by the auth store. */}
           <Route path="/view-as" element={<Navigate to="/dashboard" replace />} />
           <Route path="/join" element={<JoinClubPage />} />
