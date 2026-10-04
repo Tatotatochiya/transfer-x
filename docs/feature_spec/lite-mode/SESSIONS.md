@@ -83,3 +83,9 @@ The branches this once waited on (`player-invitations`, PR #9, `username-login-p
 **Why this order:**
 - **L4 before L5.** The assistant's proposals open the action card, so the card has to exist first.
 - **L4 ships without undo.** Direct confirms through the existing endpoints are safe to release on their own. L6 then swaps the card over to held sends, which gives undo.
+- **L7 built (2026-10-04).** Team contact (§6): `club_staff.is_lite_contact` (migration `0097`), chosen on the Team page ("Make team contact"); else the first sporting director or manager who isn't asking; else "your team", which reaches everyone who can act on the market. `GET /lite/team-contact`, `POST /lite/ask-team` (a `LITE_QUESTION` notification, a heads-up, linking to the player, offer or deal; audited). Buttons: "Ask {name} about him" on Buy results, "Send to {name}" under an unanswered question and "Ask {name} to check first" under an answer, "Ask {name} about this" on the offer card.
+- **L8 built (2026-10-04).** Decisions from email (§7): `action_tokens` (migration `0098`), one per email, hashed, single-use, 24 hours. Offer-received and countered emails, their 30-minute fallbacks and the digest's offer lines carry "Ask for £Xm", "Accept £Ym", "Say no". `/lite/confirm/:token` shows the card (GET changes nothing); Confirm holds the action with channel `EMAIL`, undoable from the Sent screen or the same link. Accepting or countering needs the recipient signed in (login takes `?next=`); saying no doesn't.
+- **Deviations in L8:**
+  - The version check fingerprints the offer's status, terms and `last_action_at`, not `last_action_at` alone: two changes in one clock tick would otherwise look the same.
+  - Approval emails get no one-tap buttons: approving carries the action out at once with no undo, so it stays on the approval decision sheet (sign-in required).
+  - The confirm page never shows the recipient's address, since links get forwarded.
