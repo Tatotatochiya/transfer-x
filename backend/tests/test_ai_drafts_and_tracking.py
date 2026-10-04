@@ -137,3 +137,13 @@ async def test_counter_advice_is_counted_shown_then_used(client: AsyncClient, bu
     row = next(f for f in stats.json()["features"] if f["feature"] == "counter_advisor")
     assert (row["shown"], row["used"], row["used_pct"]) == (1, 1, 100)
     assert (await client.get("/ai/suggestions/stats", headers=_auth_headers(buyer))).status_code == 403
+
+
+def test_verdict_rule_for_trimming_the_assistant():
+    from app.ai.tracking import verdict
+
+    assert verdict(10, 90) == "Not enough data yet"
+    assert verdict(40, 30) == "Keep"
+    assert verdict(40, 15) == "Review"
+    assert verdict(40, 5) == "Consider removing"
+    assert verdict(0, None) == "Not enough data yet"

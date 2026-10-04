@@ -133,6 +133,35 @@ async def update_preference(
     return await _preferences_response(db, current_user.id)
 
 
+@router.patch("/preferences/tier/{tier}", response_model=NotificationPreferencesResponse)
+async def update_tier_preference(
+    tier: str,
+    body: NotificationPreferenceUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Set a channel for every type in a tier at once (Settings shows three
+    tier rows, with every type behind "Show every type"). The daily summary
+    is a switch of its own and isn't changed here."""
+    from app.notifications.tiers import TIERS, Tier
+
+    try:
+        wanted = Tier(tier)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown tier: {tier}")
+    for ntype, t in TIERS.items():
+        if t is not wanted or ntype is NotificationType.DAILY_DIGEST:
+            continue
+        if body.enabled is not None:
+            await service.set_preference(db, current_user.id, ntype, body.enabled)
+        if body.email_enabled is not None:
+            await service.set_email_preference(db, current_user.id, ntype, body.email_enabled)
+        if body.push_enabled is not None and wanted is not Tier.FYI:
+            await service.set_push_preference(db, current_user.id, ntype, body.push_enabled)
+    await db.commit()
+    return await _preferences_response(db, current_user.id)
+
+
 # ── Web Push (docs/feature_spec/mobile-notifications §5.2) ───────────────────
 
 

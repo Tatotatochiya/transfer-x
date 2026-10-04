@@ -1827,6 +1827,8 @@ export interface SuggestionStat {
   shown: number;
   used: number;
   used_pct: number | null;
+  /** "Keep", "Review", "Consider removing" or "Not enough data yet" (ai/tracking.py). */
+  verdict?: string;
 }
 
 // ── Player profile ledger (GET /players/market/{id}/ledger) ──────────────────
