@@ -41,8 +41,6 @@ const CHIP_STATUS: Partial<Record<Chip, OfferStatus>> = {
 
 // ── Tier 1 — "Your move" ──────────────────────────────────────────────────────
 
-const NEGOTIATION_TERMINAL = new Set<OfferStatus>(["ACCEPTED", "REJECTED", "WITHDRAWN", "EXPIRED"]);
-
 function YourMoveDeadline({ deadline }: { deadline: string | null }) {
   const result = useDeadlineCountdown(deadline);
   if (!deadline) return <span className="text-success-text">—</span>;

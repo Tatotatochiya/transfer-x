@@ -13,6 +13,11 @@ import { formatDate, getApiError } from "../../lib/utils";
 import { positionVariant } from "../../lib/badges";
 import type { PlayerPosition } from "../../types/enums";
 
+/** GET /admin/players/{id}: the player plus every contract, past and present. */
+type AdminPlayer = Player & {
+  contracts: { id: string; club_id: string; start_date?: string; end_date?: string; wage_weekly?: number; is_active: boolean }[];
+};
+
 const POSITIONS  = ["GK", "DEF", "MID", "FWD"];
 const VISIBILITIES = ["PUBLIC", "CLUBS_ONLY", "PRIVATE"];
 const STATUSES   = ["CONTRACTED", "EXTERNAL", "FREE_AGENT"];
@@ -28,9 +33,9 @@ export default function AdminPlayerDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: player, isLoading } = useQuery<Player>({
+  const { data: player, isLoading } = useQuery<AdminPlayer>({
     queryKey: ["admin", "players", id],
-    queryFn: () => api.get<Player>(`/admin/players/${id}`).then((r) => r.data),
+    queryFn: () => api.get<AdminPlayer>(`/admin/players/${id}`).then((r) => r.data),
     enabled: !!id,
   });
 

@@ -14,7 +14,7 @@ import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/Resp
 import EmptyState from "../../components/ui/EmptyState";
 import ListPlayerModal from "../../components/sales/ListPlayerModal";
 import { saleStatusLabel, saleStatusVariant, saleTypeLabel, saleTypeVariant } from "../../lib/badges";
-import { formatCurrency, formatDeadline } from "../../lib/utils";
+import { formatCurrency } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 import PlayerLink from "../../components/ui/PlayerLink";

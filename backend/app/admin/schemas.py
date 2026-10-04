@@ -207,6 +207,7 @@ class AdminDealResponse(BaseModel):
     status: str
     stage: str
     created_at: datetime
+    updated_at: datetime | None = None
     completed_at: datetime | None = None
 
 

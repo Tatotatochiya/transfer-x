@@ -267,7 +267,7 @@ function FormBlock({ form }: { form: PlayerForm }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function StatsPanel({ stats, form, position }: Props) {
+export default function StatsPanel({ stats, form }: Props) {
   // Sort once: prefer records with a team name, then by appearances desc
   const sorted = stats.length > 0
     ? [...stats].sort((a, b) => {

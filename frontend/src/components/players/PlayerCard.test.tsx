@@ -4,7 +4,8 @@ import { renderWithProviders } from "../../test/utils";
 import PlayerCard from "./PlayerCard";
 import type { Player } from "../../types/api";
 
-const BASE_PLAYER: Player = {
+// Only the fields PlayerCard reads; the rest of Player doesn't matter here.
+const BASE_PLAYER = {
   id: "p1",
   name: "Mohamed Salah",
   age: 32,
@@ -18,7 +19,7 @@ const BASE_PLAYER: Player = {
   current_club: null,
   created_at: "2025-01-01T00:00:00Z",
   updated_at: "2025-01-01T00:00:00Z",
-};
+} as unknown as Player;
 
 describe("PlayerCard", () => {
   it("renders player name", () => {

@@ -26,7 +26,6 @@ import {
 } from "../../lib/badges";
 import { formatCurrency, getApiError } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
-import { useToast } from "../../context/ToastContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 import type { DealStage, PlayerPosition } from "../../types/enums";
@@ -93,7 +92,6 @@ export default function SaleDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
-  const { addToast } = useToast();
   const { can } = useClubCapabilities();
   const { accessToken, user } = useAuthStore();
   const isAuthenticated = !!accessToken;

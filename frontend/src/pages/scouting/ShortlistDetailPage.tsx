@@ -11,10 +11,17 @@ import PageHeader from "../../components/ui/PageHeader";
 import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import Spinner from "../../components/ui/Spinner";
 import { positionVariant } from "../../lib/badges";
-import { formatCurrency, getApiError } from "../../lib/utils";
+import { getApiError } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
 import type { PlayerPosition } from "../../types/enums";
 import type { ShortlistItem } from "../../types/api";
+
+/** A public market value in its own currency (Transfermarkt's are in EUR). */
+function marketValue(v: number | string, currency: string | null | undefined): string {
+  const sym = currency === "EUR" ? "€" : currency === "USD" ? "$" : "£";
+  const n = Number(v);
+  return n >= 1e6 ? `${sym}${(n / 1e6).toFixed(1)}m` : `${sym}${Math.round(n / 1e3)}k`;
+}
 
 function useDebounce<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -44,7 +51,6 @@ function AddPlayerForm({
   const queryClient = useQueryClient();
   const [query, setQuery]           = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedName, setSelectedName] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [priority, setPriority]     = useState("3");
   const [notes, setNotes]           = useState("");
@@ -72,7 +78,6 @@ function AddPlayerForm({
 
   function selectPlayer(p: Player) {
     setSelectedId(p.id);
-    setSelectedName(p.name);
     setQuery(p.name);
     setDropdownOpen(false);
   }
@@ -340,7 +345,7 @@ function ShortlistItemsTable({
     { key: "value", header: "Market Value", priority: 2, className: "text-right", render: (item) => (
       <span className="text-sm font-semibold text-text-secondary tabular-nums">
         {item.player?.market_value != null
-          ? formatCurrency(item.player.market_value)
+          ? marketValue(item.player.market_value, item.player.market_value_currency)
           : <span className="text-text-muted font-normal">—</span>}
       </span>
     ) },
@@ -387,7 +392,7 @@ function ShortlistItemsTable({
               </Badge>
             )}
             <span>{statusLabel(item)}</span>
-            {item.player?.market_value != null && <span>{formatCurrency(item.player.market_value)}</span>}
+            {item.player?.market_value != null && <span>{marketValue(item.player.market_value, item.player.market_value_currency)}</span>}
           </div>
           {item.notes && <p className="mt-1 text-xs text-text-muted truncate">{item.notes}</p>}
           <button

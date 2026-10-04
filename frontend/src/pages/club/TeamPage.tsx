@@ -136,7 +136,7 @@ export default function TeamPage() {
       <EmptyState
         title="Owner only"
         body="Only the club owner can manage the team."
-        action={<Button variant="secondary" onClick={() => navigate("/club")}>Back to My Club</Button>}
+        action={{ label: "Back to My Club", onClick: () => navigate("/club") }}
       />
     );
   }

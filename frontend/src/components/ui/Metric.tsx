@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 interface MetricProps {
   label: string;
-  value?: string;
+  value?: ReactNode;
   valueNode?: ReactNode;
   className?: string;
 }

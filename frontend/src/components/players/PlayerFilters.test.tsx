@@ -29,7 +29,7 @@ describe("PlayerFilters", () => {
     // because userEvent.type fires per-character but parent state doesn't update between calls.
     fireEvent.change(screen.getByPlaceholderText(/Search players/i), { target: { value: "Salah" } });
     expect(onChange).toHaveBeenCalled();
-    const lastCall = onChange.mock.calls.at(-1)[0] as PlayerFilterState;
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PlayerFilterState;
     expect(lastCall.search).toBe("Salah");
   });
 
@@ -52,7 +52,7 @@ describe("PlayerFilters", () => {
   it("calls onChange with min_age when age input changes", () => {
     const { onChange } = setup();
     fireEvent.change(screen.getByPlaceholderText("Min age"), { target: { value: "25" } });
-    const lastCall = onChange.mock.calls.at(-1)[0] as PlayerFilterState;
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PlayerFilterState;
     expect(lastCall.min_age).toBe("25");
   });
 
@@ -77,7 +77,7 @@ describe("PlayerFilters", () => {
     const { onChange } = setup();
     await userEvent.click(screen.getByText(/More filters/));
     fireEvent.change(screen.getByPlaceholderText("Nationality…"), { target: { value: "Brazil" } });
-    const lastCall = onChange.mock.calls.at(-1)[0] as PlayerFilterState;
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PlayerFilterState;
     expect(lastCall.nationality).toBe("Brazil");
   });
 

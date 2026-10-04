@@ -24,7 +24,7 @@ console.error = (...args: unknown[]) => {
 };
 
 // Mock IntersectionObserver (not in jsdom)
-global.IntersectionObserver = vi.fn().mockImplementation(() => ({
+globalThis.IntersectionObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),

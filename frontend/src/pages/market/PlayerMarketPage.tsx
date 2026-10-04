@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useAuth } from "../../hooks/useAuth";
 import { usePreferencesStore } from "../../store/preferences";
-import type { Club, FairValueSignal, Paginated, Player, PlayerForm, PlayerSearchView, PlayerStats } from "../../types/api";
+import type { Club, FairValueSignal, Paginated, Player, PlayerForm, PlayerSearchView } from "../../types/api";
 import PlayerCard from "../../components/players/PlayerCard";
 import PlayerListRow from "../../components/players/PlayerListRow";
 import PlayerFilters, {
@@ -257,20 +257,6 @@ export default function PlayerMarketPage() {
         .get<{ valuations: Record<string, FairValueSignal> }>("/valuation/players", { params: { ids: playerIds } })
         .catch(() => ({ data: { valuations: {} as Record<string, FairValueSignal> } }));
       return resp.data.valuations;
-    },
-  });
-
-  const { data: statsMap = {} } = useQuery<Record<string, PlayerStats | null>>({
-    queryKey: ["players", "stats-batch", playerIds],
-    enabled: view === "list" && fetchedPlayers.length > 0,
-    staleTime: 120_000,
-    queryFn: async () => {
-      const resp = await api.get<Record<string, PlayerStats[]>>("/players/stats/batch", { params: { player_ids: playerIds } });
-      const map: Record<string, PlayerStats | null> = {};
-      for (const [id, statsList] of Object.entries(resp.data)) {
-        map[id] = statsList.sort((a, b) => b.appearances - a.appearances)[0] ?? null;
-      }
-      return map;
     },
   });
 

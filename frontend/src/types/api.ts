@@ -1027,6 +1027,9 @@ export interface ShortlistItem {
     status: string | null;
     open_to_offers: boolean;
     team_name: string | null;
+    market_value?: number | string | null;
+    /** Transfermarkt values are in EUR. */
+    market_value_currency?: string | null;
   } | null;
 }
 
@@ -1138,6 +1141,7 @@ export interface AdminDeal {
   status: DealStatus;
   stage: DealStage;
   created_at: string;
+  updated_at?: string | null;
   completed_at: string | null;
 }
 

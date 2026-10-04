@@ -6,7 +6,7 @@ import type { AdminClubDetail, Paginated, WorldTeam } from "../../types/api";
 import Button from "../../components/ui/Button";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
-import { formatCurrency, getApiError } from "../../lib/utils";
+import { getApiError } from "../../lib/utils";
 
 const ROLES = ["BUYER", "SELLER", "BOTH"];
 
