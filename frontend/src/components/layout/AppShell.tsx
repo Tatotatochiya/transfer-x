@@ -8,6 +8,7 @@ import GlobalSearch from "./GlobalSearch";
 import Avatar from "../ui/Avatar";
 import PushSoftAsk from "../notifications/PushSoftAsk";
 import ViewAsBanner from "./ViewAsBanner";
+import NamePrompt from "../account/NamePrompt";
 import { useAuthStore } from "../../store/auth";
 import { useClubDashboard } from "../../hooks/useClubDashboard";
 import { markOpenedFromUrl, setAppBadge, syncSubscription } from "../../lib/push";
@@ -106,6 +107,7 @@ export default function AppShell({ children }: AppShellProps) {
           <GlobalSearch />
         </div>
         <div className="mx-auto max-w-[1280px] px-4 py-6 md:px-6 lg:px-8 lg:pt-1">
+          {isAuthenticated && <NamePrompt />}
           {children}
         </div>
       </main>

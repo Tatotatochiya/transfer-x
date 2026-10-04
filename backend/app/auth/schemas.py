@@ -18,6 +18,8 @@ class RegisterRequest(BaseModel):
     country: str = ""
     # Player fields
     player_id: uuid.UUID | None = None
+    first_name: str = Field(default="", max_length=80)
+    last_name: str = Field(default="", max_length=80)
 
 
 class LoginRequest(BaseModel):
@@ -52,12 +54,20 @@ class UserResponse(BaseModel):
     is_superuser: bool
     user_type: UserType
     created_at: datetime
+    first_name: str | None = None
+    last_name: str | None = None
+    full_name: str | None = None
     # Owner or staff of a club. TransferX staff accounts have none, so the app
     # shows them the admin sidebar and skips club-only requests.
     has_club: bool = False
     # Set when this is a read-only "view as this club" session: the email of
     # the TransferX staff member looking.
     viewed_by: str | None = None
+
+
+class UpdateMeRequest(BaseModel):
+    first_name: str = Field(min_length=1, max_length=80)
+    last_name: str = Field(min_length=1, max_length=80)
 
 
 class ChangePasswordRequest(BaseModel):

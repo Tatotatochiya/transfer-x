@@ -17,6 +17,7 @@ import {
 } from "../../store/preferences";
 import NotificationTypesTable from "../../components/notifications/NotificationTypesTable";
 import PushSettingsCard from "../../components/notifications/PushSettingsCard";
+import YourNameCard from "../../components/account/YourNameCard";
 
 // ── Segmented control ─────────────────────────────────────────────────────────
 
@@ -126,10 +127,11 @@ export default function AccountSettingsPage() {
         {/* Profile */}
         <Card className="flex items-center gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-inset text-lg font-bold text-text-secondary ring-1 ring-border">
-            {user?.email?.[0]?.toUpperCase() ?? "?"}
+            {(user?.first_name ?? user?.email)?.[0]?.toUpperCase() ?? "?"}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-text">{user?.email}</p>
+            <p className="truncate text-sm font-semibold text-text">{user?.full_name ?? user?.email}</p>
+            {user?.full_name && <p className="truncate text-xs text-text-muted">{user.email}</p>}
             <p className="mt-0.5 text-xs text-text-muted">
               Member since{" "}
               {user?.created_at
@@ -142,6 +144,10 @@ export default function AccountSettingsPage() {
           </div>
           {user?.is_superuser && <Badge variant="warning">Admin</Badge>}
         </Card>
+
+        <Section id="name" title="Your name">
+          <YourNameCard />
+        </Section>
 
         {/* Display preferences */}
         <Section

@@ -218,11 +218,12 @@ export default function AdminUsersPage() {
 
   const columns: ResponsiveColumn<AdminUser>[] = [
     {
-      key: "email", header: "Email", priority: 1,
+      key: "email", header: "Name / email", priority: 1,
       render: (u) => (
         <span className="font-medium text-text">
-          {u.email}
+          {u.full_name ?? u.email}
           {u.id === me?.id && <Badge variant="warning" className="ml-2">You</Badge>}
+          {u.full_name && <span className="block text-xs font-normal text-text-muted">{u.email}</span>}
         </span>
       ),
     },
@@ -324,7 +325,7 @@ export default function AdminUsersPage() {
               <div className="px-4 py-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-text">
-                    {u.email}
+                    {u.full_name ?? u.email}
                     {u.id === me?.id && <Badge variant="warning" className="ml-2">You</Badge>}
                   </span>
                   <span className="text-xs text-text-muted">

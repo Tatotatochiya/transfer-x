@@ -4,6 +4,7 @@ import Icon, { type IconName } from "../../components/layout/Icon";
 import Spinner from "../../components/ui/Spinner";
 import { useLiteHome, type LiteHome, type LiteTile } from "../../hooks/useLite";
 import { liteMoney } from "../../lib/liteMoney";
+import { useAuthStore } from "../../store/auth";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -70,6 +71,7 @@ function Tile({ tile }: { tile: LiteTile }) {
 /** Lite home (README "Screen 1", "Screen 2", resume card from "3d"). */
 export default function LiteHomePage() {
   const { data: home, isLoading, isError } = useLiteHome();
+  const user = useAuthStore((s) => s.user);
 
   if (isLoading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
   if (isError || !home) {
@@ -85,7 +87,7 @@ export default function LiteHomePage() {
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-[2rem] font-extrabold leading-tight tracking-[-0.025em] text-text sm:text-[2.5rem]">
-          {greeting()}, {home.club_name}.
+          {greeting()}, {user?.first_name ?? home.club_name}.
         </h1>
         <p className="mt-2 text-[1.25rem] text-text-secondary sm:text-[1.375rem]">{situation(home)}</p>
         {home.briefing_headline && (

@@ -14,6 +14,7 @@ from app.auth.schemas import (
     RefreshRequest,
     RegisterRequest,
     TokenResponse,
+    UpdateMeRequest,
     UserResponse,
 )
 from app.clubs import service as clubs_service
@@ -27,6 +28,14 @@ from app.config import settings
 from app.database import get_db
 
 router = APIRouter(tags=["auth"])
+
+
+def _set_names(user: User, first: str, last: str) -> None:
+    """Names given while joining; blank ones are asked for later."""
+    if first.strip():
+        user.first_name = first.strip()
+    if last.strip():
+        user.last_name = last.strip()
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -56,6 +65,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    _set_names(user, body.first_name, body.last_name)
 
     if body.user_type == UserType.CLUB:
         club_name = body.club_name.strip() or body.email.split("@")[0]
@@ -234,6 +244,7 @@ async def accept_club_invitation(
         user = await clubs_service.accept_club_invitation(db, token, password=body.password)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    _set_names(user, body.first_name, body.last_name)
     club = await clubs_service.get_club_for_user(db, user.id)
     await audit_service.emit(
         db,
@@ -282,6 +293,7 @@ async def accept_player_invitation(
         user = await clubs_service.accept_player_invitation(db, token, password=body.password)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    _set_names(user, body.first_name, body.last_name)
     await audit_service.emit(
         db, entity_type="PLAYER", entity_id=inv.player_id, action="PLAYER_JOINED",
         actor_user_id=user.id,
@@ -305,7 +317,7 @@ async def accept_player_invitation(
     if recipient is not None:
         await notif_service.create_notification(
             db, recipient_user_id=recipient, type=NotificationType.STAFF_INVITATION,
-            message=f"{user.email} accepted your invitation and now has a player account",
+            message=f"{user.display_label} accepted your invitation and now has a player account",
             link=f"/players/market/{inv.player_id}", related_player_id=inv.player_id,
         )
     access_token = auth_service.create_access_token(user.id, user.email)
@@ -334,6 +346,7 @@ async def accept_invitation(
         user, staff = await clubs_service.accept_staff_invitation(db, invitation, body.password)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    _set_names(user, body.first_name, body.last_name)
 
     club = await clubs_service.get_club_by_id(db, invitation.club_id)
     await audit_service.emit(
@@ -343,7 +356,7 @@ async def accept_invitation(
         action="STAFF_JOINED",
         actor_user_id=user.id,
         payload={"email": user.email, "role": staff.role.value},
-        description=f"{user.email} joined as {staff.role.value}",
+        description=f"{user.display_label} joined as {staff.role.value}",
     )
     # Account/administrative event → owner only (D5).
     if club is not None:
@@ -351,7 +364,7 @@ async def accept_invitation(
             db,
             recipient_user_id=club.user_id,
             type=NotificationType.STAFF_INVITATION,
-            message=f"{user.email} accepted your invitation and joined as {staff.role.value.replace('_', ' ').title()}",
+            message=f"{user.display_label} accepted your invitation and joined as {staff.role.value.replace('_', ' ').title()}",
             link="/club/team",
         )
 
@@ -375,8 +388,24 @@ async def me(
         import uuid as _uuid
 
         staff = await db.get(User, _uuid.UUID(staff_id))
-        resp.viewed_by = staff.email if staff else "TransferX staff"
+        resp.viewed_by = staff.display_label if staff else "TransferX staff"
     return resp
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    body: UpdateMeRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    """Set your first and last name."""
+    first, last = body.first_name.strip(), body.last_name.strip()
+    if not first or not last:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter your first and last name")
+    current_user.first_name, current_user.last_name = first, last
+    await db.commit()
+    return await me(request, current_user, db)
 
 
 @router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)

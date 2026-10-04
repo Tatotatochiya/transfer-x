@@ -39,8 +39,9 @@ async def _get_club_or_403(db: AsyncSession, user: User):
 
 async def _to_response(db: AsyncSession, approval: PendingApproval) -> PendingApprovalResponse:
     resp = PendingApprovalResponse.model_validate(approval)
-    result = await db.execute(select(User.email).where(User.id == approval.requested_by_user_id))
-    resp.requested_by_email = result.scalar_one_or_none()
+    requester = await db.get(User, approval.requested_by_user_id) if approval.requested_by_user_id else None
+    resp.requested_by_email = requester.email if requester else None
+    resp.requested_by_name = requester.full_name if requester else None
     return resp
 
 

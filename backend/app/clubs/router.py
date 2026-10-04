@@ -252,6 +252,7 @@ def _staff_member_response(staff) -> ClubStaffMemberResponse:
         id=staff.id,
         user_id=staff.user_id,
         email=staff.user.email if staff.user else "",
+        name=staff.user.full_name if staff.user else None,
         role=staff.role,
         created_at=staff.created_at,
     )
@@ -371,7 +372,7 @@ async def change_staff_role(
         action="STAFF_ROLE_CHANGED",
         actor_user_id=current_user.id,
         payload={"staff_user_id": str(staff.user_id), "from": old_role, "to": body.role.value},
-        description=f"Changed {staff.user.email if staff.user else staff.user_id} from {old_role} to {body.role.value}",
+        description=f"Changed {staff.user.display_label if staff.user else staff.user_id} from {old_role} to {body.role.value}",
     )
     await db.commit()
     await db.refresh(staff)
@@ -394,6 +395,7 @@ async def remove_staff_member(
     if staff is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff member not found")
     staff_email = staff.user.email if staff.user else str(staff.user_id)
+    staff_label = staff.user.display_label if staff.user else staff_email
     staff_user_id = staff.user_id
     await clubs_service.remove_club_staff(db, staff)
     await audit_service.emit(
@@ -403,7 +405,7 @@ async def remove_staff_member(
         action="STAFF_REMOVED",
         actor_user_id=current_user.id,
         payload={"staff_user_id": str(staff_user_id), "email": staff_email},
-        description=f"Removed {staff_email} from the team",
+        description=f"Removed {staff_label} from the team",
     )
     await db.commit()
 

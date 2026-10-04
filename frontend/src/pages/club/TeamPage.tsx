@@ -177,7 +177,8 @@ export default function TeamPage() {
                 {staff.map((member) => (
                   <div key={member.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-text">{member.email}</p>
+                      <p className="truncate text-sm font-medium text-text">{member.name ?? member.email}</p>
+                      {member.name && <p className="truncate text-xs text-text-muted">{member.email}</p>}
                       <p className="mt-0.5 text-xs text-text-muted">
                         Joined {formatDateTime(member.created_at)}
                       </p>

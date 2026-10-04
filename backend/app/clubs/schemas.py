@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.clubs.models import ClubRole, StaffRole
 
@@ -105,6 +105,7 @@ class ClubStaffMemberResponse(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
     email: str  # set by router from the joined user
+    name: str | None = None
     role: StaffRole
     created_at: datetime
 
@@ -151,6 +152,8 @@ class InvitationPreviewResponse(BaseModel):
 
 class InvitationAcceptRequest(BaseModel):
     password: str
+    first_name: str = Field(default="", max_length=80)
+    last_name: str = Field(default="", max_length=80)
 
 
 class ClubInvitationCreateRequest(BaseModel):

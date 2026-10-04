@@ -53,7 +53,7 @@ function DecisionRow({
         <div className="flex-1 basis-[260px]">
           <p className="text-base font-bold text-text">{approval.summary ?? approval.action_type.replace(/_/g, " ")}</p>
           <p className="text-[13px] text-text-secondary">
-            {approval.requested_by_email ?? "Unknown requester"} · {elapsed(approval.created_at)}
+            {approval.requested_by_name ?? approval.requested_by_email ?? "Unknown requester"} · {elapsed(approval.created_at)}
             {approval.expires_at && ` · expires ${formatDateTime(approval.expires_at)}`}
           </p>
         </div>
@@ -176,7 +176,7 @@ export default function ApprovalsPage() {
     { key: "request", header: "Request", priority: 1, render: (a) => (
       <span className="font-medium text-text">{a.summary ?? a.action_type.replace(/_/g, " ")}</span>
     ) },
-    { key: "requester", header: "Requested by", priority: 3, render: (a) => <span className="text-text-muted">{a.requested_by_email ?? "—"}</span> },
+    { key: "requester", header: "Requested by", priority: 3, render: (a) => <span className="text-text-muted">{a.requested_by_name ?? a.requested_by_email ?? "—"}</span> },
     { key: "amount", header: "Amount", priority: 2, className: "text-right", render: (a) => <span className="font-bold text-text">{formatCurrency(a.amount)}</span> },
     { key: "outcome", header: "Outcome", priority: 4, render: (a) => <Badge variant={STATUS_BADGE[a.status].variant}>{STATUS_BADGE[a.status].label}</Badge> },
     { key: "decided", header: "Decided", priority: 5, className: "text-right", render: (a) => <span className="text-xs text-text-muted">{a.decided_at ? formatDateTime(a.decided_at) : "—"}</span> },

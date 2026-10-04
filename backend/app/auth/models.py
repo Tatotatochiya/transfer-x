@@ -36,9 +36,24 @@ class User(Base):
     # Signed in, or refreshed a session (every hour of use): the admin Users
     # page's "Last active" (migration 0089).
     last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # People's names (migration 0093), for the club's own team, approvals,
+    # notifications and the admin audit log. Other clubs still see the club's
+    # name, never who inside it acted (deals/room_service.label_for_user).
+    first_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     last_digest_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    @property
+    def full_name(self) -> str | None:
+        name = " ".join(p for p in (self.first_name, self.last_name) if p)
+        return name or None
+
+    @property
+    def display_label(self) -> str:
+        """The person's name, or their email until they've given one."""
+        return self.full_name or self.email
 
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"

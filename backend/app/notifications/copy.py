@@ -276,7 +276,7 @@ async def approval_requested(db: AsyncSession, approval, club) -> dict:
     role = (await db.execute(select(ClubStaff.role).where(
         ClubStaff.club_id == club.id, ClubStaff.user_id == approval.requested_by_user_id,
     ))).scalar_one_or_none()
-    who = requester.email.split("@")[0] if requester else "Someone"
+    who = (requester.full_name or requester.email.split("@")[0]) if requester else "Someone"
     parts = [f"{who}, {role.value.replace('_', ' ').title()}" if role else who]
     if approval.action_type in (A.PLACE_BID, A.CREATE_OFFER, A.EXERCISE_OPTION):
         finance = (await db.execute(select(ClubFinance).where(ClubFinance.club_id == club.id))).scalar_one_or_none()

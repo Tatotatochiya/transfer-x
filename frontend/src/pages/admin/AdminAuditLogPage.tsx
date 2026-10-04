@@ -22,6 +22,7 @@ interface AuditRow {
   created_at: string;
   actor_user_id: string | null;
   actor_email: string | null;
+  actor_name?: string | null;
   action: string;
   entity_type: string;
   entity_id: string;
@@ -136,7 +137,7 @@ export default function AdminAuditLogPage() {
       key: "who", header: "Who", priority: 2,
       render: (r) => (
         <span className="text-xs">
-          <span className="font-medium text-text">{r.actor_email ?? (r.actor_user_id ? "Deleted user" : "System")}</span>
+          <span className="font-medium text-text">{r.actor_name ?? r.actor_email ?? (r.actor_user_id ? "Deleted user" : "System")}</span>
           {r.by_staff && <Badge variant="warning" className="ml-1.5">Staff</Badge>}
         </span>
       ),
