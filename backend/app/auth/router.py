@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -39,7 +40,7 @@ def _set_names(user: User, first: str, last: str) -> None:
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+async def register(body: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     from app.auth.models import UserType
 
     # Clubs join by invitation only: public club sign-up let anyone claim to
@@ -103,14 +104,13 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
 
-    access_token = auth_service.create_access_token(user.id, user.email)
-    refresh_token = await auth_service.create_refresh_token(db, user.id)
+    access_token, refresh_token = await auth_service.start_session(db, user, request.headers.get("user-agent"))
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     """Sign in with an email address or a username (the part of the email
     before the "@")."""
     try:
@@ -127,21 +127,22 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
             detail="Incorrect email, username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = auth_service.create_access_token(user.id, user.email)
-    refresh_token = await auth_service.create_refresh_token(db, user.id)
+    access_token, refresh_token = await auth_service.start_session(db, user, request.headers.get("user-agent"))
     user.last_active_at = datetime.now(timezone.utc)
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+async def refresh(body: RefreshRequest, request: Request, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     try:
-        new_refresh_token, user = await auth_service.rotate_refresh_token(db, body.refresh_token)
+        new_refresh_token, user, sid = await auth_service.rotate_refresh_token(
+            db, body.refresh_token, request.headers.get("user-agent"),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
 
-    access_token = auth_service.create_access_token(user.id, user.email)
+    access_token = auth_service.create_access_token(user.id, user.email, sid=sid)
     user.last_active_at = datetime.now(timezone.utc)
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=new_refresh_token)
@@ -232,7 +233,7 @@ async def preview_club_invitation(token: str, db: AsyncSession = Depends(get_db)
 
 @router.post("/club-invitations/{token}/accept", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def accept_club_invitation(
-    token: str, body: InvitationAcceptRequest, db: AsyncSession = Depends(get_db)
+    token: str, body: InvitationAcceptRequest, request: Request, db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
     """Accept a club invitation: creates the owner's account, the club and its
     finance, and signs the owner straight in."""
@@ -255,8 +256,7 @@ async def accept_club_invitation(
         payload={"email": user.email},
         description=f"{club.name} joined TransferX by invitation",
     )
-    access_token = auth_service.create_access_token(user.id, user.email)
-    refresh_token = await auth_service.create_refresh_token(db, user.id)
+    access_token, refresh_token = await auth_service.start_session(db, user, request.headers.get("user-agent"))
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
@@ -278,7 +278,7 @@ async def preview_player_invitation(token: str, db: AsyncSession = Depends(get_d
 
 @router.post("/player-invitations/{token}/accept", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def accept_player_invitation(
-    token: str, body: InvitationAcceptRequest, db: AsyncSession = Depends(get_db)
+    token: str, body: InvitationAcceptRequest, request: Request, db: AsyncSession = Depends(get_db)
 ) -> TokenResponse:
     """Accept a player invitation: creates the player's account, linked to his
     player record, and signs him straight in."""
@@ -320,8 +320,7 @@ async def accept_player_invitation(
             message=f"{user.display_label} accepted your invitation and now has a player account",
             link=f"/players/market/{inv.player_id}", related_player_id=inv.player_id,
         )
-    access_token = auth_service.create_access_token(user.id, user.email)
-    refresh_token = await auth_service.create_refresh_token(db, user.id)
+    access_token, refresh_token = await auth_service.start_session(db, user, request.headers.get("user-agent"))
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
@@ -330,6 +329,7 @@ async def accept_player_invitation(
 async def accept_invitation(
     token: str,
     body: InvitationAcceptRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     """Accept a staff invitation: creates the User (explicit user_type=CLUB, D9)
@@ -368,8 +368,7 @@ async def accept_invitation(
             link="/club/team",
         )
 
-    access_token = auth_service.create_access_token(user.id, user.email)
-    refresh_token = await auth_service.create_refresh_token(db, user.id)
+    access_token, refresh_token = await auth_service.start_session(db, user, request.headers.get("user-agent"))
     await db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
@@ -419,3 +418,100 @@ async def change_password(
         await db.commit()
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+# ── Signed-in devices (Phase 1) ───────────────────────────────────────────────
+
+
+def _device_label(ua: str | None) -> str:
+    """'Chrome on Mac', 'Safari on iPhone', or 'Unknown device'."""
+    if not ua:
+        return "Unknown device"
+    os_name = next((name for key, name in (
+        ("iPhone", "iPhone"), ("iPad", "iPad"), ("Android", "Android"), ("Windows", "Windows"),
+        ("Macintosh", "Mac"), ("CrOS", "ChromeOS"), ("Linux", "Linux"),
+    ) if key in ua), None)
+    browser = next((name for key, name in (
+        ("Edg/", "Edge"), ("OPR/", "Opera"), ("Firefox/", "Firefox"), ("CriOS/", "Chrome"),
+        ("Chrome/", "Chrome"), ("Safari/", "Safari"),
+    ) if key in ua), None)
+    if browser and os_name:
+        return f"{browser} on {os_name}"
+    return browser or os_name or "Unknown device"
+
+
+def _current_sid(request: Request) -> str | None:
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        return None
+    try:
+        return auth_service.decode_access_token(auth[7:]).get("sid")
+    except Exception:
+        return None
+
+
+@router.get("/sessions")
+async def list_sessions(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    """Where you're signed in, most recently used first."""
+    from app.auth.models import RefreshToken
+
+    rows = (await db.execute(
+        select(RefreshToken).where(RefreshToken.user_id == current_user.id)
+    )).scalars().all()
+    current = _current_sid(request)
+    sessions: dict = {}
+    for rt in rows:  # one row per session normally; keep the latest if not
+        s = sessions.get(rt.session_id)
+        if s is None or (rt.last_used_at or rt.created_at) > (s.last_used_at or s.created_at):
+            sessions[rt.session_id] = rt
+    out = [{
+        "id": str(rt.session_id),
+        "device": _device_label(rt.user_agent),
+        "signed_in_at": rt.signed_in_at or rt.created_at,
+        "last_used_at": rt.last_used_at or rt.created_at,
+        "current": current is not None and str(rt.session_id) == current,
+    } for rt in sessions.values()]
+    out.sort(key=lambda s: (not s["current"], -s["last_used_at"].timestamp()))
+    return out
+
+
+async def _end_sessions(db: AsyncSession, user: User, keep: str | None = None, only: uuid.UUID | None = None) -> int:
+    from sqlalchemy import delete
+
+    from app.auth.models import RefreshToken
+
+    q = delete(RefreshToken).where(RefreshToken.user_id == user.id)
+    if only is not None:
+        q = q.where(RefreshToken.session_id == only)
+    if keep:
+        q = q.where(RefreshToken.session_id != uuid.UUID(keep))
+    result = await db.execute(q)
+    return result.rowcount or 0
+
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def sign_out_session(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Sign out one device. It stops working at its next request."""
+    if not await _end_sessions(db, current_user, only=session_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That device is already signed out")
+    await db.commit()
+
+
+@router.post("/sessions/sign-out-others")
+async def sign_out_other_sessions(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Sign out everywhere except this device."""
+    ended = await _end_sessions(db, current_user, keep=_current_sid(request))
+    await db.commit()
+    return {"signed_out": ended}

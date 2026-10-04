@@ -99,6 +99,14 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # One signed-in device (migration 0095). The token rotates on every
+    # refresh; the session id, device and sign-in time carry over, so Account
+    # settings can list devices and sign one out. Access tokens carry the
+    # session id ("sid") and stop working once its session is gone.
+    session_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False, default=uuid.uuid4, index=True)
+    user_agent: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    signed_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="refresh_tokens")
 

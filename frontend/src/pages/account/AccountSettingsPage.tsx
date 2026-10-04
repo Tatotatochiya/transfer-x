@@ -18,6 +18,7 @@ import {
 import NotificationTypesTable from "../../components/notifications/NotificationTypesTable";
 import PushSettingsCard from "../../components/notifications/PushSettingsCard";
 import YourNameCard from "../../components/account/YourNameCard";
+import SessionsCard from "../../components/account/SessionsCard";
 
 // ── Segmented control ─────────────────────────────────────────────────────────
 
@@ -240,6 +241,10 @@ export default function AccountSettingsPage() {
         </Section>
 
         {/* Change password */}
+        <Section id="devices" title="Signed-in devices" subtitle="Where you're signed in. Sign out a device you don't recognise.">
+          <SessionsCard />
+        </Section>
+
         <Section title="Change password">
           <Card>
             <form onSubmit={handlePasswordSubmit} className="space-y-4">

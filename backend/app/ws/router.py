@@ -30,6 +30,15 @@ async def websocket_endpoint(ws: WebSocket, token: str | None = None) -> None:
     except Exception:
         await ws.close(code=4001, reason="Invalid token")
         return
+    # A device signed out elsewhere doesn't keep its live updates.
+    if payload.get("sid"):
+        from app.database import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as db:
+            alive = await auth_service.session_alive(db, payload["sid"])
+        if not alive:
+            await ws.close(code=4001, reason="Signed out")
+            return
 
     await ws.accept()
     manager.connect(user_id, ws)
