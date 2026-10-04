@@ -96,6 +96,8 @@ def _enrich_sale_response(
         minimum_next_bid=min_next,
         reserve_met=reserve_ok,
         whose_move=compute_sale_whose_move(bid_count=bid_count, reserve_met=reserve_ok, deadline=sale.deadline),
+        cancelled_by_staff=sale.staff_cancel_reason is not None,
+        staff_cancel_reason=sale.staff_cancel_reason if is_seller_or_staff else None,
     )
 
 

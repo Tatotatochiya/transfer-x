@@ -28,6 +28,9 @@ This is a narrative summary, refreshed periodically. For current, authoritative 
 
 ## Current phases
 
+**Current plan:** [`../feature_spec/phased-plan-2026-q4/README.md`](../feature_spec/phased-plan-2026-q4/README.md) (3 October 2026). From the product and code review, it orders the work into Phase 0 (ship the work in flight) through Phase 5 (planning, agents and players), and lists the business decisions needed alongside. The Linear projects below are the older structure.
+
+
 As of this writing, the live backlog (Linear) is organized into these projects/phases:
 
 | Project | Goal |

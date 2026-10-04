@@ -93,10 +93,17 @@ async def create_notification(
     # TRA-44: fire-and-forget email for the curated set of high-value notification types
     email_enabled = pref_row.email_enabled if pref_row is not None else True
     if email_enabled:
-        from app.notifications.email import maybe_send_notification_email
-        asyncio.create_task(
-            maybe_send_notification_email(recipient_user_id, type, message, link)
-        )
+        from app.notifications.email import EMAIL_ENABLED_TYPES, maybe_send_notification_email
+
+        # Mobile notifications §6.3: if this "your move" will reach their
+        # phone, the email waits 30 minutes and goes only if still unread
+        # (push.send_email_fallbacks). Everyone else is emailed now, as before.
+        if type in EMAIL_ENABLED_TYPES and await push.will_push(db, recipient_user_id, type, pref_row):
+            n.email_due_at = datetime.now(timezone.utc) + push.EMAIL_FALLBACK_DELAY
+        else:
+            asyncio.create_task(
+                maybe_send_notification_email(recipient_user_id, type, message, link)
+            )
 
     return n
 

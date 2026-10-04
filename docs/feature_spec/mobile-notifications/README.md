@@ -92,5 +92,29 @@ Also decided while building:
 - **Deviations in phase 3:**
   - **Outbid** doesn't name the rival club, as the handoff's "{club} bid £3.4m" did. Bidders see the book anonymised, so naming the rival in a push would leak who is bidding.
   - **Approvals:** the requester is named by username and staff role, since users have no first name on record. The button is "Review", opening the approvals page; there is no page for one approval yet.
-  - **The soft ask's second line** reads "Everything else: in the app, when you look" until the morning summary exists (phase 4).
+  - **The soft ask's second line** read "Everything else: in the app, when you look" until the morning summary existed; phase 4 restored the handoff's "Everything else: one morning summary".
   - **Deal paperwork and other FYI types** are never pushed, so their wording is unchanged.
+- **2026-10-03, phase 4 built** (with Lite L6, branch `lite-l6-undo`):
+  - **Decision sheet = the Lite offer card.** On a phone (under 640px), an offer push opens `/offers/{id}?from=push`, which goes to `/lite/offers/{id}?from=push`. It shows:
+    - "Waiting on you · 1 of 3" with Next, through the Dashboard's waiting list;
+    - "Offer received · 2 days left" (red under 24 hours);
+    - your valuation and Reply by;
+    - "Ask for £21m" (the counter is the club's own valuation when it's above the offer), Accept, Say no;
+    - "You can undo for 10 seconds after sending.", and confirming holds the action (L6);
+    - "See full details";
+    - "This has changed since we told you: …" if the offer is no longer open.
+
+    Wider screens open the normal offer page.
+  - **Morning summary push** (`push.send_morning_summaries`, every 15 minutes):
+    - one a day, at the person's chosen time in their timezone, only when something is waiting;
+    - wording like "3 things waiting on you" · "2 offers and 1 approval · first deadline today 19:00";
+    - it opens the Dashboard, or Lite home for Lite users;
+    - turned off by its own switch (Settings: "FYI, and a morning summary", with the time), or by the Daily digest preference.
+  - **Email fallback** (`push.send_email_fallbacks`, every 5 minutes; migration `0091`):
+    - a "your move" email-type notification for someone whose phone will get the push waits 30 minutes (`notifications.email_due_at`), and is emailed only if still unread;
+    - without a subscribed phone, or with push off for that type or tier, the email goes at once, as before.
+  - **Tests:** `tests/test_push_phase4.py` (7) and `LiteOfferCardPage.test.tsx` (3).
+- **Deviations in phase 4:**
+  - **Approvals** have no decision sheet yet: there is no page for a single approval, so the push opens the approvals list.
+  - **Swiping** between items isn't built; "Next" does the same.
+  - **On wider screens** the offer page doesn't pre-select the push's action.

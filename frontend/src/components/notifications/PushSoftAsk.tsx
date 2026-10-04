@@ -156,7 +156,7 @@ export default function PushSoftAsk() {
                 <p className="text-sm leading-normal text-text-secondary">{askBody(trigger)}</p>
                 <ul className="space-y-1 text-sm text-text">
                   <li>• Offers and approvals: straight away</li>
-                  <li>• Everything else: in the app, when you look</li>
+                  <li>• Everything else: one morning summary</li>
                 </ul>
                 <button
                   type="button"

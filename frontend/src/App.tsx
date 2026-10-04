@@ -77,6 +77,7 @@ const LiteBuyPositionPage       = lazy(() => import("./pages/lite/LiteBuyPage").
 const LiteBuyBudgetPage         = lazy(() => import("./pages/lite/LiteBuyPage").then((m) => ({ default: m.LiteBuyBudgetPage })));
 const LiteBuyResultsPage        = lazy(() => import("./pages/lite/LiteBuyPage").then((m) => ({ default: m.LiteBuyResultsPage })));
 const LiteBidPage               = lazy(() => import("./pages/lite/LiteBidPage"));
+const LiteSentPage = lazy(() => import("./pages/lite/LiteSentPage"));
 const LiteOfferCardPage         = lazy(() => import("./pages/lite/LiteOfferCardPage"));
 const AgentDashboardPage        = lazy(() => import("./pages/agent/AgentDashboardPage"));
 const AgentPipelinePage         = lazy(() => import("./pages/agent/AgentPipelinePage"));
@@ -207,6 +208,7 @@ export default function App() {
           <Route path="/lite/offers" element={<LiteRoute><LiteOffersPage /></LiteRoute>} />
           <Route path="/lite/offers/:offerId" element={<LiteRoute><LiteOfferCardPage /></LiteRoute>} />
           <Route path="/lite/bid" element={<LiteRoute><LiteBidPage /></LiteRoute>} />
+          <Route path="/lite/actions/:actionId" element={<LiteRoute><LiteSentPage /></LiteRoute>} />
           <Route path="/lite/ask" element={<LiteRoute><LiteAskPage /></LiteRoute>} />
           <Route path="/lite/buy" element={<LiteRoute><LiteBuyPositionPage /></LiteRoute>} />
           <Route path="/lite/buy/budget" element={<LiteRoute><LiteBuyBudgetPage /></LiteRoute>} />

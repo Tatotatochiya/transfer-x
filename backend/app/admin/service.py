@@ -968,12 +968,15 @@ async def get_services_and_jobs(db: AsyncSession) -> tuple[list[dict], list[dict
     services.append({"key": "vendor", "label": "API-Football", "ok": ok, "detail": detail})
 
     jobs = []
+    from app.common.jobs import saved_runs
+
+    saved = await saved_runs(db)  # what the last process knew, if it restarted since
     try:
         from app.main import _scheduler
 
         running = _scheduler.running
         for job in sorted(_scheduler.get_jobs(), key=lambda j: j.id):
-            run = RUNS.get(job.id, {})
+            run = RUNS.get(job.id) or saved.get(job.id, {})
             jobs.append({
                 "id": job.id, "label": JOB_LABELS.get(job.id, job.id.replace("_", " ").capitalize()),
                 "every": every(job.trigger), "next_run_at": job.next_run_time,

@@ -449,3 +449,120 @@ async def send_test(db: AsyncSession, sub: PushSubscription) -> bool:
         "tag": "test", "silent": False, "lang": "en-GB", "data": {"tier": "TEST"},
     }}
     return await send_one(db, sub, payload, {"Urgency": "high"}, datetime.now(timezone.utc))
+
+
+# ── Phase 4: the email fallback and the morning summary ───────────────────────
+
+EMAIL_FALLBACK_DELAY = timedelta(minutes=30)
+
+
+async def will_push(db: AsyncSession, user_id: uuid.UUID, type_: NotificationType, type_pref=None) -> bool:
+    """Whether a "your move" notification of this type will be pushed to this
+    person: keys set, a device subscribed, push on for the type and the tier.
+    Only then does its email wait for the fallback (§6.3)."""
+    if not vapid_configured() or tier_of(type_) is not Tier.YOUR_MOVE:
+        return False
+    if type_pref is not None and not type_pref.push_enabled:
+        return False
+    prefs = await db.get(UserPreference, user_id)
+    if _mode(prefs, Tier.YOUR_MOVE) is PushMode.OFF:
+        return False
+    return bool(await _subscriptions(db, user_id))
+
+
+async def send_email_fallbacks(db: AsyncSession, now: datetime) -> int:
+    """Scheduler (every 5 minutes): the "your move" emails whose 30 minutes
+    are up. Sent only if the notification is still unread; dropped if it
+    was read (the push did its job)."""
+    from app.notifications.email import maybe_send_notification_email
+
+    due = list((await db.execute(select(Notification).where(
+        Notification.email_due_at.is_not(None), Notification.email_due_at <= now, Notification.emailed_at.is_(None),
+    ).limit(200))).scalars())
+    sent = 0
+    for n in due:
+        n.emailed_at = now
+        if not n.is_read:
+            await maybe_send_notification_email(n.recipient_user_id, n.type, n.message, n.link)
+            sent += 1
+    await db.flush()
+    return sent
+
+
+def _summary_text(items: list, zone: ZoneInfo, now: datetime) -> tuple[str, str | None]:
+    """'3 things waiting on you' · '2 offers and 1 approval · first deadline Fri 18:00'."""
+    from app.notifications.copy import DEADLINE, render
+
+    n = len(items)
+    title = f"{n} thing{'s' if n != 1 else ''} waiting on you"
+    words = {"offer": ("offer", "offers"), "approval": ("approval", "approvals"), "deal": ("deal", "deals"),
+             "sale": ("auction", "auctions"), "enquiry": ("enquiry", "enquiries")}
+    counts: dict[str, int] = {}
+    for it in items:
+        counts[it.kind] = counts.get(it.kind, 0) + 1
+    parts = [f"{c} {words[k][0] if c == 1 else words[k][1]}" for k, c in counts.items()]
+    body = parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + f" and {parts[-1]}"
+    deadlines = [_aware(it.deadline) for it in items if it.deadline]
+    if deadlines:
+        body += " · first deadline " + render(DEADLINE, min(deadlines), zone, now)
+    return title, body
+
+
+async def send_morning_summaries(db: AsyncSession, now: datetime) -> int:
+    """Scheduler (every 15 minutes): one push a day, at each person's chosen
+    time in their timezone, saying what is waiting on them; only when
+    something is (§6.2). Switched off with the summary switch, or with the
+    Daily digest preference, which also stops the digest email."""
+    from app.auth.models import User
+    from app.clubs.service import get_club_and_role_for_user
+    from app.dashboard import service as dashboard_service
+
+    user_ids = list((await db.execute(select(PushSubscription.user_id).distinct())).scalars())
+    sent = 0
+    for user_id in user_ids:
+        prefs = await db.get(UserPreference, user_id)
+        if prefs is not None and not prefs.push_summary:
+            continue
+        digest_pref = (await db.execute(select(NotificationPreference).where(
+            NotificationPreference.user_id == user_id, NotificationPreference.type == NotificationType.DAILY_DIGEST,
+        ))).scalar_one_or_none()
+        if digest_pref is not None and not digest_pref.enabled:
+            continue
+        zone = _zone(prefs.timezone if prefs else None)
+        local = _aware(now).astimezone(zone)
+        at = prefs.summary_local_time if prefs else time(8, 0)
+        if local.time() < at:
+            continue
+        midnight = datetime.combine(local.date(), time(0, 0), tzinfo=zone).astimezone(timezone.utc)
+        already = (await db.execute(select(PushDelivery.id).where(
+            PushDelivery.user_id == user_id, PushDelivery.group_key == "digest", PushDelivery.created_at >= midnight,
+        ).limit(1))).first()
+        if already:
+            continue
+        user = await db.get(User, user_id)
+        club, _role = await get_club_and_role_for_user(db, user_id)
+        if user is None or club is None or not user.is_active:
+            continue
+        items = (await dashboard_service.get_dashboard(db, club=club, current_user=user)).waiting_on_you
+        if not items:
+            continue
+        title, body = _summary_text(items, zone, now)
+        home = "/lite" if (prefs is not None and prefs.lite_mode) else "/dashboard"
+        payload = {"web_push": 8030, "notification": {
+            "title": title, "body": body,
+            "navigate": f"{settings.frontend_base_url.rstrip('/')}{home}?from=push",
+            "tag": "digest", "silent": True, "lang": "en-GB", "app_badge": str(len(items)),
+            "data": {"tier": "SUMMARY"},
+        }}
+        delivery = PushDelivery(user_id=user_id, type=NotificationType.DAILY_DIGEST, group_key="digest",
+                                status=PushDeliveryStatus.SENT)
+        db.add(delivery)
+        ok = 0
+        for sub in await _subscriptions(db, user_id):
+            if await send_one(db, sub, payload, {"Urgency": "normal", "Topic": topic_for("digest")}, now):
+                ok += 1
+        delivery.status = PushDeliveryStatus.SENT if ok else PushDeliveryStatus.FAILED
+        delivery.sent_at = now if ok else None
+        await db.flush()
+        sent += 1 if ok else 0
+    return sent

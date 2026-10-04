@@ -78,6 +78,13 @@ class Sale(Base):
     )
     deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Set when TransferX staff cancelled the listing from the admin panel, so
+    # it reads differently from a seller's own withdrawal (migration 0092).
+    staff_cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    @property
+    def cancelled_by_staff(self) -> bool:
+        return self.staff_cancel_reason is not None
     status: Mapped[SaleStatus] = mapped_column(
         SAEnum(SaleStatus, name="salestatus"),
         nullable=False,

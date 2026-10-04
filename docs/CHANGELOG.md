@@ -1,6 +1,6 @@
 ---
 title: "Changelog"
-last_updated: 2026-10-02
+last_updated: 2026-10-04
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -25,6 +25,17 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Phone notifications, phase 4** ([spec](./feature_spec/mobile-notifications/README.md)).
+  - **Decision sheet.** Tapping an offer notification on a phone opens a one-screen decision with:
+    - where it is in your queue ("Waiting on you · 1 of 3", Next), and how long is left;
+    - your valuation, "Ask for £21m", Accept and Say no, with 10 seconds to undo;
+    - a clear note if the offer changed since the notification.
+  - **Morning summary.** One push a day at your chosen time, only when something is waiting ("3 things waiting on you · first deadline today 19:00"), with its switch and time in Settings.
+  - **Email fallback.** If your phone gets the "your move" push, the email waits 30 minutes and goes only if you haven't opened it.
+- **Lite: undo, and where the deal is** (L6, [ADR 0007](./architecture/decisions/0007-held-sends-for-undo.md)).
+  - **Undo:** confirming a bid, counter, acceptance or refusal in Lite now waits 10 seconds with an "Undo" bar before anything is sent. Undoing in time leaves no trace for the other club.
+  - **Progress:** the Sent screen follows the deal in five plain steps: you approved it, sent, waiting for their reply (or your turn), medical and personal terms, signed. Its hints come from the deal page's own next steps.
+  - **Checks:** problems are found when you confirm. If something changes in the ten seconds, the screen says it wasn't sent, and why.
 - **Admin clean-up.**
   - **Sidebar:** TransferX staff accounts get an admin sidebar (Overview, Users, Clubs, … Audit log, Health) instead of a club's, and no longer fire failing club requests on every page.
   - **Users page:** shows each person's type, club and role (or agency or player), and when they were last active.
@@ -175,6 +186,9 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Agents start on Pipeline** after signing in, instead of My Roster.
+- **Health keeps its job history across restarts.** Each scheduled job's last run, outcome and error are saved (migration `0092`), at most once a minute per job or when the outcome changes.
+- **Staff-cancelled sales say so.** A sale cancelled from the admin panel is marked (migration `0092`, `sales.staff_cancel_reason`). The admin Sales page shows "Cancelled by TransferX"; the sale page tells the seller why, and other clubs only that TransferX cancelled it.
 - **Admin "Create user" is removed.** It made an account with no club, role or player record. Accounts come from invitations instead.
 - **TransferX staff start on the admin panel.** Signing in as a superuser, or opening `/`, now goes to `/admin` instead of the club Dashboard.
 - **A compact sidebar** ([spec](./feature_spec/compact-sidebar/README.md)).
@@ -221,6 +235,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **Two tabs could sign each other out.** When two tabs refreshed the sign-in at once, the one that lost used a spent token and was signed out. A tab now picks up the newer token another tab saved, and retries once.
 - **Admin "Cancel sale" never worked, and leaked money.** It crashed on a status that doesn't exist. Its intended effect would also only have marked the sale cancelled. It now does what a seller's withdrawal does: every bidder's reserved budget and every linked offer's held budget is released, and the seller and bidders are told why. Offers linked to a withdrawn sale now also release their reserved wage, which they used to keep.
 - **Admin "Force withdraw" left the buyer's budget reserved forever** and told no one. It now releases the reserved fee and wage, and tells both clubs why.
 - **Admin budget edits** could go negative, or below what's already held, committed or spent. Both are refused now.

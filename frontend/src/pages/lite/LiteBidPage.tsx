@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import {
-  ActionCardShell, Done, FactRow, FeeStepper, MoneyPanel, Notes,
+  ActionCardShell, FactRow, FeeStepper, MoneyPanel, Notes,
   primaryBtn, secondaryBtn, textBtn, useDebounced,
 } from "../../components/lite/ActionCard";
 import Spinner from "../../components/ui/Spinner";
@@ -11,13 +11,15 @@ import { useOfferCheck } from "../../hooks/useAssistant";
 import { useLiteOfferDraft } from "../../hooks/useLite";
 import api from "../../lib/api";
 import { liteMoney, liteWage } from "../../lib/liteMoney";
+import { holdAndOpen } from "./LiteSentPage";
 import { getApiError } from "../../lib/utils";
 
 /**
  * A new bid as an action card (README "Screen 5"), from "Make an offer" in the
- * Buy results. Confirm calls POST /offers directly (L4 has no undo; L6 moves
- * this to held sends). The money panel is /ai/offer-check's `money` block,
- * and confirm waits until it describes the fee on screen.
+ * Buy results. Confirm holds the bid for 10 seconds (L6, ADR 0007) and opens
+ * the Sent screen, where it can be undone before anything is sent. The money
+ * panel is /ai/offer-check's `money` block, and confirm waits until it
+ * describes the fee on screen.
  */
 export default function LiteBidPage() {
   const [params] = useSearchParams();
@@ -34,7 +36,6 @@ export default function LiteBidPage() {
   const [editing, setEditing] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
-  const [done, setDone] = useState<null | { kind: "sent"; offerId: string } | { kind: "approval" }>(null);
 
   useEffect(() => {
     if (draft && fee == null) setFee(proposedFee ?? draft.fee ?? 1_000_000);
@@ -55,11 +56,11 @@ export default function LiteBidPage() {
 
   // "Carry on where you left off" until the bid is sent.
   useEffect(() => {
-    if (!draft || done) return;
+    if (!draft || sending) return;
     api.put("/lite/resume", { title: `Bid for ${draft.name}`, href: `/lite/bid?player_id=${draft.player_id}` })
       .then(() => queryClient.invalidateQueries({ queryKey: ["lite", "home"] }))
       .catch(() => undefined);
-  }, [draft, done, queryClient]);
+  }, [draft, sending, queryClient]);
 
   if (isLoading || (draft && fee == null)) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>;
   if (error || !draft || fee == null) {
@@ -73,25 +74,6 @@ export default function LiteBidPage() {
   }
 
   const club = draft.to_club_name ?? "his club";
-  if (done?.kind === "sent") {
-    return (
-      <Done
-        title={`Bid sent to ${club}`}
-        body={`${liteMoney(fee)} for ${draft.name}. We'll tell you when they reply.`}
-        links={[{ to: "/lite", label: "Back to home" }, { to: `/offers/${done.offerId}`, label: "See the offer" }]}
-      />
-    );
-  }
-  if (done?.kind === "approval") {
-    return (
-      <Done
-        title="Sent for approval"
-        body={`Your ${liteMoney(fee)} bid for ${draft.name} goes to ${club} once your owner or sporting director approves it.`}
-        links={[{ to: "/lite", label: "Back to home" }]}
-      />
-    );
-  }
-
   // Over budget is said by the money panel; this is every other reason.
   const blocked = draft.disabled_reason;
   const confirm = async () => {
@@ -99,10 +81,12 @@ export default function LiteBidPage() {
     setSending(true);
     setSendError(null);
     try {
-      const resp = await api.post("/offers", fromAsk ? { ...terms, ai_assisted: true } : terms);
+      // Undo returns here with the fee still filled in.
+      const back = new URLSearchParams(params);
+      back.set("fee", String(terms.fee_amount));
+      await holdAndOpen(navigate, { kind: "bid", payload: terms, ai_assisted: fromAsk }, `/lite/bid?${back}`);
       await api.delete("/lite/resume").catch(() => undefined);
       queryClient.invalidateQueries({ queryKey: ["lite"] });
-      setDone(resp.status === 202 ? { kind: "approval" } : { kind: "sent", offerId: resp.data.id });
     } catch (err) {
       setSendError(getApiError(err, "The bid couldn't be sent."));
     } finally {

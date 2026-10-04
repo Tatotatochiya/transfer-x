@@ -77,6 +77,15 @@ async def test_cancelling_a_sale_releases_bids_tells_everyone_and_is_audited(cli
     assert event.actor_user_id == admin["id"] and event.payload_json["reason"] == "Listed by mistake"
     assert event.description == "Cancelled the sale of Cancelled Man"
 
+    # The sale reads as cancelled by TransferX; only the seller and staff see why.
+    assert resp.json()["cancelled_by_staff"] is True
+    seen_by_seller = (await client.get(f"/sales/{sale_id}", headers=_auth_headers(seller))).json()
+    assert seen_by_seller["cancelled_by_staff"] and seen_by_seller["staff_cancel_reason"] == "Listed by mistake"
+    seen_by_buyer = (await client.get(f"/sales/{sale_id}", headers=_auth_headers(buyer))).json()
+    assert seen_by_buyer["cancelled_by_staff"] and seen_by_buyer["staff_cancel_reason"] is None
+    listed = (await client.get("/admin/sales", headers=admin["headers"])).json()["items"]
+    assert next(s for s in listed if s["id"] == sale_id)["cancelled_by_staff"] is True
+
 
 async def test_force_withdrawing_an_offer_releases_the_buyers_budget(client: AsyncClient, db, admin):
     seller = await _register(client, "fix_seller2@test.com", club_name="Fix Sellers Two")

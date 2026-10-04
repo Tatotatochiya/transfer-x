@@ -115,6 +115,8 @@ export interface LiteOfferCard {
   counter_suggestion: number | null;
   disabled_reason: string | null;
   expires_at: string | null;
+  /** The selling club's own valuation (seller's card only; confidential). */
+  your_valuation?: number | null;
 }
 
 export function useLiteOfferCard(offerId: string | undefined) {
