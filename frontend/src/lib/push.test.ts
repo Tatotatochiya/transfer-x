@@ -55,6 +55,15 @@ describe("markOpenedFromUrl", () => {
     await markOpenedFromUrl("?from=push&nid=../../admin");
     expect(api.post).not.toHaveBeenCalled();
   });
+
+  it("reports the tap with the push's token, and takes it out of the address bar", async () => {
+    api.post.mockResolvedValue({ data: {} });
+    const nid = "3f2b8c1e-1d2a-4b5c-9e8f-0a1b2c3d4e5f";
+    window.history.replaceState(null, "", `/offers/1?from=push&nid=${nid}&ot=tok`);
+    await markOpenedFromUrl(window.location.search);
+    expect(api.post).toHaveBeenCalledWith(`/notifications/${nid}/opened`, null, { params: { token: "tok" } });
+    expect(window.location.search).toBe("?from=push");
+  });
 });
 
 import { canAsk } from "./push";

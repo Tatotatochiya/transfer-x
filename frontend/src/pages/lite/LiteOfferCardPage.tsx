@@ -8,7 +8,7 @@ import {
 } from "../../components/lite/ActionCard";
 import Spinner from "../../components/ui/Spinner";
 import { useOfferCheck } from "../../hooks/useAssistant";
-import { CLUB_DASHBOARD_KEY, useClubDashboard } from "../../hooks/useClubDashboard";
+import { CLUB_DASHBOARD_KEY } from "../../hooks/useClubDashboard";
 import { useLiteOfferCard } from "../../hooks/useLite";
 import { holdAndOpen } from "./LiteSentPage";
 import { liteMoney, liteWage } from "../../lib/liteMoney";
@@ -16,6 +16,7 @@ import { getApiError } from "../../lib/utils";
 import Money from "../../components/ui/Money";
 import { timeLeft } from "../../lib/timeLeft";
 import AskTeamButton from "../../components/lite/AskTeamButton";
+import { SwipeNav, WaitingHeader } from "../../components/lite/WaitingNav";
 
 type Mode = "answer" | "accept" | "counter" | "reject";
 
@@ -107,8 +108,9 @@ export default function LiteOfferCardPage() {
   const pill = card.side === "seller" ? "Offer for your player" : "Reply to your offer";
 
   return (
+    <SwipeNav kind="offer" id={card.offer_id} enabled={fromPush}>
     <div className="flex flex-col gap-4">
-      {fromPush && <WaitingHeader offerId={card.offer_id} />}
+      {fromPush && <WaitingHeader kind="offer" id={card.offer_id} />}
       {fromPush && !open && (
         <div role="status" className="rounded-2xl bg-warning-bg px-5 py-4 text-[1.0625rem] text-text ring-1 ring-border">
           This has changed since we told you: the offer has been {card.status.toLowerCase()}.{" "}
@@ -232,29 +234,9 @@ export default function LiteOfferCardPage() {
         )}
       </ActionCardShell>
     </div>
+    </SwipeNav>
   );
 }
 
 
 /** "2 days left", "5 hours left"; urgent under 24 hours. */
-/** "Waiting on you · 2 of 3" and Next, from the Dashboard's waiting list, so
- *  a director can work through everything from one notification. */
-function WaitingHeader({ offerId }: { offerId: string }) {
-  const { data } = useClubDashboard(true);
-  const items = data?.waiting_on_you ?? [];
-  const i = items.findIndex((it) => it.kind === "offer" && it.id === offerId);
-  if (items.length === 0) return null;
-  const next = items[(i + 1) % items.length];
-  const nextHref = next && next.id !== offerId
-    ? (next.kind === "offer" ? `/lite/offers/${next.id}?from=push` : next.link)
-    : null;
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <Link to="/lite" className="text-[1.0625rem] font-semibold text-text-secondary no-underline">‹ Home</Link>
-      <span className="text-[1rem] font-semibold text-text-secondary">
-        Waiting on you{i >= 0 ? ` · ${i + 1} of ${items.length}` : ` · ${items.length}`}
-      </span>
-      {nextHref ? <Link to={nextHref} className="text-[1.0625rem] font-bold text-accent no-underline">Next ›</Link> : <span />}
-    </div>
-  );
-}

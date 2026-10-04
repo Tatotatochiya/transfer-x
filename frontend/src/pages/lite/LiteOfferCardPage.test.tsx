@@ -40,7 +40,7 @@ describe("LiteOfferCardPage as the push decision sheet", () => {
   it("shows where it is in the queue, the time left, the valuation and the ask", () => {
     renderCard("/lite/offers/o1?from=push");
     expect(screen.getByText(/Waiting on you · 1 of 2/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Next ›" })).toHaveAttribute("href", "/club/approvals");
+    expect(screen.getByRole("link", { name: "Next ›" })).toHaveAttribute("href", "/lite/approvals/a9?from=push");
     expect(screen.getByText(/Offer received · 2 days left/)).toBeInTheDocument();
     expect(screen.getByText("Your valuation")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Ask for £21/ })).toBeInTheDocument();

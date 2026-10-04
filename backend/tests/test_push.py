@@ -269,9 +269,16 @@ async def test_payload_has_the_declarative_and_classic_shape(db, user, sent):
     assert note["tag"] == "offer:abc"
     assert note["lang"] == "en-GB"
     assert note["app_badge"] == "3"
-    assert note["navigate"] == f"{settings.frontend_base_url}/offers/abc?from=push&nid={n.id}"
+    from urllib.parse import parse_qs, urlparse
+
+    nav = urlparse(note["navigate"])
+    assert f"{nav.scheme}://{nav.netloc}{nav.path}" == f"{settings.frontend_base_url}/offers/abc"
+    q = parse_qs(nav.query)
+    assert q["from"] == ["push"] and q["nid"] == [str(n.id)]
+    # iOS opens declarative pushes without the service worker: the page reports the tap.
+    assert push.read_open_token(q["ot"][0], n.id) == user["id"]
     assert [a["action"] for a in note["actions"]] == ["counter", "open"]
-    assert note["actions"][0]["navigate"].endswith(f"action=counter&amount=21000000&from=push&nid={n.id}")
+    assert "action=counter&amount=21000000&from=push&nid=" in note["actions"][0]["navigate"]
     assert note["data"]["tier"] == "YOUR_MOVE" and note["data"]["renotify"] is True
     assert push.read_open_token(note["data"]["open_token"], n.id) == user["id"]
 

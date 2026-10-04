@@ -195,12 +195,25 @@ export function registerServiceWorker(): void {
 
 /**
  * A push opened without the service worker (iOS 18.4+ shows declarative
- * pushes itself) arrives as ?from=push&nid=…: mark that notification read.
+ * pushes itself) arrives as ?from=push&nid=…&ot=…: report the tap with the
+ * push's own token (which also marks it read, and works signed out), then
+ * take nid and ot out of the address bar. Without a token, mark it read.
  */
 export async function markOpenedFromUrl(search: string): Promise<void> {
   const params = new URLSearchParams(search);
   const nid = params.get("nid");
   if (params.get("from") !== "push" || !nid || !/^[0-9a-f-]{36}$/i.test(nid)) return;
+  const token = params.get("ot");
+  if (token) {
+    params.delete("ot");
+    params.delete("nid");
+    const rest = params.toString();
+    try {
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
+    } catch { /* the report still goes */ }
+    await api.post(`/notifications/${nid}/opened`, null, { params: { token } }).catch(() => {});
+    return;
+  }
   await api.post(`/notifications/${nid}/read`).catch(() => {});
 }
 

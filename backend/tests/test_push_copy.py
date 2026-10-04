@@ -136,7 +136,7 @@ async def test_offer_received_names_player_amount_buyer_valuation_and_deadline(c
     assert n.group_key == f"offer:{offer['id']}"
     assert n.deadline_at is not None
     assert [a["title"] for a in n.actions_json] == ["Ask for £8m", "Open"]
-    assert n.actions_json[0]["url"] == f"/lite/offers/{offer['id']}?action=counter&amount=8000000"
+    assert n.actions_json[0]["url"] == f"/offers/{offer['id']}?action=counter&amount=8000000"
 
     # The list writes the deadline out and gives the tier.
     items = (await client.get("/notifications", headers=_auth_headers(seller))).json()["items"]
@@ -167,7 +167,7 @@ async def test_a_counter_says_who_how_much_and_which_way(client: AsyncClient, db
     assert n.title == "Copy Sellers FC countered at £7m"
     assert n.body == f"{player['name']} · up from £5m · {TIME_LEFT} to reply"
     assert [a["title"] for a in n.actions_json] == ["Accept £7m", "Open"]
-    assert n.actions_json[0]["url"] == f"/lite/offers/{offer['id']}?action=accept"
+    assert n.actions_json[0]["url"] == f"/offers/{offer['id']}?action=accept"
 
 
 @pytest.mark.asyncio

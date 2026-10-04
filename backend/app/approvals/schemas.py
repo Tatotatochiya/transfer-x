@@ -17,6 +17,11 @@ class PendingApprovalResponse(BaseModel):
     requested_by_user_id: uuid.UUID
     requested_by_email: str | None = None  # set by router
     requested_by_name: str | None = None  # set by router
+    # The single-approval view only (GET /clubs/me/approvals/{id}): the
+    # decision sheet's facts.
+    player_id: uuid.UUID | None = None
+    player_name: str | None = None
+    budget_after: Decimal | None = None
     status: ApprovalStatus
     decided_by_user_id: uuid.UUID | None
     decided_at: datetime | None

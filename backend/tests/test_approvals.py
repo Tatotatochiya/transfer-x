@@ -560,3 +560,30 @@ async def test_approved_zero_fee_offer_replays_without_crashing(
     # The reason survives the replay, as it must for the seller to read it.
     received = (await client.get("/offers/received", headers=_auth_headers(seller))).json()["items"][0]
     assert any("clear wages" in m["body"] for m in received["messages"])
+
+
+# ── The approval decision sheet (notifications phase 4 follow-up) ─────────────
+
+
+@pytest.mark.asyncio
+async def test_one_approval_for_its_decision_sheet(client: AsyncClient, db, buyer: dict, seller: dict):
+    await _give_budget(db)
+    await _set_threshold(client, buyer, 5_000_000)
+    sale_id = await _make_auction(client, seller, name="Sheet Player")
+    manager = await _create_staff(client, db, _auth_headers(buyer), "appr_sheet_mgr@test.com", "MANAGER")
+    resp = await client.post(f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=_auth_headers(manager))
+    approval_id = resp.json()["approval_id"]
+
+    sheet = (await client.get(f"/clubs/me/approvals/{approval_id}", headers=_auth_headers(buyer))).json()
+    assert sheet["player_name"] == "Sheet Player" and float(sheet["amount"]) == 6_000_000
+    assert sheet["budget_after"] is not None
+    # The requester sees their own; another club never does.
+    assert (await client.get(f"/clubs/me/approvals/{approval_id}", headers=_auth_headers(manager))).status_code == 200
+    assert (await client.get(f"/clubs/me/approvals/{approval_id}", headers=_auth_headers(seller))).status_code == 404
+    # The approver's notification opens this approval.
+    from sqlalchemy import select
+
+    from app.notifications.models import Notification, NotificationType
+
+    n = (await db.execute(select(Notification).where(Notification.type == NotificationType.APPROVAL_REQUESTED))).scalars().first()
+    assert n.link == f"/club/approvals?id={approval_id}"

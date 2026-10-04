@@ -327,6 +327,10 @@ export interface PendingApproval {
   created_at: string;
   expires_at: string;
   summary: string | null;
+  /** The single-approval view only: the decision sheet's facts. */
+  player_id?: string | null;
+  player_name?: string | null;
+  budget_after?: number | string | null;
 }
 
 export interface ApprovalPolicy {

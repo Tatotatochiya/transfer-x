@@ -84,6 +84,7 @@ const LiteBuyResultsPage        = lazy(() => import("./pages/lite/LiteBuyPage").
 const LiteBidPage               = lazy(() => import("./pages/lite/LiteBidPage"));
 const LiteSentPage = lazy(() => import("./pages/lite/LiteSentPage"));
 const LiteOfferCardPage         = lazy(() => import("./pages/lite/LiteOfferCardPage"));
+const LiteApprovalPage          = lazy(() => import("./pages/lite/LiteApprovalPage"));
 const AgentDashboardPage        = lazy(() => import("./pages/agent/AgentDashboardPage"));
 const AgentPipelinePage         = lazy(() => import("./pages/agent/AgentPipelinePage"));
 const AgentProfilePage          = lazy(() => import("./pages/agent/AgentProfilePage"));
@@ -219,6 +220,7 @@ export default function App() {
           <Route path="/lite" element={<LiteRoute><LiteHomePage /></LiteRoute>} />
           <Route path="/lite/offers" element={<LiteRoute><LiteOffersPage /></LiteRoute>} />
           <Route path="/lite/offers/:offerId" element={<LiteRoute><LiteOfferCardPage /></LiteRoute>} />
+          <Route path="/lite/approvals/:id" element={<LiteRoute><LiteApprovalPage /></LiteRoute>} />
           <Route path="/lite/bid" element={<LiteRoute><LiteBidPage /></LiteRoute>} />
           <Route path="/lite/actions/:actionId" element={<LiteRoute><LiteSentPage /></LiteRoute>} />
           <Route path="/lite/ask" element={<LiteRoute><LiteAskPage /></LiteRoute>} />

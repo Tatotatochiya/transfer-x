@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useAuth } from "../../hooks/useAuth";
@@ -94,6 +95,16 @@ function DecisionRow({
 type Filter = "PENDING" | "ALL";
 
 export default function ApprovalsPage() {
+  // A push for one approval: a phone opens its decision sheet (Lite); a wider
+  // screen stays here with that approval highlighted.
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const focusId = searchParams.get("id");
+  useEffect(() => {
+    if (focusId && searchParams.get("from") === "push" && window.matchMedia?.("(max-width: 639px)").matches) {
+      navigate(`/lite/approvals/${focusId}?from=push`, { replace: true });
+    }
+  }, [focusId, navigate, searchParams]);
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const { user } = useAuth();
@@ -232,8 +243,12 @@ export default function ApprovalsPage() {
               </div>
               <div>
                 {pending.map((a) => (
-                  <DecisionRow
+                  <div
                     key={a.id}
+                    ref={a.id === focusId ? (el) => el?.scrollIntoView({ block: "center" }) : undefined}
+                    className={a.id === focusId ? "rounded-lg ring-2 ring-accent" : ""}
+                  >
+                  <DecisionRow
                     approval={a}
                     transferRemaining={transferRemaining}
                     onApprove={() => { setDecidingId(a.id); approveMutation.mutate(a.id); }}
@@ -241,6 +256,7 @@ export default function ApprovalsPage() {
                     approving={decidingId === a.id && approveMutation.isPending}
                     isRejectPending={decidingId === a.id && rejectMutation.isPending}
                   />
+                  </div>
                 ))}
               </div>
             </Card>
