@@ -42,6 +42,10 @@ async def _to_response(db: AsyncSession, approval: PendingApproval) -> PendingAp
     requester = await db.get(User, approval.requested_by_user_id) if approval.requested_by_user_id else None
     resp.requested_by_email = requester.email if requester else None
     resp.requested_by_name = requester.full_name if requester else None
+    # The player, for links and photos on every approval row and the sheet.
+    from app.notifications.copy import approval_player
+
+    resp.player_id, resp.player_name, resp.player_photo_url = await approval_player(db, approval)
     return resp
 
 
@@ -75,7 +79,6 @@ async def get_approval(
     Deciders see any of the club's; others only their own requests."""
     from app.approvals.models import ApprovalActionType as A
     from app.clubs.models import ClubFinance
-    from app.notifications.copy import approval_player
 
     club = await _get_club_or_403(db, current_user)
     approval = await service.get_approval(db, approval_id, club.id)
@@ -87,7 +90,6 @@ async def get_approval(
         if approval.requested_by_user_id != current_user.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approval not found")
     resp = await _to_response(db, approval)
-    resp.player_id, resp.player_name = await approval_player(db, approval)
     if approval.action_type in (A.PLACE_BID, A.CREATE_OFFER, A.EXERCISE_OPTION):
         finance = (await db.execute(select(ClubFinance).where(ClubFinance.club_id == club.id))).scalar_one_or_none()
         if finance is not None:

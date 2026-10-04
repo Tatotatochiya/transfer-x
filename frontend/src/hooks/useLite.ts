@@ -40,6 +40,7 @@ export type LiteBand = "0-5" | "5-10" | "10-20" | "free";
 export interface LiteCandidate {
   player_id: string;
   name: string;
+  photo_url?: string | null;
   age: number | null;
   position: string | null;
   club: string | null;
@@ -102,6 +103,7 @@ export interface LiteOfferCard {
   status: string;
   player_id: string;
   player_name: string | null;
+  player_photo_url?: string | null;
   other_club: string;
   deal_type: "PERMANENT" | "LOAN";
   fee: number;

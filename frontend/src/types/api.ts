@@ -327,9 +327,10 @@ export interface PendingApproval {
   created_at: string;
   expires_at: string;
   summary: string | null;
-  /** The single-approval view only: the decision sheet's facts. */
+  /** The approval's player (every row); budget_after on the single view only. */
   player_id?: string | null;
   player_name?: string | null;
+  player_photo_url?: string | null;
   budget_after?: number | string | null;
 }
 
@@ -458,6 +459,7 @@ export interface PlayerSummary {
   id: string;
   name: string;
   position: string | null;
+  photo_url?: string | null;
 }
 
 export interface SellerClubSummary {
@@ -1140,7 +1142,7 @@ export interface AdminClubDetail extends AdminClub {
 
 export interface AdminDeal {
   id: string;
-  player: { id: string; name: string; position: string | null } | null;
+  player: { id: string; name: string; position: string | null; photo_url?: string | null } | null;
   buyer_club: { id: string; name: string } | null;
   seller_club: { id: string; name: string } | null;
   agreed_fee: number;
@@ -1336,6 +1338,7 @@ export interface Enquiry {
   id: string;
   player_id: string;
   player_name: string | null;
+  player_photo_url?: string | null;
   status: "OPEN" | "CLOSED";
   is_anonymous: boolean;
   asking_club: EnquiryParty;
@@ -1353,6 +1356,8 @@ export interface DashboardItem {
   kind: "approval" | "deal" | "offer" | "sale" | "enquiry";
   id: string;
   player_name: string | null;
+  player_id?: string | null;
+  player_photo_url?: string | null;
   club_name: string | null;
   amount: number | null;
   reason: string;

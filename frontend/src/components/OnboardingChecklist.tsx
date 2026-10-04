@@ -251,7 +251,7 @@ function ClubChecklist({ userId }: { userId: string }) {
         id: "staff-deals",
         label: "See where your club's deals stand",
         done: readFlag(userId, "staff-deals"),
-        to: "/deals",
+        to: "/board",
         visitFlag: true,
       },
     ];

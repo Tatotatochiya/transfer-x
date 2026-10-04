@@ -15,6 +15,7 @@ import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/Resp
 import Spinner from "../../components/ui/Spinner";
 import { useToast } from "../../context/ToastContext";
 import { formatCurrency, formatDateTime, getApiError } from "../../lib/utils";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 const STATUS_BADGE: Record<ApprovalStatus, { label: string; variant: "info" | "success" | "danger" | "neutral" | "warning" }> = {
   PENDING:           { label: "Pending",  variant: "warning" },
@@ -52,6 +53,10 @@ function DecisionRow({
     <div className="border-b border-rule px-5 py-[18px] last:border-b-0">
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex-1 basis-[260px]">
+          {approval.player_id && approval.player_name && (
+            <PlayerLink id={approval.player_id} name={approval.player_name} photoUrl={approval.player_photo_url ?? null}
+              size="md" className="mb-1 text-sm font-semibold text-text" />
+          )}
           <p className="text-base font-bold text-text">{approval.summary ?? approval.action_type.replace(/_/g, " ")}</p>
           <p className="text-[13px] text-text-secondary">
             {approval.requested_by_name ?? approval.requested_by_email ?? "Unknown requester"} · {elapsed(approval.created_at)}

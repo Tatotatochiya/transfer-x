@@ -34,9 +34,18 @@ class AudienceOption(BaseModel):
     label: str
 
 
+class LiveItems(BaseModel):
+    """What a new message would attach to now, so the page can offer the
+    right AI draft (an offer note, an enquiry reply, a deal message)."""
+    offer_id: uuid.UUID | None = None
+    enquiry_id: uuid.UUID | None = None
+    deal_id: uuid.UUID | None = None
+
+
 class ConversationResponse(BaseModel):
     messages: list[ConversationMessage]
     can_post_to: list[AudienceOption]
+    live: LiveItems = LiveItems()
 
 
 class ConversationPost(BaseModel):
@@ -45,6 +54,8 @@ class ConversationPost(BaseModel):
     enquiry_id: uuid.UUID | None = None
     audience: Audience
     body: str = Field(min_length=1, max_length=4000)
+    # Deal messages everyone can read only: people on the deal to notify.
+    mentioned_user_ids: list[uuid.UUID] = []
 
 
 async def _load(db, user, offer_id, deal_id, enquiry_id):
@@ -62,6 +73,11 @@ async def _response(db, t, user) -> ConversationResponse:
     return ConversationResponse(
         messages=[ConversationMessage(**m) for m in await service.messages(db, t, user)],
         can_post_to=[AudienceOption(key=k, label=service.AUDIENCE_LABEL[k]) for k in await service.post_options(db, t)],
+        live=LiveItems(
+            offer_id=t.open_offer.id if t.open_offer else None,
+            enquiry_id=t.open_enquiry.id if t.open_enquiry else None,
+            deal_id=t.live_deal.id if t.live_deal else None,
+        ),
     )
 
 
@@ -87,7 +103,8 @@ async def post_to_conversation(
 ) -> ConversationResponse:
     club, t = await _load(db, current_user, body.offer_id, body.deal_id, body.enquiry_id)
     try:
-        await service.post(db, t, current_user, club, audience=body.audience, body=body.body)
+        await service.post(db, t, current_user, club, audience=body.audience, body=body.body,
+                           mentioned_user_ids=body.mentioned_user_ids)
     except service.ConversationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail)
     _club, t = await _load(db, current_user, body.offer_id, body.deal_id, body.enquiry_id)

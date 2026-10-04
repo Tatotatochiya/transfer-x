@@ -266,6 +266,8 @@ Return JSON:
   the club ("we"). Money like "£6m" or "£35k a week". Use only names and figures from the facts; refer to a club
   shown as undisclosed only as it is shown. No placeholders in brackets, no sign-off name, and do not commit the
   club to anything the facts or the user's note do not support.
+  Write from the club's own side as the facts state it ("you_are", "your_side"): a selling club never asks to sign
+  its own player, and a buying club never talks about the player's contract "with us".
 """
 
 LITE_BUY_REASONS_USER = """\

@@ -12,7 +12,8 @@ import ClubLink from "../../components/ui/ClubLink";
 import PlayerLink from "../../components/ui/PlayerLink";
 import Metric from "../../components/ui/Metric";
 import Spinner from "../../components/ui/Spinner";
-import OfferThread from "../../components/offers/OfferThread";
+import OfferThread, { offerTimeline } from "../../components/offers/OfferThread";
+import ConversationPanel from "../../components/conversation/ConversationPanel";
 import DealStructureFields, {
   structureBody,
   structureError,
@@ -507,7 +508,6 @@ export default function OfferDetailPage() {
   const canMarketWrite = can("MARKET_WRITE");
   const canAct      = isParty && isActive && isMyTurn && canMarketWrite;
   const canWithdraw = isBuyer && isActive && canMarketWrite;  // buyer can always pull out regardless of turn
-  const canMessage  = isParty && isActive && canMarketWrite;
 
   const waitingFor = !isMyTurn && isActive && isParty
     ? (isBuyer ? offer.to_club?.name ?? "other party" : buyerLabel(offer, "other party"))
@@ -527,7 +527,8 @@ export default function OfferDetailPage() {
       <Card>
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Offer</p>
         <p className="text-lg font-semibold text-text">
-          <PlayerLink id={offer.player?.id ?? offer.player_id} name={offer.player?.name ?? "Unknown player"} />
+          <PlayerLink id={offer.player?.id ?? offer.player_id} name={offer.player?.name ?? "Unknown player"}
+            photoUrl={offer.player?.photo_url ?? null} size="lg" />
         </p>
         {offer.player?.position && <p className="text-xs text-text-muted mt-0.5">{offer.player.position}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -668,8 +669,15 @@ export default function OfferDetailPage() {
 
       {/* Negotiation thread */}
       <div className="rounded-xl bg-surface ring-1 ring-border p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Negotiations</p>
-        <OfferThread offer={offer} myClubId={myClubId} canMessage={canMessage} />
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Conversation</p>
+        {/* The whole transfer's conversation (product ADR 0008): the enquiry
+            before this offer too, with the offer's own events in between. */}
+        {isParty ? (
+          <ConversationPanel context={{ offerId: offer.id }} timeline={offerTimeline(offer)}
+            placeholder="Write a message… (e.g. why your latest terms are fair)" />
+        ) : (
+          <OfferThread offer={offer} myClubId={myClubId} canMessage={false} />
+        )}
         {showCounter && canAct && (
           <CounterForm
             key={JSON.stringify(prefill)}

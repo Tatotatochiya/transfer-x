@@ -247,8 +247,8 @@ def outbid(*, sale, player: str, best: Decimal, next_bid: Decimal) -> dict:
 # ── Approvals ─────────────────────────────────────────────────────────────────
 
 
-async def approval_player(db: AsyncSession, approval) -> tuple[uuid.UUID | None, str | None]:
-    """The player an approval is about (id, name), from its payload."""
+async def approval_player(db: AsyncSession, approval) -> tuple[uuid.UUID | None, str | None, str | None]:
+    """The player an approval is about (id, name, photo), from its payload."""
     from app.offers.models import Offer
     from app.players.models import Player
     from app.sales.models import Sale
@@ -260,9 +260,9 @@ async def approval_player(db: AsyncSession, approval) -> tuple[uuid.UUID | None,
     if not player_id and payload.get("offer_id"):
         player_id = (await db.execute(select(Offer.player_id).where(Offer.id == uuid.UUID(str(payload["offer_id"]))))).scalar_one_or_none()
     if not player_id:
-        return None, None
-    name = (await db.execute(select(Player.name).where(Player.id == uuid.UUID(str(player_id))))).scalar_one_or_none()
-    return uuid.UUID(str(player_id)), name
+        return None, None, None
+    row = (await db.execute(select(Player.name, Player.photo_url).where(Player.id == uuid.UUID(str(player_id))))).first()
+    return uuid.UUID(str(player_id)), (row[0] if row else None), (row[1] if row else None)
 
 
 async def approval_requested(db: AsyncSession, approval, club) -> dict:

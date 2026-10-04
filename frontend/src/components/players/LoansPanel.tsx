@@ -6,6 +6,7 @@ import type { Loan } from "../../types/api";
 import Button from "../ui/Button";
 import { formatCurrency, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
+import PlayerLink from "../ui/PlayerLink";
 
 /** Loans this club is a party to, in both directions.
  *
@@ -173,12 +174,8 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
                 className="flex flex-wrap items-center gap-4 rounded-xl bg-surface px-5 py-3.5 ring-1 ring-border"
               >
                 <div className="flex-1 basis-[180px] min-w-0">
-                  <Link
-                    to={`/players/market/${loan.player_id}`}
-                    className="text-[15px] font-semibold text-text transition-colors hover:text-accent"
-                  >
-                    {loan.player?.name ?? "Player"}
-                  </Link>
+                  <PlayerLink id={loan.player_id} name={loan.player?.name ?? "Player"} photoUrl={loan.player?.photo_url ?? null}
+                    size="md" className="text-[15px] font-semibold text-text" />
                   <p className="text-[13px] text-text-muted">
                     at {loan.loanee_club?.name ?? "another club"}
                   </p>
@@ -266,12 +263,8 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
                 className="flex flex-wrap items-center gap-4 rounded-xl bg-surface px-5 py-3.5 ring-1 ring-border"
               >
                 <div className="flex-1 basis-[180px] min-w-0">
-                  <Link
-                    to={`/players/market/${loan.player_id}`}
-                    className="text-[15px] font-semibold text-text transition-colors hover:text-accent"
-                  >
-                    {loan.player?.name ?? "Player"}
-                  </Link>
+                  <PlayerLink id={loan.player_id} name={loan.player?.name ?? "Player"} photoUrl={loan.player?.photo_url ?? null}
+                    size="md" className="text-[15px] font-semibold text-text" />
                   <p className="text-[13px] text-text-muted">
                     from {loan.parent_club?.name ?? "another club"}
                   </p>

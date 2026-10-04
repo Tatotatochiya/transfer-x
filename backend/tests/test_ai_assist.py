@@ -225,12 +225,12 @@ async def test_ask_keeps_only_links_from_the_facts(client, buyer, seller, db, fa
     reply["ASK_USER"] = {
         "answer": "You have one transfer in progress.",
         "links": [{"label": "Somewhere else", "path": "https://evil.example"},
-                  {"label": "Transfers", "path": "/deals"}],
+                  {"label": "Transfers", "path": "/board"}],
     }
     await _create_deal_via_offer(client, buyer, seller, db)
     resp = await client.post("/ai/ask", json={"question": "What is in progress?"}, headers=_auth_headers(buyer))
     assert resp.status_code == 200, resp.text
-    assert resp.json()["links"] == [{"label": "Transfers", "path": "/deals"}]
+    assert resp.json()["links"] == [{"label": "Transfers", "path": "/board"}]
     # Only the asking club's own data went to the model.
     assert "your_listings" in calls[-1]["facts"] and calls[-1]["facts"]["club"] == "Hidden Buyer FC"
 

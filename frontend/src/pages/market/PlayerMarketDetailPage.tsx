@@ -589,7 +589,7 @@ export default function PlayerMarketDetailPage() {
             )}
             {isMyPlayer && competition && competition.active_count > 0 && (
               <button
-                onClick={() => navigate("/offers/received")}
+                onClick={() => navigate("/board?side=SELLING")}
                 className="flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent hover:bg-accent/25"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
@@ -796,7 +796,7 @@ export default function PlayerMarketDetailPage() {
           {isAuthenticated && !isMyPlayer && (
             <PlayerFitCard playerId={player.id} />
           )}
-          {isMyPlayer && competition && <OffersPanel book={competition} onOpen={() => navigate("/offers/received")} />}
+          {isMyPlayer && competition && <OffersPanel book={competition} onOpen={() => navigate("/board?side=SELLING")} />}
           {isPlayerAccount && (
             <div className="rounded-xl bg-surface px-3.5 py-3 text-[13px] text-text-secondary ring-1 ring-border">
               <p className="mb-1 text-sm font-semibold text-text">Your profile</p>

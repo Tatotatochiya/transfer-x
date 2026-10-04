@@ -974,6 +974,8 @@ async def draft_facts(db: AsyncSession, *, kind: str, ref_id: uuid.UUID, club, c
             "currency": CURRENCY, "your_club": club.name,
             "your_side": "buying club" if side == "buyer" else "selling club",
             "other_club": other.name if other else None,
+            "the_player_is_moving": (f"from {other.name if other else 'the other club'} to you" if side == "buyer"
+                                     else f"from you to {other.name if other else 'the other club'}"),
             "player": deal.player.name if deal.player else None,
             "player_agent": f"{agent['display_name']} ({agent['agency_name']})" if agent else None,
             "stage": deal.stage.value, "agreed_fee": _num(deal.agreed_fee),
@@ -990,8 +992,17 @@ async def draft_facts(db: AsyncSession, *, kind: str, ref_id: uuid.UUID, club, c
         if _masked(offer, club.id) and offer.from_club is not None:
             masks[offer.from_club.name] = "an undisclosed club"
         model = full["player"].get("fee_model") or {}
+        selling = full["viewer_role"] == "seller"
+        # Spelled out, not left to the model: a draft for a selling club
+        # once read "we would like to sign him" (2026-10-04). Who holds the
+        # player, who is buying, who wrote the terms, and who this goes to.
         facts = {
-            "currency": CURRENCY, "your_club": club.name, "your_side": full["viewer_role"] + " club",
+            "currency": CURRENCY, "your_club": club.name,
+            "you_are": ("the SELLING club: the player is yours and the other club wants to buy him" if selling
+                        else "the BUYING club: you want to sign the player from the other club"),
+            "you_are_writing_to": f"{full['other_club']}, the {'buying' if selling else 'selling'} club",
+            "the_player_is_under_contract_with": "you" if selling else full["other_club"],
+            "current_terms_were_sent_by": full["current_terms_were_sent_by"],
             "other_club": full["other_club"],
             "player": {k: full["player"].get(k) for k in ("name", "age", "position", "contract_ends")},
             "current_terms": full["current_terms"], "status": full["status"],
@@ -1000,7 +1011,13 @@ async def draft_facts(db: AsyncSession, *, kind: str, ref_id: uuid.UUID, club, c
             "listing_guide_price": full["listing_guide_price"],
             "recent_messages": [m.body[:300] for m in sorted(offer.messages, key=lambda m: m.created_at)[-6:]],
         }
-        return facts, "a message to the other club on the offer, explaining the current terms", masks
+        if full["current_terms_were_sent_by"] == "them":
+            purpose = (f"your reply, as the {'selling' if selling else 'buying'} club, to the terms the "
+                       f"{'buying' if selling else 'selling'} club put on the table")
+        else:
+            purpose = (f"a note from you, the {'selling' if selling else 'buying'} club, to the "
+                       f"{'buying' if selling else 'selling'} club explaining the terms you sent")
+        return facts, purpose, masks
 
     if kind == "enquiry_reply":
         from app.enquiries.models import Enquiry
@@ -1021,6 +1038,7 @@ async def draft_facts(db: AsyncSession, *, kind: str, ref_id: uuid.UUID, club, c
             masks[other.name] = other_label
         facts = {
             "your_club": club.name, "your_side": "asking club" if asking else "the player's club",
+            "the_player_is_under_contract_with": other_label if asking else "you",
             "other_club": other_label, "player": enquiry.player.name if enquiry.player else None,
             "status": enquiry.status.value,
             "messages": [{"from": "you" if m.sender_club_id == club.id else "them", "text": m.body[:300]}
@@ -1429,9 +1447,13 @@ async def ask_facts(db: AsyncSession, club, user) -> dict:
         ][:60],
         "pages": [
             {"label": "Dashboard", "path": "/dashboard"}, {"label": "Browse players", "path": "/players/market"},
-            {"label": "Listings", "path": "/sales"}, {"label": "My listings", "path": "/sales/mine"},
-            {"label": "Offers received", "path": "/offers/received"}, {"label": "My offers", "path": "/offers/sent"},
-            {"label": "Transfers in progress", "path": "/deals"}, {"label": "Enquiries", "path": "/enquiries"},
+            {"label": "Listings", "path": "/sales"},
+            # The Transfers board replaced the separate offer, listing, deal
+            # and enquiry lists (product ADR 0008).
+            {"label": "Transfers board", "path": "/board"},
+            {"label": "Players you're buying", "path": "/board?side=BUYING"},
+            {"label": "Players you're selling", "path": "/board?side=SELLING"},
+            {"label": "Transfer history", "path": "/board/history"},
             {"label": "My club", "path": "/club"}, {"label": "Finance", "path": "/club/finance"},
         ],
     }

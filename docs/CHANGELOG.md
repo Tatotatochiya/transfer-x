@@ -18,13 +18,16 @@ Out of scope: internal refactors with no behaviour change, minor documentation w
 
 ## Format
 
-Follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/): most recent changes at the top, grouped under `### Added` / `### Changed` / `### Fixed` / `### Removed`, with unreleased work under `## [Unreleased]`.
+Follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/): most recent changes at the top, grouped under `### Added` / `### Changed` / `### Fixed` / `### Removed
+- **The classic list pages** (Transfers in progress, Enquiries, My Offers, Offers Received, My Listings) and their "Classic views" sidebar group. Their addresses redirect to the board, with Buying or Selling chosen. Detail pages are unchanged.
+, with unreleased work under `## [Unreleased]`.
 
 Maintained by the [`documentation-standards`](../.claude/skills/documentation-standards/SKILL.md) skill — update it as part of any session that ships a real change, not in a batch after the fact.
 
 ## [Unreleased]
 
 ### Added
+- **Transfer history** at `/board/history`: every completed transfer and everything that ended without one (collapsed deals, offers rejected, withdrawn or expired, closed enquiries, ended listings). It's searchable by player or club, and filtered by side and outcome. The board also gets a search box, "+ New listing" and "History".
 - **Ask Sam** (Lite L7). Lite's "Ask {name}" buttons send a question to the club's team contact (chosen on the Team page), else a director or manager, else everyone who can act. Questions arrive as a new `LITE_QUESTION` notification linking to the player, offer or deal.
 - **Decisions from email** (Lite L8). Offer emails and the daily digest carry "Ask for £Xm", "Accept £Ym" and "Say no". Each opens a confirm page that changes nothing until you confirm, then holds the action for 10 seconds with undo. Accepting or countering needs you signed in. Links are single-use, last 24 hours, and are refused if the offer has changed.
 - **Approval decision sheet.** An approval push opens that approval: on a phone, a one-screen sheet with the player, budget after and time left, plus Approve (asks once more) and Decline (optional reason). Decision sheets opened from a push can be swiped between.
@@ -195,6 +198,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **One place to talk.** The offer page, the enquiry page and the deal room now all use the transfer's single conversation, with AI drafting and, on messages everyone on the deal can read, @mentions. The clubs' separate deal-room Messages tab is gone. Agents and players keep their deal-room view.
 - **Notification settings by tier.** Settings start with the daily summary and three tier rows (Your move, Heads-up, For your information), each switching its whole tier. Every type is behind "Show every type".
 - **Push action buttons on wider screens** open the offer page with the counter form filled in, or Accept highlighted. Phones go to the Lite card as before.
 - **Assistant feature verdicts** on the admin AI page: Keep, Review, Consider removing, or Not enough data yet.

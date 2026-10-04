@@ -27,6 +27,7 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { DealNextStepsPanel, NegotiationSummaryPanel } from "../../components/ai/Assistant";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import Money from "../../components/ui/Money";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 const STAGE_SEQ: DealStage[] = [
   "AGREEMENT", "AGENT_NEGOTIATION", "PERSONAL_TERMS", "PAPERWORK", "CONFIRMED", "COMPLETED",
@@ -1346,14 +1347,8 @@ export default function DealDetailPage() {
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
               Player
             </p>
-            <button
-              onClick={() =>
-                deal.player_id && navigate(`/players/market/${deal.player_id}`)
-              }
-              className="text-lg font-semibold text-text hover:text-accent transition-colors text-left"
-            >
-              {deal.player?.name ?? "Unknown"}
-            </button>
+            <PlayerLink id={deal.player_id} name={deal.player?.name} fallback="Unknown"
+              photoUrl={deal.player?.photo_url ?? null} size="lg" className="text-lg font-semibold text-text" />
             {deal.player?.position && (
               <p className="text-xs text-text-muted mt-0.5">{deal.player.position}</p>
             )}

@@ -4,6 +4,7 @@ import api from "../../lib/api";
 import type { Sale } from "../../types/api";
 import Badge from "../ui/Badge";
 import ClubLink from "../ui/ClubLink";
+import PlayerLink from "../ui/PlayerLink";
 import { availabilityLabel, saleStatusLabel, saleStatusVariant, saleTypeLabel, saleTypeVariant } from "../../lib/badges";
 import { formatCurrency, formatDeadline } from "../../lib/utils";
 
@@ -39,10 +40,10 @@ export default function SaleCard({ sale }: SaleCardProps) {
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-semibold text-text">
-            {sale.player?.name ?? "Unknown Player"}
-          </p>
-          <p className="mt-0.5 text-xs text-text-muted truncate">
+          {/* His photo and name link to his profile; the rest of the card opens the listing. */}
+          <PlayerLink id={sale.player?.id ?? sale.player_id} name={sale.player?.name} fallback="Unknown Player"
+            photoUrl={sale.player?.photo_url ?? null} size="lg" className="max-w-full font-semibold text-text" />
+          <p className="mt-0.5 truncate pl-14 text-xs text-text-muted">
             <ClubLink id={sale.seller_club?.id} name={sale.seller_club?.name} />
             {sale.player?.position ? ` · ${sale.player.position}` : ""}
           </p>

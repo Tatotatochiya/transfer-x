@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import api from "../../lib/api";
@@ -12,6 +12,7 @@ import Spinner from "../../components/ui/Spinner";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import ConversationPanel, { type ConversationContext } from "../../components/conversation/ConversationPanel";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 /**
  * The Transfers board (Phase 3, product ADR 0008): every player the club is
@@ -30,6 +31,7 @@ export interface BoardCard {
   player_id: string;
   player_name: string;
   player_position: string | null;
+  player_photo_url?: string | null;
   counterparty: string | null;
   amount: string | number | null;
   detail: string;
@@ -61,17 +63,22 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
   const yours = card.whose_move === "your";
   const left = timeLeft(card.deadline);
   return (
-    <button
-      type="button"
+    // A clickable card rather than a <button>: the player's name inside is
+    // a link to his profile, and a link can't sit inside a button.
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`${card.player_name}: ${card.detail}`}
       onClick={() => onOpen(card)}
-      className={`w-full rounded-xl bg-surface p-3 text-left ring-1 transition-colors hover:ring-accent/50 focus-visible:outline-2 focus-visible:outline-accent ${
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(card); } }}
+      className={`w-full cursor-pointer rounded-xl bg-surface p-3 text-left ring-1 transition-colors hover:ring-accent/50 focus-visible:outline-2 focus-visible:outline-accent ${
         yours ? "ring-accent/40" : "ring-border"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 truncate text-sm font-semibold text-text">
-          {card.player_name}
-          {card.player_position && <span className="ml-1.5 text-xs font-normal text-text-muted">{card.player_position}</span>}
+        <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-text">
+          <PlayerLink id={card.player_id} name={card.player_name} photoUrl={card.player_photo_url ?? null} size="md" />
+          {card.player_position && <span className="shrink-0 text-xs font-normal text-text-muted">{card.player_position}</span>}
         </p>
         {yours && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Your move" />}
       </div>
@@ -95,7 +102,7 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
           {card.others > 0 && <span>+{card.others} more</span>}
         </p>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -116,6 +123,8 @@ function CardDetail({ card, onClose }: { card: BoardCard; onClose: () => void })
       <div className="space-y-4 px-6 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm">
+            <PlayerLink id={card.player_id} name={card.player_name} photoUrl={card.player_photo_url ?? null} size="lg"
+              className="mb-2 text-base font-semibold text-text" />
             <p className="text-text-secondary">
               {card.side === "BUYING" ? "Buying" : "Selling"}
               {card.counterparty && (card.side === "BUYING" ? ` from ${card.counterparty}` : ` to ${card.counterparty}`)}
@@ -139,7 +148,14 @@ function CardDetail({ card, onClose }: { card: BoardCard; onClose: () => void })
 }
 
 export default function BoardPage() {
-  const [side, setSideState] = useState<Side>(readSide);
+  const navigate = useNavigate();
+  // ?side= wins (links from the old list pages, the assistant), else the
+  // choice remembered in this browser.
+  const [params] = useSearchParams();
+  const urlSide = params.get("side");
+  const [side, setSideState] = useState<Side>(() =>
+    urlSide === "BUYING" || urlSide === "SELLING" || urlSide === "BOTH" ? urlSide : readSide());
+  const [search, setSearch] = useState("");
   const [showClosed, setShowClosed] = useState(false);
   const [opened, setOpened] = useState<BoardCard | null>(null);
   const setSide = (s: Side) => {
@@ -152,6 +168,9 @@ export default function BoardPage() {
     refetchInterval: 60_000,
   });
   const total = data ? data.columns.reduce((n, c) => n + c.cards.length, 0) : 0;
+  const needle = search.trim().toLowerCase();
+  const matches = (c: BoardCard) =>
+    !needle || c.player_name.toLowerCase().includes(needle) || (c.counterparty ?? "").toLowerCase().includes(needle);
 
   return (
     <div>
@@ -159,6 +178,9 @@ export default function BoardPage() {
         title="Transfers"
         subtitle={data ? `${data.counts.your_move} waiting on you · ${data.counts.buying} buying · ${data.counts.selling} selling` : undefined}
         actions={
+          <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => navigate("/board/history")}>History</Button>
+          <Button size="sm" onClick={() => navigate("/sales/new")}>+ New listing</Button>
           <div role="radiogroup" aria-label="Show" className="flex rounded-lg bg-surface-inset p-0.5 ring-1 ring-border">
             {(["BOTH", "BUYING", "SELLING"] as Side[]).map((s) => (
               <button
@@ -172,8 +194,20 @@ export default function BoardPage() {
               </button>
             ))}
           </div>
+          </div>
         }
       />
+
+      {total > 0 && (
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Find a player or club on the board"
+          aria-label="Find a player or club on the board"
+          className="mb-4 w-full max-w-sm rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+        />
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
@@ -195,11 +229,11 @@ export default function BoardPage() {
               <section key={col.key} aria-label={col.label} className="w-[260px] shrink-0 snap-start lg:w-auto lg:min-w-0 lg:flex-1">
                 <h2 className="mb-2 flex items-baseline justify-between px-1 text-xs font-bold uppercase tracking-[0.06em] text-text-muted">
                   {col.label}
-                  <span className="tabular-nums">{col.cards.length}</span>
+                  <span className="tabular-nums">{col.cards.filter(matches).length}</span>
                 </h2>
                 <div className="flex flex-col gap-2">
-                  {col.cards.map((c) => <Card key={c.key} card={c} showSide={side === "BOTH"} onOpen={setOpened} />)}
-                  {col.cards.length === 0 && (
+                  {col.cards.filter(matches).map((c) => <Card key={c.key} card={c} showSide={side === "BOTH"} onOpen={setOpened} />)}
+                  {col.cards.filter(matches).length === 0 && (
                     <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-text-muted">None</p>
                   )}
                 </div>
@@ -216,6 +250,9 @@ export default function BoardPage() {
                 className="text-sm font-semibold text-text-secondary hover:text-text"
               >
                 Closed ({data.closed.length}) {showClosed ? "▾" : "▸"}
+              </button>
+              <button type="button" onClick={() => navigate("/board/history")} className="ml-4 text-sm font-semibold text-accent hover:underline">
+                Full history →
               </button>
               {showClosed && (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">

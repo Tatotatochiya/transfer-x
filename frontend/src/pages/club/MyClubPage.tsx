@@ -520,7 +520,7 @@ export default function MyClubPage() {
                       {salesData.total} active listing{salesData.total !== 1 ? "s" : ""}
                     </p>
                     <div className="flex gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => navigate("/sales/mine")}>
+                      <Button variant="secondary" size="sm" onClick={() => navigate("/board?side=SELLING")}>
                         View all
                       </Button>
                       {canMarketWrite && (

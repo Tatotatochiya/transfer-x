@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import api from "../../lib/api";
@@ -12,6 +12,7 @@ import { ActionCardShell, Done, FactRow } from "../../components/lite/ActionCard
 import { SwipeNav, WaitingHeader } from "../../components/lite/WaitingNav";
 import Spinner from "../../components/ui/Spinner";
 import type { PendingApproval } from "../../types/api";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 /**
  * The approval decision sheet (mobile notifications, phase 4 follow-up): an
@@ -98,7 +99,9 @@ export default function LiteApprovalPage() {
           <div className="flex flex-col">
             <FactRow label="Asked by">{who}</FactRow>
             {a.player_name && a.player_id && (
-              <FactRow label="Player"><Link to={`/players/market/${a.player_id}`} className="text-accent">{a.player_name}</Link></FactRow>
+              <FactRow label="Player">
+                <PlayerLink id={a.player_id} name={a.player_name} photoUrl={a.player_photo_url ?? null} size="md" className="font-semibold text-accent" />
+              </FactRow>
             )}
             {pending && left && (
               <FactRow label="Time left"><span className={left.urgent ? "font-bold text-danger-text" : ""}>{left.text}</span></FactRow>

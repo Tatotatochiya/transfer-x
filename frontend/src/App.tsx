@@ -34,15 +34,10 @@ const AccountSettingsPage       = lazy(() => import("./pages/account/AccountSett
 const WorldTeamDetailPage       = lazy(() => import("./pages/world/WorldTeamDetailPage"));
 const TransferActivityPage      = lazy(() => import("./pages/transfers/TransferActivityPage"));
 const PlayerComparePage         = lazy(() => import("./pages/players/PlayerComparePage"));
-const MySalesPage               = lazy(() => import("./pages/sales/MySalesPage"));
 const CreateSalePage            = lazy(() => import("./pages/sales/CreateSalePage"));
-const OfferInboxPage            = lazy(() => import("./pages/offers/OfferInboxPage"));
-const SentOffersPage            = lazy(() => import("./pages/offers/SentOffersPage"));
 const OfferDetailPage           = lazy(() => import("./pages/offers/OfferDetailPage"));
 const CreateOfferPage           = lazy(() => import("./pages/offers/CreateOfferPage"));
-const DealListPage              = lazy(() => import("./pages/deals/DealListPage"));
 const DealDetailPage            = lazy(() => import("./pages/deals/DealDetailPage"));
-const EnquiriesPage             = lazy(() => import("./pages/enquiries/EnquiriesPage"));
 const EnquiryDetailPage         = lazy(() => import("./pages/enquiries/EnquiryDetailPage"));
 const FinancePage               = lazy(() => import("./pages/club/FinancePage"));
 const ShortlistListPage         = lazy(() => import("./pages/scouting/ShortlistListPage"));
@@ -69,6 +64,7 @@ const AdminAuditLogPage = lazy(() => import("./pages/admin/AdminAuditLogPage"));
 const TeamPage                  = lazy(() => import("./pages/club/TeamPage"));
 const SquadCheckPage            = lazy(() => import("./pages/club/SquadCheckPage"));
 const BoardPage                 = lazy(() => import("./pages/board/BoardPage"));
+const BoardHistoryPage          = lazy(() => import("./pages/board/BoardHistoryPage"));
 const ApprovalsPage             = lazy(() => import("./pages/club/ApprovalsPage"));
 const AcceptInvitePage          = lazy(() => import("./pages/auth/AcceptInvitePage"));
 const ResetPasswordPage         = lazy(() => import("./pages/auth/ResetPasswordPage"));
@@ -232,7 +228,8 @@ export default function App() {
           <Route path="/players/market"     element={<PublicRoute><PlayerMarketPage /></PublicRoute>} />
           <Route path="/players/market/:id" element={<PublicRoute><PlayerMarketDetailPage /></PublicRoute>} />
           {/* /sales/mine must come before /sales/:id to avoid swallowing "mine" as an id */}
-          <Route path="/sales/mine"         element={<ClubRoute><MySalesPage /></ClubRoute>} />
+          {/* The Transfers board replaced these list pages (product ADR 0008). */}
+          <Route path="/sales/mine"         element={<Navigate to="/board?side=SELLING" replace />} />
           <Route path="/sales/new"          element={<ClubRoute><CreateSalePage /></ClubRoute>} />
           <Route path="/sales"              element={<PublicRoute><SaleListPage /></PublicRoute>} />
           <Route path="/sales/:id"          element={<PublicRoute><SaleDetailPage /></PublicRoute>} />
@@ -244,14 +241,14 @@ export default function App() {
 
           {/* ── Offers (club-only) ── */}
           {/* /offers/received and /offers/sent must come before /offers/:id */}
-          <Route path="/offers/received" element={<ClubRoute><OfferInboxPage /></ClubRoute>} />
-          <Route path="/offers/sent"     element={<ClubRoute><SentOffersPage /></ClubRoute>} />
+          <Route path="/offers/received" element={<Navigate to="/board?side=SELLING" replace />} />
+          <Route path="/offers/sent"     element={<Navigate to="/board?side=BUYING" replace />} />
           <Route path="/offers/new"      element={<ClubRoute><CreateOfferPage /></ClubRoute>} />
           <Route path="/offers/:id"      element={<ProtectedRoute><OfferDetailPage /></ProtectedRoute>} />
 
           {/* ── Deals (club-only list; deal room accessible to all parties) ── */}
-          <Route path="/deals"     element={<ClubRoute><DealListPage /></ClubRoute>} />
-          <Route path="/enquiries"     element={<ClubRoute><EnquiriesPage /></ClubRoute>} />
+          <Route path="/deals"     element={<Navigate to="/board" replace />} />
+          <Route path="/enquiries"     element={<Navigate to="/board" replace />} />
           <Route path="/enquiries/:id" element={<ClubRoute><EnquiryDetailPage /></ClubRoute>} />
           <Route path="/deals/:id" element={<ProtectedRoute><DealDetailPage /></ProtectedRoute>} />
 
@@ -262,6 +259,7 @@ export default function App() {
           <Route path="/club/team"      element={<ClubRoute><TeamPage /></ClubRoute>} />
           <Route path="/club/squad-check" element={<ClubRoute><SquadCheckPage /></ClubRoute>} />
           <Route path="/board" element={<ClubRoute><BoardPage /></ClubRoute>} />
+          <Route path="/board/history" element={<ClubRoute><BoardHistoryPage /></ClubRoute>} />
           <Route path="/club/approvals" element={<ClubRoute><ApprovalsPage /></ClubRoute>} />
 
           {/* ── Agent portal ── */}

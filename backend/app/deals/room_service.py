@@ -278,6 +278,28 @@ async def create_comment(
     return comment
 
 
+async def notify_comment(db: AsyncSession, deal: Deal, author, recipients: set, text: str) -> None:
+    """Tell the people mentioned in (or replied to by) a deal comment."""
+    from app.agents.negotiation_messages import sender_label
+    from app.notifications import copy as push_copy
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
+    recipients = {r for r in recipients if r != author.id}
+    if not recipients:
+        return
+    who, _, name = (await sender_label(db, author)).partition(" — ")
+    push = push_copy.negotiation_message(
+        deal_id=deal.id, sender=name or who, role=who.lower() if name else None, text=text,
+    )
+    for recipient_id in recipients:
+        await notif_service.create_notification(
+            db, recipient_user_id=recipient_id, type=NotificationType.NEGOTIATION_MESSAGE,
+            message="New comment in a deal you're part of", link=f"/deals/{deal.id}",
+            related_player_id=deal.player_id, **push,
+        )
+
+
 async def list_comments(
     db: AsyncSession, deal_id: uuid.UUID, *, visible: list[CommentAudience]
 ) -> list[DealComment]:

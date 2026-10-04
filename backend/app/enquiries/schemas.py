@@ -39,6 +39,7 @@ class EnquiryResponse(BaseModel):
     id: uuid.UUID
     player_id: uuid.UUID
     player_name: str | None
+    player_photo_url: str | None = None
     status: EnquiryStatus
     is_anonymous: bool
     asking_club: EnquiryParty

@@ -50,6 +50,12 @@ export default function LiteOffersPage() {
                   to={item.kind === "offer" ? `/lite/offers/${item.id}` : item.link}
                   className="flex flex-wrap items-center gap-4 rounded-3xl bg-surface px-7 py-6 no-underline ring-1 ring-border transition-transform hover:ring-accent active:scale-[0.99]"
                 >
+                  {/* His photo; the card it opens links to his profile. */}
+                  {item.player_name && (
+                    item.player_photo_url
+                      ? <img src={item.player_photo_url} alt="" className="h-16 w-16 shrink-0 rounded-full bg-surface-inset object-cover object-top" />
+                      : <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-surface-inset text-[1.5rem] font-extrabold text-text-muted">{item.player_name[0]?.toUpperCase()}</span>
+                  )}
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-danger-bg px-3 py-0.5 text-[0.8125rem] font-extrabold uppercase tracking-wide text-danger-text">

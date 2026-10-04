@@ -13,6 +13,8 @@ class DashboardItem(BaseModel):
     kind: Literal["approval", "deal", "offer", "sale", "enquiry"]
     id: uuid.UUID
     player_name: str | None = None
+    player_id: uuid.UUID | None = None
+    player_photo_url: str | None = None
     club_name: str | None = None
     amount: Decimal | None = None
     reason: str

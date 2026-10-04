@@ -58,6 +58,7 @@ def to_response(enquiry: Enquiry, viewer_club_id: uuid.UUID, *, with_messages: b
         id=enquiry.id,
         player_id=enquiry.player_id,
         player_name=enquiry.player.name if enquiry.player else None,
+        player_photo_url=enquiry.player.photo_url if enquiry.player else None,
         status=enquiry.status,
         is_anonymous=enquiry.is_anonymous,
         asking_club=asking,

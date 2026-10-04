@@ -424,7 +424,7 @@ async def buy_candidates(db: AsyncSession, user, *, position: str, band: str) ->
     for need, _, _, _, p, price, basis, sale in top:
         pos = _pos(p)
         players.append({
-            "player_id": str(p.id), "name": p.name, "age": p.age, "position": pos,
+            "player_id": str(p.id), "name": p.name, "photo_url": p.photo_url, "age": p.age, "position": pos,
             "club": club_names.get(club_of.get(p.id)),
             "free_agent": basis == "free agent",
             "price": price, "price_basis": basis, "sale_id": str(sale.id) if sale else None,
@@ -629,6 +629,7 @@ async def offer_card(db: AsyncSession, user, *, offer_id: uuid.UUID) -> dict:
         "status": offer.status.value,
         "player_id": str(offer.player_id),
         "player_name": offer.player.name if offer.player else None,
+        "player_photo_url": offer.player.photo_url if offer.player else None,
         "other_club": other,
         "deal_type": "LOAN" if loan else "PERMANENT",
         "fee": fee,
