@@ -1,20 +1,19 @@
 // ── Currency ──────────────────────────────────────────────────────────────────
 
+import { useFxStore } from "../store/fx";
 import { usePreferencesStore } from "../store/preferences";
 
-const CURRENCY_SYMBOLS: Record<string, string> = { GBP: "£", EUR: "€", USD: "$" };
+// Every amount is stored and agreed in pounds. The currency preference only
+// adds an estimate next to the bigger figures (formatEstimate, <Money>); it
+// never changes the £ figure itself.
+const ESTIMATE_SYMBOLS: Record<string, string> = { EUR: "€", USD: "$" };
 
 export function formatCurrency(value: number | null | undefined): string {
   if (value == null) return "—";
-  const symbol = CURRENCY_SYMBOLS[usePreferencesStore.getState().currency];
-  return symbol + Math.round(value).toLocaleString("en-GB");
+  return "£" + Math.round(value).toLocaleString("en-GB");
 }
 
-/** Short form for narrow cells — `£52.0m`, `£450k`. Full precision (see
- *  `formatCurrency`) is unbreakable text and overflows a flex cell. */
-export function formatCompactCurrency(value: number | null | undefined): string {
-  if (value == null) return "—";
-  const symbol = CURRENCY_SYMBOLS[usePreferencesStore.getState().currency];
+function compact(symbol: string, value: number): string {
   const n = Math.abs(value);
   const sign = value < 0 ? "-" : "";
   if (n >= 1_000_000) return `${sign}${symbol}${(n / 1_000_000).toFixed(1)}m`;
@@ -22,10 +21,30 @@ export function formatCompactCurrency(value: number | null | undefined): string 
   return `${sign}${symbol}${Math.round(n)}`;
 }
 
+/** Short form for narrow cells — `£52.0m`, `£450k`. Full precision (see
+ *  `formatCurrency`) is unbreakable text and overflows a flex cell. */
+export function formatCompactCurrency(value: number | null | undefined): string {
+  if (value == null) return "—";
+  return compact("£", value);
+}
+
 export function formatWage(value: number | null | undefined): string {
   if (value == null) return "—";
-  const symbol = CURRENCY_SYMBOLS[usePreferencesStore.getState().currency];
-  return symbol + Math.round(value).toLocaleString("en-GB") + "/wk";
+  return "£" + Math.round(value).toLocaleString("en-GB") + "/wk";
+}
+
+/** "≈ €21.1m" for a £ amount, in the currency the user picked, or "" when
+ *  they picked pounds, the rates haven't loaded, or there's no amount. */
+export function formatEstimate(
+  value: number | string | null | undefined,
+  currency: string = usePreferencesStore.getState().currency,
+  rates: Record<string, number> | null = useFxStore.getState().rates,
+): string {
+  if (value == null || value === "" || Number.isNaN(Number(value))) return "";
+  const rate = rates?.[currency];
+  const symbol = ESTIMATE_SYMBOLS[currency];
+  if (!rate || !symbol) return "";
+  return "≈ " + compact(symbol, Number(value) * rate);
 }
 
 // ── Dates ─────────────────────────────────────────────────────────────────────

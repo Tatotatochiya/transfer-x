@@ -1,5 +1,5 @@
 import LiteLayout from "./components/lite/LiteLayout";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useAuthStore } from "./store/auth";
@@ -14,6 +14,8 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { CompareProvider } from "./context/CompareContext";
 import CompareBar from "./components/players/CompareBar";
 import { usePageTracking } from "./hooks/usePageTracking";
+import { usePreferencesStore } from "./store/preferences";
+import { useFxStore } from "./store/fx";
 
 // ── Eager (hot-path) ──────────────────────────────────────────────────────────
 import LoginPage from "./pages/auth/LoginPage";
@@ -104,6 +106,11 @@ function GlobalSetup() {
   useAuthBootstrap(); // Once, here only — not inside route wrappers, so it never gets cancelled by navigation
   useWebSocket();
   usePageTracking();
+  // Rates for the "≈ €" estimates, only once someone asks for them.
+  const currency = usePreferencesStore((s) => s.currency);
+  useEffect(() => {
+    if (currency !== "GBP") void useFxStore.getState().load();
+  }, [currency]);
   return null;
 }
 

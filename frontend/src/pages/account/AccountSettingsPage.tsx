@@ -167,14 +167,16 @@ export default function AccountSettingsPage() {
 
             <div className="flex items-center justify-between px-5 py-4">
               <div>
-                <p className="text-sm text-text">Currency</p>
-                <p className="mt-0.5 text-xs text-text-muted">Applied to all transfer fees and wages</p>
+                <p className="text-sm text-text">Estimates in another currency</p>
+                <p className="mt-0.5 text-xs text-text-muted">
+                  Amounts are agreed in pounds. Pick a currency to see an estimate next to fees, valuations and budgets.
+                </p>
               </div>
               <SegmentedControl<Currency>
                 value={currency}
                 onChange={setCurrency}
                 options={[
-                  { value: "GBP", label: "£ GBP" },
+                  { value: "GBP", label: "None" },
                   { value: "EUR", label: "€ EUR" },
                   { value: "USD", label: "$ USD" },
                 ]}

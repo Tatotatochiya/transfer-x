@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +26,7 @@ import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import { DealNextStepsPanel, NegotiationSummaryPanel } from "../../components/ai/Assistant";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
+import Money from "../../components/ui/Money";
 
 const STAGE_SEQ: DealStage[] = [
   "AGREEMENT", "AGENT_NEGOTIATION", "PERSONAL_TERMS", "PAPERWORK", "CONFIRMED", "COMPLETED",
@@ -841,7 +843,7 @@ function DealRoomHeader({ deal }: { deal: Deal }) {
 type LaneStatus = "done" | "blocking" | "pending";
 
 function Lane({ status, title, description, metricLabel, metricValue }: {
-  status: LaneStatus; title: string; description: string; metricLabel: string; metricValue: string;
+  status: LaneStatus; title: string; description: string; metricLabel: string; metricValue: ReactNode;
 }) {
   const stripClass = status === "done" ? "bg-success" : status === "blocking" ? "bg-warning-fill" : "bg-border";
   const overlineClass = status === "done" ? "text-success-text" : status === "blocking" ? "text-warning-text" : "text-text-muted";
@@ -890,7 +892,7 @@ function ThreeLanes({ deal, negotiation }: { deal: Deal; negotiation: AgentNegot
         title="Club to club"
         description={clubStatus === "blocking" ? "Finalising fee and deal structure between clubs." : "Fee and structure agreed between clubs."}
         metricLabel="Agreed fee"
-        metricValue={formatCurrency(deal.agreed_fee)}
+        metricValue={<Money value={deal.agreed_fee} />}
       />
       {hasAgent && (
         <Lane

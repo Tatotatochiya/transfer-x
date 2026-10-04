@@ -13,6 +13,7 @@ import { useLiteOfferCard } from "../../hooks/useLite";
 import { holdAndOpen } from "./LiteSentPage";
 import { liteMoney, liteWage } from "../../lib/liteMoney";
 import { getApiError } from "../../lib/utils";
+import Money from "../../components/ui/Money";
 
 type Mode = "answer" | "accept" | "counter" | "reject";
 
@@ -126,8 +127,8 @@ export default function LiteOfferCardPage() {
         <div>
           <FactRow label="Player">{player}</FactRow>
           <FactRow label={card.side === "seller" ? "From" : "Selling club"}>{cap(other)}</FactRow>
-          <FactRow label={loan ? "Loan fee" : "Fee"}>{liteMoney(card.fee)}</FactRow>
-          {card.your_valuation != null && <FactRow label="Your valuation">{liteMoney(card.your_valuation)}</FactRow>}
+          <FactRow label={loan ? "Loan fee" : "Fee"}><Money value={card.fee} format={liteMoney} /></FactRow>
+          {card.your_valuation != null && <FactRow label="Your valuation"><Money value={card.your_valuation} format={liteMoney} /></FactRow>}
           {open && card.expires_at && (
             <FactRow label="Reply by">
               <span className={left?.urgent ? "font-bold text-danger-text" : undefined}>

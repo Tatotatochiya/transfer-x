@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 
 from app.common import jobs as _jobs  # noqa: F401 — registers SchedulerJobRun
 from app.admin import router as admin_router
+from app.fx import router as fx_router
 from app.ai import router as ai_router
 from app.analytics import router as analytics_router
 from app.ws import router as ws_router
@@ -371,6 +372,7 @@ async def server_error_handler(request: Request, exc: Exception) -> JSONResponse
 # ── Routers ───────────────────────────────────────────────────────────────────
 
 app.include_router(health.router)
+app.include_router(fx_router.router)
 app.include_router(search_router.router)
 app.include_router(auth_router.router, prefix="/auth")
 app.include_router(clubs_router.router, prefix="/clubs")

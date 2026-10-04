@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import Card from "../ui/Card";
 
 /** Tier-2 "standing figure" stat card — shared by the club and agent dashboards. */
@@ -8,7 +10,7 @@ export default function FigureCard({
   bar,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   note?: string;
   bar?: { pct: number; colour: string };
 }) {

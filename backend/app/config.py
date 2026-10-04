@@ -131,6 +131,11 @@ class Settings(BaseSettings):
     vapid_private_key: str | None = None
     vapid_subject: str | None = None
 
+    # Daily reference rates for the "≈ €21.0m" estimates next to £ amounts
+    # (docs/product/decisions: amounts are agreed in pounds). Leave unset to
+    # use the fixed fallback rates (tests do).
+    fx_rates_url: str | None = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
+
     # Clubs join by invitation (clubs/service.create_club_invitation). Public
     # club sign-up is off unless this is set — the test suite sets it, since
     # its fixtures register clubs directly; real environments leave it off.
