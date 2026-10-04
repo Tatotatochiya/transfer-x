@@ -53,7 +53,7 @@ async def _approval_items(
                 id=a.id,
                 amount=a.amount,
                 reason=a.summary or "Approval pending your decision",
-                link="/approvals",
+                link=f"/club/approvals?id={a.id}",
                 deadline=a.expires_at,
             ),
         )

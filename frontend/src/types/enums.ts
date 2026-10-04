@@ -98,6 +98,7 @@ export type NotificationType =
   | "DEAL_PAPERWORK"
   | "ENQUIRY_RECEIVED"
   | "ENQUIRY_REPLIED"
+  | "LITE_QUESTION"
   | "APPROVAL_DECIDED";
 
 // TRA-151 — club roles & capabilities (server matrix is the only truth; the

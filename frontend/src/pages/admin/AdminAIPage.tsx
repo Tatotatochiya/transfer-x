@@ -249,6 +249,7 @@ function SuggestionsSection() {
                 <th className="px-4 py-2 text-right font-semibold">Shown</th>
                 <th className="px-4 py-2 text-right font-semibold">Used</th>
                 <th className="px-4 py-2 text-right font-semibold">Used %</th>
+                <th className="px-4 py-2 font-semibold">Verdict</th>
               </tr>
             </thead>
             <tbody>
@@ -260,12 +261,16 @@ function SuggestionsSection() {
                   <td className="px-4 py-2 text-right tabular-nums font-semibold text-text">
                     {f.used_pct == null ? "—" : `${f.used_pct}%`}
                   </td>
+                  <td className={`px-4 py-2 text-xs font-semibold ${
+                    f.verdict === "Consider removing" ? "text-danger-text" : f.verdict === "Review" ? "text-warning-text" : f.verdict === "Keep" ? "text-success-text" : "text-text-muted"
+                  }`}>{f.verdict ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="border-t border-rule-faint px-4 py-2 text-xs text-text-muted">
             Shown once per person, feature and subject a day. A draft counts as used when the message sent is mostly the draft.
+            Verdict: under 30 shown is not enough to judge; then 25% used or more is Keep, 10–24% Review, under 10% Consider removing.
           </p>
         </div>
       )}

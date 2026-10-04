@@ -23,6 +23,21 @@ FEATURES: dict[str, str] = {
 
 SHOWN, USED = "SHOWN", "USED"
 
+# How the admin page judges a feature (Phase 3: trim the assistant by use).
+# Below MIN_SHOWN there isn't enough to judge; then the share used decides.
+MIN_SHOWN = 30
+KEEP_PCT, REVIEW_PCT = 25, 10
+
+
+def verdict(shown: int, used_pct: int | None) -> str:
+    if shown < MIN_SHOWN or used_pct is None:
+        return "Not enough data yet"
+    if used_pct >= KEEP_PCT:
+        return "Keep"
+    if used_pct >= REVIEW_PCT:
+        return "Review"
+    return "Consider removing"
+
 
 async def record_shown(db: AsyncSession, feature: str, user_id: uuid.UUID, ref: str | uuid.UUID | None = None) -> None:
     """Once per user, feature and subject a day: a cached answer seen again
@@ -64,9 +79,10 @@ async def suggestion_stats(db: AsyncSession, days: int = 30) -> list[dict]:
     for feature in list(FEATURES) + [f for f in counts if f not in FEATURES]:
         shown = counts.get(feature, {}).get(SHOWN, 0)
         used = counts.get(feature, {}).get(USED, 0)
+        used_pct = round(100 * min(used, shown) / shown) if shown else None
         out.append({
             "feature": feature, "label": FEATURES.get(feature, feature),
-            "shown": shown, "used": used,
-            "used_pct": round(100 * min(used, shown) / shown) if shown else None,
+            "shown": shown, "used": used, "used_pct": used_pct,
+            "verdict": verdict(shown, used_pct),
         })
     return out

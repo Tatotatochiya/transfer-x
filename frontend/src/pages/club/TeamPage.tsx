@@ -93,6 +93,18 @@ export default function TeamPage() {
     onError: (err: unknown) => addToast(getApiError(err, "Failed to change role."), "error"),
   });
 
+  // Lite's "Ask {name}" goes to the team contact (one per club).
+  const contactMutation = useMutation({
+    mutationFn: ({ staffId, on }: { staffId: string; on: boolean }) =>
+      api.put(`/clubs/me/staff/${staffId}/lite-contact`, { on }),
+    onSuccess: (_r, v) => {
+      queryClient.invalidateQueries({ queryKey: ["clubs", "me", "staff"] });
+      queryClient.invalidateQueries({ queryKey: ["lite", "team-contact"] });
+      addToast(v.on ? "Team contact set" : "Team contact cleared", "success");
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Couldn't change the team contact."), "error"),
+  });
+
   const removeMutation = useMutation({
     mutationFn: (staffId: string) => api.delete(`/clubs/me/staff/${staffId}`),
     onSuccess: () => {
@@ -183,9 +195,19 @@ export default function TeamPage() {
                         Joined {formatDateTime(member.created_at)}
                       </p>
                     </div>
+                    {member.is_lite_contact && <Badge variant="info">Team contact</Badge>}
                     <Badge variant={ROLE_INFO[member.role].badge}>
                       {ROLE_INFO[member.role].label}
                     </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={contactMutation.isPending}
+                      onClick={() => contactMutation.mutate({ staffId: member.id, on: !member.is_lite_contact })}
+                      title="Questions from the Ask buttons in Lite go to the team contact"
+                    >
+                      {member.is_lite_contact ? "Not the contact" : "Make team contact"}
+                    </Button>
                     <select
                       value={member.role}
                       onChange={(e) =>

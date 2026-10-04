@@ -9,6 +9,7 @@ import { DraftButton, useDraftTracking } from "../ai/DraftButton";
 import { formatDateTime, getApiError } from "../../lib/utils";
 import { useAuthStore } from "../../store/auth";
 import { useToast } from "../../context/ToastContext";
+import ConversationPanel from "../conversation/ConversationPanel";
 
 type ViewerSide = "buyer" | "seller" | null;
 type Channel = "SHARED" | "CLUB_ONLY" | "AGENT";
@@ -341,7 +342,11 @@ export default function DealRoomPanel({
   myClubName?: string;
   theirClubName?: string;
 }) {
-  const [tab, setTab] = useState<"messages" | "documents">("messages");
+  // Clubs on the deal also get the whole transfer's conversation: the
+  // enquiry and offer messages before the deal, and the agent thread
+  // (product ADR 0008). Agents and players keep the deal-room view.
+  const tabs = viewerSide ? (["conversation", "messages", "documents"] as const) : (["messages", "documents"] as const);
+  const [tab, setTab] = useState<"conversation" | "messages" | "documents">(viewerSide ? "conversation" : "messages");
   const privateAudience = privateAudienceFor(viewerSide);
   const [channel, setChannel] = useState<Channel>("SHARED");
 
@@ -357,7 +362,7 @@ export default function DealRoomPanel({
       <div className="flex items-center justify-between border-b border-rule px-5 py-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Deal Room</p>
         <div className="flex gap-1">
-          {(["messages", "documents"] as const).map((t) => (
+          {tabs.map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -370,6 +375,12 @@ export default function DealRoomPanel({
           ))}
         </div>
       </div>
+
+      {tab === "conversation" && (
+        <div className="px-5 py-4">
+          <ConversationPanel context={{ dealId }} />
+        </div>
+      )}
 
       {tab === "messages" && (
         <>

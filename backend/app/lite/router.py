@@ -1,12 +1,14 @@
 """Lite mode routes (docs/feature_spec/lite-mode)."""
 import uuid
+from decimal import Decimal
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, get_optional_user
 from app.lite import service
 from app.lite.schemas import (
     LiteHomeResponse,
@@ -248,3 +250,106 @@ async def deal_progress(
     if deal is None or club is None or club.id not in (deal.buyer_club_id, deal.seller_club_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deal not found")
     return await held.deal_progress(db, deal, club.id)
+
+
+# ── Team contact (BACKEND.md §6, L7) ─────────────────────────────────────────
+
+
+class TeamContactResponse(BaseModel):
+    name: str | None  # first name, or null for "your team"
+    label: str        # "Sam" or "your team", ready for "Ask {label}"
+
+
+class AskTeamRequest(BaseModel):
+    subject_type: Literal["player", "offer", "deal", "general"] = "general"
+    subject_id: uuid.UUID | None = None
+    text: str = Field(min_length=1, max_length=1000)
+
+
+async def _lite_club(db: AsyncSession, user: User):
+    from app.clubs import service as clubs_service
+
+    club, _ = await clubs_service.get_club_and_role_for_user(db, user.id)
+    if club is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+    return club
+
+
+@router.get("/lite/team-contact", response_model=TeamContactResponse)
+async def get_team_contact(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> TeamContactResponse:
+    """Who "Ask {name}" goes to: the club's chosen Lite contact, else its
+    first sporting director or manager, else "your team"."""
+    from app.lite import team
+
+    contact = await team.team_contact(db, await _lite_club(db, current_user), current_user)
+    return TeamContactResponse(name=contact["name"] if contact else None,
+                               label=contact["name"] if contact else "your team")
+
+
+@router.post("/lite/ask-team")
+async def ask_team(
+    body: AskTeamRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    from app.lite import team
+
+    club = await _lite_club(db, current_user)
+    try:
+        result = await team.ask_team(db, club, current_user, subject_type=body.subject_type,
+                                     subject_id=body.subject_id, text=body.text)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+    await db.commit()
+    return result
+
+
+# ── Decisions from email (BACKEND.md §7, L8) ─────────────────────────────────
+
+
+class EmailConfirmRequest(BaseModel):
+    action: Literal["counter", "accept", "reject"]
+    amount: Decimal | None = None
+
+
+@router.get("/lite/confirm/{token}")
+async def view_email_decision(
+    token: str,
+    action: Literal["counter", "accept", "reject"],
+    amount: Decimal | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+) -> dict:
+    """What an email button would do. Changes nothing: mail scanners open links."""
+    from app.lite import email_actions
+
+    return await email_actions.view(db, token, action, amount, current_user)
+
+
+@router.post("/lite/confirm/{token}")
+async def confirm_email_decision(
+    token: str,
+    body: EmailConfirmRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+) -> dict:
+    """Hold the decision for 10 seconds, like any Lite send. Accepting or
+    countering needs the email's recipient signed in; saying no doesn't."""
+    from app.lite import email_actions
+
+    result = await email_actions.confirm(db, token, body.action, body.amount, current_user)
+    await db.commit()
+    return result
+
+
+@router.post("/lite/confirm/{token}/undo", status_code=status.HTTP_204_NO_CONTENT)
+async def undo_email_decision(token: str, db: AsyncSession = Depends(get_db)) -> None:
+    from app.lite import email_actions
+
+    await email_actions.undo(db, token)
+    await db.commit()

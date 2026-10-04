@@ -110,3 +110,26 @@ class HeldAction(Base):
     ai_assisted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ActionToken(Base):
+    """A one-tap decision from an email (L8, lite-mode BACKEND §7). Only the
+    token's hash is stored. Single-use, 24 hours. `subject_version` is a
+    fingerprint of the offer's status, terms and last action when the email
+    went out: if the offer has moved since, the decision is refused rather
+    than applied to new terms."""
+    __tablename__ = "action_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    subject_kind: Mapped[str] = mapped_column(String(20), nullable=False)  # "offer"
+    subject_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    allowed_actions: Mapped[list] = mapped_column(JSON, nullable=False)
+    subject_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    held_action_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

@@ -94,8 +94,19 @@ async def send_daily_digests(db: AsyncSession, *, now: datetime | None = None) -
             except Exception:
                 logger.warning("No AI briefing for user %s's digest", user.id)
             base = settings.frontend_base_url
+            # Offers waiting on them get one-tap decisions (Lite L8), when the
+            # email really goes out.
+            lines = []
+            for i in items:
+                buttons = None
+                if i.kind == "offer" and settings.smtp_host:
+                    from app.lite.email_actions import offer_buttons
+
+                    buttons = await offer_buttons(db, user, i.id) or None
+                lines.append((_line(i), f"{base}{i.link}", buttons) if buttons else (_line(i), f"{base}{i.link}"))
+            await db.commit()
             html_body = render_digest_html(
-                [(_line(i), f"{base}{i.link}") for i in items],
+                lines,
                 f"{base}/dashboard",
                 briefing=briefing,
             )

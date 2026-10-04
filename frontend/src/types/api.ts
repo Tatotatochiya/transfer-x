@@ -278,6 +278,8 @@ export interface ClubStaffMember {
   user_id: string;
   email: string;
   name?: string | null;
+  /** Lite's "Ask {name}" goes to this person (L7). */
+  is_lite_contact?: boolean;
   role: StaffRole;
   created_at: string;
 }
@@ -325,6 +327,10 @@ export interface PendingApproval {
   created_at: string;
   expires_at: string;
   summary: string | null;
+  /** The single-approval view only: the decision sheet's facts. */
+  player_id?: string | null;
+  player_name?: string | null;
+  budget_after?: number | string | null;
 }
 
 export interface ApprovalPolicy {
@@ -1821,6 +1827,8 @@ export interface SuggestionStat {
   shown: number;
   used: number;
   used_pct: number | null;
+  /** "Keep", "Review", "Consider removing" or "Not enough data yet" (ai/tracking.py). */
+  verdict?: string;
 }
 
 // ── Player profile ledger (GET /players/market/{id}/ledger) ──────────────────

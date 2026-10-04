@@ -25,6 +25,11 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Ask Sam** (Lite L7). Lite's "Ask {name}" buttons send a question to the club's team contact (chosen on the Team page), else a director or manager, else everyone who can act. Questions arrive as a new `LITE_QUESTION` notification linking to the player, offer or deal.
+- **Decisions from email** (Lite L8). Offer emails and the daily digest carry "Ask for £Xm", "Accept £Ym" and "Say no". Each opens a confirm page that changes nothing until you confirm, then holds the action for 10 seconds with undo. Accepting or countering needs you signed in. Links are single-use, last 24 hours, and are refused if the offer has changed.
+- **Approval decision sheet.** An approval push opens that approval: on a phone, a one-screen sheet with the player, budget after and time left, plus Approve (asks once more) and Decline (optional reason). Decision sheets opened from a push can be swiped between.
+- **Transfers board** (Phase 3, [product ADR 0008](./product/decisions/0008-transfers-board-one-way-to-buy-lite-decides.md)). `/board` shows every player the club is buying or selling, once, at its furthest point. Columns: Talking, Offers, Fee agreed, Personal terms, Paperwork, Done. It has a Buying/Selling/Both filter, your move first, and a Closed drawer. The sidebar puts it under Home with every transfer's waiting count. The pages it replaces sit under "Classic views".
+- **One conversation per transfer** (Phase 3, [architecture ADR 0008](./architecture/decisions/0008-one-conversation-read-across-existing-messages.md)). The enquiry, offer, deal and agent messages between two clubs about a player read as one, each labelled with who can read it. Write to both clubs, only your club, or the agent, from a board card or the deal room's new Conversation tab (`GET/POST /conversation`).
 - **Signed-in devices** (Phase 1). Account settings lists where you're signed in, with Sign out per device and "Sign out everywhere else". Signing out, logging out or a password reset now stops that device's access at once (access tokens carry a session id; migration `0095`).
 - **People's names** (Phase 1). First and last name, asked when joining and in Account settings, shown in the team list, approvals, approval pushes, staff audit entries and the admin Users and Audit log (migration `0093`). Accounts without one get a dismissible prompt.
 - **Check your squad** (Phase 1). `/club/squad-check` lists every squad player worst first (no contract, ended, no end date, no wage, no valuation). The owner or sporting director confirms each, creating the contract if missing; audited, with who and when (migration `0094`).
@@ -190,6 +195,9 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Notification settings by tier.** Settings start with the daily summary and three tier rows (Your move, Heads-up, For your information), each switching its whole tier. Every type is behind "Show every type".
+- **Push action buttons on wider screens** open the offer page with the counter form filled in, or Accept highlighted. Phones go to the Lite card as before.
+- **Assistant feature verdicts** on the admin AI page: Keep, Review, Consider removing, or Not enough data yet.
 - **Currency estimates, not swapped symbols.** Amounts always show in £, since deals are agreed in pounds. The currency setting now adds "≈ €21.1m" next to headline figures, at the ECB's daily rate (`GET /fx/rates`). It used to relabel £18m as €18m.
 - **Offer logic lives in `offers/actions.py`.** The endpoints and Lite's held sends share it; Lite no longer calls endpoint functions.
 - **The frontend build type-checks** (`npm run build` in the Dockerfile). TypeScript errors are at 0, down from 41.
@@ -242,6 +250,8 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **iPhone push taps are counted.** iOS opens pushes without the service worker; the page now reports the tap with the push's own token.
+- **Dashboard approval items** linked to `/approvals`, which isn't a page.
 - **Shortlist Market Value** was always blank: the API now sends it, shown in its own currency.
 - **Admin player Contracts** always said none: the endpoint now returns them.
 - **Admin Deals stale flag** used the creation date: `updated_at` is now sent.

@@ -118,7 +118,8 @@ async def _notify_approvers(db: AsyncSession, approval: PendingApproval, club: C
             type=NotificationType.APPROVAL_REQUESTED,
             message=f"Approval needed: {approval.summary or approval.action_type.value} (£{approval.amount:,.0f})"
             + (f" · asked by {requester.full_name}" if requester is not None and requester.full_name else ""),
-            link="/club/approvals",
+            # This approval: a phone opens its decision sheet (Lite).
+            link=f"/club/approvals?id={approval.id}",
             **push,
         )
 

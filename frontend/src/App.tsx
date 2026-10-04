@@ -68,9 +68,11 @@ const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage")
 const AdminAuditLogPage = lazy(() => import("./pages/admin/AdminAuditLogPage"));
 const TeamPage                  = lazy(() => import("./pages/club/TeamPage"));
 const SquadCheckPage            = lazy(() => import("./pages/club/SquadCheckPage"));
+const BoardPage                 = lazy(() => import("./pages/board/BoardPage"));
 const ApprovalsPage             = lazy(() => import("./pages/club/ApprovalsPage"));
 const AcceptInvitePage          = lazy(() => import("./pages/auth/AcceptInvitePage"));
 const ResetPasswordPage         = lazy(() => import("./pages/auth/ResetPasswordPage"));
+const LiteConfirmPage           = lazy(() => import("./pages/lite/LiteConfirmPage"));
 const JoinClubPage              = lazy(() => import("./pages/auth/JoinClubPage"));
 const JoinPlayerPage            = lazy(() => import("./pages/auth/JoinPlayerPage"));
 const LiteHomePage              = lazy(() => import("./pages/lite/LiteHomePage"));
@@ -82,6 +84,7 @@ const LiteBuyResultsPage        = lazy(() => import("./pages/lite/LiteBuyPage").
 const LiteBidPage               = lazy(() => import("./pages/lite/LiteBidPage"));
 const LiteSentPage = lazy(() => import("./pages/lite/LiteSentPage"));
 const LiteOfferCardPage         = lazy(() => import("./pages/lite/LiteOfferCardPage"));
+const LiteApprovalPage          = lazy(() => import("./pages/lite/LiteApprovalPage"));
 const AgentDashboardPage        = lazy(() => import("./pages/agent/AgentDashboardPage"));
 const AgentPipelinePage         = lazy(() => import("./pages/agent/AgentPipelinePage"));
 const AgentProfilePage          = lazy(() => import("./pages/agent/AgentProfilePage"));
@@ -208,6 +211,8 @@ export default function App() {
           {/* Staff invitation acceptance — public tokenised link, not open signup (D6) */}
           <Route path="/accept-invite" element={<AcceptInvitePage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          {/* A decision from an email (Lite L8): works signed out, for saying no. */}
+          <Route path="/lite/confirm/:token" element={<LiteConfirmPage />} />
           {/* A view-as tab arrives here; the token was taken from the URL by the auth store. */}
           <Route path="/view-as" element={<Navigate to="/dashboard" replace />} />
           <Route path="/join" element={<JoinClubPage />} />
@@ -215,6 +220,7 @@ export default function App() {
           <Route path="/lite" element={<LiteRoute><LiteHomePage /></LiteRoute>} />
           <Route path="/lite/offers" element={<LiteRoute><LiteOffersPage /></LiteRoute>} />
           <Route path="/lite/offers/:offerId" element={<LiteRoute><LiteOfferCardPage /></LiteRoute>} />
+          <Route path="/lite/approvals/:id" element={<LiteRoute><LiteApprovalPage /></LiteRoute>} />
           <Route path="/lite/bid" element={<LiteRoute><LiteBidPage /></LiteRoute>} />
           <Route path="/lite/actions/:actionId" element={<LiteRoute><LiteSentPage /></LiteRoute>} />
           <Route path="/lite/ask" element={<LiteRoute><LiteAskPage /></LiteRoute>} />
@@ -255,6 +261,7 @@ export default function App() {
           <Route path="/club/finance"   element={<ClubRoute><FinancePage /></ClubRoute>} />
           <Route path="/club/team"      element={<ClubRoute><TeamPage /></ClubRoute>} />
           <Route path="/club/squad-check" element={<ClubRoute><SquadCheckPage /></ClubRoute>} />
+          <Route path="/board" element={<ClubRoute><BoardPage /></ClubRoute>} />
           <Route path="/club/approvals" element={<ClubRoute><ApprovalsPage /></ClubRoute>} />
 
           {/* ── Agent portal ── */}

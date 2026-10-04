@@ -56,6 +56,8 @@ class NotificationType(str, enum.Enum):
     DEAL_PAPERWORK = "DEAL_PAPERWORK"
     ENQUIRY_RECEIVED = "ENQUIRY_RECEIVED"
     ENQUIRY_REPLIED = "ENQUIRY_REPLIED"
+    # A colleague asked from Lite ("Ask Sam", lite-mode BACKEND §6).
+    LITE_QUESTION = "LITE_QUESTION"
 
 
 class Notification(Base):

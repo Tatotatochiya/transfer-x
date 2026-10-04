@@ -13,8 +13,6 @@ from app.common.schemas import Paginated
 from app.database import get_db
 from app.clubs.capabilities import Capability, require_club_capability
 from app.deps import get_buyer_user, get_current_user, get_optional_user
-from app.notifications import copy as push_copy
-from app.notifications.models import NotificationType
 from app.offers import actions, service
 from app.offers.models import OfferStatus
 from app.offers.schemas import (
@@ -355,22 +353,8 @@ async def add_message(
 ):
     club = await _get_club_or_403(db, current_user)
     offer = await _get_offer_or_404(db, offer_id)
-
     try:
-        msg = await service.add_message(db, offer, sender_club_id=club.id, body=body.body)
-        other_club_id = offer.to_club_id if offer.from_club_id == club.id else offer.from_club_id
-        await actions.notify_offer(
-            db, offer,
-            recipient_club_id=other_club_id,
-            ntype=NotificationType.OFFER_MESSAGE,
-            message="New message in your negotiation",
-            push=await push_copy.offer_message(db, offer, sender_club_id=club.id, text=body.body),
-        )
-        await db.commit()
-        await db.refresh(msg)
-    except ValueError as exc:
-        await db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-
-    await actions.broadcast(db, offer_id)
+        msg = await actions.add_message(db, current_user, club, offer, body.body)
+    except actions.OfferActionError as exc:
+        raise _http(exc)
     return OfferMessageResponse.model_validate(msg)

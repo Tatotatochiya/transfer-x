@@ -14,6 +14,7 @@ import {
   type LiteCandidate,
   type LitePosition,
 } from "../../hooks/useLite";
+import AskTeamButton from "../../components/lite/AskTeamButton";
 
 /**
  * Buy a player, guided (docs/feature_spec/lite-mode README "Screen 3").
@@ -188,6 +189,12 @@ function CandidateCard({ p }: { p: LiteCandidate }) {
         >
           See his profile
         </Link>
+        <AskTeamButton
+          subject={{ type: "player", id: p.player_id }}
+          suffix=" about him"
+          draft={`What do you think of ${p.name}?`}
+          className="min-h-[3rem] rounded-xl text-[1.0625rem] font-semibold text-text ring-1 ring-border hover:ring-accent"
+        />
       </div>
     </div>
   );

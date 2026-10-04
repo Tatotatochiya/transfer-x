@@ -66,13 +66,13 @@ Done when: a demo deal walks through TMS, ITC, permit and registration with date
 
 Goal: fewer paths, one place to talk, one board to work from.
 
-- [ ] **Transfers board** (L): a column per stage, with buying and selling filters. It replaces Listings, My Listings, Offers sent, Offers received, Transfers in progress and Enquiries.
-- [ ] **One conversation per transfer** (L): one conversation per transfer replaces offer messages, enquiry threads, deal-room comments and agent negotiation threads, with audiences (both clubs, internal, club with agent). Existing messages move across.
-- [ ] **One main way to buy** (M): enquiry → offer → deal is the default. Auctions and fixed price move behind "advanced".
-- [ ] **Lite and full app, on purpose** (S decision, then ongoing): Lite is where people decide (phone, push, undo, approvals), and the full app is where they operate.
-- [ ] **Lite L7 and L8** (M each): L7 is team contact ("Ask Sam", "Send to Sam"); L8 is decisions from email, with held sends on the `EMAIL` channel.
-- [ ] **Trim the assistant and notification settings** (S–M), using AI usage tracking and notification settings grouped by tier.
-- [ ] **Notification follow-ups from phase 4** (S–M): an approval decision sheet (it needs a page for a single approval), swiping between items, the push action pre-selected on wider screens, and iPhone tap tracking.
+- [x] **Transfers board** (L). Built 2026-10-04 at `/board` (product ADR 0008); the old pages sit under "Classic views". Was:: a column per stage, with buying and selling filters. It replaces Listings, My Listings, Offers sent, Offers received, Transfers in progress and Enquiries.
+- [x] **One conversation per transfer** (L). Built 2026-10-04: read across the four existing stores rather than migrated ([architecture ADR 0008](../../architecture/decisions/0008-one-conversation-read-across-existing-messages.md)); on the board's card detail and the deal room's Conversation tab. Was:: one conversation per transfer replaces offer messages, enquiry threads, deal-room comments and agent negotiation threads, with audiences (both clubs, internal, club with agent). Existing messages move across.
+- [x] **One main way to buy** (M). Already in place: listing defaults to open to offers, auction is under "Advanced", fixed price isn't offered. Was:: enquiry → offer → deal is the default. Auctions and fixed price move behind "advanced".
+- [x] **Lite and full app, on purpose** (S decision, then ongoing). Decided 2026-10-04: Lite decides, the full app operates (product ADR 0008). Was:: Lite is where people decide (phone, push, undo, approvals), and the full app is where they operate.
+- [x] **Lite L7 and L8** (M each). Built 2026-10-04 (migrations `0097`, `0098`; see [SESSIONS](../lite-mode/SESSIONS.md)). Was: L7 is team contact ("Ask Sam", "Send to Sam"); L8 is decisions from email, with held sends on the `EMAIL` channel.
+- [x] **Trim the assistant and notification settings** (S–M). Built 2026-10-04: settings start with four rows (daily summary and the three tiers), every type behind "Show every type"; the admin AI page gives each assistant feature a verdict (Keep, Review, Consider removing, Not enough data yet). No feature is removed until there's real usage. Was: using AI usage tracking and notification settings grouped by tier.
+- [x] **Notification follow-ups from phase 4** (S–M). Built 2026-10-04 (see the [notifications spec](../mobile-notifications/README.md)). Was: an approval decision sheet (it needs a page for a single approval), swiping between items, the push action pre-selected on wider screens, and iPhone tap tracking.
 
 Done when: a new club member can find, start and finish a transfer from the board and its conversation.
 
@@ -108,5 +108,6 @@ Done when: a club can plan its next window in TransferX (renew, sell, buy) withi
 
 ## Progress
 
+- **2026-10-04 — Phase 3 built except retiring the classic pages.** On `phase-3-board`: the board, one conversation, the buy path and Lite split decisions, L7 and L8, the settings trim, and the notification follow-ups. Migrations `0097`, `0098`. Retiring the classic pages (and moving messages into one table) waits until the board covers their history and actions.
 - **2026-10-04 — Phase 1 done except two-factor sign-in.** On branch `phase-1-trust`, stacked on `lite-l6-undo`. Migrations `0093`–`0096`.
 - **2026-10-04 — Phase 0 code done.** L6, notifications phase 4 and the loose ends are in one PR from `lite-l6-undo`. Also fixed: two tabs refreshing the sign-in at once could sign one out. Still to do, by someone with Railway access and phones: the deploy and the real-phone test ([runbook](./phase-0-runbook.md)).

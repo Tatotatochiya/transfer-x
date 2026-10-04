@@ -65,6 +65,36 @@ async def list_approvals(
     return [await _to_response(db, a) for a in approvals]
 
 
+@router.get("/clubs/me/approvals/{approval_id}", response_model=PendingApprovalResponse)
+async def get_approval(
+    approval_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """One approval, for its decision sheet: the player and the budget after.
+    Deciders see any of the club's; others only their own requests."""
+    from app.approvals.models import ApprovalActionType as A
+    from app.clubs.models import ClubFinance
+    from app.notifications.copy import approval_player
+
+    club = await _get_club_or_403(db, current_user)
+    approval = await service.get_approval(db, approval_id, club.id)
+    if approval is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approval not found")
+    try:
+        await ensure_club_capability(db, current_user, Capability.APPROVE_ACTIONS)
+    except HTTPException:
+        if approval.requested_by_user_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approval not found")
+    resp = await _to_response(db, approval)
+    resp.player_id, resp.player_name = await approval_player(db, approval)
+    if approval.action_type in (A.PLACE_BID, A.CREATE_OFFER, A.EXERCISE_OPTION):
+        finance = (await db.execute(select(ClubFinance).where(ClubFinance.club_id == club.id))).scalar_one_or_none()
+        if finance is not None:
+            resp.budget_after = max(finance.transfer_remaining - approval.amount, 0)
+    return resp
+
+
 @router.post("/clubs/me/approvals/{approval_id}/approve", response_model=PendingApprovalResponse)
 async def approve_approval(
     approval_id: uuid.UUID,

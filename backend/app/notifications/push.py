@@ -285,13 +285,18 @@ def read_open_token(token: str, notification_id: uuid.UUID) -> uuid.UUID | None:
     return uuid.UUID(claims["sub"])
 
 
-def _url(path: str | None, nid: uuid.UUID, extra: dict | None = None) -> str:
+def _url(path: str | None, nid: uuid.UUID, extra: dict | None = None, user_id: uuid.UUID | None = None) -> str:
     path = path or "/notifications"
     if path.startswith("http"):
         base = path
     else:
         base = f"{settings.frontend_base_url.rstrip('/')}{path if path.startswith('/') else '/' + path}"
     params = {"from": "push", **(extra or {}), "nid": str(nid)}
+    # iOS shows declarative pushes itself, without the service worker, so the
+    # page reports the tap: `ot` is the push's open token (good for this one
+    # notification only). The page drops it from the address bar.
+    if user_id is not None:
+        params["ot"] = open_token(user_id, nid)
     return f"{base}{'&' if '?' in base else '?'}{urlencode(params)}"
 
 
@@ -310,12 +315,12 @@ def build_payload(
         title = render(n.title or n.message, n.deadline_at, zone, at)[:120]
         body = render(n.body, n.deadline_at, zone, at)
         actions = [
-            {"action": a["action"], "title": a["title"], "navigate": _url(a["url"], n.id)}
+            {"action": a["action"], "title": a["title"], "navigate": _url(a["url"], n.id, user_id=n.recipient_user_id)}
             for a in (n.actions_json or [])[:2]
         ]
     notification = {
         "title": title,
-        "navigate": _url(n.link, n.id),
+        "navigate": _url(n.link, n.id, user_id=n.recipient_user_id),
         "tag": n.group_key or f"n:{n.id}",
         "silent": silent,
         "lang": "en-GB",

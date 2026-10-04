@@ -114,7 +114,9 @@ Also decided while building:
     - a "your move" email-type notification for someone whose phone will get the push waits 30 minutes (`notifications.email_due_at`), and is emailed only if still unread;
     - without a subscribed phone, or with push off for that type or tier, the email goes at once, as before.
   - **Tests:** `tests/test_push_phase4.py` (7) and `LiteOfferCardPage.test.tsx` (3).
-- **Deviations in phase 4:**
-  - **Approvals** have no decision sheet yet: there is no page for a single approval, so the push opens the approvals list.
-  - **Swiping** between items isn't built; "Next" does the same.
-  - **On wider screens** the offer page doesn't pre-select the push's action.
+- **Deviations in phase 4** (all closed 2026-10-04, Phase 3 of the Q4 plan):
+  - ~~Approvals have no decision sheet~~: an approval push opens `/club/approvals?id={id}`, which on a phone goes to `/lite/approvals/{id}?from=push`. The sheet shows what is asked, who asked, the player, the budget after and the time left, with Approve (asks once more, since it carries the action out at once) and Decline (with an optional reason). Wider screens highlight that approval on the approvals page. `GET /clubs/me/approvals/{id}` serves it.
+  - ~~Swiping isn't built~~: on a decision sheet opened from a push, swipe left for the next item and right for the previous one. "‹ Previous" and "Next ›" do the same.
+  - ~~Wider screens don't pre-select the push's action~~: action buttons now open `/offers/{id}?action=counter&amount=…` (or `action=accept`). A phone goes on to the Lite card with that action ready; a wider screen opens the counter form filled in, or highlights Accept.
+  - Also: **taps on iPhone are counted.** iOS opens declarative pushes without the service worker, so each push link carries the push's open token (`ot`). The page reports the tap, which marks it read and records `opened_at`, then removes `nid` and `ot` from the address bar.
+  - Also fixed: the dashboard's approval items linked to `/approvals`, which isn't a page.

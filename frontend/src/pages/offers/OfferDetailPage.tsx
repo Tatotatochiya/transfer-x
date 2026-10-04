@@ -48,11 +48,14 @@ function CounterForm({
   offer,
   onSuccess,
   prefill,
+  startFee,
 }: {
   offer: Offer;
   onSuccess: () => void;
   /** Terms from the offer advisor; the counter is then audited as AI-assisted. */
   prefill?: SuggestedTerms | null;
+  /** The fee from a push's "Ask for £21m" button: a starting point, not AI. */
+  startFee?: string | null;
 }) {
   const queryClient = useQueryClient();
   const loan = isLoan(offer);
@@ -60,7 +63,7 @@ function CounterForm({
   // would otherwise display with its trailing zeros.
   const pick = (suggested: number | undefined, current: number | string | null | undefined) =>
     suggested != null ? String(suggested) : current != null ? String(Number(current)) : "";
-  const [fee, setFee] = useState(pick(prefill?.fee_amount, offer.fee_amount));
+  const [fee, setFee] = useState(prefill ? pick(prefill.fee_amount, offer.fee_amount) : startFee ?? pick(undefined, offer.fee_amount));
   const [wage, setWage] = useState(pick(prefill?.wage_weekly, offer.wage_weekly));
   const [years, setYears] = useState(String(prefill?.contract_years ?? offer.contract_years ?? ""));
   const [structure, setStructure] = useState(() => {
@@ -388,7 +391,8 @@ export default function OfferDetailPage() {
   const confirm = useConfirm();
   const { addToast } = useToast();
   const { can } = useClubCapabilities();
-  const [showCounter, setShowCounter] = useState(false);
+  const [showCounter, setShowCounter] = useState(() =>
+    new URLSearchParams(window.location.search).get("action") === "counter");
   const [prefill, setPrefill] = useState<SuggestedTerms | null>(null);
   const [mobileSection, setMobileSection] = useState<"detail" | "context">("detail");
 
@@ -398,9 +402,17 @@ export default function OfferDetailPage() {
   const [searchParams] = useSearchParams();
   useEffect(() => {
     if (searchParams.get("from") === "push" && id && window.matchMedia?.("(max-width: 639px)").matches) {
-      navigate(`/lite/offers/${id}?from=push`, { replace: true });
+      // A push action button ("Ask for £21m", "Accept £18m") carries on to the card.
+      const action = searchParams.get("action");
+      const amount = searchParams.get("amount");
+      const extra = action ? `&action=${encodeURIComponent(action)}${amount ? `&amount=${encodeURIComponent(amount)}` : ""}` : "";
+      navigate(`/lite/offers/${id}?from=push${extra}`, { replace: true });
     }
   }, [id, navigate, searchParams]);
+  // On a wider screen the push's action is pre-selected here instead: the
+  // counter form opens with its amount, or Accept is highlighted.
+  const pushAction = searchParams.get("from") === "push" ? searchParams.get("action") : null;
+  const pushAmount = searchParams.get("amount");
 
   const { data: offer, isLoading, isError } = useQuery<Offer>({
     queryKey: ["offers", id],
@@ -600,7 +612,10 @@ export default function OfferDetailPage() {
             {/* Respond buttons — only shown on your turn */}
             {canAct && (
               <>
-                <Button variant="primary" size="sm" className="w-full" loading={acceptMutation.isPending}
+                {pushAction === "accept" && (
+                  <p className="text-xs font-semibold text-accent">From your notification: accept this offer?</p>
+                )}
+                <Button variant="primary" size="sm" className={`w-full ${pushAction === "accept" ? "ring-2 ring-accent ring-offset-2" : ""}`} loading={acceptMutation.isPending}
                   onClick={async () => {
                     if (await confirm({ title: isLoan(offer) ? "Accept loan" : "Accept offer", message: acceptMessage(offer), confirmLabel: "Accept" })) {
                       acceptMutation.mutate();
@@ -660,6 +675,7 @@ export default function OfferDetailPage() {
             key={JSON.stringify(prefill)}
             offer={offer}
             prefill={prefill}
+            startFee={pushAction === "counter" ? pushAmount : null}
             onSuccess={() => {
               setShowCounter(false);
               setPrefill(null);

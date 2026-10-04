@@ -38,7 +38,22 @@ EMAIL_ENABLED_TYPES = {
 }
 
 
-def _render_html(message: str, link: str | None) -> str:
+def _action_buttons(actions: list[tuple[str, str]] | None) -> str:
+    """One-tap decisions (Lite L8): the first is the suggested one. Each
+    opens a confirm page; nothing happens until the recipient confirms."""
+    if not actions:
+        return ""
+    out = []
+    for i, (label, url) in enumerate(actions):
+        style = ("background:#2563eb;color:#ffffff;" if i == 0 else "background:#ffffff;color:#0f172a;border:1px solid #cbd5e1;")
+        out.append(
+            f'<a href="{html.escape(url)}" style="display:inline-block;margin:12px 8px 0 0;padding:9px 16px;'
+            f'{style}text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">{html.escape(label)}</a>'
+        )
+    return "<div>" + "".join(out) + "</div>"
+
+
+def _render_html(message: str, link: str | None, actions: list[tuple[str, str]] | None = None) -> str:
     button = (
         f'<a href="{link}" style="display:inline-block;margin-top:20px;padding:10px 20px;'
         f'background:#10b981;color:#ffffff;text-decoration:none;border-radius:8px;'
@@ -46,20 +61,23 @@ def _render_html(message: str, link: str | None) -> str:
         if link else ""
     )
     return _wrap(
-        f'<p style="margin:0;color:#0f172a;font-size:15px;line-height:1.6;">{message}</p>{button}'
+        f'<p style="margin:0;color:#0f172a;font-size:15px;line-height:1.6;">{message}</p>'
+        f"{_action_buttons(actions)}{button}"
     )
 
 
-def render_digest_html(lines: list[tuple[str, str]], dashboard_url: str, briefing: dict | None = None) -> str:
+def render_digest_html(lines: list[tuple], dashboard_url: str, briefing: dict | None = None) -> str:
     """The daily digest: one row per thing waiting on the recipient, each
     linking straight to it. `lines` are (text, url). `briefing`, when the AI
     assistant is available, opens the email with the day's headline and the
     one thing to focus on."""
+    # A line is (text, url) or (text, url, one-tap decision buttons).
     rows = "".join(
         f'<tr><td style="padding:10px 0;border-bottom:1px solid #eef0f3;">'
-        f'<a href="{html.escape(url)}" style="color:#0f172a;text-decoration:none;font-size:14px;'
-        f'line-height:1.5;">{html.escape(text)} &rarr;</a></td></tr>'
-        for text, url in lines
+        f'<a href="{html.escape(line[1])}" style="color:#0f172a;text-decoration:none;font-size:14px;'
+        f'line-height:1.5;">{html.escape(line[0])} &rarr;</a>'
+        f"{_action_buttons(line[2] if len(line) > 2 else None)}</td></tr>"
+        for line in lines
     )
     button = (
         f'<a href="{html.escape(dashboard_url)}" style="display:inline-block;margin-top:20px;'
@@ -221,15 +239,28 @@ async def maybe_send_notification_email(
         from app.auth.models import User
         from app.database import AsyncSessionLocal
 
+        actions = None
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(User.email).where(User.id == recipient_user_id))
-            to_email = result.scalar_one_or_none()
+            user = await db.get(User, recipient_user_id)
+            to_email = user.email if user else None
+            # An offer waiting on them: one-tap decisions (Lite L8). Only when
+            # the email really goes out, so no token is issued for nothing.
+            if (to_email and settings.smtp_host and link and link.startswith("/offers/")
+                    and type_ in (NotificationType.OFFER_RECEIVED, NotificationType.OFFER_COUNTERED)):
+                try:
+                    from app.lite.email_actions import offer_buttons
+
+                    actions = await offer_buttons(db, user, uuid.UUID(link.split("/")[2].split("?")[0]))
+                    await db.commit()
+                except Exception:
+                    logger.exception("No one-tap buttons for user %s's email", recipient_user_id)
+                    actions = None
 
         if not to_email:
             return
 
         full_link = f"{settings.frontend_base_url}{link}" if link else None
-        html = _render_html(message, full_link)
+        html = _render_html(message, full_link, actions)
         await asyncio.to_thread(_send_sync, to_email, f"TransferX — {message}", html)
     except Exception:
         logger.exception("Failed to send notification email to user %s", recipient_user_id)

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { getApiError } from "../../lib/utils";
@@ -76,6 +77,7 @@ export const TYPE_LABELS: Record<string, string> = {
   LOAN_CONVERTED: "A loan is turning into a permanent transfer",
   ENQUIRY_RECEIVED: "A club asks about one of your players",
   ENQUIRY_REPLIED: "A reply in one of your enquiries",
+  LITE_QUESTION: "A colleague asks you something from Lite",
   DEAL_PAPERWORK: "The other club completes a paperwork step, or the paperwork is done",
   DAILY_DIGEST: "A morning email of what is waiting on you — sent only when something is",
   APPROVAL_DECIDED: "Your spending request is decided",
@@ -98,7 +100,7 @@ const TYPE_GROUPS: { label: string; types: string[] }[] = [
   { label: "Representation", types: ["REPRESENTATION_STARTED", "REPRESENTATION_REVOKED", "REPRESENTATION_EXPIRED"] },
   { label: "Client intelligence", types: ["CLIENT_ALERT"] },
   { label: "Verification", types: ["VERIFICATION_APPROVED", "VERIFICATION_REJECTED"] },
-  { label: "Team & approvals", types: ["STAFF_INVITATION", "APPROVAL_REQUESTED", "APPROVAL_DECIDED"] },
+  { label: "Team & approvals", types: ["STAFF_INVITATION", "APPROVAL_REQUESTED", "APPROVAL_DECIDED", "LITE_QUESTION"] },
   { label: "Loans", types: ["LOAN_STARTED", "LOAN_ENDING_SOON", "LOAN_ENDED", "LOAN_RECALLED", "LOAN_CONVERTED"] },
 ];
 
@@ -106,11 +108,28 @@ type Channel = "enabled" | "email_enabled" | "push_enabled";
 
 const FYI_PUSH_TITLE = "Not pushed: these stay in the app";
 
+type Tier = "YOUR_MOVE" | "HEADS_UP" | "FYI";
+/** The three rows Settings starts with; every type is behind "Show every type". */
+const TIERS: { tier: Tier; label: string; hint: string }[] = [
+  { tier: "YOUR_MOVE", label: "Your move", hint: "Offers, counters, approvals and terms waiting on you" },
+  { tier: "HEADS_UP", label: "Heads-up", hint: "Replies, messages, bids, accepted or rejected offers, deal alerts" },
+  { tier: "FYI", label: "For your information", hint: "Everything else: completed deals, loans, verification, team" },
+];
+
 export default function NotificationTypesTable() {
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery<NotificationPreferencesResponse>({
     queryKey: ["notifications", "preferences"],
     queryFn: () => api.get<NotificationPreferencesResponse>("/notifications/preferences").then((r) => r.data),
+  });
+
+  const [showAll, setShowAll] = useState(false);
+  const tierMutation = useMutation({
+    mutationFn: ({ tier, channel, value }: { tier: Tier; channel: Channel; value: boolean }) =>
+      api
+        .patch<NotificationPreferencesResponse>(`/notifications/preferences/tier/${tier}`, { [channel]: value })
+        .then((r) => r.data),
+    onSuccess: (newData) => queryClient.setQueryData(["notifications", "preferences"], newData),
   });
 
   const mutation = useMutation({
@@ -133,6 +152,7 @@ export default function NotificationTypesTable() {
   }
 
   const prefMap = Object.fromEntries(data.preferences.map((p) => [p.type, p]));
+  const inTier = (tier: Tier) => data.preferences.filter((p) => p.tier === tier && p.type !== "DAILY_DIGEST");
   const vars = mutation.variables;
   const pending = (type: string, channel: Channel) => mutation.isPending && vars?.type === type && vars?.channel === channel;
 
@@ -144,7 +164,75 @@ export default function NotificationTypesTable() {
         <span className="flex w-9 justify-center whitespace-nowrap">Push</span>
       </div>
 
-      {TYPE_GROUPS.map((group) => (
+      {!showAll && (
+        <Card noPadding>
+          <div className="divide-y divide-rule-faint">
+            {(() => {
+              const digest = prefMap["DAILY_DIGEST"];
+              const on = (digest?.enabled ?? true) && (digest?.email_enabled ?? true);
+              return (
+                <div className="flex items-center justify-between gap-3 px-5 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-text">Daily summary</p>
+                    <p className="text-xs text-text-muted">One email a morning with what&rsquo;s waiting on you</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-4 sm:gap-6">
+                    <span className="w-9" />
+                    <div className="flex w-9 justify-center">
+                      <MiniToggle value={on} disabled={pending("DAILY_DIGEST", "email_enabled")}
+                        onChange={() => mutation.mutate({ type: "DAILY_DIGEST", channel: "email_enabled", value: !on })}
+                        label="Email: Daily summary" />
+                    </div>
+                    <span className="w-9" />
+                  </div>
+                </div>
+              );
+            })()}
+            {TIERS.map(({ tier, label, hint }) => {
+              const types = inTier(tier);
+              const all = (key: Channel) => types.every((p) => p[key]);
+              const some = (key: Channel) => types.some((p) => p[key]);
+              const busy = (key: Channel) => tierMutation.isPending && tierMutation.variables?.tier === tier && tierMutation.variables?.channel === key;
+              const cell = (key: Channel, name: string, disabled = false, title?: string) => (
+                <div className="flex w-9 flex-col items-center">
+                  <MiniToggle
+                    value={!disabled && all(key)}
+                    disabled={disabled || busy(key)}
+                    onChange={() => tierMutation.mutate({ tier, channel: key, value: !all(key) })}
+                    label={`${name}: ${label}`}
+                    title={title}
+                  />
+                  {!disabled && !all(key) && some(key) && <span className="mt-0.5 text-[10px] text-text-muted">some</span>}
+                </div>
+              );
+              return (
+                <div key={tier} className="flex items-center justify-between gap-3 px-5 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-text">{label}</p>
+                    <p className="text-xs text-text-muted">{hint}</p>
+                  </div>
+                  <div className="flex shrink-0 items-start gap-4 sm:gap-6">
+                    {cell("enabled", "In-app")}
+                    {cell("email_enabled", "Email")}
+                    {cell("push_enabled", "Push", tier === "FYI", tier === "FYI" ? FYI_PUSH_TITLE : undefined)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setShowAll((v) => !v)}
+        aria-expanded={showAll}
+        className="px-1 text-sm font-semibold text-accent hover:underline"
+      >
+        {showAll ? "Show three rows instead" : "Show every type"}
+      </button>
+
+      {showAll && TYPE_GROUPS.map((group) => (
         <Card key={group.label} noPadding>
           <div className="border-b border-rule px-5 py-2.5">
             <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">{group.label}</p>
@@ -194,6 +282,9 @@ export default function NotificationTypesTable() {
         </Card>
       ))}
 
+      {tierMutation.isError && (
+        <p className="text-sm text-danger-text">{getApiError(tierMutation.error, "Failed to save preference.")}</p>
+      )}
       {mutation.isError && (
         <p className="text-sm text-danger-text">{getApiError(mutation.error, "Failed to save preference.")}</p>
       )}

@@ -5,7 +5,11 @@ import LiteOfferCardPage from "./LiteOfferCardPage";
 import { Route, Routes } from "react-router-dom";
 
 const card = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
-vi.mock("../../hooks/useLite", () => ({ useLiteOfferCard: () => ({ data: card.value, isLoading: false, error: null }) }));
+vi.mock("../../hooks/useLite", () => ({
+  useLiteOfferCard: () => ({ data: card.value, isLoading: false, error: null }),
+  useTeamContact: () => ({ data: { name: "Sam", label: "Sam" } }),
+}));
+vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock("../../hooks/useAssistant", () => ({ useOfferCheck: () => ({ data: undefined, isFetching: false }) }));
 vi.mock("../../hooks/useClubDashboard", () => ({
   CLUB_DASHBOARD_KEY: ["clubs", "me", "dashboard"],
@@ -36,7 +40,7 @@ describe("LiteOfferCardPage as the push decision sheet", () => {
   it("shows where it is in the queue, the time left, the valuation and the ask", () => {
     renderCard("/lite/offers/o1?from=push");
     expect(screen.getByText(/Waiting on you · 1 of 2/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Next ›" })).toHaveAttribute("href", "/club/approvals");
+    expect(screen.getByRole("link", { name: "Next ›" })).toHaveAttribute("href", "/lite/approvals/a9?from=push");
     expect(screen.getByText(/Offer received · 2 days left/)).toBeInTheDocument();
     expect(screen.getByText("Your valuation")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Ask for £21/ })).toBeInTheDocument();

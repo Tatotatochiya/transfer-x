@@ -138,3 +138,12 @@ export function useLiteAskSuggestions() {
     staleTime: 5 * 60_000,
   });
 }
+
+/** Who Lite's "Ask {name}" goes to (L7): a colleague's first name, or "your team". */
+export function useTeamContact() {
+  return useQuery<{ name: string | null; label: string }>({
+    queryKey: ["lite", "team-contact"],
+    queryFn: () => api.get<{ name: string | null; label: string }>("/lite/team-contact").then((r) => r.data),
+    staleTime: 300_000,
+  });
+}

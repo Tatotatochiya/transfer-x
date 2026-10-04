@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import api from "../../lib/api";
 import { useAuth } from "../../hooks/useAuth";
@@ -8,6 +8,7 @@ import Icon from "../../components/layout/Icon";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { login } = useAuth();
 
   const [email, setEmail]       = useState("");
@@ -33,6 +34,10 @@ export default function LoginPage() {
         const prefs = await api.get<{ lite_mode: boolean }>("/users/me/preferences").then((r) => r.data).catch(() => null);
         if (prefs?.lite_mode) dest = "/lite";
       }
+      // Back to where sign-in was asked for (an email decision, say). Only a
+      // path on this site: never "//elsewhere" or a full URL.
+      const next = params.get("next");
+      if (next && next.startsWith("/") && !next.startsWith("//")) dest = next;
       navigate(dest, { replace: true });
     } catch (err) {
       console.error("Login error:", err);

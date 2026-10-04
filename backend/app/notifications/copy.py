@@ -137,7 +137,9 @@ async def offer_received(db: AsyncSession, offer) -> dict:
     if valuation and amount and Decimal(valuation) > Decimal(amount) and _can_counter_in_lite(offer):
         actions.append({
             "action": "counter", "title": f"Ask for {money(valuation)}",
-            "url": f"/lite/offers/{offer.id}?action=counter&amount={int(Decimal(valuation))}",
+            # The offer page: a phone goes on to the Lite card with this
+            # counter ready, a wider screen opens the counter form filled in.
+            "url": f"/offers/{offer.id}?action=counter&amount={int(Decimal(valuation))}",
         })
     actions.append({"action": "open", "title": "Open", "url": f"/offers/{offer.id}"})
     return {
@@ -167,7 +169,7 @@ async def offer_countered(db: AsyncSession, offer, *, recipient_club_id, previou
     actions = []
     if amount and _can_counter_in_lite(offer):
         actions.append({"action": "accept", "title": f"Accept {money(amount)}",
-                        "url": f"/lite/offers/{offer.id}?action=accept"})
+                        "url": f"/offers/{offer.id}?action=accept"})
     actions.append({"action": "open", "title": "Open", "url": f"/offers/{offer.id}"})
     return {
         "title": title, "body": " · ".join(parts), "group_key": f"offer:{offer.id}",
@@ -245,11 +247,8 @@ def outbid(*, sale, player: str, best: Decimal, next_bid: Decimal) -> dict:
 # ── Approvals ─────────────────────────────────────────────────────────────────
 
 
-async def approval_requested(db: AsyncSession, approval, club) -> dict:
-    """What the approver is being asked, who asked, and the budget after."""
-    from app.approvals.models import ApprovalActionType as A
-    from app.auth.models import User
-    from app.clubs.models import ClubFinance, ClubStaff
+async def approval_player(db: AsyncSession, approval) -> tuple[uuid.UUID | None, str | None]:
+    """The player an approval is about (id, name), from its payload."""
     from app.offers.models import Offer
     from app.players.models import Player
     from app.sales.models import Sale
@@ -260,7 +259,19 @@ async def approval_requested(db: AsyncSession, approval, club) -> dict:
         player_id = (await db.execute(select(Sale.player_id).where(Sale.id == uuid.UUID(str(payload["sale_id"]))))).scalar_one_or_none()
     if not player_id and payload.get("offer_id"):
         player_id = (await db.execute(select(Offer.player_id).where(Offer.id == uuid.UUID(str(payload["offer_id"]))))).scalar_one_or_none()
-    player = (await db.execute(select(Player.name).where(Player.id == uuid.UUID(str(player_id))))).scalar_one_or_none() if player_id else None
+    if not player_id:
+        return None, None
+    name = (await db.execute(select(Player.name).where(Player.id == uuid.UUID(str(player_id))))).scalar_one_or_none()
+    return uuid.UUID(str(player_id)), name
+
+
+async def approval_requested(db: AsyncSession, approval, club) -> dict:
+    """What the approver is being asked, who asked, and the budget after."""
+    from app.approvals.models import ApprovalActionType as A
+    from app.auth.models import User
+    from app.clubs.models import ClubFinance, ClubStaff
+
+    player = (await approval_player(db, approval))[1]
 
     amount = money(approval.amount)
     of = f" for {player}" if player else ""
@@ -285,6 +296,6 @@ async def approval_requested(db: AsyncSession, approval, club) -> dict:
     return {
         "title": title, "body": " · ".join(parts), "group_key": f"approval:{approval.id}",
         "deadline_at": approval.expires_at,
-        "actions": [{"action": "open", "title": "Review", "url": "/club/approvals"}],
+        "actions": [{"action": "open", "title": "Review", "url": f"/club/approvals?id={approval.id}"}],
     }
 

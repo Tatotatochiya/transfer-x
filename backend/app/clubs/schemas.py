@@ -106,6 +106,7 @@ class ClubStaffMemberResponse(BaseModel):
     user_id: uuid.UUID
     email: str  # set by router from the joined user
     name: str | None = None
+    is_lite_contact: bool = False
     role: StaffRole
     created_at: datetime
 
