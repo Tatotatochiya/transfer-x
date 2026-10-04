@@ -342,10 +342,11 @@ export default function DealRoomPanel({
   myClubName?: string;
   theirClubName?: string;
 }) {
-  // Clubs on the deal also get the whole transfer's conversation: the
-  // enquiry and offer messages before the deal, and the agent thread
-  // (product ADR 0008). Agents and players keep the deal-room view.
-  const tabs = viewerSide ? (["conversation", "messages", "documents"] as const) : (["messages", "documents"] as const);
+  // Clubs talk in the whole transfer's conversation: the enquiry and offer
+  // messages before the deal, shared and club-only messages, @mentions and
+  // the agent thread (product ADR 0008). Agents and players keep the
+  // deal-room view, which shows them what they may read.
+  const tabs = viewerSide ? (["conversation", "documents"] as const) : (["messages", "documents"] as const);
   const [tab, setTab] = useState<"conversation" | "messages" | "documents">(viewerSide ? "conversation" : "messages");
   const privateAudience = privateAudienceFor(viewerSide);
   const [channel, setChannel] = useState<Channel>("SHARED");

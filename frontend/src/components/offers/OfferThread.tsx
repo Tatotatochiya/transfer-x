@@ -34,6 +34,13 @@ const EVENT_COLOURS: Record<OfferEventType, string> = {
   MESSAGE:   "text-text-muted",
 };
 
+/** The offer's events (sent, countered, raised…) as conversation timeline rows. */
+export function offerTimeline(offer: Offer): { id: string; created_at: string; text: string }[] {
+  return offer.events
+    .filter((e) => e.event_type !== "MESSAGE")
+    .map((e) => ({ id: e.id, created_at: e.created_at, text: EVENT_LABELS[e.event_type] ?? e.event_type }));
+}
+
 // ── Thread item types ─────────────────────────────────────────────────────────
 
 type ThreadItem =

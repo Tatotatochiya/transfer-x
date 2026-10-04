@@ -55,12 +55,25 @@ async def test_enquiry_then_offer_then_deal_is_one_conversation(client: AsyncCli
     deal = (await db.execute(select(Deal).where(Deal.offer_id == uuid.UUID(offer["id"])))).scalar_one()
     conv = await _conv(client, buyer, deal_id=str(deal.id))
     assert [o["key"] for o in conv["can_post_to"]] == ["deal_everyone", "our_club"]
+    assert conv["live"]["deal_id"] == str(deal.id) and conv["live"]["offer_id"] is None
     await client.post("/conversation", json={"deal_id": str(deal.id), "audience": "deal_everyone", "body": "Welcome"}, headers=buyer)
     await client.post("/conversation", json={"deal_id": str(deal.id), "audience": "our_club", "body": "Keep the bonus low"}, headers=buyer)
+    # A mention on a shared message notifies them; one on a private note is dropped.
+    seller_owner = (await client.get("/auth/me", headers=seller)).json()["id"]
+    await client.post("/conversation", json={"deal_id": str(deal.id), "audience": "deal_everyone", "body": "Over to you",
+                                             "mentioned_user_ids": [seller_owner]}, headers=buyer)
+    await client.post("/conversation", json={"deal_id": str(deal.id), "audience": "our_club", "body": "Psst",
+                                             "mentioned_user_ids": [seller_owner]}, headers=buyer)
+    from app.notifications.models import Notification, NotificationType
+
+    pinged = (await db.execute(select(Notification).where(
+        Notification.recipient_user_id == uuid.UUID(seller_owner), Notification.type == NotificationType.NEGOTIATION_MESSAGE,
+    ))).scalars().all()
+    assert len(pinged) == 1
     mine = [m["body"] for m in (await _conv(client, buyer, deal_id=str(deal.id)))["messages"]]
     theirs = [m["body"] for m in (await _conv(client, seller, deal_id=str(deal.id)))["messages"]]
-    assert mine[-2:] == ["Welcome", "Keep the bonus low"]
-    assert "Welcome" in theirs and "Keep the bonus low" not in theirs
+    assert mine[-4:] == ["Welcome", "Keep the bonus low", "Over to you", "Psst"]
+    assert "Welcome" in theirs and "Keep the bonus low" not in theirs and "Psst" not in theirs
     # The whole history still reads from the deal.
     assert theirs[:3] == ["Would you sell?", "Make us an offer", "Here it is"]
 

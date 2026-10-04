@@ -147,30 +147,10 @@ async def post_comment(
     )
 
     # Notify mentioned users + the parent comment's author (if replying), excluding the author themself.
-    from app.notifications import service as notif_service
-    from app.notifications.models import NotificationType
     to_notify = set(body.mentioned_user_ids)
     if parent is not None and parent.author_user_id is not None:
         to_notify.add(parent.author_user_id)
-    to_notify.discard(current_user.id)
-    from app.agents.negotiation_messages import sender_label
-    from app.notifications import copy as push_copy
-
-    if to_notify:
-        who, _, name = (await sender_label(db, current_user)).partition(" — ")
-        push = push_copy.negotiation_message(
-            deal_id=deal_id, sender=name or who, role=who.lower() if name else None, text=body.body.strip(),
-        )
-    for recipient_id in to_notify:
-        await notif_service.create_notification(
-            db,
-            recipient_user_id=recipient_id,
-            type=NotificationType.NEGOTIATION_MESSAGE,
-            message="New comment in a deal you're part of",
-            link=f"/deals/{deal_id}",
-            related_player_id=deal.player_id,
-            **push,
-        )
+    await service.notify_comment(db, deal, current_user, to_notify, body.body.strip())
 
     await db.commit()
     await db.refresh(comment)

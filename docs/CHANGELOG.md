@@ -198,6 +198,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **One place to talk.** The offer page, the enquiry page and the deal room now all use the transfer's single conversation, with AI drafting and, on messages everyone on the deal can read, @mentions. The clubs' separate deal-room Messages tab is gone. Agents and players keep their deal-room view.
 - **Notification settings by tier.** Settings start with the daily summary and three tier rows (Your move, Heads-up, For your information), each switching its whole tier. Every type is behind "Show every type".
 - **Push action buttons on wider screens** open the offer page with the counter form filled in, or Accept highlighted. Phones go to the Lite card as before.
 - **Assistant feature verdicts** on the admin AI page: Keep, Review, Consider removing, or Not enough data yet.

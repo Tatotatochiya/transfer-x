@@ -59,3 +59,34 @@ describe("ConversationPanel", () => {
     expect(screen.queryByLabelText("Message")).not.toBeInTheDocument();
   });
 });
+
+describe("ConversationPanel on a deal", () => {
+  beforeEach(() => {
+    caps.allowed = true;
+    api.post.mockReset().mockResolvedValue({ data: { ...conversation, live: { offer_id: null, enquiry_id: null, deal_id: "d1" } } });
+    api.get.mockReset().mockImplementation((url: string) => Promise.resolve({
+      data: url === "/conversation" ? { ...conversation, live: { offer_id: null, enquiry_id: null, deal_id: "d1" } }
+        : url === "/deals/d1/participants" ? [{ user_id: "u9", label: "Leeds (seller)" }]
+        : { available: false },
+    }));
+  });
+
+  it("mentions people only on messages everyone can read", async () => {
+    renderPanel();
+    await screen.findByText("Would you sell?");
+    await userEvent.click(await screen.findByRole("button", { name: "@Leeds (seller)" }));
+    await userEvent.type(screen.getByLabelText("Message"), "Over to you");
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/conversation",
+      { deal_id: "d1", audience: "deal_everyone", body: "Over to you", mentioned_user_ids: ["u9"] }));
+    await userEvent.selectOptions(screen.getByRole("combobox"), "our_club");
+    expect(screen.queryByRole("button", { name: "@Leeds (seller)" })).not.toBeInTheDocument();
+  });
+
+  it("shows timeline rows between the messages", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={qc}><ConversationPanel context={{ dealId: "d1" }}
+      timeline={[{ id: "e1", created_at: "2026-10-01T12:00:00Z", text: "Counter offer submitted" }]} /></QueryClientProvider>);
+    expect(await screen.findByText(/Counter offer submitted/)).toBeInTheDocument();
+  });
+});

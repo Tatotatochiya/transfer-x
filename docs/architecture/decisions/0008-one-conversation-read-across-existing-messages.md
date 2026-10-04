@@ -40,3 +40,17 @@ The conversation is **read across the four stores**, not copied into a new one (
 - Storage consolidates when the old pages are retired: one table, the four stores migrated into it, and the conversation module reading from it. The API (`/conversation`) doesn't change when that happens.
 - Private notes exist only once there's a deal (the deal room's club-only channel). A private note before a deal needs the consolidated table.
 - Agents and players keep their existing views (the deal room and the negotiation threads) for now.
+
+## Update, 2026-10-04: one panel everywhere; storage stays
+
+The classic list pages are retired (product ADR 0008). The conversation panel is now the only place clubs write about a transfer:
+- the offer page (with the offer's events between the messages);
+- the enquiry page;
+- the deal room, where the clubs' separate Messages tab is gone;
+- the board card.
+
+The panel picks the matching AI draft (an offer note, an enquiry reply, a deal message), and supports @mentions on deal messages everyone can read, never on a club-only note. `GET /conversation` returns the live offer, enquiry and deal for that.
+
+Agents and players keep the deal room's message view and the negotiation threads. Each still shows them only what they may read.
+
+**The four stores are not merged** (decided 2026-10-04): the panel gives people one place to talk, and the stores keep enforcing their own visibility and masking. Merge them only when a feature needs it, for example private notes before a deal.

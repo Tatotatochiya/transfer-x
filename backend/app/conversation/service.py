@@ -235,7 +235,8 @@ async def post_options(db: AsyncSession, t: Transfer) -> list[str]:
     return []
 
 
-async def post(db: AsyncSession, t: Transfer, user: User, club, *, audience: str, body: str) -> None:
+async def post(db: AsyncSession, t: Transfer, user: User, club, *, audience: str, body: str,
+               mentioned_user_ids: list | None = None) -> None:
     """Write through the system that owns this audience right now."""
     from app.clubs.capabilities import Capability, ensure_club_capability
 
@@ -274,10 +275,16 @@ async def post(db: AsyncSession, t: Transfer, user: User, club, *, audience: str
         from app.deals.room_models import CommentAudience
 
         private = CommentAudience.BUYER_ONLY if t.viewer_is_buyer else CommentAudience.SELLER_ONLY
+        # Mentions only where everyone mentioned can read the message.
+        mentioned = []
+        if audience == "deal_everyone" and mentioned_user_ids:
+            allowed = {str(p["user_id"]) for p in await room_service.get_deal_participants(db, deal)}
+            mentioned = [m for m in mentioned_user_ids if str(m) in allowed]
         await room_service.create_comment(
-            db, deal.id, author_user_id=user.id, body=body, parent_id=None, mentioned_user_ids=[],
+            db, deal.id, author_user_id=user.id, body=body, parent_id=None, mentioned_user_ids=mentioned,
             audience=CommentAudience.SHARED if audience == "deal_everyone" else private,
         )
+        await room_service.notify_comment(db, deal, user, set(mentioned), body)
         await db.commit()
         return
 
