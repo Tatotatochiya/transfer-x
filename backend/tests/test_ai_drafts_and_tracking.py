@@ -91,6 +91,26 @@ async def test_offer_note_never_sees_the_budget(client: AsyncClient, buyer, sell
     facts = calls[-1]["facts"]
     assert "your_budget" not in facts and "competing_offers" not in facts
     assert facts["current_terms"]["fee_amount"] == 5_000_000
+    assert facts["you_are"].startswith("the BUYING club") and facts["the_player_is_under_contract_with"] != "you"
+
+
+@pytest.mark.asyncio
+async def test_offer_note_for_the_selling_club_says_it_is_selling(client: AsyncClient, buyer, seller, db, fake_model):  # noqa: F811
+    """A selling club's draft once read "we would like to sign him": the facts
+    now say plainly which side the club is on and who wrote the terms."""
+    from tests.test_ai_assist import _offer
+
+    calls, reply = fake_model
+    offer = await _offer(client, buyer, seller, db)
+    reply["DRAFT_MESSAGE_USER"] = {"text": "Thank you for your offer of £5m."}
+    resp = await client.post("/ai/draft", json={"kind": "counter_note", "id": offer["id"]}, headers=_auth_headers(seller))
+    assert resp.status_code == 200, resp.text
+    facts, fmt = calls[-1]["facts"], calls[-1]["fmt"]
+    assert facts["you_are"].startswith("the SELLING club")
+    assert facts["the_player_is_under_contract_with"] == "you"
+    assert facts["current_terms_were_sent_by"] == "them"
+    assert "buying club" in facts["you_are_writing_to"]
+    assert "reply, as the selling club" in fmt["purpose"]
 
 
 @pytest.mark.asyncio
