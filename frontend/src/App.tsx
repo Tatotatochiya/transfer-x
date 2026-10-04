@@ -68,6 +68,7 @@ const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage")
 const AdminAuditLogPage = lazy(() => import("./pages/admin/AdminAuditLogPage"));
 const TeamPage                  = lazy(() => import("./pages/club/TeamPage"));
 const SquadCheckPage            = lazy(() => import("./pages/club/SquadCheckPage"));
+const BoardPage                 = lazy(() => import("./pages/board/BoardPage"));
 const ApprovalsPage             = lazy(() => import("./pages/club/ApprovalsPage"));
 const AcceptInvitePage          = lazy(() => import("./pages/auth/AcceptInvitePage"));
 const ResetPasswordPage         = lazy(() => import("./pages/auth/ResetPasswordPage"));
@@ -255,6 +256,7 @@ export default function App() {
           <Route path="/club/finance"   element={<ClubRoute><FinancePage /></ClubRoute>} />
           <Route path="/club/team"      element={<ClubRoute><TeamPage /></ClubRoute>} />
           <Route path="/club/squad-check" element={<ClubRoute><SquadCheckPage /></ClubRoute>} />
+          <Route path="/board" element={<ClubRoute><BoardPage /></ClubRoute>} />
           <Route path="/club/approvals" element={<ClubRoute><ApprovalsPage /></ClubRoute>} />
 
           {/* ── Agent portal ── */}

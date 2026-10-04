@@ -14,6 +14,7 @@ import { holdAndOpen } from "./LiteSentPage";
 import { liteMoney, liteWage } from "../../lib/liteMoney";
 import { getApiError } from "../../lib/utils";
 import Money from "../../components/ui/Money";
+import { timeLeft } from "../../lib/timeLeft";
 
 type Mode = "answer" | "accept" | "counter" | "reject";
 
@@ -233,17 +234,6 @@ export default function LiteOfferCardPage() {
 
 
 /** "2 days left", "5 hours left"; urgent under 24 hours. */
-function timeLeft(iso: string | null): { text: string; urgent: boolean } | null {
-  if (!iso) return null;
-  const ms = new Date(iso).getTime() - Date.now();
-  if (ms <= 0) return { text: "time's up", urgent: true };
-  const hours = ms / 3_600_000;
-  if (hours < 1) return { text: `${Math.max(1, Math.round(ms / 60_000))} minutes left`, urgent: true };
-  if (hours < 24) return { text: `${Math.floor(hours)} hour${Math.floor(hours) === 1 ? "" : "s"} left`, urgent: true };
-  const days = Math.floor(hours / 24);
-  return { text: `${days} day${days === 1 ? "" : "s"} left`, urgent: false };
-}
-
 /** "Waiting on you · 2 of 3" and Next, from the Dashboard's waiting list, so
  *  a director can work through everything from one notification. */
 function WaitingHeader({ offerId }: { offerId: string }) {

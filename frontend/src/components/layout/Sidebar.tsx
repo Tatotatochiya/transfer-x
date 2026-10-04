@@ -23,11 +23,13 @@ const ROLE_LABEL: Record<IdentityRole, string> = { CLUB: "Club", AGENT: "Agent",
  * listings browse — a sale needing your attention is always one you're selling.
  */
 const WAITING_ROUTE: Record<DashboardItem["kind"], string> = {
-  offer:    "/offers/received",
-  deal:     "/deals",
-  sale:     "/sales/mine",
+  // Everything a transfer is waiting on shows on the Transfers board
+  // (product ADR 0008); approvals keep their own page.
+  offer:    "/board",
+  deal:     "/board",
+  sale:     "/board",
   approval: "/club/approvals",
-  enquiry:  "/enquiries",
+  enquiry:  "/board",
 };
 
 interface NavItem {
@@ -151,26 +153,17 @@ function getNavGroups(userType: UserType | null, staffAccount = false): NavGroup
       authRequired: true,
       items: [
         { label: "Dashboard", to: "/dashboard", icon: "layout-dashboard" },
-        { label: "Transfers in progress", to: "/deals", icon: "arrow-right-left" },
-        { label: "Enquiries", to: "/enquiries", icon: "message" },
+        // Every player the club is buying or selling, once (product ADR 0008).
+        { label: "Transfers", to: "/board", icon: "columns" },
       ],
     },
     {
-      title: "Buying",
+      title: "Find players",
       items: [
         { label: "Browse Players", to: "/players/market",      icon: "users" },
         { label: "Listings",       to: "/sales",               icon: "tag", end: true },
         { label: "Shortlists",     to: "/scouting/shortlists", icon: "list", authRequired: true },
-        { label: "My Offers",      to: "/offers/sent",         icon: "send", authRequired: true },
         { label: "Recent Transfers", to: "/transfers",         icon: "crosshair" },
-      ],
-    },
-    {
-      title: "Selling",
-      authRequired: true,
-      items: [
-        { label: "My Listings",     to: "/sales/mine",      icon: "gavel" },
-        { label: "Offers Received", to: "/offers/received", icon: "inbox" },
       ],
     },
     {
@@ -181,6 +174,19 @@ function getNavGroups(userType: UserType | null, staffAccount = false): NavGroup
         { label: "Finance",   to: "/club/finance",   icon: "wallet" },
         { label: "Team",      to: "/club/team",      icon: "user-plus", gate: "TEAM_MANAGE" },
         { label: "Approvals", to: "/club/approvals", icon: "check", gate: "APPROVALS" },
+      ],
+    },
+    {
+      // The pages the Transfers board replaces, until it covers everything
+      // they do (product ADR 0008).
+      title: "Classic views",
+      authRequired: true,
+      items: [
+        { label: "Transfers in progress", to: "/deals",           icon: "arrow-right-left" },
+        { label: "Enquiries",             to: "/enquiries",       icon: "message" },
+        { label: "My Offers",             to: "/offers/sent",     icon: "send" },
+        { label: "Offers Received",       to: "/offers/received", icon: "inbox" },
+        { label: "My Listings",           to: "/sales/mine",      icon: "gavel" },
       ],
     },
     ADMIN_GROUP,
@@ -437,7 +443,8 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     const byKind = countByKind(dashboard?.waiting_on_you);
     const byRoute: Record<string, number> = {};
     for (const [kind, route] of Object.entries(WAITING_ROUTE)) {
-      byRoute[route] = byKind[kind as DashboardItem["kind"]];
+      // Several kinds share the Transfers board, so add, don't overwrite.
+      byRoute[route] = (byRoute[route] ?? 0) + (byKind[kind as DashboardItem["kind"]] ?? 0);
     }
     return byRoute;
   })();

@@ -74,9 +74,11 @@ describe("Sidebar", () => {
   });
 
   it("puts waiting counts on the route each kind belongs to", () => {
-    dashboard.waiting = [{ kind: "offer" }, { kind: "offer" }, { kind: "approval" }];
+    // Transfers work all counts on the Transfers board (product ADR 0008).
+    dashboard.waiting = [{ kind: "offer" }, { kind: "deal" }, { kind: "enquiry" }, { kind: "approval" }];
     renderSidebar();
-    expect(screen.getByRole("link", { name: /Offers Received/ })).toContainElement(screen.getByLabelText("2 waiting on you"));
+    const board = screen.getAllByRole("link").find((a) => a.getAttribute("href") === "/board");
+    expect(board).toContainElement(screen.getByLabelText("3 waiting on you"));
     expect(screen.getByRole("link", { name: /Approvals/ })).toContainElement(screen.getByLabelText("1 waiting on you"));
   });
 
