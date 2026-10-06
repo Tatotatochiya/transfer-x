@@ -169,6 +169,14 @@ async def player_market_detail(
     if loan:
         data.active_loan = ActiveLoanStub.model_validate(loan)
 
+    # A club looking at someone else's player: counted for that player's club.
+    if current_user is not None and not current_user.is_superuser:
+        from app.clubs import service as clubs_service
+
+        viewer_club, _ = await clubs_service.get_club_and_role_for_user(db, current_user.id)
+        if viewer_club is not None:
+            await players_service.record_view(db, viewer_club.id, player)
+
     data.is_verified_player = await players_service.is_player_verified(db, player_id)
 
     wage_remaining = await _viewer_wage_remaining(db, current_user)

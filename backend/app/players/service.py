@@ -705,3 +705,31 @@ async def contract_for_viewer(db: AsyncSession, user, contract):
         for field in PRIVATE_CONTRACT_FIELDS:
             setattr(data, field, None)
     return data
+
+
+async def record_view(db: AsyncSession, viewer_club_id: uuid.UUID, player) -> None:
+    """Count a club opening a player it doesn't own (AI analyst spec,
+    decision 2). Once per club, player and day, with a count; its own players
+    are never counted. A failure never breaks the page."""
+    from datetime import date as _date
+
+    from sqlalchemy.exc import IntegrityError
+
+    from app.players.models import PlayerView
+
+    owner = await get_owning_club_id(db, player)
+    if owner is not None and str(owner) == str(viewer_club_id):
+        return
+    today = _date.today()
+    try:
+        row = (await db.execute(select(PlayerView).where(
+            PlayerView.club_id == viewer_club_id, PlayerView.player_id == player.id, PlayerView.day == today,
+        ))).scalar_one_or_none()
+        if row is None:
+            db.add(PlayerView(club_id=viewer_club_id, player_id=player.id, day=today, count=1))
+        else:
+            row.count += 1
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()  # another request counted it first today
+

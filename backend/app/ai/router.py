@@ -553,3 +553,39 @@ async def suggestion_used(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unknown feature")
     await tracking.record_used(db, feature, current_user.id, ref=str(body.get("ref") or "")[:100] or None)
     await db.commit()
+
+
+@router.post("/analyst")
+async def analyst(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Ask TransferX as an analyst (AI analyst spec, Phase A): the model calls
+    read-only, club-scoped tools, and the answer comes with tables built by
+    TransferX from their results. `history` is the conversation so far
+    ([{question, answer}], newest last) for follow-ups. It never acts."""
+    from app.ai.analyst.agent import answer as _answer
+    from app.ai.assist import _log_question
+
+    question = str(body.get("question") or "").strip()
+    if len(question) < 3:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Ask a question")
+    history = body.get("history") if isinstance(body.get("history"), list) else []
+    _require_llm_key()
+    club = await _get_club(db, current_user)
+    try:
+        result = await _answer(db, club, current_user, question, history=history)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await _log_question(db, current_user, question, input="text", lite=False, had_proposal=False,
+                            links_count=0, fallback=True)
+        await db.commit()
+        raise _assist_errors(exc)
+    rows = sum(len(b.get("rows") or []) for b in result["blocks"])
+    await _log_question(db, current_user, question, input="text", lite=False,
+                        had_proposal=result["proposal"] is not None, links_count=rows,
+                        fallback=not result["blocks"] and not result["proposal"] and "couldn't" in result["answer"])
+    await db.commit()
+    return result

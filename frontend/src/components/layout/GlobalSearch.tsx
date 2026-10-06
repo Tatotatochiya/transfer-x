@@ -180,7 +180,13 @@ export default function GlobalSearch() {
                   ))}
                 </div>
               )}
-              <button onClick={() => ask.reset()} className="mt-2 text-xs text-text-muted hover:text-text">Ask something else</button>
+              <div className="mt-2 flex items-center gap-3">
+                {/* Tables, follow-ups and export live on the Ask page. */}
+                <button onClick={() => go(`/ask?q=${encodeURIComponent(debouncedQ)}`)} className="text-xs font-semibold text-accent hover:underline">
+                  Open in Ask TransferX →
+                </button>
+                <button onClick={() => ask.reset()} className="text-xs text-text-muted hover:text-text">Ask something else</button>
+              </div>
             </div>
           )}
 

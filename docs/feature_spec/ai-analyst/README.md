@@ -235,14 +235,28 @@ Tests: `tests/test_ask_grounding.py`.
 
 Phase A alone answers both of the example questions in §1.
 
+## 8a. Progress
+
+**Phase A built (2026-10-06)** on branch `ai-analyst-a`:
+- `player_views` (migration `0099`);
+- the eight tools (`app/ai/analyst/tools.py`);
+- the loop and its checks (`app/ai/analyst/agent.py`, `POST /ai/analyst`);
+- the `/ask` page, with "Open in Ask TransferX" from ⌘K.
+
+The evaluation set is `backend/scripts/analyst_eval.py`: 60 questions, including 8 confidentiality probes, an action request and out-of-scope questions.
+- First run, as Liverpool on the demo data: 59 of 60. The one miss was a fair answer, scored against too strict an expectation.
+- Most answers take 2–5 seconds.
+
+Not yet in Phase A: charts, Excel export (CSV only), and "Ask about this" on pages (Phase B).
+
 ## 9. Cost and model
 
 - A tool-use question costs roughly 2–3 model calls (choose tools, then write the answer). With a current Claude model and 50-row results, expect about 3–8p per question. That's comfortably inside the existing AI allowance at a director's volume (tens of questions a day).
 - The model and prompts stay versioned and swappable (`app/ai/prompts.py`, `settings.llm_model`).
 
-## 10. Decisions needed
+## 10. Decisions (2026-10-06)
 
-1. **Market-wide demand:** show "clubs are chasing him" bands (with a 3-club minimum), or only interest in the club's own players?
-2. **Profile views:** record player-page views per club, as counts for the player's own club? (Needed for "interest" to include views.)
-3. **Reminders and saved questions:** in Phase C/D as listed, or earlier?
-4. **Where it lives:** a dedicated `/ask` page in the full app (recommended), or only ⌘K and Lite?
+1. **Market-wide demand: own players only.** Interest is shown only for the asking club's own players. Nothing is said about rivals' interest in other clubs' players.
+2. **Profile views: recorded, as counts.** Each club's views of a player are counted per day (`player_views`). The player's own club sees how many clubs viewed him, never which.
+3. **Reminders and saved questions: later.** Saved questions and alerts in Phase C, reminders in Phase D.
+4. **Where it lives: a dedicated `/ask` page.** ⌘K keeps quick answers and hands off to `/ask` for tables. Lite keeps its Ask screen.
