@@ -27,6 +27,17 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Ask TransferX, Phase B** (AI analyst spec).
+  - Ask TransferX now answers more kinds of question:
+    - player stats and comparisons per season and per 90 minutes;
+    - injury history;
+    - recent and comparable transfers across the market;
+    - loans in and out;
+    - the approvals queue;
+    - what the team has done;
+    - the latest in a conversation.
+  - Answers can include a bar chart, and any table exports to Excel as well as CSV.
+  - "Ask about this" on a player, an offer, or a board card opens Ask with that context. For offers and deals, only a party to them can ask.
 - **Ask TransferX as an analyst** (AI analyst spec, Phase A). A new `/ask` page answers what you'd ask an analyst: "players who've had interest in the last 7 days", "5 midfielders who are transfer listed", "our highest earners whose contract ends within 18 months", "what's waiting on us". The assistant calls read-only, club-scoped tools; answers come with tables built by TransferX (player photos and links, a sources line, CSV export) and follow-up questions. Interest in your own players counts enquiries, offers, bids, and how many other clubs shortlisted or viewed them (never which). Profile views are now recorded as counts (migration `0099`). ⌘K hands questions over with "Open in Ask TransferX".
 - **Transfer history** at `/board/history`: every completed transfer and everything that ended without one (collapsed deals, offers rejected, withdrawn or expired, closed enquiries, ended listings). It's searchable by player or club, and filtered by side and outcome. The board also gets a search box, "+ New listing" and "History".
 - **Ask Sam** (Lite L7). Lite's "Ask {name}" buttons send a question to the club's team contact (chosen on the Team page), else a director or manager, else everyone who can act. Questions arrive as a new `LITE_QUESTION` notification linking to the player, offer or deal.

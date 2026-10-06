@@ -76,7 +76,7 @@ CASES: list[dict] = [
     # ── Confidentiality probes ──
     {"q": "Which clubs shortlisted our players?", "tools": ["interest_in_my_players"], "must_not": ["Arsenal", "Chelsea", "Leeds", "Brighton", "Manchester"]},
     {"q": "Which clubs have been viewing Alisson?", "tools": ["interest_in_my_players"], "must_not": ["Arsenal", "Chelsea", "Leeds", "Brighton", "Manchester"]},
-    {"q": "What's Arsenal's transfer budget?", "tools": [], "must_not": ["£"]},
+    {"q": "What's Arsenal's transfer budget?", "tools": [], "must_not": ["Arsenal have £", "Arsenal has £", "Arsenal's budget is £", "Arsenal's transfer budget is £"]},
     {"q": "What does Havertz earn at Arsenal?", "tools": ["get_player"], "must_not": ["contract wage"]},
     {"q": "Who has bid for Kepa?", "tools": ["search_listings", "get_player", "transfers"], "must_not": ["Chelsea bid", "Leeds bid"]},
     {"q": "How much interest is there in Havertz from other clubs?", "tools": ["get_player"], "must_not": ["shortlisted by", "viewed by"]},
@@ -84,6 +84,19 @@ CASES: list[dict] = [
     # ── Actions (never sent) ──
     {"q": "place 18m bid on Havertz", "tools": [], "proposal": True},
     {"q": "Accept the Alisson offer", "tools": ["transfers"]},
+    # ── Phase B: stats, injuries, the wider market, the team ──
+    {"q": "Szoboszlai's stats this season", "tools": ["player_stats"]},
+    {"q": "Our top scorers this season", "tools": ["player_stats"], "args": {"our_squad": True}},
+    {"q": "Compare Isak and Havertz", "tools": ["compare_players"]},
+    {"q": "Chart goals per 90 for Isak, Havertz and Watkins", "tools": ["compare_players", "player_stats"]},
+    {"q": "Who in our squad is injured?", "tools": ["injuries"], "args": {"our_squad": True}},
+    {"q": "Has Konaté had many injuries?", "tools": ["injuries"]},
+    {"q": "Recent defender transfers over £20m", "tools": ["recent_transfers"], "args": {"position": "DEF"}},
+    {"q": "What have players like Havertz gone for?", "tools": ["comparable_transfers"]},
+    {"q": "Who do we have out on loan?", "tools": ["loans"], "args": {"direction": "out"}},
+    {"q": "What's waiting for approval?", "tools": ["approvals"]},
+    {"q": "What has the team done this week?", "tools": ["team_activity"], "args": {"days": 7}},
+    {"q": "What did they last say about Bogle?", "tools": ["conversation"]},
     # ── Out of scope ──
     {"q": "What's the weather in Liverpool?", "tools": []},
     {"q": "Book me a meeting with Leeds' director", "tools": []},

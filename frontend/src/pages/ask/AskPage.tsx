@@ -26,9 +26,28 @@ interface TableBlock {
   source: { tool: string; label: string; filters: Record<string, unknown>; as_of: string; note: string | null };
 }
 
+interface ChartBlock {
+  type: "chart";
+  kind: "bar";
+  title: string;
+  x: string;
+  y: string[];
+  rows: Row[];
+  source: TableBlock["source"];
+}
+
+type Block = TableBlock | ChartBlock;
+
+/** What the question is about, when asked from a page ("Ask about this"). */
+interface AskContext {
+  type: "player" | "offer" | "deal";
+  id: string;
+  name: string;
+}
+
 interface AnalystAnswer {
   answer: string;
-  blocks: TableBlock[];
+  blocks: Block[];
   follow_ups: string[];
   proposal: { card_path: string; player: string | null; amount: number | null } | null;
   links: { label: string; path: string }[];
@@ -49,6 +68,15 @@ const STARTERS = [
   "Auctions ending this week",
 ];
 
+const CONTEXT_STARTERS: Record<AskContext["type"], (name: string) => string[]> = {
+  player: (n) => [`Tell me about ${n || "him"}`, `${n || "His"} stats this season`,
+    `Compare ${n || "him"} with similar players`, `What have players like ${n || "him"} gone for?`],
+  offer: (n) => [`Where does the ${n ? `${n} ` : ""}offer stand?`, "What did they last say?",
+    "Is this a fair price?", "What else is waiting on us?"],
+  deal: (n) => [`Where does the ${n ? `${n} ` : ""}deal stand?`, "What's left to do, and who owns it?",
+    "What did they last say?", "How does the fee compare with similar transfers?"],
+};
+
 const HEADERS: Record<string, string> = {
   player: "Player", position: "Pos", age: "Age", club: "Club", other_club: "Other club", nationality: "Nationality",
   contract_ends: "Contract ends", market_value: "Market value", asking_price: "Asking price", fair_value: "Fair value",
@@ -56,9 +84,17 @@ const HEADERS: Record<string, string> = {
   stage: "Stage", side: "Side", status: "Status", deadline: "Deadline", outcome: "Outcome", when: "When", type: "Type",
   availability: "For", enquiries: "Enquiries", offers: "Offers", bids: "Bids",
   shortlisted_by_clubs: "Shortlisted by", viewed_by_clubs: "Viewed by", metric: "", value: "", your_move: "Your move",
+  season: "Season", team: "Team", appearances: "Apps", minutes: "Minutes", goals: "Goals", assists: "Assists",
+  goals_per90: "Goals/90", assists_per90: "Assists/90", key_passes_per90: "Key passes/90", tackles_per90: "Tackles/90",
+  interceptions_per90: "Interceptions/90", dribbles_per90: "Dribbles/90", pass_accuracy: "Pass %", avg_rating: "Rating",
+  injured_now: "Injured now", latest_injury: "Latest injury", latest_date: "On", expected_back: "Back by",
+  games_missed_period: "Games missed", from: "From", to: "To", fee: "Fee", fee_reported: "Reported fee", date: "Date",
+  completed: "Completed", direction: "Direction", start: "Start", end: "Ends", loan_fee: "Loan fee",
+  wage_share_pct: "Wage share %", option_to_buy: "Option to buy", what: "What", asked_by: "Asked by", expires: "Expires",
+  who: "Who", audience: "Who can read", text: "Message",
 };
-const MONEY = new Set(["asking_price", "fair_value", "your_valuation", "amount"]);
-const DATES = new Set(["contract_ends", "deadline", "when"]);
+const MONEY = new Set(["asking_price", "fair_value", "your_valuation", "amount", "fee", "loan_fee", "option_to_buy"]);
+const DATES = new Set(["contract_ends", "deadline", "when", "latest_date", "expected_back", "date", "completed", "start", "end", "expires"]);
 const COUNTS_OF_CLUBS = new Set(["shortlisted_by_clubs", "viewed_by_clubs"]);
 
 function words(s: string): string {
@@ -128,6 +164,60 @@ function download(b: TableBlock) {
   URL.revokeObjectURL(url);
 }
 
+async function downloadExcel(b: TableBlock) {
+  const resp = await api.post<Blob>("/ai/analyst/export", {
+    title: b.title, columns: b.columns, headers: b.columns.map((c) => HEADERS[c] || words(c)),
+    rows: b.rows, source: sourceLine(b.source),
+  }, { responseType: "blob" });
+  const url = URL.createObjectURL(resp.data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${b.title.replace(/[^\w]+/g, "-").toLowerCase() || "transferx"}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+const SERIES = ["bg-accent", "bg-success", "bg-warning-fill"];
+
+/** A horizontal bar chart, one group per row, every bar on the same scale. */
+function AnswerChart({ block }: { block: ChartBlock }) {
+  const max = Math.max(0, ...block.rows.flatMap((r) => block.y.map((y) => Number(r[y]) || 0)));
+  return (
+    <div className="mt-3 rounded-xl bg-surface p-4 ring-1 ring-border">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-text">{block.title}</p>
+        <div className="flex flex-wrap gap-3 text-xs text-text-muted">
+          {block.y.map((y, i) => (
+            <span key={y} className="inline-flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-sm ${SERIES[i]}`} />{HEADERS[y] ?? words(y)}</span>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2.5">
+        {block.rows.map((r, i) => (
+          <div key={i} className="grid grid-cols-[minmax(0,9rem)_1fr] items-center gap-3">
+            <span className="truncate text-xs text-text-secondary" title={String(r[block.x] ?? "")}>{String(r[block.x] ?? "—")}</span>
+            <div className="space-y-1">
+              {block.y.map((y, j) => {
+                const v = Number(r[y]) || 0;
+                const pct = max ? Math.max(2, (v / max) * 100) : 0;
+                return (
+                  <div key={y} className="flex items-center gap-2">
+                    <div className={`h-2.5 rounded-sm ${SERIES[j]}`} style={{ width: `${pct}%` }} />
+                    <span className="text-[11px] tabular-nums text-text-muted">{cell(y, r)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-[11px] text-text-muted">{sourceLine(block.source)}</p>
+    </div>
+  );
+}
+
 function AnswerTable({ block }: { block: TableBlock }) {
   const navigate = useNavigate();
   return (
@@ -136,7 +226,8 @@ function AnswerTable({ block }: { block: TableBlock }) {
         <p className="text-sm font-semibold text-text">{block.title}</p>
         <div className="flex items-center gap-3 text-xs text-text-muted">
           <span>{block.rows.length < block.total ? `Showing ${block.rows.length} of ${block.total}` : `${block.total} ${block.total === 1 ? "row" : "rows"}`}</span>
-          <button type="button" onClick={() => download(block)} className="font-semibold text-accent hover:underline">Export CSV</button>
+          <button type="button" onClick={() => download(block)} className="font-semibold text-accent hover:underline">CSV</button>
+          <button type="button" onClick={() => void downloadExcel(block)} className="font-semibold text-accent hover:underline">Excel</button>
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -173,10 +264,19 @@ export default function AskPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [thread, setThread] = useState<Turn[]>(() => {
+    // "Ask about this" starts a new conversation about that page.
+    if (params.get("about")) return [];
     try { return JSON.parse(sessionStorage.getItem(STORE) || "[]"); } catch { return []; }
   });
   const [text, setText] = useState("");
   const bottom = useRef<HTMLDivElement>(null);
+  // "Ask about this" from a player, offer or deal page: /ask?about=player&id=…&name=…
+  const [context, setContext] = useState<AskContext | null>(() => {
+    const about = params.get("about");
+    const id = params.get("id");
+    return (about === "player" || about === "offer" || about === "deal") && id
+      ? { type: about, id, name: params.get("name") || "" } : null;
+  });
 
   useEffect(() => {
     try { sessionStorage.setItem(STORE, JSON.stringify(thread.slice(-12))); } catch { /* the thread still works */ }
@@ -186,7 +286,9 @@ export default function AskPage() {
   const ask = useMutation({
     mutationFn: (question: string) => {
       const history = thread.filter((t) => t.result).slice(-4).map((t) => ({ question: t.question, answer: t.result!.answer }));
-      return api.post<AnalystAnswer>("/ai/analyst", { question, history }).then((r) => r.data);
+      return api.post<AnalystAnswer>("/ai/analyst", {
+        question, history, ...(context && { context: { type: context.type, id: context.id } }),
+      }).then((r) => r.data);
     },
     onMutate: (question) => setThread((t) => [...t, { question }]),
     onSuccess: (result) => setThread((t) => t.map((x, i) => (i === t.length - 1 ? { ...x, result } : x))),
@@ -199,13 +301,11 @@ export default function AskPage() {
     ask.mutate(question);
   };
 
-  // ⌘K hands a question over as /ask?q=…
+  // ⌘K hands a question over as /ask?q=…; a page's context stays in state.
   useEffect(() => {
     const q = params.get("q");
-    if (q) {
-      setParams({}, { replace: true });
-      send(q);
-    }
+    if (q || params.get("about")) setParams({}, { replace: true });
+    if (q) send(q);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -217,13 +317,20 @@ export default function AskPage() {
           <p className="text-sm text-text-muted">Ask what you'd ask an analyst. Answers come from your club's data and the market on TransferX.</p>
         </div>
         {thread.length > 0 && (
-          <button type="button" onClick={() => setThread([])} className="text-sm font-semibold text-text-secondary hover:text-text">New conversation</button>
+          <button type="button" onClick={() => { setThread([]); setContext(null); }} className="text-sm font-semibold text-text-secondary hover:text-text">New conversation</button>
         )}
       </div>
 
+      {context && (
+        <p className="mb-3 inline-flex items-center gap-2 self-start rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent ring-1 ring-accent/20">
+          About {context.name || `this ${context.type}`}
+          <button type="button" aria-label="Stop asking about this" onClick={() => setContext(null)} className="text-accent/70 hover:text-accent">✕</button>
+        </p>
+      )}
+
       {thread.length === 0 && (
         <div className="mb-6 grid gap-2 sm:grid-cols-2">
-          {STARTERS.map((s) => (
+          {(context ? CONTEXT_STARTERS[context.type](context.name) : STARTERS).map((s) => (
             <button key={s} type="button" onClick={() => send(s)}
               className="rounded-xl bg-surface px-4 py-3 text-left text-sm text-text ring-1 ring-border hover:ring-accent">
               {s}
@@ -262,7 +369,9 @@ export default function AskPage() {
                       ))}
                     </div>
                   )}
-                  {t.result.blocks.map((b, j) => <AnswerTable key={j} block={b} />)}
+                  {t.result.blocks.map((b, j) => (b.type === "chart"
+                    ? <AnswerChart key={j} block={b} />
+                    : <AnswerTable key={j} block={b} />))}
                   {i === thread.length - 1 && t.result.follow_ups.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {t.result.follow_ups.map((f) => (

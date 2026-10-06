@@ -17,6 +17,7 @@ import {
   playerStatusVariant,
 } from "../../lib/badges";
 import { formatCurrency, getApiError } from "../../lib/utils";
+import { askAboutPath } from "../../lib/ask";
 import AddToShortlistButton from "../../components/scouting/AddToShortlistButton";
 import AskAboutPlayerModal from "../../components/enquiries/AskAboutPlayerModal";
 import { PotentialBuyersPanel } from "../../components/ai/Assistant";
@@ -663,6 +664,12 @@ export default function PlayerMarketDetailPage() {
                 )}
               </>
             )
+          )}
+
+          {isAuthenticated && !isAgent && !isPlayerAccount && (
+            <Button variant="secondary" onClick={() => navigate(askAboutPath("player", player.id, player.name))}>
+              Ask about this
+            </Button>
           )}
 
           {!isMyPlayer && (

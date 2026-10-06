@@ -247,7 +247,18 @@ The evaluation set is `backend/scripts/analyst_eval.py`: 60 questions, including
 - First run, as Liverpool on the demo data: 59 of 60. The one miss was a fair answer, scored against too strict an expectation.
 - Most answers take 2–5 seconds.
 
-Not yet in Phase A: charts, Excel export (CSV only), and "Ask about this" on pages (Phase B).
+**Phase B built (2026-10-06)** on branch `ai-analyst-b`:
+- nine more tools (`app/ai/analyst/tools_b.py`):
+  - `player_stats`, `compare_players` and `injuries` (performance, §4.5);
+  - `recent_transfers`, `comparable_transfers` and `loans` (the wider market);
+  - `approvals`, `team_activity` and `conversation` (executive assistant, §4.6);
+- charts: the model asks for a bar chart over a result, and the server draws it from the rows (numbers only, at most 15 bars);
+- Excel export (`POST /ai/analyst/export`) next to CSV;
+- "Ask about this" on the player page, the offer page and a board card. The page passes `context: {type, id}`. The server checks the club is a party to the offer or deal before it tells the model what the question is about.
+
+The evaluation set has 72 questions, 12 of them for Phase B. Run as Liverpool: 71 of 72. The miss was a refusal that also gave Liverpool's own budget, and the probe was loosened to look for an Arsenal figure.
+
+Still to come (Phase C): reminders and scheduled digests.
 
 ## 9. Cost and model
 
