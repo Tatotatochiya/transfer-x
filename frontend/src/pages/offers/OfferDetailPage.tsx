@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { askAboutPath } from "../../lib/ask";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Club, Offer } from "../../types/api";
@@ -554,6 +555,14 @@ export default function OfferDetailPage() {
               className="text-xs text-text-muted hover:text-accent transition-colors"
             >
               View listing →
+            </button>
+          )}
+          {isParty && (
+            <button
+              onClick={() => navigate(askAboutPath("offer", offer.id, offer.player?.name ?? ""))}
+              className="text-xs font-semibold text-accent hover:underline"
+            >
+              Ask about this →
             </button>
           )}
         </div>

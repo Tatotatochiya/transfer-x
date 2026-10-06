@@ -575,7 +575,8 @@ async def analyst(
     _require_llm_key()
     club = await _get_club(db, current_user)
     try:
-        result = await _answer(db, club, current_user, question, history=history)
+        result = await _answer(db, club, current_user, question, history=history,
+                               context=body.get("context") if isinstance(body.get("context"), dict) else None)
     except HTTPException:
         raise
     except Exception as exc:
@@ -589,3 +590,46 @@ async def analyst(
                         fallback=not result["blocks"] and not result["proposal"] and "couldn't" in result["answer"])
     await db.commit()
     return result
+
+
+@router.post("/analyst/export")
+async def analyst_export(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+):
+    """One answer table as an Excel file. The rows are the ones the page was
+    shown (the caller's own answer), so nothing new is read here."""
+    import io
+    import re as _re
+
+    from fastapi.responses import StreamingResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+
+    title = str(body.get("title") or "TransferX")[:80]
+    columns = [str(c) for c in (body.get("columns") or [])][:30]
+    headers = body.get("headers") if isinstance(body.get("headers"), list) else columns
+    rows = body.get("rows") if isinstance(body.get("rows"), list) else []
+    if not columns:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Nothing to export")
+    wb = Workbook()
+    ws = wb.active
+    ws.title = (_re.sub(r"[\\/*?:\[\]]", "", title) or "TransferX")[:31]
+    ws.append([str(h) for h in headers[:len(columns)]])
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+    for r in rows[:2000]:
+        if isinstance(r, dict):
+            ws.append([r.get(c) if isinstance(r.get(c), (int, float, str)) or r.get(c) is None else str(r.get(c))
+                       for c in columns])
+    for i, _c in enumerate(columns, start=1):
+        ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = 18
+    ws.append([])
+    if body.get("source"):
+        ws.append([str(body["source"])[:300]])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    name = (_re.sub(r"[^\w]+", "-", title).strip("-").lower() or "transferx") + ".xlsx"
+    return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                             headers={"Content-Disposition": f'attachment; filename="{name}"'})

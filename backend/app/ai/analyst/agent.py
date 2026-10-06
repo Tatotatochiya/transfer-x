@@ -50,8 +50,10 @@ When you have the answer, call give_answer exactly once:
   plainly and suggest the nearest useful question. Don't repeat the table row by row: it's shown under your text.
 - show: which tool results to show as tables (by their number, in the order you called them), with the columns
   that matter for this question, in order. Leave it empty when the text says it all.
+- charts: only when a picture helps (comparing players on a few numbers, or ranking by one number). A bar
+  chart from one result: x is the column naming each bar, y are 1-3 numeric columns on a similar scale.
 - follow_ups: 2 or 3 short next questions they might ask, in their words.
-"""
+{context}"""
 
 GIVE_ANSWER = {"type": "function", "function": {
     "name": "give_answer",
@@ -63,6 +65,13 @@ GIVE_ANSWER = {"type": "function", "function": {
             "title": {"type": "string", "description": "a short heading for the table"},
             "columns": {"type": "array", "items": {"type": "string"}},
         }, "required": ["result"]}},
+        "charts": {"type": "array", "description": "Only for comparisons or trends worth seeing",
+                   "items": {"type": "object", "properties": {
+                       "result": {"type": "integer"},
+                       "title": {"type": "string"},
+                       "x": {"type": "string", "description": "the column naming each bar, usually 'player'"},
+                       "y": {"type": "array", "items": {"type": "string"}, "description": "1-3 numeric columns"},
+                   }, "required": ["result", "x", "y"]}},
         "follow_ups": {"type": "array", "items": {"type": "string"}},
     }, "required": ["text"]},
 }}
@@ -71,6 +80,10 @@ TOOL_LABEL = {
     "search_players": "Player market", "get_player": "Player", "search_listings": "Listings",
     "squad": "Your squad", "money": "Your budget", "transfers": "Your transfers (board)",
     "history": "Transfer history", "interest_in_my_players": "Interest in your players",
+    "player_stats": "Player statistics", "compare_players": "Comparison", "injuries": "Injuries",
+    "recent_transfers": "Completed transfers", "comparable_transfers": "Comparable transfers",
+    "loans": "Your loans", "approvals": "Your approvals", "team_activity": "Your team's activity",
+    "conversation": "Conversation",
 }
 
 
@@ -99,7 +112,65 @@ def _table(res: ToolResult, call: dict, spec: dict) -> dict:
     }
 
 
-async def answer(db: AsyncSession, club, user, question: str, history: list[dict] | None = None) -> dict:
+def _chart(res: ToolResult, call: dict, spec: dict) -> dict | None:
+    """A bar chart built from a result's rows: x must be a column, each y a
+    numeric column. Anything else is dropped."""
+    x = spec.get("x")
+    ys = [y for y in (spec.get("y") or [])[:3]]
+    rows = res.rows[:15]
+    if not rows or x not in rows[0]:
+        return None
+    ys = [y for y in ys if any(isinstance(r.get(y), (int, float)) and not isinstance(r.get(y), bool) for r in rows)]
+    if not ys:
+        return None
+    return {
+        "type": "chart", "kind": "bar",
+        "title": str(spec.get("title") or TOOL_LABEL.get(call["name"], call["name"]))[:80],
+        "x": x, "y": ys,
+        "rows": [{x: r.get(x), **{y: r.get(y) for y in ys}} for r in rows],
+        "source": {"tool": call["name"], "label": TOOL_LABEL.get(call["name"], call["name"]),
+                   "filters": res.filters, "as_of": res.as_of, "note": res.note},
+    }
+
+
+async def context_line(db: AsyncSession, club, context: dict | None) -> str:
+    """'They are looking at …', for questions asked from a page ('Ask about
+    this'). Resolved here, never taken on trust: an offer or deal must be the
+    club's own."""
+    if not isinstance(context, dict):
+        return ""
+    kind, ref = context.get("type"), context.get("id")
+    try:
+        import uuid as _uuid
+
+        ref = _uuid.UUID(str(ref))
+    except (TypeError, ValueError):
+        return ""
+    if kind == "player":
+        from app.players.models import Player
+
+        p = await db.get(Player, ref)
+        return f"\nThey are looking at the player {p.name} (call get_player for his details)." if p else ""
+    if kind in ("offer", "deal"):
+        from app.deals.models import Deal
+        from app.offers.models import Offer
+
+        row = await db.get(Offer if kind == "offer" else Deal, ref)
+        if row is None:
+            return ""
+        parties = {str(getattr(row, a)) for a in ("from_club_id", "to_club_id", "buyer_club_id", "seller_club_id") if getattr(row, a, None)}
+        if str(club.id) not in parties:
+            return ""
+        from app.players.models import Player
+
+        p = await db.get(Player, row.player_id)
+        return (f"\nThey are looking at the {kind} for {p.name if p else 'a player'} "
+                f"(use the transfers and conversation tools for it).")
+    return ""
+
+
+async def answer(db: AsyncSession, club, user, question: str, history: list[dict] | None = None,
+                 context: dict | None = None) -> dict:
     from app.ai.assist import (
         _PROPOSAL_ANSWER, bid_from_question, contradicts_lookup, keep_known_figures, player_fact_line,
         resolve_proposal,
@@ -119,7 +190,8 @@ async def answer(db: AsyncSession, club, user, question: str, history: list[dict
 
     ctx = Ctx(db=db, club=club, user=user)
     messages: list[dict] = [{"role": "system", "content": SYSTEM.format(
-        club_name=club.name, today=date.today().isoformat(), max_calls=MAX_TOOL_CALLS)}]
+        club_name=club.name, today=date.today().isoformat(), max_calls=MAX_TOOL_CALLS,
+        context=await context_line(db, club, context))}]
     for turn in (history or [])[-HISTORY_TURNS:]:
         q, a = str(turn.get("question") or "")[:500], str(turn.get("answer") or "")[:1500]
         if q and a:
@@ -192,8 +264,15 @@ async def answer(db: AsyncSession, club, user, question: str, history: list[dict
             continue
         if 1 <= n <= len(results) and results[n - 1].rows:
             blocks.append(_table(results[n - 1], calls[n - 1], spec))
+    for spec in final.get("charts") or []:
+        try:
+            n = int(spec.get("result"))
+        except (TypeError, ValueError, AttributeError):
+            continue
+        if 1 <= n <= len(results) and (chart := _chart(results[n - 1], calls[n - 1], spec)) is not None:
+            blocks.append(chart)
     # A result the model forgot to show still answers the question.
-    if not blocks and len(results) == 1 and len(results[0].rows) > 1:
+    if not [b for b in blocks if b["type"] == "table"] and len(results) == 1 and len(results[0].rows) > 1:
         blocks.append(_table(results[0], calls[0], {}))
 
     follow_ups = [str(f).strip()[:120] for f in (final.get("follow_ups") or []) if str(f).strip()][:3]

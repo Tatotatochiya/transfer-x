@@ -21,10 +21,20 @@ const answer = {
   links: [],
 };
 
-function renderPage() {
+const chart = {
+  ...answer,
+  answer: "Isak scores more often; Havertz creates more.",
+  blocks: [{
+    type: "chart", kind: "bar", title: "Isak vs Havertz", x: "player", y: ["goals_per90", "assists_per90"],
+    rows: [{ player: "A. Isak", goals_per90: 0.62, assists_per90: 0.12 }, { player: "K. Havertz", goals_per90: 0.41, assists_per90: 0.2 }],
+    source: { tool: "compare_players", label: "Player comparison", filters: {}, as_of: "2026-10-06T20:40:00+00:00", note: null },
+  }],
+};
+
+function renderPage(path = "/ask") {
   sessionStorage.clear();
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}><MemoryRouter><AskPage /></MemoryRouter></QueryClientProvider>);
+  return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={[path]}><AskPage /></MemoryRouter></QueryClientProvider>);
 }
 
 describe("AskPage", () => {
@@ -48,6 +58,39 @@ describe("AskPage", () => {
     await waitFor(() => expect(api.post).toHaveBeenLastCalledWith("/ai/analyst", {
       question: "Who are our top earners overall?",
       history: [{ question: "Our highest earners whose contract ends within 18 months", answer: answer.answer }],
+    }));
+  });
+
+  it("draws a chart block as bars with a legend", async () => {
+    api.post.mockResolvedValue({ data: chart });
+    renderPage();
+    await userEvent.type(screen.getByLabelText("Your question"), "compare Isak and Havertz");
+    await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+    expect(await screen.findByText("Isak vs Havertz")).toBeInTheDocument();
+    expect(screen.getByText("Goals/90")).toBeInTheDocument();
+    expect(screen.getByText("K. Havertz")).toBeInTheDocument();
+    expect(screen.getByText("0.62")).toBeInTheDocument();
+  });
+
+  it("exports a table to Excel through the server", async () => {
+    renderPage();
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    URL.revokeObjectURL = vi.fn();
+    await userEvent.type(screen.getByLabelText("Your question"), "who is out of contract soon?");
+    await userEvent.click(screen.getByRole("button", { name: "Ask" }));
+    api.post.mockResolvedValueOnce({ data: new Blob(["x"]) });
+    await userEvent.click(await screen.findByRole("button", { name: "Excel" }));
+    await waitFor(() => expect(api.post).toHaveBeenLastCalledWith("/ai/analyst/export", expect.objectContaining({
+      title: "Expiring contracts", columns: ["player", "contract_ends", "wage_weekly"],
+    }), { responseType: "blob" }));
+  });
+
+  it("asks about the page it was opened from", async () => {
+    renderPage("/ask?about=player&id=p9&name=K.%20Havertz");
+    expect(screen.getByText("About K. Havertz")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Tell me about K. Havertz" }));
+    await waitFor(() => expect(api.post).toHaveBeenLastCalledWith("/ai/analyst", {
+      question: "Tell me about K. Havertz", history: [], context: { type: "player", id: "p9" },
     }));
   });
 });

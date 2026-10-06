@@ -452,3 +452,14 @@ async def run_tool(ctx: Ctx, name: str, args: dict) -> ToolResult:
     allowed = set(tool.parameters.get("properties", {}))
     clean = {k: v for k, v in (args or {}).items() if k in allowed and v is not None}
     return await tool.run(ctx, **clean)
+
+
+def _register_phase_b() -> None:
+    """Phase B's tools (tools_b.py) join the same catalogue."""
+    from app.ai.analyst.tools_b import PHASE_B
+
+    for name, description, parameters, run in PHASE_B:
+        TOOLS[name] = Tool(name, description, parameters, run)
+
+
+_register_phase_b()

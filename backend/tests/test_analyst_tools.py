@@ -106,3 +106,57 @@ async def test_get_player_says_where_he_is_and_unknown_args_are_ignored(client: 
     assert (await run_tool(await _ctx(db, "an_buyer@test.com"), "get_player", {"name": "Nobody Atall"})).rows == []
     assert set(TOOLS) >= {"search_players", "get_player", "search_listings", "squad", "money", "transfers", "history",
                           "interest_in_my_players"}
+
+
+# ── Phase B ───────────────────────────────────────────────────────────────────
+
+
+async def _stats(db, player_id, season, minutes, goals, assists, rating, league="Premier League"):
+    from decimal import Decimal
+
+    from app.stats.models import PlayerStats
+
+    db.add(PlayerStats(player_id=uuid.UUID(player_id), vendor="test", season=season, league_name=league,
+                       minutes=minutes, goals=goals, assists=assists, appearances=minutes // 80,
+                       avg_rating=Decimal(str(rating)), key_passes=10, tackles_total=5))
+    await db.commit()
+
+
+async def test_stats_sum_competitions_and_compare_side_by_side(client: AsyncClient, db):
+    seller, buyer, mid, other_mid, own_mid = await _setup(client, db)
+    await _stats(db, mid["id"], "2025", 900, 3, 2, 7.0)
+    await _stats(db, mid["id"], "2025", 900, 1, 0, 8.0, league="FA Cup")
+    await _stats(db, mid["id"], "2024", 2000, 9, 9, 6.5)
+    await _stats(db, other_mid["id"], "2025", 1800, 2, 4, 6.8)
+    ctx = await _ctx(db, "an_buyer@test.com")
+    res = await run_tool(ctx, "player_stats", {"names": ["Marco Midfield"]})
+    (row,) = res.rows
+    assert row["season"] == "2025" and row["minutes"] == 1800 and row["goals"] == 4  # latest season, both competitions
+    assert row["goals_per90"] == 0.2 and row["avg_rating"] == 7.5  # rating weighted by minutes
+    cmp = await run_tool(ctx, "compare_players", {"names": ["Marco Midfield", "Unlisted Mid", "Nobody Atall"]})
+    assert [r["player"] for r in cmp.rows] == ["Marco Midfield", "Unlisted Mid"] and "Nobody Atall" in cmp.note
+    assert cmp.rows[0]["club"] == "Analyst Sellers"
+
+
+async def test_team_activity_and_loans_are_your_own_only(client: AsyncClient, db):
+    from app.audit import service as audit_service
+
+    seller, buyer, *_ = await _setup(client, db)
+    seller_ctx, buyer_ctx = await _ctx(db, "an_seller@test.com"), await _ctx(db, "an_buyer@test.com")
+    await audit_service.emit(db, entity_type="CLUB", entity_id=seller_ctx.club.id, action="X",
+                             actor_user_id=seller_ctx.user.id, description="Seller did a thing")
+    await db.commit()
+    mine = await run_tool(seller_ctx, "team_activity", {"days": 7})
+    assert "Seller did a thing" in [r["what"] for r in mine.rows]
+    theirs = await run_tool(buyer_ctx, "team_activity", {"days": 7})
+    assert "Seller did a thing" not in [r["what"] for r in theirs.rows]
+    assert (await run_tool(buyer_ctx, "loans", {})).rows == []
+
+
+async def test_conversation_by_player_name(client: AsyncClient, db):
+    seller, buyer, mid, *_ = await _setup(client, db)
+    await client.post("/enquiries", json={"player_id": mid["id"], "body": "Would you sell Marco?"}, headers=_auth_headers(buyer))
+    res = await run_tool(await _ctx(db, "an_seller@test.com"), "conversation", {"player": "Marco"})
+    assert [r["text"] for r in res.rows] == ["Would you sell Marco?"]
+    none = await run_tool(await _ctx(db, "an_seller@test.com"), "conversation", {"player": "Nobody"})
+    assert none.rows == [] and "No transfer" in none.note

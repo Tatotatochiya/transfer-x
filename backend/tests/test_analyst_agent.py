@@ -93,3 +93,47 @@ async def test_follow_ups_carry_the_conversation(client: AsyncClient, db, model)
     await _ask(client, buyer, "only under 25", history=[{"question": "listed midfielders?", "answer": "Marco Midfield."}])
     roles = [m["role"] for m in seen[0]["messages"]]
     assert roles == ["system", "user", "assistant", "user"]
+
+
+async def test_a_chart_is_built_from_numeric_columns_only(client: AsyncClient, db, model):
+    script, seen = model
+    seller, buyer, *_ = await _setup(client, db)
+    script += [
+        _turn(_call("squad", {}, 1)),
+        _turn(_call("give_answer", {"text": "Here they are.",
+                                    "charts": [{"result": 1, "x": "player", "y": ["age", "player"], "title": "Ages"},
+                                               {"result": 7, "x": "player", "y": ["age"]}]}, 2)),
+    ]
+    got = await _ask(client, seller, "chart our squad by age")
+    charts = [b for b in got["blocks"] if b["type"] == "chart"]
+    assert len(charts) == 1 and charts[0]["y"] == ["age"] and charts[0]["title"] == "Ages"  # non-numeric y and a bad result dropped
+
+
+async def test_context_from_a_page_is_resolved_and_checked(client: AsyncClient, db, model):
+    script, seen = model
+    seller, buyer, mid, *_ = await _setup(client, db)
+    script += [_turn(_call("give_answer", {"text": "OK."}, 1))] * 2
+    await client.post("/ai/analyst", json={"question": "tell me about him", "context": {"type": "player", "id": mid["id"]}},
+                      headers=_auth_headers(buyer))
+    assert "Marco Midfield" in seen[-1]["messages"][0]["content"]
+    # Someone else's offer can't be smuggled in as context.
+    import uuid as _uuid
+
+    await client.post("/ai/analyst", json={"question": "and this?", "context": {"type": "offer", "id": str(_uuid.uuid4())}},
+                      headers=_auth_headers(buyer))
+    assert "looking at the offer" not in seen[-1]["messages"][0]["content"]
+
+
+async def test_a_table_exports_to_excel(client: AsyncClient, db):
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    seller, buyer, *_ = await _setup(client, db)
+    resp = await client.post("/ai/analyst/export", json={
+        "title": "Listed midfielders", "columns": ["player", "asking_price"], "headers": ["Player", "Asking price"],
+        "rows": [{"player": "Marco Midfield", "asking_price": 6000000}], "source": "Player market · as of 20:40"},
+        headers=_auth_headers(buyer))
+    assert resp.status_code == 200 and "listed-midfielders.xlsx" in resp.headers["content-disposition"]
+    ws = load_workbook(BytesIO(resp.content)).active
+    assert [c.value for c in ws[1]] == ["Player", "Asking price"] and ws["B2"].value == 6000000
