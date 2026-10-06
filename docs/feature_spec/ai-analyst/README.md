@@ -235,6 +235,20 @@ Tests: `tests/test_ask_grounding.py`.
 
 Phase A alone answers both of the example questions in §1.
 
+## 8a. Progress
+
+**Phase A built (2026-10-06)** on branch `ai-analyst-a`:
+- `player_views` (migration `0099`);
+- the eight tools (`app/ai/analyst/tools.py`);
+- the loop and its checks (`app/ai/analyst/agent.py`, `POST /ai/analyst`);
+- the `/ask` page, with "Open in Ask TransferX" from ⌘K.
+
+The evaluation set is `backend/scripts/analyst_eval.py`: 60 questions, including 8 confidentiality probes, an action request and out-of-scope questions.
+- First run, as Liverpool on the demo data: 59 of 60. The one miss was a fair answer, scored against too strict an expectation.
+- Most answers take 2–5 seconds.
+
+Not yet in Phase A: charts, Excel export (CSV only), and "Ask about this" on pages (Phase B).
+
 ## 9. Cost and model
 
 - A tool-use question costs roughly 2–3 model calls (choose tools, then write the answer). With a current Claude model and 50-row results, expect about 3–8p per question. That's comfortably inside the existing AI allowance at a director's volume (tens of questions a day).
