@@ -212,10 +212,17 @@ Havertz is under contract with **Arsenal** on TransferX (active contract to 30 J
   - a misspelled name ("Havetz");
   - two players with the same surname.
 
-**Interim fix, before Phase A.** Small enough to do on its own:
+**Interim fix, before Phase A: done 2026-10-06.** Small enough to do on its own:
 - route ⌘K's action requests through the existing Lite resolver;
 - add the "out-of-date knowledge" rule to `ASK_USER`;
 - when a question names a player the facts don't contain, add a server lookup of that name to the facts.
+
+Built as `mentioned_players` (facts key `players_named_in_the_question`), the prompt rule in `ASK_USER` and `ASK_LITE_USER`, a guard (`contradicts_lookup`) that replaces an answer calling another club's player the asker's own, and ⌘K proposals that open `/offers/new` filled in. Checked live as Chelsea:
+- "is Havertz in our squad?" → "K. Havertz plays for Arsenal, under contract to June 2030, and isn't listed for sale."
+- "place 8m bid on Havertz" → "£8m is too far from his price of about £18.9m to prepare."
+- "place 18m bid on Havertz" → a £18m bid to Arsenal, opened on the offer form.
+
+Tests: `tests/test_ask_grounding.py`.
 
 ## 8. Effort and build order
 

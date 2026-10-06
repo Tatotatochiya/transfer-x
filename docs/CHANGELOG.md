@@ -254,6 +254,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **Ask TransferX answered from the model's memory.** As Chelsea, "place 8m bid on Havertz" got "Havertz is already in your squad" (he's Arsenal's). Named players are now looked up on TransferX, the model is told its football knowledge is out of date, and a wrong "your squad" claim is replaced with TransferX's facts. ⌘K can now prepare a bid: it opens the offer form filled in, for you to check and send ([spec §7a](./feature_spec/ai-analyst/README.md)).
 - **iPhone push taps are counted.** iOS opens pushes without the service worker; the page now reports the tap with the push's own token.
 - **Dashboard approval items** linked to `/approvals`, which isn't a page.
 - **Shortlist Market Value** was always blank: the API now sends it, shown in its own currency.
