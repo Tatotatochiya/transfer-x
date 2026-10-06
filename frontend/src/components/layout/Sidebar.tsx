@@ -155,6 +155,8 @@ function getNavGroups(userType: UserType | null, staffAccount = false): NavGroup
         { label: "Dashboard", to: "/dashboard", icon: "layout-dashboard" },
         // Every player the club is buying or selling, once (product ADR 0008).
         { label: "Transfers", to: "/board", icon: "columns" },
+        // Ask TransferX as an analyst (AI analyst spec, Phase A).
+        { label: "Ask TransferX", to: "/ask", icon: "bolt" },
       ],
     },
     {

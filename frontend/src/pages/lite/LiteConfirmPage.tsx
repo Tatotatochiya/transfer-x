@@ -80,7 +80,7 @@ export default function LiteConfirmPage() {
   const left = sentAt ? Math.max(0, 10 - Math.floor((now - sentAt) / 1000)) : 0;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-10">
+    <div className="min-h-screen bg-page px-4 py-10">
       <div className="mx-auto max-w-lg">
         <p className="mb-6 text-lg font-extrabold text-text">TransferX</p>
         {isLoading ? (
