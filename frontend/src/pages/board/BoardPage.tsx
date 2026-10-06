@@ -60,6 +60,19 @@ function readSide(): Side {
   }
 }
 
+const SIDE_STYLE: Record<BoardCard["side"], { label: string; tag: string; bar: string }> = {
+  BUYING: { label: "Buying", tag: "bg-accent-bg text-accent", bar: "bg-accent" },
+  SELLING: { label: "Selling", tag: "bg-warning-bg text-warning-text", bar: "bg-warning-fill" },
+};
+
+function SideTag({ side }: { side: BoardCard["side"] }) {
+  return (
+    <span className={`mr-1 inline-block rounded px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.04em] ${SIDE_STYLE[side].tag}`}>
+      {SIDE_STYLE[side].label}
+    </span>
+  );
+}
+
 function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; onOpen: (c: BoardCard) => void }) {
   const yours = card.whose_move === "your";
   const left = timeLeft(card.deadline);
@@ -85,8 +98,8 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
       </div>
       {(card.counterparty || showSide) && (
         <p className="mt-0.5 truncate text-xs text-text-muted">
-          {showSide && <span className="font-semibold">{card.side === "BUYING" ? "Buying" : "Selling"}</span>}
-          {showSide && card.counterparty && " · "}
+          {showSide && <SideTag side={card.side} />}
+          {showSide && card.counterparty && " "}
           {card.counterparty && (card.side === "BUYING" ? `from ${card.counterparty}` : `to ${card.counterparty}`)}
         </p>
       )}
@@ -150,6 +163,35 @@ function CardDetail({ card, onClose }: { card: BoardCard; onClose: () => void })
         )}
       </div>
     </Modal>
+  );
+}
+
+function Columns({ columns, pick, showSide, onOpen }: {
+  columns: Board["columns"];
+  pick: (c: BoardCard) => boolean;
+  showSide: boolean;
+  onOpen: (c: BoardCard) => void;
+}) {
+  return (
+    <div className="-mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-3 md:mx-0 md:scroll-px-0 md:px-0">
+      {columns.map((col) => {
+        const cards = col.cards.filter(pick);
+        return (
+          <section key={col.key} aria-label={col.label} className="w-[260px] shrink-0 snap-start lg:w-auto lg:min-w-0 lg:flex-1">
+            <h3 className="mb-2 flex items-baseline justify-between px-1 text-xs font-bold uppercase tracking-[0.06em] text-text-muted">
+              {col.label}
+              <span className="tabular-nums">{cards.length}</span>
+            </h3>
+            <div className="flex flex-col gap-2">
+              {cards.map((c) => <Card key={c.key} card={c} showSide={showSide} onOpen={onOpen} />)}
+              {cards.length === 0 && (
+                <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-text-muted">None</p>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
   );
 }
 
@@ -230,22 +272,28 @@ export default function BoardPage() {
               />
             </div>
           )}
-          <div className="-mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-3 md:mx-0 md:scroll-px-0 md:px-0">
-            {data.columns.map((col) => (
-              <section key={col.key} aria-label={col.label} className="w-[260px] shrink-0 snap-start lg:w-auto lg:min-w-0 lg:flex-1">
-                <h2 className="mb-2 flex items-baseline justify-between px-1 text-xs font-bold uppercase tracking-[0.06em] text-text-muted">
-                  {col.label}
-                  <span className="tabular-nums">{col.cards.filter(matches).length}</span>
+          {/* Both sides: a lane each, so it's never a guess which way a card goes. */}
+          {side === "BOTH" && total > 0
+            ? (["BUYING", "SELLING"] as const).map((lane) => (
+              <section key={lane} aria-label={SIDE_STYLE[lane].label} className="mb-5">
+                <h2 className="mb-2 flex items-center gap-2 text-sm font-bold text-text">
+                  <span className={`h-4 w-1 rounded-full ${SIDE_STYLE[lane].bar}`} aria-hidden />
+                  {SIDE_STYLE[lane].label}
+                  <span className="text-xs font-semibold tabular-nums text-text-muted">
+                    {lane === "BUYING" ? data.counts.buying : data.counts.selling}
+                  </span>
+                  <span className="text-xs font-normal text-text-muted">
+                    {lane === "BUYING" ? "· players you're signing" : "· your players, to other clubs"}
+                  </span>
                 </h2>
-                <div className="flex flex-col gap-2">
-                  {col.cards.filter(matches).map((c) => <Card key={c.key} card={c} showSide={side === "BOTH"} onOpen={setOpened} />)}
-                  {col.cards.filter(matches).length === 0 && (
-                    <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-text-muted">None</p>
-                  )}
-                </div>
+                {(lane === "BUYING" ? data.counts.buying : data.counts.selling) === 0 ? (
+                  <p className="rounded-xl border border-dashed border-border px-3 py-3 text-xs text-text-muted">
+                    {lane === "BUYING" ? "Nothing you're buying at the moment." : "Nothing you're selling at the moment."}
+                  </p>
+                ) : <Columns columns={data.columns} pick={(c) => c.side === lane && matches(c)} showSide={false} onOpen={setOpened} />}
               </section>
-            ))}
-          </div>
+            ))
+            : <Columns columns={data.columns} pick={matches} showSide={false} onOpen={setOpened} />}
 
           {data.closed.length > 0 && (
             <div className="mt-6">
