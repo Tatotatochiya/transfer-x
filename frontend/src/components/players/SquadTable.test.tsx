@@ -92,4 +92,34 @@ describe("SquadTable", () => {
     expect(list).toBeDisabled();
     expect(list).toHaveAttribute("title", "The window is closed.");
   });
+
+  it("says how far a player's sale has got, links to it, and filters to players in play", () => {
+    const inPlay = new Map([
+      ["d1", { label: "Offer £6.0m", detail: "Offer received · your reply", link: "/offers/o1", yourMove: true, listingOnly: false }],
+      ["gk1", { label: "Deal: Paperwork", detail: "Waiting on Leeds", link: "/deals/x1", yourMove: false, listingOnly: false }],
+    ]);
+    renderWithProviders(
+      <SquadTable players={SQUAD} showContractDetails onList={vi.fn()} onUnlist={vi.fn()} openListings={new Map()} inPlay={inPlay} />,
+    );
+    const offer = screen.getByRole("link", { name: /Offer £6.0m/ });
+    expect(offer).toHaveAttribute("href", "/offers/o1");
+    expect(offer).toHaveAttribute("title", "Offer received · your reply");
+    expect(screen.getByLabelText("Your move")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Deal: Paperwork/ })).toHaveAttribute("href", "/deals/x1");
+    fireEvent.click(screen.getByRole("button", { name: "In play 2" }));
+    expect(screen.queryByText("Keeper Short")).not.toBeInTheDocument();
+    expect(screen.getByText("Defender One")).toBeInTheDocument();
+  });
+
+  it("keeps Listed and Unlist for a listing with nothing on it yet", () => {
+    renderWithProviders(
+      <SquadTable
+        players={[SQUAD[0]]} showContractDetails onList={vi.fn()} onUnlist={vi.fn()}
+        openListings={new Map([["gk1", "s1"]])}
+        inPlay={new Map([["gk1", { label: "Listed", detail: "Listed", link: "/sales/s1", yourMove: false, listingOnly: true }]])}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Listed →" })).toHaveAttribute("href", "/sales/s1");
+    expect(screen.getByRole("button", { name: "Unlist" })).toBeInTheDocument();
+  });
 });

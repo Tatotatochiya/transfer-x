@@ -9,7 +9,8 @@ import EmptyState from "../../components/ui/EmptyState";
 import Spinner from "../../components/ui/Spinner";
 import SaleCard from "../../components/sales/SaleCard";
 import ListPlayerModal from "../../components/sales/ListPlayerModal";
-import SquadTable, { SquadTableSkeleton, type SquadDensity } from "../../components/players/SquadTable";
+import SquadTable, { SquadTableSkeleton, type InPlay, type SquadDensity } from "../../components/players/SquadTable";
+import type { BoardCard } from "../board/BoardPage";
 import LoansPanel from "../../components/players/LoansPanel";
 import SquadRail from "../../components/clubs/SquadRail";
 import ClubInfoPanel from "../../components/clubs/ClubInfoPanel";
@@ -19,7 +20,7 @@ import SquadStatsPanel from "../../components/clubs/SquadStatsPanel";
 import FixturesPanel from "../../components/fixtures/FixturesPanel";
 import VerifiedBadge from "../../components/verification/VerifiedBadge";
 import RequestVerificationPanel from "../../components/verification/RequestVerificationPanel";
-import { formatCurrency, getApiError } from "../../lib/utils";
+import { formatCompactCurrency, formatCurrency, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
@@ -134,6 +135,34 @@ export default function MyClubPage() {
       return resp.data.valuations;
     },
   });
+
+  // ── In play ───────────────────────────────────────────────────────────────
+  // The board's selling side, one card per player at its furthest point: each
+  // squad row says how far his sale has got. Same query as the board page, so
+  // the two share a cache.
+
+  const { data: selling } = useQuery<{ columns: { key: string; label: string; cards: BoardCard[] }[] }>({
+    queryKey: ["board", "SELLING"],
+    queryFn: () => api.get("/board", { params: { side: "SELLING" } }).then((r) => r.data),
+    enabled: !!club,
+  });
+  const inPlay = useMemo(() => {
+    const map = new Map<string, InPlay>();
+    for (const col of selling?.columns ?? []) {
+      for (const c of col.cards) {
+        const amount = c.amount != null ? ` ${formatCompactCurrency(Number(c.amount))}` : "";
+        const label = c.kind === "deal" ? `Deal: ${col.label}`
+          : c.kind === "offer" ? `Offer${amount}`
+          : c.kind === "bid" ? `Bid${amount}`
+          : c.kind === "enquiry" ? "Enquiry"
+          : "Listed";
+        map.set(c.player_id, {
+          label, detail: c.detail, link: c.link, yourMove: c.whose_move === "your", listingOnly: c.kind === "listing",
+        });
+      }
+    }
+    return map;
+  }, [selling]);
 
   // ── Listings ──────────────────────────────────────────────────────────────
   // Fetched unconditionally (not gated to the listings tab) — the squad tab's
@@ -461,6 +490,7 @@ export default function MyClubPage() {
                     onSetValuation={canMarketWrite ? setValuation : undefined}
                     openListings={openListings}
                     loanedIn={loanedIn}
+                    inPlay={inPlay}
                     // Not until we know who is listed: the squad lands first,
                     // and a listed player's row would offer List meanwhile.
                     onList={canMarketWrite && salesData ? (player) => setListing({ player }) : undefined}

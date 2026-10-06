@@ -34,6 +34,19 @@ export const SQUAD_COLS_PUBLIC = "minmax(240px,1fr) 56px 150px";
 
 export type SquadDensity = "compact" | "comfortable";
 
+/** Where a player's sale has got to: the furthest selling card on the
+ *  Transfers board (an enquiry, an offer, a bid, a deal at some stage, or
+ *  just a listing). */
+export interface InPlay {
+  label: string;
+  /** The board card's own line, e.g. "Offer sent · your reply". */
+  detail: string;
+  link: string;
+  yourMove: boolean;
+  /** Only a listing, nothing on it yet. */
+  listingOnly: boolean;
+}
+
 type SquadPlayer = Player & { active_contract?: PlayerDetail["active_contract"]; active_deal?: ActiveDealStub | null };
 
 interface Props {
@@ -57,13 +70,16 @@ interface Props {
    *  the server already refuses to let us list or sell them, and the row
    *  should not offer to either. */
   loanedIn?: Map<string, { endDate: string; parentClubName: string | null }>;
+  /** Players with something going on (from the board's selling side), by
+   *  player id: the row says how far it has got and links to it. */
+  inPlay?: Map<string, InPlay>;
   /** Row height: 40px (default) or 48px. Touch screens always get 48px. */
   density?: SquadDensity;
   /** When set, the toolbar offers a Compact / Comfortable switch. */
   onDensityChange?: (density: SquadDensity) => void;
 }
 
-type ChipKey = "all" | "risk" | "listed";
+type ChipKey = "all" | "risk" | "inplay";
 
 function monthsUntil(iso: string): number {
   return (new Date(iso).getTime() - Date.now()) / (30 * 86_400_000);
@@ -92,7 +108,7 @@ const HIT = "-my-2 py-2";
 // ── Player row ────────────────────────────────────────────────────────────────
 
 function PlayerRow({
-  player, showContractDetails, formScore, fairValue, listingId, loan,
+  player, showContractDetails, formScore, fairValue, listingId, loan, inPlay,
   onUnlist, unlisting, onSetValuation, onList, listBlockedReason, density, cols,
 }: {
   player: SquadPlayer;
@@ -101,6 +117,7 @@ function PlayerRow({
   fairValue?: FairValueSignal;
   listingId?: string;
   loan?: { endDate: string; parentClubName: string | null };
+  inPlay?: InPlay;
   onUnlist?: (saleId: string, player: { id: string; name: string }) => void;
   unlisting?: boolean;
   onSetValuation?: (playerId: string, value: number | null) => void;
@@ -260,8 +277,13 @@ function PlayerRow({
       </div>
 
       {/* Status: on loan, listed (+ Unlist), transfer pending, List, or the flag */}
-      <div role="cell" className="flex items-center justify-end gap-2">
-        {loan ? (
+      <div role="cell" className="flex min-w-0 items-center justify-end gap-2">
+        {/* Something beyond a bare listing (an enquiry, an offer, a deal):
+            say how far it has got, and link to it. Unlisting a player with
+            offers on him is a decision for the listing page, not a row. */}
+        {!loan && inPlay && !inPlay.listingOnly ? (
+          <InPlayLink inPlay={inPlay} />
+        ) : loan ? (
           <span
             className="font-semibold text-accent"
             title={`On loan${loan.parentClubName ? ` from ${loan.parentClubName}` : ""} until ${new Date(loan.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}. He is not ours to sell.`}
@@ -311,6 +333,20 @@ function PlayerRow({
   );
 }
 
+function InPlayLink({ inPlay }: { inPlay: InPlay }) {
+  return (
+    <Link
+      to={inPlay.link}
+      title={inPlay.detail}
+      className={`${HIT} flex min-w-0 items-center gap-1.5 font-semibold hover:underline ${inPlay.yourMove ? "text-accent" : "text-warning-text"}`}
+    >
+      {inPlay.yourMove && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Your move" />}
+      <span className="truncate">{inPlay.label}</span>
+      <span aria-hidden>→</span>
+    </Link>
+  );
+}
+
 // ── Position group: a band, then its rows ─────────────────────────────────────
 
 function PositionBand({ label, min, total }: { label: string; min: number; total: number }) {
@@ -348,11 +384,12 @@ export function SquadTableSkeleton() {
 
 export default function SquadTable({
   players, showContractDetails = false, formScores, fairValues,
-  onUnlist, unlistingIds, onSetValuation, openListings, loanedIn, onList, listBlockedReason,
+  onUnlist, unlistingIds, onSetValuation, openListings, loanedIn, inPlay, onList, listBlockedReason,
   density = "compact", onDensityChange,
 }: Props) {
   const [chip, setChip] = useState<ChipKey>("all");
   const listed = openListings ?? new Map<string, string>();
+  const isInPlay = (p: SquadPlayer) => listed.has(p.id) || !!inPlay?.has(p.id) || p.active_deal?.status === "IN_PROGRESS";
 
   if (players.length === 0) {
     return <p className="py-8 text-center text-sm text-text-muted">No players in squad.</p>;
@@ -361,12 +398,12 @@ export default function SquadTable({
   const counts = {
     all: players.length,
     risk: players.filter((p) => p.active_contract?.end_date && monthsUntil(p.active_contract.end_date) < 12).length,
-    listed: players.filter((p) => listed.has(p.id)).length,
+    inplay: players.filter(isInPlay).length,
   };
 
   const filtered = players.filter((p) => {
     if (chip === "risk") return p.active_contract?.end_date && monthsUntil(p.active_contract.end_date) < 12;
-    if (chip === "listed") return listed.has(p.id);
+    if (chip === "inplay") return isInPlay(p);
     return true;
   });
 
@@ -394,7 +431,7 @@ export default function SquadTable({
   const chips: { key: ChipKey; label: string }[] = [
     { key: "all", label: `All ${counts.all}` },
     { key: "risk", label: `Contract risk ${counts.risk}` },
-    { key: "listed", label: `Listed ${counts.listed}` },
+    { key: "inplay", label: `In play ${counts.inplay}` },
   ];
 
   const cols = showContractDetails ? SQUAD_COLS : SQUAD_COLS_PUBLIC;
@@ -470,6 +507,7 @@ export default function SquadTable({
                     formScore={formScores?.[p.id]}
                     fairValue={fairValues?.[p.id]}
                     listingId={listed.get(p.id)}
+                    inPlay={inPlay?.get(p.id)}
                     loan={loanedIn?.get(p.id)}
                     onUnlist={onUnlist}
                     unlisting={unlistingIds?.has(p.id)}

@@ -210,6 +210,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **My Club's squad shows which players are in play.** A player with an enquiry, an offer, a bid or a deal in progress now has one status on his row, such as "Enquiry", "Offer £6.0m" or "Deal: Paperwork". It shows the furthest point the sale has reached, with a blue dot when it's your move, and links to it. The "Listed" filter is now "In play". A bare listing still shows Listed and Unlist; once there's activity on a listing, unlisting is done from the listing page.
 - **The transfer board shows Buying and Selling as separate lanes** when viewing both sides. Each lane has its own stage columns, a count, and a line saying which way the players move. Closed cards carry a coloured Buying or Selling tag. Before, both sides shared one set of columns, with only a small grey word on each card to tell them apart.
 - **One place to talk.** The offer page, the enquiry page and the deal room now all use the transfer's single conversation, with AI drafting and, on messages everyone on the deal can read, @mentions. The clubs' separate deal-room Messages tab is gone. Agents and players keep their deal-room view.
 - **Notification settings by tier.** Settings start with the daily summary and three tier rows (Your move, Heads-up, For your information), each switching its whole tier. Every type is behind "Show every type".
