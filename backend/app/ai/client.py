@@ -57,3 +57,35 @@ async def chat(
         )
 
     return response.choices[0].message.content
+
+
+async def chat_with_tools(
+    messages: list[dict],
+    tools: list[dict],
+    user_id: uuid.UUID | None = None,
+    endpoint: str = "unknown",
+    tool_choice: str | dict = "auto",
+    **kwargs,
+):
+    """One model turn that may call tools (OpenAI-style function schemas,
+    which LiteLLM maps to each provider). Returns the message: its
+    `content`, and `tool_calls` with `.id`, `.function.name` and
+    `.function.arguments` (a JSON string)."""
+    response = await litellm.acompletion(
+        model=settings.llm_model,
+        messages=messages,
+        tools=tools,
+        tool_choice=tool_choice,
+        api_key=_resolve_api_key(),
+        **kwargs,
+    )
+    if user_id is not None and response.usage:
+        from app.ai.usage import record
+        record(
+            user_id=user_id,
+            endpoint=endpoint,
+            prompt_tokens=response.usage.prompt_tokens or 0,
+            completion_tokens=response.usage.completion_tokens or 0,
+            provider=_detect_provider(),
+        )
+    return response.choices[0].message
