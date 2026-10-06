@@ -26,9 +26,12 @@ export default function CreateOfferPage() {
 
   const playerId = searchParams.get("player_id") ?? "";
   const saleId   = searchParams.get("sale_id")   ?? "";
+  // Filled in by Ask TransferX ("place £8m bid on Havertz"): the user checks
+  // it and sends it; it's recorded as AI-assisted (ADR 0006).
+  const fromAsk  = searchParams.get("from") === "ask";
 
   const [dealType, setDealType] = useState<"PERMANENT" | "LOAN">("PERMANENT");
-  const [fee, setFee]         = useState("");
+  const [fee, setFee]         = useState(() => (fromAsk ? searchParams.get("fee") ?? "" : ""));
   // Required when the fee is £0, and posted to the thread for the seller.
   const [noFeeReason, setNoFeeReason] = useState("");
   // Payment schedule, add-ons, sell-on — agreed here, not in the deal room.
@@ -141,6 +144,7 @@ export default function CreateOfferPage() {
     }
 
     const body: Record<string, unknown> = { player_id: playerId };
+    if (fromAsk) body.ai_assisted = true;
 
     if (saleId) body.sale_id = saleId;
 
@@ -286,6 +290,12 @@ export default function CreateOfferPage() {
       />
 
       <TransferWindowBanner />
+
+      {fromAsk && (
+        <p className="mb-4 rounded-lg bg-accent/10 px-4 py-2.5 text-sm text-text ring-1 ring-accent/20">
+          ✦ Filled in from Ask TransferX. Nothing has been sent: check the terms, then submit.
+        </p>
+      )}
 
       {/* Player info */}
       {player && (

@@ -158,6 +158,15 @@ export default function GlobalSearch() {
             <div className="border-b border-rule px-4 py-3">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-role-agent-text">✦ Answer</p>
               <p className="mt-1 text-sm leading-snug text-text">{ask.data.answer}</p>
+              {ask.data.proposal && (
+                // Checked on the server; opens the form filled in. Nothing is sent from here.
+                <button
+                  onClick={() => go(ask.data!.proposal!.card_path)}
+                  className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-hover"
+                >
+                  Check and send →
+                </button>
+              )}
               {ask.data.links.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {ask.data.links.map((l) => (
