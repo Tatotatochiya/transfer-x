@@ -240,9 +240,9 @@ Phase A alone answers both of the example questions in §1.
 - A tool-use question costs roughly 2–3 model calls (choose tools, then write the answer). With a current Claude model and 50-row results, expect about 3–8p per question. That's comfortably inside the existing AI allowance at a director's volume (tens of questions a day).
 - The model and prompts stay versioned and swappable (`app/ai/prompts.py`, `settings.llm_model`).
 
-## 10. Decisions needed
+## 10. Decisions (2026-10-06)
 
-1. **Market-wide demand:** show "clubs are chasing him" bands (with a 3-club minimum), or only interest in the club's own players?
-2. **Profile views:** record player-page views per club, as counts for the player's own club? (Needed for "interest" to include views.)
-3. **Reminders and saved questions:** in Phase C/D as listed, or earlier?
-4. **Where it lives:** a dedicated `/ask` page in the full app (recommended), or only ⌘K and Lite?
+1. **Market-wide demand: own players only.** Interest is shown only for the asking club's own players. Nothing is said about rivals' interest in other clubs' players.
+2. **Profile views: recorded, as counts.** Each club's views of a player are counted per day (`player_views`). The player's own club sees how many clubs viewed him, never which.
+3. **Reminders and saved questions: later.** Saved questions and alerts in Phase C, reminders in Phase D.
+4. **Where it lives: a dedicated `/ask` page.** ⌘K keeps quick answers and hands off to `/ask` for tables. Lite keeps its Ask screen.

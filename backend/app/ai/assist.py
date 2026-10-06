@@ -1514,6 +1514,7 @@ async def mentioned_players(db: AsyncSession, question: str, club) -> list[dict]
         end = (await _contract_ends(db, [p])).get(p.id)
         out.append({
             "player": p.name,
+            "player_id": str(p.id),
             "club": owner_name or (p.team_name if p.team_name else None),
             "is_your_player": owner is not None and owner == club.id,
             "status": getattr(p.status, "value", p.status),
