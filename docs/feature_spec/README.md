@@ -28,6 +28,7 @@ A spec is a **point-in-time build document, not living state**. To keep it from 
 
 | Spec | Linear | Status |
 |---|---|---|
+| [`ai-analyst/`](./ai-analyst/README.md) — Ask TransferX as an analyst and executive assistant: read-only, club-scoped tools the model calls, answers with tables and sources, interest signals, reminders and saved questions | — | Draft (for review) |
 | [`lite-mode/`](./lite-mode/README.md) — Lite mode for sporting directors: a four-tile home, guided buying, Ask anything, action cards with the money effect, undo, and email decisions. Build order in [`SESSIONS.md`](./lite-mode/SESSIONS.md) | — | Active (L1 in progress) |
 | [`player-profile-ledger/`](./player-profile-ledger/README.md) — Player Profile v2: one season-by-season ledger for Overview, Career and Injuries, a facts strip, and side panels by viewer; history backfilled from API-Football. Handoff in [`HANDOFF.md`](./player-profile-ledger/HANDOFF.md) | — | Active (P0 in progress) |
 | [Fair-Value-vs-Asking Signal](./fair-value-vs-asking-signal.md) | TRA-91 (backend), TRA-92 (UI) | Implemented 2026-07-07 — see the spec's "Deviations from spec" section |

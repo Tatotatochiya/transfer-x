@@ -225,10 +225,21 @@ A member of {club_name} asks: "{question}"
 Everything TransferX may show them that could be relevant (their own club's data only):
 {facts_json}
 
-Answer only from these facts; if they do not contain the answer, say so plainly. Return JSON:
+Answer only from these facts; if they do not contain the answer, say so plainly.
+Your own football knowledge is out of date. Which club a player is at, his contract, and any transfer or listing
+come only from these facts; never from memory. "players_named_in_the_question" is how TransferX has the players
+they named: use it, and if a player they named isn't there, say you can't find him on TransferX.
+Return JSON:
 - "answer": string, 1-4 sentences
 - "links": list of 0-4 objects {{"label": string, "path": string}}, where every path is copied exactly from a
   "path" field in the facts
+- "proposal": null, unless they ask TransferX to do something it can prepare for them to confirm. Then an object:
+  {{"kind": "bid" | "counter" | "accept" | "reject",
+    "player": the player's name as they wrote it (for "bid"),
+    "offer_path": a "path" copied exactly from an offer in the facts (for "counter", "accept", "reject"),
+    "amount": number in pounds (for "bid" and "counter"; null if they gave none)}}
+  Nothing is sent: TransferX checks it and opens the offer form for them to check and send. For a bid, keep the
+  answer to one sentence saying it is ready to check.
 """
 
 ASK_LITE_USER = """\
@@ -237,8 +248,11 @@ A member of {club_name} asks, in Lite mode: "{question}"
 Everything TransferX may show them that could be relevant (their own club's data only):
 {facts_json}
 
-Answer only from these facts; if they do not contain the answer, say so plainly. Write plain British English for a
-busy director: at most three sentences, money like "£8m" or "£35k a week", and no internal terms (no stage or
+Answer only from these facts; if they do not contain the answer, say so plainly.
+Your own football knowledge is out of date. Which club a player is at, his contract, and any transfer or listing
+come only from these facts; never from memory. "players_named_in_the_question" is how TransferX has the players
+they named: use it, and if a player they named isn't there, say you can't find him on TransferX.
+Write plain British English for a busy director: at most three sentences, money like "£8m" or "£35k a week", and no internal terms (no stage or
 status codes, no enum names). Return JSON:
 - "answer": string
 - "links": list of 0-3 objects {{"label": string, "path": string}}, every path copied exactly from a "path" field

@@ -1459,6 +1459,95 @@ async def ask_facts(db: AsyncSession, club, user) -> dict:
     }
 
 
+_NAME_STOP = {
+    "the", "and", "for", "bid", "bids", "offer", "offers", "place", "make", "put", "sign", "about", "his", "him",
+    "her", "player", "players", "show", "list", "who", "what", "when", "where", "which", "how", "much", "many",
+    "our", "your", "you", "can", "should", "would", "could", "will", "please", "with", "from", "into", "this",
+    "that", "they", "them", "have", "has", "had", "are", "was", "were", "been", "any", "all", "some", "get", "give",
+    "tell", "need", "want", "like", "buy", "sell", "loan", "fee", "fees", "million", "transfer", "transfers",
+    "club", "clubs", "squad", "team", "contract", "contracts", "listed", "listing", "deal", "deals", "price",
+    "worth", "value", "now", "today", "week", "month", "year", "season", "last", "next", "new", "old", "good",
+    "best", "left", "right", "back", "midfielder", "midfielders", "forward", "forwards", "defender", "defenders",
+    "goalkeeper", "keeper", "striker", "winger", "budget", "money", "send", "accept", "reject", "counter",
+}
+
+
+def _norm(text: str) -> str:
+    import unicodedata
+
+    return "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c)).lower()
+
+
+async def mentioned_players(db: AsyncSession, question: str, club) -> list[dict]:
+    """Players the question names, looked up on TransferX (§7a of the
+    ai-analyst spec). Without this the model answered from its own, out of
+    date football knowledge: as Chelsea, "Havertz is already in your
+    squad", when he is Arsenal's. A player counts as named when a word of
+    the question is his surname, or his full name appears in it."""
+    from sqlalchemy import or_
+
+    from app.clubs.models import Club
+    from app.players.models import Player
+    from app.players.service import get_owning_club_id
+    from app.sales.models import Sale, SaleStatus
+
+    words = {_norm(w).strip("'’.-") for w in re.findall(r"[^\W\d_][\w'’.-]{2,}", question)}
+    words = sorted((w for w in words if len(w) >= 3 and w not in _NAME_STOP), key=len, reverse=True)[:6]
+    if not words:
+        return []
+    rows = (await db.execute(
+        select(Player).where(or_(*[Player.name.ilike(f"%{w}%") for w in words])).limit(60)
+    )).scalars().all()
+    q_norm = _norm(question)
+    found = []
+    for p in rows:
+        parts = [t.strip(".") for t in _norm(p.name).split() if len(t.strip(".")) >= 2]
+        if not parts:
+            continue
+        if parts[-1] in words or _norm(p.name) in q_norm:
+            found.append(p)
+    out = []
+    for p in found[:5]:
+        owner = await get_owning_club_id(db, p)
+        owner_name = (await db.execute(select(Club.name).where(Club.id == owner))).scalar_one_or_none() if owner else None
+        sale = (await db.execute(select(Sale).where(Sale.player_id == p.id, Sale.status == SaleStatus.OPEN).limit(1))).scalars().first()
+        end = (await _contract_ends(db, [p])).get(p.id)
+        out.append({
+            "player": p.name,
+            "club": owner_name or (p.team_name if p.team_name else None),
+            "is_your_player": owner is not None and owner == club.id,
+            "status": getattr(p.status, "value", p.status),
+            "position": p.position.value if p.position else None,
+            "age": p.age,
+            "contract_ends": end.isoformat() if end else None,
+            "listed_for_sale": sale is not None,
+            "path": f"/sales/{sale.id}" if sale is not None else f"/players/market/{p.id}",
+        })
+    return out
+
+
+def player_fact_line(m: dict) -> str:
+    """A plain answer about a named player, built from TransferX's data."""
+    where = "your player" if m["is_your_player"] else (f"plays for {m['club']}" if m["club"] else "has no club on TransferX")
+    line = f"{m['player']} {'is ' + where if m['is_your_player'] else where}"
+    if m.get("contract_ends"):
+        line += f", under contract to {date.fromisoformat(m['contract_ends']).strftime('%B %Y')}"
+    line += ", and is listed for sale." if m["listed_for_sale"] else ", and isn't listed for sale."
+    return line
+
+
+_YOURS_CLAIM = re.compile(r"\b(your squad|your player|already yours|in your team|one of yours)\b", re.I)
+
+
+def contradicts_lookup(answer: str, mentioned: list[dict]) -> dict | None:
+    """The first named player the answer wrongly calls the club's own."""
+    for m in mentioned:
+        surname = m["player"].split()[-1]
+        if not m["is_your_player"] and surname.lower() in answer.lower() and _YOURS_CLAIM.search(answer):
+            return m
+    return None
+
+
 def _paths(facts: dict) -> set[str]:
     found: set[str] = set()
 
@@ -1508,7 +1597,8 @@ _PROPOSAL_ANSWER = {
 }
 
 
-async def resolve_proposal(db: AsyncSession, raw, *, facts: dict, club, user) -> tuple[dict | None, list[dict], str | None]:
+async def resolve_proposal(db: AsyncSession, raw, *, facts: dict, club, user,
+                           lite: bool = True) -> tuple[dict | None, list[dict], str | None]:
     """The model's proposal, checked in code (BACKEND.md §3): a known kind,
     a player or offer this club may act on, an amount within half and double
     the known figures, and a role allowed to do it. Returns (proposal or
@@ -1570,7 +1660,10 @@ async def resolve_proposal(db: AsyncSession, raw, *, facts: dict, club, user) ->
             "kind": "bid", "player_id": str(player.id), "player": player.name, "club": seller, "amount": amount,
             "prefill": {"player_id": str(player.id), "to_club_id": str(owner),
                         "sale_id": str(sale.id) if sale is not None else None, "fee_amount": amount},
-            "card_path": f"/lite/bid?player_id={player.id}&fee={int(amount)}&from=ask",
+            # Lite's action card, or the full app's offer form filled in.
+            "card_path": (f"/lite/bid?player_id={player.id}&fee={int(amount)}&from=ask" if lite else
+                          f"/offers/new?player_id={player.id}&fee={int(amount)}&from=ask"
+                          + (f"&sale_id={sale.id}" if sale is not None else "")),
         }, [], None
 
     # counter / accept / reject: an open offer in the facts, and the club's move.
@@ -1590,7 +1683,7 @@ async def resolve_proposal(db: AsyncSession, raw, *, facts: dict, club, user) ->
         "kind": kind, "offer_id": offer_id, "player": offer.get("player"),
         "club": offer.get("from") or offer.get("to"), "amount": amount if kind == "counter" else offer.get("fee"),
         "prefill": {"fee_amount": amount} if kind == "counter" else {},
-        "card_path": f"/lite/offers/{offer_id}?{query}",
+        "card_path": f"/lite/offers/{offer_id}?{query}" if lite else f"/offers/{offer_id}?{query}",
     }, [], None
 
 
@@ -1640,6 +1733,10 @@ async def ask(db: AsyncSession, club, user, question: str, *, lite: bool = False
     facts = await ask_facts(db, club, user)
     if lite:
         facts = lite_ask_facts(facts)
+    # The players the question names, as TransferX has them: the model must
+    # not fill gaps from its own (out of date) football knowledge.
+    mentioned = await mentioned_players(db, question, club)
+    facts = {**facts, "players_named_in_the_question": mentioned}
     allowed = _paths(facts)
     fingerprint = hashlib.sha1((str(lite) + question.lower() + _dumps(facts)).encode()).hexdigest()[:16]
 
@@ -1652,23 +1749,30 @@ async def ask(db: AsyncSession, club, user, question: str, *, lite: bool = False
             if isinstance(row, dict) and row.get("path") in allowed:
                 links.append({"label": str(row.get("label") or row["path"]).strip(), "path": row["path"]})
         return {"answer": str(data.get("answer", "")).strip(), "links": links[:4],
-                "raw_proposal": data.get("proposal") if lite else None}
+                "raw_proposal": data.get("proposal")}
 
     try:
         result, cached = await _cached(f"ask:{user.id}:{fingerprint}", produce, ttl=600)
     except Exception:
         await _log_question(db, user, question, input=input, lite=lite, had_proposal=False, links_count=0, fallback=True)
         raise
-    raw = (result.get("raw_proposal") or bid_from_question(question)) if lite else None
-    proposal, extra, reason = (await resolve_proposal(db, raw, facts=facts, club=club, user=user)
-                               if lite else (None, [], None))
-    links = (result["links"] + [lnk for lnk in extra if lnk not in result["links"]])[:4]
+    # Action requests work the same in ⌘K and Lite: checked in code, and
+    # opened on a card or form for the user to confirm (ADR 0006).
+    raw = result.get("raw_proposal") or bid_from_question(question)
+    proposal, extra, reason = await resolve_proposal(db, raw, facts=facts, club=club, user=user, lite=lite)
     # The model can't know how the check went, so when it proposed an action
     # the answer comes from code: ready to check, or why it couldn't be.
     if proposal is not None:
         result = {**result, "answer": _PROPOSAL_ANSWER[proposal["kind"]](proposal)}
     elif reason:
         result = {**result, "answer": reason}
+    elif (wrong := contradicts_lookup(result["answer"], mentioned)) is not None:
+        # The model put another club's player in this club's squad: say what
+        # TransferX actually has instead.
+        result = {**result, "answer": player_fact_line(wrong)}
+        if {"label": wrong["player"], "path": wrong["path"]} not in extra:
+            extra = [{"label": wrong["player"], "path": wrong["path"]}, *extra]
+    links = (extra + [lnk for lnk in result["links"] if lnk not in extra])[:4] if extra else result["links"][:4]
     fallback = not result["answer"] or (not links and proposal is None and bool(_CANT.search(result["answer"])))
     await _log_question(db, user, question, input=input, lite=lite, had_proposal=proposal is not None,
                         links_count=len(links), fallback=fallback)
