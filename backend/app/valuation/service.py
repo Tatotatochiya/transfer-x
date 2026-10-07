@@ -10,26 +10,55 @@ from sqlalchemy.orm import aliased
 
 from app.players.models import Player
 from app.sales.models import Sale, SaleStatus, SaleType
-from app.valuation import engine
-from app.valuation.constants import CURRENCY, MIN_MINUTES, MODEL_VERSION
-from app.valuation.features import BoxScoreFeatureProvider, FeatureSet
+from app.valuation import engine, engine_v2
+from app.valuation.constants import CURRENCY, MIN_MINUTES
+from app.valuation.constants_v2 import MODEL_VERSION_V2
+from app.valuation.features_v2 import MarketFeatureProvider, build_comparables_index
+from app.valuation.inputs_v2 import CompRecord, FeatureSetV2, SeasonFeatures
 from app.valuation.models import PlayerValuation
 from app.valuation.schemas import (
     ValuationBreakdownEntry,
     ValuationDivergence,
+    ValuationDriver,
     ValuationResponse,
 )
 
 logger = logging.getLogger(__name__)
 
-_provider = BoxScoreFeatureProvider()
+_provider = MarketFeatureProvider()
 
 
-def _serialize_features(features: FeatureSet) -> dict:
-    data = asdict(features)
+def _serialize_season(season: SeasonFeatures) -> dict:
+    data = asdict(season.features)
     if data["stats_updated_at"] is not None:
         data["stats_updated_at"] = data["stats_updated_at"].isoformat()
-    return data
+    return {
+        "season": season.season,
+        "minutes": season.minutes,
+        "league_id": season.league_id,
+        "league_name": season.league_name,
+        "score": round(engine_v2.season_score(season), 3),
+        "features": data,
+    }
+
+
+def _serialize_features(fs: FeatureSetV2) -> dict:
+    """Full input snapshot, so any stored number can be rebuilt by hand."""
+    return {
+        "player_id": fs.player_id,
+        "position": fs.position,
+        "age": fs.age,
+        # v1-compatible keys the response reads for its context lines
+        "minutes": fs.seasons[0].minutes,
+        "league_id": fs.seasons[0].league_id,
+        "seasons": [_serialize_season(s) for s in fs.seasons],
+        "recent_games": [asdict(g) for g in fs.recent_games],
+        "contract_years_remaining": fs.contract_years_remaining,  # unrounded: exact replay
+        "contract_source": fs.contract_source,
+        "release_clause_gbp": fs.release_clause_gbp,
+        "games_missed_injured": fs.games_missed_injured,
+        "games_available_total": fs.games_available_total,
+    }
 
 
 def _serialize_breakdown(rows: list[engine.BreakdownRow]) -> list[dict]:
@@ -47,19 +76,38 @@ def _serialize_breakdown(rows: list[engine.BreakdownRow]) -> list[dict]:
     ]
 
 
-async def compute_and_store_valuation(db: AsyncSession, player: Player) -> PlayerValuation | None:
-    """Compute and append a valuation row, or return None if the player is
-    ineligible (no position / no vendor stats / minutes below the floor).
-    Ineligible players get no row at all — never a made-up number."""
+def _serialize_drivers(drivers: list[engine_v2.Driver]) -> list[dict]:
+    return [
+        {
+            "key": d.key,
+            "label": d.label,
+            "detail": d.detail,
+            "factor": round(d.factor, 4) if d.factor is not None else None,
+            "value_after": round(d.value_after, -3),
+        }
+        for d in drivers
+    ]
+
+
+async def compute_and_store_valuation(
+    db: AsyncSession, player: Player, comps: list[CompRecord] | None = None
+) -> PlayerValuation | None:
+    """Compute and append a market-v2 valuation row, or return None if the
+    player is ineligible (no position / no vendor stats / latest season below
+    the minutes floor). Ineligible players get no row — never a made-up number.
+
+    `comps` is the comparable-transfers index; the batch job builds it once and
+    passes it in, a single recompute builds its own."""
     if player.position is None:
         return None
     features = await _provider.get_features(db, player)
-    if features is None or features.minutes < MIN_MINUTES:
+    if features is None or features.seasons[0].minutes < MIN_MINUTES:
         return None
+    if comps is None:
+        comps = await build_comparables_index(db)
 
-    breakdown = engine.compute_breakdown(features)
-    score = engine.compute_performance_score(features)
-    outcome = engine.compute_fair_value(features, score)
+    outcome = engine_v2.compute_valuation_v2(features, comps)
+    breakdown = engine.compute_breakdown(features.latest)
 
     row = PlayerValuation(
         player_id=uuid.UUID(str(player.id)),
@@ -67,19 +115,29 @@ async def compute_and_store_valuation(db: AsyncSession, player: Player) -> Playe
         fair_value_low=Decimal(str(outcome.fair_value_low)),
         fair_value_high=Decimal(str(outcome.fair_value_high)),
         currency=CURRENCY,
-        performance_score=Decimal(str(round(score, 2))),
+        performance_score=Decimal(str(round(outcome.performance.score, 2))),
         confidence=outcome.confidence,
-        model_version=MODEL_VERSION,
+        model_version=MODEL_VERSION_V2,
         league_tier=outcome.league_tier,
-        age_factor=Decimal(str(outcome.age_factor)),
+        # Age and youth potential combined, so the existing "Age 19 (×1.62)"
+        # line in the UI stays truthful about what age does to the number.
+        age_factor=Decimal(str(round(outcome.age_factor * outcome.potential, 2))),
         inputs_json={
             "features": _serialize_features(features),
             "breakdown": _serialize_breakdown(breakdown),
+            "drivers": _serialize_drivers(outcome.drivers),
+            # Unrounded: compute_valuation_v2(..., market=MarketRate(**this))
+            # replays the row exactly without the whole comparables index.
+            "market": asdict(outcome.market),
             "factors": {
-                "tier_multiplier": outcome.tier_multiplier,
-                "age_factor": outcome.age_factor,
-                "curve": round(outcome.curve, 6),
-                "score_unrounded": round(score, 6),
+                "league_coefficient": outcome.league_coefficient,
+                "age_factor": round(outcome.age_factor, 6),
+                "potential": round(outcome.potential, 6),
+                "intrinsic_value": round(outcome.intrinsic_value, 2),
+                "band": round(outcome.band, 4),
+                "score_raw": round(outcome.performance.raw_score, 6),
+                "score_unrounded": round(outcome.performance.score, 6),
+                "weighted_minutes": round(outcome.performance.weighted_minutes, 1),
             },
         },
     )
@@ -166,13 +224,14 @@ async def compute_all_valuations(db: AsyncSession) -> dict[str, int]:
     logged and never abort the batch."""
     result = await db.execute(select(Player))
     players = result.scalars().all()
+    comps = await build_comparables_index(db)  # once for the whole run
 
     updated = 0
     skipped_ineligible = 0
     errors = 0
     for player in players:
         try:
-            row = await compute_and_store_valuation(db, player)
+            row = await compute_and_store_valuation(db, player, comps)
             if row is None:
                 skipped_ineligible += 1
             else:
@@ -181,7 +240,12 @@ async def compute_all_valuations(db: AsyncSession) -> dict[str, int]:
             errors += 1
             logger.exception("Valuation compute failed for player %s", player.id)
 
-    return {"updated": updated, "skipped_ineligible": skipped_ineligible, "errors": errors}
+    return {
+        "updated": updated,
+        "skipped_ineligible": skipped_ineligible,
+        "errors": errors,
+        "comparables": len(comps),
+    }
 
 
 def build_valuation_response(
@@ -207,6 +271,11 @@ def build_valuation_response(
             reference_price=reference_price, pct=d.pct, band=d.band
         )
     snapshot = (row.inputs_json or {}).get("features", {})
+    # boxscore-v1 rows have no drivers; they render exactly as before.
+    drivers = [
+        ValuationDriver(**entry) for entry in (row.inputs_json or {}).get("drivers", [])
+    ]
+    market = (row.inputs_json or {}).get("market") or {}
     return ValuationResponse(
         player_id=row.player_id,
         fair_value=row.fair_value,
@@ -222,5 +291,7 @@ def build_valuation_response(
         minutes=snapshot.get("minutes"),
         as_of=row.computed_at,
         breakdown=breakdown,
+        drivers=drivers,
+        comparables_used=market.get("comps_used"),
         divergence=divergence,
     )

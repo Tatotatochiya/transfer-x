@@ -43,7 +43,8 @@ async def main() -> None:
     async with AsyncSessionLocal() as db:
         async with db.begin():
             counts = await compute_all_valuations(db)
-        print(f"updated={counts['updated']} skipped_ineligible={counts['skipped_ineligible']} errors={counts['errors']}")
+        print(f"updated={counts['updated']} skipped_ineligible={counts['skipped_ineligible']} "
+              f"errors={counts['errors']} comparables={counts.get('comparables', 0)}")
 
 
 if __name__ == "__main__":

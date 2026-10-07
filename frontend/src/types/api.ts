@@ -509,6 +509,15 @@ export interface ValuationBreakdownEntry {
   contribution: number;
 }
 
+/** One step of the market-v2 value build-up (anchor → … → fair value). */
+export interface ValuationDriver {
+  key: string;
+  label: string;
+  detail: string;
+  factor: number | null;
+  value_after: number;
+}
+
 export interface ValuationDivergence {
   reference_price: number;
   pct: number;
@@ -530,6 +539,9 @@ export interface FairValueSignal {
   minutes: number | null;
   as_of: string;
   breakdown: ValuationBreakdownEntry[];
+  /** market-v2 only; empty on boxscore-v1 valuations. */
+  drivers?: ValuationDriver[];
+  comparables_used?: number | null;
   divergence: ValuationDivergence | null;
 }
 

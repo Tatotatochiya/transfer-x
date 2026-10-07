@@ -158,12 +158,33 @@ def compute_fair_value(
     if now is None:
         now = datetime.now(timezone.utc)
 
-    tier = LEAGUE_TIERS.get(features.league_id or "", DEFAULT_LEAGUE_TIER)
+    tier = league_tier(features.league_id)
     multiplier = TIER_MULTIPLIERS[tier]
     age_factor = _age_factor(features.age)
     curve = max((score / SCORE_MIDPOINT) ** CURVE_EXPONENT, CURVE_FLOOR)
     raw = BASE_ANCHORS[features.position] * multiplier * curve * age_factor
 
+    confidence = compute_confidence(features, now)
+    band = CONFIDENCE_BANDS[confidence]
+    return ValuationOutcome(
+        fair_value=_round_value(raw),
+        fair_value_low=_round_value(raw * (1 - band)),
+        fair_value_high=_round_value(raw * (1 + band)),
+        confidence=confidence,
+        league_tier=tier,
+        tier_multiplier=multiplier,
+        age_factor=age_factor,
+        curve=curve,
+    )
+
+
+def league_tier(league_id: str | None) -> int:
+    return LEAGUE_TIERS.get(league_id or "", DEFAULT_LEAGUE_TIER)
+
+
+def compute_confidence(features: FeatureSet, now: datetime) -> ValuationConfidence:
+    """Stage 5 confidence level from the selected season's data quality.
+    Shared with market-v2, which applies the same rules to its latest season."""
     days = _staleness_days(features.stats_updated_at, now)
     if (
         features.minutes >= HIGH_MIN_MINUTES
@@ -185,18 +206,7 @@ def compute_fair_value(
         features.avg_rating is None or features.age is None
     ):
         confidence = ValuationConfidence.MEDIUM
-
-    band = CONFIDENCE_BANDS[confidence]
-    return ValuationOutcome(
-        fair_value=_round_value(raw),
-        fair_value_low=_round_value(raw * (1 - band)),
-        fair_value_high=_round_value(raw * (1 + band)),
-        confidence=confidence,
-        league_tier=tier,
-        tier_multiplier=multiplier,
-        age_factor=age_factor,
-        curve=curve,
-    )
+    return confidence
 
 
 def compute_divergence(fair_value: float, reference_price: float) -> Divergence:
