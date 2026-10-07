@@ -16,9 +16,11 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.stats.models import PlayerStats
-from app.valuation import engine
+from app.valuation import engine, engine_v2
 from app.valuation.constants import DivergenceBand, ValuationConfidence
+from app.valuation.engine_v2 import MarketRate
 from app.valuation.features import FeatureSet
+from app.valuation.inputs_v2 import features_from_snapshot
 from app.valuation.models import PlayerValuation
 from tests.conftest import _auth_headers, _register
 
@@ -339,20 +341,28 @@ async def test_get_valuation_full_shape(client: AsyncClient, club: dict, admin: 
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert data["currency"] == "GBP"
-    assert data["model_version"] == "boxscore-v1"
+    # Served by market-v2: Example A's stat line through the
+    # v2 pipeline (single season, so shrinkage 90.58 → 81.39; no contract,
+    # injury, form or comparables data → those factors are neutral).
+    # The v1 fixture numbers are still asserted at engine level above.
+    assert data["model_version"] == "market-v2"
     assert data["confidence"] == "HIGH"
     assert data["league_tier"] == 1
-    assert abs(float(data["performance_score"]) - 90.58) <= 0.05
-    assert abs(float(data["fair_value"]) - 66_500_000) <= 100_000
-    assert abs(float(data["fair_value_low"]) - 56_600_000) <= 100_000
-    assert abs(float(data["fair_value_high"]) - 76_500_000) <= 100_000
+    assert abs(float(data["performance_score"]) - 81.39) <= 0.05
+    assert abs(float(data["fair_value"]) - 154_400_000) <= 100_000
+    assert abs(float(data["fair_value_low"]) - 131_300_000) <= 100_000
+    assert abs(float(data["fair_value_high"]) - 177_600_000) <= 100_000
     assert data["as_of"] is not None
     # breakdown covers every weighted feature, ordered by contribution desc
     assert len(data["breakdown"]) == 6
     contributions = [row["contribution"] for row in data["breakdown"]]
     assert contributions == sorted(contributions, reverse=True)
-    assert data["divergence"]["band"] == "ABOVE"
-    assert abs(data["divergence"]["pct"] - 20.3) <= 0.2
+    assert data["divergence"]["band"] == "WELL_BELOW"
+    assert abs(data["divergence"]["pct"] - -48.2) <= 0.2
+    # the value build-up is returned and ends at the stored value
+    assert data["drivers"][0]["key"] == "anchor"
+    assert abs(data["drivers"][-1]["value_after"] - float(data["fair_value"])) <= 100_000
+    assert data["comparables_used"] == 0
     assert float(data["divergence"]["reference_price"]) == 80_000_000
 
 
@@ -667,14 +677,11 @@ async def test_inputs_json_reproduces_stored_outputs(
     await _recompute(client, admin, player["id"])
 
     row = (await db.execute(select(PlayerValuation))).scalars().one()
-    raw = dict(row.inputs_json["features"])
-    if raw["stats_updated_at"] is not None:
-        raw["stats_updated_at"] = datetime.fromisoformat(raw["stats_updated_at"])
-    features = FeatureSet(**raw)
+    features = features_from_snapshot(row.inputs_json["features"])
+    market = MarketRate(**row.inputs_json["market"])
 
-    score = engine.compute_performance_score(features)
-    assert round(score, 2) == float(row.performance_score)
-    outcome = engine.compute_fair_value(features, score, now=row.computed_at)
+    outcome = engine_v2.compute_valuation_v2(features, now=row.computed_at, market=market)
+    assert round(outcome.performance.score, 2) == float(row.performance_score)
     assert outcome.fair_value == float(row.fair_value)
     assert outcome.fair_value_low == float(row.fair_value_low)
     assert outcome.fair_value_high == float(row.fair_value_high)

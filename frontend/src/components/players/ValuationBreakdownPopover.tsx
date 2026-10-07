@@ -1,6 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import type { FairValueSignal } from "../../types/api";
-import { formatDate } from "../../lib/utils";
+import type { FairValueSignal, ValuationDriver } from "../../types/api";
+import { formatCurrency, formatDate } from "../../lib/utils";
+
+/** market-v2 value build-up: each factor and where it takes the number.
+ *  Neutral steps (×1.00) are hidden to keep the popover short. */
+function DriverRows({ drivers }: { drivers: ValuationDriver[] }) {
+  const shown = drivers.filter((d) => d.factor == null || Math.abs(d.factor - 1) >= 0.005);
+  return (
+    <div className="space-y-1.5">
+      {shown.map((d) => (
+        <div key={d.key} className="flex items-center justify-between gap-2 text-xs" title={d.detail}>
+          <span className="text-text-muted truncate">{d.label}</span>
+          <span className="shrink-0 tabular-nums text-text-secondary">
+            {d.factor != null && (
+              <span className={d.factor >= 1 ? "text-text-secondary" : "text-text-muted"}>
+                ×{d.factor.toFixed(2)}{" "}
+              </span>
+            )}
+            <span className="font-semibold">{formatCurrency(d.value_after)}</span>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function ageLine(signal: FairValueSignal): string {
   const factor = Number(signal.age_factor).toFixed(2);
@@ -36,6 +59,7 @@ export default function ValuationBreakdownPopover({ signal }: { signal: FairValu
   }, [open]);
 
   const topDrivers = signal.breakdown.slice(0, 5);
+  const valueDrivers = signal.drivers ?? [];
 
   return (
     <div ref={ref} className="relative inline-flex">
@@ -52,8 +76,22 @@ export default function ValuationBreakdownPopover({ signal }: { signal: FairValu
 
       {open && (
         <div className="absolute right-0 top-6 z-50 w-72 rounded-xl bg-surface p-4 shadow-xl ring-1 ring-border">
+          {valueDrivers.length > 0 && (
+            <>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
+                How the value builds
+              </p>
+              <DriverRows drivers={valueDrivers} />
+              {signal.comparables_used != null && signal.comparables_used > 0 && (
+                <p className="mt-1.5 text-[11px] text-text-muted">
+                  Checked against {signal.comparables_used} comparable transfers
+                </p>
+              )}
+              <div className="my-3 border-t border-rule" />
+            </>
+          )}
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Top drivers
+            {valueDrivers.length > 0 ? "Performance score drivers" : "Top drivers"}
           </p>
           <div className="space-y-1.5">
             {topDrivers.map((row) => (

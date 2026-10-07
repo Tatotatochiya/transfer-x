@@ -7,6 +7,8 @@ owner: "TODO — assign a Product Owner"
 
 # Feature Spec: Fair-Value-vs-Asking Signal
 
+> **Model superseded 2026-10-07:** the engine described under [The model](#the-model--exact-specification) is `boxscore-v1`. New valuations come from `market-v2`, see [valuation-model-v2.md](./valuation-model-v2.md). Everything else in this spec (endpoints, permissions, divergence, UI, tone) still applies.
+
 ## Purpose
 
 Full implementation specification for TransferX's independent player-valuation signal — an interpretable, performance-based "fair value" per player, shown against the asking/agreed price as a divergence signal (e.g. *"Asking £24.0m · Model £19.0m · +26% above model"*). This is Linear **TRA-91** (backend) and **TRA-92** (UI), scoped and de-risked on 2026-07-05 against the verified state of the codebase.

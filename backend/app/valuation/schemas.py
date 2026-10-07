@@ -15,6 +15,16 @@ class ValuationBreakdownEntry(BaseModel):
     contribution: float
 
 
+class ValuationDriver(BaseModel):
+    """One step of the market-v2 value build-up (anchor → … → fair value)."""
+
+    key: str
+    label: str
+    detail: str
+    factor: float | None
+    value_after: float
+
+
 class ValuationDivergence(BaseModel):
     reference_price: Decimal
     pct: float
@@ -38,6 +48,10 @@ class ValuationResponse(BaseModel):
     minutes: int | None = None
     as_of: datetime
     breakdown: list[ValuationBreakdownEntry]
+    # market-v2: the value build-up, and how many comparable transfers priced
+    # it. Empty / null on boxscore-v1 rows.
+    drivers: list[ValuationDriver] = []
+    comparables_used: int | None = None
     divergence: ValuationDivergence | None = None
 
     model_config = {"from_attributes": True}

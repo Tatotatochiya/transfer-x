@@ -754,7 +754,7 @@ async def test_cannot_list_player_not_owned_by_club(client: AsyncClient, seller:
 
 
 async def _seed_valuation(client: AsyncClient, db, player_id: str) -> None:
-    """Insert Example-A stats and compute a valuation as staff."""
+    """Insert Example-A stats and compute a valuation as staff (market-v2: £154.4m)."""
     import uuid as uuid_mod
     from sqlalchemy import select
     from app.auth.models import User
@@ -792,15 +792,15 @@ async def test_fixed_price_sale_embeds_signal_with_divergence(
     player = await _create_player(client, sel_headers)
     await _seed_valuation(client, db, player["id"])
     sale = await _create_sale(
-        client, sel_headers, player["id"], sale_type="FIXED_PRICE", asking_price=80_000_000
+        client, sel_headers, player["id"], sale_type="FIXED_PRICE", asking_price=185_000_000
     )
 
     data = (await client.get(f"/sales/{sale['id']}", headers=_auth_headers(buyer))).json()
     signal = data["fair_value_signal"]
     assert signal is not None
-    assert abs(float(signal["fair_value"]) - 66_500_000) <= 100_000
+    assert abs(float(signal["fair_value"]) - 154_400_000) <= 100_000
     assert signal["divergence"] is not None
-    assert float(signal["divergence"]["reference_price"]) == 80_000_000
+    assert float(signal["divergence"]["reference_price"]) == 185_000_000
     assert signal["divergence"]["band"] == "ABOVE"
 
 
@@ -816,14 +816,14 @@ async def test_open_to_offers_sale_embeds_signal_with_divergence(
     await _seed_valuation(client, db, player["id"])
     sale = await _create_sale(
         client, sel_headers, player["id"],
-        sale_type="OPEN_TO_OFFERS", asking_price=80_000_000,
+        sale_type="OPEN_TO_OFFERS", asking_price=185_000_000,
     )
 
     data = (await client.get(f"/sales/{sale['id']}", headers=_auth_headers(buyer))).json()
     signal = data["fair_value_signal"]
     assert signal is not None
     assert signal["divergence"] is not None
-    assert float(signal["divergence"]["reference_price"]) == 80_000_000
+    assert float(signal["divergence"]["reference_price"]) == 185_000_000
     assert signal["divergence"]["band"] == "ABOVE"
 
 
@@ -884,7 +884,7 @@ async def test_fixed_price_sale_falls_back_to_market_value_when_asking_unset(
     sel_headers = _auth_headers(seller)
     player = await _create_player(client, sel_headers)
     await _seed_valuation(client, db, player["id"])
-    await _set_market_value(db, player["id"], 80_000_000)
+    await _set_market_value(db, player["id"], 185_000_000)
     sale = await _create_sale(
         client, sel_headers, player["id"], sale_type="FIXED_PRICE", asking_price=None,
     )
@@ -893,7 +893,7 @@ async def test_fixed_price_sale_falls_back_to_market_value_when_asking_unset(
     signal = data["fair_value_signal"]
     assert signal is not None
     assert signal["divergence"] is not None
-    assert float(signal["divergence"]["reference_price"]) == 80_000_000
+    assert float(signal["divergence"]["reference_price"]) == 185_000_000
     assert signal["divergence"]["band"] == "ABOVE"
 
 
