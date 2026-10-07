@@ -1,7 +1,7 @@
 ---
 title: "Feature Spec: Valuation Model v2 (market-v2)"
 last_updated: 2026-10-07
-status: Implemented — pending product-owner sign-off and production backtest
+status: Implemented and shipped 2026-10-07 — calibration TODO (see Calibration)
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -98,7 +98,12 @@ v2 lands in range for 10 of 14 (v1: 3), and the rest are within ~10% of the rang
 
 The production backtest below is what should set those constants.
 
-> **TODO:** run `python -m scripts.valuation_backtest` against production. It replays every fee-bearing transfer in the window through v1, v2 intrinsic and v2 + market (leave-own-out) and reports median error, share within ±25% / ±50% and bias by position, age, fee band and source. Tune `VALUE_CURVE_KNOTS`, `BASE_ANCHORS_V2` and `LEAGUE_COEFFICIENTS` from that, not from the archetypes.
+> **TODO — calibration (shipped uncalibrated on 2026-10-07, by product-owner decision).**
+> 1. Run `python -m scripts.valuation_backtest --csv backtest.csv` against production.
+> 2. Retune `BASE_ANCHORS_V2` and `VALUE_CURVE_KNOTS` (then `LEAGUE_COEFFICIENTS`) until the median bias is near zero and the ×1.60 market-rate ceiling rarely binds. It binds for 53% of players on dev today.
+> 3. Update the fixtures in `tests/test_valuation_v2.py`, `test_valuation.py` and `test_sales.py` in the same commit, then recompute.
+>
+> Original note: run `python -m scripts.valuation_backtest` against production. It replays every fee-bearing transfer in the window through v1, v2 intrinsic and v2 + market (leave-own-out) and reports median error, share within ±25% / ±50% and bias by position, age, fee band and source. Tune `VALUE_CURVE_KNOTS`, `BASE_ANCHORS_V2` and `LEAGUE_COEFFICIENTS` from that, not from the archetypes.
 
 ## Decisions for the product owner
 
