@@ -75,18 +75,21 @@ Two things to know before re-running the seed there:
 
 A second Railway service refreshes API-Football data at 17:00 and 22:00 UK time and recomputes valuations after the 22:00 run ([spec](../feature_spec/scheduled-data-refresh.md)). It runs the same code as `api`, does one refresh, and exits.
 
-**Its settings are in the repo:** `backend/railway.worker.json`.
+**Its settings are on the Railway service, set with the CLI on 2026-10-11:**
+- root directory `/backend`;
 - start command `python -m app.jobs.daily_refresh`;
 - cron `0 16,17,21,22 * * *`;
-- restart policy **Never**: a failed refresh waits for the next slot instead of re-running.
+- restart policy Never.
 
-Railway's cron is UTC: the job exits within a second unless it's 17:00 or 22:00 in London, so exactly two runs happen a day through the clock changes. The `api` service keeps `backend/railway.json`.
+Railway no longer accepts a per-service config file path; `railway.json` is deprecated in favour of `.railway/railway.ts`. So the worker also picks up `backend/railway.json`, whose restart-on-failure applies to it. For that reason the worker always exits 0 after a refresh, failed or not: the failure is on Admin → Jobs and in Slack. Only a crash exits non-zero.
 
-**One-off setup**
-1. **New service** from the same GitHub repo:
-   - root directory `backend`;
-   - config file path `backend/railway.worker.json` (Settings → Config-as-code).
-2. **Variables:** the same as `api`, at least `DATABASE_URL` (as a reference to the database variable), `APISPORTS_KEY`, `JWT_SECRET_KEY`, `FRONTEND_BASE_URL`, and `SLACK_WEBHOOK_URL` once the Slack webhook exists.
+The image's `entrypoint.sh` runs a command it's given instead of migrations and the web server.
+
+Railway's cron is UTC: the job exits within a second unless it's 17:00 or 22:00 in London, so exactly two runs happen a day through the clock changes.
+
+**Set up (done 2026-10-11)**
+1. **Service** `stats-worker`, from the GitHub repo, branch `main`, with the settings above.
+2. **Variables:** `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`, `JWT_SECRET_KEY`, `APISPORTS_KEY`, `API_FOOTBALL_BASE_URL`, `FRONTEND_BASE_URL`; add `SLACK_WEBHOOK_URL` once the webhook exists.
 3. **Deploy `api`** with migration `0100`. The web app no longer recomputes valuations on start; the worker does.
 
 **Running it by hand:** Admin → Jobs → **Run refresh now** (in the web app), or `railway run python -m app.jobs.daily_refresh --force [--steps stats,injuries,form,valuations]`.
