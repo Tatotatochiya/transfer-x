@@ -1,15 +1,20 @@
 ---
-title: "Feature Spec: Scheduled Data Refresh, Job Tracking and Slack Status"
+title: "Feature Spec: Scheduled Data Refresh, Jobs, Monitoring and Slack"
 last_updated: 2026-10-10
 status: Proposed — ready to build (Slack details pending)
 owner: "TODO — assign a Product Owner"
 ---
 
-# Feature Spec: Scheduled Data Refresh, Job Tracking and Slack Status
+# Feature Spec: Scheduled Data Refresh, Jobs, Monitoring and Slack
 
 ## Purpose
 
-Refresh player stats from API-Football twice a day without anyone running a script. Recompute valuations once a day on fresh stats. Show every scheduled job, running or due, in one admin page. Post one Slack message per refresh run.
+Refresh player stats from API-Football twice a day without anyone running a script, and recompute valuations once a day on fresh stats. Then give platform admins one place in TransferX to see:
+- every scheduled job, running or due, and what each run logged;
+- the errors happening across the web app and the worker;
+- the health of the platform.
+
+Slack gets one message per refresh run, plus alerts.
 
 ## Today
 
@@ -27,6 +32,8 @@ Refresh player stats from API-Football twice a day without anyone running a scri
 | D3 | The **daily valuation recompute moves into the worker**, after the 22:00 run only. It's removed from the web app's scheduler, so deploys no longer trigger it. One run a day keeps the append-only history at one row per player per day. |
 | D4 | **One Slack message per run**, success or failure. Plus a message when an in-app job fails and when a refresh is overdue. Slack workspace and channel details to follow. |
 | D5 | Running and scheduled jobs are tracked in an **admin Jobs page**. |
+| D6 | **Everything stays inside TransferX:** no Cronicle, Healthchecks.io or Sentry. Job tracking, run logs, error tracking and health are built in the admin area (2026-10-10). |
+| D7 | **TransferX is not a general log store.** It keeps logs for each job run, warnings and errors grouped into issues, and per-minute request figures, each with retention. Full raw logs stay in Railway, linked from the admin pages. |
 
 ## How it works
 
@@ -102,6 +109,73 @@ Command: `python -m app.jobs.daily_refresh` (`--force` runs regardless of the ti
 
 **Confidentiality.** Slack messages carry counts, durations and errors only. They never include club names, fees, bids, or player-level deal information.
 
+## Monitoring (D6, D7)
+
+Everything below is for platform admins only, under Admin.
+
+### Run logs
+
+**Capture.** While a job runs, a logging handler collects that run's log lines at INFO and above. Stored in `job_run_logs`: run id, time, level, logger, message.
+- Lines are flushed every 5 seconds, so a running job can be followed live.
+- Capped at 5,000 lines a run. Past the cap, a final line says how many were dropped.
+
+**Viewing.** On the Jobs page, a run opens to its log:
+- a level filter (all / warnings and up / errors) and a search box;
+- for a running job, a live tail that polls every 3 seconds and stops when the run ends.
+
+**Retention:** 30 days.
+
+### Error tracking
+
+**Capture.** A logging handler at WARNING and above in both services (web app and worker), plus FastAPI's handler for uncaught request exceptions.
+
+**Grouping.** Each event is grouped into an **issue** by a fingerprint: service, logger, exception type, and the message with numbers, UUIDs and quoted values stripped out.
+
+**Storage**
+- **Each issue** keeps its title, level, service, status (open / resolved / ignored), first seen, last seen, a count, and a 24-hour sparkline.
+- **The last 20 events per issue** keep the traceback and context: request method and path, status code, request id, user id. Request bodies, headers and query values are never stored.
+
+**Admin → Errors page**
+- Issues sorted by last seen, filterable by service, level and status.
+- An issue opens to its recent events and tracebacks.
+- Admins can mark an issue resolved or ignored. A resolved issue that happens again reopens and counts as new for Slack.
+
+**Frontend errors.** Browser errors (`window.onerror` and unhandled promise rejections) are posted to `POST /monitoring/client-errors`, rate-limited per user, and grouped the same way under service `web`.
+
+**Writing safely**
+- Events go through an in-memory queue to a background writer, so logging never blocks a request.
+- The writer ignores its own logs, so it can't loop on itself.
+- Counts for a busy issue are batched.
+
+**Retention:** events 30 days, issues 90 days after last seen.
+
+### Health
+
+The existing Admin → Health page gains three sections:
+- **Requests:** a middleware aggregates requests per minute into `request_minutes` (endpoint pattern, count, 5xx count, p50 and p95 latency).
+  - The page shows the last 24 hours: requests, error rate, and the slowest and most-failing endpoints.
+  - Retention: 14 days.
+- **Dependencies, checked when the page loads:**
+  - database reachable, and its connection pool;
+  - SMTP configured and reachable;
+  - API-Football quota remaining (from the last response);
+  - push (VAPID) configured;
+  - Slack webhook configured.
+- **Jobs:** each job's last run, as today, with a link to the Jobs page.
+
+### Slack alerts from monitoring
+
+Alerts are rate-limited, and carry titles and counts only:
+- a **new issue** (or a resolved one that reopens) at ERROR level;
+- a **spike:** one issue more than 50 times in 10 minutes, or the 5xx rate above 5% for 5 minutes;
+- **recovery,** when a spike ends.
+
+### Privacy
+
+- **No Slack tracebacks:** Slack never receives tracebacks or event context. It gets a title (truncated to 120 characters) and a link.
+- **Admins only:** run logs and error events can contain personal data from log messages, so only platform admins can see them, retention is limited, and they're listed in [`security-and-compliance/`](../security-and-compliance/) as a data store.
+- **Log hygiene:** log messages must not include passwords, tokens, wages or fees. The existing code already follows this; a test checks the auth and finance modules' log calls.
+
 ## Railway setup (one-off)
 
 1. **New service** from the same GitHub repo:
@@ -115,6 +189,7 @@ Command: `python -m app.jobs.daily_refresh` (`--force` runs regardless of the ti
 
 ## Build order
 
+**Part 1: the refresh and job tracking** (about 1.5–2 days)
 1. **`job_runs` and the run recorder:** migration, model, and a context manager that records start and finish. In-app scheduler jobs report through it.
 2. **The worker:** `app/jobs/daily_refresh.py` with steps, UK-time gate, lock and quota guard. Run with `--force` on dev to measure duration and API calls.
 3. **Move `valuation_compute`** out of the web app (D3).
@@ -122,11 +197,21 @@ Command: `python -m app.jobs.daily_refresh` (`--force` runs regardless of the ti
 5. **Admin → Jobs page:** API and UI, including Run refresh now.
 6. **Railway service and the Slack webhook** (product owner), then watch the first two runs.
 
-Estimate: about 1.5–2 days, plus the Railway setup.
+**Part 2: monitoring** (about 2–2.5 days)
+
+7. **Run logs:** `job_run_logs`, the per-run handler, and the log view with live tail.
+8. **Error tracking:** issues and events tables, the logging handler and request-exception hook, fingerprinting, and the Admin → Errors page.
+9. **Frontend errors:** the browser hook and `POST /monitoring/client-errors`.
+10. **Health:** request-minute middleware, dependency checks, and the new Health sections.
+11. **Monitoring alerts** to Slack, and a daily retention clean-up job.
+
+Each part ships on its own. Part 1 is useful without Part 2.
 
 ## Open items
 
 > **TODO:** Slack workspace, channel and webhook URL (product owner, to follow).
+
+> **TODO:** confirm whether non-admin club staff ever need to see job status (assumed not; admins only).
 
 > **TODO:** confirm the reserve of 500 requests suits any other API-Football use (admin vendor pages, profile backfills).
 
