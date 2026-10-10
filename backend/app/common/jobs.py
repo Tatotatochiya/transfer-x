@@ -37,7 +37,8 @@ JOB_LABELS = {
     "email_fallback": "Emails for unread \"your move\" pushes after 30 minutes",
     "notify_upcoming_events": "Reminders: offers expiring, auctions ending, instalments due",
     "enrichment_sync": "Player data refresh",
-    "valuation_compute": "Recompute model valuations",
+    "refresh_watch": "Check the data refresh ran on time",
+    "monitoring_retention": "Delete old run logs, errors and request figures",
     "client_alerts": "Agents' client alerts",
     "approval_expiry": "Expire old approval requests",
     "expire_mandates": "Expire representation mandates",
@@ -46,14 +47,62 @@ JOB_LABELS = {
     "daily_digest": "Daily digest emails",
 }
 
+# Jobs that run at least this often record only failures and the first
+# success after one in job_runs; less frequent jobs record every run.
+EVERY_RUN_FROM_SECONDS = 3600
+
 RUNS: dict[str, dict] = {}
+# When each job's current run started (EVENT_JOB_SUBMITTED): Admin → Jobs'
+# "running now", and the run's duration.
+STARTED: dict[str, tuple[float, datetime]] = {}
 _saved: dict[str, tuple[float, bool]] = {}  # job → (monotonic time saved, outcome saved)
 _tasks: set = set()
+
+
+def on_job_submitted(event) -> None:
+    """APScheduler listener for EVENT_JOB_SUBMITTED."""
+    STARTED[event.job_id] = (_time.monotonic(), datetime.now(timezone.utc))
+
+
+def _interval_seconds(job_id: str) -> int:
+    try:
+        from app.main import _scheduler
+
+        job = _scheduler.get_job(job_id)
+        interval = getattr(job.trigger, "interval", None) if job else None
+        return int(interval.total_seconds()) if interval else 0
+    except Exception:  # noqa: BLE001
+        return 0
+
+
+def _spawn(coro) -> None:
+    try:
+        task = asyncio.get_running_loop().create_task(coro)
+        _tasks.add(task)
+        task.add_done_callback(_tasks.discard)
+    except RuntimeError:  # no running loop (tests, scripts)
+        coro.close()
 
 
 def on_job_event(event) -> None:
     """APScheduler listener for EVENT_JOB_EXECUTED and EVENT_JOB_ERROR."""
     ok = event.exception is None
+    previous_ok = (RUNS.get(event.job_id) or {}).get("last_ok")
+    started = STARTED.pop(event.job_id, None)
+    if ok is False or previous_ok is False or _interval_seconds(event.job_id) >= EVERY_RUN_FROM_SECONDS:
+        _spawn(_record_run(event.job_id, ok, event.exception, started))
+    if not ok:
+        from app.common import slack
+
+        label = JOB_LABELS.get(event.job_id, event.job_id)
+        _spawn(slack.post(
+            f"❌ *Scheduled job failed*: {label} · {type(event.exception).__name__}: {str(event.exception)[:150]}"
+            f" · <{slack.admin_link('/admin/jobs')}|Admin → Jobs>",
+            key=f"job-fail:{event.job_id}", every_seconds=3600))
+    elif previous_ok is False:
+        from app.common import slack
+
+        _spawn(slack.post(f"✅ *Scheduled job recovered*: {JOB_LABELS.get(event.job_id, event.job_id)}"))
     run = {
         "last_run_at": datetime.now(timezone.utc),
         "last_ok": ok,
@@ -69,6 +118,29 @@ def on_job_event(event) -> None:
             task.add_done_callback(_tasks.discard)
         except RuntimeError:  # no running loop (tests, scripts)
             pass
+
+
+async def _record_run(job_id: str, ok: bool, exc: BaseException | None,
+                      started: tuple[float, datetime] | None) -> None:
+    """One job_runs row for an in-app scheduler job's run."""
+    import uuid
+
+    from app import monitoring
+    from app.monitoring.models import JobRun
+
+    now = datetime.now(timezone.utc)
+    try:
+        async with monitoring.sessions()() as db:
+            db.add(JobRun(
+                id=uuid.uuid4(), job=job_id, trigger="scheduler", service="api",
+                status="succeeded" if ok else "failed",
+                started_at=started[1] if started else now, finished_at=now,
+                duration_ms=int((_time.monotonic() - started[0]) * 1000) if started else None,
+                error=f"{type(exc).__name__}: {exc}"[:2000] if exc else None,
+            ))
+            await db.commit()
+    except Exception:
+        logger.info("Couldn't record the run of %s", job_id)
 
 
 async def _save(job_id: str, run: dict) -> None:

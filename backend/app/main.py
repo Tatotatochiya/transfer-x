@@ -43,6 +43,7 @@ from app.approvals import router as approvals_router
 from app.dashboard import router as dashboard_router
 from app.board import router as board_router  # after the models it reads are registered
 from app.conversation import router as conversation_router
+from app.monitoring import router as monitoring_router
 
 logger = logging.getLogger(__name__)
 
@@ -148,20 +149,22 @@ async def _loan_lifecycle_job() -> None:
             logger.exception("Error in loan lifecycle job")
 
 
-async def _valuation_compute_job() -> None:
-    """TRA-91: daily recompute of every player's fair-value model valuation."""
-    from app.valuation.service import compute_all_valuations
+async def _refresh_watch_job() -> None:
+    """Slack when the worker's 17:00 or 22:00 data refresh didn't run
+    (monitoring/watch.py). The daily valuation recompute moved into that
+    refresh (app/jobs/daily_refresh.py), so deploys no longer trigger it."""
+    from app.monitoring import watch
 
-    async with AsyncSessionLocal() as db:
-        try:
-            async with db.begin():
-                counts = await compute_all_valuations(db)
-            logger.info(
-                "Valuation compute complete: %d updated, %d skipped (ineligible), %d errors",
-                counts["updated"], counts["skipped_ineligible"], counts["errors"],
-            )
-        except Exception:
-            logger.exception("Error in valuation compute job")
+    await watch.check()
+
+
+async def _monitoring_retention_job() -> None:
+    """Delete run logs, error events and request figures past retention."""
+    from app.monitoring import retention
+
+    counts = await retention.purge()
+    if any(counts.values()):
+        logger.info("Monitoring retention: %s", counts)
 
 
 async def _execute_held_actions_job() -> None:
@@ -296,10 +299,13 @@ async def lifespan(app: FastAPI):
         _enrichment_sync_job, "interval", hours=24, id="enrichment_sync",
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
     )
-    # Registered after enrichment_sync so the daily recompute runs on fresher stats.
     _scheduler.add_job(
-        _valuation_compute_job, "interval", hours=24, id="valuation_compute",
-        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=15),
+        _refresh_watch_job, "interval", hours=1, id="refresh_watch",
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=2),
+    )
+    _scheduler.add_job(
+        _monitoring_retention_job, "interval", hours=24, id="monitoring_retention",
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5),
     )
     _scheduler.add_job(
         _client_alerts_job, "interval", hours=6, id="client_alerts",
@@ -326,16 +332,36 @@ async def lifespan(app: FastAPI):
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=20),
     )
     # The admin Health page shows when each job last ran (app/common/jobs.py).
-    from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED
+    from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_SUBMITTED
 
-    from app.common.jobs import on_job_event
+    from app.common.jobs import on_job_event, on_job_submitted
 
     _scheduler.add_listener(on_job_event, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
+    _scheduler.add_listener(on_job_submitted, EVENT_JOB_SUBMITTED)
     _scheduler.start()
     logger.info("APScheduler started")
+
+    # Monitoring (docs/feature_spec/scheduled-data-refresh.md): error
+    # tracking, run logs for manual refreshes, and per-minute request health.
+    import asyncio
+
+    from app.monitoring import errors as _errors
+    from app.monitoring import requests as _requests
+    from app.monitoring.runs import install_log_capture
+
+    _errors.install()
+    install_log_capture()
+    background = [asyncio.create_task(_errors.writer_loop()), asyncio.create_task(_requests.flush_loop())]
     yield
     # Shutdown
     _scheduler.shutdown(wait=False)
+    for task in background:
+        task.cancel()
+    try:
+        await _requests.flush(everything=True)
+        await _errors.drain()
+    except Exception:
+        logger.exception("Couldn't write the last monitoring data")
     logger.info("APScheduler stopped")
 
 
@@ -345,6 +371,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+from app.monitoring.requests import MonitoringMiddleware  # noqa: E402
+
+app.add_middleware(MonitoringMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -392,6 +421,7 @@ app.include_router(stats_router.router)
 app.include_router(vendor_router.router)
 app.include_router(world_router.router)
 app.include_router(admin_router.router)
+app.include_router(monitoring_router.router)
 app.include_router(analytics_router.router)
 app.include_router(fixtures_router.router)
 app.include_router(transfer_window_router.router)

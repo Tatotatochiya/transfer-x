@@ -27,6 +27,18 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Scheduled data refresh, Jobs, Errors and Slack** ([spec](./feature_spec/scheduled-data-refresh.md)).
+  - **Data refresh:** a separate `stats-worker` Railway cron service refreshes API-Football data at 17:00 and 22:00 UK time:
+    - current-season stats, injuries, ratings for newly finished matches, and form;
+    - valuations after the 22:00 run;
+    - it moves each league to the current season on its own.
+  - **Admin → Jobs:** every scheduled job in the worker and the web app, what's running, recent runs with steps, and each run's log with a live tail. Platform admins can also "Run refresh now".
+  - **Admin → Errors:** warnings and errors from the web app, the worker and browsers, grouped into issues with tracebacks and request context. Issues can be resolved or ignored.
+  - **Admin → Health:** now also shows requests in the last 24 hours (slowest and failing endpoints), Slack, the data refresh with API-Football requests left, and database connections.
+  - **Slack (when `SLACK_WEBHOOK_URL` is set):**
+    - one message per refresh run;
+    - alerts for a missed refresh, failed jobs, new errors, error spikes and high server-error rates.
+  - Migration `0100`.
 - **Ask TransferX, Phase B** (AI analyst spec).
   - Ask TransferX now answers more kinds of question:
     - player stats and comparisons per season and per 90 minutes;
@@ -210,6 +222,9 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Valuations are recomputed once a day by the stats-worker,** after the 22:00 data refresh, instead of by the web app on every start, so deploys no longer write a fresh valuation for every player.
+- **API-Football syncs write a stats snapshot only when a player's appearances, minutes or rating changed.**
+- **A player who moved club within a competition mid-season keeps one stats row per club in league syncs.** League syncs used to fail on these players.
 - **Fair-value model v2 (`market-v2`)** ([spec](./feature_spec/valuation-model-v2.md)). The model now blends up to three seasons and shrinks small samples; uses a position-specific age curve with a youth-potential premium; adds trajectory, recent form, contract length, injury availability and a market rate drawn from comparable transfers (TransferX deals and reported fees); and replaces the three league tiers with per-league coefficients. Valuations carry a value build-up ("drivers") shown in the breakdown popover. Earlier `boxscore-v1` rows stay in the history unchanged.
 - **My Club's squad shows which players are in play.** A player with an enquiry, an offer, a bid or a deal in progress now has one status on his row, such as "Enquiry", "Offer £6.0m" or "Deal: Paperwork". It shows the furthest point the sale has reached, with a blue dot when it's your move, and links to it. The "Listed" filter is now "In play". A bare listing still shows Listed and Unlist; once there's activity on a listing, unlisting is done from the listing page.
 - **The transfer board shows Buying and Selling as separate lanes** when viewing both sides. Each lane has its own stage columns, a count, and a line saying which way the players move. Closed cards carry a coloured Buying or Selling tag. Before, both sides shared one set of columns, with only a small grey word on each card to tell them apart.

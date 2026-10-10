@@ -97,6 +97,11 @@ class Settings(BaseSettings):
     # Vendor / API-Sports
     apisports_key: str | None = None
     api_football_base_url: str = "https://v3.football.api-sports.io"
+    # Scheduled data refresh and monitoring (docs/feature_spec/scheduled-data-refresh.md).
+    # Slack Incoming Webhook for run messages and alerts; nothing is posted when unset.
+    slack_webhook_url: str | None = None
+    # Stop calling API-Football when the day's remaining requests fall to this.
+    apisports_reserve: int = 500
 
     # AI / LLM — set LLM_MODEL to the provider-prefixed model string, e.g.:
     #   "claude-sonnet-4-6"       (Anthropic)

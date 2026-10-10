@@ -967,6 +967,28 @@ async def get_services_and_jobs(db: AsyncSession) -> tuple[list[dict], list[dict
     })
     ok, detail = await _vendor_status()
     services.append({"key": "vendor", "label": "API-Football", "ok": ok, "detail": detail})
+    from app.common import slack as _slack
+    from app.monitoring.models import JobRun
+
+    services.append({
+        "key": "slack", "label": "Slack", "ok": _slack.configured(),
+        "detail": "Run messages and alerts go to the webhook's channel" if _slack.configured()
+        else "Not set up (SLACK_WEBHOOK_URL): no run messages or alerts",
+    })
+    last_refresh = (await db.execute(select(JobRun).where(JobRun.job == "daily_refresh", JobRun.parent_id.is_(None),
+                                                          JobRun.status.in_(["succeeded", "partial", "failed"]))
+                                     .order_by(JobRun.started_at.desc()).limit(1))).scalar_one_or_none()
+    remaining = ((last_refresh.summary or {}).get("api_remaining") if last_refresh else None)
+    services.append({
+        "key": "refresh", "label": "Data refresh (stats-worker)",
+        "ok": bool(last_refresh and last_refresh.status != "failed"),
+        "detail": (f"Last run {last_refresh.status}"
+                   + (f", {remaining:,} API-Football requests left that day" if remaining is not None else ""))
+        if last_refresh else "Hasn't run yet: set up the stats-worker service (see the spec)",
+    })
+    pool = getattr(db.bind, "pool", None)
+    if pool is not None and hasattr(pool, "checkedout"):
+        services[0]["detail"] = f"Connected · {pool.checkedout()} of {pool.size()} pooled connections in use"
 
     jobs = []
     from app.common.jobs import saved_runs
