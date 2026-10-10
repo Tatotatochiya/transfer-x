@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
 
+# A command given to the image runs instead of the web app: the stats-worker
+# service runs `python -m app.jobs.daily_refresh` (no migrations, no server).
+if [ "$#" -gt 0 ]; then
+  exec "$@"
+fi
+
 echo "=== Running Alembic migrations ==="
 alembic upgrade head
 echo "=== Migrations complete ==="

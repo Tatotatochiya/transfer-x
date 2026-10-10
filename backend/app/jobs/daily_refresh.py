@@ -453,8 +453,11 @@ def main(argv: list[str] | None = None) -> int:
 
             await engine.dispose()
 
-    result = asyncio.run(go())
-    return 0 if result["status"] in ("succeeded", "partial", "skipped") else 1
+    asyncio.run(go())
+    # A failed refresh is recorded (Admin → Jobs) and posted to Slack; exiting
+    # 0 keeps Railway from re-running it outside its slot. A crash still exits
+    # non-zero.
+    return 0
 
 
 if __name__ == "__main__":
