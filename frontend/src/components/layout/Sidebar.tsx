@@ -83,6 +83,8 @@ const STAFF_GROUPS: NavGroup[] = [
       { label: "Verification",     to: "/admin/verification", icon: "check" },
       { label: "Transfer windows", to: "/admin/windows",      icon: "gavel" },
       { label: "Health",           to: "/admin/health",       icon: "bolt" },
+      { label: "Jobs",             to: "/admin/jobs",         icon: "columns" },
+      { label: "Errors",           to: "/admin/errors",       icon: "bell" },
       { label: "Analytics",        to: "/admin/analytics",    icon: "crosshair" },
       { label: "AI",               to: "/admin/ai",           icon: "message" },
       { label: "Vendor sync",      to: "/admin/vendor",       icon: "inbox" },

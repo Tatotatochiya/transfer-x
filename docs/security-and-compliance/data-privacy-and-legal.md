@@ -30,6 +30,20 @@ Out of scope: confidentiality *between platform users* (see [`permissions-model.
 
 > **TODO:** Document data export/erasure capability (GDPR-style rights) once implemented. Not yet built as of this writing.
 
+## Monitoring data
+
+Admin monitoring ([`operations/monitoring-and-observability.md`](../operations/monitoring-and-observability.md)) keeps data that can include personal data from log messages and request context (user ids, request paths). Platform admins only.
+
+| Store | Holds | Kept |
+|---|---|---|
+| `job_run_logs` | Log lines written during a job run | 30 days |
+| `error_events` | Error messages, tracebacks, request method, path, status, request id and user id. Never bodies, headers or query strings | 30 days (newest 20 per issue) |
+| `error_issues` | Grouped error titles and counts | 90 days after last seen |
+| `job_runs` | Job outcomes and counts | 90 days |
+| `request_minutes` | Requests per endpoint per minute: counts and latency, no user data | 14 days |
+
+Slack receives titles and counts only, never tracebacks or event context.
+
 ## Related documents
 
 - [`permissions-model.md`](./permissions-model.md) — confidentiality between platform users, as distinct from this document's legal/privacy scope

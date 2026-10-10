@@ -15,6 +15,9 @@ class ApiFootballClient:
     def __init__(self, api_key: str, base_url: str = "https://v3.football.api-sports.io"):
         self.base_url = base_url.rstrip("/")
         self._headers = {"x-apisports-key": api_key}
+        # The last response's headers: the scheduled refresh reads the
+        # x-ratelimit-requests-remaining quota from them.
+        self.last_headers: dict = {}
 
     async def _get(self, path: str, params: dict | None = None) -> dict:
         """GET with exponential-backoff retry on 429 and 5xx."""
@@ -27,6 +30,7 @@ class ApiFootballClient:
                     headers=self._headers,
                     params=params or {},
                 )
+                self.last_headers = dict(resp.headers)
                 if resp.status_code == 200:
                     return resp.json()
                 if resp.status_code == 429 or resp.status_code >= 500:

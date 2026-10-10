@@ -59,6 +59,8 @@ const AdminAnalyticsPage        = lazy(() => import("./pages/admin/AdminAnalytic
 const AdminTransferWindowPage   = lazy(() => import("./pages/admin/AdminTransferWindowPage"));
 const AdminVerificationPage     = lazy(() => import("./pages/admin/AdminVerificationPage"));
 const AdminHealthPage           = lazy(() => import("./pages/admin/AdminHealthPage"));
+const AdminJobsPage             = lazy(() => import("./pages/admin/AdminJobsPage"));
+const AdminErrorsPage           = lazy(() => import("./pages/admin/AdminErrorsPage"));
 const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage"));
 const AdminAuditLogPage = lazy(() => import("./pages/admin/AdminAuditLogPage"));
 const TeamPage                  = lazy(() => import("./pages/club/TeamPage"));
@@ -304,6 +306,8 @@ export default function App() {
             <Route path="windows"        element={<AdminTransferWindowPage />} />
             <Route path="verification"   element={<AdminVerificationPage />} />
             <Route path="health"         element={<AdminHealthPage />} />
+            <Route path="jobs"           element={<AdminJobsPage />} />
+            <Route path="errors"         element={<AdminErrorsPage />} />
             <Route path="ai"             element={<AdminAIPage />} />
             <Route path="audit"          element={<AdminAuditLogPage />} />
           </Route>

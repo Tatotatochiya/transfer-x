@@ -81,6 +81,64 @@ function IssueCard({ issue }: { issue: HealthIssue }) {
 
 import { useState } from "react";
 
+interface RequestHealth {
+  hours: { hour: string; count: number; errors: number }[];
+  total: number;
+  errors: number;
+  error_rate: number;
+  slowest: { method: string; route: string; count: number; errors: number; p95_ms: number }[];
+  failing: { method: string; route: string; count: number; errors: number; p95_ms: number }[];
+}
+
+/** Requests over the last 24 hours: per hour (errors in red), and the
+ *  slowest and most-failing endpoints. */
+function RequestsSection() {
+  const { data } = useQuery<RequestHealth>({
+    queryKey: ["admin", "health", "requests"],
+    queryFn: () => api.get<RequestHealth>("/admin/health/requests").then((r) => r.data),
+    staleTime: 60_000,
+  });
+  if (!data) return null;
+  const max = Math.max(1, ...data.hours.map((h) => h.count));
+  const table = (title: string, rows: RequestHealth["slowest"], metric: (r: RequestHealth["slowest"][number]) => string) => (
+    <div className="min-w-0 flex-1 rounded-xl bg-surface ring-1 ring-border">
+      <h3 className="border-b border-rule px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-text-muted">{title}</h3>
+      {rows.length === 0 ? <p className="px-4 py-3 text-xs text-text-muted">None</p> : (
+        <ul className="divide-y divide-rule-faint">
+          {rows.slice(0, 6).map((r) => (
+            <li key={`${r.method} ${r.route}`} className="flex items-center justify-between gap-3 px-4 py-1.5 text-xs">
+              <span className="min-w-0 truncate font-mono text-text" title={`${r.method} ${r.route}`}>{r.method} {r.route}</span>
+              <span className="shrink-0 tabular-nums text-text-secondary">{metric(r)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+  return (
+    <section className="mb-6">
+      <h2 className="mb-1 text-sm font-semibold text-text">Requests, last 24 hours</h2>
+      <p className="mb-2 text-xs text-text-muted">
+        {data.total.toLocaleString("en-GB")} requests · {data.errors.toLocaleString("en-GB")} server errors ({(data.error_rate * 100).toFixed(1)}%)
+      </p>
+      <div className="mb-3 rounded-xl bg-surface p-4 ring-1 ring-border">
+        <div className="flex h-24 items-end gap-0.5" role="img" aria-label="Requests per hour">
+          {data.hours.map((h) => (
+            <div key={h.hour} className="flex h-full flex-1 flex-col justify-end" title={`${new Date(h.hour).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}: ${h.count} requests, ${h.errors} errors`}>
+              {h.errors > 0 && <div className="w-full rounded-t-sm bg-danger" style={{ height: `${(h.errors / max) * 100}%` }} />}
+              <div className={`w-full bg-accent/60 ${h.errors ? "" : "rounded-t-sm"}`} style={{ height: `${((h.count - h.errors) / max) * 100}%` }} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-3 md:flex-row">
+        {table("Slowest (p95)", data.slowest, (r) => `${r.p95_ms.toLocaleString("en-GB")} ms`)}
+        {table("Most server errors", data.failing, (r) => `${r.errors} of ${r.count}`)}
+      </div>
+    </section>
+  );
+}
+
 export default function AdminHealthPage() {
   const queryClient = useQueryClient();
 
@@ -146,11 +204,17 @@ export default function AdminHealthPage() {
             </section>
           )}
 
+          <RequestsSection />
+
           {/* Scheduled jobs */}
           {data.jobs && data.jobs.length > 0 && (
             <section className="mb-6">
-              <h2 className="mb-1 text-sm font-semibold text-text">Scheduled jobs</h2>
-              <p className="mb-2 text-xs text-text-muted">Last runs are kept across restarts.</p>
+              <h2 className="mb-1 text-sm font-semibold text-text">Scheduled jobs in the web app</h2>
+              <p className="mb-2 text-xs text-text-muted">
+                Last runs are kept across restarts. The data refresh, run history and logs are on{" "}
+                <Link to="/admin/jobs" className="font-semibold text-accent hover:underline">Jobs</Link>; grouped errors on{" "}
+                <Link to="/admin/errors" className="font-semibold text-accent hover:underline">Errors</Link>.
+              </p>
               <div className="overflow-x-auto rounded-xl bg-surface ring-1 ring-border">
                 <table className="w-full min-w-[640px] text-sm">
                   <thead>

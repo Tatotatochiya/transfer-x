@@ -22,7 +22,29 @@ settings.apisports_key = None
 # No live exchange-rate fetches: the estimates use the fallback rates.
 settings.fx_rates_url = None
 
+# No Slack posts from tests (tests/test_monitoring.py catches them itself).
+settings.slack_webhook_url = None
+
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+
+def _no_real_database():
+    raise RuntimeError("monitoring tried to write outside the test database")
+
+
+@pytest.fixture(autouse=True)
+def _monitoring_sessions(request):
+    """Monitoring writes in its own sessions (job runs, errors, request
+    figures). Point them at the test's database, or at nothing: never at the
+    real one. Those writes are best effort, so a refused one is skipped."""
+    from app import monitoring
+
+    if "db_engine" in request.fixturenames:
+        monitoring.session_factory = async_sessionmaker(request.getfixturevalue("db_engine"), expire_on_commit=False)
+    else:
+        monitoring.session_factory = _no_real_database
+    yield
+    monitoring.session_factory = None
 
 
 @pytest_asyncio.fixture(scope="function")

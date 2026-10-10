@@ -43,6 +43,9 @@ async def get_current_user(
     user = await auth_service.get_user_by_id(db, uuid.UUID(user_id_str))
     if user is None or not user.is_active:
         raise credentials_exc
+    from app.monitoring.context import set_user
+
+    set_user(user.id)  # error tracking: which user a request's errors were for
     return user
 
 
