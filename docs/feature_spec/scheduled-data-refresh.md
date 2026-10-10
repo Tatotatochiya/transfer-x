@@ -1,7 +1,7 @@
 ---
 title: "Feature Spec: Scheduled Data Refresh, Jobs, Monitoring and Slack"
 last_updated: 2026-10-10
-status: Built 2026-10-10 — Railway stats-worker service and Slack webhook pending (product owner)
+status: Live 2026-10-11 — Slack webhook pending (product owner)
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -50,7 +50,7 @@ Command: `python -m app.jobs.daily_refresh` (`--force` runs regardless of the ti
 
 | Step | What | Runs at |
 |---|---|---|
-| 1. `stats` | Current-season player stats for the configured leagues (today the 11 in `sync_leagues.py`), using `sync_league`. Past seasons don't change and are skipped. | 17:00, 22:00 |
+| 1. `stats` | Current-season player stats for every competition in `world_leagues` (11 in production, 7 on dev), using `sync_league`. Past seasons don't change and are skipped. | 17:00, 22:00 |
 | 2. `injuries` | Current-season injuries for each league (`sync_league_injuries`) | 17:00, 22:00 |
 | 3. `form` | Team fixture counts and recent ratings, then `compute_all_form` | 17:00, 22:00 |
 | 4. `valuations` | `compute_all_valuations` (one comparables index for the run) | 22:00 only |
@@ -242,7 +242,7 @@ Each part ships on its own. Part 1 is useful without Part 2.
 
 > **TODO:** Slack workspace, channel and webhook URL (product owner, to follow). Set `SLACK_WEBHOOK_URL` on both Railway services.
 
-> **TODO:** create the `stats-worker` Railway service ([setup](../operations/environments-and-deployment.md#the-stats-worker-service-scheduled-data-refresh)).
+**Done 2026-10-11:** the `stats-worker` Railway service was created with the Railway CLI ([setup](../operations/environments-and-deployment.md#the-stats-worker-service-scheduled-data-refresh)). It refreshes all 11 competitions in production's `world_leagues`, by product-owner decision.
 
 > **TODO:** confirm whether non-admin club staff ever need to see job status (assumed not; admins only).
 

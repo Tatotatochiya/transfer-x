@@ -92,6 +92,13 @@ Railway's cron is UTC: the job exits within a second unless it's 17:00 or 22:00 
 2. **Variables:** `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`, `JWT_SECRET_KEY`, `APISPORTS_KEY`, `API_FOOTBALL_BASE_URL`, `FRONTEND_BASE_URL`; add `SLACK_WEBHOOK_URL` once the webhook exists.
 3. **Deploy `api`** with migration `0100`. The web app no longer recomputes valuations on start; the worker does.
 
+**Live on Railway since 2026-10-11** (project `ravishing-laughter`, production):
+- **Service:** `stats-worker`, connected to GitHub `main`; its first run was at 17:00 UK that day.
+- **What it refreshes:** every competition in `world_leagues`. Production has 11: the top five leagues, Champions League, FA Cup, League Cup, Community Shield, FIFA Club World Cup and club friendlies.
+  - Keeping all eleven was a product-owner decision (2026-10-11).
+  - Syncing a competition also creates a player record for everyone who appears in it, so the cups and friendlies add players from outside the top leagues.
+- **`backend`:** has `FRONTEND_BASE_URL` set to the frontend's Railway address since the same day, so links in emails and Slack point at the live app instead of `localhost:5173`.
+
 **Running it by hand:** Admin → Jobs → **Run refresh now** (in the web app), or `railway run python -m app.jobs.daily_refresh --force [--steps stats,injuries,form,valuations]`.
 
 **The first run on a new season** moves each league to API-Football's current season (`world_leagues.season`). Until a player has 450 minutes in the new season, his valuation stays at its last value: no new row is written.
