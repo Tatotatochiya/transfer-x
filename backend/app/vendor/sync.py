@@ -189,9 +189,12 @@ async def sync_player_stats(
                 PlayerStats.vendor == VENDOR,
                 PlayerStats.league_id == api_league_id,
                 PlayerStats.season == api_season,
-            )
+                # One row per club: a mid-season move within a competition
+                # has two (the history backfill stores both).
+                (PlayerStats.team_vendor_id == fields["team_vendor_id"]) | PlayerStats.team_vendor_id.is_(None),
+            ).order_by(PlayerStats.team_vendor_id.is_(None))
         )
-        stats_row = stats_result.scalar_one_or_none()
+        stats_row = stats_result.scalars().first()
 
         stat_kwargs = {k: v for k, v in fields.items() if k not in ("league_id", "season", "position")}
 
@@ -334,24 +337,32 @@ async def _upsert_player_from_api_data(
         api_league_id = fields["league_id"] or ""
         api_season_str = fields["season"] or str(season)
 
-        snapshot = PlayerStatsSnapshot(
-            player_id=player_uuid,
-            vendor=VENDOR,
-            payload=stat_entry,
-            fetched_at=_now(),
-        )
-        db.add(snapshot)
-        snapshots_created += 1
-
         stats_result = await db.execute(
             select(PlayerStats).where(
                 PlayerStats.player_id == player_uuid,
                 PlayerStats.vendor == VENDOR,
                 PlayerStats.league_id == api_league_id,
                 PlayerStats.season == api_season_str,
-            )
+                # One row per club: a mid-season move within a competition
+                # has two (the history backfill stores both).
+                (PlayerStats.team_vendor_id == fields["team_vendor_id"]) | PlayerStats.team_vendor_id.is_(None),
+            ).order_by(PlayerStats.team_vendor_id.is_(None))
         )
-        stats_row = stats_result.scalar_one_or_none()
+        stats_row = stats_result.scalars().first()
+
+        # A snapshot only when something changed: the scheduled refresh syncs
+        # twice a day, and a player who hasn't played since adds nothing new.
+        unchanged = stats_row is not None and all(
+            getattr(stats_row, k) == fields.get(k) for k in ("appearances", "minutes", "avg_rating")
+        )
+        if not unchanged:
+            db.add(PlayerStatsSnapshot(
+                player_id=player_uuid,
+                vendor=VENDOR,
+                payload=stat_entry,
+                fetched_at=_now(),
+            ))
+            snapshots_created += 1
 
         stat_kwargs = {k: v for k, v in fields.items() if k not in ("league_id", "season", "position")}
 

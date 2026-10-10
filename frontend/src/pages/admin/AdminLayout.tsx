@@ -16,6 +16,8 @@ const NAV_LINKS = [
   { to: "/admin/windows",    label: "TW Windows",  icon: "🗓" },
   { to: "/admin/verification", label: "Verification", icon: "✅" },
   { to: "/admin/health",     label: "Health",      icon: "🩺" },
+  { to: "/admin/jobs",       label: "Jobs",        icon: "⏱" },
+  { to: "/admin/errors",     label: "Errors",      icon: "⚠" },
   { to: "/admin/ai",         label: "AI",          icon: "✦"  },
   { to: "/admin/audit",      label: "Audit log",   icon: "📜" },
 ];

@@ -157,6 +157,11 @@ async def sync_league_injuries(db: AsyncSession, league_id: str, season: int, cl
     from app.stats.models import PlayerInjuryFixture
 
     resp = await client._get("/injuries", {"league": int(league_id), "season": season})
+    # What's already stored for this competition-season, loaded once: a
+    # season's injuries run to thousands of rows, refreshed twice a day.
+    have = {(pid, fid) for pid, fid in (await db.execute(select(
+        PlayerInjuryFixture.player_id, PlayerInjuryFixture.fixture_vendor_id).where(
+        PlayerInjuryFixture.league_id == str(league_id), PlayerInjuryFixture.season == str(season)))).all()}
     stored = 0
     for item in resp.get("response") or []:
         p = item.get("player") or {}
@@ -165,9 +170,10 @@ async def sync_league_injuries(db: AsyncSession, league_id: str, season: int, cl
         if pid is None or not fixture.get("id"):
             continue
         fid = str(fixture["id"])
-        if (await db.execute(select(PlayerInjuryFixture.id).where(
+        if (pid, fid) in have or (await db.execute(select(PlayerInjuryFixture.id).where(
                 PlayerInjuryFixture.player_id == pid, PlayerInjuryFixture.fixture_vendor_id == fid))).first():
             continue
+        have.add((pid, fid))
         league = item.get("league") or {}
         team = item.get("team") or {}
         db.add(PlayerInjuryFixture(
@@ -211,47 +217,57 @@ async def sync_team_recent_ratings(db: AsyncSession, team_vendor_id: str, client
     """A club's last `last` matches, and each of our players' rating in them
     (/fixtures, then /fixtures/players once per match, which covers both
     squads). Returns (matches, ratings stored)."""
-    from app.stats.models import PlayerFixtureRating
 
     fixtures = (await client._get("/fixtures", {"team": int(team_vendor_id), "last": last})).get("response") or []
     stored = 0
     for f in fixtures:
-        fixture = f.get("fixture") or {}
-        fid = str(fixture.get("id") or "")
-        if not fid:
-            continue
-        teams = f.get("teams") or {}
-        home, away = teams.get("home") or {}, teams.get("away") or {}
-        league_name = (f.get("league") or {}).get("name")
-        resp = await client._get("/fixtures/players", {"fixture": int(fid)})
-        for side in resp.get("response") or []:
-            side_team = side.get("team") or {}
-            is_home = side_team.get("id") == home.get("id")
-            opponent = away if is_home else home
-            for entry in side.get("players") or []:
-                pid = players_by_vendor.get(str((entry.get("player") or {}).get("id")))
-                if pid is None:
-                    continue
-                games = ((entry.get("statistics") or [{}])[0] or {}).get("games") or {}
-                rating = games.get("rating")
-                row = (await db.execute(select(PlayerFixtureRating).where(
-                    PlayerFixtureRating.player_id == pid, PlayerFixtureRating.fixture_vendor_id == fid
-                ))).scalar_one_or_none()
-                values = dict(
-                    fixture_date=_date(fixture.get("date")), league_name=league_name,
-                    team_vendor_id=str(side_team.get("id")) if side_team.get("id") else None,
-                    opponent_name=opponent.get("name"), opponent_logo=opponent.get("logo"), home=is_home,
-                    minutes=games.get("minutes"),
-                    rating=Decimal(str(round(float(rating), 2))) if rating else None, fetched_at=_now(),
-                )
-                if row is None:
-                    db.add(PlayerFixtureRating(player_id=pid, fixture_vendor_id=fid, **values))
-                else:
-                    for k, v in values.items():
-                        setattr(row, k, v)
-                stored += 1
-    await db.flush()
+        stored += await store_fixture_ratings(db, f, client, players_by_vendor)
     return len(fixtures), stored
+
+
+async def store_fixture_ratings(db: AsyncSession, f: dict, client: ApiFootballClient,
+                                players_by_vendor: dict[str, uuid.UUID]) -> int:
+    """Each of our players' rating in one match (`f`, an item from /fixtures),
+    from /fixtures/players, which covers both squads. Returns ratings stored."""
+    from app.stats.models import PlayerFixtureRating
+
+    fixture = f.get("fixture") or {}
+    fid = str(fixture.get("id") or "")
+    if not fid:
+        return 0
+    teams = f.get("teams") or {}
+    home, away = teams.get("home") or {}, teams.get("away") or {}
+    league_name = (f.get("league") or {}).get("name")
+    resp = await client._get("/fixtures/players", {"fixture": int(fid)})
+    stored = 0
+    for side in resp.get("response") or []:
+        side_team = side.get("team") or {}
+        is_home = side_team.get("id") == home.get("id")
+        opponent = away if is_home else home
+        for entry in side.get("players") or []:
+            pid = players_by_vendor.get(str((entry.get("player") or {}).get("id")))
+            if pid is None:
+                continue
+            games = ((entry.get("statistics") or [{}])[0] or {}).get("games") or {}
+            rating = games.get("rating")
+            row = (await db.execute(select(PlayerFixtureRating).where(
+                PlayerFixtureRating.player_id == pid, PlayerFixtureRating.fixture_vendor_id == fid
+            ))).scalar_one_or_none()
+            values = dict(
+                fixture_date=_date(fixture.get("date")), league_name=league_name,
+                team_vendor_id=str(side_team.get("id")) if side_team.get("id") else None,
+                opponent_name=opponent.get("name"), opponent_logo=opponent.get("logo"), home=is_home,
+                minutes=games.get("minutes"),
+                rating=Decimal(str(round(float(rating), 2))) if rating else None, fetched_at=_now(),
+            )
+            if row is None:
+                db.add(PlayerFixtureRating(player_id=pid, fixture_vendor_id=fid, **values))
+            else:
+                for k, v in values.items():
+                    setattr(row, k, v)
+            stored += 1
+    await db.flush()
+    return stored
 
 
 # ── Loans: mark season rows spent on loan ────────────────────────────────────

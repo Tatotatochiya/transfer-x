@@ -1,7 +1,7 @@
 ---
 title: "Feature Spec: Scheduled Data Refresh, Jobs, Monitoring and Slack"
 last_updated: 2026-10-10
-status: Proposed — ready to build (Slack details pending)
+status: Built 2026-10-10 — Railway stats-worker service and Slack webhook pending (product owner)
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -207,9 +207,42 @@ Alerts are rate-limited, and carry titles and counts only:
 
 Each part ships on its own. Part 1 is useful without Part 2.
 
+## Build notes (2026-10-10)
+
+**Built as specified (Parts 1 and 2).** The code:
+- `app/jobs/daily_refresh.py` (the worker);
+- `app/monitoring/` (runs, errors, requests, watch, retention, router; migration `0100`);
+- `app/common/slack.py`;
+- Admin **Jobs** and **Errors** pages, and new sections on Admin **Health**.
+
+**Changes found while building and running it on dev**
+
+1. **The current season.** Every league was still on season 2025 (2025/26, finished), so the refresh would have synced last season.
+   - Each run now asks API-Football for each league's current season (`/leagues?current=true`, one call per league) and moves `world_leagues.season` when it changes.
+   - The first dev run moved all 7 leagues to 2026.
+   - Until a player reaches 450 minutes in the new season, his valuation stays at its last value.
+2. **Stat snapshots only when something changed.** `sync_league` wrote a full snapshot of every player on every sync, which twice a day would be about 5 million rows a year. It now writes one only when appearances, minutes or rating changed.
+3. **One stats row per club.** The league sync failed with "multiple rows" for players who moved club within a competition mid-season. The history backfill stores one row per club, and the league sync now matches on the club too.
+4. **Recent match ratings come from matches finished since the last run.** That's one `/fixtures` call per league, plus `/fixtures/players` per new match. The old per-team "last 5" sync would cost about 1,300 calls a run.
+5. **API-Football's own errors are retried.** A `{"bug": …}` answer is retried twice.
+6. **The API key's allowance is 75,000 requests a day,** not 7,500: a bigger plan than Pro. A refresh uses about 290 calls on dev with 7 leagues.
+7. **The scheduler's timing warnings** ("missed by", "maximum running instances") aren't captured as errors. Job failures are recorded and alert through the job listener.
+8. **Tests can't write monitoring data to a real database.** `tests/conftest.py` points monitoring at the test database, or at nothing.
+
+**Verified on dev**
+- **Live refresh:** two runs, `--force`.
+  - The second moved 7 leagues to 2026/27 and updated 3,444 players with 1,581 new.
+  - It also stored 2,475 injury records and 4 new matches (164 ratings), and updated 6,693 form scores.
+  - It used 290 API calls and took 3 minutes 52 seconds.
+- **Backend:** 36 new tests in `tests/test_monitoring.py`, and the full suite.
+- **Frontend:** 7 new tests (Jobs, Errors, error reporting).
+- **Browser:** checked as admin.
+
 ## Open items
 
-> **TODO:** Slack workspace, channel and webhook URL (product owner, to follow).
+> **TODO:** Slack workspace, channel and webhook URL (product owner, to follow). Set `SLACK_WEBHOOK_URL` on both Railway services.
+
+> **TODO:** create the `stats-worker` Railway service ([setup](../operations/environments-and-deployment.md#the-stats-worker-service-scheduled-data-refresh)).
 
 > **TODO:** confirm whether non-admin club staff ever need to see job status (assumed not; admins only).
 
