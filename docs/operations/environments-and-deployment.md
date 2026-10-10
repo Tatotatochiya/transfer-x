@@ -75,13 +75,17 @@ Two things to know before re-running the seed there:
 
 A second Railway service refreshes API-Football data at 17:00 and 22:00 UK time and recomputes valuations after the 22:00 run ([spec](../feature_spec/scheduled-data-refresh.md)). It runs the same code as `api`, does one refresh, and exits.
 
+**Its settings are in the repo:** `backend/railway.worker.json`.
+- start command `python -m app.jobs.daily_refresh`;
+- cron `0 16,17,21,22 * * *`;
+- restart policy **Never**: a failed refresh waits for the next slot instead of re-running.
+
+Railway's cron is UTC: the job exits within a second unless it's 17:00 or 22:00 in London, so exactly two runs happen a day through the clock changes. The `api` service keeps `backend/railway.json`.
+
 **One-off setup**
 1. **New service** from the same GitHub repo:
    - root directory `backend`;
-   - start command `python -m app.jobs.daily_refresh`;
-   - cron schedule `0 16,17,21,22 * * *`;
-   - restart policy **Never**.
-   - Railway's cron is UTC: the job exits within a second unless it's 17:00 or 22:00 in London, so exactly two runs happen a day through the clock changes.
+   - config file path `backend/railway.worker.json` (Settings → Config-as-code).
 2. **Variables:** the same as `api`, at least `DATABASE_URL` (as a reference to the database variable), `APISPORTS_KEY`, `JWT_SECRET_KEY`, `FRONTEND_BASE_URL`, and `SLACK_WEBHOOK_URL` once the Slack webhook exists.
 3. **Deploy `api`** with migration `0100`. The web app no longer recomputes valuations on start; the worker does.
 
