@@ -8,7 +8,7 @@ const variantClasses: Record<BadgeVariant, string> = {
   danger:  "bg-danger/15 text-danger-text ring-danger/30",
   info:    "bg-accent/15 text-accent ring-accent/30",
   neutral: "bg-text-muted/15 text-text-muted ring-text-muted/30",
-  // "Whose move" states (docs/design_handoff_transferx/README.md) — plain
+  // "Whose move" states (docs/design-system/README.md) — plain
   // coloured text, no pill background/ring, per SCREENS.md's row treatment.
   "move-your":     "text-danger-text font-semibold",
   "move-their":    "text-text-secondary font-semibold",

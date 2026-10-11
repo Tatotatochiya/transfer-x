@@ -1,61 +1,91 @@
 ---
 title: "Data Model"
-last_updated: 2026-08-08
-status: Draft
-owner: "TODO — assign a Technical Lead"
+last_updated: 2026-10-11
+status: Active
+owner: "TODO — assign a Technical Owner"
 ---
 
 # Data Model
 
 ## Purpose
 
-Documents TransferX's core entities and how they relate to each other. This is the technical counterpart to [`../business/glossary.md`](../business/glossary.md) — that document defines terms in plain language; this one defines them as data.
+TransferX's entities, which module owns each, and how the core ones relate. The technical counterpart to [`../business/glossary.md`](../business/glossary.md).
 
 ## Scope
 
-In scope: core entity list and relationships.
-Out of scope: full column-level schema (the migrations under `backend/migrations/versions/` are the source of truth for that), business definitions of these terms (see [`../business/glossary.md`](../business/glossary.md)).
+In scope: entities and relationships.
+Out of scope: column-level schema (the migrations in `backend/migrations/versions/` are the source of truth) and business definitions (the glossary).
 
 ## Table of Contents
 
-- [Core entities](#core-entities)
-- [Diagram](#diagram)
+- [Entities by module](#entities-by-module)
+- [Core relationships](#core-relationships)
+- [Rules worth knowing](#rules-worth-knowing)
 - [Related documents](#related-documents)
 
-## Core entities
+## Entities by module
 
-| Entity | Owned by module | Notes |
-|---|---|---|
-| `User` | `auth` | Base account; typed as Club / Agent / Player / Staff / Admin |
-| `Club`, `ClubFinance`, `ClubStaff` | `clubs` | Club profile and budget tracking (reserved/committed/spent); `ClubFinance.approval_threshold` (null = approvals off); `ClubStaff.role` is one of four staff roles (TRA-151) |
-| `ClubStaffInvitation` | `clubs` | Tokenised staff invitation (TRA-86): sha256 `token_hash` only — the raw token is never stored; expires/revoked/accepted timestamps make it single-use |
-| `PendingApproval` | `approvals` | A captured money action awaiting sign-off (Phase 5): validated `payload_json` replayed at execution, requester + decider both recorded, one-way status machine |
-| `Player`, `Contract` | `players` | Player record and contract history |
-| `Sale`, `Bid` | `sales` | Listings and auction bids |
-| `Offer` | `offers` | Direct offers and counters |
-| `Deal`, `DealClause`, `DealInstalment`, `PersonalTerms`, `MedicalCheck` | `deals` | Deal lifecycle and its sub-records |
-| `AgentProfile`, `Mandate`, `AgentNegotiation` | `agents` / `mandates` | Agent representation and negotiation |
-| `Notification` | `notifications` | In-app/email notifications |
-| `AuditEvent` | `audit` | Append-only audit trail |
-| `PlayerValuation` | `valuation` | Append-only fair-value model history (TRA-91); latest = max `computed_at` per player; `inputs_json` snapshots every input so any historical number is explainable |
-| `PlayerStats`, `PlayerStatsSnapshot`, `PlayerForm` | `stats` | Per-league/season stats, raw vendor payload snapshots, and computed form score — all vendor-sourced (API-Football) |
-| `VendorSyncState`, `VendorSyncRun` | `stats` | `VendorSyncState` is one row per vendor holding only the latest sync outcome; `VendorSyncRun` (added 2026-08-08) is the append-only per-invocation history — params, result counts, success/error, who triggered it, timing — for every `sync_league`/`sync_team`/`sync_player`/`compute_form` call |
+Verified against `backend/app/*/models.py` on 2026-10-11.
 
-> **TODO:** This table is a starting point, not exhaustive. Expand it as entities are added, and correct it if any entry above is inaccurate — verify against `backend/app/*/models.py` rather than assuming.
+| Module | Entities |
+|---|---|
+| `auth` | `User`, `RefreshToken` (sessions and signed-in devices), `PasswordResetToken`, `AgentProfile`, `PlayerProfile` |
+| `clubs` | `Club`, `ClubFinance` (budget: reserved, committed, spent; approval thresholds), `ClubStaff`, `ClubInvitation`, `ClubStaffInvitation`, `PlayerInvitation`, `PlayerSearchView` |
+| `players` | `Player`, `Contract`, `PlayerTransfer` (history), `PlayerInjury`, `PlayerView` (profile views, counts per club per day) |
+| `sales` | `Sale` (a listing), `Bid`, `SaleEvent` |
+| `offers` | `Offer` (permanent or loan, possibly anonymous), `OfferMessage`, `OfferEvent` |
+| `enquiries` | `Enquiry`, `EnquiryMessage` |
+| `deals` | `Deal`, `DealClause`, `DealInstalment`, `PersonalTerms`, `MedicalCheck`, `DealNote`; the deal room: `DealTermsVersion`, `DealComment`, `DealAttachment` |
+| `loans` | `PlayerLoan` |
+| `agents`, `mandates` | `AgentDealInvitation`, `AgentNegotiation`, `NegotiationMessage`, `AgentCommission`; `Mandate`, `ClientAlert` |
+| `approvals` | `PendingApproval` |
+| `lite` | `UserPreference`, `HeldAction` (sends held for undo), `ActionToken` (decisions from email) |
+| `notifications` | `Notification`, `NotificationPreference`, `PushSubscription`, `PushDelivery` |
+| `scouting` | `Shortlist`, `ShortlistItem`, `PlayerInterest` |
+| `valuation` | `PlayerValuation` (append-only; `inputs_json` replays each value) |
+| `stats` | `PlayerStats` (per competition, season and club), `PlayerStatsSnapshot`, `PlayerForm`, `PlayerInjuryFixture`, `PlayerFixtureRating`, `TeamSeasonFixtures`, `VendorSyncState`, `VendorSyncRun`, `VendorFetchLog` |
+| `world` | `WorldLeague` (the competitions the data refresh syncs, with their current season), `WorldTeam` |
+| `transfer_window` | `TransferWindow` |
+| `verification` | `VerificationRequest` |
+| `ai` | `AssistantQuery` (every question asked), `AISuggestionEvent` |
+| `audit` | `AuditEvent` |
+| `analytics` | `AnalyticsEvent` |
+| `monitoring` | `JobRun`, `JobRunLog`, `ErrorIssue`, `ErrorEvent`, `RequestMinute` |
+| `common` | `SchedulerJobRun` (each in-app job's last run) |
+| `fixtures` | `Fixture` |
 
-## Diagram
+## Core relationships
 
 ```mermaid
 erDiagram
-    TODO {
-        string note "Diagram not yet created"
-    }
+    Club ||--o{ ClubStaff : "has"
+    Club ||--|| ClubFinance : "budget"
+    Club ||--o{ Contract : "employs via"
+    Player ||--o{ Contract : "holds"
+    Player ||--o{ Sale : "listed in"
+    Sale ||--o{ Bid : "receives"
+    Player ||--o{ Offer : "subject of"
+    Offer ||--o| Deal : "accepted into"
+    Bid ||--o| Deal : "accepted into"
+    Deal ||--o| PersonalTerms : "agreed"
+    Deal ||--o{ DealInstalment : "paid in"
+    Deal ||--o| PlayerLoan : "registers"
+    Player ||--o{ Mandate : "represented by"
+    Player ||--o{ PlayerValuation : "valued"
+    Player ||--o{ PlayerStats : "plays"
 ```
 
-> **TODO:** Add an entity-relationship diagram covering the core entities above.
+## Rules worth knowing
+
+- **Ownership.** A player belongs to the club holding his active TransferX `Contract`. Vendor data never overrides that ([ADR 0001](./decisions/0001-vendor-data-never-overrides-transferx-contract.md)).
+- **Status.** `Player.status` tells a free agent apart from a player at a club outside TransferX ([ADR 0003](./decisions/0003-player-status-distinguishes-external-clubs.md)).
+- **Loans.** A loan suspends the parent's contract rather than ending it. The parent stays the owner ([ADR 0005](./decisions/0005-loan-registration-separate-from-ownership.md)).
+- **Money.** Every money action moves `ClubFinance` through reserve, then commit, then spend, under row locks.
+- **One listing.** A player has at most one open listing (a partial unique index).
+- **Append-only.** Valuations and audit events are never updated in place.
 
 ## Related documents
 
-- [`../business/glossary.md`](../business/glossary.md) — plain-language definitions of these entities
-- [`backend-architecture.md`](./backend-architecture.md) — which module owns each entity
-- [`../engineering/database-migrations.md`](../engineering/database-migrations.md) — how the schema evolves over time
+- [`../business/glossary.md`](../business/glossary.md): plain-language definitions
+- [`backend-architecture.md`](./backend-architecture.md): the modules
+- [`../engineering/database-migrations.md`](../engineering/database-migrations.md): how the schema changes

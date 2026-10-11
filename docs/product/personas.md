@@ -1,6 +1,6 @@
 ---
 title: "Personas"
-last_updated: 2026-07-10
+last_updated: 2026-10-11
 status: Draft
 owner: "TODO — assign a Product Owner"
 ---
@@ -42,7 +42,7 @@ Each persona below is grounded in an account type that exists in the product tod
 
 ## Club Staff
 
-**Who they are:** People at a club who are not the club's primary account holder — invited by the owner with one of four roles, each mapping to what that person actually does: **Sporting Director** (deal authority, club admin, decides spending approvals), **Manager** (runs the market and deals day to day; large spends can require approval), **Scout** (shortlists and market views, no bidding), **Read-only** (board member/CEO oversight — sees everything, changes nothing). Distinct from [Platform Admin](#platform-admin): "club staff" work *for a club*; platform admins work *for TransferX*.
+**Who they are:** People at a club who are not the club's primary account holder — invited by the owner with one of four roles, each mapping to what that person actually does: **Sporting Director** (deal authority, club admin, decides spending approvals), **Manager** (runs the market and deals day to day; large spends can require approval), **Scout** (shortlists and market views, no bidding), **Read-only** (board member/CEO oversight — sees everything, changes nothing). A director can switch to **Lite mode**: a big-type interface for deciding on offers, approvals and bids, with a 10-second undo. Distinct from [Platform Admin](#platform-admin): "club staff" work *for a club*; platform admins work *for TransferX*.
 
 > **TODO:** Goals, needs, and pain points per staff role.
 
@@ -54,13 +54,13 @@ Each persona below is grounded in an account type that exists in the product tod
 
 ## Player
 
-**Who they are:** May hold their own account to control profile visibility, express openness to offers, and consent (or not) to personal terms and agent mandates.
+**Who they are:** A player joins only by invitation from the club that holds his contract, or, as a free agent, from TransferX staff or his agent (product ADR 0007). With an account he sees his profile and answers personal terms. His mandated agent can answer for him too. Whether he's available is his club's call, through a listing.
 
 > **TODO:** Goals, needs, and pain points.
 
 ## Platform Admin
 
-**Who they are:** Superuser role with cross-entity oversight and staff-only actions (e.g. progressing certain deal stages, managing verification requests, transfer window administration).
+**Who they are:** TransferX staff (superusers). They start on the admin panel and invite clubs. They oversee every entity, settle disputes such as a contested loan obligation, decide verification requests, and run transfer windows and data syncs. They watch Jobs, Errors and Health. Every change they make is audited with a reason, and they can view a club read-only.
 
 > **TODO:** Goals, needs, and pain points.
 

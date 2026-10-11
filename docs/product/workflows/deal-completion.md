@@ -1,6 +1,6 @@
 ---
 title: "Workflow: Deal Completion"
-last_updated: 2026-07-05
+last_updated: 2026-10-11
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -48,7 +48,7 @@ A deal carries one medical check record: a status and free-text notes, via `PUT 
 - The player's active contract moves to the buying club (a new `Contract` row) on **the personal terms he consented to**: that wage, starting today and ending after the agreed number of years. Before 2026-09-27 the contract took the offer's opening wage and had no end date.
 - The buyer's committed transfer/wage budget converts to spent, including the signing bonus; the seller's finance is credited the agreed fee (or per instalment, as each is marked paid, when there is a schedule).
 - The add-ons' hold on the buyer's budget is released. They were reserved and committed so the club could pay them if they fell due; from completion they are tracked per clause.
-- The player's `open_to_offers` flag is cleared (belongs to the seller's context — the new owner decides fresh).
+- The seller's listing for him is closed, so he is no longer "available" (availability follows listings, product ADR 0005); the new club decides afresh.
 - Any `PENDING` `AgentCommission` for the deal moves to `CONFIRMED` (the agent's commission is due, but not yet invoiced or paid — see [`agent-representation.md`](./agent-representation.md)).
 - A `DEAL_COMPLETED` event is recorded in the deal's audit log (see [`../../architecture/data-model.md`](../../architecture/data-model.md) for the audit-log schema).
 
@@ -56,10 +56,15 @@ A deal carries one medical check record: a status and free-text notes, via `PUT 
 
 ```mermaid
 flowchart LR
-    TODO[Diagram not yet created]
+    P[PAPERWORK] --> S1[Buyer signs]
+    P --> S2[Seller signs]
+    P --> M{Medical}
+    M -->|passed| M1[Medical recorded]
+    M -->|failed| X[Blocked until a new result, or collapse]
+    P --> R[Buyer submits registration]
+    S1 & S2 & M1 & R --> C[CONFIRMED]
+    C -->|Execute transfer| D[COMPLETED: contract, money, commission]
 ```
-
-> **TODO:** Add a diagram of the paperwork → confirmed → completed sequence, including the medical-check gate.
 
 ## Related documents
 

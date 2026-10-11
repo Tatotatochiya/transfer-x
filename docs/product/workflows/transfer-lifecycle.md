@@ -1,6 +1,6 @@
 ---
 title: "Workflow: Transfer Lifecycle"
-last_updated: 2026-07-04
+last_updated: 2026-10-11
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -39,7 +39,7 @@ A transfer begins with a selling club listing a player (see [`negotiation-and-of
 | `PAPERWORK` | The clubs' checklist: each signs the transfer agreement, and the buying club records a passed medical and submits the registration. The last step confirms the deal; staff can override. See [`deal-completion.md`](./deal-completion.md). |
 | `CONFIRMED` | Paperwork complete; ready for the transfer to be executed. |
 | `COMPLETED` | The transfer is finalized. For a **permanent** deal the player's contract moves to the buying club. For a **loan** the registration moves but ownership does not — see [Deal types](#deal-types) below. |
-| `COLLAPSED` | Terminal state reachable from most stages if either party withdraws or a required consent is declined. |
+| `COLLAPSED` | A deal status rather than a stage: any deal not yet completed can collapse, when either party withdraws or a required consent is declined. Reserved money is released. |
 
 > **TODO:** Keep this table in sync with the actual stage machine as it evolves — see [`../../architecture/data-model.md`](../../architecture/data-model.md) for the authoritative technical definition.
 
@@ -65,18 +65,29 @@ What this means in workflow terms:
 - **During the loan** the player is in the loanee's squad and on their wage bill (their agreed share of it), but the **parent club is the only one who can sell him**. The loanee is refused.
 - **A loan ends** by running to its end date (a daily job returns the player automatically, with both clubs warned two weeks ahead), by an early **recall** if the terms allowed one, or by the player being bought — see below.
 - **If the parent sells him mid-loan**, the loan terminates when that sale completes. Blocking the sale instead would make a loaned player unsellable for up to a year.
-- **An obligation to buy** fires by itself at expiry, creating an ordinary permanent deal at the agreed price. **An option to buy** never fires by itself — the loanee has to exercise it. Either way the resulting deal passes the normal budget, medical and paperwork gates: the price was agreed when the loan was, the ability to pay it today was not.
+- **An obligation to buy** creates an ordinary permanent deal at the agreed price at expiry. If it has conditions, both clubs confirm them first: both say met and it converts; both say not met and the player returns; if they disagree, TransferX staff settle it with a reason both clubs see. **An option to buy** never fires by itself — the loanee has to exercise it (approval-gated like any spend). Either way the resulting deal passes the normal budget, medical and paperwork gates: the price was agreed when the loan was, the ability to pay it today was not.
 
 Full specification, including the wage-split model and the decisions log: [`../../feature_spec/loan-transfers.md`](../../feature_spec/loan-transfers.md).
 
 ## Diagram
 
 ```mermaid
-flowchart LR
-    TODO[Diagram not yet created]
+stateDiagram-v2
+    [*] --> AGREEMENT: offer or bid accepted
+    AGREEMENT --> AGENT_NEGOTIATION: player has an active mandate
+    AGREEMENT --> PERSONAL_TERMS: no mandate
+    AGENT_NEGOTIATION --> PERSONAL_TERMS: commission agreed
+    PERSONAL_TERMS --> PAPERWORK: player (or agent / buying club) consents
+    PAPERWORK --> CONFIRMED: checklist complete
+    CONFIRMED --> COMPLETED: transfer executed
+    AGREEMENT --> COLLAPSED
+    AGENT_NEGOTIATION --> COLLAPSED
+    PERSONAL_TERMS --> COLLAPSED
+    PAPERWORK --> COLLAPSED
+    CONFIRMED --> COLLAPSED
+    COMPLETED --> [*]
+    COLLAPSED --> [*]
 ```
-
-> **TODO:** Add a state diagram showing the stage transitions above, including which stages can lead to `COLLAPSED`.
 
 ## Related documents
 

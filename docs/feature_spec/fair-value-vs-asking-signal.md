@@ -1,7 +1,7 @@
 ---
 title: "Feature Spec: Fair-Value-vs-Asking Signal (TRA-91 / TRA-92)"
-last_updated: 2026-07-07
-status: Implemented
+last_updated: 2026-10-11
+status: Implemented 2026-07-07; the engine was replaced by market-v2 on 2026-10-07 (signal, endpoints and rules unchanged)
 owner: "TODO — assign a Product Owner"
 ---
 

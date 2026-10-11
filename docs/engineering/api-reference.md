@@ -1,57 +1,65 @@
 ---
 title: "API Reference"
-last_updated: 2026-08-11
+last_updated: 2026-10-11
 status: Active
-owner: "TODO — assign a Technical Lead"
+owner: "TODO — assign a Technical Owner"
 ---
 
 # API Reference
 
 ## Purpose
 
-Points to where the authoritative API reference lives, and gives a navigational map of router prefixes. The API reference itself is **not duplicated here** — FastAPI generates it automatically from the code, which is the only way it can never go stale.
+Where the authoritative API reference lives, and a map of URL prefixes to modules. Endpoints aren't listed by hand: FastAPI generates the reference from the code, so it can't go stale.
 
 ## Scope
 
-In scope: where to find the live API reference, and a prefix-to-module map for navigation.
-Out of scope: a hand-maintained list of endpoints (this would immediately duplicate, and drift from, the auto-generated reference).
+In scope: the live reference and a prefix map.
+Out of scope: a hand-kept endpoint list.
 
 ## Table of Contents
 
 - [Live reference](#live-reference)
-- [Router prefix map](#router-prefix-map)
+- [Prefix map](#prefix-map)
 - [Related documents](#related-documents)
 
 ## Live reference
 
-Running locally, the interactive Swagger UI is available at `http://localhost:8001/docs` (see [`getting-started.md`](./getting-started.md)). This is always current, since FastAPI generates it directly from the route definitions.
+Swagger UI at `http://localhost:8001/docs` locally, and the raw schema at `/openapi.json`.
 
-## Router prefix map
+## Prefix map
+
+Verified against the router mounts in `backend/app/main.py` on 2026-10-11.
 
 | Prefix | Module |
 |---|---|
-| `/auth` | Authentication |
-| `/clubs` | Club profiles, staff, finance |
-| `/players` | Player records, contracts |
-| `/sales` | Listings, bids |
-| `/offers` | Direct offers |
-| `/deals` | Deal lifecycle, deal room |
-| `/agents` | Agent profiles, invitations, negotiation |
-| `/mandates` | Agent–player mandates |
-| `/notifications` | In-app/email notifications |
-| `/admin` | Superuser administration |
-| `/ws` | WebSocket real-time updates |
-| `/valuation` | Fair-value model valuations (TRA-91) — single/batch reads, staff recompute |
-| `/clubs/me/membership`, `/clubs/me/staff` | Club role/capability membership (TRA-151) + owner team management & invitations (TRA-86) |
-| `/auth/invitations/{token}` | Public staff-invitation preview + accept (single-use tokenised link) |
-| `/clubs/me/approvals`, `/clubs/me/approval-policy` | Spending-authority approvals: queue, decisions, threshold policy |
-| `/clubs/me/dashboard` | "Waiting on you" aggregate across offers/deals/sales/approvals (`dashboard` module, B2) |
-| `/clubs/me/commitments` | Row-level breakdown of committed/reserved budget (`clubs` module, B5) |
-| `/clubs/me/contract-cliff` | Windowed contract-expiry aggregation with value-at-risk (`clubs` module, B6) — separate from `/clubs/me/expiring-contracts`' flat list |
-
-> **TODO:** Complete this table against the current router mounts in `backend/app/main.py` — this is a starting point, not verified exhaustive as of this writing.
+| `/auth` | Sign-in, refresh, sessions and devices, invitations (`/auth/invitations/{token}`), password reset, account data |
+| `/users/me/preferences` | Lite and display preferences (`lite`) |
+| `/clubs` | Clubs, `/clubs/me/*` (membership, staff, finance, commitments, contract cliff, squad check, dashboard, approvals and the approval policy) |
+| `/players` | Players, the market, contracts, ledger, invitations; batch stats and form under `/players/stats/batch` and `/players/form/batch` |
+| `/sales` | Listings and bids |
+| `/offers` | Offers, counters, messages, the order book |
+| `/enquiries` | Enquiries |
+| `/deals` | Deals, the deal room, paperwork, personal terms, audit log |
+| `/transfers` | Public transfer activity; `/transfers/window` for transfer windows |
+| `/loans` | Loans (also under `/clubs/me/loans` and `/admin/loans`) |
+| `/board` | The Transfers board |
+| `/conversation` | One conversation per transfer |
+| `/lite` | Lite home, buy flow, offer cards, held sends, team contact, email confirmations |
+| `/ai` | The assistant, Ask TransferX (`/ai/ask`), the analyst (`/ai/analyst`, `/ai/analyst/export`) |
+| `/valuation` | Fair-value reads and staff recompute |
+| `/agents`, `/mandates`, `/negotiations` | Agents, mandates, agent negotiation messages |
+| `/scouting` | Shortlists and interest |
+| `/notifications` | Notifications, preferences, push subscriptions |
+| `/verification` | Verification requests |
+| `/world`, `/fixtures`, `/stats`, `/vendor` | Reference data, fixtures, stats, API-Football syncs |
+| `/fx` | Exchange rates for display |
+| `/search` | Global search |
+| `/analytics` | Usage events |
+| `/admin` | Staff administration, including `/admin/jobs`, `/admin/errors` and `/admin/health` |
+| `/monitoring/client-errors` | Browser error reports |
+| `/health` | Liveness check |
+| `/ws` | WebSocket |
 
 ## Related documents
 
-- [`../architecture/backend-architecture.md`](../architecture/backend-architecture.md) — what each module is responsible for
-- [`getting-started.md`](./getting-started.md) — how to run the backend locally to access the live reference
+- [`../architecture/backend-architecture.md`](../architecture/backend-architecture.md): what each module owns

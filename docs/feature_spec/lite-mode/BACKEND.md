@@ -1,7 +1,7 @@
 ---
 title: "Lite Mode — Backend Changes"
-last_updated: 2026-09-29
-status: Active
+last_updated: 2026-10-11
+status: Implemented 2026-10-04 (L1–L8)
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -91,7 +91,7 @@ Use the next free Alembic revision after the current head (`0084` at the time of
 - **Reason:** one line each. If a model is available and the user's allowance allows, the model writes it from the computed facts; otherwise a plain reason ("You have 2 defenders; he's 24 and priced at £6m"). Cached, so going back and forth costs nothing.
 - Anonymous buyers do not appear here (these are players, not offers), but a masked club name never leaks through any reason text.
 
-> **As built (L3):** price is the asking price, else the fee model with the pricing assistant's 30% contract-ending discount; comparable transfers are left out, since they need a model call. Ranking uses need, listed-first, age fit and price; there is no form data yet. `GET /lite/buy/squad` returns the per-position counts shown on the first step. See `SESSIONS.md`, "Deviations in L3".
+> **As built (L3):** price is the asking price, else the fee model with the pricing assistant's 30% contract-ending discount; comparable transfers are left out, since they need a model call. Ranking uses need, listed-first, age fit and price; there is no form data yet. `GET /lite/buy/squad` returns the per-position counts shown on the first step. See README.md, "Deviations from the spec".
 
 ## 3. Ask anything: extend `ask()`
 

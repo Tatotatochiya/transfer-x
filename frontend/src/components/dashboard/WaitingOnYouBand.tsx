@@ -32,7 +32,7 @@ function DeadlineValue({ deadline }: { deadline: string | null }) {
 
 /**
  * Tier-1 "waiting on you" band — same treatment on every club-facing screen
- * per docs/design_handoff_transferx/CLAUDE.md rule 2. Shared by the club and
+ * per docs/design-system/RULES.md rule 2. Shared by the club and
  * agent dashboards; screens whose Tier-1 row shape differs (e.g. Offer inbox's
  * dual offer/valuation amounts) build their own row but should still open with
  * this same header-bar + empty-state chrome.

@@ -1,11 +1,15 @@
+---
+title: "Responsive Behaviour"
+last_updated: 2026-10-11
+status: Active
+owner: "TODO — assign a Design Owner"
+---
+
 # Responsive behaviour
 
-The current app is desktop-only in practice: below about 1000px the dashboard becomes a long
-scroll of small panels and the tables clip. Every screen in this redesign must work on phone,
-tablet and desktop.
-
-**Read this before building any screen.** Responsive rules are not a pass at the end — the
-component structure has to allow for them from the first commit.
+Every screen must work on phone, tablet and desktop. **Read this before building a screen.**
+Responsive rules aren't a pass at the end: the component structure has to allow for them from
+the first commit.
 
 ## Breakpoints
 

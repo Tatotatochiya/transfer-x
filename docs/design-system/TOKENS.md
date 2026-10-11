@@ -1,8 +1,15 @@
+---
+title: "Design Tokens"
+last_updated: 2026-10-11
+status: Active
+owner: "TODO — assign a Design Owner"
+---
+
 # Design tokens
 
-The project uses **Tailwind CSS v4**, so tokens belong in an `@theme` block in
-`frontend/src/index.css`, not in a `tailwind.config.js`. The existing file already declares a
-handful of CSS variables for the old dark theme — replace them wholesale.
+The project uses **Tailwind CSS v4**, so tokens live in the `@theme` block in
+`frontend/src/index.css` (there is no `tailwind.config.js`). This file specifies the light theme;
+`index.css` also carries a dark set that overrides every token.
 
 Several colours were authored in `oklch()`. The hex equivalents below are exact conversions.
 **Use the hex values** — they are what the design renders as, and they avoid browser

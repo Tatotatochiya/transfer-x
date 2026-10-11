@@ -2,7 +2,7 @@
 """
 Generate demo scenarios for TransferX — deals parked at every lifecycle stage.
 
-Closes DEMO_READINESS_AUDIT C1 (no deal is in a demonstrable in-progress stage).
+Closes the August 2026 demo audit's C1 (no deal was in a demonstrable in-progress stage).
 See docs/feature_spec/demo-scenario-generator.md for the full specification.
 
 Every scenario is built by calling the same service functions the API calls, in

@@ -14,7 +14,7 @@ TransferX notifications today are in-app (bell plus a WebSocket `NOTIFICATION` r
 
 ## About the design files
 
-`TransferX - Mobile Notifications.dc.html` is a **design reference built in HTML**. Open it in a browser. Don't ship it. Rebuild it in the existing frontend (React 19, Vite, Tailwind 4, TanStack Query, `components/ui/*`) and backend (FastAPI, SQLAlchemy async, APScheduler, Alembic), following their existing patterns.
+> The HTML design reference (and its `support.js` runtime) was removed on 2026-10-11 once this shipped; it is in git history. The text below is the spec. Rebuild it in the existing frontend (React 19, Vite, Tailwind 4, TanStack Query, `components/ui/*`) and backend (FastAPI, SQLAlchemy async, APScheduler, Alembic), following their existing patterns.
 
 The canvas has five sections:
 
@@ -346,7 +346,7 @@ type PushState =
 - If `PushState` is `needs-install`, show the 5b entry point. If `unsupported`, show: "This browser can't show notifications. You'll still get email."
 - In the per-type table, add a third column, **Push**, next to In-app and Email, using the same `MiniToggle`. For FYI types, the Push toggle is disabled, with the tooltip "Included in the morning summary".
 
-### 7.4 Tier colours (tokens from `design_handoff_transferx/TOKENS.md`)
+### 7.4 Tier colours (tokens from `design-system/TOKENS.md`)
 
 - Your move: `--color-danger` (`#c53637`)
 - Heads-up: amber (`oklch(70% 0.15 70)` in the mock). Use the app's warning token if one exists.
@@ -400,5 +400,4 @@ Write an `AuditEvent` for each of these:
 
 ## Files
 
-- `TransferX - Mobile Notifications.dc.html`: the design reference (sections 1–5). Open it in a browser. It needs `support.js` next to it.
-- Related: `design_handoff_lite_mode/` (email decisions, held actions and undo, the money block) and `design_handoff_transferx/TOKENS.md` (colour tokens).
+- Related: [`../lite-mode/`](../lite-mode/README.md) (email decisions, held actions and undo, the money block) and `design-system/TOKENS.md` (colour tokens).

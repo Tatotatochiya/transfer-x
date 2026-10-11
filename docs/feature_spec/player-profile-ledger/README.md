@@ -1,13 +1,13 @@
 ---
 title: "Player Profile v2: Season Ledger"
-last_updated: 2026-10-01
-status: Active
+last_updated: 2026-10-11
+status: Implemented 2026-10-01 (P1–P4)
 owner: "TODO — assign a Product Owner"
 ---
 
 # Player Profile v2: Season Ledger
 
-The design handoff is [`HANDOFF.md`](./HANDOFF.md), with the HTML reference and `screenshots/`. This file holds the build plan and the product owner's decisions, which override the handoff where they disagree.
+The design handoff is [`HANDOFF.md`](./HANDOFF.md). This file holds the build plan and the product owner's decisions, which override the handoff where they disagree.
 
 ## Decisions (product owner, 2026-10-01)
 

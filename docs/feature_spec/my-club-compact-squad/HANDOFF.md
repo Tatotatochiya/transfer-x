@@ -15,12 +15,14 @@ Two smaller changes on the same tab:
 - The right-hand rail drops below the table when the viewport is narrow.
 
 ## About the design file
-`TransferX - My Club Squad Compact.dc.html` is a **design reference built in HTML**, not production code. Open it in a browser to try it:
+> The HTML design reference (and its `support.js` runtime) was removed on 2026-10-11 once this shipped; it is in git history. The text below is the spec.
+
+The reference showed:
 - The chips filter the list.
 - Clicking a value under "Yours" edits it inline.
 - The Tweaks panel has `density` (Compact / Comfortable).
 
-Rebuild it in the existing React + Tailwind v4 frontend using the semantic tokens already in `index.css` (see `design_handoff_transferx/TOKENS.md`). The mock uses light-theme hex values. **Use the token classes, not the hex values**, so dark mode keeps working.
+Rebuild it in the existing React + Tailwind v4 frontend using the semantic tokens already in `index.css` (see `design-system/TOKENS.md`). The mock uses light-theme hex values. **Use the token classes, not the hex values**, so dark mode keeps working.
 
 The mock data is invented. The live page also renders `TopPerformers` above the list; that is out of scope here, so leave it where it is.
 
@@ -185,5 +187,3 @@ Rows are 40px. On touch devices (`@media (pointer: coarse)`), use the comfortabl
 
 ## Files in this folder
 - `README.md`: this spec.
-- `TransferX - My Club Squad Compact.dc.html`: the interactive design reference.
-- `support.js`: the runtime the reference needs to open in a browser.

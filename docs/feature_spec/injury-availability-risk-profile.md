@@ -1,7 +1,7 @@
 ---
 title: "Feature Spec: Injury-Availability Risk Profile"
-last_updated: 2026-07-05
-status: Active
+last_updated: 2026-10-11
+status: Not built as specified; availability per season is on the player ledger and in the valuation model
 owner: "TODO — assign a Product Owner"
 ---
 

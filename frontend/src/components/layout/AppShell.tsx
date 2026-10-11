@@ -54,7 +54,7 @@ export default function AppShell({ children }: AppShellProps) {
     <div className="min-h-screen bg-page">
       {viewedBy && <ViewAsBanner />}
       {/* Sticky top app bar — tablet and mobile only (<1024px), per
-          docs/design_handoff_transferx/RESPONSIVE.md */}
+          docs/design-system/RESPONSIVE.md */}
       <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-surface px-3 lg:hidden">
         <button
           type="button"

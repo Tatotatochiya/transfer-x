@@ -11,7 +11,9 @@ The new layout:
 The ledger is built to scale. New stats become another column set (a segmented tab), so they never add another layout block.
 
 ## About the design files
-`TransferX - Player Profile v2 Ledger.dc.html` is a **design reference built in HTML**. It shows the intended look and behaviour and is not production code. Rebuild it in the existing TransferX frontend (React + Tailwind, dark theme) using the components and patterns already there (`Badge.tsx`, `Icon.tsx`, `AppShell`, `Sidebar`). Open the file in a browser to try it. Its Tweaks panel switches `viewer` (Buying club / Own player / Agent) and `showDealBanner`.
+> The HTML design reference (and its `support.js` runtime) was removed on 2026-10-11 once this shipped; it is in git history. The text below is the spec. The screenshots were removed too.
+
+The design reference was built in HTML. It shows the intended look and behaviour and is not production code. Rebuild it in the existing TransferX frontend (React + Tailwind, dark theme) using the components and patterns already there (`Badge.tsx`, `Icon.tsx`, `AppShell`, `Sidebar`). Open the file in a browser to try it. Its Tweaks panel switches `viewer` (Buying club / Own player / Agent) and `showDealBanner`.
 
 All data in the mock is invented.
 
@@ -257,12 +259,4 @@ Per player:
 - **Borders:** use `box-shadow: 0 0 0 1px …` rings, not borders, so layout doesn't shift.
 
 ## Files
-- `TransferX - Player Profile v2 Ledger.dc.html`: the design reference. Its logic block holds the full mock dataset and the aggregation and column-set definitions (`SETS`, `agg()`), which you can copy as a spec.
-- `support.js`: the runtime needed to open the reference file in a browser.
-- `screenshots/`: captured at 60% zoom. Minor text wrapping is a capture artefact; trust the spec values.
-  - `01–03`: Buying club · Overview · Output / Passing / Defending
-  - `04`: Buying club · Career (transfer event rows)
-  - `05`: Buying club · Medical (summary tiles + injury sub-rows)
-  - `06`: Own club (Listed/offers pills, Club valuation fact, Offers / Player account / Potential buyers panels)
-  - `07`: Agent (Representation panel)
-  - `08`: Deal-in-progress banner + AI fit score result state
+- The HTML reference, its runtime and the screenshots are in git history (removed 2026-10-11).

@@ -1,47 +1,68 @@
 ---
 title: "Testing Strategy"
-last_updated: 2026-07-04
-status: Draft
-owner: "TODO — assign a Technical Lead"
+last_updated: 2026-10-11
+status: Active
+owner: "TODO — assign a Technical Owner"
 ---
 
 # Testing Strategy
 
 ## Purpose
 
-Describes how testing works in TransferX and what's currently covered.
+How TransferX is tested, how to run the tests, and where the suites stand.
 
 ## Scope
 
-In scope: test frameworks in use, how to run tests, and current coverage state.
-Out of scope: CI/CD pipeline configuration (see [`../operations/`](../operations/README.md) once one exists).
+In scope: frameworks, conventions, commands, current totals.
+Out of scope: CI (there is none yet).
 
 ## Table of Contents
 
-- [Backend testing](#backend-testing)
-- [Frontend testing](#frontend-testing)
-- [Current coverage](#current-coverage)
+- [Backend](#backend)
+- [Frontend](#frontend)
+- [Beyond the suites](#beyond-the-suites)
+- [Current totals](#current-totals)
 - [Related documents](#related-documents)
 
-## Backend testing
+## Backend
 
-Pytest. Test files live under `backend/tests/`.
+**Framework.** Pytest with pytest-asyncio, in `backend/tests/` (70 files). Each test gets a fresh in-memory SQLite database built from the models (`tests/conftest.py`).
 
-> **TODO:** Document test database strategy (e.g. SQLite vs. Postgres for tests), fixtures conventions, and how to run a single test vs. the full suite.
+**Fixtures** register clubs through the API, and superusers are made by flagging a registered user. Self-registration is switched on for tests only.
 
-## Frontend testing
+**No outside calls.** Tests never call API-Football, a model, Slack, push or exchange rates: `conftest.py` blanks those settings, and tests that need them use fakes (e.g. a scripted `chat_with_tools`, a fake API client).
 
-Vitest + Testing Library + MSW (for API mocking). Test files live alongside components as `*.test.tsx` / `*.test.ts`.
+**Monitoring writes** (job runs, errors) are pointed at the test database, or at nothing, by an autouse fixture. They never reach a real database.
 
-> **TODO:** Document conventions for what should be unit-tested vs. left to manual verification.
+```bash
+docker compose exec -T api python -m pytest -q -p no:warnings                 # full suite, about 14 minutes
+docker compose exec -T api python -m pytest -q tests/test_offers.py -k accept # one file or test
+```
 
-## Current coverage
+**Not covered by SQLite:** row locks (verified against Postgres by hand) and migrations (see [database-migrations](./database-migrations.md#gotchas)).
 
-As a rough, point-in-time indicator (verify before relying on this): 19 backend test files (274 tests passing), 8 frontend test files.
+## Frontend
 
-> **TODO:** This is not a coverage percentage and shouldn't be read as one — replace with real coverage tooling output if/when that's set up.
+**Framework.** Vitest with Testing Library, files beside the code as `*.test.ts(x)`. `src/test/utils.tsx` renders with the providers. Most tests mock `lib/api` directly; MSW is installed.
+
+**Commands:**
+- `npx tsc -b` is the type check, and part of the build. Use `-b`: plain `tsc --noEmit` checks nothing in this project.
+- `npx vitest run` runs the tests.
+
+## Beyond the suites
+
+- **AI analyst evaluation:** `backend/scripts/analyst_eval.py`, 72 questions against the real model. It costs model calls, so it's not run in tests.
+- **Browser checks:** changes to UI are checked in a real browser against the running stack before shipping.
+- **Valuation calibration:** `scripts/valuation_archetypes.py` and `scripts/valuation_backtest.py`.
+
+## Current totals
+
+As of 2026-10-11:
+- **Backend:** 877 passed.
+- **Frontend:** vitest 250 passed.
+- **Type check:** `tsc -b` has 0 errors.
 
 ## Related documents
 
-- [`coding-standards.md`](./coding-standards.md) — conventions the tests should enforce
-- [`../architecture/README.md`](../architecture/README.md) — the system these tests verify
+- [`coding-standards.md`](./coding-standards.md)
+- [`database-migrations.md`](./database-migrations.md)

@@ -1,7 +1,7 @@
 ---
 title: "Mobile notifications (Web Push)"
-last_updated: 2026-10-02
-status: Active
+last_updated: 2026-10-11
+status: Implemented 2026-10-04 (phases 1–4 and follow-ups)
 owner: "TODO — assign a Product Owner"
 ---
 

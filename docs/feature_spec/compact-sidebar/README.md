@@ -1,7 +1,7 @@
 ---
 title: "Compact sidebar"
-last_updated: 2026-10-02
-status: Active
+last_updated: 2026-10-11
+status: Implemented 2026-10-02
 owner: "TODO — assign a Product Owner"
 ---
 

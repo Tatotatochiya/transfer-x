@@ -20,7 +20,9 @@ Where the height goes today, and what changes:
 
 ## About the design files
 
-`TransferX - Navigation Options.dc.html` is a design reference built in HTML, not production code. Open it in a browser and look at section **1a**, which shows the laptop view at 1440 × 790 (cropped) with the account menu open, and the iPad drawer. Sections **Now**, 1b and 1c are context only.
+> The HTML design reference (and its `support.js` runtime) was removed on 2026-10-11 once this shipped; it is in git history. The text below is the spec.
+
+The chosen option was **1a**, which shows the laptop view at 1440 × 790 (cropped) with the account menu open, and the iPad drawer. Sections **Now**, 1b and 1c are context only.
 
 Rebuild it in the existing `Sidebar.tsx` with the existing Tailwind tokens, `Icon` and `Avatar`. Don't copy the mock's hex values. The mock uses grey squares where the real `Icon` glyphs go.
 
@@ -195,7 +197,7 @@ Both themes must work, so use the tokens, not these hex values.
 
 ## 8. Docs
 
-Update `docs/design_handoff_transferx/RESPONSIVE.md` under **Navigation**:
+Update `docs/design-system/RESPONSIVE.md` under **Navigation**:
 
 - Desktop rows are 32px.
 - Notifications is a bell in the logo row.
@@ -205,5 +207,4 @@ The "no icon-only rail" rule stays.
 
 ## Files
 
-- `TransferX - Navigation Options.dc.html`: the design reference. Section 1a is the chosen option. It needs `support.js` next to it.
 - Source to change: `frontend/src/components/layout/Sidebar.tsx` and `frontend/src/components/layout/AppShell.tsx`. Reference for the menu pattern: `frontend/src/components/lite/LiteLayout.tsx` (`ProfileMenu`).

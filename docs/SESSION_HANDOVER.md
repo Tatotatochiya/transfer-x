@@ -1,6 +1,6 @@
 ---
 title: "Session Handover"
-last_updated: 2026-09-28
+last_updated: 2026-10-11
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -9,120 +9,77 @@ owner: "TODO — assign a Documentation Owner"
 
 ## Purpose
 
-The single, current handover note between one working session and the next — human or Claude. Read this at the start of every session, right after [`PRODUCT_SPEC.md`](./PRODUCT_SPEC.md).
+The single, current handover note between one working session and the next, human or Claude. Read it at the start of every session, right after [`PRODUCT_SPEC.md`](./PRODUCT_SPEC.md).
 
 ## Scope
 
-In scope: the most recent session's summary — what's in motion right now.
-Out of scope: full project history (see [`CHANGELOG.md`](./CHANGELOG.md)); this file is not a log.
+In scope: the latest session's summary, what's in motion now.
+Out of scope: history ([`CHANGELOG.md`](./CHANGELOG.md)). This file is overwritten, not appended to.
 
 ## How this file works
 
-This file is **overwritten**, not appended to, at the end of each session — maintained by the [`session-lifecycle`](../.claude/skills/session-lifecycle/SKILL.md) skill. It should always contain exactly one thing: the latest session's summary. If you want history, `CHANGELOG.md` has it; this file only needs to answer "what does the next session need to know right now."
+Overwritten at the end of each session by the [`session-lifecycle`](../.claude/skills/session-lifecycle/SKILL.md) skill. It holds exactly one thing: the latest summary.
 
 ## Latest Session Summary
 
-## Session Summary — 2026-09-28
+## Session Summary — 2026-10-11
 
-**Where the work is.**
-- Branch **`username-login-premier-league`**, **uncommitted**, stacked on PR #9's branch because it needs migrations `0083`–`0084`. It holds username sign-in and the Premier League onboarding script (already run locally: all 20 clubs now on TransferX).
-- PR #9 (`free-agents-obligations-contracts`, open), off `main` after PR #8, **uncommitted**. It holds:
-  - free-agent invitations by staff or agent (migration `0083`);
-  - conditional obligations confirmed by both clubs (migration `0084`);
-  - TransferX staff settling a conditional obligation the clubs dispute;
-  - the mock contract end dates script and the player-status repair (13 players to FREE_AGENT), both already run locally.
-- The local database is at migration head `0084`.
-- `gh` is authenticated on this machine, so pushing and opening PRs work from here.
-- Commits are authored per command as `Tatotatochiya <aashishpradhan@outlook.com>`, because this machine has no git identity configured.
+**Where things are**
+- **Code:** `main` holds everything; PRs #31–#38 were merged this session. The docs review is on branch `docs-review`.
+- **Railway** (project `ravishing-laughter`, production):
+  - deploys `main` automatically;
+  - is at migration `0100`;
+  - runs `backend`, `frontend`, `Postgres` and the new `stats-worker` (cron 17:00 and 22:00 UK).
+- **Local tooling:**
+  - The Railway CLI is installed at `~/.local/bin/railway` and linked to the project.
+  - `gh` is authenticated.
+  - Commits are authored per command as `Tatotatochiya <aashishpradhan@outlook.com>`.
+- **Local dev database** is at `0100`. Its competitions were moved to the 2026/27 season by a live refresh.
 
-**Completed work** (PRs #3–#7; detail in [`CHANGELOG.md`](./CHANGELOG.md)):
+**Completed work** (detail in [`CHANGELOG.md`](./CHANGELOG.md)):
+- **AI analyst, phases A and B** (Ask TransferX at `/ask`): 17 read-only, club-scoped tools, charts, Excel export and "Ask about this". Eval 71/72.
+- **Transfers board:** Buying and Selling lanes. **My Club:** "in play" status on squad rows.
+- **Valuation model v2** (`market-v2`), shipped uncalibrated by decision.
+- **Scheduled data refresh** (the `stats-worker`) with Admin Jobs (run logs, live tail, Run refresh now), Errors (grouped issues from API, worker and browsers) and request health. Slack posting is built and waits for a webhook.
+- **Railway setup with the CLI:** the `stats-worker` service and its variables, and `FRONTEND_BASE_URL` on the backend.
+- **Docs review** (this branch):
+  - every main doc rewritten from the code;
+  - the design system moved to `docs/design-system/`;
+  - build-only files removed (prototypes, session plans, screenshots, the August audit, the redesign plan);
+  - open audit findings carried into `IMPLEMENTATION_STATUS.md`;
+  - the root `README.md` rewritten.
 
-- **Deals** (PRs #3–#4):
-  - Terms the player consented to become the deal's contract.
-  - The payment structure (instalments, add-ons, sell-on) is agreed on the offer.
-  - The market has a "buyable" filter, and offers are refused for players at clubs outside TransferX.
-  - Daily digest and "your move" emails, with Mailpit for local mail.
-  - Row locks on the money paths (audit H3 — done).
-  - Club-run paperwork checklist.
-- **Simplify and onboard** (PR #5):
-  - Navigation grouped Home / Buying / Selling / Club.
-  - One kind of listing, and "open to offers" now means listed (product ADR 0005).
-  - One page per transfer.
-  - Clubs join by invitation only (`/join`).
-  - Enquiries.
-- **Clubs complete transfers without staff** (PR #6):
-  - Clubs run deals won at auction themselves.
-  - Honest Personal Terms states.
-  - The buying club records consent for a player with no account or agent (product ADR 0006).
-- **AI assistant across the workflow** (PR #7, architecture ADR 0006):
-  - Offer advisor, terms checks and negotiation summary.
-  - Deal next steps.
-  - Morning briefing on the War Room and in the digest.
-  - Pricing assistant and "Who might want him?".
-  - Ask TransferX (⌘K).
-- **Player accounts by invitation** (branch `player-invitations`, [ADR 0007](./product/decisions/0007-players-join-by-invitation-agents-can-answer.md)):
-  - The owning club invites from the player's page, and `/join/player` creates a verified account.
-  - Player self-registration is refused.
-  - A mandated agent can answer terms whether or not the player has an account.
-  - Club players' profiles no longer offer the refused "Open to offers" switch.
-- **Also in PR #7:**
-  - Anonymous-buyer fixes: the War Room leak, and the label naming a competition (`Club.masking_league`).
-  - Signed terms required when the club records consent (migration `0081`).
-  - 41 new tests.
+**Important decisions** (product owner):
+- Ship valuation v2 before calibration; calibration is a TODO.
+- The refresh runs twice a day (17:00 and 22:00 UK). Valuations are recomputed only after the 22:00 run, and moved out of the web app.
+- Keep jobs, logs and errors inside TransferX (no Cronicle, Healthchecks or Sentry).
+- Refresh all 11 production competitions, cups and club friendlies included.
 
-**Important decisions** (all with the product owner):
+**Outstanding work**
+- **Product owner:**
+  - send the Slack webhook (set `SLACK_WEBHOOK_URL` on `backend` and `stats-worker`);
+  - choose an SMTP provider for Railway;
+  - do the real-phone notification test ([runbook](./feature_spec/phased-plan-2026-q4/phase-0-runbook.md)).
+- **Valuation calibration:** run `scripts/valuation_backtest.py` against production, then tune the anchors and curve ([spec](./feature_spec/valuation-model-v2.md#calibration-archetypes-not-a-backtest)).
+- **Watch the first production refreshes** on Admin → Jobs. The first run moves every competition to 2026/27 and adds cup and friendlies squads.
+- **Known gaps:** see [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md#known-gaps).
 
-- Clubs join by invitation only; `ALLOW_CLUB_SELF_REGISTRATION` exists for tests.
-- Consent for a player with no account and no agent is recorded by the buying club, with the signed terms attached.
-- **Players join only by invitation from their club** (not an agent, and no self-sign-up). A mandated agent can always answer personal terms for his client, even when the player has an account (ADR 0007).
-- The AI advises and never acts: facts are scoped server-side, figures are computed by TransferX, and model output is validated.
-- Swaps are deferred.
+**Risks**
+- **Shared password on Railway:** every Railway account shares one password. Fine for a demo, not for a real club.
+- **Season switch:** players with under 450 minutes in the new season keep their last valuation, so values can lag early in a season.
+- **AI state in memory:** the cache and rate limit need a shared store before a second API process.
+- **Two places run jobs:** the web app (APScheduler) and the `stats-worker`. A long job added to the web app would slow requests; put it in the worker.
 
-**Outstanding work:**
+**Recommended next task**
+- Set the Slack webhook and check the first two production refreshes. Then do valuation calibration against production data.
 
-- **Commit `player-invitations`, then push and open its PR.**
-- **Test data left in the dev database.**
-  - My live checks from 27–28 Sept left 7 deals, 9 offers, 5 auction listings, 3 enquiries and 2 "Test FC" clubs.
-  - Their money is already released (the deals are collapsed, the offer withdrawn, the listings withdrawn).
-  - Deleting the rows was refused by the permission check as a mass delete, so it's the product owner's call.
-- **Contract end dates are mock data** (`scripts/mock_contract_end_dates.py`, run locally). They need replacing with real dates from the clubs or the vendor feed.
-- **Railway also needs** `repair_player_statuses.py` and, if demo data is wanted there, `mock_contract_end_dates.py` (see the pending-repairs table in `operations/environments-and-deployment.md`).
-- **The AI cache and rate limit are in memory.** A shared store is needed before running several API processes.
-- **Not built from the AI ideas list:** offer builder, approvals brief, finance forecast, deal document drafts.
-- **No production environment.**
-- **Railway:**
-  - Migrations `0071`–`0081` are likely pending (Railway does not auto-deploy); check the live `alembic_version`.
-  - `backfill_contract_wages.py` is still required there before loans work.
-- Still open from earlier handovers:
-  - Conditional obligation to buy: automatic start or both-club confirmation?
-  - A player out on loan can't be listed from the "Out on loan" panel.
-  - The dead `sort_by=value` market sort.
-  - The demo generator's unbuilt M1–M4/S1–S2 scenarios.
-
-**Risks:**
-
-- **The frontend is a built image.** New UI needs `docker compose build frontend && docker compose up -d frontend`. The API mounts the source and runs migrations on `docker compose restart api`.
-- **The dev `.env` sets `LLM_MODEL` to DeepSeek.** The code default is `claude-sonnet-5`. Tests never call a model.
-- **Consent recorded by a club is only as good as the signed copy it attaches.** The platform does not verify signatures.
-
-**Checks, as of 2026-09-28:**
-
-- Backend: 578 passed.
-- vitest: 136 passed. (Backend now 585 with the player-invitation tests.)
-- `tsc -b`: 42 errors, all pre-existing.
-
-**Recommended next task:**
-
-1. Commit and PR `player-invitations`.
-2. Then either the contract-end-date backfill, or the production environment (with the shared AI store).
-
-**Suggested Linear updates** (not made; for the product owner to confirm):
-
-- Close the tickets covered by PRs #3–#7: audit H3, club-run paperwork, invite-only onboarding, enquiries, the AI assistant.
-- New: "How free agents join TransferX"; "Backfill contract end dates"; "Shared store for AI cache and rate limit"; "Production environment".
+**Checks, as of 2026-10-11:**
+- Backend 877 passed.
+- vitest 250 passed.
+- `tsc -b` 0 errors.
 
 ## Related documents
 
-- [`PRODUCT_SPEC.md`](./PRODUCT_SPEC.md) — read this first, then this file
-- [`CHANGELOG.md`](./CHANGELOG.md) — full change history
-- [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) — current verified build status
+- [`PRODUCT_SPEC.md`](./PRODUCT_SPEC.md): read first
+- [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md): verified state and gaps
+- [`CHANGELOG.md`](./CHANGELOG.md): history

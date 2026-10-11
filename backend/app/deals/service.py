@@ -213,7 +213,7 @@ def compute_deal_whose_move(deal: Deal, viewer_club_id: uuid.UUID | None = None)
     tracked separately today, so "your move" is returned to whichever club
     asks. AGENT_NEGOTIATION uses updated_at as a proxy for "how long has this
     state persisted" — the frontend's own comment calls this "the best
-    available proxy", not a real signal; see DECISIONS.md item 1.
+    available proxy", not a real signal; see docs/design-system/README.md.
     """
     if deal.status in (DealStatus.COMPLETED, DealStatus.COLLAPSED):
         return WhoseMove.NEITHER

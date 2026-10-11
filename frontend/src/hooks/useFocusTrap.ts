@@ -7,7 +7,7 @@ const FOCUSABLE =
  * Shared overlay behaviour for anything that opens on top of the page —
  * Escape closes it, Tab cycles only within it, body scroll locks while
  * it's open, and focus returns to whatever triggered it on close. Used by
- * Modal and the mobile nav drawer, per docs/design_handoff_transferx/RESPONSIVE.md
+ * Modal and the mobile nav drawer, per docs/design-system/RESPONSIVE.md
  * ("traps focus while open and returns focus to the hamburger on close").
  */
 export function useFocusTrap(active: boolean, onClose: () => void) {
