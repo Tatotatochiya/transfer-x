@@ -4,7 +4,7 @@ export type WhoseMove = "your" | "their" | "neither";
 
 /**
  * Client-side "whose move" derivation — a stand-in for the backend
- * `whose_move` field (B1) proposed in docs/design_handoff_transferx/README.md,
+ * `whose_move` field (B1) proposed in docs/design-system/README.md,
  * which doesn't exist yet. Every rule here is the literal rule from that
  * doc; this is real logic against the real API shapes, not a placeholder.
  *

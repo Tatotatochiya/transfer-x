@@ -1,6 +1,6 @@
 ---
 title: "Data Privacy & Legal"
-last_updated: 2026-07-03
+last_updated: 2026-10-11
 status: Draft
 owner: "TODO — assign a Security/Legal Owner"
 ---
@@ -24,11 +24,28 @@ Out of scope: confidentiality *between platform users* (see [`permissions-model.
 
 ## Current state
 
-> **TODO:** As of this writing, no Terms of Service, privacy policy, or cookie consent surface is documented as implemented. This is a known, tracked gap — link the relevant backlog item(s) here once confirmed rather than leaving this as an assumption.
+There are no Terms of Service, privacy policy or cookie consent pages in the app (checked 2026-10-11).
+
+> **TODO:** Write the Terms of Service and privacy policy, and decide whether a cookie notice is needed (the app stores sign-in tokens and per-device settings in the browser; it sets no tracking cookies), before a real club signs up.
 
 ## Data subject rights
 
-> **TODO:** Document data export/erasure capability (GDPR-style rights) once implemented. Not yet built as of this writing.
+Built on 2026-10-04 (`app/auth/privacy.py`, migration `0096`), under Account settings → Your data.
+
+**Export.** The person's own data:
+- account, profile and preferences;
+- signed-in devices and notifications;
+- their audit events and what they wrote.
+
+Club data (players, deals, finances) belongs to the club and isn't included.
+
+**Closing an account.**
+- **Erased:** personal details. The email is replaced and the names cleared, and sessions, push subscriptions and device details are deleted. The account is anonymised and marked closed.
+- **Kept:** the records a dispute or audit relies on (audit events, deal comments, negotiation messages, terms versions). They stay attributed to a closed account with no name or email.
+- **Refused for:**
+  - a club owner, since the club has to be handed over or closed by TransferX;
+  - an agent who still holds mandates;
+  - TransferX staff, who are closed by another admin.
 
 ## Monitoring data
 

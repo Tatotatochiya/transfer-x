@@ -1,6 +1,6 @@
 ---
 title: "Feature Specs"
-last_updated: 2026-07-10
+last_updated: 2026-10-11
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -26,18 +26,31 @@ A spec is a **point-in-time build document, not living state**. To keep it from 
 
 ## Specs
 
-| Spec | Linear | Status |
-|---|---|---|
-| [`ai-analyst/`](./ai-analyst/README.md) — Ask TransferX as an analyst and executive assistant: read-only, club-scoped tools the model calls, answers with tables and sources, interest signals, reminders and saved questions | — | Draft (for review) |
-| [`lite-mode/`](./lite-mode/README.md) — Lite mode for sporting directors: a four-tile home, guided buying, Ask anything, action cards with the money effect, undo, and email decisions. Build order in [`SESSIONS.md`](./lite-mode/SESSIONS.md) | — | Active (L1 in progress) |
-| [`player-profile-ledger/`](./player-profile-ledger/README.md) — Player Profile v2: one season-by-season ledger for Overview, Career and Injuries, a facts strip, and side panels by viewer; history backfilled from API-Football. Handoff in [`HANDOFF.md`](./player-profile-ledger/HANDOFF.md) | — | Active (P0 in progress) |
-| [Fair-Value-vs-Asking Signal](./fair-value-vs-asking-signal.md) | TRA-91 (backend), TRA-92 (UI) | Implemented 2026-07-07 — see the spec's "Deviations from spec" section |
-| [Scheduled Data Refresh, Jobs, Monitoring and Slack](./scheduled-data-refresh.md): API-Football stats twice a day from a separate Railway cron worker, daily valuations moved into it, admin Jobs and Errors pages with run logs and error tracking, request health, and Slack messages | — | Live 2026-10-11 — Slack webhook pending |
-| [Valuation Model v2 (market-v2)](./valuation-model-v2.md) | — | Shipped 2026-10-07 — replaces the fair-value engine; calibration TODO |
-| [Injury-Availability Risk Profile](./injury-availability-risk-profile.md) | No ticket yet — proposed 2026-07-05 (see spec's reconciliation section) | Active — ready to implement |
-| [Club Team Accounts, Roles & Onboarding](./club-team-roles-and-onboarding.md) | TRA-151, TRA-146, TRA-152, TRA-86 (phases 1–4) + two proposed tickets (phases 5–6) | Implemented 2026-07-10 (all six phases) — see the spec's "Deviations from spec" section |
-| [Demo Scenario Generator](./demo-scenario-generator.md) | No ticket yet — proposed 2026-08-08 (closes [audit](../DEMO_READINESS_AUDIT.md) C1/C2) | Phase 1 implemented 2026-08-08 — phases 2–3 open; see the spec's "Deviations from spec" section |
-| [Loan Transfers](./loan-transfers.md) | No ticket yet — proposed 2026-08-24 (extends TRA-56, whose loan fields exist but never execute) | Active — four decisions await sign-off before phase 1; phase 0 (`DealType` enum drift) is shippable now |
+Statuses verified against the code and `CHANGELOG.md` on 2026-10-11. Once a spec is implemented, the main docs are the truth and the spec is kept for its decisions, rules and deviations. Build-only files (HTML prototypes, session plans, screenshots) are removed after shipping; git history keeps them.
+
+**In progress or planned**
+
+| Spec | Status |
+|---|---|
+| [`phased-plan-2026-q4/`](./phased-plan-2026-q4/README.md): the current plan, Phase 0 to Phase 5, and the decisions needed. [Phase 0 runbook](./phased-plan-2026-q4/phase-0-runbook.md) for the real-phone test | Active: Phases 0, 1 and 3 done (except the phone test and two-factor sign-in); 2, 4, 5 not started |
+| [`ai-analyst/`](./ai-analyst/README.md): Ask TransferX as an analyst: read-only, club-scoped tools, tables, charts, Excel, "Ask about this" | Phases A and B built; Phase C not started |
+| [`valuation-model-v2.md`](./valuation-model-v2.md): the `market-v2` fair-value model | Shipped 2026-10-07; calibration TODO |
+| [`scheduled-data-refresh.md`](./scheduled-data-refresh.md): twice-daily API-Football refresh in the `stats-worker`, Admin Jobs and Errors, request health, Slack | Live 2026-10-11; Slack webhook pending |
+| [`injury-availability-risk-profile.md`](./injury-availability-risk-profile.md): an availability risk score per player | Not built as specified (availability is on the ledger and in the valuation) |
+| [`demo-scenario-generator.md`](./demo-scenario-generator.md): demo deals at every stage | Phase 1 built; M1–M4, S1–S2 not built |
+
+**Implemented (kept for decisions, rules and deviations)**
+
+| Spec | Implemented |
+|---|---|
+| [`lite-mode/`](./lite-mode/README.md) (with [`BACKEND.md`](./lite-mode/BACKEND.md)): Lite mode for directors | 2026-10-04, L1–L8 |
+| [`mobile-notifications/`](./mobile-notifications/README.md) (with `HANDOFF.md`): phone notifications | 2026-10-04 |
+| [`player-profile-ledger/`](./player-profile-ledger/README.md) (with `HANDOFF.md`, cited by the code): the season ledger | 2026-10-01 |
+| [`my-club-compact-squad/`](./my-club-compact-squad/README.md) | 2026-10-02 |
+| [`compact-sidebar/`](./compact-sidebar/README.md) | 2026-10-02 |
+| [`loan-transfers.md`](./loan-transfers.md) | 2026-08-25 to 09-28 |
+| [`club-team-roles-and-onboarding.md`](./club-team-roles-and-onboarding.md) | 2026-07-10 |
+| [`fair-value-vs-asking-signal.md`](./fair-value-vs-asking-signal.md): the signal, endpoints and rules (the engine is now v2) | 2026-07-07 |
 
 ## Related documents
 

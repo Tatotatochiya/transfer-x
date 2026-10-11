@@ -1,7 +1,7 @@
 ---
 title: "Lite Mode — Screens and Rationale"
-last_updated: 2026-09-29
-status: Active
+last_updated: 2026-10-11
+status: Implemented 2026-10-04 (L1–L8)
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -34,11 +34,13 @@ These override anything below that disagrees.
 5. **Text size applies inside Lite only.** The full app has many fixed pixel sizes that would not scale.
 6. **Money figures:** see BACKEND.md §2 and §4. The remaining budget is `_budget_facts` as is (already net of reserved, committed and spent). An over-budget action is refused, not sent for approval.
 
-Backend changes are in [`BACKEND.md`](./BACKEND.md). The build order is in [`SESSIONS.md`](./SESSIONS.md). The rules for any session doing this work are in [`CLAUDE.md`](./CLAUDE.md).
+Backend changes are in [`BACKEND.md`](./BACKEND.md). Sessions L1–L8 are all built (the session plan and session rules were removed on 2026-10-11; see `CHANGELOG.md` for what each delivered).
 
 ## About the design files
 
-`TransferX - Director Home.dc.html` is a **design reference built in HTML**. It shows the intended layout, copy and behaviour. It is not production code. Recreate it in the existing frontend (React 19, TypeScript, Vite, Tailwind v4, TanStack Query, React Router) using the app's own components and tokens. Never copy its inline styles.
+> The HTML design reference (and its `support.js` runtime) was removed on 2026-10-11 once this shipped; it is in git history. The text below is the spec.
+
+The design reference was built in HTML. It shows the intended layout, copy and behaviour. It is not production code. Recreate it in the existing frontend (React 19, TypeScript, Vite, Tailwind v4, TanStack Query, React Router) using the app's own components and tokens. Never copy its inline styles.
 
 The file contains several design rounds. Only these are in scope:
 
@@ -283,10 +285,42 @@ Reuse the hooks in `hooks/useAssistant.ts` (`useAsk`, `useOfferCheck`, `useDealN
 
 No images. Icons are simple 24px stroke icons in the mock (lightning logo, house, user-plus, tag, inbox, sparkle, microphone, clock, check, undo arrow). Use the app's existing icon set and match by meaning.
 
+## Deviations from the spec (L1–L8)
+
+All eight sessions are built (L1–L5 2026-09-29 to 10-01, L6 2026-10-03, L7 and L8 2026-10-04). Where the build differed from this spec, kept from the session plan when it was removed on 2026-10-11:
+
+- **Deviations in L2:**
+  - Until L3 and a Lite squad picker exist, the Buy and Sell tiles (and Renew and My squad when the window is closed) go to the full-app pages that do those jobs today. The server sets the hrefs, so each is a one-line change when its Lite screen ships.
+  - The closed-window tile reads "Plan the next window", not "Plan January", because the next window isn't always January.
+- **Deviations in L3:**
+  - **Price** is a listing's asking price, else the fee model, 30% lower when the contract ends within a year (the pricing assistant's rule). Comparable transfers are not used: the guide price needs a model call per player, which would spend the user's allowance.
+  - **Rank** is squad need, then listed before estimated, then age fit, then price. Form is not used, because there is no form data yet.
+  - The club's own uncontracted players (created by its members) count towards its squad and never appear as free agents to it.
+- **Deviations in L4:**
+  - **Over-budget check:** the old check looked at the fee and wage alone. It now counts add-ons and a loan's wage split, as the refusal does, so a bid whose add-ons take it over is now warned about.
+  - **Seller side:** the panel shows the fee arriving "when the deal completes", which is when the seller's budget is credited.
+  - **Loans:** countered in the full app ("Change the loan terms"). Lite counters permanent offers only.
+  - **Free agents:** there is no club to make an offer to, so their Buy result links to their page ("See how to sign him").
+  - **Approvals:** the button reads "Send for approval" rather than naming the approver. Approval requests go to the owner and every sporting director.
+  - **Starting counter:** a seller starts at the higher of the listing price, the fee model and the offer plus 10%, rounded up to £0.5m. A buyer answering a counter starts 5% lower. Both come from code; the assistant's counter advice is not used here, so opening a card uses no AI allowance.
+- **Deviations in L5:**
+  - **Proposal kinds:** bid, counter, accept and reject, the actions with Lite cards. List and approval proposals wait for Lite cards of their own; Ask links to the page instead.
+  - **Answer text:** when a proposal is involved, the answer comes from code ("I've prepared a £6m bid for … for you to check", or why it couldn't be prepared). The model can't know the outcome of the check, and in testing it contradicted it.
+  - **Plain bid requests** ("bid £6m for De Cuyper") are also read in code when the model gives no proposal (it sometimes declined because the player isn't in the club's own data). They are checked the same way.
+  - **Fallback:** no "Send to {Sam}" (L7). Admin fallbacks are listed newest first, not grouped by similar text.
+- **Deviations in L6:**
+  - **Checks at hold time** are the endpoints' rules read without side effects: window, one open offer, no deal in progress, `check_new_offer`, party and turn, and budget unless approval applies. The endpoints notify and email, so they can't be dry-run. If something changes in the ten seconds, the send fails with the endpoint's reason and the screen says so.
+  - **"Message {Sam} about this"** waits for L7.
+  - **The reply-time hint** ("Clubs usually reply in 1 to 2 days") is hidden below 20 answered offers, as specified, which is the case in the demo data.
+  - **Step labels** follow BACKEND.md §5. Approval reads "Waiting for your owner or sporting director to approve", since requests go to all of them.
+- **Deviations in L8:**
+  - The version check fingerprints the offer's status, terms and `last_action_at`, not `last_action_at` alone: two changes in one clock tick would otherwise look the same.
+  - Approval emails get no one-tap buttons: approving carries the action out at once with no undo, so it stays on the approval decision sheet (sign-in required).
+  - The confirm page never shows the recipient's address, since links get forwarded.
+
+- **Defaults:** `LITE_ROLE_DEFAULT_ON` stays false. The product owner chose on 2026-09-30 to keep the full app as everyone's default.
+- **Team contact (L7):** `club_staff.is_lite_contact`, chosen on the Team page. If none is chosen, it's the first sporting director or manager who isn't the one asking, else the whole team.
+
 ## Files
 
-- `TransferX - Director Home.dc.html`: the design reference. Open it in a browser. The rounds in scope are 2a, 3a, 3b, 3c and 3d.
-- `support.js`: the runtime the reference file needs to open. Not part of the implementation.
 - `BACKEND.md`: API, data model and job changes.
-- `SESSIONS.md`: the build order.
-- `CLAUDE.md`: rules for sessions working on this.

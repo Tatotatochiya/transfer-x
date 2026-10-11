@@ -1,17 +1,17 @@
 ---
 title: "Phase 0 runbook: deploy and test on real phones"
-last_updated: 2026-10-03
+last_updated: 2026-10-11
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
 
 # Phase 0 runbook: deploy and test on real phones
 
-These are the two Phase 0 items that need someone with Railway access and real phones. Everything else in Phase 0 is in the code.
+These were the two Phase 0 items that needed someone with Railway access and real phones. **Section 1 is done** (2026-10-11): Railway deploys `main` automatically, is at migration `0100`, and has the VAPID keys. **Section 2, the real-phone test, is still to do.**
 
 ## 1. Deploy to Railway
 
-What's going out: PRs #20–#24 (already on `main`), and the Phase 0 PR once merged. The API's entrypoint runs `alembic upgrade head` on start, so deploying migrates the database. Deploys are **not** automatic on push: start one by hand, and check afterwards.
+What's going out: PRs #20–#24 (already on `main`), and the Phase 0 PR once merged. The API's entrypoint runs `alembic upgrade head` on start, so deploying migrates the database. Deploys are now automatic on push to `main`.
 
 ### Before the deploy: set the push keys (once per environment)
 

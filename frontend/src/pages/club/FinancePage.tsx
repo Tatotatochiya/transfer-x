@@ -158,7 +158,7 @@ function ApprovalPolicyCard() {
 // ── Commitments table ──────────────────────────────────────────────────────────
 // Built from real, already-fetched deal/offer data — the backend doesn't yet
 // expose a row-level breakdown of what's committing the budget totals above
-// (B5, docs/design_handoff_transferx/SESSIONS.md → "Backend work"), so this
+// (B5: GET /clubs/me/commitments), so this
 // reconstructs the transfer-budget half from what IS available: in-progress
 // deals where this club is buying (committed) and active sent offers (reserved).
 // It is a real, honest breakdown — just not guaranteed to sum to the exact

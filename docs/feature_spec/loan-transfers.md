@@ -1,7 +1,7 @@
 ---
 title: "Feature Spec: Loan Transfers"
-last_updated: 2026-09-26
-status: Active
+last_updated: 2026-10-11
+status: Implemented 2026-09-28 (phases 0–4, seller side, conditional obligations)
 owner: "TODO — assign a Product Owner"
 ---
 

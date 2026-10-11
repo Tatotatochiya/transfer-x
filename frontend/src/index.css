@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Design tokens — light theme (default) per docs/design_handoff_transferx/TOKENS.md,
+ * Design tokens — light theme (default) per docs/design-system/TOKENS.md,
  * dark theme derived from this app's existing shipped palette (slate + emerald),
  * not from the handoff package, which only specifies light.
  *

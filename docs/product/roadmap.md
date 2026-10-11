@@ -1,6 +1,6 @@
 ---
 title: "Roadmap"
-last_updated: 2026-07-03
+last_updated: 2026-10-11
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -28,21 +28,32 @@ This is a narrative summary, refreshed periodically. For current, authoritative 
 
 ## Current phases
 
-**Current plan:** [`../feature_spec/phased-plan-2026-q4/README.md`](../feature_spec/phased-plan-2026-q4/README.md) (3 October 2026). From the product and code review, it orders the work into Phase 0 (ship the work in flight) through Phase 5 (planning, agents and players), and lists the business decisions needed alongside. The Linear projects below are the older structure.
+**The current plan is [`../feature_spec/phased-plan-2026-q4/README.md`](../feature_spec/phased-plan-2026-q4/README.md)** (from the 3 October 2026 review). Where it stood on 2026-10-11:
 
+| Phase | Goal | Status |
+|---|---|---|
+| 0. Ship what's in flight | Everything built reaches Railway and real phones | Done except the real-phone notification test |
+| 1. Trust basics | Nothing a club's finance or legal team would reject | Done except two-factor sign-in (deferred) |
+| 2. Compliance and completion | Registration (TMS, ITC, permits), windows by federation, a real medical, deadline day | Not started |
+| 3. Simplify the core | One board, one conversation, one way to buy | Done |
+| 4. Money and documents | Full personal terms, cost per season, payments that reconcile, e-signatures | Not started |
+| 5. Planning, agents and players | Squad lists and quotas, renewals, agent tools, a player view | Not started |
 
-As of this writing, the live backlog (Linear) is organized into these projects/phases:
+**Built alongside the plan:**
+- the AI analyst (Ask TransferX, phases A and B);
+- valuation model v2 (calibration still to do);
+- the scheduled data refresh with Admin Jobs and Errors.
 
-| Project | Goal |
-|---|---|
-| **Marketplace Core** | Foundational rebuild: finance correctness, first-class actors (clubs/agents/players), real deal structures, player consent, and a trust foundation. |
-| **Agent Experience** | The end-to-end workflows that make an agent a first-class user: find clients, market them, manage deals, run the agency, stay informed. |
-| **Differentiation & Demo Readiness** | Sales-ready and differentiating features on top of the Marketplace Core foundation. |
-| **Production & Business Readiness** | Data, commercial, reliability, trust/security, and reach layers required to operate and sell the product — not just demo it. |
+These are in [`../IMPLEMENTATION_STATUS.md`](../IMPLEMENTATION_STATUS.md).
 
-> **TODO:** This table should be refreshed whenever the phase structure changes materially in Linear. Consider this a snapshot, not a live feed.
+**Decisions still needed** (from the plan):
+- the business model;
+- a pilot with 2–3 clubs;
+- data sources (Transfermarkt licence, API-Football coverage).
 
-> **TODO:** Add a target-date view (even coarse, e.g. by quarter) once the team is ready to commit to one. No dates exist today.
+Linear (project TransferX) was organised into Marketplace Core, Agent Experience, Differentiation & Demo Readiness, and Production & Business Readiness. The phased plan supersedes that structure for ordering work.
+
+> **TODO:** No target dates exist. Add a coarse view (by quarter) once the team commits to one.
 
 ## Related documents
 

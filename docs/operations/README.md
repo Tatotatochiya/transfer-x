@@ -1,6 +1,6 @@
 ---
 title: "Operations Documentation — Overview"
-last_updated: 2026-07-03
+last_updated: 2026-10-11
 status: Active
 owner: "TODO — assign an Operations Owner"
 ---
@@ -24,7 +24,7 @@ Out of scope: local development (see [`../engineering/README.md`](../engineering
 | [`monitoring-and-observability.md`](./monitoring-and-observability.md) | Logging, metrics, alerting |
 | [`incident-response.md`](./incident-response.md) | What to do when something breaks |
 
-> **Note:** As of this writing, TransferX has no production environment configured — this area is largely forward-looking. See [`environments-and-deployment.md`](./environments-and-deployment.md) for current status.
+TransferX runs on Railway (one environment, with demo data). Admin → Jobs, Errors and Health are the operational screens. See [`environments-and-deployment.md`](./environments-and-deployment.md).
 
 ## Related Documents
 

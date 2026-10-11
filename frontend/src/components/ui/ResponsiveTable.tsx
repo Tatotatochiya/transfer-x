@@ -21,7 +21,7 @@ interface ResponsiveTableProps<T> {
   emptyBody?: string;
   onRowClick?: (row: T) => void;
   /** Custom mobile card, e.g. the two-line "identifier + value / state +
-   * timestamp" shape in docs/design_handoff_transferx/RESPONSIVE.md. Falls
+   * timestamp" shape in docs/design-system/RESPONSIVE.md. Falls
    * back to a generic card (first column as the primary line, the rest
    * ranked by priority) when omitted. */
   renderCard?: (row: T) => React.ReactNode;
@@ -59,7 +59,7 @@ function DefaultCard<T>({
  * Table above 640px (full table, horizontal scroll on tablet only via the
  * wrapper's overflow-x-auto, which is a no-op once content fits at desktop
  * widths); a stacked card list below 640px — never a horizontal scroll on
- * mobile. Per docs/design_handoff_transferx/RESPONSIVE.md.
+ * mobile. Per docs/design-system/RESPONSIVE.md.
  */
 export default function ResponsiveTable<T>({
   columns,

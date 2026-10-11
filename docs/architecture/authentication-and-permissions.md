@@ -1,6 +1,6 @@
 ---
 title: "Authentication & Permissions"
-last_updated: 2026-07-10
+last_updated: 2026-10-11
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -26,13 +26,25 @@ Out of scope: which specific endpoints have permission gaps today (tracked in th
 
 ## Authentication
 
-JWT-based: a short-lived access token plus a longer-lived refresh token. The access token is held in memory on the frontend (not persisted); the refresh token is persisted and used to silently re-issue an access token.
+JWT-based. Verified against `app/auth/` and `frontend/src/store/auth.ts` on 2026-10-11.
 
-> **TODO:** Document token lifetimes and the refresh flow in more detail.
+**Tokens**
+- **Access token:** 60 minutes (`JWT_ACCESS_TOKEN_EXPIRE_MINUTES`), held in memory on the frontend.
+- **Refresh token:** 30 days (`JWT_REFRESH_TOKEN_EXPIRE_DAYS`), kept in `localStorage`. `api.ts` uses it to fetch a new access token when a request gets 401. Two tabs refreshing at once no longer sign each other out.
+
+**Sessions.** Each sign-in is a session (`sid` claim, `RefreshToken.session_id`). Account settings → Signed-in devices lists them. Signing out a device, or "Sign out everywhere else", takes effect at once: `get_current_user` checks the session on every request.
+
+**Sign-in.**
+- By email, or by username (the part before the "@"). A username shared by two accounts asks for the email.
+- Accounts come from invitations: clubs at `/join`, staff from the club's Team page, players from their club at `/join/player`. Self-registration is refused unless the `ALLOW_*_SELF_REGISTRATION` settings are on, which they are only in tests.
+
+**Password reset.** A one-time link (hashed, 24 hours) that signs the person out everywhere once used.
+
+**Two-factor sign-in:** not built (deferred in the [phased plan](../feature_spec/phased-plan-2026-q4/README.md)).
 
 ## Account types
 
-Every `User` has a type: **Club**, **Agent**, **Player**, **Staff**, or **Admin** (superuser). See [`../product/personas.md`](../product/personas.md) for what each role means at a product level.
+Every `User` has a type: **Club**, **Agent** or **Player**. TransferX staff are superusers (`is_superuser`); `UserType.STAFF` exists but is never assigned. See [`../product/personas.md`](../product/personas.md) for what each role means at a product level.
 
 ## Club roles
 
@@ -68,7 +80,10 @@ A resource with a real ownership concept (e.g. a `Player`) is validated the same
 Two further, narrower patterns layered on top of the above:
 
 - **Staff bypass takes priority over role-specific checks, not just over the party check.** `advance_deal`'s router checks `current_user.is_superuser` first, before even looking at `user_type` — a superuser account has no club, agent, or player profile of its own (`scripts/create_superuser.py` creates a bare `User` row), so any check that assumes an underlying club/agent/player profile must be skipped for staff, not merely satisfied by one.
-- **Account-gated proxy**: a mandated agent may act on the player's behalf (responding to commission terms' player-side counterpart, consenting to personal terms) *only* when the player has no `PlayerProfile` of their own (`players_service.player_has_account`). Once a player registers, the agent's proxy access to that one action closes and the player must act themselves. Applied consistently at every point an agent could otherwise speak for a player, rather than per-endpoint.
+- **Who answers personal terms for the player** (product ADRs [0002](../product/decisions/0002-single-capture-point-for-personal-terms.md), [0006](../product/decisions/0006-buying-club-records-consent-for-unrepresented-player.md), [0007](../product/decisions/0007-players-join-by-invitation-agents-can-answer.md)):
+  - the player himself, if he has an account;
+  - his mandated agent, **whether or not** the player has an account;
+  - with neither, the buying club, which records the answer and attaches the signed terms.
 
 ## Related documents
 

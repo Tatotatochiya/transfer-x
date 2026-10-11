@@ -1,6 +1,6 @@
 export type CardTier = 1 | 2 | 3 | 4;
 
-// The four-tier hierarchy (docs/design_handoff_transferx/README.md). Tier is
+// The four-tier hierarchy (docs/design-system/README.md). Tier is
 // optional — pages not yet migrated to the tier system get the tier-3 (plain
 // working-panel) treatment, the closest match to the old single Card look.
 const tierClasses: Record<CardTier, string> = {

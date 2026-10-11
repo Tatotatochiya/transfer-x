@@ -1,9 +1,16 @@
+---
+title: "Screen Specifications"
+last_updated: 2026-10-11
+status: Active
+owner: "TODO — assign a Design Owner"
+---
+
 # Screen specifications
 
 Layout and component detail per screen. Values not stated here are in `TOKENS.md`; responsive
 behaviour not stated here is in `RESPONSIVE.md`.
 
-Copy given in quotes is the exact wording to use.
+Copy given in quotes is the exact wording to use. These are the screens as designed in the August 2026 redesign; later changes (the board replacing the classic list pages, the compact sidebar and squad table) are in their own specs under `feature_spec/`.
 
 ---
 
@@ -32,10 +39,8 @@ sits right, baseline-aligned.
 ## Dashboard
 
 Route: `/dashboard`. The reference implementation of the four tiers.
-Reference file: `TransferX - Board v2.dc.html`.
-
 Subtitle format: `"{Club} · {Division} · Summer window closes in {countdown}"`.
-Right of the header, 13px muted: `"Updated {n} minutes ago"` (see `DECISIONS.md` item 8).
+Right of the header, 13px muted: `"Updated {n} minutes ago"`.
 
 ### Tier 1 — "Waiting on you"
 
@@ -106,7 +111,7 @@ Mobile card priority: Player + Fee, then From → To on one line, then date.
 
 ## Offer inbox
 
-Route: `/offers`. Reference: `TransferX - Board v2 Screens.dc.html`, "Inbox".
+Route: `/offers`.
 
 Filter chips above everything: All · Your move · Their move · Accepted · Rejected.
 Active chip `#14171f` background, white text. Inactive white, `#475467`, `1px solid #d0d5dd`.
@@ -207,7 +212,7 @@ Decided table: Request · Requested by · Amount (right) · Outcome · Decided (
 
 ## Squad (My Club)
 
-Route: `/my-club`. Reference: `TransferX - Radical Screens.dc.html`, "Squad" — content only, chrome
+Route: `/my-club`.
 restyled to Board v2.
 
 Tier-2 figures: Contracts under 12 months (amber when > 0) · Listed · Average age · Wage room.
@@ -272,7 +277,7 @@ per selected player, then a white `"Compare {n} players"` button right.
 
 ## Sale detail / bidding
 
-Route: `/listings/:id`. Reference: `TransferX - Radical Bidding.dc.html`, "Bidding on a listing".
+Route: `/listings/:id`.
 Chrome restyled. Two variants driven by whether the current club owns the listing.
 
 Tier-2 figures: Closes in · Best bid · Reserve (`"Met"` in green or the amount in red) ·

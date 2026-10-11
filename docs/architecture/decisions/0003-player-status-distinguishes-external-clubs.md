@@ -66,5 +66,5 @@ Supporting decisions:
 
 - [`../data-model.md`](../data-model.md) — `Player`, `Contract` entities
 - [`0001-vendor-data-never-overrides-transferx-contract.md`](./0001-vendor-data-never-overrides-transferx-contract.md) — the same vendor-data-vs-TransferX-truth boundary, decided for a different field
-- [`../../DEMO_READINESS_AUDIT.md`](../../DEMO_READINESS_AUDIT.md) — finding C5, added from this work
+- The August 2026 demo-readiness audit (removed 2026-10-11; in git history) — finding C5, added from this work
 - [`../../CHANGELOG.md`](../../CHANGELOG.md)

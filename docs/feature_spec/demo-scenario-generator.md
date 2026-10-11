@@ -1,7 +1,7 @@
 ---
 title: "Demo Scenario Generator"
-last_updated: 2026-08-08
-status: Active
+last_updated: 2026-10-11
+status: Phase 1 implemented 2026-08-08; market and approval scenarios (M1–M4, S1–S2) not built
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -11,7 +11,7 @@ owner: "TODO — assign a Product Owner"
 
 A re-runnable script that populates the database with a complete, realistic demo surface — deals parked at **every** lifecycle stage, plus live market activity — built entirely from the clubs, players, and agents that already exist.
 
-This closes [`DEMO_READINESS_AUDIT.md`](../DEMO_READINESS_AUDIT.md) findings **C1** (no deal is in a demonstrable in-progress stage) and **C2** (no reproducible demo state). Those are the audit's top two blockers and share this one work item.
+This closes the August 2026 demo-readiness audit's findings **C1** (no deal is in a demonstrable in-progress stage) and **C2** (no reproducible demo state). Those are the audit's top two blockers and share this one work item.
 
 ## Scope
 
@@ -278,7 +278,7 @@ Facts that cost real debugging time and are worth knowing before touching this c
 
 ## Related documents
 
-- [`../DEMO_READINESS_AUDIT.md`](../DEMO_READINESS_AUDIT.md) — findings C1 and C2, which this spec closes
+- The August 2026 demo-readiness audit (removed 2026-10-11; in git history) — findings C1 and C2, which this spec closes
 - [`../product/workflows/transfer-lifecycle.md`](../product/workflows/transfer-lifecycle.md) — the lifecycle these scenarios instantiate
 - [`../architecture/authentication-and-permissions.md`](../architecture/authentication-and-permissions.md) — the capability matrix scenario `S2` demonstrates
 - [`../product/decisions/0002-single-capture-point-for-personal-terms.md`](../product/decisions/0002-single-capture-point-for-personal-terms.md) — the consent rule behind the `PERSONAL_TERMS` gotcha

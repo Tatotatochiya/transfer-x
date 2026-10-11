@@ -9,7 +9,7 @@ interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "
 
 /**
  * Self-contained form field — label, input, and error message, matching the
- * Form archetype in docs/design_handoff_transferx/SCREENS.md. Replaces the
+ * Form archetype in docs/design-system/SCREENS.md. Replaces the
  * hand-repeated `rounded-lg bg-slate-800 ...` class string duplicated across
  * dozens of pages.
  */

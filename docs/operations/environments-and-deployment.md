@@ -1,7 +1,7 @@
 ---
 title: "Environments & Deployment"
-last_updated: 2026-08-11
-status: Draft
+last_updated: 2026-10-11
+status: Active
 owner: "TODO — assign an Operations Owner"
 ---
 
@@ -9,39 +9,49 @@ owner: "TODO — assign an Operations Owner"
 
 ## Purpose
 
-Documents what environments TransferX runs in and how code gets deployed to them.
+Where TransferX runs and how code gets there.
 
 ## Scope
 
-In scope: environment list, deployment process.
-Out of scope: local dev setup (see [`../engineering/getting-started.md`](../engineering/getting-started.md)).
+In scope: environments, the deploy process, Railway's services and settings, demo accounts.
+Out of scope: local setup ([`../engineering/getting-started.md`](../engineering/getting-started.md)), monitoring ([`monitoring-and-observability.md`](./monitoring-and-observability.md)).
 
 ## Table of Contents
 
 - [Environments](#environments)
 - [Deployment process](#deployment-process)
+- [Railway demo environment](#railway-demo-environment)
+- [The stats-worker service](#the-stats-worker-service-scheduled-data-refresh)
+- [Email and phone notifications](#email)
+- [Data repairs](#data-repairs)
 - [Related documents](#related-documents)
 
 ## Environments
 
 | Environment | Status |
 |---|---|
-| Local development | Configured — Docker Compose (`db`, `api`, `frontend`) |
-| Railway | Live, with a real database (all 11 leagues, valuations, agent accounts — backfilled 2026-08-10; demo deal coverage seeded 2026-08-25). At migration `0069`. Not a formally promoted staging or production environment; it predates any defined deployment process. |
-| Staging | Not yet configured |
-| Production | Not yet configured |
+| Local development | Docker Compose: `db`, `api`, `frontend` (built image), `mailpit` |
+| Railway | Project `ravishing-laughter`, environment `production`. Services: `backend`, `frontend`, `Postgres`, `stats-worker`. Holds demo data (20 Premier League clubs, 11 competitions, demo deals at every stage). At migration `0100` on 2026-10-11 |
+| Staging | None |
+| Production for real clubs | None yet. Railway is a demo environment: every account shares one password (below) |
 
-> **TODO:** This is an honest current-state snapshot, not a plan. Fill in staging/production once they exist, and turn the gap into a roadmap item in [`../product/roadmap.md`](../product/roadmap.md) if it isn't tracked there already. Decide explicitly what Railway *is* — the row above records that it exists and is live, not that its role is settled.
+> **TODO:** Decide what Railway becomes before a real club uses it: separate staging and production, real passwords, SMTP, backups.
 
 ## Deployment process
 
-> **TODO:** Document the deployment process once one exists — CI/CD pipeline, promotion strategy, rollback procedure.
-
-What is known, from observation rather than design: the backend entrypoint runs `alembic upgrade head` on boot, so a deploy migrates the database. Deploys are **not** automatic on push to `main` — on 2026-08-25 Railway sat at `0064` for some hours after `0065`–`0069` were pushed, and only caught up on the next deploy. Check `railway deployment list` and the live `alembic_version` before assuming the deployed schema matches `main`.
+- **Automatic.** Railway deploys `backend`, `frontend` and `stats-worker` when `main` changes, through the GitHub connection.
+- **Migrations.** The backend's `entrypoint.sh` runs `alembic upgrade head` before starting, so a deploy migrates the database. The `stats-worker` runs the same image with its own start command, and skips migrations and the web server.
+- **Check a deploy:**
+  - `railway service list` (status);
+  - `railway logs --service backend`;
+  - the backend's `/health`;
+  - Admin → Health.
+- **Roll back:** redeploy an earlier deployment from the Railway dashboard (Deployments → Redeploy). A migration that has already run isn't undone by that.
+- **CLI:** the Railway CLI works from a developer machine (`railway login`, then `railway link --project ravishing-laughter`). It was used to set up `stats-worker`.
 
 ## Railway demo environment
 
-Seeded 2026-08-25 so a demo can walk the whole transfer pipeline. All seven deal stages are live (9 deals — 6 from `scripts/seed_demo.py`, 3 pre-existing).
+Seeded 2026-08-25 so a demo can walk the whole transfer pipeline: 9 deals across all seven stages (6 from `scripts/seed_demo.py`, 3 pre-existing). Later live use may have moved them on.
 
 | | |
 |---|---|
@@ -60,7 +70,7 @@ Club logins follow the same password. **Every account can sign in with its usern
 
 All 20 Premier League clubs are clubs on TransferX:
 - **The original three:** `arsenal`, `chelsea`, `liverpool`.
-- **Added locally on 2026-09-29** by `scripts/onboard_premier_league_clubs.py`: `astonvilla`, `bournemouth`, `brentford`, `brighton`, `burnley`, `crystalpalace`, `everton`, `fulham`, `leeds`, `manchestercity`, `manchesterunited`, `newcastle`, `nottinghamforest`, `sunderland`, `tottenham`, `westham`, `wolves`.
+- **Added by `scripts/onboard_premier_league_clubs.py`** (locally 2026-09-29, and on Railway): `astonvilla`, `bournemouth`, `brentford`, `brighton`, `burnley`, `crystalpalace`, `everton`, `fulham`, `leeds`, `manchestercity`, `manchesterunited`, `newcastle`, `nottinghamforest`, `sunderland`, `tottenham`, `westham`, `wolves`.
 
 Every club's email is `<username>@transferx.com`. `admin@club.com` is for staff-only actions.
 
@@ -109,20 +119,20 @@ Locally, email goes to Mailpit (`http://localhost:8025`). A deployed environment
 
 Phone notifications (Web Push, [spec](../feature_spec/mobile-notifications/README.md)) need a VAPID key pair on the API service: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (a `mailto:` address). Generate them once per environment with `python scripts/generate_vapid_keys.py`. Changing them later cuts off every device until it turns notifications on again. Without them, nothing is pushed and the app says push is off; in-app and email are unaffected.
 
-> **TODO:** Railway has no SMTP configured, so no email is sent there. Decide on a provider (and a sending domain) before any real club uses it.
+Railway has the VAPID keys set on `backend`, so phone push works there.
 
-## Pending data repairs on Railway
+> **TODO:** Railway has no SMTP configured, so no email is sent there: no invitations, digests or password-reset links. Decide on a provider and a sending domain.
 
-One-off repair scripts that have been run locally but not yet on Railway. These are not Alembic migrations, so nothing runs them automatically on deploy — each has to be invoked deliberately after the corresponding code change is deployed. Delete a row once it has been run there.
+## Data repairs
 
-| Script | Why | Run locally |
-|---|---|---|
-| `backend/scripts/backfill_contract_wages.py` | Every active contract had no wage, so after migration `0071`'s release a loan is refused ("His contract has no wage on record") on every player. Gives each such contract a plausible wage and adds it to the club's wage bill. Run `--dry-run` first. Like `seed_demo.py` it reads `settings.database_url`, so set `DATABASE_URL` to Railway's public URL. | 2026-09-26: 106 contracts; Arsenal +£1.58m/wk, Chelsea +£1.59m/wk, Liverpool +£1.19m/wk. A second run touched nothing. |
-| `backend/scripts/onboard_premier_league_clubs.py` | Only Arsenal, Chelsea and Liverpool were TransferX clubs; the other 17 Premier League clubs were vendor world teams whose players could not be signed. For each of the 17, it creates the owner account (`<name>@transferx.com`, shared demo password), the club (league "Premier League"), a tiered transfer budget, a wage budget about 30% above the squad's wage bill, and an active contract for every squad player. It also relabels the original three's league from "UEFA Champions League" to "Premier League". Idempotent; `--dry-run` first; `--password` sets the shared password. | 2026-09-29: 17 clubs and 574 contracts; the original three relabelled. A second run skipped all 17. |
-| `backend/scripts/repair_player_statuses.py` | Players with no club anywhere were stored as EXTERNAL, not FREE_AGENT (ADR 0003), so they could not be signed or invited (ADR 0007). It re-derives each mismatched player's status through `normalize_player_status`; players who become free agents trigger the usual PLAYER_AVAILABLE notification. Idempotent; run `--dry-run` first. | 2026-09-29: 13 players EXTERNAL → FREE_AGENT; a second run found none. |
-| `backend/scripts/mock_contract_end_dates.py` | **Mock data, for demos only.** No contract carried an end date, so expiring contracts, the morning briefing, "Who might want him?" and the pricing assistant's discount all showed nothing. It gives every contracted player a plausible end date: 30 June 2027–31, or 31 January 2027 for about 5%. Dates are deterministic by player id, and a real date is never overwritten. Replace with real dates from the clubs or the vendor feed before any real use. | 2026-09-28: 106 active contracts and 5,011 players; each TransferX club has 2 contracts ending within six months. A second run touched nothing. |
+These one-off scripts aren't migrations, so nothing runs them on deploy. All of them have been run on Railway: verified by read-only queries on 2026-10-11, with no active contract lacking a wage, 21 clubs, 4 active contracts without an end date, and no players wrongly marked EXTERNAL.
+- `backfill_contract_wages.py`
+- `onboard_premier_league_clubs.py`
+- `repair_player_statuses.py`
+- `mock_contract_end_dates.py`. **Mock data:** it gives contracts plausible end dates for demos. Replace them with real dates before real use.
+- `repair_listings_left_open_after_offer_accepted.py` (a no-op there).
 
-`backend/scripts/repair_listings_left_open_after_offer_accepted.py` — deployed and run 2026-08-12. **Verified by direct read-only query against Railway's database, not by trusting the run's own report:** `alembic_version` is at `0063`; zero listings sit `OPEN` behind an `IN_PROGRESS`/`COMPLETED` deal. Worth recording precisely, since it corrects what this doc said before: Railway's data did **not** in fact contain the broken rows this script targets. Of Railway's 8 offers, only 2 were ever made against a listing, and both expired unaccepted — `accept_offer` (where the bug lived) was never invoked with a `sale_id` present there. The three deals that do exist are all from standalone offers, unrelated to this bug. So the repair was correctly a no-op on this environment; the assumption that Railway "carries the same broken rows local did" was untested at the time it was written and turned out to be wrong. Safe to run again regardless — idempotent, `--dry-run` reports what it would change without writing.
+If a new repair script is written, list it here until it has been run on Railway.
 
 ## Related documents
 

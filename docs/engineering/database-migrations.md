@@ -1,47 +1,59 @@
 ---
 title: "Database Migrations"
-last_updated: 2026-08-08
+last_updated: 2026-10-11
 status: Active
-owner: "TODO — assign a Technical Lead"
+owner: "TODO — assign a Technical Owner"
 ---
 
 # Database Migrations
 
 ## Purpose
 
-Documents how database schema changes are managed in TransferX.
+How schema changes are made and applied.
 
 ## Scope
 
-In scope: migration tooling and workflow.
-Out of scope: the schema itself (see [`../architecture/data-model.md`](../architecture/data-model.md)).
+In scope: tooling, numbering, workflow and known gotchas.
+Out of scope: the schema itself ([`../architecture/data-model.md`](../architecture/data-model.md)).
 
 ## Table of Contents
 
 - [Tooling](#tooling)
-- [Current state](#current-state)
+- [Numbering and head](#numbering-and-head)
 - [Workflow](#workflow)
+- [Gotchas](#gotchas)
 - [Related documents](#related-documents)
 
 ## Tooling
 
-Alembic, against SQLAlchemy async models. Migration files live in `backend/migrations/versions/`.
+Alembic, in `backend/migrations/versions/`. Every model module must be imported in `migrations/env.py` for autogenerate to see it.
 
-## Current state
+## Numbering and head
 
-As of this writing: 61 migration files, latest (`0059`) adding the `vendor_sync_runs` table. This number changes frequently — treat it as a snapshot, not a live fact, and check `backend/migrations/versions/` directly if you need the current count.
+**Numbering.** Migrations are numbered `0001`… with `down_revision` pointing at the previous number. Two early ones have hash ids from a merge.
+
+**Head (2026-10-11):** `0100` (monitoring tables), applied locally and on Railway.
+
+**Applying.** Both the local `api` container and Railway's `backend` service run `alembic upgrade head` on start (`backend/entrypoint.sh`), so a deploy applies new migrations. The `stats-worker` doesn't run migrations.
 
 ## Workflow
 
 ```bash
-cd backend
-alembic upgrade head
-alembic revision --autogenerate -m "description"
+docker compose exec -T api alembic revision -m "short description"   # then rename to the next number
+docker compose exec -T api alembic upgrade head
+docker compose exec -T api alembic downgrade -1                       # if you need to step back
 ```
 
-> **TODO:** Document any project-specific migration gotchas (e.g. enum handling, nullable foreign key patterns) worth calling out for future contributors — check whether project memory/notes already capture known Alembic issues before writing this from scratch.
+Write `upgrade()` and `downgrade()` by hand, following the existing files. Autogenerate output is a starting point at best.
+
+## Gotchas
+
+- **Tests don't use migrations.** The test suite builds the schema with `Base.metadata.create_all` on SQLite. A migration that drifts from the models passes the tests and then fails on Postgres, so run `alembic upgrade head` locally before shipping.
+- **SQLite vs Postgres.** SQLite drops time zones and has no row locks. Compare datetimes timezone-aware, and use `select_for_update(of=…)` with nullable joins.
+- **Enums.** A new value in a Postgres enum needs `ALTER TYPE … ADD VALUE` in its own migration step.
+- **Railway history.** Railway once had `0059`–`0061` from a force-pushed branch; matching placeholder migrations keep the chain the same in both places. Don't renumber existing migrations.
 
 ## Related documents
 
-- [`../architecture/data-model.md`](../architecture/data-model.md) — the schema these migrations evolve
-- [`getting-started.md`](./getting-started.md) — running migrations as part of initial setup
+- [`../architecture/data-model.md`](../architecture/data-model.md): the schema
+- [`../operations/environments-and-deployment.md`](../operations/environments-and-deployment.md): deploys

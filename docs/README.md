@@ -1,6 +1,6 @@
 ---
 title: "Documentation Home"
-last_updated: 2026-07-05
+last_updated: 2026-10-11
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -28,7 +28,7 @@ Out of scope: any actual product, business, or technical content — that lives 
 
 ## How the documentation is organized
 
-Documentation is split into six areas, each with a single responsibility. Business context is separated from technical detail; product planning is separated from implementation.
+Documentation is split into six content areas, plus the design system and feature specs, each with a single responsibility. Business context is separated from technical detail; product planning is separated from implementation.
 
 | Area | Answers | Audience |
 |---|---|---|
@@ -38,6 +38,7 @@ Documentation is split into six areas, each with a single responsibility. Busine
 | [`engineering/`](./engineering/README.md) | How do I work in this codebase day to day? | Contributors (human and AI) |
 | [`operations/`](./operations/README.md) | How do we run this in production? | On-call, DevOps |
 | [`security-and-compliance/`](./security-and-compliance/README.md) | What's protected, what isn't, what's the legal exposure? | Security, legal, auditors |
+| [`design-system/`](./design-system/README.md) | What should every screen look like and how should it behave? | Anyone changing the UI |
 | [`feature_spec/`](./feature_spec/README.md) | What exactly should the next build deliver, in implementable detail? | Implementing engineers (human and AI) |
 
 Each area has its own `README.md` explaining its own scope in more detail. [`PRODUCT_SPEC.md`](./PRODUCT_SPEC.md) is the master index that links into all six.
@@ -121,6 +122,8 @@ Ask what kind of question the new document answers:
 - How to build/test/run it locally → `engineering/`
 - How it runs in production → `operations/`
 - Confidentiality, permissions posture, legal/compliance → `security-and-compliance/`
+- Visual and interaction rules → `design-system/`
+- A build specification for upcoming work → `feature_spec/` (once shipped, remove its build-only files such as HTML prototypes and session plans, and keep its decisions and deviations)
 
 If a new document doesn't fit any of these, that's a signal the taxonomy itself may need to grow — raise it rather than force-fitting.
 

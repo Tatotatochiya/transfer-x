@@ -1,6 +1,6 @@
 ---
 title: "Phased plan, Q4 2026"
-last_updated: 2026-10-03
+last_updated: 2026-10-11
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -18,8 +18,8 @@ Goal: everything built in the last fortnight reaches Railway and real phones.
   - the decision sheet from a push;
   - the morning summary push and the 30-minute email fallback.
 
-  The decision sheet was checked at phone width. Migrations `0090`, `0091`. Specs: [`lite-mode/SESSIONS.md`](../lite-mode/SESSIONS.md), [`mobile-notifications/README.md`](../mobile-notifications/README.md), [ADR 0007](../../architecture/decisions/0007-held-sends-for-undo.md).
-- [ ] **Deploy merged PRs #20–#24 to Railway** (S):
+  The decision sheet was checked at phone width. Migrations `0090`, `0091`. Specs: [`lite-mode/`](../lite-mode/README.md), [`mobile-notifications/README.md`](../mobile-notifications/README.md), [ADR 0007](../../architecture/decisions/0007-held-sends-for-undo.md).
+- [x] **Deploy merged PRs #20–#24 to Railway** (S). Done: Railway now deploys `main` automatically, is at migration `0100`, and has the VAPID keys set (checked 2026-10-11).
   - run migrations `0088` and `0089`;
   - install the new dependencies `pywebpush` and `openpyxl`;
   - set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` on the API service.
@@ -66,11 +66,11 @@ Done when: a demo deal walks through TMS, ITC, permit and registration with date
 
 Goal: fewer paths, one place to talk, one board to work from.
 
-- [x] **Transfers board** (L). Built 2026-10-04 at `/board` (product ADR 0008); the old pages sit under "Classic views". Was:: a column per stage, with buying and selling filters. It replaces Listings, My Listings, Offers sent, Offers received, Transfers in progress and Enquiries.
+- [x] **Transfers board** (L). Built 2026-10-04 at `/board` (product ADR 0008); the old list pages were retired afterwards and redirect to the board. Was:: a column per stage, with buying and selling filters. It replaces Listings, My Listings, Offers sent, Offers received, Transfers in progress and Enquiries.
 - [x] **One conversation per transfer** (L). Built 2026-10-04: read across the four existing stores rather than migrated ([architecture ADR 0008](../../architecture/decisions/0008-one-conversation-read-across-existing-messages.md)); on the board's card detail and the deal room's Conversation tab. Was:: one conversation per transfer replaces offer messages, enquiry threads, deal-room comments and agent negotiation threads, with audiences (both clubs, internal, club with agent). Existing messages move across.
 - [x] **One main way to buy** (M). Already in place: listing defaults to open to offers, auction is under "Advanced", fixed price isn't offered. Was:: enquiry → offer → deal is the default. Auctions and fixed price move behind "advanced".
 - [x] **Lite and full app, on purpose** (S decision, then ongoing). Decided 2026-10-04: Lite decides, the full app operates (product ADR 0008). Was:: Lite is where people decide (phone, push, undo, approvals), and the full app is where they operate.
-- [x] **Lite L7 and L8** (M each). Built 2026-10-04 (migrations `0097`, `0098`; see [SESSIONS](../lite-mode/SESSIONS.md)). Was: L7 is team contact ("Ask Sam", "Send to Sam"); L8 is decisions from email, with held sends on the `EMAIL` channel.
+- [x] **Lite L7 and L8** (M each). Built 2026-10-04 (migrations `0097`, `0098`; see [Lite mode](../lite-mode/README.md)). Was: L7 is team contact ("Ask Sam", "Send to Sam"); L8 is decisions from email, with held sends on the `EMAIL` channel.
 - [x] **Trim the assistant and notification settings** (S–M). Built 2026-10-04: settings start with four rows (daily summary and the three tiers), every type behind "Show every type"; the admin AI page gives each assistant feature a verdict (Keep, Review, Consider removing, Not enough data yet). No feature is removed until there's real usage. Was: using AI usage tracking and notification settings grouped by tier.
 - [x] **Notification follow-ups from phase 4** (S–M). Built 2026-10-04 (see the [notifications spec](../mobile-notifications/README.md)). Was: an approval decision sheet (it needs a page for a single approval), swiping between items, the push action pre-selected on wider screens, and iPhone tap tracking.
 
@@ -100,6 +100,13 @@ Goal: help clubs plan the window, not only run deals in it.
 
 Done when: a club can plan its next window in TransferX (renew, sell, buy) within the squad rules.
 
+## Built alongside the plan
+
+- **2026-10-05 to 10-06 — AI analyst, phases A and B:** [`../ai-analyst/`](../ai-analyst/README.md).
+- **2026-10-07 — valuation model v2:** [`../valuation-model-v2.md`](../valuation-model-v2.md), calibration TODO.
+- **2026-10-10 to 10-11 — scheduled data refresh, Admin Jobs and Errors, Slack:** [`../scheduled-data-refresh.md`](../scheduled-data-refresh.md).
+- **Smaller changes:** buying and selling lanes on the board, and "in play" on My Club's squad.
+
 ## Decisions needed (alongside, starting now)
 
 - **Business model:** club subscription, a fee per transfer, or data licensing. [`business-model.md`](../../business/business-model.md) is still TODO. This decides the paying user and which phases matter most.
@@ -108,6 +115,7 @@ Done when: a club can plan its next window in TransferX (renew, sell, buy) withi
 
 ## Progress
 
+- **2026-10-11 — Phase 0: only the real-phone test remains.** Railway runs the latest `main` (automatic deploys), with the push keys set and the `stats-worker` service added. The classic list pages are retired, so Phase 3 is complete.
 - **2026-10-04 — Phase 3 built except retiring the classic pages.** On `phase-3-board`: the board, one conversation, the buy path and Lite split decisions, L7 and L8, the settings trim, and the notification follow-ups. Migrations `0097`, `0098`. The classic list pages were retired the same day, once the board had history, search and "+ New listing" (product ADR 0008, update). The conversation panel then replaced the offer, enquiry and deal-room threads for clubs. The message stores stay separate by decision ([architecture ADR 0008](../../architecture/decisions/0008-one-conversation-read-across-existing-messages.md)). **Phase 3 is complete.**
 - **2026-10-04 — Phase 1 done except two-factor sign-in.** On branch `phase-1-trust`, stacked on `lite-l6-undo`. Migrations `0093`–`0096`.
 - **2026-10-04 — Phase 0 code done.** L6, notifications phase 4 and the loose ends are in one PR from `lite-l6-undo`. Also fixed: two tabs refreshing the sign-in at once could sign one out. Still to do, by someone with Railway access and phones: the deploy and the real-phone test ([runbook](./phase-0-runbook.md)).

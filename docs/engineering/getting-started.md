@@ -1,6 +1,6 @@
 ---
 title: "Getting Started"
-last_updated: 2026-07-03
+last_updated: 2026-10-11
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -27,7 +27,7 @@ Out of scope: production deployment (see [`../operations/environments-and-deploy
 
 See the repository root [`README.md`](../../README.md) for exact, current commands (Docker Compose for the full stack, or running backend/frontend independently).
 
-> **TODO:** If the root `README.md` setup steps and this document ever diverge, treat the root `README.md` as authoritative for "how do I run this" and fix this document to match, or migrate the content here fully and have the root `README.md` link back — pick one direction rather than letting both drift independently.
+The root `README.md` is the authority for setup commands; this page only summarises. It was refreshed on 2026-10-11, including first accounts, the demo seed, and the frontend being a built image (UI changes need `docker compose build frontend`).
 
 ## Services
 
@@ -38,6 +38,8 @@ See the repository root [`README.md`](../../README.md) for exact, current comman
 | API docs (Swagger) | `http://localhost:8001/docs` |
 | Local mailbox (Mailpit) | `http://localhost:8025` — every email the API sends locally (notifications, the daily digest, staff invitations) lands here; nothing leaves the machine. `docker-compose.yml` points the API's `SMTP_*` at it. |
 | PostgreSQL | `localhost:5432` |
+
+The data refresh doesn't run on its own locally. Run it with `docker compose exec -T api python -m app.jobs.daily_refresh --force`; it uses API-Football quota.
 
 ## Rationale
 

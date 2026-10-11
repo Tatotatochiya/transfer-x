@@ -6,7 +6,7 @@ interface EmptyStateProps {
   action?: { label: string; to: string } | { label: string; onClick: () => void };
 }
 
-// No illustration — a single line of text, per docs/design_handoff_transferx/CLAUDE.md
+// No illustration — a single line of text, per docs/design-system/RULES.md
 // ("EmptyState loses any illustration and becomes a single line of 14px
 // secondary text"). This audience reads an icon-in-a-circle as "broken", not
 // "empty".
