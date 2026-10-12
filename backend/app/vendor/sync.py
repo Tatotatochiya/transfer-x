@@ -78,6 +78,11 @@ def _extract_stat_fields(stat_entry: dict) -> dict:
         # Team context
         "team_vendor_id": str(team.get("id")) if team.get("id") else None,
         "team_name":      team.get("name"),
+        "team_logo":      team.get("logo"),
+        # Competition, for the profile's season ledger (blank before 2026-10-12
+        # for rows the league sync created: they showed as "Other").
+        "league_name":    league.get("name"),
+        "league_logo":    league.get("logo"),
         # Core
         "goals":       _int(goals_data.get("total")) or 0,
         "assists":     _int(goals_data.get("assists")) or 0,

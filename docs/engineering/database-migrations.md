@@ -32,7 +32,7 @@ Alembic, in `backend/migrations/versions/`. Every model module must be imported 
 
 **Numbering.** Migrations are numbered `0001`… with `down_revision` pointing at the previous number. Two early ones have hash ids from a merge.
 
-**Head (2026-10-11):** `0100` (monitoring tables), applied locally and on Railway.
+**Head (2026-10-12):** `0101` (real-world move dismissals and the `REGISTRATION_UPDATED` notification), applied locally; Railway is at `0100` and applies `0101` on its next deploy.
 
 **Applying.** Both the local `api` container and Railway's `backend` service run `alembic upgrade head` on start (`backend/entrypoint.sh`), so a deploy applies new migrations. The `stats-worker` doesn't run migrations.
 

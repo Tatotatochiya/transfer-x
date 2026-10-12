@@ -1,6 +1,6 @@
 ---
 title: "TransferX Product Specification"
-last_updated: 2026-10-11
+last_updated: 2026-10-12
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -49,14 +49,14 @@ TransferX is a web platform for professional football transfers. It connects **s
 |---|---|---|
 | Backend | Python 3.12, FastAPI, SQLAlchemy (async), PostgreSQL | [`architecture/backend-architecture.md`](./architecture/backend-architecture.md) |
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS v4, TanStack Query | [`architecture/frontend-architecture.md`](./architecture/frontend-architecture.md) |
-| Migrations | Alembic, head `0100` (local and Railway) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
+| Migrations | Alembic, head `0101` (local; Railway at `0100` until the next deploy) | [`engineering/database-migrations.md`](./engineering/database-migrations.md) |
 | Accounts | Club (owner and four staff roles), Agent, Player; TransferX staff are superusers. Everyone joins by invitation | [`product/personas.md`](./product/personas.md) |
 | Deal stages | AGREEMENT → AGENT_NEGOTIATION (with a mandate) → PERSONAL_TERMS → PAPERWORK → CONFIRMED → COMPLETED; any open deal can collapse | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
 | Deal types | PERMANENT and LOAN (offered); FREE_TRANSFER and PRE_CONTRACT (from the signing paths) | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
 | Working surfaces | The Transfers board with one conversation per transfer; the dashboard; Lite mode for directors (Lite decides, the full app operates) | [product ADR 0008](./product/decisions/0008-transfers-board-one-way-to-buy-lite-decides.md) |
 | Notifications | In-app, email (per type and the daily digest), phone push (tiers, quiet hours, morning summary, decision sheets, email fallback) | [`feature_spec/mobile-notifications/`](./feature_spec/mobile-notifications/README.md) |
 | AI | Advises, never acts (ADR 0006); Ask TransferX answers as an analyst from read-only, club-scoped tools | [`feature_spec/ai-analyst/`](./feature_spec/ai-analyst/README.md) |
-| Data | API-Football, refreshed at 17:00 and 22:00 UK by the `stats-worker`; valuations (`market-v2`) recomputed daily | [`feature_spec/scheduled-data-refresh.md`](./feature_spec/scheduled-data-refresh.md) |
+| Data | API-Football, refreshed at 17:00 and 22:00 UK by the `stats-worker`; valuations (`market-v2`) recomputed daily. Real-world moves are flagged and applied only by staff ([product ADR 0009](./product/decisions/0009-real-world-moves-flagged-applied-by-staff.md)) | [`feature_spec/scheduled-data-refresh.md`](./feature_spec/scheduled-data-refresh.md) |
 | Operations | Railway, deploying `main` automatically: `backend`, `frontend`, `Postgres`, `stats-worker`. A demo environment, not production. Admin Jobs, Errors and Health | [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md) |
 | Current plan | Q4 2026 phased plan: Phases 0, 1 and 3 done (except the phone test and two-factor sign-in) | [`product/roadmap.md`](./product/roadmap.md) |
 | Built state and gaps | Verified by area, with known gaps | [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) |
@@ -79,7 +79,7 @@ TransferX is a web platform for professional football transfers. It connects **s
 - [`product/roadmap.md`](./product/roadmap.md): where the plan stands
 - [`product/personas.md`](./product/personas.md)
 - [`product/workflows/`](./product/workflows/README.md): [transfer lifecycle](./product/workflows/transfer-lifecycle.md), [negotiation and offers](./product/workflows/negotiation-and-offers.md), [agent representation](./product/workflows/agent-representation.md), [deal completion](./product/workflows/deal-completion.md)
-- [`product/decisions/`](./product/decisions/README.md): product decision records (0001–0008)
+- [`product/decisions/`](./product/decisions/README.md): product decision records (0001–0009)
 
 ### Architecture
 *How the system is designed.*

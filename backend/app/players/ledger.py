@@ -24,6 +24,8 @@ COUNTS = ("apps", "starts", "minutes", "goals", "assists", "shots", "key_passes"
           "tackles", "interceptions", "duels_won", "duels_total", "yellow_cards", "red_cards")
 SEVERE = re.compile(r"knee|ankle|ligament|acl|cruciate|achilles|fracture|broken|surgery", re.I)
 _YOUTH = re.compile(r"\s+U\d{2}$", re.I)
+# API-Football's image addresses, the same ones its responses carry.
+MEDIA = "https://media.api-sports.io/football"
 
 
 def season_label(season: str | int) -> str:
@@ -69,6 +71,24 @@ async def _countries(db: AsyncSession) -> set[str]:
     return {n.lower() for n in names if n}
 
 
+async def _labels(db: AsyncSession, rows) -> tuple[dict, dict]:
+    """Logos and competition names for rows stored without them (the league
+    sync didn't keep them before 2026-10-12): a team's crest from
+    world_teams, a competition's name from world_leagues, else API-Football's
+    image address for the id. Read-only: the rows themselves aren't changed."""
+    from app.world.models import WorldLeague, WorldTeam
+
+    team_ids = {r.team_vendor_id for r in rows if r.team_vendor_id and not r.team_logo}
+    league_ids = {r.league_id for r in rows if r.league_id and not r.league_name}
+    crests = dict((await db.execute(select(WorldTeam.vendor_id, WorldTeam.crest_url)
+                                    .where(WorldTeam.vendor_id.in_(team_ids)))).all()) if team_ids else {}
+    names = dict((await db.execute(select(WorldLeague.league_id, WorldLeague.name)
+                                   .where(WorldLeague.league_id.in_(league_ids)))).all()) if league_ids else {}
+    team_logo = {t: crests.get(t) or f"{MEDIA}/teams/{t}.png" for t in team_ids}
+    league = {lg: names.get(lg) for lg in league_ids}
+    return team_logo, league
+
+
 async def build_ledger(db: AsyncSession, player, *, include_injuries: bool) -> dict:
     from app.players.models import PlayerInjury, PlayerTransfer
     from app.stats.models import (PlayerFixtureRating, PlayerForm, PlayerInjuryFixture, PlayerStats,
@@ -76,6 +96,16 @@ async def build_ledger(db: AsyncSession, player, *, include_injuries: bool) -> d
 
     rows = (await db.execute(select(PlayerStats).where(PlayerStats.player_id == player.id))).scalars().all()
     countries = await _countries(db)
+    fallback_logo, fallback_league = await _labels(db, rows)
+
+    def club_logo(r):
+        return r.team_logo or fallback_logo.get(r.team_vendor_id)
+
+    def competition(r):
+        return r.league_name or fallback_league.get(r.league_id)
+
+    def competition_logo(r):
+        return r.league_logo or (f"{MEDIA}/leagues/{r.league_id}.png" if r.league_id else None)
 
     # ── Seasons: one row per season and club; internationals apart ─────────
     clubs: dict[tuple[str, str], list] = defaultdict(list)
@@ -87,7 +117,7 @@ async def build_ledger(db: AsyncSession, player, *, include_injuries: bool) -> d
         national = _YOUTH.sub("", team).lower() in countries
         # Club friendlies (pre-season) aren't competitive football; an
         # international friendly is still a cap, so those stay.
-        if not national and (r.league_name or "").lower().startswith("friendlies"):
+        if not national and (competition(r) or "").lower().startswith("friendlies"):
             continue
         (internationals if national else clubs)[(r.season, team)].append(r)
 
@@ -98,10 +128,10 @@ async def build_ledger(db: AsyncSession, player, *, include_injuries: bool) -> d
             stats = [_row_stats(r) for r in comps]
             out.append({
                 "season": season, "label": season_label(season), "club": team,
-                "club_logo": next((r.team_logo for r in comps if r.team_logo), None),
+                "club_logo": next((club_logo(r) for r in comps if club_logo(r)), None),
                 "is_loan": any(r.is_loan for r in comps),
                 "totals": aggregate(stats),
-                "competitions": [{"name": r.league_name or "Other", "logo": r.league_logo, **s}
+                "competitions": [{"name": competition(r) or "Other", "logo": competition_logo(r), **s}
                                  for r, s in zip(comps, stats)],
             })
         # Newest season first; within a season, the club he played most for first.
@@ -149,7 +179,7 @@ async def build_ledger(db: AsyncSession, player, *, include_injuries: bool) -> d
         for s in {r.season for r in rows if r.season}:
             spells = [(r.team_vendor_id, r.league_id) for r in rows
                       if r.season == s and (r.appearances or 0) and _YOUTH.sub("", r.team_name or "").lower() not in countries
-                      and not (r.league_name or "").lower().startswith("friendlies")]
+                      and not (competition(r) or "").lower().startswith("friendlies")]
             total = sum(played.get((t, lg, s)) or 0 for t, lg in spells)
             known = all(played.get((t, lg, s)) is not None for t, lg in spells) and total > 0
             lost = sum(1 for m in missed if m.season == s and (m.team_vendor_id, m.league_id) in set(spells))

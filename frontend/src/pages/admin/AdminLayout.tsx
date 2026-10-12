@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { to: "/admin/users",      label: "Users",       icon: "👤" },
   { to: "/admin/clubs",      label: "Clubs",       icon: "🏟" },
   { to: "/admin/players",    label: "Players",     icon: "⚽" },
+  { to: "/admin/real-world-moves", label: "Real-world moves", icon: "⇄" },
   { to: "/admin/sales",      label: "Sales",       icon: "🏷" },
   { to: "/admin/deals",      label: "Deals",       icon: "🤝" },
   { to: "/admin/offers",     label: "Offers",      icon: "💬" },

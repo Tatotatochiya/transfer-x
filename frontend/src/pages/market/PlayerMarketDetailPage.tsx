@@ -17,7 +17,7 @@ import {
   playerStatusVariant,
 } from "../../lib/badges";
 import { formatCurrency, getApiError } from "../../lib/utils";
-import { askAboutPath } from "../../lib/ask";
+import AskAboutButton from "../../components/ai/AskAboutButton";
 import AddToShortlistButton from "../../components/scouting/AddToShortlistButton";
 import AskAboutPlayerModal from "../../components/enquiries/AskAboutPlayerModal";
 import { PotentialBuyersPanel } from "../../components/ai/Assistant";
@@ -25,6 +25,7 @@ import PlayerAccountCard from "../../components/players/PlayerAccountCard";
 import ListPlayerModal from "../../components/sales/ListPlayerModal";
 import { useCompare } from "../../context/CompareContext";
 import FactsStrip from "../../components/players/ledger/FactsStrip";
+import RealWorldMoveBanner from "../../components/players/RealWorldMoveBanner";
 import { CareerLedger, InjuriesLedger, OverviewLedger, type StatSet } from "../../components/players/ledger/LedgerTabs";
 import { PlayerFitCard } from "../../components/ai/PlayerFitCard";
 import { useConfirm } from "../../context/ConfirmContext";
@@ -667,9 +668,7 @@ export default function PlayerMarketDetailPage() {
           )}
 
           {isAuthenticated && !isAgent && !isPlayerAccount && (
-            <Button variant="secondary" onClick={() => navigate(askAboutPath("player", player.id, player.name))}>
-              Ask about this
-            </Button>
+            <AskAboutButton about="player" id={player.id} name={player.name} />
           )}
 
           {!isMyPlayer && (
@@ -763,6 +762,9 @@ export default function PlayerMarketDetailPage() {
 
       {/* Deal banner: new offers, the clause and listing pause while a deal is live */}
       {player.active_deal && <DealBanner deal={player.active_deal} />}
+
+      {/* API-Football has him at another club than his TransferX registration */}
+      {ledger?.real_world && <RealWorldMoveBanner move={ledger.real_world} isMyPlayer={isMyPlayer} />}
 
       {/* Facts strip */}
       <FactsStrip

@@ -540,7 +540,10 @@ async def get_player_ledger(
     """The profile's season ledger: club seasons with competition sub-rows, a
     career total, internationals, transfers by season, injury periods with
     games missed and availability (signed-in users only, as the injuries
-    tab), and his last five games. Same visibility as the player page."""
+    tab), and his last five games. Same visibility as the player page.
+    `real_world` says when API-Football has him at a different club from
+    the one TransferX has him registered to (players/real_world.py)."""
+    from app.players import real_world
     from app.players.ledger import build_ledger
     from app.players.models import PlayerVisibility
 
@@ -552,7 +555,9 @@ async def get_player_ledger(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
     if player.visibility == PlayerVisibility.CLUBS_ONLY and current_user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Login required")
-    return await build_ledger(db, player, include_injuries=current_user is not None)
+    ledger = await build_ledger(db, player, include_injuries=current_user is not None)
+    ledger["real_world"] = (await real_world.check(db, [player])).get(player.id)
+    return ledger
 
 
 # ── Representation (mandates) ─────────────────────────────────────────────────

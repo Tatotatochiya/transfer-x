@@ -25,6 +25,7 @@ In scope: product-level decisions (what to build, what not to build, scope trade
 - [0006 — The buying club records consent for a player with no account or agent](./0006-buying-club-records-consent-for-unrepresented-player.md)
 - [0007 — Players join by invitation from their club; a mandated agent can always answer](./0007-players-join-by-invitation-agents-can-answer.md)
 - [0008 — One Transfers board, one main way to buy, Lite decides and the full app operates](./0008-transfers-board-one-way-to-buy-lite-decides.md)
+- [0009 — Real-world moves are flagged, and applied only by TransferX staff](./0009-real-world-moves-flagged-applied-by-staff.md)
 
 > **TODO:** Add further decisions here as `NNNN-short-title.md`, following the short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
 

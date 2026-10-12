@@ -58,6 +58,8 @@ class NotificationType(str, enum.Enum):
     ENQUIRY_REPLIED = "ENQUIRY_REPLIED"
     # A colleague asked from Lite ("Ask Sam", lite-mode BACKEND §6).
     LITE_QUESTION = "LITE_QUESTION"
+    # Staff moved a player's registration to match a real-world move (players/real_world.py).
+    REGISTRATION_UPDATED = "REGISTRATION_UPDATED"
 
 
 class Notification(Base):

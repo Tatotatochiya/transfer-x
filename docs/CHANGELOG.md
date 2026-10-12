@@ -25,6 +25,11 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Real-world moves** ([product ADR 0009](./product/decisions/0009-real-world-moves-flagged-applied-by-staff.md)). TransferX now notices when API-Football has a contracted player at another club than the one he's registered to: a transfer, a loan or a loan ending this season, or games for another club. On the dev data that's 204 of 680 players, Senesi (Bournemouth → Tottenham) among them.
+  - **The player's page** says "Moved in real life: Joined Tottenham on 30 Jun 2026 (free transfer). On TransferX he's still registered to Bournemouth."
+  - **Admin → Real-world moves** lists them, filtered by kind, club or name. Staff apply moves one at a time or in bulk, with a reason. Applying closes the player's open offers, listings and enquiries (releasing the budget offers held), ends his contract, and starts one at the TransferX club he joined (for that club to confirm) or makes him an outside player. Both clubs get the new "Squad updated" notification (`REGISTRATION_UPDATED`); the change is in the audit log. No money moves.
+  - **Not applied:** a player in a TransferX deal or on a TransferX loan, and real-world loans (a loan abroad doesn't change who owns him; a loan between TransferX clubs needs terms the data lacks). Staff can dismiss a move instead; it comes back only if he turns up at another club.
+  - Endpoints `GET /admin/real-world-moves`, `POST /admin/real-world-moves/apply`, `POST /admin/real-world-moves/{player_id}/dismiss`; the player ledger gains `real_world`. Migration `0101`.
 - **Lite: search by name when buying** ([spec](./feature_spec/lite-mode/README.md#screen-3--buy-flow-2a)). "Buy a player" now opens on "Who are you looking for?": a search box at the top, with the position and budget questions below it.
   - Every player the club may see is found. Each result says what the club can do: make an offer (with the price), see its open offer, sign a free agent from his page, or ask the team about a player whose club isn't on TransferX. A player already in a transfer, or one of the club's own, says so.
   - Results put players whose name has a word starting with the search first ("son" finds "H. Son" before "A. Harrison"), then the ones the club can act on.
@@ -225,6 +230,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **"Ask about this" has the AI look everywhere** (player page, board cards, offer page): the ✦ mark in the assistant's purple with its light fill and ring, from one shared `AskAboutButton`. It was a grey button in two places and a green link in the third. The design rules now say every AI control looks like AI.
 - **Valuations are recomputed once a day by the stats-worker,** after the 22:00 data refresh, instead of by the web app on every start, so deploys no longer write a fresh valuation for every player.
 - **API-Football syncs write a stats snapshot only when a player's appearances, minutes or rating changed.**
 - **A player who moved club within a competition mid-season keeps one stats row per club in league syncs.** League syncs used to fail on these players.
@@ -287,6 +293,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **This season's competitions showed as "Other" on player profiles.** The scheduled refresh's stats sync never stored the competition's name or logos, or the club's logo (only the history backfill did), so every 2026/27 row had none and the season's club had no crest. It stores them now, and the season ledger fills gaps in older rows from stored teams and competitions (else API-Football's image address for the id), so profiles are right before the next refresh. The real-world moves check uses the same names, so club friendlies never count as playing for a club. (`backend/app/vendor/sync.py`, `backend/app/players/ledger.py`)
 - **The app-wide search (`GET /search`) answered signed-out callers,** including players whose visibility is "clubs only". It now requires sign-in; both places that use it (⌘K and adding to a shortlist) are signed-in pages.
 - **Ask TransferX answered from the model's memory.** As Chelsea, "place 8m bid on Havertz" got "Havertz is already in your squad" (he's Arsenal's). Named players are now looked up on TransferX, the model is told its football knowledge is out of date, and a wrong "your squad" claim is replaced with TransferX's facts. ⌘K can now prepare a bid: it opens the offer form filled in, for you to check and send ([spec §7a](./feature_spec/ai-analyst/README.md)).
 - **iPhone push taps are counted.** iOS opens pushes without the service worker; the page now reports the tap with the push's own token.

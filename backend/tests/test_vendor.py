@@ -28,8 +28,9 @@ FAKE_PLAYER_STATS_RESPONSE = {
             },
             "statistics": [
                 {
-                    "team": {"id": 541, "name": "Real Madrid"},
-                    "league": {"id": 39, "name": "Premier League", "country": "England", "season": 2024},
+                    "team": {"id": 541, "name": "Real Madrid", "logo": "https://team.logo"},
+                    "league": {"id": 39, "name": "Premier League", "country": "England", "season": 2024,
+                               "logo": "https://league.logo"},
                     "games": {"minutes": 90, "rating": "8.0", "position": "Midfielder"},
                     "goals": {"total": 1, "assists": 2},
                 }
@@ -310,6 +311,11 @@ async def test_sync_league_creates_player(client: AsyncClient, db, superuser):
     player = p_result.scalar_one_or_none()
     assert player is not None
     assert player.name == "N. Neymar"
+
+    # The competition is stored too, so the profile's season ledger can name it.
+    from app.stats.models import PlayerStats
+    row = (await db.execute(select(PlayerStats).where(PlayerStats.player_id == player.id))).scalar_one()
+    assert (row.league_name, row.league_logo, row.team_logo) == ("Premier League", "https://league.logo", "https://team.logo")
 
 
 async def test_compute_form_endpoint(client: AsyncClient, db, superuser, user_tokens):
