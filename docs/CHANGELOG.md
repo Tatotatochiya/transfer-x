@@ -1,6 +1,6 @@
 ---
 title: "Changelog"
-last_updated: 2026-10-11
+last_updated: 2026-10-12
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -18,15 +18,18 @@ Out of scope: internal refactors with no behaviour change, minor documentation w
 
 ## Format
 
-Follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/): most recent changes at the top, grouped under `### Added` / `### Changed` / `### Fixed` / `### Removed
-- **The classic list pages** (Transfers in progress, Enquiries, My Offers, Offers Received, My Listings) and their "Classic views" sidebar group. Their addresses redirect to the board, with Buying or Selling chosen. Detail pages are unchanged.
-, with unreleased work under `## [Unreleased]`.
+Follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/): most recent changes at the top, grouped under `### Added` / `### Changed` / `### Fixed` / `### Removed`, with unreleased work under `## [Unreleased]`.
 
 Maintained by the [`documentation-standards`](../.claude/skills/documentation-standards/SKILL.md) skill — update it as part of any session that ships a real change, not in a batch after the fact.
 
 ## [Unreleased]
 
 ### Added
+- **Lite: search by name when buying** ([spec](./feature_spec/lite-mode/README.md#screen-3--buy-flow-2a)). "Buy a player" now opens on "Who are you looking for?": a search box at the top, with the position and budget questions below it.
+  - Every player the club may see is found. Each result says what the club can do: make an offer (with the price), see its open offer, sign a free agent from his page, or ask the team about a player whose club isn't on TransferX. A player already in a transfer, or one of the club's own, says so.
+  - Results put players whose name has a word starting with the search first ("son" finds "H. Son" before "A. Harrison"), then the ones the club can act on.
+  - New endpoint `GET /lite/buy/search?q=` for club members; no model call.
+- **Lite: "Show 3 more" on the Buy results,** from the same ranking (`offset` on `GET /lite/buy/candidates`).
 - **Scheduled data refresh, Jobs, Errors and Slack** ([spec](./feature_spec/scheduled-data-refresh.md)).
   - **Data refresh:** a separate `stats-worker` Railway cron service refreshes API-Football data at 17:00 and 22:00 UK time:
     - current-season stats, injuries, ratings for newly finished matches, and form;
@@ -284,6 +287,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **The app-wide search (`GET /search`) answered signed-out callers,** including players whose visibility is "clubs only". It now requires sign-in; both places that use it (⌘K and adding to a shortlist) are signed-in pages.
 - **Ask TransferX answered from the model's memory.** As Chelsea, "place 8m bid on Havertz" got "Havertz is already in your squad" (he's Arsenal's). Named players are now looked up on TransferX, the model is told its football knowledge is out of date, and a wrong "your squad" claim is replaced with TransferX's facts. ⌘K can now prepare a bid: it opens the offer form filled in, for you to check and send ([spec §7a](./feature_spec/ai-analyst/README.md)).
 - **iPhone push taps are counted.** iOS opens pushes without the service worker; the page now reports the tap with the push's own token.
 - **Dashboard approval items** linked to `/approvals`, which isn't a page.
@@ -346,6 +350,9 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **Personal terms could be proposed and consented to on a collapsed deal.** Both steps checked only the deal's stage, and a collapsed deal keeps its stage. Both now require the deal to be in progress. (`backend/app/deals/service.py`)
 - **The frontend test suite is green again:** 136 of 136, up from 120. The 16 failures were stale tests, not product bugs: player cards rendered without the compare context, and two label expectations predated their labels.
 
+
+### Removed
+- **The classic list pages** (Transfers in progress, Enquiries, My Offers, Offers Received, My Listings) and their "Classic views" sidebar group. Their addresses redirect to the board, with Buying or Selling chosen. Detail pages are unchanged.
 ### Changed
 - **Navigation regrouped by what a club is doing:** Home, Buying, Selling, Club. Pages are renamed to say what they hold:
   - Offer Inbox → **Offers Received**

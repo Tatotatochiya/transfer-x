@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import api from "../lib/api";
 
@@ -60,12 +60,52 @@ export function useLiteSquadCounts() {
   });
 }
 
+export interface LiteCandidatesPage {
+  players: LiteCandidate[];
+  squad_counts: Record<string, number>;
+  offset: number;
+  has_more: boolean;
+}
+
+/** Three players at a time from the same ranking; "Show more" fetches the next three. */
 export function useLiteCandidates(position: LitePosition | null, band: LiteBand | null) {
-  return useQuery<{ players: LiteCandidate[]; squad_counts: Record<string, number> }>({
+  return useInfiniteQuery({
     queryKey: ["lite", "buy", "candidates", position, band],
-    queryFn: () => api.get("/lite/buy/candidates", { params: { position, band } }).then((r) => r.data),
+    queryFn: ({ pageParam }) =>
+      api.get<LiteCandidatesPage>("/lite/buy/candidates", { params: { position, band, offset: pageParam } }).then((r) => r.data),
+    initialPageParam: 0,
+    getNextPageParam: (last) => (last.has_more ? last.offset + last.players.length : undefined),
     enabled: !!position && !!band,
     staleTime: 10 * 60_000,
+  });
+}
+
+/** What a search result lets the club do: make an offer, or why not. */
+export type LiteSearchState = "buyable" | "offer_in" | "free_agent" | "in_transfer" | "outside" | "yours";
+
+export interface LiteSearchResult {
+  player_id: string;
+  name: string;
+  photo_url?: string | null;
+  age: number | null;
+  position: string | null;
+  club: string | null;
+  state: LiteSearchState;
+  price: number | null;
+  price_basis: string | null;
+  offer_id: string | null;
+  note: string | null;
+}
+
+/** Players by name for the Buy flow's search box (from two letters). No model call. */
+export function useLiteBuySearch(q: string) {
+  const term = q.trim();
+  return useQuery<{ q: string; players: LiteSearchResult[] }>({
+    queryKey: ["lite", "buy", "search", term],
+    queryFn: () => api.get("/lite/buy/search", { params: { q: term } }).then((r) => r.data),
+    enabled: term.length >= 2,
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
   });
 }
 

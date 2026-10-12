@@ -101,13 +101,31 @@ async def buy_squad_counts(
 async def buy_candidates(
     position: str,
     band: str,
+    offset: int = 0,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Three players the club could make an offer for now, picked by TransferX
-    (decision 3). The model only rewords the reasons when it can."""
+    (decision 3); `offset` pages through the same ranking ("Show more"). The
+    model only rewords the reasons when it can."""
     try:
-        return await service.buy_candidates(db, current_user, position=position, band=band)
+        return await service.buy_candidates(db, current_user, position=position, band=band, offset=offset)
+    except LookupError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lite mode is for club members")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+
+@router.get("/lite/buy/search")
+async def buy_search(
+    q: str = Query(..., max_length=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Players by name, each with whether the club can make an offer for him
+    now (and the price) or why not. No model call."""
+    try:
+        return await service.buy_search(db, current_user, q=q)
     except LookupError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lite mode is for club members")
     except ValueError as exc:

@@ -6,9 +6,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.auth.models import User
 from app.clubs.models import Club
 from app.clubs.schemas import ClubPublicResponse
 from app.database import get_db
+from app.deps import get_current_user
 from app.players.models import Player, PlayerVisibility
 from app.players.schemas import PlayerResponse
 
@@ -24,6 +26,7 @@ class SearchResults(BaseModel):
 async def search(
     q: str = Query(..., min_length=2, max_length=100),
     db: AsyncSession = Depends(get_db),
+    _user: User = Depends(get_current_user),  # "clubs only" players are not public
 ) -> SearchResults:
     term = f"%{q.strip()}%"
 

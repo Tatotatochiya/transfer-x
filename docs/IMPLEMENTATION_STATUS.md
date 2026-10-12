@@ -1,6 +1,6 @@
 ---
 title: "Implementation Status"
-last_updated: 2026-10-11
+last_updated: 2026-10-12
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -33,7 +33,7 @@ Rewritten on 2026-10-11 from the code, the CHANGELOG and read-only checks of the
 | Clubs, roles and approvals | Built | 2026-07-10, rows since | Owner and four staff roles with one capability matrix; invitations for clubs, staff and players; spending approvals above a threshold with the decision sheet; "Check your squad"; people's names; "in play" status on the squad |
 | Agents and mandates | Built | 2026-10-11 | Mandates, agent negotiation of commission, agent answering personal terms (ADR 0007), the Pipeline start page, client alerts. Mandates need no player confirmation (gap below) |
 | Players | Built | 2026-10-01 | Profile v2 season ledger, career and injuries (P1–P4); player accounts by club invitation only; free agents invited by staff or their agent |
-| Lite mode | Built | 2026-10-04 | L1–L8: home, buy flow, action cards with the money effect, Ask anything, held sends with a 10-second undo (ADR 0007), team contact, decisions from email. Opt-in per person; the full app is the default |
+| Lite mode | Built | 2026-10-12 | L1–L8: home, buy flow (search by name first, then position and budget, with "Show 3 more"), action cards with the money effect, Ask anything, held sends with a 10-second undo (ADR 0007), team contact, decisions from email. Opt-in per person; the full app is the default |
 | Notifications | Built | 2026-10-04 | In-app with live refresh; email per type and the daily digest; Web Push with tiers, quiet hours, the morning summary, decision sheets and a 30-minute email fallback. Railway has push keys but no SMTP (gap below) |
 | AI assistant | Built | 2026-10-06 | Advises, never acts (ADR 0006): offer advisor, terms checks, summaries, deal steps, briefing, pricing, "Who might want him?", drafts, Ask TransferX (⌘K). The analyst (`/ask`): 17 read-only, club-scoped tools, tables, charts, Excel, "Ask about this"; eval 71/72. Cache and rate limit are in memory |
 | Valuation | Built, not calibrated | 2026-10-07 | `market-v2` (multi-season, age and potential, form, contract, availability, comparables). Recomputed daily by the `stats-worker`. On dev data it prices about half below real fees, and the market rate hits its ×1.60 ceiling for 53% of players ([calibration TODO](./feature_spec/valuation-model-v2.md)) |
@@ -83,9 +83,9 @@ Each item was checked against the code on 2026-10-11 unless it says otherwise.
 
 ## Test totals
 
-As of 2026-10-11:
-- **Backend:** 877 passed (full suite, SQLite).
-- **Frontend:** vitest 250 passed.
+As of 2026-10-12:
+- **Backend:** 883 passed (full suite, SQLite).
+- **Frontend:** vitest 255 passed.
 - **Type check:** `tsc -b` has 0 errors.
 
 ## Related documents
