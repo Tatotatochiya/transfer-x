@@ -10,9 +10,10 @@ export type IconName =
   | "send" | "layout-dashboard" | "shield" | "wallet" | "crosshair"
   | "list" | "settings" | "log-out" | "menu" | "x" | "chevron-right" | "chevron-up"
   | "chevrons-right" | "chevrons-left" | "bolt" | "check" | "arrow-right-left"
-  | "user" | "briefcase" | "message" | "home" | "columns";
+  | "user" | "briefcase" | "message" | "home" | "columns" | "search";
 
 const paths: Record<IconName, React.ReactNode> = {
+  search: <><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" /></>,
   columns: <><path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h3a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm6.5 0a1 1 0 011-1h3a1 1 0 011 1v9a1 1 0 01-1 1h-3a1 1 0 01-1-1V5zM17 5a1 1 0 011-1h1a1 1 0 011 1v6a1 1 0 01-1 1h-1a1 1 0 01-1-1V5z" /></>,
   home: <><path strokeLinecap="round" strokeLinejoin="round" d="M3 10.5L12 3l9 7.5M5 9v11h5v-6h4v6h5V9" /></>,
   message: <><path strokeLinecap="round" strokeLinejoin="round" d="M8 10h8M8 14h5m-9 6l3.5-3H19a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v9a2 2 0 002 2h1v3z" /></>,

@@ -44,7 +44,7 @@ Verified against the router mounts in `backend/app/main.py` on 2026-10-11.
 | `/loans` | Loans (also under `/clubs/me/loans` and `/admin/loans`) |
 | `/board` | The Transfers board |
 | `/conversation` | One conversation per transfer |
-| `/lite` | Lite home, buy flow, offer cards, held sends, team contact, email confirmations |
+| `/lite` | Lite home, buy flow (search by name, candidates with paging), offer cards, held sends, team contact, email confirmations |
 | `/ai` | The assistant, Ask TransferX (`/ai/ask`), the analyst (`/ai/analyst`, `/ai/analyst/export`) |
 | `/valuation` | Fair-value reads and staff recompute |
 | `/agents`, `/mandates`, `/negotiations` | Agents, mandates, agent negotiation messages |
@@ -53,7 +53,7 @@ Verified against the router mounts in `backend/app/main.py` on 2026-10-11.
 | `/verification` | Verification requests |
 | `/world`, `/fixtures`, `/stats`, `/vendor` | Reference data, fixtures, stats, API-Football syncs |
 | `/fx` | Exchange rates for display |
-| `/search` | Global search |
+| `/search` | Global search (⌘K, shortlists); signed-in only |
 | `/analytics` | Usage events |
 | `/admin` | Staff administration, including `/admin/jobs`, `/admin/errors` and `/admin/health` |
 | `/monitoring/client-errors` | Browser error reports |

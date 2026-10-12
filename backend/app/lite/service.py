@@ -142,7 +142,7 @@ def build_tiles(window: dict, waiting: dict, *, renew_count: int, can_market: bo
     if window["state"] in ("open", "none"):
         return [
             {"key": "buy", "style": "accent", "title": "Buy a player",
-             "subtitle": "Tell us what you need. We'll find them.",
+             "subtitle": "Search by name, or tell us what you need.",
              "href": "/lite/buy", "disabled_reason": no_market},
             {"key": "sell", "style": "plain", "title": "Sell or loan a player",
              "subtitle": "Pick someone from your squad.", "href": "/club", "disabled_reason": no_market},
@@ -357,10 +357,15 @@ def _money(v: float) -> str:
     return f"£{round(v / 1000)}k"
 
 
-async def buy_candidates(db: AsyncSession, user, *, position: str, band: str) -> dict:
-    """Three players the club could make an offer for now, picked in code.
-    The model only rewords the reasons, if it is available and the user's
-    allowance allows; otherwise the plain reasons stand."""
+CANDIDATES_PAGE = 3
+MAX_OFFSET = 60
+
+
+async def buy_candidates(db: AsyncSession, user, *, position: str, band: str, offset: int = 0) -> dict:
+    """Three players the club could make an offer for now, picked in code;
+    `offset` pages through the same ranking ("Show more"). The model only
+    rewords the reasons, if it is available and the user's allowance allows;
+    otherwise the plain reasons stand."""
     from app.ai import assist
     from app.clubs.service import get_club_and_role_for_user
     from app.deals.service import get_active_deals_for_players
@@ -371,6 +376,8 @@ async def buy_candidates(db: AsyncSession, user, *, position: str, band: str) ->
         raise LookupError("No club")
     if position not in ("GK", "DEF", "MID", "FWD", "ANY") or band not in (*BANDS, "free"):
         raise ValueError("Unknown position or budget")
+    if not 0 <= offset <= MAX_OFFSET:
+        raise ValueError("Unknown page")
     counts = await squad_counts(db, club.id)
 
     q = select(Player).where(
@@ -412,7 +419,8 @@ async def buy_candidates(db: AsyncSession, user, *, position: str, band: str) ->
         age_fit = -abs((p.age or 26) - 25)
         ranked.append((need, 1 if basis == "listed" else 0, age_fit, -price, p, price, basis, sale))
     ranked.sort(key=lambda r: r[:4], reverse=True)
-    top = ranked[:3]
+    top = ranked[offset:offset + CANDIDATES_PAGE]
+    has_more = len(ranked) > offset + CANDIDATES_PAGE and offset + CANDIDATES_PAGE <= MAX_OFFSET
 
     from app.clubs.models import Club
 
@@ -453,7 +461,107 @@ async def buy_candidates(db: AsyncSession, user, *, position: str, band: str) ->
         except Exception:
             pass  # rate limit, no model, bad output: the plain reasons stand
 
-    return {"position": position, "band": band, "squad_counts": counts, "players": players}
+    return {"position": position, "band": band, "squad_counts": counts, "players": players,
+            "offset": offset, "has_more": has_more}
+
+
+# ── Buy flow search by name ──────────────────────────────────────────────────
+
+SEARCH_LIMIT = 10
+SEARCH_POOL = 25
+# Where a word of a name can start: "Son", "H. Son", "J.Son", "Wan-Bissaka", "O'Shea".
+WORD_STARTS = ("", "% ", "%.", "%-", "%'")
+# Then the order results are shown in: players the club can act on first.
+SEARCH_ORDER = ("buyable", "offer_in", "free_agent", "in_transfer", "outside", "yours")
+
+
+async def buy_search(db: AsyncSession, user, *, q: str) -> dict:
+    """Players by name for the Buy flow's search box, each saying whether the
+    club can make an offer for him now and at what price (the same price and
+    ownership rules as the candidates and the bid card). Every player the
+    club may see is found, with the reason when he can't be bought: a name
+    that finds nothing looks like a broken search. No model call."""
+    import re
+
+    from sqlalchemy import case, or_
+    from sqlalchemy.orm import selectinload
+
+    from app.clubs.models import Club
+    from app.clubs.service import get_club_and_role_for_user
+    from app.deals.service import get_active_deals_for_players
+    from app.offers.models import Offer, OfferStatus
+    from app.players.models import Player, PlayerStatus, PlayerVisibility
+    from app.players.service import get_owning_club_id
+
+    club, _ = await get_club_and_role_for_user(db, user.id)
+    if club is None:
+        raise LookupError("No club")
+    term = q.strip()
+    if len(term) < 2:
+        raise ValueError("Type at least two letters")
+    escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    rows = (await db.execute(
+        select(Player)
+        .where(Player.name.ilike(f"%{escaped}%", escape="\\"),
+               (Player.visibility != PlayerVisibility.PRIVATE) | (Player.current_club_id == club.id))
+        .options(selectinload(Player.world_team))
+        .order_by(case((or_(*(Player.name.ilike(f"{lead}{escaped}%", escape="\\") for lead in WORD_STARTS)), 0),
+                       else_=1), Player.name)
+        .limit(SEARCH_POOL)
+    )).scalars().all()
+    if not rows:
+        return {"q": term, "players": []}
+
+    ids = [p.id for p in rows]
+    owner_of = {p.id: None if p.status == PlayerStatus.EXTERNAL else await get_owning_club_id(db, p) for p in rows}
+    busy = await get_active_deals_for_players(db, ids)
+    my_offers = dict((await db.execute(
+        select(Offer.player_id, Offer.id).where(
+            Offer.player_id.in_(ids), Offer.from_club_id == club.id,
+            Offer.status.in_([OfferStatus.SENT, OfferStatus.COUNTERED]))
+    )).all())
+    prices = await _prices(db, [p for p in rows if p.status != PlayerStatus.EXTERNAL],
+                           owned={pid for pid, o in owner_of.items() if o is not None})
+    club_names = dict((await db.execute(
+        select(Club.id, Club.name).where(Club.id.in_({o for o in owner_of.values() if o}))
+    )).all())
+
+    found = []
+    for p in rows:
+        owner = owner_of[p.id]
+        price, basis, _sale = prices.get(p.id, (None, None, None))
+        offer_id = None
+        if owner == club.id:
+            state, note = "yours", "He's already your player."
+        elif p.status == PlayerStatus.EXTERNAL or (owner is None and p.status != PlayerStatus.FREE_AGENT):
+            state, note = "outside", "His club isn't on TransferX, so there's no one to send an offer to."
+        elif p.id in my_offers:
+            state, note, offer_id = "offer_in", "You already have an offer in for him.", my_offers[p.id]
+        elif p.id in busy and busy[p.id].status.value == "IN_PROGRESS":
+            state, note = "in_transfer", "He's already in a transfer with another club."
+        elif owner is None:
+            state, note = "free_agent", "A free agent: there's no fee to pay."
+        else:
+            state = "buyable"
+            note = None if price is not None else "No price yet: you choose the fee."
+        if state == "outside":
+            club_label = (p.world_team.name if p.world_team else None) or p.team_name
+        elif state == "free_agent":
+            club_label = None
+        else:
+            club_label = club_names.get(owner)
+        found.append({
+            "player_id": str(p.id), "name": p.name, "photo_url": p.photo_url, "age": p.age, "position": _pos(p),
+            "club": club_label, "state": state,
+            "price": price if state in ("buyable", "free_agent") else None,
+            "price_basis": basis if state in ("buyable", "free_agent") else None,
+            "offer_id": str(offer_id) if offer_id else None, "note": note,
+        })
+    # A word of his name starting with the search ("son" finds "H. Son" before
+    # "A. Harrison"), then the players the club can act on; name order within.
+    word = re.compile(r"(^|[\s.'-])" + re.escape(term.lower()))
+    found.sort(key=lambda r: (0 if word.search(r["name"].lower()) else 1, SEARCH_ORDER.index(r["state"])))
+    return {"q": term, "players": found[:SEARCH_LIMIT]}
 
 
 # ── Action cards (L4, README "Screen 5") ────────────────────────────────────

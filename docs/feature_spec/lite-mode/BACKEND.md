@@ -1,6 +1,6 @@
 ---
 title: "Lite Mode — Backend Changes"
-last_updated: 2026-10-11
+last_updated: 2026-10-12
 status: Implemented 2026-10-04 (L1–L8)
 owner: "TODO — assign a Product Owner"
 ---
@@ -92,6 +92,25 @@ Use the next free Alembic revision after the current head (`0084` at the time of
 - Anonymous buyers do not appear here (these are players, not offers), but a masked club name never leaks through any reason text.
 
 > **As built (L3):** price is the asking price, else the fee model with the pricing assistant's 30% contract-ending discount; comparable transfers are left out, since they need a model call. Ranking uses need, listed-first, age fit and price; there is no form data yet. `GET /lite/buy/squad` returns the per-position counts shown on the first step. See README.md, "Deviations from the spec".
+
+- **Paging (2026-10-12):** `offset` (0 to 60, in threes) returns the next three from the same ranking, and the response carries `offset` and `has_more`, for "Show 3 more". Each page's reasons are cached separately.
+
+## 2b. Buy flow search by name
+
+**Why:** a director who already knows who they want shouldn't answer two questions to reach him (added 2026-10-12).
+
+`GET /lite/buy/search?q=` (two to 100 characters), club members only, no model call. Returns up to ten players whose name contains `q` (wildcards taken literally), never another club's PRIVATE players. Each row has the player, his club (the TransferX club, or the outside team's name), and a `state`:
+
+| `state` | Meaning | `price` |
+|---|---|---|
+| `buyable` | At another TransferX club, no open offer from you, not in a transfer | The candidates' price, or null ("you choose the fee") |
+| `offer_in` | You already have an open offer (`offer_id`) | null |
+| `free_agent` | No club anywhere | 0 |
+| `in_transfer` | In a deal in progress with another club | null |
+| `outside` | His club isn't on TransferX (EXTERNAL) | null |
+| `yours` | Owned by the caller's club (the listing ownership rule) | null |
+
+Order: a word of the name starting with `q` first ("son" finds "H. Son" before "A. Harrison"), then the states in the order above, then name. `note` gives the reason in plain words where there is one.
 
 ## 3. Ask anything: extend `ask()`
 
@@ -234,7 +253,7 @@ The "clubs usually reply in 1 to 2 days" hint is the platform median time to acc
 |---|---|---|
 | Tables | `user_preferences`, `held_actions`, `action_tokens`, optionally `assistant_queries` | staff `is_lite_contact` |
 | Enum | `NotificationType.LITE_QUESTION` | |
-| Endpoints | `/users/me/preferences`, `/lite/home`, `/lite/buy/candidates`, `/lite/resume`, `/lite/actions*`, `/lite/deals/{id}/progress`, `/lite/ask-team`, `/lite/confirm/{token}` | `/ai/ask` (Lite pages, `proposal`, `input`), `/ai/offer-check` (`money`), offer create/accept/reject accept `ai_assisted` |
+| Endpoints | `/users/me/preferences`, `/lite/home`, `/lite/buy/candidates`, `/lite/buy/search`, `/lite/resume`, `/lite/actions*`, `/lite/deals/{id}/progress`, `/lite/ask-team`, `/lite/confirm/{token}` | `/ai/ask` (Lite pages, `proposal`, `input`), `/ai/offer-check` (`money`), offer create/accept/reject accept `ai_assisted` |
 | Code | `app/lite/`; `approvals.service.approval_required` (extracted) | `ai/assist.py` (`ask_facts`, `ask`, shared money helper), `ai/prompts.py` `ASK_USER`, `ai/rate_limit.py` (separate ask bucket), `notifications/email.py` and `digest.py` |
 | Jobs | held-action executor (every 2s) | |
 | Docs | architecture ADR 0007 "Held sends for undo" | ADR 0006: note that Lite's action card is the "normal confirmed form" |
