@@ -31,7 +31,7 @@ Verified against `backend/app/*/models.py` on 2026-10-11.
 |---|---|
 | `auth` | `User`, `RefreshToken` (sessions and signed-in devices), `PasswordResetToken`, `AgentProfile`, `PlayerProfile` |
 | `clubs` | `Club`, `ClubFinance` (budget: reserved, committed, spent; approval thresholds), `ClubStaff`, `ClubInvitation`, `ClubStaffInvitation`, `PlayerInvitation`, `PlayerSearchView` |
-| `players` | `Player`, `Contract`, `PlayerTransfer` (history), `PlayerInjury`, `PlayerView` (profile views, counts per club per day) |
+| `players` | `Player`, `Contract`, `PlayerTransfer` (history), `PlayerInjury`, `PlayerView` (profile views, counts per club per day), `RealWorldDismissal` (real-world moves staff chose to leave as they are; [product ADR 0009](../product/decisions/0009-real-world-moves-flagged-applied-by-staff.md)) |
 | `sales` | `Sale` (a listing), `Bid`, `SaleEvent` |
 | `offers` | `Offer` (permanent or loan, possibly anonymous), `OfferMessage`, `OfferEvent` |
 | `enquiries` | `Enquiry`, `EnquiryMessage` |

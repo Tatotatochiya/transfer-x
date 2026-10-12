@@ -55,7 +55,7 @@ Verified against the router mounts in `backend/app/main.py` on 2026-10-11.
 | `/fx` | Exchange rates for display |
 | `/search` | Global search (⌘K, shortlists); signed-in only |
 | `/analytics` | Usage events |
-| `/admin` | Staff administration, including `/admin/jobs`, `/admin/errors` and `/admin/health` |
+| `/admin` | Staff administration, including `/admin/jobs`, `/admin/errors`, `/admin/health` and `/admin/real-world-moves` (list, bulk apply, dismiss) |
 | `/monitoring/client-errors` | Browser error reports |
 | `/health` | Liveness check |
 | `/ws` | WebSocket |

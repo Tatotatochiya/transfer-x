@@ -99,7 +99,8 @@ export type NotificationType =
   | "ENQUIRY_RECEIVED"
   | "ENQUIRY_REPLIED"
   | "LITE_QUESTION"
-  | "APPROVAL_DECIDED";
+  | "APPROVAL_DECIDED"
+  | "REGISTRATION_UPDATED";
 
 // TRA-151 — club roles & capabilities (server matrix is the only truth; the
 // UI only ever consumes the capability list from GET /clubs/me/membership)

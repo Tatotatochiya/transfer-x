@@ -106,3 +106,38 @@ async def test_signed_out_visitors_get_no_injuries(client: AsyncClient, db):
     assert resp.status_code == 200, resp.text
     assert resp.json()["injuries"] is None and resp.json()["seasons"]
     assert (await client.get(f"/players/market/{uuid.uuid4()}/ledger")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_rows_stored_without_logos_or_competition_names_get_them(client: AsyncClient, db):
+    """The league sync didn't keep logos or competition names before
+    2026-10-12: the ledger fills them from stored teams and competitions,
+    else API-Football's image address."""
+    from app.players.models import Player
+    from app.stats.models import PlayerStats
+    from app.world.models import WorldLeague, WorldTeam
+
+    player = Player(name="Bare Row", position="DEF")
+    db.add(player)
+    await db.flush()
+    pid = player.id
+    db.add_all([
+        WorldTeam(vendor="api-football", vendor_id="47", name="Tottenham", crest_url="https://crest/47.png"),
+        WorldLeague(vendor="api-football", league_id="39", name="Premier League"),
+        PlayerStats(player_id=pid, vendor=VENDOR, season="2026", team_name="Tottenham", team_vendor_id="47",
+                    league_id="39", appearances=4, minutes=360),
+        PlayerStats(player_id=pid, vendor=VENDOR, season="2026", team_name="Tottenham", team_vendor_id="47",
+                    league_id="667", appearances=2, minutes=120),  # Friendlies Clubs: no stored name
+        PlayerStats(player_id=pid, vendor=VENDOR, season="2025", team_name="Unstored FC", team_vendor_id="9999",
+                    league_id="40", appearances=10, minutes=900),
+    ])
+    await db.commit()
+
+    viewer = await _register(client, "bare_row@clubs-example.com", club_name="Bare FC")
+    ledger = (await client.get(f"/players/market/{pid}/ledger", headers=_auth_headers(viewer))).json()
+    spurs, unstored = ledger["seasons"]
+    assert spurs["club_logo"] == "https://crest/47.png"
+    assert [(c["name"], c["logo"]) for c in spurs["competitions"]] == [
+        ("Premier League", "https://media.api-sports.io/football/leagues/39.png"),
+        ("Other", "https://media.api-sports.io/football/leagues/667.png")]
+    assert unstored["club_logo"] == "https://media.api-sports.io/football/teams/9999.png"

@@ -37,7 +37,8 @@ Rewritten on 2026-10-11 from the code, the CHANGELOG and read-only checks of the
 | Notifications | Built | 2026-10-04 | In-app with live refresh; email per type and the daily digest; Web Push with tiers, quiet hours, the morning summary, decision sheets and a 30-minute email fallback. Railway has push keys but no SMTP (gap below) |
 | AI assistant | Built | 2026-10-06 | Advises, never acts (ADR 0006): offer advisor, terms checks, summaries, deal steps, briefing, pricing, "Who might want him?", drafts, Ask TransferX (⌘K). The analyst (`/ask`): 17 read-only, club-scoped tools, tables, charts, Excel, "Ask about this"; eval 71/72. Cache and rate limit are in memory |
 | Valuation | Built, not calibrated | 2026-10-07 | `market-v2` (multi-season, age and potential, form, contract, availability, comparables). Recomputed daily by the `stats-worker`. On dev data it prices about half below real fees, and the market rate hits its ×1.60 ceiling for 53% of players ([calibration TODO](./feature_spec/valuation-model-v2.md)) |
-| Data from API-Football | Built | 2026-10-11 | Admin-triggered syncs plus the scheduled refresh (17:00 and 22:00 UK): stats, injuries, ratings for new matches, form; follows each competition's current season. Production refreshes all 11 competitions in `world_leagues` |
+| Data from API-Football | Built | 2026-10-12 | Admin-triggered syncs plus the scheduled refresh (17:00 and 22:00 UK): stats (with each competition's name and logos, fixed 2026-10-12), injuries, ratings for new matches, form; follows each competition's current season. Production refreshes all 11 competitions in `world_leagues` |
+| Real-world moves | Built | 2026-10-12 | Contracted players whose API-Football club differs from their TransferX registration: a "Moved in real life" note on the player page, and Admin → Real-world moves to apply (bulk, with a reason; offers and listings close, contract moves, no money) or dismiss. Never automatic ([product ADR 0009](./product/decisions/0009-real-world-moves-flagged-applied-by-staff.md)). On dev data: 204 of 680 contracted players |
 | Monitoring and admin | Built | 2026-10-11 | Admin panel with every change audited and a reason; audit log page; read-only "view as this club"; Admin Jobs (runs, steps, live logs, Run refresh now), Errors (grouped issues from API, worker and browsers), Health (services, requests, jobs, integrity). Slack alerts once the webhook is set |
 | Accounts and privacy | Built | 2026-10-11 | Sign-in by email or username; sessions and signed-in devices with "sign out everywhere"; password reset links; GDPR export and account deletion; invitation-only accounts |
 | Money display | Built | 2026-10-04 | Amounts in pounds; a chosen EUR or USD adds an estimate at the ECB rate |
@@ -64,6 +65,7 @@ Each item was checked against the code on 2026-10-11 unless it says otherwise.
 **Product and data**
 - **Valuation calibration** against production fees is still to do.
 - **Contract end dates are mock data** for demos.
+- **Transfer histories aren't refreshed on a schedule.** The twice-daily refresh updates appearances, not `/transfers`, so a real-world move with no games yet is only seen once that player's history is backfilled (Admin → Vendor). The real-world moves check relies on both.
 - **Money not moved:** add-on and clause payments are tracked by status only. Present-value figures on instalments aren't shown (no discount rate).
 - **Not built:**
   - the injury risk score (`injury-availability-risk-profile.md`);
@@ -84,8 +86,8 @@ Each item was checked against the code on 2026-10-11 unless it says otherwise.
 ## Test totals
 
 As of 2026-10-12:
-- **Backend:** 883 passed (full suite, SQLite).
-- **Frontend:** vitest 255 passed.
+- **Backend:** 893 passed (full suite, SQLite).
+- **Frontend:** vitest 261 passed.
 - **Type check:** `tsc -b` has 0 errors.
 
 ## Related documents

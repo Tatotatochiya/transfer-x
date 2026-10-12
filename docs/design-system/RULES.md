@@ -1,6 +1,6 @@
 ---
 title: "Design Rules"
-last_updated: 2026-10-11
+last_updated: 2026-10-12
 status: Active
 owner: "TODO — assign a Design Owner"
 ---
@@ -33,6 +33,10 @@ Tailwind v4 is CSS-first: tokens live in `@theme` in `src/index.css`. There is n
 8. **Flex or grid with `gap` for every sibling group.** No margin-based spacing between siblings.
 9. **Focus rings stay.** `outline: 2px solid var(--color-accent); outline-offset: 2px`.
 10. **Colour is never the only carrier of meaning.** Every coloured state has a text label.
+11. **AI controls look like AI.** Anything that asks the assistant (a button, a link, a panel
+    heading) carries the ✦ mark in the assistant colour (`role-agent-text`); a button has its
+    light fill (`/10`) and ring (`/30`). Use `components/ai/AskAboutButton` for "Ask about this"
+    rather than restyling a plain button.
 
 ## Before finishing a UI change
 

@@ -5,6 +5,7 @@ import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,6 +57,68 @@ from app.players.schemas import ContractResponse, PlayerResponse
 from app.sales.schemas import SaleResponse
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+# ── Real-world moves TransferX does not have yet ─────────────────────────────
+
+
+@router.get("/real-world-moves")
+async def real_world_moves(
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Contracted players whose club in API-Football's data isn't the one
+    TransferX has them registered to. Reports only; nothing is changed."""
+    from app.players import real_world
+
+    return await real_world.list_moves(db)
+
+
+class RealWorldApplyRequest(AdminReasonRequest):
+    player_ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
+
+
+@router.post("/real-world-moves/apply")
+async def apply_real_world_moves(
+    body: RealWorldApplyRequest,
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Correct the registrations of these players to match their real-world
+    moves. Each is re-checked and applied on its own: one that can't be (in a
+    deal, on loan, already matching) is skipped with the reason, and the
+    rest still go through. No money moves; audited with the reason."""
+    from app.players import real_world
+
+    applied, skipped = [], []
+    for player_id in dict.fromkeys(body.player_ids):
+        try:
+            async with db.begin_nested():
+                applied.append(await real_world.apply_move(db, current_user, player_id, reason=body.reason))
+        except (ValueError, LookupError) as exc:
+            skipped.append({"player_id": str(player_id), "reason": str(exc)})
+    await db.commit()
+    return {"applied": applied, "skipped": skipped}
+
+
+@router.post("/real-world-moves/{player_id}/dismiss")
+async def dismiss_real_world_move(
+    player_id: uuid.UUID,
+    body: AdminReasonRequest,
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Leave his registration as it is and stop reporting this move."""
+    from app.players import real_world
+
+    try:
+        result = await real_world.dismiss_move(db, current_user, player_id, reason=body.reason)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    await db.commit()
+    return result
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────

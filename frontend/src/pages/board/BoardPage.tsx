@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { askAboutPath } from "../../lib/ask";
+import AskAboutButton from "../../components/ai/AskAboutButton";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -147,9 +147,9 @@ function CardDetail({ card, onClose }: { card: BoardCard; onClose: () => void })
             <p className={card.whose_move === "your" ? "font-semibold text-accent" : "text-text-muted"}>{card.detail}</p>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant="secondary" onClick={() => navigate(card.kind === "deal" || card.kind === "offer"
-              ? askAboutPath(card.kind, card.entity_id, card.player_name)
-              : askAboutPath("player", card.player_id, card.player_name))}>Ask about this</Button>
+            {card.kind === "deal" || card.kind === "offer"
+              ? <AskAboutButton size="sm" about={card.kind} id={card.entity_id} name={card.player_name} />
+              : <AskAboutButton size="sm" about="player" id={card.player_id} name={card.player_name} />}
             <Button size="sm" onClick={() => navigate(card.link)}>{OPEN_LABEL[card.kind]}</Button>
           </div>
         </div>

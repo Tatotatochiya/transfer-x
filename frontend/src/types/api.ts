@@ -1933,4 +1933,22 @@ export interface PlayerLedger {
   /** Null for signed-out visitors. */
   injuries: { periods: LedgerInjury[]; by_season: Record<string, LedgerInjurySeason> } | null;
   form: { score: number | null; trend: number | null; recent: LedgerRecentGame[] };
+  /** API-Football has him at another club than the one TransferX has him registered to. */
+  real_world?: RealWorldMove | null;
+}
+
+/** A real-world move TransferX doesn't have yet (backend players/real_world.py). */
+export interface RealWorldMove {
+  kind: "transfer" | "loan" | "loan_return" | "playing";
+  registered_club_id: string;
+  registered_club: string | null;
+  real_team_vendor_id: string;
+  real_club: string | null;
+  real_club_logo: string | null;
+  /** The TransferX club he's now at in real life, when it's on TransferX. */
+  real_club_on_transferx_id: string | null;
+  moved_on: string | null;
+  fee: string | null;
+  last_played: string | null;
+  season: string;
 }
