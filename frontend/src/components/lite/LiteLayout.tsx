@@ -14,8 +14,10 @@ import Icon from "../layout/Icon";
 
 /**
  * The Lite shell (docs/feature_spec/lite-mode, README "Shared: Lite top bar"
- * and "Screen 8"): a plain top bar — logo, club, Home, avatar — and no
- * sidebar, search or bell.
+ * and "Screen 8"): a plain top bar — logo, club, Home, "Switch to full app",
+ * avatar — and no sidebar, search or bell. Lite is club members' default
+ * (since 2026-10-13), so the way out is a visible button, not only the
+ * profile menu's switch.
  *
  * Text size applies inside Lite only (decision 5). Lite is sized in rem, so
  * scaling the root font while this layout is mounted scales all of Lite and
@@ -59,11 +61,30 @@ export default function LiteLayout({ children }: { children: React.ReactNode }) 
               <Icon name="home" className="h-5 w-5" /> Home
             </Link>
           )}
+          <FullAppButton />
           <ProfileMenu scale={scale} />
         </div>
       </header>
       <main className="mx-auto w-full max-w-[1100px] px-4 py-8 sm:px-14 sm:py-11">{children}</main>
     </div>
+  );
+}
+
+/** Leaves Lite for the full app, and remembers it: the full app becomes their home. */
+function FullAppButton() {
+  const navigate = useNavigate();
+  const update = useUpdatePreferences();
+  return (
+    <button
+      type="button"
+      disabled={update.isPending}
+      onClick={() => update.mutate({ lite_mode: false }, { onSuccess: () => navigate("/dashboard") })}
+      title="Switch to the full app. You can come back to Lite from your account menu."
+      className="flex min-h-[2.75rem] items-center gap-2 rounded-xl px-4 text-base font-bold text-text ring-1 ring-border hover:ring-accent disabled:opacity-60"
+    >
+      <Icon name="layout-dashboard" className="h-5 w-5" />
+      <span><span className="hidden sm:inline">Switch to </span>full app</span>
+    </button>
   );
 }
 

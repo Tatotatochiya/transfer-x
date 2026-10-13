@@ -11,7 +11,7 @@ owner: "TODO — assign a Product Owner"
 
 Lite mode is a second, simpler home for TransferX, built for sporting directors and club owners who are not technical. It replaces the dashboard and sidebar with four large choices and one question per screen, and adds an assistant that answers questions in plain English and can prepare actions for the user to confirm.
 
-Lite mode is a **preference**, not a separate app. It is off by default for everyone, and anyone can switch it on in the profile menu (decision 1, as superseded on 2026-09-30). The full app stays exactly as it is.
+Lite mode is a **preference**, not a separate app. Since 2026-10-13 it is **the default for every club member** (owner and staff); agents, players and TransferX staff use the full app. A visible "Switch to full app" button in Lite's top bar, and "Switch to Lite mode" in the full app's account menu, change it, and the choice is remembered (decision 1). The full app stays exactly as it is.
 
 What it adds:
 
@@ -27,7 +27,7 @@ What it adds:
 
 These override anything below that disagrees.
 
-1. **Off by default until L4.** Lite is off for everyone while L1–L3 are built. Anyone can switch it on in the profile menu. The role default (on for OWNER and SPORTING_DIRECTOR) is switched on once action cards (L4) ship, by the `LITE_ROLE_DEFAULT_ON` setting. *(Superseded 2026-09-30: the product owner keeps the full app as everyone's default for now; Lite is opt-in.)*
+1. **Off by default until L4.** Lite is off for everyone while L1–L3 are built. Anyone can switch it on in the profile menu. The role default (on for OWNER and SPORTING_DIRECTOR) is switched on once action cards (L4) ship, by the `LITE_ROLE_DEFAULT_ON` setting. *(Superseded 2026-09-30: the product owner keeps the full app as everyone's default for now; Lite is opt-in. Superseded again 2026-10-13: Lite is the default for every club member, `LITE_DEFAULT_ON`, with a visible "Switch to full app" button in the top bar.)*
 2. **Four position groups.** The data holds only GK, DEF, MID and FWD, so the Buy flow asks Goalkeeper, Defender, Midfielder, Forward or Not sure.
 3. **Buy results: rules first, the AI writes the reason.** TransferX picks the three players in code from buyable players only (a TransferX club or a free agent), by position, fee band and squad need. The model only writes the one-line reason. Without a model, results still show with a plain reason.
 4. **Email decisions need sign-in to move money.** Opening the confirm page and saying no need no sign-in. Accepting, countering or bidding asks the user to sign in first.
@@ -324,8 +324,14 @@ All eight sessions are built (L1–L5 2026-09-29 to 10-01, L6 2026-10-03, L7 and
   - The confirm page never shows the recipient's address, since links get forwarded.
 
 - **Buy search and "Show more" (2026-10-12):** added at the product owner's request after the three suggestions proved limiting. The guided path stays, below the search. Search uses the same price and ownership rules as the candidates and the bid card, and never calls a model. "Show more" re-ranks the whole pool for each page, so it takes as long as the first page (about 2–3 seconds on the dev data).
-- **Defaults:** `LITE_ROLE_DEFAULT_ON` stays false. The product owner chose on 2026-09-30 to keep the full app as everyone's default.
+- **Defaults:** since 2026-10-13 Lite is the default for every club member, not only owners and sporting directors as first planned (`LITE_DEFAULT_ON`, true; it replaces `LITE_ROLE_DEFAULT_ON`). Opening TransferX at `/` or signing in lands a club member in Lite unless they've switched to the full app.
+- **"Switch to full app" in the top bar (2026-10-13):** a visible button beside Home, not only the profile menu's switch. The design's reason 10 kept the switch out of the top bar so it couldn't be hit by accident; with Lite the default, the product owner wants the way out obvious. Switching is remembered, and the full app's account menu switches back.
 - **Team contact (L7):** `club_staff.is_lite_contact`, chosen on the Team page. If none is chosen, it's the first sporting director or manager who isn't the one asking, else the whole team.
+
+## To do
+
+- **Loans in the Buy flow** (product owner, 2026-10-13: keep as a to-do). The home has "Buy a player" next to "Sell or loan a player"; the plan is "Buy or loan a player", with a loan card like the bid card (loan fee stepper, wage share 25/50/75/100%, until end of season or January, the money panel and undo; options, recall and conditional obligations stay in the full app). Until then the Lite bid card makes permanent offers only.
+- **Known bug until then:** the "Free or loan" budget band includes players listed for loan only, and "Make an offer" on them sends a permanent bid, which the server refuses ("This player is listed for loan only — make a loan offer instead"). The same applies to a loan-only player found by search.
 
 ## Files
 

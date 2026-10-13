@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useAuthStore } from "./store/auth";
 import { useAuthBootstrap } from "./hooks/useAuth";
+import { usePreferences } from "./hooks/usePreferences";
 import { useWebSocket } from "./hooks/useWebSocket";
 import AppShell from "./components/layout/AppShell";
 import Spinner from "./components/ui/Spinner";
@@ -179,7 +180,15 @@ function SmartRedirect() {
   if (user?.is_superuser) return <Navigate to="/admin" replace />;
   if (user?.user_type === "AGENT") return <Navigate to="/agent/pipeline" replace />;
   if (user?.user_type === "PLAYER") return <Navigate to="/player/profile" replace />;
+  if (user?.user_type === "CLUB") return <ClubHome />;
   return <Navigate to="/dashboard" replace />;
+}
+
+/** A club member's home: Lite unless they've switched to the full app (Lite is the default). */
+function ClubHome() {
+  const { data, isLoading, isError } = usePreferences();
+  if (isLoading) return <LoadingScreen />;
+  return <Navigate to={!isError && data?.lite_mode ? "/lite" : "/dashboard"} replace />;
 }
 
 // ── Query client ──────────────────────────────────────────────────────────────

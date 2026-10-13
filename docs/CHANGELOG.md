@@ -1,6 +1,6 @@
 ---
 title: "Changelog"
-last_updated: 2026-10-12
+last_updated: 2026-10-13
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -230,6 +230,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Lite is the default for club members.** Owners and staff who haven't chosen now land in Lite, whether they sign in or open TransferX at `/`. Agents, players and TransferX staff keep the full app. Lite's top bar has a visible **Switch to full app** button beside Home (the profile menu switch stays), and the choice is remembered. The setting is now `LITE_DEFAULT_ON` (true), replacing `LITE_ROLE_DEFAULT_ON`, which covered owners and sporting directors only and was off.
 - **"Ask about this" has the AI look everywhere** (player page, board cards, offer page): the ✦ mark in the assistant's purple with its light fill and ring, from one shared `AskAboutButton`. It was a grey button in two places and a green link in the third. The design rules now say every AI control looks like AI.
 - **Valuations are recomputed once a day by the stats-worker,** after the 22:00 data refresh, instead of by the web app on every start, so deploys no longer write a fresh valuation for every player.
 - **API-Football syncs write a stats snapshot only when a player's appearances, minutes or rating changed.**

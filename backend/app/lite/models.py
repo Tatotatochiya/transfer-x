@@ -26,9 +26,9 @@ class PushMode(str, enum.Enum):
 class UserPreference(Base):
     """Settings that follow a person across devices (migration 0085).
 
-    `lite_mode` null means "use the default": on for owners and sporting
-    directors once Lite is complete (settings.lite_role_default_on), off for
-    everyone else. The text scale applies inside Lite only (product decision,
+    `lite_mode` null means "use the default": on for every club member
+    (settings.lite_default_on, since 2026-10-13), off for agents, players and
+    TransferX staff. The text scale applies inside Lite only (product decision,
     2026-09-29): the full app uses fixed pixel sizes that would not scale.
     """
     __tablename__ = "user_preferences"

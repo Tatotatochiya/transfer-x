@@ -37,7 +37,7 @@ TransferX is a web platform for professional football transfers. It connects **s
 - club finance with reserved, committed and spent budgets, and spending approvals;
 - squad management, scouting and a fair-value model;
 - an AI assistant that advises and never acts;
-- **Lite mode** for directors;
+- **Lite mode**, every club member's default home, with the full app a button away;
 - phone notifications;
 - an admin panel with a full audit trail.
 
@@ -53,7 +53,7 @@ TransferX is a web platform for professional football transfers. It connects **s
 | Accounts | Club (owner and four staff roles), Agent, Player; TransferX staff are superusers. Everyone joins by invitation | [`product/personas.md`](./product/personas.md) |
 | Deal stages | AGREEMENT → AGENT_NEGOTIATION (with a mandate) → PERSONAL_TERMS → PAPERWORK → CONFIRMED → COMPLETED; any open deal can collapse | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
 | Deal types | PERMANENT and LOAN (offered); FREE_TRANSFER and PRE_CONTRACT (from the signing paths) | [`product/workflows/transfer-lifecycle.md`](./product/workflows/transfer-lifecycle.md) |
-| Working surfaces | The Transfers board with one conversation per transfer; the dashboard; Lite mode for directors (Lite decides, the full app operates) | [product ADR 0008](./product/decisions/0008-transfers-board-one-way-to-buy-lite-decides.md) |
+| Working surfaces | The Transfers board with one conversation per transfer; the dashboard; Lite mode, the default for club members (Lite decides, the full app operates) | [product ADR 0008](./product/decisions/0008-transfers-board-one-way-to-buy-lite-decides.md) |
 | Notifications | In-app, email (per type and the daily digest), phone push (tiers, quiet hours, morning summary, decision sheets, email fallback) | [`feature_spec/mobile-notifications/`](./feature_spec/mobile-notifications/README.md) |
 | AI | Advises, never acts (ADR 0006); Ask TransferX answers as an analyst from read-only, club-scoped tools | [`feature_spec/ai-analyst/`](./feature_spec/ai-analyst/README.md) |
 | Data | API-Football, refreshed at 17:00 and 22:00 UK by the `stats-worker`; valuations (`market-v2`) recomputed daily. Real-world moves are flagged and applied only by staff ([product ADR 0009](./product/decisions/0009-real-world-moves-flagged-applied-by-staff.md)) | [`feature_spec/scheduled-data-refresh.md`](./feature_spec/scheduled-data-refresh.md) |

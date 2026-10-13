@@ -42,7 +42,7 @@ Each persona below is grounded in an account type that exists in the product tod
 
 ## Club Staff
 
-**Who they are:** People at a club who are not the club's primary account holder — invited by the owner with one of four roles, each mapping to what that person actually does: **Sporting Director** (deal authority, club admin, decides spending approvals), **Manager** (runs the market and deals day to day; large spends can require approval), **Scout** (shortlists and market views, no bidding), **Read-only** (board member/CEO oversight — sees everything, changes nothing). A director can switch to **Lite mode**: a big-type interface for deciding on offers, approvals and bids, with a 10-second undo. Distinct from [Platform Admin](#platform-admin): "club staff" work *for a club*; platform admins work *for TransferX*.
+**Who they are:** People at a club who are not the club's primary account holder — invited by the owner with one of four roles, each mapping to what that person actually does: **Sporting Director** (deal authority, club admin, decides spending approvals), **Manager** (runs the market and deals day to day; large spends can require approval), **Scout** (shortlists and market views, no bidding), **Read-only** (board member/CEO oversight — sees everything, changes nothing). Club staff start in **Lite mode** (the default since 2026-10-13): a big-type interface for deciding on offers, approvals and bids, with a 10-second undo, and a "Switch to full app" button for everything else. Distinct from [Platform Admin](#platform-admin): "club staff" work *for a club*; platform admins work *for TransferX*.
 
 > **TODO:** Goals, needs, and pain points per staff role.
 
