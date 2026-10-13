@@ -47,7 +47,7 @@ Use the next free Alembic revision after the current head (`0084` at the time of
 | `lite_resume_json` | `JSON().with_variant(JSONB, "postgresql")`, nullable | §2 |
 | `updated_at` | timestamptz | |
 
-**Role default** (when `lite_mode` is null): on for OWNER and SPORTING_DIRECTOR, off for everyone else, including players and agents, **but only when the `LITE_ROLE_DEFAULT_ON` setting is true**. It stays false after L4: the product owner keeps the full app as the default for now (2026-09-30).
+**Default** (when `lite_mode` is null): since 2026-10-13, on for every club member (owner and staff), off for agents, players and TransferX staff, while the `LITE_DEFAULT_ON` setting is true (the default). It replaced `LITE_ROLE_DEFAULT_ON`, which was on for OWNER and SPORTING_DIRECTOR only and stayed false from 2026-09-30.
 
 **Endpoints:** `GET /users/me/preferences` returns `{ lite_mode, lite_mode_is_default, text_scale }`. `PATCH /users/me/preferences` updates them and writes an `AuditEvent` (`action="lite_mode_changed"`) so adoption can be measured.
 

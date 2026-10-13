@@ -7,23 +7,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.lite.models import TextScale, UserPreference
 
-# Roles Lite is meant for: people who decide rather than operate the software.
-LITE_DEFAULT_ROLES = frozenset({"OWNER", "SPORTING_DIRECTOR"})
 
 
 async def role_default(db: AsyncSession, user) -> bool:
-    """Lite's default for someone who has never chosen. Off for everyone until
-    the role default is switched on (settings.lite_role_default_on, after L4);
-    then on for a club's owner and sporting directors only — never for agents,
-    players or TransferX staff."""
-    if not settings.lite_role_default_on:
+    """Lite's default for someone who has never chosen: on for every member
+    of a club, owner and staff alike (settings.lite_default_on, product owner
+    2026-10-13); never for agents, players or TransferX staff, since Lite is
+    for clubs. A choice made in the profile menu or the top bar always wins."""
+    if not settings.lite_default_on or getattr(user, "is_superuser", False):
         return False
     if getattr(user, "user_type", None) is None or user.user_type.value != "CLUB":
         return False
     from app.clubs.service import get_club_and_role_for_user
 
-    club, role = await get_club_and_role_for_user(db, user.id)
-    return club is not None and role in LITE_DEFAULT_ROLES
+    club, _role = await get_club_and_role_for_user(db, user.id)
+    return club is not None
 
 
 async def get_row(db: AsyncSession, user_id: uuid.UUID) -> UserPreference | None:

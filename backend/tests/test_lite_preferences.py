@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from app.config import settings
 from tests.conftest import _auth_headers, _register
+from tests.test_capabilities import _create_staff
 
 
 async def _prefs(client, tokens):
@@ -13,22 +14,23 @@ async def _prefs(client, tokens):
 
 
 @pytest.fixture
-def role_default_on(monkeypatch):
-    monkeypatch.setattr(settings, "lite_role_default_on", True)
+def default_off(monkeypatch):
+    monkeypatch.setattr(settings, "lite_default_on", False)
 
 
 @pytest.mark.asyncio
-async def test_off_for_everyone_while_the_role_default_is_off(client: AsyncClient):
+async def test_lite_is_the_default_for_every_club_member(client: AsyncClient, db):
     owner = await _register(client, "owner_lite@clubs-example.com", club_name="Lite FC")
     prefs = await _prefs(client, owner)
     lite = {k: prefs[k] for k in ("lite_mode", "lite_mode_is_default", "text_scale")}
-    assert lite == {"lite_mode": False, "lite_mode_is_default": True, "text_scale": "NORMAL"}
+    assert lite == {"lite_mode": True, "lite_mode_is_default": True, "text_scale": "NORMAL"}
+    manager = await _create_staff(client, db, _auth_headers(owner), "manager_lite@clubs-example.com", "MANAGER")
+    assert (await _prefs(client, manager))["lite_mode"] is True
 
 
 @pytest.mark.asyncio
-async def test_role_default_is_on_for_an_owner_not_an_agent(client: AsyncClient, role_default_on):
-    owner = await _register(client, "owner_lite@clubs-example.com", club_name="Lite FC")
-    assert (await _prefs(client, owner))["lite_mode"] is True
+async def test_never_the_default_for_agents_or_transferx_staff(client: AsyncClient, db):
+    from app.auth.models import User
 
     agent = (await client.post("/auth/register", json={
         "email": "agent_lite@clubs-example.com", "password": "password123", "user_type": "AGENT",
@@ -36,15 +38,29 @@ async def test_role_default_is_on_for_an_owner_not_an_agent(client: AsyncClient,
     })).json()
     assert (await _prefs(client, agent))["lite_mode"] is False
 
+    staff = await _register(client, "staff_lite@clubs-example.com", club_name="Staff Lite")
+    user = (await db.execute(select(User).where(User.email == "staff_lite@clubs-example.com"))).scalar_one()
+    user.is_superuser = True
+    await db.commit()
+    assert (await _prefs(client, staff))["lite_mode"] is False
+
 
 @pytest.mark.asyncio
-async def test_choosing_overrides_the_default_and_is_audited_once(client: AsyncClient, db, role_default_on):
+async def test_the_setting_turns_the_default_off(client: AsyncClient, default_off):
+    owner = await _register(client, "owner_lite@clubs-example.com", club_name="Lite FC")
+    assert (await _prefs(client, owner))["lite_mode"] is False
+
+
+@pytest.mark.asyncio
+async def test_choosing_overrides_the_default_and_is_audited_once(client: AsyncClient, db):
     from app.audit.models import AuditEvent
 
     owner = await _register(client, "owner_lite@clubs-example.com", club_name="Lite FC")
     resp = await client.patch("/users/me/preferences", json={"lite_mode": False}, headers=_auth_headers(owner))
     assert resp.status_code == 200, resp.text
     assert resp.json()["lite_mode"] is False and resp.json()["lite_mode_is_default"] is False
+    # The choice sticks: the full app stays their home.
+    assert (await _prefs(client, owner))["lite_mode"] is False
 
     # Setting the same value again is not a change, so no second audit event.
     await client.patch("/users/me/preferences", json={"lite_mode": False}, headers=_auth_headers(owner))
