@@ -356,8 +356,8 @@ async def confirm_email_decision(
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ) -> dict:
-    """Hold the decision for 10 seconds, like any Lite send. Accepting or
-    countering needs the email's recipient signed in; saying no doesn't."""
+    """Hold the decision for 10 seconds, like any Lite send. Every decision
+    needs the email's recipient signed in."""
     from app.lite import email_actions
 
     result = await email_actions.confirm(db, token, body.action, body.amount, current_user)
@@ -366,8 +366,12 @@ async def confirm_email_decision(
 
 
 @router.post("/lite/confirm/{token}/undo", status_code=status.HTTP_204_NO_CONTENT)
-async def undo_email_decision(token: str, db: AsyncSession = Depends(get_db)) -> None:
+async def undo_email_decision(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+) -> None:
     from app.lite import email_actions
 
-    await email_actions.undo(db, token)
+    await email_actions.undo(db, token, current_user)
     await db.commit()

@@ -223,7 +223,7 @@ The "clubs usually reply in 1 to 2 days" hint is the platform median time to acc
   - Each token is single-use and expires after 24 hours.
 - `render_digest_html` and the OFFER_RECEIVED and APPROVAL_REQUESTED emails get up to three buttons per item. Each button links to `/lite/confirm/{token}?action=…&amount=…`.
 - `GET /lite/confirm/{token}` has **no side effects** (mail scanners follow links). It returns the action card and runs the §4 money check.
-- `POST /lite/confirm/{token}` creates a held action with `channel=EMAIL`. **For actions that move money (accept, counter, bid) the caller must also be signed in as the token's user** (decision 4); a decline needs only the token. If `subject_version` (the offer's `last_action_at`) has changed since the email was sent, return 409 "This has changed since we emailed you", with the current state.
+- `POST /lite/confirm/{token}` creates a held action with `channel=EMAIL`. **The caller must also be signed in as the token's user** (decision 4), for every action: accept, counter and, since 2026-10-17, a decline; undoing it (`POST /lite/confirm/{token}/undo`) too. If `subject_version` (the offer's `last_action_at`) has changed since the email was sent, return 409 "This has changed since we emailed you", with the current state.
 - Masking applies: the email never names an anonymous buyer.
 - Follows the existing per-type `email_enabled` and `DAILY_DIGEST` preferences.
 

@@ -53,8 +53,9 @@ Command: `python -m app.jobs.daily_refresh` (`--force` runs regardless of the ti
 | 1. `stats` | Current-season player stats for every competition in `world_leagues` (11 in production, 7 on dev), using `sync_league`. Past seasons don't change and are skipped. | 17:00, 22:00 |
 | 2. `injuries` | Current-season injuries for each league (`sync_league_injuries`) | 17:00, 22:00 |
 | 3. `form` | Team fixture counts and recent ratings, then `compute_all_form` | 17:00, 22:00 |
-| 4. `valuations` | `compute_all_valuations` (one comparables index for the run) | 22:00 only |
-| 5. Report | Finish the run record and post to Slack | both |
+| 4. `transfers` | Transfer histories (`/transfers`, one call per player) for every player under contract at a TransferX club, so the [real-world moves](../product/decisions/0009-real-world-moves-flagged-applied-by-staff.md) check sees a move before his first game (added 2026-10-17; about 680 calls) | 22:00 only |
+| 5. `valuations` | `compute_all_valuations` (one comparables index for the run) | 22:00 only |
+| 6. Report | Finish the run record and post to Slack | both |
 
 **Safeguards**
 - **One run at a time.** A Postgres advisory lock covers the whole run. A manual run and the cron run can't overlap; the second one records "skipped: already running".

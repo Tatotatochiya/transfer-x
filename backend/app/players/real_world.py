@@ -385,3 +385,42 @@ async def dismiss_move(db: AsyncSession, admin, player_id: uuid.UUID, *, reason:
                  "real_club": move["real_club"]},
     )
     return {"player_id": str(player.id), "name": player.name, "dismissed": True}
+
+
+# ── Telling the club ─────────────────────────────────────────────────────────
+
+ALERT_NAMES = 3  # players named in the message; the rest are counted
+
+
+async def alert_clubs(db: AsyncSession, *, today: date | None = None) -> int:
+    """Tell each club which of its players API-Football has elsewhere, so a
+    sporting director doesn't plan around a player who has gone. One
+    notification per club listing them all, sent again only when the list
+    gains a player (the group key is the set of moves); a move staff apply
+    or dismiss drops out on its own. Returns how many clubs were told."""
+    import hashlib
+
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
+    by_club: dict[str, list[dict]] = defaultdict(list)
+    for move in (await list_moves(db, today=today))["mismatches"]:
+        by_club[move["registered_club_id"]].append(move)
+    told = 0
+    for club_id, moves in by_club.items():
+        moves.sort(key=lambda m: m["name"])
+        key = hashlib.sha1("|".join(sorted(f"{m['player_id']}:{m['real_team_vendor_id']}" for m in moves))
+                           .encode()).hexdigest()[:16]
+        named = ", ".join(f"{m['name']} ({m['real_club'] or 'another club'})" for m in moves[:ALERT_NAMES])
+        more = len(moves) - ALERT_NAMES
+        n = len(moves)
+        message = (f"API-Football has {n} of your players at other clubs: {named}"
+                   + (f" and {more} more" if more > 0 else "") + ". "
+                   "TransferX staff will update your squad; until then they're still listed in it.")
+        await notif_service.notify_club(
+            db, uuid.UUID(club_id), type=NotificationType.REAL_WORLD_MOVES, message=message,
+            link=f"/players/market/{moves[0]['player_id']}" if n == 1 else "/club",
+            title="Players moved in real life", group_key=f"real-world:{key}", once=True,
+        )
+        told += 1
+    return told
