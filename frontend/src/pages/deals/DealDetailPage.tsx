@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
+import AskAboutButton from "../../components/ai/AskAboutButton";
 import type { AgentNegotiation, Club, Deal, DealTermsVersion, FairValueSignal, Offer, TermsDiff } from "../../types/api";
 import OfferThread from "../../components/offers/OfferThread";
 import type { DealStage, DealType } from "../../types/enums";
@@ -1362,6 +1363,10 @@ export default function DealDetailPage() {
                 <span className="text-text-muted">No agent: the clubs deal with him directly</span>
               )}
             </p>
+            {/* Ask TransferX about this deal: for the two clubs (it answers from club-scoped data). */}
+            {isParty && (
+              <AskAboutButton size="sm" about="deal" id={deal.id} name={deal.player?.name ?? ""} className="mt-3" />
+            )}
           </Card>
 
           {/* Terms */}

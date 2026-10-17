@@ -99,7 +99,7 @@ def test_uk_slot_follows_the_clock_change(utc, slot):
 
 def test_valuations_only_after_the_22_run():
     assert dr.steps_for(17, None) == ["stats", "injuries", "form"]
-    assert dr.steps_for(22, None) == ["stats", "injuries", "form", "valuations"]
+    assert dr.steps_for(22, None) == ["stats", "injuries", "form", "transfers", "valuations"]
     assert dr.steps_for(None, ["valuations", "stats"]) == ["stats", "valuations"]
 
 

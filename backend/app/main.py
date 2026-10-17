@@ -244,6 +244,22 @@ async def _deal_sla_job() -> None:
             logger.exception("Error in deal SLA job")
 
 
+async def _real_world_alerts_job() -> None:
+    """Tell clubs when API-Football has their players at other clubs
+    (players/real_world.py). Hourly; a club hears again only when the list
+    of its moved players grows."""
+    from app.players.real_world import alert_clubs
+
+    async with AsyncSessionLocal() as db:
+        try:
+            told = await alert_clubs(db)
+            await db.commit()
+            if told:
+                logger.info("Real-world move alerts checked for %d clubs", told)
+        except Exception:
+            logger.exception("Error in real-world alerts job")
+
+
 async def _deadline_reminders_job() -> None:
     """Deadline-day mode: push each club with transfers open at 24, 6 and 2
     hours before the window closes (once each)."""
@@ -334,6 +350,10 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(
         _expire_mandates_job, "interval", hours=24, id="expire_mandates",
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+    )
+    _scheduler.add_job(
+        _real_world_alerts_job, "interval", hours=1, id="real_world_alerts",
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=3),
     )
     _scheduler.add_job(
         _deadline_reminders_job, "interval", minutes=15, id="deadline_reminders",

@@ -1,5 +1,5 @@
-"""Lite L8, decisions from email: GET changes nothing, money needs the
-recipient signed in, a token works once, and a changed offer is refused."""
+"""Lite L8, decisions from email: GET changes nothing, every decision needs
+the recipient signed in, a token works once, and a changed offer is refused."""
 import uuid
 from urllib.parse import parse_qs, urlparse
 
@@ -44,7 +44,7 @@ async def test_buttons_and_a_side_effect_free_preview(client: AsyncClient, db):
     assert buttons[0][0].startswith("Ask for £")
     token, q = _link(buttons, "Say no")
     view = (await client.get(f"/lite/confirm/{token}", params=q)).json()
-    assert view["state"] == "ready" and view["label"] == "Say no" and view["needs_sign_in"] is False
+    assert view["state"] == "ready" and view["label"] == "Say no" and view["needs_sign_in"] is True
     assert "Email Buyers" not in str(view)  # the anonymous buyer stays masked
     assert "@" not in str(view)  # nor the recipient's address: links get forwarded
     # Opening it changed nothing.
@@ -52,16 +52,21 @@ async def test_buttons_and_a_side_effect_free_preview(client: AsyncClient, db):
     assert (await db.execute(select(ActionToken.used_at))).scalar_one() is None
 
 
-async def test_saying_no_needs_only_the_token_and_works_once(client: AsyncClient, db):
-    _seller, _buyer, offer, buttons = await _setup(client, db)
+async def test_saying_no_needs_the_recipient_signed_in_and_works_once(client: AsyncClient, db):
+    seller, buyer, offer, buttons = await _setup(client, db)
     token, q = _link(buttons, "Say no")
-    resp = await client.post(f"/lite/confirm/{token}", json={"action": "reject"})
+    # A forwarded link can't turn the offer down (2026-10-17): sign-in, as the recipient.
+    assert (await client.post(f"/lite/confirm/{token}", json={"action": "reject"})).status_code == 401
+    assert (await client.post(f"/lite/confirm/{token}", json={"action": "reject"}, headers=buyer)).status_code == 403
+    assert (await db.execute(select(HeldAction))).first() is None
+    resp = await client.post(f"/lite/confirm/{token}", json={"action": "reject"}, headers=seller)
     assert resp.status_code == 200, resp.text
     held = (await db.execute(select(HeldAction))).scalar_one()
     assert held.kind == "reject" and held.channel == HeldActionChannel.EMAIL
-    assert (await client.post(f"/lite/confirm/{token}", json={"action": "reject"})).status_code == 410
-    # And it can be undone within its 10 seconds, from the same link.
-    assert (await client.post(f"/lite/confirm/{token}/undo")).status_code == 204
+    assert (await client.post(f"/lite/confirm/{token}", json={"action": "reject"}, headers=seller)).status_code == 410
+    # Undoing it within its 10 seconds also needs the recipient.
+    assert (await client.post(f"/lite/confirm/{token}/undo")).status_code == 401
+    assert (await client.post(f"/lite/confirm/{token}/undo", headers=seller)).status_code == 204
 
 
 async def test_money_needs_the_recipient_signed_in(client: AsyncClient, db):
@@ -79,7 +84,7 @@ async def test_a_changed_offer_is_refused(client: AsyncClient, db):
     # The buyer raises the offer after the email went out.
     assert (await client.post(f"/offers/{offer['id']}/improve", json={"fee_amount": 6_000_000}, headers=buyer)).status_code == 200
     assert (await client.get(f"/lite/confirm/{token}", params=q)).json()["state"] == "changed"
-    resp = await client.post(f"/lite/confirm/{token}", json={"action": "reject"})
+    resp = await client.post(f"/lite/confirm/{token}", json={"action": "reject"}, headers=seller)
     assert resp.status_code == 409 and "changed" in resp.json()["detail"]
 
 
@@ -121,9 +126,9 @@ async def test_the_clubs_valuation_is_only_for_the_signed_in_recipient(client: A
 
 
 async def test_a_used_link_shows_no_valuation_either(client: AsyncClient, db):
-    _seller, _buyer, offer, buttons = await _setup(client, db)
+    seller, _buyer, offer, buttons = await _setup(client, db)
     await _value_his_player(db, offer, 21_000_000)
     token, q = _link(buttons, "Say no")
-    assert (await client.post(f"/lite/confirm/{token}", json={"action": "reject"})).status_code == 200
+    assert (await client.post(f"/lite/confirm/{token}", json={"action": "reject"}, headers=seller)).status_code == 200
     view = (await client.get(f"/lite/confirm/{token}", params=q)).json()
     assert view["state"] == "used" and "your_valuation" not in view["card"]

@@ -80,6 +80,7 @@ export const TYPE_LABELS: Record<string, string> = {
   LITE_QUESTION: "A colleague asks you something from Lite",
   REGISTRATION_UPDATED: "TransferX staff move a player on or off your squad to match a real-world transfer",
   DEADLINE_DAY: "The window closes in 24, 6 or 2 hours and you have transfers open",
+  REAL_WORLD_MOVES: "API-Football has players from your squad at other clubs",
   DEAL_PAPERWORK: "The other club completes a paperwork step, or the paperwork is done",
   DAILY_DIGEST: "A morning email of what is waiting on you — sent only when something is",
   APPROVAL_DECIDED: "Your spending request is decided",
@@ -103,7 +104,7 @@ const TYPE_GROUPS: { label: string; types: string[] }[] = [
   { label: "Client intelligence", types: ["CLIENT_ALERT"] },
   { label: "Verification", types: ["VERIFICATION_APPROVED", "VERIFICATION_REJECTED"] },
   { label: "Team & approvals", types: ["STAFF_INVITATION", "APPROVAL_REQUESTED", "APPROVAL_DECIDED", "LITE_QUESTION"] },
-  { label: "Squad", types: ["REGISTRATION_UPDATED"] },
+  { label: "Squad", types: ["REAL_WORLD_MOVES", "REGISTRATION_UPDATED"] },
   { label: "Transfer window", types: ["DEADLINE_DAY"] },
   { label: "Loans", types: ["LOAN_STARTED", "LOAN_ENDING_SOON", "LOAN_ENDED", "LOAN_RECALLED", "LOAN_CONVERTED"] },
 ];

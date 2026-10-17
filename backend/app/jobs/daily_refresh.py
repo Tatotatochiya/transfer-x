@@ -15,6 +15,9 @@ Steps, each isolated (one league failing doesn't stop the others):
   injuries    current-season injuries for each league
   form        ratings for matches finished since the last run, fixture counts
               for the clubs that played, then form scores
+  transfers   transfer histories for players under contract at TransferX
+              clubs, so real-world moves are seen before a first game
+              (players/real_world.py; 22:00 run only, about one call each)
   valuations  the daily model recompute (22:00 run only)
 
 Then one Slack message for the run. The web app's Admin → Jobs page starts
@@ -44,7 +47,8 @@ JOB = "daily_refresh"
 LONDON = ZoneInfo("Europe/London")
 SLOTS = (17, 22)           # UK hours the refresh runs at
 VALUATION_SLOT = 22        # the daily valuation recompute follows this run
-ALL_STEPS = ("stats", "injuries", "form", "valuations")
+ALL_STEPS = ("stats", "injuries", "form", "transfers", "valuations")
+NIGHTLY_STEPS = ("transfers", "valuations")  # the 22:00 run only
 PER_MINUTE = 250           # Pro allows 300 a minute; stay under it
 LOCK_KEY = 704_221_001     # pg advisory lock: one refresh at a time
 FINISHED = "FT-AET-PEN"    # /fixtures statuses for a finished match
@@ -102,7 +106,7 @@ def uk_slot(now: datetime | None = None) -> int | None:
 def steps_for(slot: int | None, requested: list[str] | None) -> list[str]:
     if requested:
         return [s for s in ALL_STEPS if s in requested]
-    return [s for s in ALL_STEPS if s != "valuations" or slot == VALUATION_SLOT]
+    return [s for s in ALL_STEPS if s not in NIGHTLY_STEPS or slot == VALUATION_SLOT]
 
 
 # ── Steps ────────────────────────────────────────────────────────────────────
@@ -262,6 +266,40 @@ async def step_form(db, client, leagues, summary: dict, failures: list) -> None:
     logger.info("Form · %s players updated", summary["form_updated"])
 
 
+async def step_transfers(db, client, leagues, summary: dict, failures: list) -> None:
+    """Re-fetch the transfer history of every player under contract at a
+    TransferX club. The real-world moves check reads it alongside games
+    played, so a move shows before he plays for his new club."""
+    from types import SimpleNamespace
+
+    from app.players.models import Player, PlayerStatus
+    from app.vendor.history import refresh_transfers
+
+    # Plain values, not ORM rows: each commit or rollback below expires rows.
+    players = [SimpleNamespace(id=pid, vendor_id=vid, name=name) for pid, vid, name in (await db.execute(
+        select(Player.id, Player.vendor_id, Player.name).where(
+            Player.status == PlayerStatus.CONTRACTED, Player.current_club_id.isnot(None), Player.vendor_id.isnot(None))
+    )).all()]
+    done = failed = 0
+    for player in players:
+        try:
+            await refresh_transfers(db, player, client)
+            await db.commit()  # each player on its own: one failing loses nothing else
+            done += 1
+        except OutOfQuota:
+            await db.rollback()
+            summary["transfers_refreshed"] = done
+            raise
+        except Exception as exc:  # noqa: BLE001
+            await db.rollback()
+            failed += 1
+            logger.warning("Transfers for %s failed: %s", player.name, exc)
+    summary["transfers_refreshed"] = done
+    if failed:
+        failures.append(f"transfers: {failed} players failed")
+    logger.info("Transfers · %s players refreshed, %s failed", done, failed)
+
+
 async def step_valuations(db, client, leagues, summary: dict, failures: list) -> None:
     from app.valuation.service import compute_all_valuations
 
@@ -275,8 +313,9 @@ async def step_valuations(db, client, leagues, summary: dict, failures: list) ->
                 counts["updated"], counts["skipped_ineligible"], counts["errors"])
 
 
-STEP_FUNCS = {"stats": step_stats, "injuries": step_injuries, "form": step_form, "valuations": step_valuations}
-API_STEPS = {"stats", "injuries", "form"}
+STEP_FUNCS = {"stats": step_stats, "injuries": step_injuries, "form": step_form, "transfers": step_transfers,
+              "valuations": step_valuations}
+API_STEPS = {"stats", "injuries", "form", "transfers"}
 
 
 # ── The run ──────────────────────────────────────────────────────────────────

@@ -26,4 +26,8 @@ Three options were weighed: flag the difference and change nothing; flag it and 
 - A club's squad never changes behind its back, including players it is negotiating over. Every change has a named person and a reason.
 - The demo can be brought in line with the real league after each window in one bulk apply.
 - Until staff act, a club's squad can include players who have left in real life; the flag makes that visible.
-- Evidence is only as fresh as the stored data. Appearances are refreshed twice a day; transfer histories only when a player's history is backfilled. A move with no games and no recorded transfer isn't seen.
+- Evidence is only as fresh as the stored data. Appearances are refreshed twice a day, and since 2026-10-17 the 22:00 refresh also re-fetches the transfer histories of players at TransferX clubs, so a move is seen before his first game.
+
+## Update, 2026-10-17: the club is told
+
+The club itself now hears, not only TransferX staff: an hourly job sends each club one notification ("Players moved in real life", `REAL_WORLD_MOVES`, migration `0103`) naming its players API-Football has at other clubs, and saying staff will update the squad. It's sent again only when the list gains a player; moves staff apply or dismiss drop out on their own.

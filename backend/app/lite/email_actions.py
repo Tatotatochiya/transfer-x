@@ -8,8 +8,10 @@ one Confirm button.
 - Opening the link (GET) changes nothing: mail scanners follow links.
 - Confirming (POST) holds the action for the usual 10 seconds with
   channel=EMAIL, so it can be undone like any Lite send.
-- Anything that moves money (accept, counter) needs the token's user to be
-  signed in; saying no needs only the token.
+- Every decision (accept, counter, and since 2026-10-17 saying no) needs
+  the token's user signed in, and so does undoing it: turning down an offer
+  ends a negotiation the other club is told about, and the link may have
+  been forwarded. Mail scanners can't act either way: only a POST does.
 - One token per email, used once, for 24 hours. If the offer has changed
   since the email went out, confirming is refused (409) with the new state.
 - The card is the same one Lite shows, so an anonymous buyer stays masked.
@@ -33,7 +35,11 @@ from app.config import settings
 from app.lite.models import ActionToken, HeldActionChannel
 
 TOKEN_HOURS = 24
-MONEY_ACTIONS = {"counter", "accept"}
+def _require_recipient(token: ActionToken, current_user) -> None:
+    if current_user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sign in to confirm this.")
+    if current_user.id != token.user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This link was sent to someone else.")
 # What the confirm page may show someone who isn't the signed-in recipient.
 PUBLIC_CARD = ("offer_id", "status", "player_name", "other_club", "deal_type", "fee", "expires_at")
 LABELS = {"counter": "Ask for {amount}", "accept": "Accept {amount}", "reject": "Say no"}
@@ -148,7 +154,7 @@ async def view(db: AsyncSession, raw: str, action: str, amount: Decimal | None, 
         "action": action,
         "amount": float(amount) if amount is not None else None,
         "label": LABELS[action].format(amount=_money(amount) if amount is not None else ""),
-        "needs_sign_in": action in MONEY_ACTIONS,
+        "needs_sign_in": True,  # every decision does (since 2026-10-17)
         # Whether whoever opened it is signed in as the recipient. Never the
         # recipient's address: the link may have been forwarded.
         "signed_in_as_recipient": recipient,
@@ -169,11 +175,7 @@ async def confirm(db: AsyncSession, raw: str, action: str, amount: Decimal | Non
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="This link has expired. Open TransferX to decide.")
     if action not in token.allowed_actions:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="That isn't one of this email's choices.")
-    if action in MONEY_ACTIONS:
-        if current_user is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sign in to confirm this.")
-        if current_user.id != token.user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This link was sent to someone else.")
+    _require_recipient(token, current_user)
     offer = await db.get(Offer, token.subject_id, populate_existing=True)  # its current version
     if offer is None or _version(offer) != token.subject_version:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This has changed since we emailed you.")
@@ -192,12 +194,14 @@ async def confirm(db: AsyncSession, raw: str, action: str, amount: Decimal | Non
     return {"action_id": str(action_row.id), "execute_at": action_row.execute_at.isoformat()}
 
 
-async def undo(db: AsyncSession, raw: str) -> None:
-    """Undo the action this token confirmed, within its hold window."""
+async def undo(db: AsyncSession, raw: str, current_user=None) -> None:
+    """Undo the action this token confirmed, within its hold window. Only
+    the recipient, signed in, as for confirming."""
     from app.auth.models import User
     from app.lite import held
 
     token = await _token(db, raw)
+    _require_recipient(token, current_user)
     if token.held_action_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nothing to undo.")
     user = await db.get(User, token.user_id)

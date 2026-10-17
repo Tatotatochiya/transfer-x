@@ -95,13 +95,14 @@ Modules live under `backend/app/` and mostly follow `models.py` / `schemas.py` /
 | `approval_expiry` | 24 h | Expires pending approvals and tells the requester |
 | `expire_mandates` | 24 h | Expires mandates past their end date |
 | `deal_sla` | 24 h | Flags deals stuck in pending completion past their SLA deadline (flags; doesn't collapse) |
+| `real_world_alerts` | 1 h | Tells each club which of its players API-Football has at other clubs: one notification listing them, again only when the list grows (`players/real_world.py`) |
 | `deadline_reminders` | 15 min | Deadline day: pushes each club with transfers open once at 24, 6 and 2 hours before the window closes (`app/deadline/`) |
 | `loan_lifecycle` | 24 h | Returns loans at expiry, warns two weeks ahead, converts obligations |
 | `monitoring_retention` | 24 h | Deletes monitoring data past retention |
 
 **In the `stats-worker` service.** `python -m app.jobs.daily_refresh` runs at 17:00 and 22:00 UK time:
 - current-season stats, injuries, match ratings and form;
-- the valuation recompute after the 22:00 run.
+- at 22:00, transfer histories for players at TransferX clubs, then the valuation recompute.
 
 See the [spec](../feature_spec/scheduled-data-refresh.md).
 

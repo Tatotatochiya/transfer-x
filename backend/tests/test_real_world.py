@@ -293,3 +293,68 @@ async def test_dismiss_stops_reporting_until_he_moves_somewhere_else(client: Asy
     await db.commit()
     names = [m["name"] for m in (await client.get("/admin/real-world-moves", headers=_auth_headers(admin))).json()["mismatches"]]
     assert names == ["On Loan Abroad"]
+
+
+# ── The nightly transfers step, and telling the club ─────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_the_nightly_transfers_step_finds_a_move_before_any_game(db, clubs):
+    from app.jobs import daily_refresh as dr
+
+    moved = await _contracted(db, clubs["Bournemouth"], "Not Played Yet", started=date(2020, 7, 1))
+    broken = await _contracted(db, clubs["Bournemouth"], "Broken Feed", started=date(2020, 7, 1))
+    from app.players.models import Player
+    for p, vid in ((moved, "111"), (broken, "222")):
+        (await db.get(Player, p.id)).vendor_id = vid
+    await db.commit()
+    moved_id = moved.id
+    assert await _check(db, moved) is None  # nothing on record yet
+
+    class Fake:
+        async def get_player_transfers(self, vendor_id):
+            if vendor_id == 222:
+                raise RuntimeError("API-Football hiccup")
+            return {"response": [{"transfers": [{"date": "2026-08-30", "type": "€ 12M",
+                                                 "teams": {"in": {"id": 47, "name": "Tottenham"},
+                                                           "out": {"id": 35, "name": "Bournemouth"}}}]}]}
+
+    summary, failures = {}, []
+    await dr.step_transfers(db, Fake(), [], summary, failures)
+    assert summary["transfers_refreshed"] == 1 and failures == ["transfers: 1 players failed"]  # one failing stops nothing
+    player = await db.get(Player, moved_id)
+    move = await _check(db, player)
+    assert (move["real_club"], move["fee"], move["moved_on"]) == ("Tottenham", "€ 12M", "2026-08-30")
+
+
+@pytest.mark.asyncio
+async def test_clubs_hear_once_per_set_of_moved_players(db, clubs):
+    from app.notifications.models import Notification, NotificationType
+    from app.players import real_world
+
+    senesi = await _contracted(db, clubs["Bournemouth"], "M. Senesi", started=date(2020, 7, 1))
+    db.add(_transfer(senesi, date.today(), "47", "Tottenham", fee="Free agent"))
+    await db.commit()
+
+    async def alerts():
+        return (await db.execute(select(Notification).where(
+            Notification.type == NotificationType.REAL_WORLD_MOVES))).scalars().all()
+
+    assert await real_world.alert_clubs(db) == 1
+    await db.commit()
+    first = await alerts()
+    assert len(first) >= 1 and "M. Senesi (Tottenham)" in first[0].message
+    assert "TransferX staff will update your squad" in first[0].message
+
+    await real_world.alert_clubs(db)  # the hourly job again: nothing new, nobody told twice
+    await db.commit()
+    assert len(await alerts()) == len(first)
+
+    other = await _contracted(db, clubs["Bournemouth"], "Also Gone", started=date(2020, 7, 1))
+    db.add(_transfer(other, date.today(), "2932", "Al-Hilal Saudi FC"))
+    await db.commit()
+    await real_world.alert_clubs(db)  # the list grew: a new notification naming both
+    await db.commit()
+    latest = await alerts()
+    assert len(latest) == 2 * len(first)
+    assert "2 of your players" in latest[-1].message and "Also Gone" in latest[-1].message

@@ -62,6 +62,8 @@ class NotificationType(str, enum.Enum):
     REGISTRATION_UPDATED = "REGISTRATION_UPDATED"
     # The window closes soon and the club has transfers open (deadline/service.py).
     DEADLINE_DAY = "DEADLINE_DAY"
+    # API-Football has some of the club's players at other clubs (players/real_world.py).
+    REAL_WORLD_MOVES = "REAL_WORLD_MOVES"
 
 
 class Notification(Base):
