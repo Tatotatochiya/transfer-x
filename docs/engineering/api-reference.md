@@ -53,6 +53,7 @@ Verified against the router mounts in `backend/app/main.py` on 2026-10-11.
 | `/verification` | Verification requests |
 | `/world`, `/fixtures`, `/stats`, `/vendor` | Reference data, fixtures, stats, API-Football syncs |
 | `/fx` | Exchange rates for display |
+| `/deadline` | Deadline day: the club's open transfers against the window's close (club members) |
 | `/search` | Global search (⌘K, shortlists); signed-in only |
 | `/analytics` | Usage events |
 | `/admin` | Staff administration, including `/admin/jobs`, `/admin/errors`, `/admin/health` and `/admin/real-world-moves` (list, bulk apply, dismiss) |

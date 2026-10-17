@@ -43,6 +43,7 @@ JOB_LABELS = {
     "approval_expiry": "Expire old approval requests",
     "expire_mandates": "Expire representation mandates",
     "deal_sla": "Flag deals past their paperwork deadline",
+    "deadline_reminders": "Deadline-day reminders (24, 6 and 2 hours before the window closes)",
     "loan_lifecycle": "Start, end and recall loans",
     "daily_digest": "Daily digest emails",
 }

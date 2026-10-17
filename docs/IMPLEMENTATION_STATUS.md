@@ -38,6 +38,7 @@ Rewritten on 2026-10-11 from the code, the CHANGELOG and read-only checks of the
 | AI assistant | Built | 2026-10-06 | Advises, never acts (ADR 0006): offer advisor, terms checks, summaries, deal steps, briefing, pricing, "Who might want him?", drafts, Ask TransferX (⌘K). The analyst (`/ask`): 17 read-only, club-scoped tools, tables, charts, Excel, "Ask about this"; eval 71/72. Cache and rate limit are in memory |
 | Valuation | Built, calibrated | 2026-10-17 | `market-v2` (multi-season, age and potential, form, contract, availability, comparables). Recomputed daily by the `stats-worker`. Calibrated on 2026-10-17 against production fees: within ±25% of the fee for 31% of transfers (was 12%), median bias −9% (was −64%); the market-rate ceiling binds for 33% of players (was 53%) ([calibration](./feature_spec/valuation-model-v2.md#calibration-archetypes-not-a-backtest)) |
 | Data from API-Football | Built | 2026-10-12 | Admin-triggered syncs plus the scheduled refresh (17:00 and 22:00 UK): stats (with each competition's name and logos, fixed 2026-10-12), injuries, ratings for new matches, form; follows each competition's current season. Production refreshes all 11 competitions in `world_leagues` |
+| Deadline day | Built | 2026-10-17 | `/deadline` (Lite or full app, by the person's mode): every open offer and deal against the window's close, with the next step, whose move, steps left and an "at risk" flag (under 6 hours per step). Banner on the Lite home and dashboard in the last 72 hours; pushes at 24, 6 and 2 hours. Windows are still global, not per federation |
 | Real-world moves | Built | 2026-10-12 | Contracted players whose API-Football club differs from their TransferX registration: a "Moved in real life" note on the player page, and Admin → Real-world moves to apply (bulk, with a reason; offers and listings close, contract moves, no money) or dismiss. Never automatic ([product ADR 0009](./product/decisions/0009-real-world-moves-flagged-applied-by-staff.md)). On dev data: 204 of 680 contracted players |
 | Monitoring and admin | Built | 2026-10-11 | Admin panel with every change audited and a reason; audit log page; read-only "view as this club"; Admin Jobs (runs, steps, live logs, Run refresh now), Errors (grouped issues from API, worker and browsers), Health (services, requests, jobs, integrity). Slack alerts once the webhook is set |
 | Accounts and privacy | Built | 2026-10-11 | Sign-in by email or username; sessions and signed-in devices with "sign out everywhere"; password reset links; GDPR export and account deletion; invitation-only accounts |
@@ -71,7 +72,7 @@ Each item was checked against the code on 2026-10-11 unless it says otherwise.
   - the injury risk score (`injury-availability-risk-profile.md`);
   - demo scenarios M1–M4 and S1–S2;
   - analyst Phase C (reminders and saved questions);
-  - Phases 2, 4 and 5 of the Q4 plan.
+  - the rest of Phase 2 of the Q4 plan (registration, windows by federation, the medical), and Phases 4 and 5.
 - **Anti-sniping** settings exist but aren't used.
 - **Lite can't make loan offers** (a to-do, [Lite spec](./feature_spec/lite-mode/README.md#to-do)). Its bid card is permanent only, so a player listed for loan only gets a permanent bid from Lite, which is refused.
 
@@ -87,8 +88,8 @@ Each item was checked against the code on 2026-10-11 unless it says otherwise.
 ## Test totals
 
 As of 2026-10-12:
-- **Backend:** 894 passed (full suite, SQLite).
-- **Frontend:** vitest 262 passed.
+- **Backend:** 900 passed (full suite, SQLite).
+- **Frontend:** vitest 266 passed.
 - **Type check:** `tsc -b` has 0 errors.
 
 ## Related documents

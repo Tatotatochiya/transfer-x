@@ -21,6 +21,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import Spinner from "../../components/ui/Spinner";
 import TransferWindowBanner from "../../components/transfers/TransferWindowBanner";
+import DeadlineBanner from "../../components/deadline/DeadlineBanner";
 import { formatCurrency, formatDate } from "../../lib/utils";
 import { useAuth } from "../../hooks/useAuth";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
@@ -338,6 +339,7 @@ export default function DashboardPage() {
       />
 
       <TransferWindowBanner />
+      <DeadlineBanner />
       <OnboardingChecklist />
 
       <BriefingCard />

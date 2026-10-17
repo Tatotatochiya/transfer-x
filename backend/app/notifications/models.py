@@ -60,6 +60,8 @@ class NotificationType(str, enum.Enum):
     LITE_QUESTION = "LITE_QUESTION"
     # Staff moved a player's registration to match a real-world move (players/real_world.py).
     REGISTRATION_UPDATED = "REGISTRATION_UPDATED"
+    # The window closes soon and the club has transfers open (deadline/service.py).
+    DEADLINE_DAY = "DEADLINE_DAY"
 
 
 class Notification(Base):

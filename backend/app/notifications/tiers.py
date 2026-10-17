@@ -28,6 +28,7 @@ _HEADS_UP = {
     T.NEGOTIATION_MESSAGE, T.ENQUIRY_RECEIVED, T.ENQUIRY_REPLIED, T.OFFER_ACCEPTED, T.OFFER_REJECTED,
     T.AUCTION_BID_ACCEPTED, T.DEAL_COLLAPSED, T.DEAL_SLA_BREACHED, T.SALE_REOPENED, T.INSTALMENT_DUE,
     T.RELEASE_CLAUSE_TRIGGERED, T.LOAN_RECALLED, T.LITE_QUESTION, T.REGISTRATION_UPDATED,
+    T.DEADLINE_DAY,
 }
 
 # DAILY_DIGEST is a preference rather than a notification anyone receives;
@@ -78,6 +79,7 @@ HIDDEN_TITLES: dict[T, str] = {
     T.LOAN_RECALLED: "A loan was recalled",
     T.LITE_QUESTION: "A colleague asked you something",
     T.REGISTRATION_UPDATED: "A player's registration changed",
+    T.DEADLINE_DAY: "The transfer window closes soon",
 }
 HIDDEN_BODY = "Open TransferX to see the details."
 
