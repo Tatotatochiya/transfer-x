@@ -1,7 +1,7 @@
 ---
 title: "Feature Spec: Valuation Model v2 (market-v2)"
-last_updated: 2026-10-07
-status: Implemented and shipped 2026-10-07 — calibration TODO (see Calibration)
+last_updated: 2026-10-17
+status: Implemented and shipped 2026-10-07; calibrated against production 2026-10-17 (see Calibration)
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -98,12 +98,20 @@ v2 lands in range for 10 of 14 (v1: 3), and the rest are within ~10% of the rang
 
 The production backtest below is what should set those constants.
 
-> **TODO — calibration (shipped uncalibrated on 2026-10-07, by product-owner decision).**
-> 1. Run `python -m scripts.valuation_backtest --csv backtest.csv` against production.
-> 2. Retune `BASE_ANCHORS_V2` and `VALUE_CURVE_KNOTS` (then `LEAGUE_COEFFICIENTS`) until the median bias is near zero and the ×1.60 market-rate ceiling rarely binds. It binds for 53% of players on dev today.
-> 3. Update the fixtures in `tests/test_valuation_v2.py`, `test_valuation.py` and `test_sales.py` in the same commit, then recompute.
->
-> Original note: run `python -m scripts.valuation_backtest` against production. It replays every fee-bearing transfer in the window through v1, v2 intrinsic and v2 + market (leave-own-out) and reports median error, share within ±25% / ±50% and bias by position, age, fee band and source. Tune `VALUE_CURVE_KNOTS`, `BASE_ANCHORS_V2` and `LEAGUE_COEFFICIENTS` from that, not from the archetypes.
+**Calibrated against production (2026-10-17).** Production holds 84 fee-bearing transfers with pre-transfer stats (81 reported by API-Football, 3 TransferX deals), much like dev. The fees ran 3–5× the model at scores 35–45 and about right at 60–65: the curve fell too fast below 60, rather than sitting too low at the top. Players sold for a fee are rarely as weak as their box score makes them.
+
+A robust fit of the gap against the score gave ×2.16 at 50, falling 5.9% a point. It was bounded to ×1.0–×3.5, so the top end (few transfers; the elite archetypes were already in range) keeps its value, and no player is lifted more than ×3.5. The ×2.16 moved into `BASE_ANCHORS_V2` (now 19.4m / 30.2m / 42.1m / 41.0m), so the curve is still 1.0 at 50 and the anchor still means "a score-50 player". Cross-validated on the transfers before it shipped, then re-run on production:
+
+| | within ±25% | within ±50% | median bias |
+|---|---|---|---|
+| v2 intrinsic, before | 11.9% | 20.2% | −64.5% |
+| **v2 intrinsic, calibrated** | **31.0%** | **44.0%** | **−9.4%** |
+| v2 + market, before | 23.8% | 29.8% | −48.0% |
+| **v2 + market, calibrated** | **26.2%** | **44.0%** | **−11.4%** |
+
+- On a dev recompute, the market-rate ceiling (×1.60) now binds for 33% of players, down from 53%, and the median factor is ×1.14 instead of the ceiling.
+- **Trade-off, chosen by the product owner:** fitting real fees makes mid-table players dearer than the archetype ranges. An average PL full-back, 30, goes from £9m to £22m (archetype range £6–14m), a solid PL centre-back to £47m (£30–45m), an injury-prone midfielder to £46m (£20–35m). The elite archetypes are unchanged and in range. Partial corrections were tried: three-quarters of the fit gave within ±25% of 24% and a −26% bias, so the full fit was kept.
+- **Still to do:** fees under £5m are now over-predicted (+118%, 7 transfers), and £25m+ still under (−37%, 33). `LEAGUE_COEFFICIENTS` for smaller leagues look low (Belgium, Portugal, Scandinavia: fees 5–15× the model), but each has 2–4 transfers. Revisit both when there are more fees (TransferX deals, or a Transfermarkt licence). Re-run `python -m scripts.valuation_backtest` against production after each window.
 
 ## Decisions for the product owner
 

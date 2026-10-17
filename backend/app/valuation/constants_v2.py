@@ -35,27 +35,41 @@ EUROPEAN_CUP_LEAGUE_IDS: frozenset[str] = frozenset({"2", "3", "848"})
 
 # GBP value of a hypothetical score-50 player in a coefficient-1.0 league,
 # at peak age, by position.
+# A score-50 player's value (the curve is 1.0 at 50). Raised x2.16 on
+# 2026-10-17 with the calibration below; they were 9m / 14m / 19.5m / 19m.
 BASE_ANCHORS_V2: dict[str, float] = {
-    "GK": 9_000_000.0,
-    "DEF": 14_000_000.0,
-    "MID": 19_500_000.0,
-    "FWD": 19_000_000.0,
+    "GK": 19_400_000.0,
+    "DEF": 30_200_000.0,
+    "MID": 42_100_000.0,
+    "FWD": 41_000_000.0,
 }
 # Score → value multiple, interpolated linearly in log space between knots.
 # Replaces v1's single (score/50)^2.2 power curve, which could not fit the
 # market: the box-score score compresses the top end (elite ≈ 72, average
 # ≈ 48) while fees differ ~10× across that gap. A curve steep enough for the
 # middle explodes at the top, so the slope eases above 70.
+#
+# Calibrated 2026-10-17 against the 84 fee-bearing transfers in production
+# (scripts/valuation_backtest.py). The first curve fell too fast below 60:
+# fees ran 3-5x the model at scores 35-45 and about right at 60-65, which
+# is where the -64% median bias came from (players sold for fees are rarely
+# the weakest the box score makes them). A robust fit of the residual
+# against the score gave x2.16 at 50, falling 5.9% a point; it is bounded
+# to x1.0-x3.5, so the top end (few transfers, archetypes already in range)
+# keeps its value and the bottom is never lifted more than x3.5. The x2.16
+# moved into BASE_ANCHORS_V2, so the curve stays 1.0 at 50. Against
+# production it moved fees within +/-25% from 12% to 31% and the median
+# bias from -64% to -9% (feature_spec/valuation-model-v2.md).
 VALUE_CURVE_KNOTS: tuple[tuple[float, float], ...] = (
-    (0.0, 0.03),
-    (30.0, 0.15),
-    (40.0, 0.40),
+    (0.0, 0.0486),
+    (30.0, 0.243),
+    (40.0, 0.648),
     (50.0, 1.00),
-    (60.0, 2.30),
-    (70.0, 4.80),
-    (80.0, 7.80),
-    (90.0, 10.50),
-    (100.0, 12.50),
+    (60.0, 1.278),
+    (70.0, 2.222),
+    (80.0, 3.611),
+    (90.0, 4.861),
+    (100.0, 5.787),
 )
 
 # League coefficient, keyed by API-Football league id. Replaces v1's three
