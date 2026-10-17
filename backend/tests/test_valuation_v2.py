@@ -157,8 +157,8 @@ def test_value_curve_is_one_at_fifty_and_monotonic():
 
 
 def test_value_curve_log_linear_between_knots():
-    # halfway between (60, 2.30) and (70, 4.80) is their geometric mean
-    assert engine_v2.value_curve(65) == pytest.approx(math.sqrt(2.30 * 4.80))
+    # halfway between (60, 1.278) and (70, 2.222) is their geometric mean
+    assert engine_v2.value_curve(65) == pytest.approx(math.sqrt(1.278 * 2.222))
 
 
 def test_premier_league_premium_over_other_top_five():

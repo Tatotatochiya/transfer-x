@@ -349,9 +349,10 @@ async def test_get_valuation_full_shape(client: AsyncClient, club: dict, admin: 
     assert data["confidence"] == "HIGH"
     assert data["league_tier"] == 1
     assert abs(float(data["performance_score"]) - 81.39) <= 0.05
-    assert abs(float(data["fair_value"]) - 154_400_000) <= 100_000
-    assert abs(float(data["fair_value_low"]) - 131_300_000) <= 100_000
-    assert abs(float(data["fair_value_high"]) - 177_600_000) <= 100_000
+    # Elite (score 81): the 2026-10-17 calibration left the top end alone (anchor rounding only).
+    assert abs(float(data["fair_value"]) - 154_300_000) <= 100_000
+    assert abs(float(data["fair_value_low"]) - 131_100_000) <= 100_000
+    assert abs(float(data["fair_value_high"]) - 177_400_000) <= 100_000
     assert data["as_of"] is not None
     # breakdown covers every weighted feature, ordered by contribution desc
     assert len(data["breakdown"]) == 6

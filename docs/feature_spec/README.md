@@ -34,7 +34,7 @@ Statuses verified against the code and `CHANGELOG.md` on 2026-10-11. Once a spec
 |---|---|
 | [`phased-plan-2026-q4/`](./phased-plan-2026-q4/README.md): the current plan, Phase 0 to Phase 5, and the decisions needed. [Phase 0 runbook](./phased-plan-2026-q4/phase-0-runbook.md) for the real-phone test | Active: Phases 0, 1 and 3 done (except the phone test and two-factor sign-in); 2, 4, 5 not started |
 | [`ai-analyst/`](./ai-analyst/README.md): Ask TransferX as an analyst: read-only, club-scoped tools, tables, charts, Excel, "Ask about this" | Phases A and B built; Phase C not started |
-| [`valuation-model-v2.md`](./valuation-model-v2.md): the `market-v2` fair-value model | Shipped 2026-10-07; calibration TODO |
+| [`valuation-model-v2.md`](./valuation-model-v2.md): the `market-v2` fair-value model | Shipped 2026-10-07; calibrated 2026-10-17 |
 | [`scheduled-data-refresh.md`](./scheduled-data-refresh.md): twice-daily API-Football refresh in the `stats-worker`, Admin Jobs and Errors, request health, Slack | Live 2026-10-11; Slack webhook pending |
 | [`injury-availability-risk-profile.md`](./injury-availability-risk-profile.md): an availability risk score per player | Not built as specified (availability is on the ledger and in the valuation) |
 | [`demo-scenario-generator.md`](./demo-scenario-generator.md): demo deals at every stage | Phase 1 built; M1–M4, S1–S2 not built |

@@ -1,6 +1,6 @@
 ---
 title: "Changelog"
-last_updated: 2026-10-13
+last_updated: 2026-10-17
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -230,6 +230,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Valuations are calibrated against real fees** ([spec](./feature_spec/valuation-model-v2.md#calibration-archetypes-not-a-backtest)). Against the 84 fee-bearing transfers in production, the model's value was within ±25% of the fee for 12% of them and 64% low at the median; it fell too fast for players below the elite. The value curve is now lifted up to ×3.5 below a score of 70 (×2.16 at an average score, folded into the position anchors), and unchanged above. Now: within ±25% for 31%, median bias −9%, and the market-rate ceiling binds for 33% of players instead of 53%. By the product owner's choice, mid-table players are notably dearer than before (an average PL full-back, 30: £9m → £22m). Production revalues everyone at the next 22:00 refresh.
 - **Lite is the default for club members.** Owners and staff who haven't chosen now land in Lite, whether they sign in or open TransferX at `/`. Agents, players and TransferX staff keep the full app. Lite's top bar has a visible **Switch to full app** button beside Home (the profile menu switch stays), and the choice is remembered. The setting is now `LITE_DEFAULT_ON` (true), replacing `LITE_ROLE_DEFAULT_ON`, which covered owners and sporting directors only and was off.
 - **"Ask about this" has the AI look everywhere** (player page, board cards, offer page): the ✦ mark in the assistant's purple with its light fill and ring, from one shared `AskAboutButton`. It was a grey button in two places and a green link in the third. The design rules now say every AI control looks like AI.
 - **Valuations are recomputed once a day by the stats-worker,** after the 22:00 data refresh, instead of by the web app on every start, so deploys no longer write a fresh valuation for every player.
