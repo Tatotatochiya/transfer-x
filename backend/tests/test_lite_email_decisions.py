@@ -89,3 +89,41 @@ async def test_digest_email_carries_buttons():
     out = render_digest_html([("Offer · Leeds", "https://x/offers/1", [("Accept £5m", "https://x/lite/confirm/t?action=accept")])],
                              "https://x/dashboard")
     assert "Accept £5m" in out and "/lite/confirm/t?action=accept" in out
+
+
+async def _value_his_player(db, offer, value):
+    from app.players.models import Contract
+
+    # The seller's own figure for him lives on its contract (the seller's card only).
+    db.add(Contract(player_id=uuid.UUID(offer["player_id"]), club_id=uuid.UUID(offer["to_club_id"]),
+                    is_active=True, club_valuation=value))
+    await db.commit()
+
+
+async def test_the_clubs_valuation_is_only_for_the_signed_in_recipient(client: AsyncClient, db):
+    seller, buyer, offer, buttons = await _setup(client, db)
+    await _value_his_player(db, offer, 21_000_000)
+    token, q = _link(buttons, "Say no")
+
+    # Forwarded, or opened before signing in: no valuation, no suggested counter.
+    for headers in ({}, buyer):
+        view = (await client.get(f"/lite/confirm/{token}", params=q, headers=headers)).json()
+        assert view["signed_in_as_recipient"] is False
+        assert "your_valuation" not in view["card"] and "counter_suggestion" not in view["card"]
+        assert "21000000" not in str(view)
+        assert set(view["card"]) == set(email_actions.PUBLIC_CARD)
+    counter = (await client.get(f"/lite/confirm/{token}", params={"action": "counter"})).json()
+    assert counter["amount"] is None  # no amount in the link, and the suggestion is the recipient's
+
+    # The recipient, signed in, sees it all.
+    view = (await client.get(f"/lite/confirm/{token}", params=q, headers=seller)).json()
+    assert view["signed_in_as_recipient"] is True and view["card"]["your_valuation"] == 21_000_000
+
+
+async def test_a_used_link_shows_no_valuation_either(client: AsyncClient, db):
+    _seller, _buyer, offer, buttons = await _setup(client, db)
+    await _value_his_player(db, offer, 21_000_000)
+    token, q = _link(buttons, "Say no")
+    assert (await client.post(f"/lite/confirm/{token}", json={"action": "reject"})).status_code == 200
+    view = (await client.get(f"/lite/confirm/{token}", params=q)).json()
+    assert view["state"] == "used" and "your_valuation" not in view["card"]

@@ -488,7 +488,7 @@ async def test_push_settings_on_preferences(client: AsyncClient, user):
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["push_heads_up"] == "OFF" and body["quiet_start"] == "23:30:00" and body["push_hide_amounts"] is True
-    assert body["lite_mode"] is False  # untouched
+    assert body["lite_mode"] is True and body["lite_mode_is_default"] is True  # untouched: still the default
 
     bad = await client.patch("/users/me/preferences", headers=h, json={"timezone": "Mars/Olympus"})
     assert bad.status_code == 422

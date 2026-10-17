@@ -13,6 +13,11 @@ one Confirm button.
 - One token per email, used once, for 24 hours. If the offer has changed
   since the email went out, confirming is refused (409) with the new state.
 - The card is the same one Lite shows, so an anonymous buyer stays masked.
+  Its confidential parts (the club's own valuation of the player, and the
+  counter TransferX suggests from it) go only to the recipient, signed in.
+  Anyone else with the link (it may have been forwarded) sees what the email
+  itself showed: the player, the other club, the offer and the time left.
+  That holds for a used or expired link too.
 """
 import secrets
 import uuid
@@ -29,6 +34,8 @@ from app.lite.models import ActionToken, HeldActionChannel
 
 TOKEN_HOURS = 24
 MONEY_ACTIONS = {"counter", "accept"}
+# What the confirm page may show someone who isn't the signed-in recipient.
+PUBLIC_CARD = ("offer_id", "status", "player_name", "other_club", "deal_type", "fee", "expires_at")
 LABELS = {"counter": "Ask for {amount}", "accept": "Accept {amount}", "reject": "Say no"}
 
 
@@ -126,8 +133,12 @@ async def view(db: AsyncSession, raw: str, action: str, amount: Decimal | None, 
     if action not in token.allowed_actions:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="That isn't one of this email's choices.")
     card = await lite_service.offer_card(db, user, offer_id=offer.id)
+    recipient = current_user is not None and current_user.id == user.id
     if action == "counter":
-        amount = amount or (Decimal(str(card["counter_suggestion"])) if card.get("counter_suggestion") else None)
+        # The amount in the link is the one the email showed. The card's own
+        # suggestion can be the club's valuation, so it's for the recipient only.
+        suggestion = card.get("counter_suggestion") if recipient else None
+        amount = amount or (Decimal(str(suggestion)) if suggestion else None)
     elif action == "accept":
         amount = Decimal(str(card["fee"])) if card.get("fee") is not None else None
     else:
@@ -140,8 +151,8 @@ async def view(db: AsyncSession, raw: str, action: str, amount: Decimal | None, 
         "needs_sign_in": action in MONEY_ACTIONS,
         # Whether whoever opened it is signed in as the recipient. Never the
         # recipient's address: the link may have been forwarded.
-        "signed_in_as_recipient": current_user is not None and current_user.id == user.id,
-        "card": card,
+        "signed_in_as_recipient": recipient,
+        "card": card if recipient else {k: card.get(k) for k in PUBLIC_CARD},
     }
 
 
