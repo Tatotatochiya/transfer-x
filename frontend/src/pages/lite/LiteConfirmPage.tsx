@@ -31,7 +31,8 @@ interface View {
     fee: number | null;
     deal_type: "PERMANENT" | "LOAN";
     expires_at: string | null;
-    your_valuation: number | null;
+    /** Only for the email's recipient, signed in: the link may have been forwarded. */
+    your_valuation?: number | null;
   };
 }
 
