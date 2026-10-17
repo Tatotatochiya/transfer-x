@@ -26,6 +26,7 @@ from app.notifications import router as notifications_router
 from app.offers import router as offers_router
 from app.players import router as players_router
 from app.routers import health, search as search_router
+from app.deadline import router as deadline_router
 from app.sales import router as sales_router
 from app.scouting import router as scouting_router
 from app.stats import router as stats_router
@@ -243,6 +244,21 @@ async def _deal_sla_job() -> None:
             logger.exception("Error in deal SLA job")
 
 
+async def _deadline_reminders_job() -> None:
+    """Deadline-day mode: push each club with transfers open at 24, 6 and 2
+    hours before the window closes (once each)."""
+    from app.deadline.service import send_reminders
+
+    async with AsyncSessionLocal() as db:
+        try:
+            told = await send_reminders(db)
+            await db.commit()
+            if told:
+                logger.info("Deadline reminders sent to %d clubs", told)
+        except Exception:
+            logger.exception("Error in deadline reminders job")
+
+
 async def _client_alerts_job() -> None:
     """TRA-134: scan agent rosters for contract-expiry, valuation-change, and club-interest alerts."""
     from app.mandates.alerts_service import check_and_create_alerts
@@ -318,6 +334,10 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(
         _expire_mandates_job, "interval", hours=24, id="expire_mandates",
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+    )
+    _scheduler.add_job(
+        _deadline_reminders_job, "interval", minutes=15, id="deadline_reminders",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=50),
     )
     _scheduler.add_job(
         _deal_sla_job, "interval", hours=24, id="deal_sla",
@@ -405,6 +425,7 @@ async def server_error_handler(request: Request, exc: Exception) -> JSONResponse
 app.include_router(health.router)
 app.include_router(fx_router.router)
 app.include_router(search_router.router)
+app.include_router(deadline_router.router)
 app.include_router(auth_router.router, prefix="/auth")
 app.include_router(clubs_router.router, prefix="/clubs")
 app.include_router(players_router.router, prefix="/players")

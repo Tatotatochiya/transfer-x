@@ -95,6 +95,7 @@ Modules live under `backend/app/` and mostly follow `models.py` / `schemas.py` /
 | `approval_expiry` | 24 h | Expires pending approvals and tells the requester |
 | `expire_mandates` | 24 h | Expires mandates past their end date |
 | `deal_sla` | 24 h | Flags deals stuck in pending completion past their SLA deadline (flags; doesn't collapse) |
+| `deadline_reminders` | 15 min | Deadline day: pushes each club with transfers open once at 24, 6 and 2 hours before the window closes (`app/deadline/`) |
 | `loan_lifecycle` | 24 h | Returns loans at expiry, warns two weeks ahead, converts obligations |
 | `monitoring_retention` | 24 h | Deletes monitoring data past retention |
 

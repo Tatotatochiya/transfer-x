@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import Icon, { type IconName } from "../../components/layout/Icon";
 import Spinner from "../../components/ui/Spinner";
+import DeadlineBanner from "../../components/deadline/DeadlineBanner";
 import { useLiteHome, type LiteHome, type LiteTile } from "../../hooks/useLite";
 import { liteMoney } from "../../lib/liteMoney";
 import { useAuthStore } from "../../store/auth";
@@ -96,6 +97,8 @@ export default function LiteHomePage() {
           </p>
         )}
       </div>
+
+      <DeadlineBanner lite />
 
       {home.resume && (
         <div className="flex flex-wrap items-center gap-4 rounded-[18px] bg-surface px-5 py-4 ring-2 ring-accent/25">

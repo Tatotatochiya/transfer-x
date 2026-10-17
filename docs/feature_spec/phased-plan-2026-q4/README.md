@@ -58,7 +58,7 @@ Goal: a deal can't reach "Signed" until the steps the authorities require are do
 - [ ] **Work permit eligibility** (M): GBE-criteria guidance on players and on offers to English clubs.
 - [ ] **Transfer windows by federation** (M). Today `transfer_windows` has no league or country; the buying club's federation should decide.
 - [ ] **A real medical step** (S–M): date, location and attendees, with pass, fail, or pass with conditions (which can reopen the fee).
-- [ ] **Deadline-day mode** (M): every open deal by hours left, with what's blocking it, on screen and in pushes.
+- [x] **Deadline-day mode** (M). Built 2026-10-17: `/deadline`, in Lite or the full app, lists every open offer and deal with its next step and owner (from the deal page's own steps), your moves first, then those at risk (fewer than 6 hours left per step still to do). A banner on the Lite home and the dashboard inside the last three days; pushes at 24, 6 and 2 hours (`DEADLINE_DAY`, migration `0102`). Was: every open deal by hours left, with what's blocking it, on screen and in pushes.
 
 Done when: a demo deal walks through TMS, ITC, permit and registration with dated steps, and an offer outside the buying club's window is refused with the federation named.
 

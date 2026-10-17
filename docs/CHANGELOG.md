@@ -25,6 +25,10 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Deadline day** (Q4 plan, Phase 2). `/deadline` lists every open offer and deal against the window's close: the next step and who owns it (from the deal page's own steps), how many steps are left, and "at risk" when there are fewer than 6 hours left for each. The club's own moves come first, then those at risk. It opens in Lite or the full app, whichever the person uses; in Lite, an offer waiting on you opens its Lite card.
+  - In the last 72 hours a banner on the Lite home and the dashboard says how long is left and how many transfers wait on the club.
+  - Each club with transfers open gets a push at 24, 6 and 2 hours before the close, once each (`DEADLINE_DAY`, migration `0102`; job `deadline_reminders`, every 15 minutes).
+  - Endpoint `GET /deadline`, for club members; the same masking as the Transfers board.
 - **Real-world moves** ([product ADR 0009](./product/decisions/0009-real-world-moves-flagged-applied-by-staff.md)). TransferX now notices when API-Football has a contracted player at another club than the one he's registered to: a transfer, a loan or a loan ending this season, or games for another club. On the dev data that's 204 of 680 players, Senesi (Bournemouth → Tottenham) among them.
   - **The player's page** says "Moved in real life: Joined Tottenham on 30 Jun 2026 (free transfer). On TransferX he's still registered to Bournemouth."
   - **Admin → Real-world moves** lists them, filtered by kind, club or name. Staff apply moves one at a time or in bulk, with a reason. Applying closes the player's open offers, listings and enquiries (releasing the budget offers held), ends his contract, and starts one at the TransferX club he joined (for that club to confirm) or makes him an outside player. Both clubs get the new "Squad updated" notification (`REGISTRATION_UPDATED`); the change is in the audit log. No money moves.

@@ -62,6 +62,7 @@ const AdminVerificationPage     = lazy(() => import("./pages/admin/AdminVerifica
 const AdminHealthPage           = lazy(() => import("./pages/admin/AdminHealthPage"));
 const AdminJobsPage             = lazy(() => import("./pages/admin/AdminJobsPage"));
 const AdminRealWorldMovesPage   = lazy(() => import("./pages/admin/AdminRealWorldMovesPage"));
+const DeadlinePage              = lazy(() => import("./pages/deadline/DeadlinePage"));
 const AdminErrorsPage           = lazy(() => import("./pages/admin/AdminErrorsPage"));
 const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage"));
 const AdminAuditLogPage = lazy(() => import("./pages/admin/AdminAuditLogPage"));
@@ -154,6 +155,19 @@ function LiteRoute({ children }: { children: React.ReactNode }) {
   if (!accessToken && !refreshToken) return <Navigate to="/login" replace />;
   if (user && user.user_type !== "CLUB") return <Navigate to="/" replace />;
   return <LiteLayout>{children}</LiteLayout>;
+}
+
+/** Deadline day for club members, in whichever app they use: Lite or the full app. */
+function DeadlineRoute() {
+  const { user, accessToken, refreshToken, isBootstrapping } = useAuthStore();
+  const signedIn = !!(accessToken || refreshToken);
+  const { data: prefs, isLoading } = usePreferences(signedIn && !isBootstrapping);
+  if (isBootstrapping || (signedIn && isLoading)) return <LoadingScreen />;
+  if (!signedIn) return <Navigate to="/login" replace />;
+  if (user && user.user_type !== "CLUB") return <Navigate to="/" replace />;
+  return prefs?.lite_mode
+    ? <LiteLayout><DeadlinePage lite /></LiteLayout>
+    : <AppShell><DeadlinePage /></AppShell>;
 }
 
 function AgentRoute({ children }: { children: React.ReactNode }) {
@@ -267,6 +281,7 @@ export default function App() {
 
           {/* ── Club (protected, club-only) ── */}
           <Route path="/dashboard"      element={<ClubRoute><DashboardPage /></ClubRoute>} />
+          <Route path="/deadline"       element={<DeadlineRoute />} />
           <Route path="/club"           element={<ClubRoute><MyClubPage /></ClubRoute>} />
           <Route path="/club/finance"   element={<ClubRoute><FinancePage /></ClubRoute>} />
           <Route path="/club/team"      element={<ClubRoute><TeamPage /></ClubRoute>} />

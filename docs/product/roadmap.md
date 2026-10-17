@@ -34,7 +34,7 @@ This is a narrative summary, refreshed periodically. For current, authoritative 
 |---|---|---|
 | 0. Ship what's in flight | Everything built reaches Railway and real phones | Done except the real-phone notification test |
 | 1. Trust basics | Nothing a club's finance or legal team would reject | Done except two-factor sign-in (deferred) |
-| 2. Compliance and completion | Registration (TMS, ITC, permits), windows by federation, a real medical, deadline day | Not started |
+| 2. Compliance and completion | Registration (TMS, ITC, permits), windows by federation, a real medical, deadline day | Started: deadline-day mode built 2026-10-17 |
 | 3. Simplify the core | One board, one conversation, one way to buy | Done |
 | 4. Money and documents | Full personal terms, cost per season, payments that reconcile, e-signatures | Not started |
 | 5. Planning, agents and players | Squad lists and quotas, renewals, agent tools, a player view | Not started |

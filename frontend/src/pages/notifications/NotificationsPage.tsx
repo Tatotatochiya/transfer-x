@@ -56,6 +56,7 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   ENQUIRY_REPLIED:            "Enquiry reply",
   LITE_QUESTION:              "Question from your team",
   REGISTRATION_UPDATED:       "Squad updated",
+  DEADLINE_DAY:               "Deadline day",
   APPROVAL_DECIDED:           "Approval decided",
 };
 
@@ -101,6 +102,7 @@ const TYPE_COLOURS: Record<NotificationType, string> = {
   ENQUIRY_REPLIED:          "text-text-secondary",
   LITE_QUESTION:            "text-text-secondary",
   REGISTRATION_UPDATED:     "text-warning-text",
+  DEADLINE_DAY:             "text-danger-text",
   APPROVAL_DECIDED:         "text-success-text",
 };
 
