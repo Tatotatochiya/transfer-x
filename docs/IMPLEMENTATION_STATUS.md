@@ -88,8 +88,10 @@ Each item was checked against the code on 2026-10-11 unless it says otherwise.
 ## Test totals
 
 As of 2026-10-12:
+
 - **Backend:** 900 passed (full suite, SQLite).
 - **Frontend:** vitest 266 passed.
+
 - **Type check:** `tsc -b` has 0 errors.
 
 ## Related documents

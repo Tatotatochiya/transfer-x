@@ -1,6 +1,6 @@
 ---
 title: "Permissions Model — Risk Posture"
-last_updated: 2026-10-11
+last_updated: 2026-10-17
 status: Active
 owner: "TODO — assign a Security Owner"
 ---
@@ -44,7 +44,7 @@ Out of scope: implementation mechanism (see [`../architecture/authentication-and
 | Spending approvals | A pending approval stores the validated payload only — nothing is reserved or executed at capture. Deciding requires `APPROVE_ACTIONS` (owner/sporting director); the requester can only cancel their own. Execution re-validates budget/window/auction state from scratch, so an approver can never resurrect an action against stale state | `app/approvals/service.py` |
 | Notification routing by role | Club-directed deal/offer/bid events reach OWNER + SPORTING_DIRECTOR + MANAGER; scouting/market events additionally reach SCOUT; account/administrative events (verification, staff joins) reach the owner only. READONLY staff receive none — they observe, they're not worked | `notifications/service.py::club_recipient_user_ids` |
 | Anonymous buyer | A buyer who approaches anonymously is shown to the seller as "A {league} club"; ids and names are masked server-side in every offer, enquiry, order book, board card and AI fact. Revealed only on acceptance ([ADR 0004](../architecture/decisions/0004-anonymous-buyer-masked-server-side.md)) | `offers/service._offer_response`, `common/masking.py` |
-| A club's contract terms (wage, signing date, notes, its own valuation) | The club itself. Rival clubs see only what's public: end date and release clause | Player and contract responses; `tests/test_contract_confidentiality.py` |
+| A club's contract terms (wage, signing date, notes, its own valuation) | The club itself. Rival clubs see only what's public: end date and release clause | Player and contract responses; `tests/test_contract_confidentiality.py`. The email decision page (`/lite/confirm/{token}`) shows the valuation only to the email's recipient, signed in (`tests/test_lite_email_decisions.py`) |
 | Interest in a club's own players | Counts only (enquiries, offers, bids, shortlists, profile views), never which clubs | `ai/analyst/tools.py::interest_in_my_players` |
 | The AI assistant and Ask TransferX | Facts are built server-side from what the asking club may see; the model never queries data itself; figures are computed by TransferX ([ADR 0006](../architecture/decisions/0006-ai-assistant-advises-from-scoped-facts.md)) | `app/ai/` |
 | Monitoring data (job logs, error events with tracebacks and request context) | TransferX staff only; limited retention; Slack gets titles and counts only | `app/monitoring/router.py` (`get_current_superuser`) |
