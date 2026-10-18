@@ -80,9 +80,8 @@ const JoinPlayerPage            = lazy(() => import("./pages/auth/JoinPlayerPage
 const LiteHomePage              = lazy(() => import("./pages/lite/LiteHomePage"));
 const LiteOffersPage            = lazy(() => import("./pages/lite/LiteOffersPage"));
 const LiteAskPage               = lazy(() => import("./pages/lite/LiteAskPage"));
-const LiteBuyPositionPage       = lazy(() => import("./pages/lite/LiteBuyPage").then((m) => ({ default: m.LiteBuyPositionPage })));
-const LiteBuyBudgetPage         = lazy(() => import("./pages/lite/LiteBuyPage").then((m) => ({ default: m.LiteBuyBudgetPage })));
-const LiteBuyResultsPage        = lazy(() => import("./pages/lite/LiteBuyPage").then((m) => ({ default: m.LiteBuyResultsPage })));
+const LiteBuyPage               = lazy(() => import("./pages/lite/LiteBuyPage").then((m) => ({ default: m.LiteBuyPage })));
+const LiteBuyRedirect           = lazy(() => import("./pages/lite/LiteBuyPage").then((m) => ({ default: m.LiteBuyRedirect })));
 const LiteBidPage               = lazy(() => import("./pages/lite/LiteBidPage"));
 const LiteSentPage = lazy(() => import("./pages/lite/LiteSentPage"));
 const LiteOfferCardPage         = lazy(() => import("./pages/lite/LiteOfferCardPage"));
@@ -247,9 +246,10 @@ export default function App() {
           <Route path="/lite/bid" element={<LiteRoute><LiteBidPage /></LiteRoute>} />
           <Route path="/lite/actions/:actionId" element={<LiteRoute><LiteSentPage /></LiteRoute>} />
           <Route path="/lite/ask" element={<LiteRoute><LiteAskPage /></LiteRoute>} />
-          <Route path="/lite/buy" element={<LiteRoute><LiteBuyPositionPage /></LiteRoute>} />
-          <Route path="/lite/buy/budget" element={<LiteRoute><LiteBuyBudgetPage /></LiteRoute>} />
-          <Route path="/lite/buy/results" element={<LiteRoute><LiteBuyResultsPage /></LiteRoute>} />
+          <Route path="/lite/buy" element={<LiteRoute><LiteBuyPage /></LiteRoute>} />
+          {/* The guided steps, removed 2026-10-18: an old "Carry on" link lands on the Buy page. */}
+          <Route path="/lite/buy/budget" element={<LiteBuyRedirect />} />
+          <Route path="/lite/buy/results" element={<LiteBuyRedirect />} />
 
           {/* ── Public market ── */}
           <Route path="/players/market"     element={<PublicRoute><PlayerMarketPage /></PublicRoute>} />

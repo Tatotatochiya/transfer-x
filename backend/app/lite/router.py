@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
+from app.clubs.capabilities import Capability, require_club_capability
 from app.database import get_db
 from app.deps import get_current_user, get_optional_user
 from app.lite import service
@@ -83,39 +84,6 @@ async def clear_resume(
 # ── Buy flow (BACKEND.md §2a) ────────────────────────────────────────────────
 
 
-@router.get("/lite/buy/squad")
-async def buy_squad_counts(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    """How many players the club has in each position, for "You have none"."""
-    from app.clubs.service import get_club_and_role_for_user
-
-    club, _ = await get_club_and_role_for_user(db, current_user.id)
-    if club is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lite mode is for club members")
-    return {"counts": await service.squad_counts(db, club.id)}
-
-
-@router.get("/lite/buy/candidates")
-async def buy_candidates(
-    position: str,
-    band: str,
-    offset: int = 0,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    """Three players the club could make an offer for now, picked by TransferX
-    (decision 3); `offset` pages through the same ranking ("Show more"). The
-    model only rewords the reasons when it can."""
-    try:
-        return await service.buy_candidates(db, current_user, position=position, band=band, offset=offset)
-    except LookupError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lite mode is for club members")
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
-
-
 @router.get("/lite/buy/search")
 async def buy_search(
     q: str = Query(..., max_length=100),
@@ -130,6 +98,52 @@ async def buy_search(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lite mode is for club members")
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+
+@router.get("/lite/buy/targets")
+async def buy_targets(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """The players the club is already after (its shortlists and players of
+    interest), each with whether it can make an offer for him now. No model call."""
+    try:
+        return await service.buy_targets(db, current_user)
+    except LookupError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lite mode is for club members")
+
+
+_scouting_write = require_club_capability(Capability.SCOUTING_WRITE)
+
+
+@router.put("/lite/buy/shortlist/{player_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def shortlist_add(
+    player_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    _write: User = Depends(_scouting_write),
+    db: AsyncSession = Depends(get_db),
+):
+    """Put the player on the club's shortlist. Already on one: nothing changes."""
+    try:
+        await service.shortlist_add(db, current_user, player_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    await db.commit()
+
+
+@router.delete("/lite/buy/shortlist/{player_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def shortlist_remove(
+    player_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    _write: User = Depends(_scouting_write),
+    db: AsyncSession = Depends(get_db),
+):
+    """Take the player off all the club's shortlists."""
+    try:
+        await service.shortlist_remove(db, current_user, player_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    await db.commit()
 
 
 # ── Action cards (L4, README "Screen 5") ─────────────────────────────────────
