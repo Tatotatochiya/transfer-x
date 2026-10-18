@@ -257,11 +257,10 @@ async def clear_resume(db: AsyncSession, user) -> None:
         await db.flush()
 
 
-# ── Buy flow candidates (BACKEND.md §2a, decision 3) ─────────────────────────
+# ── Buy flow (BACKEND.md §2a) ────────────────────────────────────────────────
 
 POSITION_WORDS = {"GK": ("goalkeeper", "goalkeepers"), "DEF": ("defender", "defenders"),
                   "MID": ("midfielder", "midfielders"), "FWD": ("forward", "forwards")}
-BANDS = {"0-5": (0, 5_000_000), "5-10": (5_000_000, 10_000_000), "10-20": (10_000_000, 20_000_000)}
 # A squad's usual depth per position, as "Who might want him?" uses.
 TYPICAL_DEPTH = {"GK": 3, "DEF": 8, "MID": 8, "FWD": 6}
 CONTRACT_DISCOUNT_MONTHS = 12
@@ -323,144 +322,9 @@ async def _prices(db: AsyncSession, players, owned: set | frozenset = frozenset(
 player_prices = _prices
 
 
-def _in_band(price: float, band: str, *, loanable: bool, free_agent: bool) -> bool:
-    if band == "free":
-        return free_agent or loanable
-    low, high = BANDS[band]
-    return low <= price <= high if low == 0 else low < price <= high
-
-
 def _pos(p) -> str | None:
     """A player's position code, whether the enum or its string."""
     return getattr(p.position, "value", p.position) if p.position else None
-
-
-def _plain_reason(p, *, pos_count: int, price: float, basis: str) -> str:
-    word = POSITION_WORDS.get(_pos(p) or "", ("player", "players"))
-    have = "no" if pos_count == 0 else str(pos_count)
-    bits = [f"You have {have} {word[1] if pos_count != 1 else word[0]}"]
-    if p.age:
-        bits.append(f"he's {p.age}")
-    if basis == "free agent":
-        bits.append("and a free agent")
-    else:
-        bits.append(f"and {'listed at' if basis == 'listed' else 'valued at'} {_money(price)}")
-    return ", ".join(bits[:-1]) + " " + bits[-1] + "." if len(bits) > 1 else bits[0] + "."
-
-
-def _money(v: float) -> str:
-    if v >= 1_000_000:
-        m = round(v / 1_000_000, 1)
-        return f"£{int(m) if m == int(m) else m}m"
-    return f"£{round(v / 1000)}k"
-
-
-CANDIDATES_PAGE = 3
-MAX_OFFSET = 60
-
-
-async def buy_candidates(db: AsyncSession, user, *, position: str, band: str, offset: int = 0) -> dict:
-    """Three players the club could make an offer for now, picked in code;
-    `offset` pages through the same ranking ("Show more"). The model only
-    rewords the reasons, if it is available and the user's allowance allows;
-    otherwise the plain reasons stand."""
-    from app.ai import assist
-    from app.clubs.service import get_club_and_role_for_user
-    from app.deals.service import get_active_deals_for_players
-    from app.players.models import Contract, Player, PlayerPosition, PlayerStatus
-
-    club, _ = await get_club_and_role_for_user(db, user.id)
-    if club is None:
-        raise LookupError("No club")
-    if position not in ("GK", "DEF", "MID", "FWD", "ANY") or band not in (*BANDS, "free"):
-        raise ValueError("Unknown position or budget")
-    if not 0 <= offset <= MAX_OFFSET:
-        raise ValueError("Unknown page")
-    counts = await squad_counts(db, club.id)
-
-    q = select(Player).where(
-        Player.status.in_([PlayerStatus.CONTRACTED, PlayerStatus.FREE_AGENT]),
-        (Player.current_club_id.is_(None)) | (Player.current_club_id != club.id),
-    )
-    if position != "ANY":
-        q = q.where(Player.position == PlayerPosition(position))
-    pool = (await db.execute(q)).scalars().all()
-    # A player with no club on record may still be a club's: one it created
-    # and has not put under contract. Resolve him as listing does, so a club
-    # is never offered its own man as a "free agent".
-    from app.players.service import get_owning_club_id
-
-    owner_of: dict = {}
-    for p in pool:
-        if p.current_club_id is None:
-            owner_of[p.id] = await get_owning_club_id(db, p)
-    pool = [p for p in pool if owner_of.get(p.id) != club.id]
-    busy = await get_active_deals_for_players(db, [p.id for p in pool])
-    pool = [p for p in pool if not (p.id in busy and busy[p.id].status.value == "IN_PROGRESS")]
-    prices = await _prices(db, pool, owned={pid for pid, o in owner_of.items() if o is not None})
-
-    wages = dict((await db.execute(
-        select(Contract.player_id, Contract.wage_weekly).where(
-            Contract.player_id.in_([p.id for p in pool]), Contract.is_active.is_(True))
-    )).all())
-
-    ranked = []
-    for p in pool:
-        if p.id not in prices:
-            continue  # no price at all: nothing to offer against
-        price, basis, sale = prices[p.id]
-        loanable = sale is not None and getattr(sale.availability, "value", sale.availability) in ("LOAN", "EITHER")
-        if not _in_band(price, band, loanable=loanable, free_agent=basis == "free agent"):
-            continue
-        pos = _pos(p)
-        need = max(0, TYPICAL_DEPTH.get(pos, 6) - counts.get(pos, 0)) if pos else 0
-        age_fit = -abs((p.age or 26) - 25)
-        ranked.append((need, 1 if basis == "listed" else 0, age_fit, -price, p, price, basis, sale))
-    ranked.sort(key=lambda r: r[:4], reverse=True)
-    top = ranked[offset:offset + CANDIDATES_PAGE]
-    has_more = len(ranked) > offset + CANDIDATES_PAGE and offset + CANDIDATES_PAGE <= MAX_OFFSET
-
-    from app.clubs.models import Club
-
-    club_of = {r[4].id: r[4].current_club_id or owner_of.get(r[4].id) for r in top}
-    club_names = dict((await db.execute(
-        select(Club.id, Club.name).where(Club.id.in_([c for c in club_of.values() if c]))
-    )).all()) if top else {}
-    players = []
-    for need, _, _, _, p, price, basis, sale in top:
-        pos = _pos(p)
-        players.append({
-            "player_id": str(p.id), "name": p.name, "photo_url": p.photo_url, "age": p.age, "position": pos,
-            "club": club_names.get(club_of.get(p.id)),
-            "free_agent": basis == "free agent",
-            "price": price, "price_basis": basis, "sale_id": str(sale.id) if sale else None,
-            "wage_weekly": float(wages[p.id]) if wages.get(p.id) is not None else None,
-            "reason": _plain_reason(p, pos_count=counts.get(pos, 0) if pos else 0, price=price, basis=basis),
-        })
-
-    # The model may reword the reasons; results never wait on it.
-    if players and assist.ai_available():
-        facts = {"club": club.name, "squad_counts_by_position": counts, "players": [
-            {k: v for k, v in pl.items() if k in ("player_id", "name", "age", "position", "club", "price", "price_basis", "reason")}
-            for pl in players]}
-        key = f"lite-buy:{club.id}:{position}:{band}:{date.today()}:{','.join(pl['player_id'] for pl in players)}"
-
-        async def produce():
-            data = await assist._llm_json("LITE_BUY_REASONS_USER", user_id=user.id, endpoint="lite-buy-reasons",
-                                          max_tokens=500, facts_json=assist._dumps(facts))
-            return data.get("reasons") if isinstance(data.get("reasons"), dict) else {}
-
-        try:
-            reasons, _ = await assist._cached(key, produce)
-            for pl in players:
-                text = str(reasons.get(pl["player_id"], "")).strip()
-                if 0 < len(text) <= 200:
-                    pl["reason"] = text
-        except Exception:
-            pass  # rate limit, no model, bad output: the plain reasons stand
-
-    return {"position": position, "band": band, "squad_counts": counts, "players": players,
-            "offset": offset, "has_more": has_more}
 
 
 # ── Buy flow search by name ──────────────────────────────────────────────────
@@ -473,43 +337,18 @@ WORD_STARTS = ("", "% ", "%.", "%-", "%'")
 SEARCH_ORDER = ("buyable", "offer_in", "free_agent", "in_transfer", "outside", "yours")
 
 
-async def buy_search(db: AsyncSession, user, *, q: str) -> dict:
-    """Players by name for the Buy flow's search box, each saying whether the
-    club can make an offer for him now and at what price (the same price and
-    ownership rules as the candidates and the bid card). Every player the
-    club may see is found, with the reason when he can't be bought: a name
-    that finds nothing looks like a broken search. No model call."""
-    import re
-
-    from sqlalchemy import case, or_
-    from sqlalchemy.orm import selectinload
-
+async def _resolve_for_club(db: AsyncSession, club, rows) -> list[dict]:
+    """Each player as the Buy page shows him: whether the club can make an
+    offer for him now and at what price (the same price and ownership rules
+    as the bid card), or why not, and whether he is on its shortlist."""
     from app.clubs.models import Club
-    from app.clubs.service import get_club_and_role_for_user
     from app.deals.service import get_active_deals_for_players
     from app.offers.models import Offer, OfferStatus
-    from app.players.models import Player, PlayerStatus, PlayerVisibility
+    from app.players.models import PlayerStatus
     from app.players.service import get_owning_club_id
 
-    club, _ = await get_club_and_role_for_user(db, user.id)
-    if club is None:
-        raise LookupError("No club")
-    term = q.strip()
-    if len(term) < 2:
-        raise ValueError("Type at least two letters")
-    escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    rows = (await db.execute(
-        select(Player)
-        .where(Player.name.ilike(f"%{escaped}%", escape="\\"),
-               (Player.visibility != PlayerVisibility.PRIVATE) | (Player.current_club_id == club.id))
-        .options(selectinload(Player.world_team))
-        .order_by(case((or_(*(Player.name.ilike(f"{lead}{escaped}%", escape="\\") for lead in WORD_STARTS)), 0),
-                       else_=1), Player.name)
-        .limit(SEARCH_POOL)
-    )).scalars().all()
     if not rows:
-        return {"q": term, "players": []}
-
+        return []
     ids = [p.id for p in rows]
     owner_of = {p.id: None if p.status == PlayerStatus.EXTERNAL else await get_owning_club_id(db, p) for p in rows}
     busy = await get_active_deals_for_players(db, ids)
@@ -523,6 +362,7 @@ async def buy_search(db: AsyncSession, user, *, q: str) -> dict:
     club_names = dict((await db.execute(
         select(Club.id, Club.name).where(Club.id.in_({o for o in owner_of.values() if o}))
     )).all())
+    shortlisted = await _shortlisted(db, club.id, ids)
 
     found = []
     for p in rows:
@@ -554,12 +394,142 @@ async def buy_search(db: AsyncSession, user, *, q: str) -> dict:
             "price": price if state in ("buyable", "free_agent") else None,
             "price_basis": basis if state in ("buyable", "free_agent") else None,
             "offer_id": str(offer_id) if offer_id else None, "note": note,
+            "shortlisted": p.id in shortlisted,
         })
+    return found
+
+
+async def _shortlisted(db: AsyncSession, club_id, player_ids) -> set:
+    from app.scouting.models import Shortlist, ShortlistItem
+
+    return set((await db.execute(
+        select(ShortlistItem.player_id).join(Shortlist, Shortlist.id == ShortlistItem.shortlist_id)
+        .where(Shortlist.club_id == club_id, ShortlistItem.player_id.in_(player_ids))
+    )).scalars())
+
+
+async def _club(db: AsyncSession, user):
+    from app.clubs.service import get_club_and_role_for_user
+
+    club, _ = await get_club_and_role_for_user(db, user.id)
+    if club is None:
+        raise LookupError("No club")
+    return club
+
+
+async def buy_search(db: AsyncSession, user, *, q: str) -> dict:
+    """Players by name for the Buy page's search box, each resolved as
+    `_resolve_for_club` does. Every player the club may see is found, with
+    the reason when he can't be bought: a name that finds nothing looks like
+    a broken search. No model call."""
+    import re
+
+    from sqlalchemy import case, or_
+    from sqlalchemy.orm import selectinload
+
+    from app.players.models import Player, PlayerVisibility
+
+    club = await _club(db, user)
+    term = q.strip()
+    if len(term) < 2:
+        raise ValueError("Type at least two letters")
+    escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    rows = (await db.execute(
+        select(Player)
+        .where(Player.name.ilike(f"%{escaped}%", escape="\\"),
+               (Player.visibility != PlayerVisibility.PRIVATE) | (Player.current_club_id == club.id))
+        .options(selectinload(Player.world_team))
+        .order_by(case((or_(*(Player.name.ilike(f"{lead}{escaped}%", escape="\\") for lead in WORD_STARTS)), 0),
+                       else_=1), Player.name)
+        .limit(SEARCH_POOL)
+    )).scalars().all()
+    found = await _resolve_for_club(db, club, rows)
     # A word of his name starting with the search ("son" finds "H. Son" before
     # "A. Harrison"), then the players the club can act on; name order within.
     word = re.compile(r"(^|[\s.'-])" + re.escape(term.lower()))
     found.sort(key=lambda r: (0 if word.search(r["name"].lower()) else 1, SEARCH_ORDER.index(r["state"])))
     return {"q": term, "players": found[:SEARCH_LIMIT]}
+
+
+# ── The club's targets: its shortlists and the players it is interested in ──
+
+TARGETS_LIMIT = 50
+LITE_SHORTLIST = "Shortlist"  # where Lite's "Shortlist" button puts a player
+
+
+async def buy_targets(db: AsyncSession, user) -> dict:
+    """The players the club is already after: on any of its shortlists, or
+    marked as of interest (the same set as Scouting's targets). Each is
+    resolved as the search does, players the club can act on first. Its own
+    players are left out. No model call."""
+    from sqlalchemy.orm import selectinload
+
+    from app.players.models import Player, PlayerVisibility
+    from app.scouting.models import PlayerInterest, Shortlist, ShortlistItem
+
+    club = await _club(db, user)
+    listed = (await db.execute(
+        select(ShortlistItem.player_id, Shortlist.name).join(Shortlist, Shortlist.id == ShortlistItem.shortlist_id)
+        .where(Shortlist.club_id == club.id).order_by(Shortlist.name)
+    )).all()
+    interested = (await db.execute(
+        select(PlayerInterest.player_id).where(PlayerInterest.club_id == club.id)
+    )).scalars().all()
+    lists_of: dict = {}
+    for pid, name in listed:
+        lists_of.setdefault(pid, []).append(name)
+    ids = set(lists_of) | set(interested)
+    if not ids:
+        return {"players": [], "total": 0}
+    rows = (await db.execute(
+        select(Player).where(Player.id.in_(ids),
+                             (Player.visibility != PlayerVisibility.PRIVATE) | (Player.current_club_id == club.id))
+        .options(selectinload(Player.world_team)).order_by(Player.name)
+    )).scalars().all()
+    found = [r for r in await _resolve_for_club(db, club, rows) if r["state"] != "yours"]
+    for r in found:
+        r["on_shortlists"] = lists_of.get(uuid.UUID(r["player_id"]), [])
+    found.sort(key=lambda r: SEARCH_ORDER.index(r["state"]))
+    return {"players": found[:TARGETS_LIMIT], "total": len(found)}
+
+
+async def shortlist_add(db: AsyncSession, user, player_id: uuid.UUID) -> None:
+    """Lite's "Shortlist" button: put the player on the club's shortlist
+    called "Shortlist", made if the club has none by that name. A player
+    already on any of its shortlists stays as he is. Caller commits."""
+    from app.players.models import Player, PlayerVisibility
+    from app.scouting import service as scouting
+
+    club = await _club(db, user)
+    player = await db.get(Player, player_id)
+    if player is None or (player.visibility == PlayerVisibility.PRIVATE and player.current_club_id != club.id):
+        raise LookupError("Player not found")
+    if await _shortlisted(db, club.id, [player_id]):
+        return
+    from app.scouting.models import Shortlist
+
+    sl = (await db.execute(
+        select(Shortlist).where(Shortlist.club_id == club.id, Shortlist.name == LITE_SHORTLIST)
+    )).scalar_one_or_none()
+    if sl is None:
+        sl = await scouting.create_shortlist(db, club_id=club.id, name=LITE_SHORTLIST)
+    await scouting.add_to_shortlist(db, shortlist_id=sl.id, player_id=player_id)
+
+
+async def shortlist_remove(db: AsyncSession, user, player_id: uuid.UUID) -> int:
+    """Take the player off every one of the club's shortlists: in Lite there
+    is one shortlist, so "take him off" means off it everywhere. Interest
+    marked in Scouting stays. Returns how many lists he was on. Caller commits."""
+    from sqlalchemy import delete
+
+    from app.scouting.models import Shortlist, ShortlistItem
+
+    club = await _club(db, user)
+    result = await db.execute(delete(ShortlistItem).where(
+        ShortlistItem.player_id == player_id,
+        ShortlistItem.shortlist_id.in_(select(Shortlist.id).where(Shortlist.club_id == club.id)),
+    ))
+    return result.rowcount or 0
 
 
 # ── Action cards (L4, README "Screen 5") ────────────────────────────────────

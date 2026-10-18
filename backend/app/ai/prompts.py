@@ -284,15 +284,6 @@ Return JSON:
   its own player, and a buying club never talks about the player's contract "with us".
 """
 
-LITE_BUY_REASONS_USER = """\
-A sporting director asked for a player. TransferX has already chosen these players and computed every figure:
-{facts_json}
-
-For each player write one short sentence (at most 20 words) on why he fits this club, in plain British English,
-money written like "£6m". Use only the facts given. Return JSON:
-- "reasons": object mapping each "player_id" (copied exactly) to its sentence
-"""
-
 
 # ── Versioning ────────────────────────────────────────────────────────────────
 
@@ -311,7 +302,6 @@ _DEFAULTS: dict[str, str] = {
     "LISTING_ADVICE_USER": LISTING_ADVICE_USER,
     "POTENTIAL_BUYERS_USER": POTENTIAL_BUYERS_USER,
     "ASK_USER": ASK_USER,
-    "LITE_BUY_REASONS_USER": LITE_BUY_REASONS_USER,
     "DRAFT_MESSAGE_USER": DRAFT_MESSAGE_USER,
     "ASK_LITE_USER": ASK_LITE_USER,
 }

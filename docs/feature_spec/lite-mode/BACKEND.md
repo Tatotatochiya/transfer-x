@@ -79,21 +79,9 @@ Use the next free Alembic revision after the current head (`0084` at the time of
 - `resume`: `PUT /lite/resume {title, href}` and `DELETE /lite/resume`, stored in `lite_resume_json`. Expires after 14 days.
 - `briefing_headline`: only from the cache. **Never trigger a model call from the home screen**, because it would use up the user's AI allowance just by opening the app.
 
-## 2a. Buy flow candidates
+## 2a. Buy flow candidates (removed 2026-10-18)
 
-**Why:** the three suggestions must be players the club can actually make an offer for, and must appear without spending the user's AI allowance (decision 3).
-
-`GET /lite/buy/candidates?position=GK|DEF|MID|FWD|ANY&band=0-5|5-10|10-20|free`:
-
-- **Pool:** buyable players only — at another TransferX club, or a free agent (the market's `buyable` filter). Never the club's own players, and never a player already in an active deal.
-- **Price:** a listing's asking price, else the pricing assistant's guide price (`listing_advice`'s rule: fee model and comparable transfers), else the fee model. A player with no price at all only matches "free" if he is a free agent.
-- **Rank:** by squad need at that position (the same signals as "Who might want him?", seen from the buyer), then form, then value against the model. Take the top three.
-- **Reason:** one line each. If a model is available and the user's allowance allows, the model writes it from the computed facts; otherwise a plain reason ("You have 2 defenders; he's 24 and priced at £6m"). Cached, so going back and forth costs nothing.
-- Anonymous buyers do not appear here (these are players, not offers), but a masked club name never leaks through any reason text.
-
-> **As built (L3):** price is the asking price, else the fee model with the pricing assistant's 30% contract-ending discount; comparable transfers are left out, since they need a model call. Ranking uses need, listed-first, age fit and price; there is no form data yet. `GET /lite/buy/squad` returns the per-position counts shown on the first step. See README.md, "Deviations from the spec".
-
-- **Paging (2026-10-12):** `offset` (0 to 60, in threes) returns the next three from the same ranking, and the response carries `offset` and `has_more`, for "Show 3 more". Each page's reasons are cached separately.
+`GET /lite/buy/candidates` (three players picked in code by position, fee band and squad need, with model-written reasons and "Show 3 more") and `GET /lite/buy/squad` were removed with the guided path, at the product owner's request; see README.md decision 3 and "Deviations from the spec". The Buy page is now the search (§2b) and the club's shortlist (§2c).
 
 ## 2b. Buy flow search by name
 
@@ -103,7 +91,7 @@ Use the next free Alembic revision after the current head (`0084` at the time of
 
 | `state` | Meaning | `price` |
 |---|---|---|
-| `buyable` | At another TransferX club, no open offer from you, not in a transfer | The candidates' price, or null ("you choose the fee") |
+| `buyable` | At another TransferX club, no open offer from you, not in a transfer | A listing's asking price, else the fee model (30% lower when his contract ends within a year), or null ("you choose the fee") |
 | `offer_in` | You already have an open offer (`offer_id`) | null |
 | `free_agent` | No club anywhere | 0 |
 | `in_transfer` | In a deal in progress with another club | null |
@@ -111,6 +99,16 @@ Use the next free Alembic revision after the current head (`0084` at the time of
 | `yours` | Owned by the caller's club (the listing ownership rule) | null |
 
 Order: a word of the name starting with `q` first ("son" finds "H. Son" before "A. Harrison"), then the states in the order above, then name. `note` gives the reason in plain words where there is one.
+
+Each row also has `shortlisted`: whether he is on any of the club's shortlists.
+
+## 2c. The club's shortlist in Lite
+
+**Why:** a club buys the players it has scouted and shortlisted, so the shortlist belongs on the Buy page (added 2026-10-18).
+
+- `GET /lite/buy/targets`, club members, no model call: the players on any of the club's shortlists or marked as of interest (Scouting's targets), each a §2b row plus `on_shortlists` (the names of its lists he is on; empty when only marked as of interest). Never the club's own players, nor another club's PRIVATE players. Order: the states in §2b's order, then name. Up to 50, with `total`.
+- `PUT /lite/buy/shortlist/{player_id}`, needs `SCOUTING_WRITE`: puts him on the club's shortlist named "Shortlist", made if it has none by that name. Already on any of its lists: nothing changes. 404 for an unknown player or another club's PRIVATE one.
+- `DELETE /lite/buy/shortlist/{player_id}`, needs `SCOUTING_WRITE`: takes him off every one of the club's lists. Interest marked in Scouting stays.
 
 ## 3. Ask anything: extend `ask()`
 
@@ -253,7 +251,7 @@ The "clubs usually reply in 1 to 2 days" hint is the platform median time to acc
 |---|---|---|
 | Tables | `user_preferences`, `held_actions`, `action_tokens`, optionally `assistant_queries` | staff `is_lite_contact` |
 | Enum | `NotificationType.LITE_QUESTION` | |
-| Endpoints | `/users/me/preferences`, `/lite/home`, `/lite/buy/candidates`, `/lite/buy/search`, `/lite/resume`, `/lite/actions*`, `/lite/deals/{id}/progress`, `/lite/ask-team`, `/lite/confirm/{token}` | `/ai/ask` (Lite pages, `proposal`, `input`), `/ai/offer-check` (`money`), offer create/accept/reject accept `ai_assisted` |
+| Endpoints | `/users/me/preferences`, `/lite/home`, `/lite/buy/search`, `/lite/buy/targets`, `/lite/buy/shortlist/{player_id}`, `/lite/resume`, `/lite/actions*`, `/lite/deals/{id}/progress`, `/lite/ask-team`, `/lite/confirm/{token}` | `/ai/ask` (Lite pages, `proposal`, `input`), `/ai/offer-check` (`money`), offer create/accept/reject accept `ai_assisted` |
 | Code | `app/lite/`; `approvals.service.approval_required` (extracted) | `ai/assist.py` (`ask_facts`, `ask`, shared money helper), `ai/prompts.py` `ASK_USER`, `ai/rate_limit.py` (separate ask bucket), `notifications/email.py` and `digest.py` |
 | Jobs | held-action executor (every 2s) | |
 | Docs | architecture ADR 0007 "Held sends for undo" | ADR 0006: note that Lite's action card is the "normal confirmed form" |

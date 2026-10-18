@@ -1,4 +1,4 @@
-import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import api from "../lib/api";
 
@@ -34,52 +34,6 @@ export function useLiteHome() {
 
 // ── Buy flow (L3) ────────────────────────────────────────────────────────────
 
-export type LitePosition = "GK" | "DEF" | "MID" | "FWD" | "ANY";
-export type LiteBand = "0-5" | "5-10" | "10-20" | "free";
-
-export interface LiteCandidate {
-  player_id: string;
-  name: string;
-  photo_url?: string | null;
-  age: number | null;
-  position: string | null;
-  club: string | null;
-  free_agent: boolean;
-  price: number;
-  price_basis: string;
-  sale_id: string | null;
-  wage_weekly: number | null;
-  reason: string;
-}
-
-export function useLiteSquadCounts() {
-  return useQuery<{ counts: Record<string, number> }>({
-    queryKey: ["lite", "buy", "squad"],
-    queryFn: () => api.get("/lite/buy/squad").then((r) => r.data),
-    staleTime: 5 * 60_000,
-  });
-}
-
-export interface LiteCandidatesPage {
-  players: LiteCandidate[];
-  squad_counts: Record<string, number>;
-  offset: number;
-  has_more: boolean;
-}
-
-/** Three players at a time from the same ranking; "Show more" fetches the next three. */
-export function useLiteCandidates(position: LitePosition | null, band: LiteBand | null) {
-  return useInfiniteQuery({
-    queryKey: ["lite", "buy", "candidates", position, band],
-    queryFn: ({ pageParam }) =>
-      api.get<LiteCandidatesPage>("/lite/buy/candidates", { params: { position, band, offset: pageParam } }).then((r) => r.data),
-    initialPageParam: 0,
-    getNextPageParam: (last) => (last.has_more ? last.offset + last.players.length : undefined),
-    enabled: !!position && !!band,
-    staleTime: 10 * 60_000,
-  });
-}
-
 /** What a search result lets the club do: make an offer, or why not. */
 export type LiteSearchState = "buyable" | "offer_in" | "free_agent" | "in_transfer" | "outside" | "yours";
 
@@ -95,9 +49,12 @@ export interface LiteSearchResult {
   price_basis: string | null;
   offer_id: string | null;
   note: string | null;
+  shortlisted: boolean;
+  /** Targets only: the club's shortlists he is on (none: marked as of interest). */
+  on_shortlists?: string[];
 }
 
-/** Players by name for the Buy flow's search box (from two letters). No model call. */
+/** Players by name for the Buy page's search box (from two letters). No model call. */
 export function useLiteBuySearch(q: string) {
   const term = q.trim();
   return useQuery<{ q: string; players: LiteSearchResult[] }>({
@@ -187,5 +144,27 @@ export function useTeamContact() {
     queryKey: ["lite", "team-contact"],
     queryFn: () => api.get<{ name: string | null; label: string }>("/lite/team-contact").then((r) => r.data),
     staleTime: 300_000,
+  });
+}
+
+/** The players the club is already after: its shortlists and players of interest. */
+export function useLiteBuyTargets() {
+  return useQuery<{ players: LiteSearchResult[]; total: number }>({
+    queryKey: ["lite", "buy", "targets"],
+    queryFn: () => api.get("/lite/buy/targets").then((r) => r.data),
+    staleTime: 60_000,
+  });
+}
+
+/** Put a player on the club's shortlist, or take him off it. */
+export function useLiteShortlist() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ playerId, on }: { playerId: string; on: boolean }) =>
+      on ? api.put(`/lite/buy/shortlist/${playerId}`) : api.delete(`/lite/buy/shortlist/${playerId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lite", "buy"] });
+      queryClient.invalidateQueries({ queryKey: ["scouting"] });
+    },
   });
 }

@@ -1,4 +1,5 @@
-"""Lite buy flow candidates (docs/feature_spec/lite-mode, BACKEND.md §2a)."""
+"""Lite Buy page: search by name, the club's targets and its shortlist
+(docs/feature_spec/lite-mode, BACKEND.md §2a)."""
 
 import uuid
 from decimal import Decimal
@@ -14,7 +15,7 @@ from tests.test_deals import _get_club_id, _give_budget
 
 @pytest.fixture(autouse=True)
 def no_model(monkeypatch):
-    """Candidates are picked in code; with no model the plain reasons stand."""
+    """The Buy page never calls a model; make sure it can't."""
     for key in ("anthropic_api_key", "openai_api_key", "deepseek_api_key"):
         monkeypatch.setattr(settings, key, None)
 
@@ -45,120 +46,6 @@ async def _value(db, player_id: str, fair: int):
         confidence=list(ValuationConfidence)[0], model_version="test", league_tier=1, age_factor=Decimal("1"),
     ))
     await db.commit()
-
-
-async def _candidates(client, club, position, band):
-    resp = await client.get(f"/lite/buy/candidates?position={position}&band={band}", headers=_auth_headers(club))
-    assert resp.status_code == 200, resp.text
-    return resp.json()
-
-
-@pytest.mark.asyncio
-async def test_prices_come_from_the_listing_else_the_model(client: AsyncClient, buyer, seller, db):
-    listed = await _player(client, seller, "Listed Larry")
-    await client.post("/sales", json={"player_id": listed["id"], "sale_type": "OPEN_TO_OFFERS", "asking_price": 6_000_000},
-                      headers=_auth_headers(seller))
-    modelled = await _player(client, seller, "Modelled Mo")
-    await _value(db, modelled["id"], 8_000_000)
-    await _player(client, seller, "Unpriced Ursula")  # no listing, no model: nothing to offer against
-
-    got = await _candidates(client, buyer, "DEF", "5-10")
-    by_name = {p["name"]: p for p in got["players"]}
-    assert set(by_name) == {"Listed Larry", "Modelled Mo"}
-    assert (by_name["Listed Larry"]["price"], by_name["Listed Larry"]["price_basis"]) == (6_000_000, "listed")
-    assert (by_name["Modelled Mo"]["price"], by_name["Modelled Mo"]["price_basis"]) == (8_000_000, "model")
-    assert by_name["Listed Larry"]["club"] == "Selling FC"
-    assert "You have no defenders" in by_name["Listed Larry"]["reason"]
-
-
-@pytest.mark.asyncio
-async def test_only_buyable_players_and_never_your_own(client: AsyncClient, buyer, seller, db):
-    from app.players.models import Player, PlayerStatus
-
-    mine = await _player(client, buyer, "My Own Man")
-    await _value(db, mine["id"], 3_000_000)
-    theirs = await _player(client, seller, "Their Man")
-    await _value(db, theirs["id"], 3_000_000)
-    external = Player(name="Elsewhere Eddie", position="DEF", status=PlayerStatus.EXTERNAL, team_name="Real Somewhere")
-    free = Player(name="Free Fred", position="DEF", status=PlayerStatus.FREE_AGENT, age=26)
-    db.add_all([external, free])
-    await db.commit()
-    await _value(db, str(external.id), 3_000_000)
-
-    names = {p["name"] for p in (await _candidates(client, buyer, "DEF", "0-5"))["players"]}
-    assert names == {"Their Man", "Free Fred"}  # a free agent costs nothing, so fits "up to £5m"
-
-
-@pytest.mark.asyncio
-async def test_free_band_is_free_agents_and_loan_listings(client: AsyncClient, buyer, seller, db):
-    from app.players.models import Player, PlayerStatus
-
-    db.add(Player(name="Free Fred", position="MID", status=PlayerStatus.FREE_AGENT, age=26))
-    await db.commit()
-    loanee = await _player(client, seller, "Loan Lou", position="MID")
-    await client.post("/sales", json={"player_id": loanee["id"], "sale_type": "OPEN_TO_OFFERS",
-                                      "availability": "LOAN"}, headers=_auth_headers(seller))
-    await _value(db, loanee["id"], 12_000_000)
-    names = {p["name"] for p in (await _candidates(client, buyer, "ANY", "free"))["players"]}
-    assert names == {"Free Fred", "Loan Lou"}
-
-
-@pytest.mark.asyncio
-async def test_a_player_already_in_a_transfer_is_left_out(client: AsyncClient, buyer, seller, db):
-    await _give_budget(db)
-    busy = await _player(client, seller, "Busy Bill")
-    await _value(db, busy["id"], 4_000_000)
-    offer = await client.post("/offers", json={
-        "player_id": busy["id"], "to_club_id": await _get_club_id(client, _auth_headers(seller)), "fee_amount": 4_000_000,
-    }, headers=_auth_headers(buyer))
-    await client.post(f"/offers/{offer.json()['id']}/accept", headers=_auth_headers(seller))
-    assert (await _candidates(client, buyer, "DEF", "0-5"))["players"] == []
-
-
-@pytest.mark.asyncio
-async def test_the_thinnest_position_ranks_first_for_not_sure(client: AsyncClient, buyer, seller, db):
-    for i in range(8):
-        await _player(client, buyer, f"My Defender {i}")  # plenty of defenders, no forwards
-    d = await _player(client, seller, "Their Defender")
-    f = await _player(client, seller, "Their Forward", position="FWD")
-    await _value(db, d["id"], 4_000_000)
-    await _value(db, f["id"], 4_000_000)
-    got = await _candidates(client, buyer, "ANY", "0-5")
-    assert got["players"][0]["name"] == "Their Forward"
-    assert got["squad_counts"]["DEF"] == 8 and got["squad_counts"]["FWD"] == 0
-
-
-@pytest.mark.asyncio
-async def test_bad_inputs_and_non_members_are_refused(client: AsyncClient, buyer):
-    assert (await client.get("/lite/buy/candidates?position=LB&band=5-10", headers=_auth_headers(buyer))).status_code == 422
-    assert (await client.get("/lite/buy/candidates?position=DEF&band=lots", headers=_auth_headers(buyer))).status_code == 422
-    agent = (await client.post("/auth/register", json={
-        "email": "agent_buy@clubs-example.com", "password": "password123", "user_type": "AGENT",
-        "display_name": "Buy Agent", "agency_name": "Buy Sports", "country": "England",
-    })).json()
-    assert (await client.get("/lite/buy/candidates?position=DEF&band=0-5", headers=_auth_headers(agent))).status_code == 404
-
-
-# ── Show more ────────────────────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_show_more_pages_through_the_same_ranking(client: AsyncClient, buyer, seller, db):
-    for i in range(7):
-        p = await _player(client, seller, f"Depth Dan {i}", age=25 + i)  # age fit ranks them 0..6
-        await _value(db, p["id"], 3_000_000)
-    first = await _candidates(client, buyer, "DEF", "0-5")
-    assert [p["name"] for p in first["players"]] == ["Depth Dan 0", "Depth Dan 1", "Depth Dan 2"]
-    assert first["has_more"] is True
-    resp = await client.get("/lite/buy/candidates?position=DEF&band=0-5&offset=3", headers=_auth_headers(buyer))
-    second = resp.json()
-    assert [p["name"] for p in second["players"]] == ["Depth Dan 3", "Depth Dan 4", "Depth Dan 5"]
-    assert second["has_more"] is True
-    last = (await client.get("/lite/buy/candidates?position=DEF&band=0-5&offset=6", headers=_auth_headers(buyer))).json()
-    assert [p["name"] for p in last["players"]] == ["Depth Dan 6"]
-    assert last["has_more"] is False
-    bad = await client.get("/lite/buy/candidates?position=DEF&band=0-5&offset=-3", headers=_auth_headers(buyer))
-    assert bad.status_code == 422
 
 
 # ── Search by name ───────────────────────────────────────────────────────────
@@ -254,3 +141,90 @@ async def test_search_needs_two_letters_a_club_and_a_sign_in(client: AsyncClient
     # The app-wide search no longer answers signed-out callers either.
     assert (await client.get("/search?q=ab")).status_code == 401
     assert (await client.get("/search?q=ab", headers=_auth_headers(buyer))).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_search_prices_from_the_listing_else_the_model(client: AsyncClient, buyer, seller, db):
+    listed = await _player(client, seller, "Priced Listed")
+    await client.post("/sales", json={"player_id": listed["id"], "sale_type": "OPEN_TO_OFFERS", "asking_price": 6_000_000},
+                      headers=_auth_headers(seller))
+    modelled = await _player(client, seller, "Priced Modelled")
+    await _value(db, modelled["id"], 8_000_000)
+    got = await _search(client, buyer, "priced")
+    assert (got["Priced Listed"]["price"], got["Priced Listed"]["price_basis"]) == (6_000_000, "listed")
+    assert (got["Priced Modelled"]["price"], got["Priced Modelled"]["price_basis"]) == (8_000_000, "model")
+
+
+# ── Targets and the shortlist ────────────────────────────────────────────────
+
+
+async def _targets(client, club):
+    resp = await client.get("/lite/buy/targets", headers=_auth_headers(club))
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+@pytest.mark.asyncio
+async def test_shortlist_from_lite_then_targets_show_him(client: AsyncClient, buyer, seller, db):
+    assert await _targets(client, buyer) == {"players": [], "total": 0}
+    target = await _player(client, seller, "Target Tom")
+    await _value(db, target["id"], 4_000_000)
+
+    put = await client.put(f"/lite/buy/shortlist/{target['id']}", headers=_auth_headers(buyer))
+    assert put.status_code == 204, put.text
+    # Twice changes nothing.
+    assert (await client.put(f"/lite/buy/shortlist/{target['id']}", headers=_auth_headers(buyer))).status_code == 204
+
+    got = await _targets(client, buyer)
+    [row] = got["players"]
+    assert (row["name"], row["state"], row["price"], row["on_shortlists"]) == ("Target Tom", "buyable", 4_000_000, ["Shortlist"])
+    assert (await _search(client, buyer, "target"))["Target Tom"]["shortlisted"] is True
+    # It's an ordinary shortlist in full mode.
+    lists = (await client.get("/scouting/shortlists", headers=_auth_headers(buyer))).json()
+    assert [sl["name"] for sl in lists] == ["Shortlist"]
+
+    assert (await client.delete(f"/lite/buy/shortlist/{target['id']}", headers=_auth_headers(buyer))).status_code == 204
+    assert (await _targets(client, buyer))["players"] == []
+    assert (await _search(client, buyer, "target"))["Target Tom"]["shortlisted"] is False
+
+
+@pytest.mark.asyncio
+async def test_targets_include_full_mode_lists_and_interest_but_not_own_players(client: AsyncClient, buyer, seller, db):
+    on_list = await _player(client, seller, "Listed Liam")
+    watched = await _player(client, seller, "Watched Walt")
+    mine = await _player(client, buyer, "Own Oscar")
+    h = _auth_headers(buyer)
+    sl = (await client.post("/scouting/shortlists", json={"name": "Strikers"}, headers=h)).json()
+    for pid in (on_list["id"], mine["id"]):
+        assert (await client.post(f"/scouting/shortlists/{sl['id']}/items", json={"player_id": pid}, headers=h)).status_code == 201
+    assert (await client.put(f"/scouting/interests/{watched['id']}", json={"level": "WATCHING", "stage": "SCOUTED"}, headers=h)).status_code == 200
+
+    got = {p["name"]: p for p in (await _targets(client, buyer))["players"]}
+    assert set(got) == {"Listed Liam", "Watched Walt"}
+    assert got["Listed Liam"]["on_shortlists"] == ["Strikers"] and got["Watched Walt"]["on_shortlists"] == []
+    # Taking him off in Lite takes him off the full-mode list too; interest stays.
+    await client.delete(f"/lite/buy/shortlist/{on_list['id']}", headers=h)
+    assert {p["name"] for p in (await _targets(client, buyer))["players"]} == {"Watched Walt"}
+
+
+@pytest.mark.asyncio
+async def test_shortlist_needs_a_visible_player_and_scouting_rights(client: AsyncClient, buyer, seller, db):
+    from app.players.models import Player, PlayerVisibility
+
+    hidden = await _player(client, seller, "Secret Sam")
+    row = await db.get(Player, uuid.UUID(hidden["id"]))
+    row.visibility = PlayerVisibility.PRIVATE
+    await db.commit()
+    h = _auth_headers(buyer)
+    assert (await client.put(f"/lite/buy/shortlist/{hidden['id']}", headers=h)).status_code == 404
+    assert (await client.put(f"/lite/buy/shortlist/{uuid.uuid4()}", headers=h)).status_code == 404
+    assert (await client.get("/lite/buy/targets")).status_code == 401
+    # A read-only member sees the targets but can't change the shortlist.
+    from tests.test_capabilities import _create_staff
+
+    readonly = await _create_staff(client, db, h, "buy_ro@clubs-example.com", "READONLY")
+    assert (await client.get("/lite/buy/targets", headers=_auth_headers(readonly))).status_code == 200
+    visible = await _player(client, seller, "Open Owen")
+    assert (await client.put(f"/lite/buy/shortlist/{visible['id']}", headers=_auth_headers(readonly))).status_code == 403
+    # The guided path is gone.
+    assert (await client.get("/lite/buy/candidates?position=DEF&band=0-5", headers=h)).status_code == 404

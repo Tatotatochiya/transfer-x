@@ -1,53 +1,46 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { Route, Routes } from "react-router-dom";
 import { renderWithProviders } from "../../test/utils";
-import { LiteBuyPositionPage, LiteBuyResultsPage } from "./LiteBuyPage";
+import { LiteBuyPage } from "./LiteBuyPage";
 
 const state = vi.hoisted(() => ({
   search: { players: [] as Record<string, unknown>[] },
-  pages: [] as Record<string, unknown>[][],
-  hasNextPage: false,
-  fetchNextPage: vi.fn(),
+  targets: { players: [] as Record<string, unknown>[], total: 0 },
   searchedFor: [] as string[],
+  shortlist: vi.fn(),
 }));
 vi.mock("../../hooks/useDebounce", () => ({ useDebounce: (v: string) => v }));
 vi.mock("../../hooks/useLite", () => ({
-  useLiteSquadCounts: () => ({ data: { counts: { GK: 2, DEF: 0, MID: 5, FWD: 3 } } }),
-  useLiteHome: () => ({ data: undefined }),
   useTeamContact: () => ({ data: { name: "Sam", label: "Sam" } }),
   useLiteBuySearch: (q: string) => {
     state.searchedFor.push(q);
     return q.trim().length >= 2 ? { data: { q, ...state.search }, isFetching: false, isError: false } : { data: undefined };
   },
-  useLiteCandidates: () => ({
-    data: { pages: state.pages.map((players) => ({ players })) },
-    isLoading: false, isError: false, hasNextPage: state.hasNextPage,
-    fetchNextPage: state.fetchNextPage, isFetchingNextPage: false,
-  }),
+  useLiteBuyTargets: () => ({ data: state.targets, isLoading: false, isError: false }),
+  useLiteShortlist: () => ({ mutate: state.shortlist, isPending: false }),
 }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ addToast: vi.fn() }) }));
 vi.mock("../../lib/api", () => ({ default: { put: vi.fn(() => Promise.resolve()), post: vi.fn(), get: vi.fn() } }));
 
 const row = (over: Record<string, unknown>) => ({
   player_id: "p", name: "Someone", age: 25, position: "DEF", club: "Selling FC", state: "buyable",
-  price: 7_000_000, price_basis: "model", offer_id: null, note: null, ...over,
+  price: 7_000_000, price_basis: "model", offer_id: null, note: null, shortlisted: false, ...over,
 });
 
-const candidate = (i: number) => ({
-  player_id: `c${i}`, name: `Candidate ${i}`, age: 24, position: "DEF", club: "Selling FC", free_agent: false,
-  price: 4_000_000, price_basis: "listed", sale_id: null, wage_weekly: null, reason: "Fits.",
-});
+const page = (path = "/lite/buy") =>
+  renderWithProviders(<Routes><Route path="/lite/buy" element={<LiteBuyPage />} /></Routes>, { initialPath: path });
 
-describe("Lite Buy step 1: search by name", () => {
-  beforeEach(() => { state.searchedFor = []; });
+describe("Lite Buy: search by name", () => {
+  beforeEach(() => { state.searchedFor = []; state.shortlist.mockClear(); });
 
-  it("asks who you're looking for, with the positions still below", () => {
-    renderWithProviders(<Routes><Route path="/lite/buy" element={<LiteBuyPositionPage />} /></Routes>, { initialPath: "/lite/buy" });
+  it("asks who you're looking for, with no guided steps", () => {
+    page();
     expect(screen.getByRole("heading", { name: "Who are you looking for?" })).toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: /search players by name/i })).toBeInTheDocument();
-    expect(screen.getByText("Or tell us what you need")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Defender/ })).toHaveTextContent("You have none");
+    expect(screen.queryByText("Or tell us what you need")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Ask TransferX/ })).toHaveAttribute("href", "/lite/ask");
+    expect(screen.getByRole("link", { name: /Browse all players/ })).toHaveAttribute("href", "/players/market");
   });
 
   it("shows what can be done with each player, or why not", () => {
@@ -58,8 +51,8 @@ describe("Lite Buy step 1: search by name", () => {
       row({ player_id: "x", name: "Elsewhere Eddie", state: "outside", club: "Real Somewhere", price: null, note: "His club isn't on TransferX, so there's no one to send an offer to." }),
       row({ player_id: "y", name: "My Own Man", state: "yours", price: null, note: "He's already your player." }),
     ] };
-    renderWithProviders(<Routes><Route path="/lite/buy" element={<LiteBuyPositionPage />} /></Routes>, { initialPath: "/lite/buy?q=man" });
-    const items = screen.getAllByRole("listitem");
+    page("/lite/buy?q=man");
+    const items = within(screen.getByRole("list", { name: "Players found" })).getAllByRole("listitem");
     expect(items).toHaveLength(5);
     expect(items[0]).toHaveTextContent("£7m (our estimate)");
     expect(items[0]).toHaveTextContent("Make an offer");
@@ -68,12 +61,21 @@ describe("Lite Buy step 1: search by name", () => {
     expect(items[3]).toHaveTextContent("Real Somewhere");
     expect(items[3]).toHaveTextContent("Ask Sam about him");
     expect(items[4]).toHaveTextContent("He's already your player.");
-    expect(items[4].querySelector("button")).toBeNull();
+    expect(items[4].querySelector("button")).toBeNull();  // no shortlisting your own player
+    // The shortlist hides while searching.
+    expect(screen.queryByRole("heading", { name: "Your shortlist" })).not.toBeInTheDocument();
+  });
+
+  it("puts a player on the shortlist from the search", () => {
+    state.search = { players: [row({ player_id: "b", name: "Buyable Ben" })] };
+    page("/lite/buy?q=ben");
+    fireEvent.click(screen.getByRole("button", { name: "Shortlist" }));
+    expect(state.shortlist).toHaveBeenCalledWith({ playerId: "b", on: true }, expect.anything());
   });
 
   it("keeps the search in the URL and says when no one matches", () => {
     state.search = { players: [] };
-    renderWithProviders(<Routes><Route path="/lite/buy" element={<LiteBuyPositionPage />} /></Routes>, { initialPath: "/lite/buy" });
+    page();
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "Zzz" } });
     expect(screen.getByRole("searchbox")).toHaveValue("Zzz");
     expect(state.searchedFor).toContain("Zzz");
@@ -81,24 +83,30 @@ describe("Lite Buy step 1: search by name", () => {
   });
 });
 
-describe("Lite Buy results: Show more", () => {
-  beforeEach(() => { state.fetchNextPage.mockClear(); });
+describe("Lite Buy: your shortlist", () => {
+  beforeEach(() => { state.shortlist.mockClear(); });
 
-  it("lists every page fetched and offers the next three while there are more", () => {
-    state.pages = [[candidate(1), candidate(2), candidate(3)], [candidate(4)]];
-    state.hasNextPage = true;
-    renderWithProviders(<Routes><Route path="/lite/buy/results" element={<LiteBuyResultsPage />} /></Routes>,
-      { initialPath: "/lite/buy/results?position=DEF&budget=0-5" });
-    expect(screen.getByRole("heading", { name: "4 players who fit" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Show 3 more" }));
-    expect(state.fetchNextPage).toHaveBeenCalledTimes(1);
+  it("lists the club's targets, each with what it can do, and takes one off", () => {
+    state.targets = { players: [row({ player_id: "t", name: "Target Tom", shortlisted: true, on_shortlists: ["Shortlist"] })], total: 1 };
+    page();
+    const list = screen.getByRole("list", { name: "Your shortlist" });
+    expect(list).toHaveTextContent("Target Tom");
+    expect(list).toHaveTextContent("Make an offer");
+    const off = screen.getByRole("button", { name: /On your shortlist/ });
+    expect(off).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(off);
+    expect(state.shortlist).toHaveBeenCalledWith({ playerId: "t", on: false }, expect.anything());
   });
 
-  it("hides Show more at the end of the list", () => {
-    state.pages = [[candidate(1)]];
-    state.hasNextPage = false;
-    renderWithProviders(<Routes><Route path="/lite/buy/results" element={<LiteBuyResultsPage />} /></Routes>,
-      { initialPath: "/lite/buy/results?position=DEF&budget=0-5" });
-    expect(screen.queryByRole("button", { name: "Show 3 more" })).not.toBeInTheDocument();
+  it("says how to fill an empty shortlist", () => {
+    state.targets = { players: [], total: 0 };
+    page();
+    expect(screen.getByText(/No one on it yet/)).toBeInTheDocument();
+  });
+
+  it("points to Scouting when there are more than it shows", () => {
+    state.targets = { players: [row({ player_id: "t", name: "Target Tom", shortlisted: true })], total: 60 };
+    page();
+    expect(screen.getByRole("link", { name: /See all 60 in Scouting/ })).toHaveAttribute("href", "/scouting/shortlists");
   });
 });

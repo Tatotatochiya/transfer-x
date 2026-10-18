@@ -16,7 +16,7 @@ Lite mode is a **preference**, not a separate app. Since 2026-10-13 it is **the 
 What it adds:
 
 1. **Lite home**: four tiles that change with the transfer window, a "Carry on where you left off" card, and a money line in the greeting.
-2. **Buy a player**: search by name, or the guided path (position → budget → suggested players, three at a time).
+2. **Buy a player**: search by name, or pick from the club's shortlist. *(Changed 2026-10-18: the guided path, position → budget → suggested players, was removed.)*
 3. **Ask anything**: an assistant that returns an answer, a shortcut, or a ready-to-confirm action card. Type or speak.
 4. **Action cards with money effect**: every money action shows "£22m → £14m" before you confirm.
 5. **Undo for 10 seconds** after every action, then a plain-word deal progress view.
@@ -29,7 +29,7 @@ These override anything below that disagrees.
 
 1. **Off by default until L4.** Lite is off for everyone while L1–L3 are built. Anyone can switch it on in the profile menu. The role default (on for OWNER and SPORTING_DIRECTOR) is switched on once action cards (L4) ship, by the `LITE_ROLE_DEFAULT_ON` setting. *(Superseded 2026-09-30: the product owner keeps the full app as everyone's default for now; Lite is opt-in. Superseded again 2026-10-13: Lite is the default for every club member, `LITE_DEFAULT_ON`, with a visible "Switch to full app" button in the top bar.)*
 2. **Four position groups.** The data holds only GK, DEF, MID and FWD, so the Buy flow asks Goalkeeper, Defender, Midfielder, Forward or Not sure.
-3. **Buy results: rules first, the AI writes the reason.** TransferX picks the three players in code from buyable players only (a TransferX club or a free agent), by position, fee band and squad need. The model only writes the one-line reason. Without a model, results still show with a plain reason.
+3. **~~Buy results: rules first, the AI writes the reason.~~** *Superseded 2026-10-18.* TransferX used to pick three players in code by position, fee band and squad need, with the model writing a one-line reason. The product owner removed it: a director doesn't find a signing by naming a position and a price range; players are scouted, shortlisted, then bought. The Buy page is now a search by name and the club's shortlist, and never calls a model.
 4. **Email decisions need sign-in.** Opening the confirm page needs none. Accepting, countering or bidding asks the user to sign in first. *(Changed 2026-10-17: saying no, and undoing a decision, need the recipient signed in too. Turning down an offer ends a negotiation the other club is told about, and a forwarded link let anyone do it.)*
 5. **Text size applies inside Lite only.** The full app has many fixed pixel sizes that would not scale.
 6. **Money figures:** see BACKEND.md §2 and §4. The remaining budget is `_budget_facts` as is (already net of reserved, committed and spent). An over-budget action is refused, not sent for approval.
@@ -144,18 +144,17 @@ Tiles are chosen by the server (`/lite/home` returns them), so the rules can cha
 
 ### Screen 3 — Buy flow (2a)
 
-**Step header:** Back button (outlined, chevron, 17px/600) on the left; step label on the right, 16px/600 muted ("Step 1 of 2", "Step 2 of 2", "Results").
-**Question:** 38px/800. Hint 20px muted below.
+*(Changed 2026-10-18: one page, a search and the club's shortlist. The guided position → budget → three suggestions path, its "Show 3 more" and decision 3 were removed at the product owner's request; see "Deviations from the spec".)*
 
-- **Step 1 — "Who are you looking for?"** Hint: "Search by name, or tell us what you need." *(Changed 2026-10-12: the product owner found three suggestions limiting.)*
-  - **Search box** first: 68px, radius 18, search icon, placeholder "Search by name". Results appear from two letters (debounced 250ms) as large rows: avatar, name, club · position · age, the price, and one action. The search is kept in the URL (`?q=`), so Back from a bid returns to it. Data: `GET /lite/buy/search?q=` (BACKEND.md §2b).
+**Header:** Back button (outlined, chevron, 17px/600). **Question** "Who are you looking for?", 38px/800, hint "Search by name, or pick from your shortlist." 20px muted.
+
+- **Search box** first: 68px, radius 18, search icon, placeholder "Search by name". Results appear from two letters (debounced 250ms) as large rows: avatar, name, club · position · age, the price, and the actions. The search is kept in the URL (`?q=`), so Back from a bid returns to it. Data: `GET /lite/buy/search?q=` (BACKEND.md §2b).
   - Every player the club may see is found, with what it can do: **Make an offer** (at another TransferX club; opens the bid card), **See your offer** (one is already open), **See how to sign him** (free agent), **Ask {Sam} about him** (his club isn't on TransferX), or no button with the reason (already in a transfer; your own player). A name that finds nothing would look like a broken search, so unbuyable players are shown and explained, never hidden.
   - Order: players with a word of their name starting with the search first, then the ones the club can act on, then name.
-  - No one found: "No one called “{q}”. Check the spelling, or tell us what you need below."
-  - Below the search, **"Or tell us what you need"** and the position choices: a grid of choice buttons (3 + 2, or one row on wide screens), gap 16, each 120px high, radius 20, 2px border, label 22px/700 and a 15px muted sublabel. Options: Goalkeeper, Defender, Midfielder, Forward, Not sure (decision 2: the data has only these four groups). The sublabel for a position with nobody in the squad reads "You have none" (from squad data). Hover/focus: 3px accent border.
-- **Step 2 — "How much can you spend on the fee?"** Hint: "You have £{22}m left this window." Options: Up to £5m, £5m to £10m, £10m to £20m, Free or loan. Hide any band that is entirely above the remaining budget.
-- **Results — "3 players who fit".** A **"Show 3 more"** button under the cards loads the next three from the same ranking while there are more (added 2026-10-12). Hint: "{Left-backs} available now, chosen by {Head of Recruitment first name}'s team." Three cards in a row, gap 20. Each card: 56px initials avatar, name 22px/800, club 16px muted; rows Age / Price (accent, 800) / Wages; a reason box (16px, subtle background, radius 12); "Make an offer" (56px, accent) and "Ask {name} about him" (48px, outlined).
-- Data: `GET /lite/buy/candidates?position=&band=` (BACKEND.md §2a). TransferX picks the three in code from buyable players; the model only writes each reason, and a plain reason shows without it (decision 3). Not `/ai/recommendations`, which can suggest players at clubs outside TransferX and needs a model call per search.
+  - No one found: "No one called “{q}”. Check the spelling, or ask TransferX below."
+- **Shortlist button** on every row but the club's own players: "Shortlist" puts him on the club's shortlist; "✓ On your shortlist" (pressed) takes him off. A role without scouting rights sees "Your role can't change the shortlist." Data: BACKEND.md §2c.
+- **"Your shortlist"**, below the search and hidden while searching: the players the club is already after, from any of its shortlists (Lite's own and the ones made in Scouting) and the players it marked as of interest, as the same rows, players the club can act on first. Up to 50, then "See all {n} in Scouting →". Empty: "No one on it yet. Search for a player above and tap Shortlist to keep him here."
+- **"Not sure who you need?"** at the foot: links to **Ask TransferX** (`/lite/ask`) and **Browse all players** (the full app's market).
 - "Make an offer" opens an action card (screen 5) prefilled with the listing's asking price, else the pricing assistant's guide price, else the fee model's value; not the full offer form.
 - "Ask Sam about him" sends a message to the club's head of recruitment (see BACKEND.md §6). If the club has no such staff member, the button reads "Ask your team about him" and goes to all club members with MARKET_WRITE.
 
@@ -231,7 +230,7 @@ Opens from the avatar. 380px wide, radius 20, anchored top-right under the bar.
 
 ## Interactions and behaviour
 
-- **Routing:** Lite lives at `/lite` with child routes `/lite/buy` (`?q=` holds the name search), `/lite/buy/budget`, `/lite/buy/results`, `/lite/ask`, `/lite/offers`, `/lite/done/:actionId`, `/lite/confirm/:token`. After login, users with `lite_mode = true` land on `/lite`, not `/dashboard`.
+- **Routing:** Lite lives at `/lite` with child routes `/lite/buy` (`?q=` holds the name search; the old `/lite/buy/budget` and `/lite/buy/results` redirect to it), `/lite/ask`, `/lite/offers`, `/lite/done/:actionId`, `/lite/confirm/:token`. After login, users with `lite_mode = true` land on `/lite`, not `/dashboard`.
 - **Back:** browser back and the Back button behave the same. Buy flow answers are kept in the URL (`?position=DEF&budget=5-10`), so back and resume both work.
 - **Home button** clears the assistant thread.
 - **Voice:** the Speak button uses the browser's speech recognition where available, and is hidden where it isn't (Firefox). Recording state: the button turns AI fill with a pulsing dot and reads "Listening…". Tap again or 2s of silence stops recording. The recognised text appears in the input box. It is sent automatically after 1s unless the user edits it. On iPad the keyboard's dictation key already works in the text box, so voice is a convenience, not a dependency.
@@ -324,6 +323,7 @@ All eight sessions are built (L1–L5 2026-09-29 to 10-01, L6 2026-10-03, L7 and
   - The confirm page never shows the recipient's address, since links get forwarded.
   - **Fixed 2026-10-17:** the confirm page showed the club's own valuation of the player (and the counter suggested from it) to anyone with the link, signed in or not, even after the link was used. Only the recipient, signed in, now gets them; anyone else sees what the email showed: the player, the other club, the offer and the time left. The "Ask for £21m" button in the email still names the suggested counter, since the email went to the recipient.
 
+- **Buy page: shortlist in, guided path out (2026-10-18):** at the product owner's request the position → budget → suggestions path is gone, with `/lite/buy/candidates`, `/lite/buy/squad` and the `LITE_BUY_REASONS_USER` prompt. In its place, the club's shortlist and players of interest (`/lite/buy/targets`), and a Shortlist button on each row. Lite has one shortlist: a player shortlisted from Lite goes on the club's list called "Shortlist" (made when first needed), and taking him off in Lite takes him off every one of the club's lists; interest marked in Scouting stays. "Carry on where you left off" no longer records buy searches.
 - **Buy search and "Show more" (2026-10-12):** added at the product owner's request after the three suggestions proved limiting. The guided path stays, below the search. Search uses the same price and ownership rules as the candidates and the bid card, and never calls a model. "Show more" re-ranks the whole pool for each page, so it takes as long as the first page (about 2–3 seconds on the dev data).
 - **Defaults:** since 2026-10-13 Lite is the default for every club member, not only owners and sporting directors as first planned (`LITE_DEFAULT_ON`, true; it replaces `LITE_ROLE_DEFAULT_ON`). Opening TransferX at `/` or signing in lands a club member in Lite unless they've switched to the full app.
 - **"Switch to full app" in the top bar (2026-10-13):** a visible button beside Home, not only the profile menu's switch. The design's reason 10 kept the switch out of the top bar so it couldn't be hit by accident; with Lite the default, the product owner wants the way out obvious. Switching is remembered, and the full app's account menu switches back.
@@ -332,7 +332,7 @@ All eight sessions are built (L1–L5 2026-09-29 to 10-01, L6 2026-10-03, L7 and
 ## To do
 
 - **Loans in the Buy flow** (product owner, 2026-10-13: keep as a to-do). The home has "Buy a player" next to "Sell or loan a player"; the plan is "Buy or loan a player", with a loan card like the bid card (loan fee stepper, wage share 25/50/75/100%, until end of season or January, the money panel and undo; options, recall and conditional obligations stay in the full app). Until then the Lite bid card makes permanent offers only.
-- **Known bug until then:** the "Free or loan" budget band includes players listed for loan only, and "Make an offer" on them sends a permanent bid, which the server refuses ("This player is listed for loan only — make a loan offer instead"). The same applies to a loan-only player found by search.
+- **Known bug until then:** "Make an offer" on a player listed for loan only, found by search or on the shortlist, sends a permanent bid, which the server refuses ("This player is listed for loan only — make a loan offer instead").
 
 ## Files
 

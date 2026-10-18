@@ -1,105 +1,79 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 
 import Icon from "../../components/layout/Icon";
 import Spinner from "../../components/ui/Spinner";
-import api from "../../lib/api";
-import { liteMoney, liteWage } from "../../lib/liteMoney";
+import { liteMoney } from "../../lib/liteMoney";
 import { useDebounce } from "../../hooks/useDebounce";
 import {
   useLiteBuySearch,
-  useLiteCandidates,
-  useLiteHome,
-  useLiteSquadCounts,
-  type LiteBand,
-  type LiteCandidate,
-  type LitePosition,
+  useLiteBuyTargets,
+  useLiteShortlist,
   type LiteSearchResult,
 } from "../../hooks/useLite";
 import AskTeamButton from "../../components/lite/AskTeamButton";
 
 /**
- * Buy a player (docs/feature_spec/lite-mode README "Screen 3"). Step 1 starts
- * with a search by name, for a director who already knows who they want;
- * below it, the guided path: position, then budget, then players picked by
- * TransferX (decision 3), three at a time with "Show more". The search and
- * the answers live in the URL, so Back and "Carry on where you left off" work.
+ * Buy a player (docs/feature_spec/lite-mode README "Screen 3"): a search by
+ * name, and below it the players the club is already after, from its
+ * shortlists and the players it marked as of interest. Each row says whether
+ * the club can make an offer now and at what price, or why not, and puts the
+ * player on the shortlist or takes him off. The search lives in the URL, so
+ * Back from a bid returns to it. This replaced the guided position → budget →
+ * suggestions path on 2026-10-18.
  */
-
-const POSITIONS: { key: LitePosition; label: string; plural: string }[] = [
-  { key: "GK", label: "Goalkeeper", plural: "goalkeepers" },
-  { key: "DEF", label: "Defender", plural: "defenders" },
-  { key: "MID", label: "Midfielder", plural: "midfielders" },
-  { key: "FWD", label: "Forward", plural: "forwards" },
-  { key: "ANY", label: "Not sure", plural: "players" },
-];
-
-const BANDS: { key: LiteBand; label: string; floor: number }[] = [
-  { key: "0-5", label: "Up to £5m", floor: 0 },
-  { key: "5-10", label: "£5m to £10m", floor: 5_000_000 },
-  { key: "10-20", label: "£10m to £20m", floor: 10_000_000 },
-  { key: "free", label: "Free or loan", floor: 0 },
-];
-
-const isPosition = (v: string | null): v is LitePosition => POSITIONS.some((p) => p.key === v);
-const isBand = (v: string | null): v is LiteBand => BANDS.some((b) => b.key === v);
-
-function StepHeader({ step, back }: { step: string; back: () => void }) {
-  return (
-    <div className="flex items-center justify-between">
-      <button
-        type="button"
-        onClick={back}
-        className="flex min-h-[3.25rem] items-center gap-2 rounded-xl px-4 text-[1.0625rem] font-semibold text-text ring-1 ring-border hover:ring-accent"
-      >
-        <Icon name="chevron-right" className="h-5 w-5 rotate-180" /> Back
-      </button>
-      <span className="text-base font-semibold text-text-muted">{step}</span>
-    </div>
-  );
-}
-
-function Question({ title, hint }: { title: string; hint: string }) {
-  return (
-    <div>
-      <h1 className="text-[1.75rem] font-extrabold tracking-[-0.02em] text-text sm:text-[2.375rem]">{title}</h1>
-      <p className="mt-1 text-[1.25rem] text-text-secondary">{hint}</p>
-    </div>
-  );
-}
-
-function Choice({ label, sub, onClick }: { label: string; sub?: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex min-h-[7.5rem] flex-col items-start justify-center rounded-[20px] bg-surface px-6 text-left ring-2 ring-border transition-transform hover:ring-[3px] hover:ring-accent focus:outline-none focus-visible:ring-[3px] focus-visible:ring-accent active:scale-[0.98]"
-    >
-      <span className="text-[1.375rem] font-bold text-text">{label}</span>
-      {sub && <span className="mt-0.5 text-[0.9375rem] text-text-muted">{sub}</span>}
-    </button>
-  );
-}
-
-// ── Step 1: search by name, or position ─────────────────────────────────────
 
 const POSITION_LABEL: Record<string, string> = { GK: "Goalkeeper", DEF: "Defender", MID: "Midfielder", FWD: "Forward" };
 
-function Avatar({ name, photo, size = "h-14 w-14" }: { name: string; photo?: string | null; size?: string }) {
+function initials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
+}
+
+function Avatar({ name, photo }: { name: string; photo?: string | null }) {
   return photo ? (
-    <img src={photo} alt="" className={`${size} shrink-0 rounded-full bg-surface-inset object-cover object-top`} />
+    <img src={photo} alt="" className="h-12 w-12 shrink-0 rounded-full bg-surface-inset object-cover object-top" />
   ) : (
-    <span className={`flex ${size} shrink-0 items-center justify-center rounded-full bg-accent-bg text-[1.25rem] font-extrabold text-accent`}>
+    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-bg text-[1.25rem] font-extrabold text-accent">
       {initials(name)}
     </span>
   );
 }
 
 const rowBtn = "flex min-h-[3.25rem] items-center justify-center rounded-xl px-5 text-[1.0625rem] font-bold no-underline";
+const plainBtn = `${rowBtn} text-text ring-1 ring-border hover:ring-accent`;
 
-/** One search result: who he is, his price, and what the club can do now (or why not). */
-function SearchRow({ p }: { p: LiteSearchResult }) {
+function ShortlistButton({ p }: { p: LiteSearchResult }) {
+  const shortlist = useLiteShortlist();
+  const [error, setError] = useState<string | null>(null);
+  const on = p.shortlisted;
+  const toggle = () => {
+    setError(null);
+    shortlist.mutate({ playerId: p.player_id, on: !on }, {
+      onError: (e: unknown) => {
+        const code = (e as { response?: { status?: number } })?.response?.status;
+        setError(code === 403 ? "Your role can't change the shortlist." : "That didn't work. Try again in a moment.");
+      },
+    });
+  };
+  return (
+    <span className="flex flex-col">
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={shortlist.isPending}
+        aria-pressed={on}
+        className={`${plainBtn} gap-2 disabled:opacity-60`}
+      >
+        {on ? <><Icon name="check" className="h-5 w-5 text-accent" /> On your shortlist</> : "Shortlist"}
+      </button>
+      {error && <span role="alert" className="mt-1 text-[0.9375rem] text-danger-text">{error}</span>}
+    </span>
+  );
+}
+
+/** One player: who he is, his price, what the club can do now (or why not), and the shortlist. */
+function PlayerRow({ p }: { p: LiteSearchResult }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const facts = [p.club ?? (p.state === "free_agent" ? "Free agent" : null), p.position && POSITION_LABEL[p.position], p.age != null && `age ${p.age}`]
@@ -109,14 +83,14 @@ function SearchRow({ p }: { p: LiteSearchResult }) {
     : p.state === "free_agent" ? "Free" : null;
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[20px] bg-surface px-5 py-4 ring-1 ring-border">
-      <Avatar name={p.name} photo={p.photo_url} size="h-12 w-12" />
+      <Avatar name={p.name} photo={p.photo_url} />
       <div className="min-w-0 flex-1 basis-48">
         <Link to={`/players/market/${p.player_id}`} className="block truncate text-[1.25rem] font-extrabold text-text no-underline hover:text-accent">{p.name}</Link>
         {facts && <span className="block truncate text-base text-text-muted">{facts}</span>}
         {p.note && <span className="block text-base text-text-secondary">{p.note}</span>}
       </div>
       {price && <span className="text-[1.125rem] font-extrabold text-accent">{price}</span>}
-      <div className="flex w-full sm:w-auto [&>*]:flex-1">
+      <div className="flex w-full flex-wrap gap-2 sm:w-auto [&>*]:flex-1">
         {p.state === "buyable" ? (
           <button
             type="button"
@@ -129,7 +103,7 @@ function SearchRow({ p }: { p: LiteSearchResult }) {
             Make an offer
           </button>
         ) : p.state === "offer_in" && p.offer_id ? (
-          <Link to={`/lite/offers/${p.offer_id}`} className={`${rowBtn} text-text ring-1 ring-border hover:ring-accent`}>See your offer</Link>
+          <Link to={`/lite/offers/${p.offer_id}`} className={plainBtn}>See your offer</Link>
         ) : p.state === "free_agent" ? (
           <Link to={`/players/market/${p.player_id}`} className={`${rowBtn} bg-accent text-white`}>See how to sign him</Link>
         ) : p.state === "outside" ? (
@@ -137,9 +111,10 @@ function SearchRow({ p }: { p: LiteSearchResult }) {
             subject={{ type: "player", id: p.player_id }}
             suffix=" about him"
             draft={`What do you think of ${p.name}?`}
-            className={`${rowBtn} text-text ring-1 ring-border hover:ring-accent`}
+            className={plainBtn}
           />
         ) : null}
+        {p.state !== "yours" && <ShortlistButton p={p} />}
       </div>
     </li>
   );
@@ -147,35 +122,72 @@ function SearchRow({ p }: { p: LiteSearchResult }) {
 
 function SearchResults({ q }: { q: string }) {
   const { data, isFetching, isError } = useLiteBuySearch(q);
-  const term = q.trim();
-  if (term.length < 2) return null;
   if (isError) return <p className="text-[1.25rem] text-danger-text">We couldn&rsquo;t search just now. Try again in a moment.</p>;
   if (!data) return <div className="flex justify-center py-6"><Spinner size="lg" /></div>;
   if (data.players.length === 0) {
     return (
       <p className="rounded-[20px] bg-surface px-6 py-5 text-[1.25rem] text-text ring-1 ring-border">
-        No one called &ldquo;{data.q}&rdquo;. Check the spelling, or tell us what you need below.
+        No one called &ldquo;{data.q}&rdquo;. Check the spelling, or ask TransferX below.
       </p>
     );
   }
   return (
     <ul className={`flex flex-col gap-3 transition-opacity ${isFetching ? "opacity-60" : ""}`} aria-label="Players found">
-      {data.players.map((p) => <SearchRow key={p.player_id} p={p} />)}
+      {data.players.map((p) => <PlayerRow key={p.player_id} p={p} />)}
     </ul>
   );
 }
 
-export function LiteBuyPositionPage() {
+function Targets() {
+  const { data, isLoading, isError } = useLiteBuyTargets();
+  return (
+    <section className="flex flex-col gap-4" aria-labelledby="targets-heading">
+      <h2 id="targets-heading" className="text-[1.375rem] font-bold text-text">Your shortlist</h2>
+      {isLoading ? (
+        <div className="flex justify-center py-6"><Spinner size="lg" /></div>
+      ) : isError ? (
+        <p className="text-[1.25rem] text-danger-text">We couldn&rsquo;t load your shortlist. Try again in a moment.</p>
+      ) : !data || data.players.length === 0 ? (
+        <p className="rounded-[20px] bg-surface px-6 py-5 text-[1.25rem] text-text ring-1 ring-border">
+          No one on it yet. Search for a player above and tap <strong>Shortlist</strong> to keep him here.
+        </p>
+      ) : (
+        <>
+          <ul className="flex flex-col gap-3" aria-label="Your shortlist">
+            {data.players.map((p) => <PlayerRow key={p.player_id} p={p} />)}
+          </ul>
+          {data.total > data.players.length && (
+            <Link to="/scouting/shortlists" className="text-[1.125rem] font-bold text-accent">
+              See all {data.total} in Scouting →
+            </Link>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+export function LiteBuyPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const { data } = useLiteSquadCounts();
-  const counts = data?.counts;
   const typed = params.get("q") ?? "";
   const q = useDebounce(typed, 250);
+  const searching = q.trim().length >= 2;
   return (
     <div className="flex flex-col gap-8">
-      <StepHeader step="Step 1 of 2" back={() => navigate("/lite")} />
-      <Question title="Who are you looking for?" hint="Search by name, or tell us what you need." />
+      <div>
+        <button
+          type="button"
+          onClick={() => navigate("/lite")}
+          className="flex min-h-[3.25rem] items-center gap-2 rounded-xl px-4 text-[1.0625rem] font-semibold text-text ring-1 ring-border hover:ring-accent"
+        >
+          <Icon name="chevron-right" className="h-5 w-5 rotate-180" /> Back
+        </button>
+      </div>
+      <div>
+        <h1 className="text-[1.75rem] font-extrabold tracking-[-0.02em] text-text sm:text-[2.375rem]">Who are you looking for?</h1>
+        <p className="mt-1 text-[1.25rem] text-text-secondary">Search by name, or pick from your shortlist.</p>
+      </div>
       <div className="flex flex-col gap-4">
         <label className="flex min-h-[4.25rem] items-center gap-3 rounded-[18px] bg-surface px-5 ring-2 ring-border focus-within:ring-[3px] focus-within:ring-accent">
           <Icon name="search" className="h-6 w-6 shrink-0 text-text-muted" />
@@ -191,195 +203,21 @@ export function LiteBuyPositionPage() {
             className="min-w-0 flex-1 bg-transparent text-[1.25rem] text-text outline-none placeholder:text-text-muted"
           />
         </label>
-        <SearchResults q={q} />
+        {searching && <SearchResults q={q} />}
       </div>
-      <div className="flex flex-col gap-4">
-        <h2 className="text-[1.375rem] font-bold text-text">Or tell us what you need</h2>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-          {POSITIONS.map((p) => {
-            const n = p.key !== "ANY" && counts ? counts[p.key] ?? 0 : null;
-            const sub = p.key === "ANY" ? "We'll look where your squad is thinnest" : n == null ? undefined : n === 0 ? "You have none" : `You have ${n}`;
-            return <Choice key={p.key} label={p.label} sub={sub} onClick={() => navigate(`/lite/buy/budget?position=${p.key}`)} />;
-          })}
+      {!searching && <Targets />}
+      <div className="flex flex-col gap-2 border-t border-rule pt-6 text-[1.125rem]">
+        <span className="text-text-secondary">Not sure who you need?</span>
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <Link to="/lite/ask" className="font-bold text-accent">Ask TransferX →</Link>
+          <Link to="/players/market" className="font-bold text-accent">Browse all players →</Link>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Step 2: budget ───────────────────────────────────────────────────────────
-
-export function LiteBuyBudgetPage() {
-  const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const position = params.get("position");
-  const { data: home } = useLiteHome();
-  if (!isPosition(position)) return <MissingStep />;
-  const left = home?.money?.transfer_remaining;
-  // Hide a band that is entirely above what's left to spend.
-  const bands = BANDS.filter((b) => left == null || b.floor <= left);
-  return (
-    <div className="flex flex-col gap-8">
-      <StepHeader step="Step 2 of 2" back={() => navigate("/lite/buy")} />
-      <Question
-        title="How much can you spend on the fee?"
-        hint={left != null ? `You have ${liteMoney(left)} left this window.` : "Pick a range."}
-      />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {bands.map((b) => (
-          <Choice key={b.key} label={b.label} onClick={() => navigate(`/lite/buy/results?position=${position}&budget=${b.key}`)} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Results ──────────────────────────────────────────────────────────────────
-
-function initials(name: string) {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
-}
-
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 border-t border-rule py-2 text-[1.0625rem]">
-      <span className="text-text-muted">{label}</span>
-      <span className={strong ? "font-extrabold text-accent" : "font-semibold text-text"}>{value}</span>
-    </div>
-  );
-}
-
-function CandidateCard({ p }: { p: LiteCandidate }) {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const priceLabel = p.free_agent ? "Free agent" : `${liteMoney(p.price)}${p.price_basis === "listed" ? "" : " (our estimate)"}`;
-  return (
-    <div className="flex flex-col gap-4 rounded-3xl bg-surface p-6 ring-1 ring-border">
-      <div className="flex items-center gap-3">
-        <Avatar name={p.name} photo={p.photo_url} />
-        <span className="min-w-0">
-          <Link to={`/players/market/${p.player_id}`} className="block truncate text-[1.375rem] font-extrabold text-text no-underline hover:text-accent">{p.name}</Link>
-          <span className="block truncate text-base text-text-muted">{p.club ?? "No club"}</span>
-        </span>
-      </div>
-      <div>
-        {p.age != null && <Row label="Age" value={String(p.age)} />}
-        <Row label="Price" value={priceLabel} strong />
-        <Row label="Wages" value={p.wage_weekly != null ? liteWage(p.wage_weekly) : "—"} />
-      </div>
-      <p className="rounded-xl bg-surface-inset px-4 py-3 text-base text-text-secondary">{p.reason}</p>
-      <div className="mt-auto flex flex-col gap-2">
-        {p.free_agent ? (
-          // No club to make an offer to: a free agent is signed from his page.
-          <Link
-            to={`/players/market/${p.player_id}`}
-            className="flex min-h-[3.5rem] items-center justify-center rounded-xl bg-accent text-[1.0625rem] font-bold text-white no-underline"
-          >
-            See how to sign him
-          </Link>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              queryClient.invalidateQueries({ queryKey: ["lite", "home"] });
-              navigate(`/lite/bid?player_id=${p.player_id}`);
-            }}
-            className="min-h-[3.5rem] rounded-xl bg-accent text-[1.0625rem] font-bold text-white"
-          >
-            Make an offer
-          </button>
-        )}
-        <Link
-          to={`/players/market/${p.player_id}`}
-          className="flex min-h-[3rem] items-center justify-center rounded-xl text-[1.0625rem] font-semibold text-text no-underline ring-1 ring-border hover:ring-accent"
-        >
-          See his profile
-        </Link>
-        <AskTeamButton
-          subject={{ type: "player", id: p.player_id }}
-          suffix=" about him"
-          draft={`What do you think of ${p.name}?`}
-          className="min-h-[3rem] rounded-xl text-[1.0625rem] font-semibold text-text ring-1 ring-border hover:ring-accent"
-        />
-      </div>
-    </div>
-  );
-}
-
-export function LiteBuyResultsPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const queryClient = useQueryClient();
-  const [params] = useSearchParams();
-  const position = params.get("position");
-  const band = params.get("budget");
-  const valid = isPosition(position) && isBand(band);
-  const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } =
-    useLiteCandidates(valid ? position : null, valid ? band : null);
-  const players = data?.pages.flatMap((page) => page.players) ?? [];
-  const pos = POSITIONS.find((p) => p.key === position);
-  const bandLabel = BANDS.find((b) => b.key === band)?.label ?? "";
-
-  // "Carry on where you left off" (README 3d): remember this search.
-  useEffect(() => {
-    if (!valid || !data) return;
-    const title = `${pos?.label === "Not sure" ? "Player" : pos?.label} search, ${bandLabel.toLowerCase()} · ${players.length} player${players.length === 1 ? "" : "s"} found`;
-    api
-      .put("/lite/resume", { title, href: `${location.pathname}${location.search}` })
-      .then(() => queryClient.invalidateQueries({ queryKey: ["lite", "home"] }))
-      .catch(() => undefined);
-  }, [valid, data, pos, bandLabel, players.length, location.pathname, location.search, queryClient]);
-
-  if (!valid) return <MissingStep />;
-  const plural = pos?.plural ?? "players";
-  return (
-    <div className="flex flex-col gap-8">
-      <StepHeader step="Results" back={() => navigate(`/lite/buy/budget?position=${position}`)} />
-      <Question
-        title={players.length ? `${players.length} player${players.length === 1 ? "" : "s"} who fit` : "Looking…"}
-        hint={`${plural[0].toUpperCase()}${plural.slice(1)} you could make an offer for now, ${bandLabel.toLowerCase()}.`}
-      />
-      {isLoading ? (
-        <div className="flex justify-center py-12"><Spinner size="lg" /></div>
-      ) : isError ? (
-        <p className="text-[1.25rem] text-danger-text">We couldn&rsquo;t search just now. Try again in a moment.</p>
-      ) : players.length === 0 ? (
-        <div className="flex flex-col items-start gap-4 rounded-3xl bg-surface px-8 py-8 ring-1 ring-border">
-          <p className="text-[1.375rem] text-text">No {plural} in that price range right now.</p>
-          <button
-            type="button"
-            onClick={() => navigate(`/lite/buy/budget?position=${position}`)}
-            className="min-h-[3.25rem] rounded-xl bg-accent px-6 text-[1.0625rem] font-bold text-white"
-          >
-            Try a different budget
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-5 lg:grid-cols-3">
-            {players.map((p) => <CandidateCard key={p.player_id} p={p} />)}
-          </div>
-          {hasNextPage && (
-            <button
-              type="button"
-              onClick={() => fetchNextPage()}
-              disabled={isFetchingNextPage}
-              className="mx-auto min-h-[3.5rem] rounded-xl px-8 text-[1.125rem] font-bold text-text ring-2 ring-border hover:ring-accent disabled:opacity-60"
-            >
-              {isFetchingNextPage ? "Finding more…" : "Show 3 more"}
-            </button>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-function MissingStep() {
-  return (
-    <div className="space-y-4">
-      <p className="text-[1.375rem] text-text">Let&rsquo;s start from the first question.</p>
-      <Link to="/lite/buy" className="text-[1.125rem] font-bold text-accent">Who are you looking for? →</Link>
-    </div>
-  );
+/** The old guided steps' addresses (a "Carry on where you left off" link may still point at one). */
+export function LiteBuyRedirect() {
+  return <Navigate to="/lite/buy" replace />;
 }
