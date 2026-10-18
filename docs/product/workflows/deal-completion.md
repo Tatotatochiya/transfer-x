@@ -52,6 +52,21 @@ A deal carries one medical check record: a status and free-text notes, via `PUT 
 - Any `PENDING` `AgentCommission` for the deal moves to `CONFIRMED` (the agent's commission is due, but not yet invoiced or paid — see [`agent-representation.md`](./agent-representation.md)).
 - A `DEAL_COMPLETED` event is recorded in the deal's audit log (see [`../../architecture/data-model.md`](../../architecture/data-model.md) for the audit-log schema).
 
+## When a deal sticks: staff tools
+
+Added 2026-10-17. A deal can stall with no way out: the other club goes quiet, a step waits on a player with no account, the clubs disagree about the medical, or the last steps happened on paper. TransferX staff have six tools, on the deal page (a "Staff tools" panel, staff only) and on Admin → Deals (`backend/app/admin/deal_tools.py`):
+
+| Tool | What it does | Endpoint |
+|---|---|---|
+| Move on | Next stage, by the stage machine's own rules (not at paperwork, which moves on by its checklist) | `POST /admin/deals/{id}/advance` |
+| Record paperwork | Ticks one club's step (either signature, or the registration) as if the club had; the last step confirms the deal as usual | `POST /admin/deals/{id}/paperwork` |
+| Record the medical | Passed, failed or pending, with notes; settles a dispute | `POST /admin/deals/{id}/medical` |
+| Move the completion deadline | For a deal awaiting completion; clears the overdue flag so the overnight check can flag it again | `POST /admin/deals/{id}/deadline` |
+| Complete | Settles the fee and moves the player now, skipping any steps left: for steps done outside TransferX | `POST /admin/deals/{id}/complete` |
+| Collapse | Ends the deal, releases the buyer's committed budget, reopens a listing it came from | `POST /admin/deals/{id}/collapse` |
+
+Each goes through the same service function a club's action uses (money, locks, notifications), needs a reason, is in the admin audit log (`admin.deal.*`), and tells both clubs what staff did and why. The older `POST /deals/{id}/staff/complete` and `…/staff/collapse` still exist without a reason; the admin screens no longer use them.
+
 ## Diagram
 
 ```mermaid

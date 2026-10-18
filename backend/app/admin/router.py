@@ -2,7 +2,8 @@
 
 import asyncio
 import uuid
-from datetime import date
+from datetime import date, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import Field
@@ -57,6 +58,100 @@ from app.players.schemas import ContractResponse, PlayerResponse
 from app.sales.schemas import SaleResponse
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+# ── Stepping into a stuck deal (admin/deal_tools.py) ─────────────────────────
+
+
+class DealDeadlineRequest(AdminReasonRequest):
+    until: datetime
+
+
+class DealPaperworkRequest(AdminReasonRequest):
+    step: Literal["buyer_signs_agreement", "seller_signs_agreement", "registration_submitted"]
+
+
+class DealMedicalRequest(AdminReasonRequest):
+    outcome: Literal["PASSED", "FAILED", "PENDING"]
+    notes: str | None = Field(default=None, max_length=1000)
+
+
+async def _deal_tool(db: AsyncSession, run) -> dict:
+    """Run one deal tool and commit; its state afterwards, for the page."""
+    try:
+        deal = await run()
+    except LookupError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except (ValueError, PermissionError) as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    await db.commit()
+    return {"id": str(deal.id), "status": deal.status.value, "stage": deal.stage.value,
+            "sla_deadline": deal.sla_deadline.isoformat() if deal.sla_deadline else None}
+
+
+@router.post("/deals/{deal_id}/collapse")
+async def admin_collapse_deal(deal_id: uuid.UUID, body: AdminReasonRequest,
+                              current_user: User = Depends(get_current_superuser),
+                              db: AsyncSession = Depends(get_db)) -> dict:
+    """End a stuck deal for both clubs, releasing the buyer's committed budget."""
+    from app.admin import deal_tools
+
+    return await _deal_tool(db, lambda: deal_tools.collapse(db, current_user, deal_id, reason=body.reason))
+
+
+@router.post("/deals/{deal_id}/advance")
+async def admin_advance_deal(deal_id: uuid.UUID, body: AdminReasonRequest,
+                             current_user: User = Depends(get_current_superuser),
+                             db: AsyncSession = Depends(get_db)) -> dict:
+    """Move a deal on one stage, by the stage machine's rules."""
+    from app.admin import deal_tools
+
+    return await _deal_tool(db, lambda: deal_tools.advance(db, current_user, deal_id, reason=body.reason))
+
+
+@router.post("/deals/{deal_id}/complete")
+async def admin_complete_deal(deal_id: uuid.UUID, body: AdminReasonRequest,
+                              current_user: User = Depends(get_current_superuser),
+                              db: AsyncSession = Depends(get_db)) -> dict:
+    """Complete the transfer now (its last steps happened outside TransferX)."""
+    from app.admin import deal_tools
+
+    return await _deal_tool(db, lambda: deal_tools.complete(db, current_user, deal_id, reason=body.reason))
+
+
+@router.post("/deals/{deal_id}/deadline")
+async def admin_extend_deal_deadline(deal_id: uuid.UUID, body: DealDeadlineRequest,
+                                     current_user: User = Depends(get_current_superuser),
+                                     db: AsyncSession = Depends(get_db)) -> dict:
+    """Move the completion deadline of a deal awaiting completion."""
+    from app.admin import deal_tools
+
+    return await _deal_tool(db, lambda: deal_tools.extend_deadline(
+        db, current_user, deal_id, until=body.until, reason=body.reason))
+
+
+@router.post("/deals/{deal_id}/paperwork")
+async def admin_record_deal_paperwork(deal_id: uuid.UUID, body: DealPaperworkRequest,
+                                      current_user: User = Depends(get_current_superuser),
+                                      db: AsyncSession = Depends(get_db)) -> dict:
+    """Tick a paperwork step for one club (a signature made on paper, say)."""
+    from app.admin import deal_tools
+
+    return await _deal_tool(db, lambda: deal_tools.record_paperwork(
+        db, current_user, deal_id, step=body.step, reason=body.reason))
+
+
+@router.post("/deals/{deal_id}/medical")
+async def admin_record_deal_medical(deal_id: uuid.UUID, body: DealMedicalRequest,
+                                    current_user: User = Depends(get_current_superuser),
+                                    db: AsyncSession = Depends(get_db)) -> dict:
+    """Record or correct the medical, e.g. to settle a dispute."""
+    from app.admin import deal_tools
+
+    return await _deal_tool(db, lambda: deal_tools.record_medical(
+        db, current_user, deal_id, outcome=body.outcome, notes=body.notes, reason=body.reason))
 
 
 # ── Real-world moves TransferX does not have yet ─────────────────────────────

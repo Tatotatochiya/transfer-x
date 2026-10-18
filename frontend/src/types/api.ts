@@ -862,6 +862,8 @@ export interface Deal {
   agreement_signed_by_seller_at: string | null;
   registration_submitted_at: string | null;
   paperwork: PaperworkStep[];
+  /** When a deal awaiting completion is flagged as overdue (CONFIRMED stage). */
+  sla_deadline?: string | null;
   recall_allowed: boolean;
   // TRA-57
   sell_on_pct: number | null;

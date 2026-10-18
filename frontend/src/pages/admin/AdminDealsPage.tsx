@@ -8,7 +8,7 @@ import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../compone
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import ObligationDecisionsPanel from "../../components/admin/ObligationDecisionsPanel";
-import { useConfirm } from "../../context/ConfirmContext";
+import { useAskReason } from "../../context/ConfirmContext";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
 
 const DEAL_STATUSES = ["IN_PROGRESS", "PENDING_COMPLETION", "COMPLETED", "COLLAPSED"];
@@ -237,23 +237,31 @@ export default function AdminDealsPage() {
     queryClient.invalidateQueries({ queryKey: ["admin", "stats"] });
   };
 
-  const advanceMutation  = useMutation({ mutationFn: (id: string) => api.post(`/deals/${id}/advance`),          onSuccess: invalidate });
-  const completeMutation = useMutation({ mutationFn: (id: string) => api.post(`/deals/${id}/staff/complete`),   onSuccess: invalidate });
-  const collapseMutation = useMutation({ mutationFn: (id: string) => api.post(`/deals/${id}/staff/collapse`),   onSuccess: invalidate });
+  // The admin deal tools (backend admin/deal_tools.py): each needs a reason,
+  // is in the admin audit log, and tells both clubs why.
+  type Act = { id: string; reason: string };
+  const advanceMutation  = useMutation({ mutationFn: ({ id, reason }: Act) => api.post(`/admin/deals/${id}/advance`, { reason }),  onSuccess: invalidate });
+  const completeMutation = useMutation({ mutationFn: ({ id, reason }: Act) => api.post(`/admin/deals/${id}/complete`, { reason }), onSuccess: invalidate });
+  const collapseMutation = useMutation({ mutationFn: ({ id, reason }: Act) => api.post(`/admin/deals/${id}/collapse`, { reason }), onSuccess: invalidate });
 
   const isPending = advanceMutation.isPending || completeMutation.isPending || collapseMutation.isPending;
 
   // Each of these moves a live deal for both clubs (completing it moves the
-  // money and the player), so ask first. The deal's audit log records who.
-  const confirm = useConfirm();
+  // money and the player), so ask why first. Paperwork, the medical and the
+  // completion deadline are on the deal page's Staff tools.
+  const askReason = useAskReason();
   const ACTIONS = {
-    advance: { run: advanceMutation, title: "Advance this deal", message: "Move the deal to its next stage for both clubs?", label: "Advance", danger: false },
-    complete: { run: completeMutation, title: "Complete this deal", message: "Complete the transfer now? The fee is moved, the player joins the buying club and both clubs are told. This can't be undone.", label: "Complete deal", danger: true },
-    collapse: { run: collapseMutation, title: "Collapse this deal", message: "End the deal for both clubs? Held budgets are released and both clubs are told. This can't be undone.", label: "Collapse deal", danger: true },
+    advance: { run: advanceMutation, title: "Move this deal on", message: "Move the deal to its next stage for both clubs.", label: "Move on", danger: false },
+    complete: { run: completeMutation, title: "Complete this transfer", message: "The fee settles and the player joins the buying club now, skipping any steps left. This can't be undone.", label: "Complete transfer", danger: true },
+    collapse: { run: collapseMutation, title: "Collapse this deal", message: "The deal ends for both clubs and the buyer's committed budget is released. This can't be undone.", label: "Collapse deal", danger: true },
   } as const;
   async function act(kind: keyof typeof ACTIONS, id: string) {
     const a = ACTIONS[kind];
-    if (await confirm({ title: a.title, message: a.message, confirmLabel: a.label, danger: a.danger })) a.run.mutate(id);
+    const reason = await askReason({
+      title: a.title, message: `${a.message} Both clubs are told, with your reason.`, reasonLabel: "Why?",
+      placeholder: "e.g. Both clubs confirmed by phone", confirmLabel: a.label, danger: a.danger,
+    });
+    if (reason) a.run.mutate({ id, reason });
   }
 
   return (
