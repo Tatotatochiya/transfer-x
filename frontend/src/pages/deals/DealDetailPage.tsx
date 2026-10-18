@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import AskAboutButton from "../../components/ai/AskAboutButton";
+import DealStaffTools from "../../components/admin/DealStaffTools";
 import type { AgentNegotiation, Club, Deal, DealTermsVersion, FairValueSignal, Offer, TermsDiff } from "../../types/api";
 import OfferThread from "../../components/offers/OfferThread";
 import type { DealStage, DealType } from "../../types/enums";
@@ -1343,6 +1344,8 @@ export default function DealDetailPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* ── Left: info ── */}
         <div className="lg:col-span-1 space-y-4">
+          {/* TransferX staff: tools for a deal that has stuck (admin/deal_tools.py). */}
+          {isStaff && <DealStaffTools deal={deal} />}
           {/* Player */}
           <Card>
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">

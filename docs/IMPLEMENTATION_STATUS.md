@@ -40,7 +40,7 @@ Rewritten on 2026-10-11 from the code, the CHANGELOG and read-only checks of the
 | Data from API-Football | Built | 2026-10-12 | Admin-triggered syncs plus the scheduled refresh (17:00 and 22:00 UK): stats (with each competition's name and logos, fixed 2026-10-12), injuries, ratings for new matches, form; follows each competition's current season. Production refreshes all 11 competitions in `world_leagues` |
 | Deadline day | Built | 2026-10-17 | `/deadline` (Lite or full app, by the person's mode): every open offer and deal against the window's close, with the next step, whose move, steps left and an "at risk" flag (under 6 hours per step). Banner on the Lite home and dashboard in the last 72 hours; pushes at 24, 6 and 2 hours. Windows are still global, not per federation |
 | Real-world moves | Built | 2026-10-12 | Contracted players whose API-Football club differs from their TransferX registration: a "Moved in real life" note on the player page, and Admin → Real-world moves to apply (bulk, with a reason; offers and listings close, contract moves, no money) or dismiss; the club gets one notification listing its moved players. Transfer histories refresh nightly. Never automatic ([product ADR 0009](./product/decisions/0009-real-world-moves-flagged-applied-by-staff.md)). On dev data: 204 of 680 contracted players |
-| Monitoring and admin | Built | 2026-10-11 | Admin panel with every change audited and a reason; audit log page; read-only "view as this club"; Admin Jobs (runs, steps, live logs, Run refresh now), Errors (grouped issues from API, worker and browsers), Health (services, requests, jobs, integrity). Slack alerts once the webhook is set |
+| Monitoring and admin | Built | 2026-10-17 | Admin panel with every change audited and a reason; staff tools for a stuck deal (move on, record paperwork or the medical, move the completion deadline, complete, collapse; each with a reason both clubs see); audit log page; read-only "view as this club"; Admin Jobs (runs, steps, live logs, Run refresh now), Errors (grouped issues from API, worker and browsers), Health (services, requests, jobs, integrity). Slack alerts once the webhook is set |
 | Accounts and privacy | Built | 2026-10-11 | Sign-in by email or username; sessions and signed-in devices with "sign out everywhere"; password reset links; GDPR export and account deletion; invitation-only accounts |
 | Money display | Built | 2026-10-04 | Amounts in pounds; a chosen EUR or USD adds an estimate at the ECB rate |
 | Frontend | Built | 2026-10-11 | The design system ([`design-system/`](./design-system/README.md)) across every screen, light and dark, responsive to 375px; compact sidebar and squad table; `tsc -b` at 0 errors; browser errors reported to Admin → Errors |
@@ -80,7 +80,6 @@ Each item was checked against the code on 2026-10-11 unless it says otherwise.
 - `console.log` / `console.error` at sign-in and in the API client.
 - **Not re-checked since August:**
   - list pages showing an empty state when the backend is down;
-  - deal stages that could deadlock without staff;
   - no WebSocket reconnect indicator;
   - the player profile save giving no error feedback.
 
