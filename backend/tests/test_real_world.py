@@ -358,3 +358,206 @@ async def test_clubs_hear_once_per_set_of_moved_players(db, clubs):
     latest = await alerts()
     assert len(latest) == 2 * len(first)
     assert "2 of your players" in latest[-1].message and "Also Gone" in latest[-1].message
+
+
+# ── TransferX's own deals (2026-10-21) ───────────────────────────────────────
+
+
+async def _bought(db, buyer: dict, seller: dict, name: str, on=date(2026, 9, 30), fee=45_000_000):
+    """A player TransferX moved from `seller` to `buyer`: a completed deal and his new contract."""
+    from datetime import datetime, timezone
+    from decimal import Decimal
+
+    from app.deals.models import Deal, DealStage, DealStatus
+
+    p = await _contracted(db, buyer, name, started=on)
+    db.add(Deal(buyer_club_id=buyer["id"], seller_club_id=seller["id"], player_id=p.id, agreed_fee=Decimal(fee),
+                status=DealStatus.COMPLETED, stage=DealStage.COMPLETED,
+                completed_at=datetime(on.year, on.month, on.day, 12, tzinfo=timezone.utc)))
+    await db.commit()
+    return p
+
+
+def _game(player, team, day, fixture):
+    from app.stats.models import PlayerFixtureRating
+
+    return PlayerFixtureRating(player_id=player.id, fixture_vendor_id=fixture, fixture_date=day,
+                               team_vendor_id=team, minutes=90)
+
+
+async def _open_deal(client, db, clubs, player, buyer_tokens, *, confirmed=True) -> str:
+    """An accepted offer for `player` (at Bournemouth) from `buyer_tokens`, moved on to
+    CONFIRMED, awaiting completion, when `confirmed`."""
+    from app.deals.models import Deal, DealStage, DealStatus
+    from tests.test_deals import _give_budget
+
+    await _give_budget(db)
+    offer = (await client.post("/offers", headers=_auth_headers(buyer_tokens), json={
+        "player_id": str(player.id), "to_club_id": str(clubs["Bournemouth"]["id"]), "fee_amount": 2_000_000})).json()
+    accepted = await client.post(f"/offers/{offer['id']}/accept", headers=_auth_headers(clubs["Bournemouth"]["tokens"]))
+    assert accepted.status_code == 200, accepted.text
+    deal = (await db.execute(select(Deal).where(Deal.player_id == player.id))).scalar_one()
+    deal_id = deal.id
+    if confirmed:
+        deal.stage, deal.status = DealStage.CONFIRMED, DealStatus.PENDING_COMPLETION
+        await db.commit()
+    return str(deal_id)
+
+
+@pytest.mark.asyncio
+async def test_games_before_his_transferx_move_are_the_data_catching_up(db, clubs):
+    rice = await _bought(db, clubs["Tottenham"], clubs["Bournemouth"], "D. Rice")
+    db.add_all(_played(rice, "35", "Bournemouth", last=date(2026, 9, 20)))
+    db.add(_transfer(rice, date(2026, 7, 1), "35", "Bournemouth"))
+    await db.commit()
+    assert await _check(db, rice) is None
+
+
+@pytest.mark.asyncio
+async def test_playing_on_for_the_old_club_is_for_staff_and_cant_be_applied(client: AsyncClient, db, clubs):
+    from app.notifications.models import Notification, NotificationType
+    from app.players import real_world
+
+    admin = await _admin(client, db)
+    rice = await _bought(db, clubs["Tottenham"], clubs["Bournemouth"], "D. Rice")
+    db.add_all(_played(rice, "35", "Bournemouth", last=date(2026, 9, 20)))
+    db.add(_game(rice, "35", date(2026, 10, 5), "2"))  # after his TransferX move
+    await db.commit()
+
+    move = await _check(db, rice)
+    assert move["case"] == "behind_transferx"
+    assert move["transferx_move"]["from_club"] == "Bournemouth" and move["transferx_move"]["on"] == "2026-09-30"
+    listing = (await client.get("/admin/real-world-moves", headers=_auth_headers(admin))).json()
+    [row] = [m for m in listing["mismatches"] if m["name"] == "D. Rice"]
+    assert "Moving him back would undo a paid transfer" in row["apply_blocked"]
+    assert "for £45m" in row["apply_blocked"]
+    assert listing["counts"]["behind_transferx"] == 1
+    assert (await _apply(client, admin, rice))["applied"] == []
+
+    # Only staff see it; the clubs aren't alerted.
+    as_club = (await client.get(f"/players/market/{rice.id}/ledger", headers=_auth_headers(clubs["Tottenham"]["tokens"]))).json()
+    assert as_club["real_world"] is None
+    as_staff = (await client.get(f"/players/market/{rice.id}/ledger", headers=_auth_headers(admin))).json()
+    assert as_staff["real_world"]["case"] == "behind_transferx"
+    await real_world.alert_clubs(db)
+    await db.commit()
+    assert (await db.execute(select(Notification).where(Notification.type == NotificationType.REAL_WORLD_MOVES))).first() is None
+
+    # Confirming his registration is how staff close it.
+    resp = await client.post(f"/admin/real-world-moves/{rice.id}/dismiss", headers=_auth_headers(admin),
+                             json={"reason": "TransferX registration confirmed"})
+    assert resp.status_code == 200, resp.text
+    assert await _check(db, rice) is None
+
+
+@pytest.mark.asyncio
+async def test_an_open_deal_waits_for_staff_before_it_can_complete(client: AsyncClient, db, clubs):
+    from app.deals.models import Deal, DealStatus
+    from app.notifications.models import Notification, NotificationType
+    from app.players import real_world
+
+    rival = await _register(client, "rival3@rw-example.com", club_name="Rival Three")
+    admin = await _admin(client, db)
+    saka = await _contracted(db, clubs["Bournemouth"], "B. Saka", started=date(2020, 7, 1))
+    db.add(_transfer(saka, date.today(), "2932", "Al-Hilal Saudi FC"))
+    await db.commit()
+    deal_id = await _open_deal(client, db, clubs, saka, rival)
+
+    notice = (await client.get(f"/deals/{deal_id}/real-world", headers=_auth_headers(rival))).json()
+    assert "TransferX staff are checking his registration" in notice["hold"]
+    held = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(rival))
+    assert held.status_code in (400, 409) and "playing for Al-Hilal Saudi FC" in held.text
+    listing = (await client.get("/admin/real-world-moves", headers=_auth_headers(admin))).json()
+    [row] = [m for m in listing["mismatches"] if m["name"] == "B. Saka"]
+    assert row["open_deal"]["id"] == deal_id and row["open_deal"]["buyer_club"] == "Rival Three"
+    assert listing["counts"]["in_deal"] == 1
+
+    # Both clubs are told, on the deal, once.
+    for _ in range(2):
+        await real_world.alert_clubs(db)
+        await db.commit()
+    on_deal = (await db.execute(select(Notification).where(
+        Notification.type == NotificationType.REAL_WORLD_MOVES, Notification.link == f"/deals/{deal_id}"))).scalars().all()
+    rival_id = uuid.UUID(await _get_club_id(client, _auth_headers(rival)))
+    from app.notifications.service import club_member_user_ids
+    told = {n.recipient_user_id for n in on_deal}
+    assert told == set(await club_member_user_ids(db, rival_id)) | set(await club_member_user_ids(db, clubs["Bournemouth"]["id"]))
+
+    # Staff confirm his registration: the deal completes.
+    await client.post(f"/admin/real-world-moves/{saka.id}/dismiss", headers=_auth_headers(admin),
+                      json={"reason": "Checked with both clubs: registration is right"})
+    assert (await client.get(f"/deals/{deal_id}/real-world", headers=_auth_headers(rival))).json()["hold"] is None
+    done = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(rival))
+    assert done.status_code == 200, done.text
+    db.expire_all()
+    assert (await db.get(Deal, uuid.UUID(deal_id))).status == DealStatus.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_staff_complete_overrides_the_hold(client: AsyncClient, db, clubs):
+    rival = await _register(client, "rival4@rw-example.com", club_name="Rival Four")
+    admin = await _admin(client, db)
+    p = await _contracted(db, clubs["Bournemouth"], "Held Harry", started=date(2020, 7, 1))
+    db.add(_transfer(p, date.today(), "2932", "Al-Hilal Saudi FC"))
+    await db.commit()
+    deal_id = await _open_deal(client, db, clubs, p, rival)
+    resp = await client.post(f"/admin/deals/{deal_id}/complete", headers=_auth_headers(admin),
+                             json={"reason": "Registration confirmed with the league"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "COMPLETED"
+
+
+@pytest.mark.asyncio
+async def test_at_the_buying_club_in_real_life_is_no_conflict(client: AsyncClient, db, clubs):
+    p = await _contracted(db, clubs["Bournemouth"], "Catching Up", started=date(2020, 7, 1))
+    db.add(_transfer(p, date.today(), "47", "Tottenham"))
+    await db.commit()
+    deal_id = await _open_deal(client, db, clubs, p, clubs["Tottenham"]["tokens"])
+    assert await _check(db, p) is None
+    notice = (await client.get(f"/deals/{deal_id}/real-world", headers=_auth_headers(clubs["Tottenham"]["tokens"]))).json()
+    assert notice == {"hold": None, "note": None}
+    done = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(clubs["Tottenham"]["tokens"]))
+    assert done.status_code == 200, done.text
+
+
+@pytest.mark.asyncio
+async def test_a_loan_elsewhere_is_a_note_not_a_hold(client: AsyncClient, db, clubs):
+    rival = await _register(client, "rival5@rw-example.com", club_name="Rival Five")
+    p = await _contracted(db, clubs["Bournemouth"], "Loaned Larry", started=date(2020, 7, 1))
+    db.add(_transfer(p, date.today(), "2932", "Al-Hilal Saudi FC", kind="Loan"))
+    await db.commit()
+    deal_id = await _open_deal(client, db, clubs, p, rival)
+    notice = (await client.get(f"/deals/{deal_id}/real-world", headers=_auth_headers(rival))).json()
+    assert notice["hold"] is None and "on loan at Al-Hilal Saudi FC" in notice["note"]
+    assert (await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(rival))).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_collapse_and_apply_ends_the_deal_then_moves_him(client: AsyncClient, db, clubs):
+    from app.deals.models import Deal, DealStatus
+    from app.players.models import Player, PlayerStatus
+    from tests.test_deals import _get_finance
+
+    rival = await _register(client, "rival6@rw-example.com", club_name="Rival Six")
+    admin = await _admin(client, db)
+    p = await _contracted(db, clubs["Bournemouth"], "Gone Gary", started=date(2020, 7, 1))
+    db.add(_transfer(p, date.today(), "2932", "Al-Hilal Saudi FC"))
+    await db.commit()
+    pid = p.id
+    deal_id = await _open_deal(client, db, clubs, p, rival, confirmed=False)
+    assert float((await _get_finance(client, _auth_headers(rival)))["transfer_committed"]) == 2_000_000
+
+    # Applying on its own is refused while the deal is open.
+    assert "in a deal on TransferX" in (await _apply(client, admin, p))["skipped"][0]["reason"]
+    resp = await client.post(f"/admin/real-world-moves/{pid}/collapse-and-apply", headers=_auth_headers(admin),
+                             json={"reason": "He joined Al-Hilal in the summer"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["collapsed_deal_id"] == deal_id
+    db.expire_all()
+    assert (await db.get(Deal, uuid.UUID(deal_id))).status == DealStatus.COLLAPSED
+    assert (await db.get(Player, pid)).status == PlayerStatus.EXTERNAL
+    assert float((await _get_finance(client, _auth_headers(rival)))["transfer_committed"]) == 0
+    # Nothing left to do it to.
+    again = await client.post(f"/admin/real-world-moves/{pid}/collapse-and-apply", headers=_auth_headers(admin),
+                              json={"reason": "He joined Al-Hilal in the summer"})
+    assert again.status_code == 409

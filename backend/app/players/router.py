@@ -556,7 +556,9 @@ async def get_player_ledger(
     if player.visibility == PlayerVisibility.CLUBS_ONLY and current_user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Login required")
     ledger = await build_ledger(db, player, include_injuries=current_user is not None)
-    ledger["real_world"] = (await real_world.check(db, [player])).get(player.id)
+    # Staff see every case; others never the "behind TransferX" one, nor his deals.
+    ledger["real_world"] = real_world.for_viewer((await real_world.check(db, [player])).get(player.id),
+                                                 staff=bool(current_user and current_user.is_superuser))
     return ledger
 
 

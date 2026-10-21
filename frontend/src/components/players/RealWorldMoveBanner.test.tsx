@@ -9,7 +9,7 @@ import type { RealWorldMove } from "../../types/api";
 const senesi: RealWorldMove = {
   kind: "transfer", registered_club_id: "b", registered_club: "Bournemouth", real_team_vendor_id: "47",
   real_club: "Tottenham", real_club_logo: null, real_club_on_transferx_id: "t", moved_on: "2026-06-30",
-  fee: "Free", last_played: "2026-09-19", season: "2026",
+  fee: "Free", last_played: "2026-09-19", season: "2026", case: "moved", transferx_move: null, open_deal: null,
 };
 
 describe("real-world moves", () => {
@@ -30,5 +30,19 @@ describe("real-world moves", () => {
     expect(screen.getByRole("note")).not.toHaveTextContent("TransferX staff");
     rerender(<RealWorldMoveBanner move={senesi} isMyPlayer />);
     expect(screen.getByRole("note")).toHaveTextContent("TransferX staff can update his registration");
+  });
+
+  it("for staff, says when he plays on for the club TransferX moved him from", () => {
+    const rice: RealWorldMove = {
+      ...senesi, kind: "playing", registered_club: "Liverpool", real_club: "Arsenal", moved_on: null,
+      last_played: "2026-10-13", case: "behind_transferx",
+      transferx_move: { from_club: "Arsenal", on: "2026-09-30", fee: 45_000_000, deal_id: "d" },
+    };
+    renderWithProviders(<RealWorldMoveBanner move={rice} isMyPlayer={false} />);
+    const note = screen.getByRole("note");
+    expect(note).toHaveTextContent(
+      `API-Football still has him playing for Arsenal (last game ${formatDate("2026-10-13")}), after his TransferX move to Liverpool on ${formatDate("2026-09-30")}.`);
+    expect(note).toHaveTextContent("Staff only");
+    expect(note).not.toHaveTextContent("Moved in real life");
   });
 });

@@ -56,7 +56,7 @@ Verified against the router mounts in `backend/app/main.py` on 2026-10-11.
 | `/deadline` | Deadline day: the club's open transfers against the window's close (club members) |
 | `/search` | Global search (⌘K, shortlists); signed-in only |
 | `/analytics` | Usage events |
-| `/admin` | Staff administration, including `/admin/jobs`, `/admin/errors`, `/admin/health` and `/admin/real-world-moves` (list, bulk apply, dismiss) and `/admin/deals/{id}/…` (staff tools for a stuck deal) |
+| `/admin` | Staff administration, including `/admin/jobs`, `/admin/errors`, `/admin/health` and `/admin/real-world-moves` (list, bulk apply, dismiss, collapse a deal and apply) and `/admin/deals/{id}/…` (staff tools for a stuck deal) |
 | `/monitoring/client-errors` | Browser error reports |
 | `/health` | Liveness check |
 | `/ws` | WebSocket |

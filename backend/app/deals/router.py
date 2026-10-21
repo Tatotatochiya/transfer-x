@@ -330,6 +330,26 @@ async def get_deal(
     )
 
 
+@router.get("/deals/{deal_id}/real-world")
+async def deal_real_world(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Whether API-Football has the player at another club: `hold` when the
+    deal can't complete until TransferX staff check his registration, `note`
+    for a loan elsewhere (nothing waits). Same access as the deal."""
+    from app.deals.models import DealStatus
+    from app.players import real_world
+
+    deal = await _get_deal_or_404(db, deal_id)
+    if not await room_service.is_deal_participant(db, deal, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
+    if deal.status not in (DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION):
+        return {"hold": None, "note": None}
+    return await real_world.deal_notice(db, deal)
+
+
 # ── Stage advancement ─────────────────────────────────────────────────────────
 
 

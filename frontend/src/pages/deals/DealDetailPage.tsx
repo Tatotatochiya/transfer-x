@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import AskAboutButton from "../../components/ai/AskAboutButton";
 import DealStaffTools from "../../components/admin/DealStaffTools";
+import DealRealWorldNotice from "../../components/deals/DealRealWorldNotice";
 import type { AgentNegotiation, Club, Deal, DealTermsVersion, FairValueSignal, Offer, TermsDiff } from "../../types/api";
 import OfferThread from "../../components/offers/OfferThread";
 import type { DealStage, DealType } from "../../types/enums";
@@ -1337,6 +1338,10 @@ export default function DealDetailPage() {
           <p className="font-semibold">Deal collapsed</p>
           <p className="text-danger-text/80 mt-1">This transfer has fallen through.</p>
         </div>
+      )}
+
+      {id && (
+        <DealRealWorldNotice dealId={id} open={deal.status === "IN_PROGRESS" || deal.status === "PENDING_COMPLETION"} />
       )}
 
       {id && <TermsDiffSpine dealId={id} isBuyer={isBuyer} />}

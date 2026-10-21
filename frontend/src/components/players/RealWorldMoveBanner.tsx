@@ -1,5 +1,6 @@
 import type { RealWorldMove } from "../../types/api";
 import { describeMove } from "../../lib/realWorld";
+import { formatDate } from "../../lib/utils";
 
 /**
  * API-Football has the player at another club than the one TransferX has him
@@ -16,11 +17,27 @@ export default function RealWorldMoveBanner({ move, isMyPlayer }: { move: RealWo
         <span aria-hidden className="mt-0.5 text-lg">⇄</span>
       )}
       <div className="min-w-0 text-sm">
-        <p className="font-semibold text-text">Moved in real life: {describeMove(move)}</p>
-        <p className="mt-0.5 text-text-secondary">
-          On TransferX he&rsquo;s still registered to {move.registered_club ?? "his old club"}. Source: API-Football.
-          {isMyPlayer && " If this is right, TransferX staff can update his registration."}
-        </p>
+        {move.case === "behind_transferx" && move.transferx_move ? (
+          // Only TransferX staff are sent this case (players/real_world.for_viewer).
+          <>
+            <p className="font-semibold text-text">
+              API-Football still has him playing for {move.real_club ?? "his old club"}
+              {move.last_played ? ` (last game ${formatDate(move.last_played)})` : ""}, after his TransferX move to{" "}
+              {move.registered_club ?? "his club"} on {formatDate(move.transferx_move.on)}.
+            </p>
+            <p className="mt-0.5 text-text-secondary">
+              Staff only: the clubs aren&rsquo;t told. Confirm his registration in Admin → Real-world moves.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="font-semibold text-text">Moved in real life: {describeMove(move)}</p>
+            <p className="mt-0.5 text-text-secondary">
+              On TransferX he&rsquo;s still registered to {move.registered_club ?? "his old club"}. Source: API-Football.
+              {isMyPlayer && " If this is right, TransferX staff can update his registration."}
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

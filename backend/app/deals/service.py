@@ -665,7 +665,8 @@ async def advance_deal(
     - PAPERWORK → CONFIRMED: staff only (clubs get 403 hint via ValueError).
       Item 5: this also flips status to PENDING_COMPLETION with an SLA
       deadline — everything is agreed, only administrative execution is left.
-    - CONFIRMED → COMPLETED: clubs or staff (triggers player transfer)
+    - CONFIRMED → COMPLETED: clubs or staff (triggers player transfer), unless
+      a real-world move holds it (players/real_world.completion_hold)
     """
     await _lock(db, deal, "status", "stage")
     if deal.status not in (DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION):
@@ -743,6 +744,13 @@ async def advance_deal(
         _enter_confirmed(deal)
 
     elif stage == DealStage.CONFIRMED:
+        # A player API-Football has at another club (not the buyer) waits on
+        # staff: the seller may not hold his registration. The staff Complete
+        # tool overrides this, with a reason (players/real_world.py).
+        from app.players.real_world import completion_hold
+
+        if (hold := await completion_hold(db, deal)) is not None:
+            raise ValueError(hold)
         deal.stage = DealStage.COMPLETED
         await _complete_deal(db, deal)
         await audit_service.emit(

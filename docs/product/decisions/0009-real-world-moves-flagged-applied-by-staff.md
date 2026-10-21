@@ -1,6 +1,6 @@
 ---
 title: "ADR 0009: Real-World Moves Are Flagged, and Applied Only by TransferX Staff"
-last_updated: 2026-10-12
+last_updated: 2026-10-21
 status: Accepted
 owner: "TODO — assign a Product Owner"
 ---
@@ -31,3 +31,13 @@ Three options were weighed: flag the difference and change nothing; flag it and 
 ## Update, 2026-10-17: the club is told
 
 The club itself now hears, not only TransferX staff: an hourly job sends each club one notification ("Players moved in real life", `REAL_WORLD_MOVES`, migration `0103`) naming its players API-Football has at other clubs, and saying staff will update the squad. It's sent again only when the list gains a player; moves staff apply or dismiss drop out on their own.
+
+## Update, 2026-10-21: TransferX's own deals count
+
+The check compared a player's registration with API-Football and nothing else, so it couldn't tell real football being ahead of TransferX from TransferX being ahead of the data. The product owner raised two cases: Saka, in an open Liverpool → Chelsea deal while playing for Arsenal; and Rice, whom a TransferX deal had moved from Arsenal to Liverpool, flagged "Moved in real life" because API-Football still had him at Arsenal. Decided with the product owner:
+
+1. **Evidence from before a completed TransferX deal into his club is the data catching up,** not a move: it is ignored.
+2. **A game for the club TransferX moved him from, after the deal, is a contradiction** (`case` "behind_transferx"). Only TransferX staff see it: the clubs aren't told, since it is usually a data error and would alarm the club that has just paid for him. Staff can confirm his registration, never apply it: applying would undo a paid transfer with no money returned. Undoing a completed transfer is out of scope; in real football it is a dispute between the clubs.
+3. **A player in an open TransferX deal who has moved holds the deal's completion** until staff confirm his registration (dismiss) or collapse the deal and apply the move in one step. Talks and paperwork carry on; the staff Complete tool can still override, with a reason. Held rather than collapsed, because API-Football is sometimes wrong. Both clubs are told on the deal.
+4. **No hold when he is at the buying club in real life** (the deal is catching up; nothing is reported), **nor for a real-world loan** (his registration hasn't changed; the buying club is told).
+
