@@ -52,6 +52,12 @@ A deal carries one medical check record: a status and free-text notes, via `PUT 
 - Any `PENDING` `AgentCommission` for the deal moves to `CONFIRMED` (the agent's commission is due, but not yet invoiced or paid — see [`agent-representation.md`](./agent-representation.md)).
 - A `DEAL_COMPLETED` event is recorded in the deal's audit log (see [`../../architecture/data-model.md`](../../architecture/data-model.md) for the audit-log schema).
 
+## When the player has moved in real life
+
+Added 2026-10-21 ([product ADR 0009](../decisions/0009-real-world-moves-flagged-applied-by-staff.md#update-2026-10-21-transferxs-own-deals-count)). If API-Football has the player at a club other than the selling one, and not at the buying club, the selling club may not hold his registration. The deal goes on (talks, personal terms, paperwork) but **can't complete**: CONFIRMED → COMPLETED is refused with "API-Football has {player} playing for {club}. TransferX staff are checking his registration before this deal can complete." Both clubs see that on the deal page (`GET /deals/{id}/real-world`) and get one notification.
+
+Staff resolve it in Admin → Real-world moves: **Confirm registration** (the move is dismissed and the deal can complete) or **Collapse deal and apply** (the deal collapses as the staff Collapse tool does, releasing the buyer's budget, then the registration follows the move). The staff **Complete** tool overrides the hold, with a reason. A real-world loan holds nothing; the buying club is told it doesn't change his registration.
+
 ## When a deal sticks: staff tools
 
 Added 2026-10-17. A deal can stall with no way out: the other club goes quiet, a step waits on a player with no account, the clubs disagree about the medical, or the last steps happened on paper. TransferX staff have six tools, on the deal page (a "Staff tools" panel, staff only) and on Admin → Deals (`backend/app/admin/deal_tools.py`):

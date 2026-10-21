@@ -1953,4 +1953,11 @@ export interface RealWorldMove {
   fee: string | null;
   last_played: string | null;
   season: string;
+  /** "moved": real football is ahead of TransferX. "behind_transferx": he plays
+   *  on for the club a TransferX deal moved him from (TransferX staff only). */
+  case: "moved" | "behind_transferx";
+  /** Staff only: the TransferX deal he's playing on after. */
+  transferx_move: { from_club: string | null; on: string; fee: number | null; deal_id: string } | null;
+  /** Staff only: his open TransferX deal (completion waits on staff unless the move is a loan). */
+  open_deal: { id: string; stage: string; status: string; buyer_club_id: string; buyer_club: string | null; seller_club_id: string | null } | null;
 }

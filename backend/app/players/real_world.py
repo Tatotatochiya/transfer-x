@@ -20,6 +20,19 @@ that is a mismatch.
 
 A TransferX club is matched to its API-Football team by the team most of its
 squad came from (the demo clubs were built from those squads), else by name.
+
+TransferX's own deals count too (2026-10-21):
+- **TransferX moved him first.** After a completed TransferX deal into his
+  club, games and transfers dated before it are API-Football catching up, not
+  a move. A game for the club he was bought from *after* it is a
+  contradiction (`case` "behind_transferx"): either the TransferX deal isn't
+  real or the data is wrong. Only staff see it; it can be confirmed, never
+  applied, since applying would undo a paid transfer.
+- **He's in an open TransferX deal.** If he is at the buying club in real
+  life, the deal is catching up and nothing is reported. Otherwise the deal
+  can't complete until staff confirm his registration or collapse the deal
+  (`completion_hold`), unless the move is a loan, which doesn't change who
+  holds his registration.
 """
 from __future__ import annotations
 
@@ -123,6 +136,7 @@ async def check(db: AsyncSession, players, *, today: date | None = None) -> dict
     contract_start = dict((await db.execute(
         select(Contract.player_id, Contract.start_date).where(Contract.player_id.in_(ids), Contract.is_active.is_(True))
     )).all())
+    moved_in, open_deals = await _transferx_deals(db, ids)
 
     countries = await _countries(db)
     stats = (await db.execute(select(PlayerStats).where(
@@ -163,13 +177,21 @@ async def check(db: AsyncSession, players, *, today: date | None = None) -> dict
     for p in players:
         registered = teams[p.current_club_id]
         registered_name = (team_names.get(registered) or club_names.get(p.current_club_id) or "").lower()
+        # His latest TransferX deal, when it brought him to his current club:
+        # evidence from before it is API-Football catching up.
+        tx = moved_in.get(p.id)
+        tx = tx if tx is not None and tx.buyer_club_id == p.current_club_id else None
+        tx_day = _day(tx.completed_at) if tx is not None else None
         evidence = []  # (date, priority, kind, team, name, logo, fee)
         for team, (name, logo) in played[p.id].items():
             day = last_game.get((p.id, team))
+            if tx_day is not None and (day is None or day <= tx_day):
+                continue
             evidence.append((day or start, 0, "playing", team, name, logo, None, day))
         t = transfers.get(p.id)
         began = contract_start.get(p.id)
-        if t is not None and t.team_in_vendor_id and t.transfer_date >= start and (began is None or t.transfer_date > began):
+        if (t is not None and t.team_in_vendor_id and t.transfer_date >= start and (began is None or t.transfer_date > began)
+                and (tx_day is None or t.transfer_date > tx_day)):
             kind = _kind(t)
             evidence.append((t.transfer_date, 1, kind, t.team_in_vendor_id, t.team_in_name, t.team_in_crest_url,
                              t.fee_display, None))
@@ -181,6 +203,10 @@ async def check(db: AsyncSession, players, *, today: date | None = None) -> dict
             continue
         if (p.id, team) in dismissed:
             continue
+        deal = open_deals.get(p.id)
+        if deal is not None and teams.get(deal.buyer_club_id) == team:
+            continue  # he's at the buying club in real life: the deal is catching up
+        behind = tx is not None and tx.seller_club_id is not None and teams.get(tx.seller_club_id) == team
         moved = t if t is not None and t.team_in_vendor_id == team and t.transfer_date >= start else None
         if kind == "playing" and moved is not None:
             kind, fee = _kind(moved), moved.fee_display
@@ -198,10 +224,52 @@ async def check(db: AsyncSession, players, *, today: date | None = None) -> dict
             "fee": _fee(fee) if kind == "transfer" else None,
             "last_played": max((d for (pid, tm), d in last_game.items() if pid == p.id and tm == team), default=None),
             "season": season,
+            # "moved": real football is ahead of TransferX. "behind_transferx":
+            # he plays on for the club TransferX moved him from (staff only).
+            "case": "behind_transferx" if behind else "moved",
+            "transferx_move": {
+                "from_club": club_names.get(tx.seller_club_id), "on": tx_day.isoformat(),
+                "fee": float(tx.agreed_fee) if tx.agreed_fee is not None else None, "deal_id": str(tx.id),
+            } if behind else None,
+            "open_deal": {
+                "id": str(deal.id), "stage": deal.stage.value, "status": deal.status.value,
+                "buyer_club_id": str(deal.buyer_club_id), "buyer_club": club_names.get(deal.buyer_club_id),
+                "seller_club_id": str(deal.seller_club_id) if deal.seller_club_id else None,
+            } if deal is not None else None,
         }
         if out[p.id]["last_played"] is not None:
             out[p.id]["last_played"] = out[p.id]["last_played"].isoformat()
     return out
+
+
+def _day(dt) -> date:
+    return dt.date() if hasattr(dt, "date") else dt
+
+
+async def _transferx_deals(db: AsyncSession, ids) -> tuple[dict, dict]:
+    """({player: his latest completed TransferX deal}, {player: his open deal})."""
+    from app.deals.models import Deal, DealStatus
+
+    moved_in: dict = {}
+    for d in (await db.execute(select(Deal).where(
+            Deal.player_id.in_(ids), Deal.status == DealStatus.COMPLETED, Deal.completed_at.is_not(None))
+            .order_by(Deal.completed_at.desc()))).scalars():
+        moved_in.setdefault(d.player_id, d)
+    open_deals = {d.player_id: d for d in (await db.execute(select(Deal).where(
+        Deal.player_id.in_(ids), Deal.status.in_([DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION]))
+    )).scalars()}
+    return moved_in, open_deals
+
+
+def for_viewer(move: dict | None, *, staff: bool) -> dict | None:
+    """What the player page may show: everything for TransferX staff. Anyone
+    else sees no "behind TransferX" case (usually a data error, and it would
+    alarm the club that just paid for him) and nothing about his deals."""
+    if move is None or staff:
+        return move
+    if move["case"] == "behind_transferx":
+        return None
+    return {**move, "open_deal": None, "transferx_move": None}
 
 
 async def list_moves(db: AsyncSession, *, today: date | None = None) -> dict:
@@ -228,7 +296,9 @@ async def list_moves(db: AsyncSession, *, today: date | None = None) -> dict:
         "mismatches": rows,
         "counts": {"transfer": kinds["transfer"], "loan": kinds["loan"], "loan_return": kinds["loan_return"],
                    "playing": kinds["playing"],
-                   "to_transferx_club": sum(1 for r in rows if r["real_club_on_transferx_id"])},
+                   "to_transferx_club": sum(1 for r in rows if r["real_club_on_transferx_id"]),
+                   "in_deal": sum(1 for r in rows if r["open_deal"] and r["case"] == "moved"),
+                   "behind_transferx": sum(1 for r in rows if r["case"] == "behind_transferx")},
     }
 
 
@@ -240,8 +310,20 @@ LOAN_INSIDE = ("A loan between TransferX clubs needs terms API-Football doesn't 
                "options). Record it as a loan deal between the clubs, or dismiss it.")
 
 
-async def _blockers(db: AsyncSession, moves: dict[uuid.UUID, dict]) -> dict[uuid.UUID, str]:
-    """{player_id: why the move can't be applied}, for the moves that can't."""
+IN_DEAL = ("He's in a deal on TransferX. Collapse the deal and apply the move together, "
+           "or confirm his registration to let the deal complete.")
+BEHIND = ("TransferX moved him from {from_club} on {on}{fee}. Moving him back would undo a paid transfer: "
+          "settle it with both clubs first, or confirm his registration.")
+
+
+def _money(v) -> str:
+    return f" for £{v / 1e6:g}m" if v and v >= 1e6 else (f" for £{v:,.0f}" if v else "")
+
+
+async def _blockers(db: AsyncSession, moves: dict[uuid.UUID, dict], *,
+                    ignore_deal: bool = False) -> dict[uuid.UUID, str]:
+    """{player_id: why the move can't be applied}, for the moves that can't.
+    `ignore_deal` leaves out an open deal (collapse_and_apply ends it first)."""
     from app.deals.service import get_active_deals_for_players
     from app.loans.service import get_active_loans_for_players
 
@@ -251,8 +333,12 @@ async def _blockers(db: AsyncSession, moves: dict[uuid.UUID, dict]) -> dict[uuid
     out = {}
     for pid, m in moves.items():
         deal = deals.get(pid)
-        if deal is not None and deal.status.value in ("IN_PROGRESS", "PENDING_COMPLETION"):
-            out[pid] = "He's in a deal on TransferX. Finish or collapse it first."
+        if m["case"] == "behind_transferx":
+            tx = m["transferx_move"]
+            out[pid] = BEHIND.format(from_club=tx["from_club"] or "his old club",
+                                     on=date.fromisoformat(tx["on"]).strftime("%-d %b %Y"), fee=_money(tx["fee"]))
+        elif not ignore_deal and deal is not None and deal.status.value in ("IN_PROGRESS", "PENDING_COMPLETION"):
+            out[pid] = IN_DEAL
         elif pid in loans:
             out[pid] = "He's on loan on TransferX. End the loan first."
         elif m["kind"] == "loan":
@@ -364,6 +450,59 @@ async def apply_move(db: AsyncSession, admin, player_id: uuid.UUID, *, reason: s
     return {"player_id": str(player.id), "name": player.name, **details}
 
 
+async def collapse_and_apply(db: AsyncSession, admin, player_id: uuid.UUID, *, reason: str,
+                             today: date | None = None) -> dict:
+    """For a player in an open TransferX deal who has moved in real life: end
+    the deal (as the staff Collapse tool does: the buyer's budget is released,
+    both clubs are told why) and then apply the move. Refused, with nothing
+    changed, when the move couldn't be applied anyway. Caller commits."""
+    from app.admin import deal_tools
+
+    player = await _locked_player(db, player_id)
+    move = (await check(db, [player], today=today)).get(player.id)
+    if move is None:
+        raise ValueError("Nothing to apply: his registration matches API-Football (or the move was dismissed).")
+    if move["case"] != "moved" or not move["open_deal"]:
+        raise ValueError("He isn't in an open deal on TransferX: apply the move on its own.")
+    other = (await _blockers(db, {player.id: move}, ignore_deal=True)).get(player.id)
+    if other:
+        raise ValueError(other)
+    real = move["real_club"] or "another club"
+    await deal_tools.collapse(db, admin, uuid.UUID(move["open_deal"]["id"]),
+                              reason=f"{player.name} has moved to {real} in real life. {reason}")
+    return {**await apply_move(db, admin, player_id, reason=reason, today=today),
+            "collapsed_deal_id": move["open_deal"]["id"]}
+
+
+# ── An open deal for a player who has moved (2026-10-21) ─────────────────────
+
+HOLD = ("API-Football has {player} playing for {club}. TransferX staff are checking his registration "
+        "before this deal can complete.")
+LOAN_NOTE = ("API-Football has {player} on loan at {club}. A loan doesn't change who holds his "
+             "registration, so this deal can go ahead.")
+
+
+async def deal_notice(db: AsyncSession, deal, *, today: date | None = None) -> dict:
+    """What a deal's two clubs are told about a real-world move: `hold`
+    (completion waits on staff) or `note` (a loan elsewhere; nothing waits)."""
+    from app.players.models import Player
+
+    player = await db.get(Player, deal.player_id)
+    move = (await check(db, [player], today=today)).get(player.id) if player is not None else None
+    if move is None or move["case"] != "moved":
+        return {"hold": None, "note": None}
+    club = move["real_club"] or "another club"
+    if move["kind"] == "loan":
+        return {"hold": None, "note": LOAN_NOTE.format(player=player.name, club=club)}
+    return {"hold": HOLD.format(player=player.name, club=club), "note": None}
+
+
+async def completion_hold(db: AsyncSession, deal) -> str | None:
+    """Why the deal can't complete yet, or None. The staff Complete tool
+    overrides it, with a reason."""
+    return (await deal_notice(db, deal))["hold"]
+
+
 async def dismiss_move(db: AsyncSession, admin, player_id: uuid.UUID, *, reason: str,
                        today: date | None = None) -> dict:
     """Leave the registration as it is and stop reporting this move (until
@@ -404,7 +543,10 @@ async def alert_clubs(db: AsyncSession, *, today: date | None = None) -> int:
     from app.notifications.models import NotificationType
 
     by_club: dict[str, list[dict]] = defaultdict(list)
-    for move in (await list_moves(db, today=today))["mismatches"]:
+    moves_now = (await list_moves(db, today=today))["mismatches"]
+    for move in moves_now:
+        if move["case"] == "behind_transferx":
+            continue  # for staff to check; usually a data error
         by_club[move["registered_club_id"]].append(move)
     told = 0
     for club_id, moves in by_club.items():
@@ -423,4 +565,22 @@ async def alert_clubs(db: AsyncSession, *, today: date | None = None) -> int:
             title="Players moved in real life", group_key=f"real-world:{key}", once=True,
         )
         told += 1
+
+    # Both clubs in an open deal for a player who has moved, once per deal and team.
+    for move in moves_now:
+        deal = move["open_deal"]
+        if deal is None or move["case"] != "moved":
+            continue
+        club = move["real_club"] or "another club"
+        loan = move["kind"] == "loan"
+        message = (LOAN_NOTE if loan else HOLD).format(player=move["name"], club=club)
+        for club_id in ([deal["buyer_club_id"]] if loan else [deal["buyer_club_id"], deal["seller_club_id"]]):
+            if club_id is None:
+                continue
+            await notif_service.notify_club(
+                db, uuid.UUID(club_id), type=NotificationType.REAL_WORLD_MOVES, message=message,
+                link=f"/deals/{deal['id']}", related_player_id=uuid.UUID(move["player_id"]),
+                title="Player moved in real life" if loan else "Deal held: player moved in real life",
+                group_key=f"real-world-deal:{deal['id']}:{move['real_team_vendor_id']}", once=True,
+            )
     return told

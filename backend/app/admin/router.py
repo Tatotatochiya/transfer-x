@@ -196,6 +196,29 @@ async def apply_real_world_moves(
     return {"applied": applied, "skipped": skipped}
 
 
+@router.post("/real-world-moves/{player_id}/collapse-and-apply")
+async def collapse_and_apply_real_world_move(
+    player_id: uuid.UUID,
+    body: AdminReasonRequest,
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """For a player in an open deal who has moved in real life: collapse the
+    deal (the buyer's budget is released, both clubs are told why), then
+    apply the move. Nothing changes if the move couldn't be applied."""
+    from app.players import real_world
+
+    try:
+        result = await real_world.collapse_and_apply(db, current_user, player_id, reason=body.reason)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    await db.commit()
+    return result
+
+
 @router.post("/real-world-moves/{player_id}/dismiss")
 async def dismiss_real_world_move(
     player_id: uuid.UUID,
