@@ -46,6 +46,10 @@ class Club(Base):
         SAEnum(ClubRole, name="clubrole"), nullable=False, default=ClubRole.BOTH
     )
     verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Demo mode (app/demo): TransferX plays this club in testers' demos. Only
+    # for a club nobody uses; set by staff with a reason.
+    house_club: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    house_personality: Mapped[str | None] = mapped_column(String(20), nullable=True)  # hard | fair | eager
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

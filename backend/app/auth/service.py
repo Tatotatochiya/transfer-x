@@ -62,6 +62,23 @@ def create_view_as_token(club_owner_id: uuid.UUID, email: str, *, staff_user_id:
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm), expire
 
 
+PLAY_AS_MINUTES = 120
+
+
+def create_play_as_token(club_owner_id: uuid.UUID, email: str, *, run_id: uuid.UUID,
+                         tester_user_id: uuid.UUID) -> tuple[str, datetime]:
+    """Demo mode: an access token that signs in as a house club's owner, so a
+    tester can play the other side by hand. Unlike view-as it can change
+    things, but only inside the demo run (`demo`): everything it does is
+    journaled under that run and undone by its reset. Two hours, no refresh."""
+    expire = datetime.now(UTC) + timedelta(minutes=PLAY_AS_MINUTES)
+    payload = {
+        "sub": str(club_owner_id), "email": email, "exp": expire, "type": "access",
+        "demo": str(run_id), "act": str(tester_user_id),
+    }
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm), expire
+
+
 def decode_access_token(token: str) -> dict:
     """Decode and validate an access token. Raises JWTError on failure."""
     payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])

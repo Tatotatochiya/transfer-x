@@ -63,6 +63,10 @@ class UserResponse(BaseModel):
     # Set when this is a read-only "view as this club" session: the email of
     # the TransferX staff member looking.
     viewed_by: str | None = None
+    # Demo mode (app/demo): whether this person may start a demo, and in a
+    # "play as this house club" tab, the tester playing it.
+    can_demo: bool = False
+    demo_played_by: str | None = None
 
 
 class UpdateMeRequest(BaseModel):

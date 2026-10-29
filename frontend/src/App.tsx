@@ -62,6 +62,7 @@ const AdminVerificationPage     = lazy(() => import("./pages/admin/AdminVerifica
 const AdminHealthPage           = lazy(() => import("./pages/admin/AdminHealthPage"));
 const AdminJobsPage             = lazy(() => import("./pages/admin/AdminJobsPage"));
 const AdminRealWorldMovesPage   = lazy(() => import("./pages/admin/AdminRealWorldMovesPage"));
+const AdminDemoPage             = lazy(() => import("./pages/admin/AdminDemoPage"));
 const DeadlinePage              = lazy(() => import("./pages/deadline/DeadlinePage"));
 const AdminErrorsPage           = lazy(() => import("./pages/admin/AdminErrorsPage"));
 const AdminAIPage               = lazy(() => import("./pages/admin/AdminAIPage"));
@@ -333,6 +334,7 @@ export default function App() {
             <Route path="health"         element={<AdminHealthPage />} />
             <Route path="jobs"           element={<AdminJobsPage />} />
             <Route path="real-world-moves" element={<AdminRealWorldMovesPage />} />
+            <Route path="demo"           element={<AdminDemoPage />} />
             <Route path="errors"         element={<AdminErrorsPage />} />
             <Route path="ai"             element={<AdminAIPage />} />
             <Route path="audit"          element={<AdminAuditLogPage />} />

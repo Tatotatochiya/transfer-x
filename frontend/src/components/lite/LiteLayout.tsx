@@ -11,6 +11,7 @@ import {
   type TextScale,
 } from "../../hooks/usePreferences";
 import Icon from "../layout/Icon";
+import DemoControl, { DemoPlayAsBanner } from "../demo/DemoControl";
 
 /**
  * The Lite shell (docs/feature_spec/lite-mode, README "Shared: Lite top bar"
@@ -42,6 +43,8 @@ export default function LiteLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="min-h-screen bg-page text-text">
+      <DemoPlayAsBanner />
+      <DemoControl />
       <header className="flex h-[4.5rem] items-center justify-between border-b border-border bg-surface px-4 sm:px-8">
         <Link to="/lite" className="flex min-w-0 items-center gap-3 no-underline">
           <span className="flex h-[2.125rem] w-[2.125rem] shrink-0 items-center justify-center rounded-[9px] bg-accent text-white">
