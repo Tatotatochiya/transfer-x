@@ -5,6 +5,7 @@ import { useIdentity } from "../../hooks/useIdentity";
 import Sidebar, { NotificationBell } from "./Sidebar";
 import Icon from "./Icon";
 import GlobalSearch from "./GlobalSearch";
+import MarketActions from "./MarketActions";
 import Avatar from "../ui/Avatar";
 import PushSoftAsk from "../notifications/PushSoftAsk";
 import ViewAsBanner from "./ViewAsBanner";
@@ -68,7 +69,7 @@ export default function AppShell({ children }: AppShellProps) {
         >
           <Icon name={mobileOpen ? "x" : "menu"} />
         </button>
-        <span className="text-base font-bold text-text shrink-0">TransferX</span>
+        <span className="hidden text-base font-bold text-text shrink-0 min-[400px]:inline">TransferX</span>
         {isAuthenticated && yourMoveCount > 0 && (
           <span
             aria-label={`${yourMoveCount} waiting on you`}
@@ -79,6 +80,7 @@ export default function AppShell({ children }: AppShellProps) {
           </span>
         )}
         <div className="flex-1" />
+        <MarketActions compact />
         <div className="shrink-0">
           <GlobalSearch />
         </div>
@@ -106,7 +108,8 @@ export default function AppShell({ children }: AppShellProps) {
             It used to be pinned to the window's corner, where it covered
             page headers' buttons (My Club's Team and Edit profile, "+ New
             listing", "Mark all as read"…). ⌘K still opens it from anywhere. */}
-        <div className="mx-auto hidden h-14 max-w-[1280px] items-center justify-end px-8 lg:flex">
+        <div className="mx-auto hidden h-14 max-w-[1280px] items-center justify-end gap-3 px-8 lg:flex">
+          <MarketActions />
           <GlobalSearch />
         </div>
         <div className="mx-auto max-w-[1280px] px-4 py-6 md:px-6 lg:px-8 lg:pt-1">

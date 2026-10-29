@@ -239,6 +239,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Buying and selling are front and centre in the full app** (team feedback, 2026-10-29). "Buy a player" and "Sell a player" sit in the top bar on every page (short "Buy" / "Sell" on phones) and first on My Club, before Team and Edit profile. Each player's row in your squad now says **Sell** instead of List. Only for club members whose role can trade; Lite already has both as home tiles.
 - **Real-world moves take TransferX's own deals into account** ([product ADR 0009](./product/decisions/0009-real-world-moves-flagged-applied-by-staff.md#update-2026-10-21-transferxs-own-deals-count)).
   - **A deal for a player who has moved in real life can't complete** until TransferX staff check: "API-Football has B. Saka playing for Arsenal. TransferX staff are checking his registration before this deal can complete." Talks and paperwork carry on. Both clubs see it on the deal page and get one notification. In Admin → Real-world moves staff **Confirm registration** (the deal can complete) or **Collapse deal and apply** in one step; the staff Complete tool overrides it with a reason. Before, the deal could complete, so a buyer could pay for a player the seller no longer held, and only the selling club was told.
   - **No conflict when he's at the buying club in real life** (the deal is catching up), and a real-world loan holds nothing.
