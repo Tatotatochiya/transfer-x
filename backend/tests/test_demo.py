@@ -263,3 +263,79 @@ async def test_staff_can_reset_anyones_demo(client: AsyncClient, db, setup):
     assert resp.status_code == 200, resp.text
     again = await client.post(f"/admin/demo/runs/{run['id']}/reset", headers=_auth_headers(setup["staff"]))
     assert again.status_code == 409
+
+
+# ── Step 2: demo and test deals stay out of shared figures ───────────────────
+
+
+async def _completed_demo_buy(client, db, setup) -> tuple[dict, str]:
+    """The tester buys a house club's player in a demo, completed by staff."""
+    tester, house = setup["tester"], setup["house"]
+    player = await _create_player_for_seller(client, _auth_headers(house))
+    house_id = await _get_club_id(client, _auth_headers(house))
+    run = await _start(client, tester)
+    offer = (await client.post("/offers", headers=_auth_headers(tester), json={
+        "player_id": player["id"], "to_club_id": house_id, "fee_amount": 9_000_000})).json()
+    as_house = await _play_as(client, tester, house_id)
+    deal = (await client.post(f"/offers/{offer['id']}/accept", headers=as_house)).json()
+    deal_id = deal.get("deal_id") or deal.get("id")
+    from app.deals import service as deals_service
+
+    row = await deals_service.get_deal_by_id(db, uuid.UUID(deal_id))
+    await deals_service.staff_complete(db, row)
+    await db.commit()
+    return run, deal_id
+
+
+async def _shared_ids(db) -> set:
+    from app.deals.models import Deal
+    from app.demo.service import shared_deals
+
+    return set((await db.execute(select(Deal.id).where(await shared_deals(db)))).scalars())
+
+
+async def test_an_open_demos_transfer_isnt_in_recent_transfers_or_comparables(client: AsyncClient, db, setup):
+    run, deal_id = await _completed_demo_buy(client, db, setup)
+    feed = (await client.get("/transfers", headers=_auth_headers(setup["real"]))).json()
+    assert deal_id not in {i["id"] for i in feed["items"]}
+    assert (await client.get("/transfers/analytics", headers=_auth_headers(setup["real"]))).json()["completed"]["total_count"] == 0
+    # The filter valuations, comparable transfers and the feed all use.
+    assert uuid.UUID(deal_id) not in await _shared_ids(db)
+
+    # Kept: it's a real transfer now, and counts.
+    await client.post("/demo/run/keep", headers=_auth_headers(setup["tester"]))
+    feed = (await client.get("/transfers", headers=_auth_headers(setup["real"]))).json()
+    assert deal_id in {i["id"] for i in feed["items"]}
+    assert uuid.UUID(deal_id) in await _shared_ids(db)
+
+
+async def test_staff_mark_a_test_transfer_and_it_leaves_shared_figures(client: AsyncClient, db, setup):
+    from app.audit.models import AuditEvent
+
+    _run, deal_id = await _completed_demo_buy(client, db, setup)
+    await client.post("/demo/run/keep", headers=_auth_headers(setup["tester"]))
+    staff = _auth_headers(setup["staff"])
+    assert (await client.post(f"/admin/deals/{deal_id}/test", headers=_auth_headers(setup["tester"]),
+                              json={"is_test": True, "reason": "Made while testing"})).status_code == 403
+    resp = await client.post(f"/admin/deals/{deal_id}/test", headers=staff,
+                             json={"is_test": True, "reason": "Made while testing"})
+    assert resp.status_code == 200, resp.text
+    feed = (await client.get("/transfers", headers=_auth_headers(setup["real"]))).json()
+    assert deal_id not in {i["id"] for i in feed["items"]}
+    assert uuid.UUID(deal_id) not in await _shared_ids(db)
+    listed = (await client.get("/admin/deals", headers=staff)).json()["items"]
+    assert next(d for d in listed if d["id"] == deal_id)["is_test"] is True
+    [event] = (await db.execute(select(AuditEvent).where(AuditEvent.action == "admin.deal.test_marked"))).scalars().all()
+    assert event.payload_json["reason"] == "Made while testing"
+
+
+async def test_a_player_in_an_open_demo_isnt_reported_as_moved(client: AsyncClient, db, setup):
+    from app.players import real_world
+    from app.players.models import Player
+
+    _run, deal_id = await _completed_demo_buy(client, db, setup)
+    from app.deals.models import Deal
+
+    deal = await db.get(Deal, uuid.UUID(deal_id))
+    player = await db.get(Player, deal.player_id)
+    assert (await real_world.check(db, [player])) == {}

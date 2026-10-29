@@ -1179,6 +1179,8 @@ export interface AdminDeal {
   created_at: string;
   updated_at?: string | null;
   completed_at: string | null;
+  /** A test transfer: left out of valuations, comparable transfers and Recent Transfers. */
+  is_test?: boolean;
 }
 
 export interface AdminStats {

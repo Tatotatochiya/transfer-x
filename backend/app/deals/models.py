@@ -127,6 +127,10 @@ class Deal(Base):
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # A test transfer (e.g. made while trying TransferX, before demo mode):
+    # left out of valuations, comparable transfers and Recent Transfers.
+    # Staff mark it, with a reason (Admin → Deals). It changes nothing else.
+    is_test: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     # Item 5: set once the deal reaches CONFIRMED (status flips to
     # PENDING_COMPLETION) — gives staff an SLA window to actually execute it.
     sla_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

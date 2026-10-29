@@ -209,6 +209,7 @@ class AdminDealResponse(BaseModel):
     created_at: datetime
     updated_at: datetime | None = None
     completed_at: datetime | None = None
+    is_test: bool = False
 
 
 # ── System stats ──────────────────────────────────────────────────────────────

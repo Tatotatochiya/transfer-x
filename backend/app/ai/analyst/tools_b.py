@@ -197,7 +197,10 @@ async def recent_transfers(ctx: Ctx, position: str | None = None, club: str | No
     days = max(7, min(int(days or 180), 1095))
     since = datetime.now(timezone.utc) - timedelta(days=days)
     rows = []
-    deals = (await ctx.db.execute(select(Deal).where(Deal.status == DealStatus.COMPLETED, Deal.completed_at >= since)
+    from app.demo.service import shared_deals
+
+    deals = (await ctx.db.execute(select(Deal).where(await shared_deals(ctx.db), Deal.status == DealStatus.COMPLETED,
+                                                     Deal.completed_at >= since)
                                   .options(selectinload(Deal.player), selectinload(Deal.buyer_club),
                                            selectinload(Deal.seller_club)))).scalars().all()
     for d in deals:

@@ -244,7 +244,27 @@ export default function AdminDealsPage() {
   const completeMutation = useMutation({ mutationFn: ({ id, reason }: Act) => api.post(`/admin/deals/${id}/complete`, { reason }), onSuccess: invalidate });
   const collapseMutation = useMutation({ mutationFn: ({ id, reason }: Act) => api.post(`/admin/deals/${id}/collapse`, { reason }), onSuccess: invalidate });
 
-  const isPending = advanceMutation.isPending || completeMutation.isPending || collapseMutation.isPending;
+  // A test transfer (made while trying TransferX) is left out of valuations,
+  // comparable transfers and Recent Transfers; nothing else about it changes.
+  const testMutation = useMutation({
+    mutationFn: ({ id, is_test, reason }: Act & { is_test: boolean }) => api.post(`/admin/deals/${id}/test`, { is_test, reason }),
+    onSuccess: invalidate,
+  });
+  async function markTest(d: AdminDeal) {
+    const on = !d.is_test;
+    const reason = await askReason({
+      title: on ? "Mark as a test transfer" : "Not a test transfer",
+      message: on
+        ? `${d.player?.name ?? "This"} transfer stops counting in valuations, comparable transfers and Recent Transfers. The player, the money and the clubs' records don't change.`
+        : "It counts in valuations, comparable transfers and Recent Transfers again.",
+      reasonLabel: "Why?",
+      placeholder: on ? "e.g. Made while testing in October" : "e.g. Marked by mistake",
+      confirmLabel: on ? "Mark as test" : "Unmark",
+    });
+    if (reason) testMutation.mutate({ id: d.id, is_test: on, reason });
+  }
+
+  const isPending = advanceMutation.isPending || completeMutation.isPending || collapseMutation.isPending || testMutation.isPending;
 
   // Each of these moves a live deal for both clubs (completing it moves the
   // money and the player), so ask why first. Paperwork, the medical and the
@@ -367,6 +387,7 @@ export default function AdminDealsPage() {
                           <Badge variant={STATUS_VARIANT[d.status] ?? "neutral"}>
                             {d.status.replace("_", " ")}
                           </Badge>
+                          {d.is_test && <Badge variant="neutral" className="ml-1.5">Test</Badge>}
                         </td>
                         <td className="px-4 py-3">
                           <Badge variant={STAGE_VARIANT[d.stage] ?? "neutral"}>{d.stage}</Badge>
@@ -380,6 +401,15 @@ export default function AdminDealsPage() {
                             onCollapse={(id) => act("collapse", id)}
                             isPending={isPending}
                           />
+                          {d.status === "COMPLETED" && (
+                            <button
+                              disabled={isPending}
+                              onClick={() => markTest(d)}
+                              className="rounded bg-surface-inset px-2 py-1 text-xs text-text-secondary hover:text-text transition-colors disabled:opacity-40"
+                            >
+                              {d.is_test ? "Not a test" : "Mark as test"}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

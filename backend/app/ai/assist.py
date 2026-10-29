@@ -1143,8 +1143,9 @@ def _round_price(v: float) -> float:
 
 async def _comparables(db: AsyncSession, player: dict, exclude_player_id: uuid.UUID) -> list[dict]:
     """Completed permanent transfers of similar players in the last 18
-    months — public on Recent Transfers."""
+    months — public on Recent Transfers. Not demo or test transfers."""
     from app.deals.models import Deal, DealStatus, DealType
+    from app.demo.service import shared_deals as _shared_deals
     from app.players.models import Player, PlayerPosition
 
     if not player.get("position"):
@@ -1152,7 +1153,7 @@ async def _comparables(db: AsyncSession, player: dict, exclude_player_id: uuid.U
     since = datetime.now(timezone.utc) - timedelta(days=548)
     q = (
         select(Deal, Player).join(Player, Player.id == Deal.player_id)
-        .where(Deal.status == DealStatus.COMPLETED, Deal.deal_type == DealType.PERMANENT,
+        .where(await _shared_deals(db), Deal.status == DealStatus.COMPLETED, Deal.deal_type == DealType.PERMANENT,
                Deal.completed_at >= since, Deal.agreed_fee > 0,
                Player.position == PlayerPosition(player["position"]), Player.id != exclude_player_id)
     )
