@@ -29,6 +29,42 @@ function StatCard({
   );
 }
 
+// ── Real-world moves to review ───────────────────────────────────────────────
+
+interface MoveCounts {
+  mismatches: unknown[];
+  counts: { in_deal?: number; behind_transferx?: number };
+}
+
+/** Players API-Football has at another club than TransferX does, waiting for
+ *  staff to apply or confirm (Admin → Real-world moves). Hidden when none. */
+function RealWorldMovesCard() {
+  const { data } = useQuery<MoveCounts>({
+    queryKey: ["admin", "real-world-moves"],
+    queryFn: () => api.get<MoveCounts>("/admin/real-world-moves").then((r) => r.data),
+    staleTime: 5 * 60_000,
+  });
+  const n = data?.mismatches.length ?? 0;
+  if (!n) return null;
+  const held = data?.counts.in_deal ?? 0;
+  const behind = data?.counts.behind_transferx ?? 0;
+  return (
+    <Link
+      to="/admin/real-world-moves"
+      className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-warning-fill/10 px-6 py-4 no-underline ring-1 ring-warning-fill/30 hover:ring-warning-fill/60"
+    >
+      <span className="text-sm font-semibold text-text">
+        {n} real-world move{n === 1 ? "" : "s"} to review
+      </span>
+      <span className="text-sm text-text-secondary">
+        {[held && `${held} holding a deal`, behind && `${behind} playing on after a TransferX move`].filter(Boolean).join(" · ")
+          || "Players API-Football has at another club than TransferX does"}
+      </span>
+      <span className="ml-auto text-sm font-semibold text-accent">Review →</span>
+    </Link>
+  );
+}
+
 // ── Pipeline mini-bar ─────────────────────────────────────────────────────────
 
 function PipelineBar({ byStage }: { byStage: Record<string, number> }) {
@@ -339,6 +375,8 @@ export default function AdminDashboardPage() {
         <h1 className="text-2xl font-bold text-text">Admin Dashboard</h1>
         <p className="mt-1 text-sm text-text-muted">System overview — refreshes every 30s</p>
       </div>
+
+      <RealWorldMovesCard />
 
       {/* Row 1 — entity counts */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

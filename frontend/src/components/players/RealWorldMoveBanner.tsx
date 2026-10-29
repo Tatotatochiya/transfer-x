@@ -1,3 +1,6 @@
+import { Link } from "react-router-dom";
+
+import { useAuth } from "../../hooks/useAuth";
 import type { RealWorldMove } from "../../types/api";
 import { describeMove } from "../../lib/realWorld";
 import { formatDate } from "../../lib/utils";
@@ -9,6 +12,7 @@ import { formatDate } from "../../lib/utils";
  * correction.
  */
 export default function RealWorldMoveBanner({ move, isMyPlayer }: { move: RealWorldMove; isMyPlayer: boolean }) {
+  const { isSuperuser: isStaff } = useAuth();
   return (
     <div role="note" className="mb-3 flex items-start gap-3 rounded-[14px] bg-warning-fill/10 px-4 py-3 ring-1 ring-warning-fill/30">
       {move.real_club_logo ? (
@@ -26,7 +30,8 @@ export default function RealWorldMoveBanner({ move, isMyPlayer }: { move: RealWo
               {move.registered_club ?? "his club"} on {formatDate(move.transferx_move.on)}.
             </p>
             <p className="mt-0.5 text-text-secondary">
-              Staff only: the clubs aren&rsquo;t told. Confirm his registration in Admin → Real-world moves.
+              Staff only: the clubs aren&rsquo;t told.{" "}
+              <Link to="/admin/real-world-moves" className="font-semibold text-accent">Review in Admin → Real-world moves</Link>
             </p>
           </>
         ) : (
@@ -34,7 +39,9 @@ export default function RealWorldMoveBanner({ move, isMyPlayer }: { move: RealWo
             <p className="font-semibold text-text">Moved in real life: {describeMove(move)}</p>
             <p className="mt-0.5 text-text-secondary">
               On TransferX he&rsquo;s still registered to {move.registered_club ?? "his old club"}. Source: API-Football.
-              {isMyPlayer && " If this is right, TransferX staff can update his registration."}
+              {isStaff ? (
+                <>{" "}<Link to="/admin/real-world-moves" className="font-semibold text-accent">Apply or confirm it in Admin → Real-world moves</Link></>
+              ) : isMyPlayer && " If this is right, TransferX staff can update his registration."}
             </p>
           </>
         )}
