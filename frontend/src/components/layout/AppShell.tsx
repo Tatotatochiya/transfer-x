@@ -8,6 +8,7 @@ import GlobalSearch from "./GlobalSearch";
 import Avatar from "../ui/Avatar";
 import PushSoftAsk from "../notifications/PushSoftAsk";
 import ViewAsBanner from "./ViewAsBanner";
+import DemoControl, { DemoPlayAsBanner } from "../demo/DemoControl";
 import NamePrompt from "../account/NamePrompt";
 import { useAuthStore } from "../../store/auth";
 import { useClubDashboard } from "../../hooks/useClubDashboard";
@@ -53,6 +54,8 @@ export default function AppShell({ children }: AppShellProps) {
   return (
     <div className="min-h-screen bg-page">
       {viewedBy && <ViewAsBanner />}
+      {isAuthenticated && <DemoPlayAsBanner />}
+      {isAuthenticated && <DemoControl />}
       {/* Sticky top app bar — tablet and mobile only (<1024px), per
           docs/design-system/RESPONSIVE.md */}
       <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-surface px-3 lg:hidden">

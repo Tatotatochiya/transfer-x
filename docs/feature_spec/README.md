@@ -38,6 +38,7 @@ Statuses verified against the code and `CHANGELOG.md` on 2026-10-11. Once a spec
 | [`scheduled-data-refresh.md`](./scheduled-data-refresh.md): twice-daily API-Football refresh in the `stats-worker`, Admin Jobs and Errors, request health, Slack | Live 2026-10-11; Slack webhook pending |
 | [`injury-availability-risk-profile.md`](./injury-availability-risk-profile.md): an availability risk score per player | Not built as specified (availability is on the ledger and in the valuation) |
 | [`demo-scenario-generator.md`](./demo-scenario-generator.md): demo deals at every stage | Phase 1 built; M1–M4, S1–S2 not built |
+| [`demo-mode.md`](./demo-mode.md): try transfers on real data against house clubs, then reset | Step 1 built (runs, journal, reset, play-as) |
 
 **Implemented (kept for decisions, rules and deviations)**
 

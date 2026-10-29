@@ -153,6 +153,10 @@ class Settings(BaseSettings):
     # every club member's home until they switch to the full app (product
     # owner). LITE_DEFAULT_ON=false makes the full app the default again.
     lite_default_on: bool = True
+    # Demo mode (app/demo): testers can start a demo run, and staff can make
+    # unused clubs house clubs. Off by default; turning it off stops new runs
+    # and journaling, and leaves open runs to be reset.
+    demo_enabled: bool = False
 
 
 settings = Settings()

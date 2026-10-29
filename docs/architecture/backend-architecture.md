@@ -1,6 +1,6 @@
 ---
 title: "Backend Architecture"
-last_updated: 2026-10-11
+last_updated: 2026-10-27
 status: Active
 owner: "TODO — assign a Technical Owner"
 ---
@@ -55,6 +55,7 @@ Modules live under `backend/app/` and mostly follow `models.py` / `schemas.py` /
 | `dashboard` | The club's "waiting on you" aggregate; owns no models |
 | `notifications` | In-app notifications, email, the daily digest, Web Push with tiers, quiet hours and the morning summary |
 | `admin` | Staff administration, with every change audited with a reason |
+| `demo` | Demo mode: demo runs, the change journal (SQLAlchemy session events) and reset ([ADR 0009](./decisions/0009-demo-runs-journal-changes-reset-plays-them-back.md)) |
 | `audit` | The append-only audit log |
 
 **Data, AI and platform**
@@ -99,6 +100,7 @@ Modules live under `backend/app/` and mostly follow `models.py` / `schemas.py` /
 | `deadline_reminders` | 15 min | Deadline day: pushes each club with transfers open once at 24, 6 and 2 hours before the window closes (`app/deadline/`) |
 | `loan_lifecycle` | 24 h | Returns loans at expiry, warns two weeks ahead, converts obligations |
 | `monitoring_retention` | 24 h | Deletes monitoring data past retention |
+| `demo_auto_reset` | 24 h | Resets demo runs left open for 14 days (only with `DEMO_ENABLED`) |
 
 **In the `stats-worker` service.** `python -m app.jobs.daily_refresh` runs at 17:00 and 22:00 UK time:
 - current-season stats, injuries, match ratings and form;

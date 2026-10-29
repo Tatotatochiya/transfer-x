@@ -353,6 +353,17 @@ async def place_bid(
     club = await clubs_service.get_club_for_user(db, current_user.id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
+    # Demo mode (app/demo): a tester bids only on house clubs' listings, and
+    # nobody outside a demo bids on a listing made in one.
+    from app.demo import service as demo_service
+
+    _sale = await service.get_sale_by_id(db, sale_id)
+    try:
+        if _sale is not None:
+            await demo_service.guard_counterparty(db, current_user, club_id=_sale.seller_club_id)
+            await demo_service.guard_demo_row(db, "sales", {"id": _sale.id}, what="listing")
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
 
     # Phase 5 (D7): a MANAGER's bid at/above the club threshold is captured as
     # a pending approval — nothing reserved, nothing executed.

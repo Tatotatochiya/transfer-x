@@ -59,6 +59,20 @@ export interface User {
   has_club?: boolean;
   /** Set in a read-only "view as this club" session: the staff member looking. */
   viewed_by?: string | null;
+  /** Demo mode: whether this person may start a demo. */
+  can_demo?: boolean;
+  /** Demo mode, in a "play as this house club" tab: the tester playing it. */
+  demo_played_by?: string | null;
+}
+
+/** A demo run (backend app/demo): what reset would put back. */
+export interface DemoRun {
+  id: string;
+  status: "ACTIVE" | "RESET" | "KEPT";
+  started_at: string;
+  resets_on: string | null;
+  changes: number;
+  report: { undone?: number; kept?: number; skipped?: { table: string; pk: Record<string, unknown>; why: string }[] } | null;
 }
 
 export interface TokenResponse {

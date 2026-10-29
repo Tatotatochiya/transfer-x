@@ -97,6 +97,10 @@ export function useAuth() {
     isStaffAccount: !!user?.is_superuser && !user?.has_club,
     /** The staff member looking, in a read-only view-as tab. */
     viewedBy: user?.viewed_by ?? null,
+    /** Demo mode: may start a demo. */
+    canDemo: !!user?.can_demo,
+    /** In a "play as this house club" demo tab: the tester playing it. */
+    demoPlayedBy: user?.demo_played_by ?? null,
     isAgent: user?.user_type === "AGENT",
     isPlayer: user?.user_type === "PLAYER",
     login,

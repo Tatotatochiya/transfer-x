@@ -41,6 +41,12 @@ async def create_enquiry(
     _write: User = Depends(_market_write),
 ):
     club = await _club(db, current_user)
+    from app.demo.service import guard_counterparty
+
+    try:
+        await guard_counterparty(db, current_user, player_id=body.player_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     try:
         enquiry = await service.create_enquiry(
             db, player_id=body.player_id, from_club_id=club.id, body=body.body,

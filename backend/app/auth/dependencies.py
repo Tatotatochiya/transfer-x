@@ -46,7 +46,39 @@ async def get_current_user(
     from app.monitoring.context import set_user
 
     set_user(user.id)  # error tracking: which user a request's errors were for
+    await _join_demo_run(db, user, payload, request)
     return user
+
+
+async def _join_demo_run(db: AsyncSession, user: User, payload: dict, request: Request) -> None:
+    """Demo mode (app/demo): what this request changes is journaled under the
+    tester's active run, or under the run a "play as this house club" tab
+    was opened for (its token carries `demo`)."""
+    from app.config import settings
+
+    if not settings.demo_enabled:
+        return
+    from app.demo import service as demo_service
+    from app.demo.models import DemoRun
+
+    run_id = None
+    if payload.get("demo"):
+        run = await db.get(DemoRun, uuid.UUID(payload["demo"]))
+        if run is None or run.status != "ACTIVE":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                                detail="That demo has ended. Close this tab.")
+        run_id = run.id
+        request.state.demo_play_as_by = payload.get("act")
+    else:
+        run = await demo_service.active_run(db, user.id)
+        run_id = run.id if run is not None else None
+    info = db.sync_session.info
+    info.pop("demo_run_adopted", None)
+    if run_id is not None:
+        info["demo_run_id"] = run_id
+        request.state.demo_run_id = run_id
+    else:
+        info.pop("demo_run_id", None)
 
 
 async def get_current_superuser(

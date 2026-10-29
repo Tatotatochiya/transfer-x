@@ -25,6 +25,8 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(128), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_superuser: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Demo mode (app/demo): may start a demo run. Staff always may.
+    can_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     user_type: Mapped[UserType] = mapped_column(
         SAEnum(UserType, name="usertype"), nullable=False, default=UserType.CLUB
     )

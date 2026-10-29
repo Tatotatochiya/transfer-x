@@ -45,6 +45,8 @@ from app.dashboard import router as dashboard_router
 from app.board import router as board_router  # after the models it reads are registered
 from app.conversation import router as conversation_router
 from app.monitoring import router as monitoring_router
+from app.demo import journal as _demo_journal  # noqa: F401  (registers the demo change journal)
+from app.demo import router as demo_router
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +168,20 @@ async def _monitoring_retention_job() -> None:
     counts = await retention.purge()
     if any(counts.values()):
         logger.info("Monitoring retention: %s", counts)
+
+
+async def _demo_auto_reset_job() -> None:
+    """Demo mode (app/demo): reset demo runs left open for two weeks."""
+    from app.config import settings
+    from app.database import AsyncSessionLocal
+    from app.demo.service import auto_reset
+
+    if not settings.demo_enabled:
+        return
+    async with AsyncSessionLocal() as db:
+        n = await auto_reset(db)
+    if n:
+        logger.info("Demo auto-reset: %s run(s)", n)
 
 
 async def _execute_held_actions_job() -> None:
@@ -340,6 +356,10 @@ async def lifespan(app: FastAPI):
         next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5),
     )
     _scheduler.add_job(
+        _demo_auto_reset_job, "interval", hours=24, id="demo_auto_reset",
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=7),
+    )
+    _scheduler.add_job(
         _client_alerts_job, "interval", hours=6, id="client_alerts",
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
     )
@@ -478,3 +498,4 @@ app.include_router(approvals_router.router, prefix="")
 app.include_router(dashboard_router.router, prefix="")
 app.include_router(board_router.router)
 app.include_router(conversation_router.router)
+app.include_router(demo_router.router)

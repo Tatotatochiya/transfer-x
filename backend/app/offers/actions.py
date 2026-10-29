@@ -161,6 +161,14 @@ async def create_offer(db: AsyncSession, user: User, club, body: OfferCreateRequ
     if not user.is_superuser and not await window_service.is_transfer_allowed(db):
         raise OfferActionError(403, "Transfer window is closed. Offers cannot be made outside of a transfer window.")
 
+    # Demo mode (app/demo): in a tester's demo, only a house club can be on the other side.
+    from app.demo.service import guard_counterparty
+
+    try:
+        await guard_counterparty(db, user, club_id=body.to_club_id, player_id=body.player_id)
+    except PermissionError as exc:
+        raise OfferActionError(409, str(exc))
+
     # Guard: one active offer per (buyer, player) at a time
     existing = await service.get_active_offer_for_buyer(db, body.player_id, club.id)
     if existing:

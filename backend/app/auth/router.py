@@ -388,6 +388,15 @@ async def me(
 
         staff = await db.get(User, _uuid.UUID(staff_id))
         resp.viewed_by = staff.display_label if staff else "TransferX staff"
+    from app.demo import service as demo_service
+
+    resp.can_demo = demo_service.can_demo(current_user)
+    tester_id = getattr(request.state, "demo_play_as_by", None)
+    if tester_id:
+        import uuid as _uuid
+
+        tester = await db.get(User, _uuid.UUID(tester_id))
+        resp.demo_played_by = tester.display_label if tester else "a tester"
     return resp
 
 
