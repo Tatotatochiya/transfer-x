@@ -1,7 +1,7 @@
 ---
 title: "Demo Mode"
-last_updated: 2026-10-27
-status: Step 1 built 2026-10-27 (runs, journal, reset, house-club switch, play-as); house clubs acting on their own not built
+last_updated: 2026-10-29
+status: Steps 1–2 built (runs, journal, reset, house clubs, play-as; demo and test deals kept out of shared figures); house clubs acting on their own not built
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -31,6 +31,12 @@ Not the same as the [demo scenario generator](./demo-scenario-generator.md), whi
 
 The whole feature is off unless the server sets `DEMO_ENABLED=true`. Off, nobody can start a demo and nothing is journaled; open runs wait to be reset.
 
+## Kept out of shared figures
+
+Added 2026-10-29. While a run is open, the deals it made don't count in what everyone sees: valuations (including the 22:00 refresh), Ask TransferX's comparable transfers and recent-transfers answers, Recent Transfers and its analytics. A player in an open demo's deal isn't checked for real-world moves either: the demo moved him, not real football. Keeping a run makes its deals count; resetting removes them. All of these use one filter, `demo.service.shared_deals`.
+
+**Test transfers.** Transfers made while trying TransferX before demo mode existed can't be reset, but staff can mark one as a test in Admin → Deals (with a reason, audited: `deals.is_test`, migration `0105`). A test transfer is left out of the same figures. Nothing else changes: the player, the money and the clubs' records stay as they are. On 2026-10-29 production had four completed transfers, all between the clubs the team tests with: Saka and Rice (Arsenal → Liverpool), Havertz (Arsenal → Chelsea) and Acheampong (Chelsea → Liverpool).
+
 ## What reset can't undo
 
 - Emails and pushes already delivered.
@@ -47,14 +53,13 @@ The whole feature is off unless the server sets `DEMO_ENABLED=true`. Off, nobody
 | `GET /admin/demo` | Runs with their reports, testers, every club and whether it's in use |
 | `PATCH /admin/demo/clubs/{id}`, `PATCH /admin/demo/testers/{id}` | House club on or off (and personality); tester on or off. Reason required |
 | `POST /admin/demo/runs/{id}/reset` | Reset anyone's run |
+| `POST /admin/deals/{id}/test` | Mark a deal as a test transfer, or not. Reason required |
 
 Code: `backend/app/demo/` (`journal.py`, `service.py`, `router.py`), migration `0104`.
 
 ## Not built yet
 
-1. **Demo data kept out of shared figures** while a run is open: valuations (including the 22:00 refresh), Ask TransferX's comparable transfers, the real-world moves check, market activity. Until then, a completed demo transfer counts in them until it's reset.
-2. **House clubs acting on their own:** answering bids by our valuation and their personality, and doing their side of a deal, at an instant or realistic speed.
-3. **House clubs as buyers** of what a tester lists, and "make them accept / counter / reject" buttons.
-4. **Production's earlier test transfers** (e.g. Rice to Liverpool) predate the journal and can't be reset; they're to be listed and marked.
+1. **House clubs acting on their own:** answering bids by our valuation and their personality, and doing their side of a deal, at an instant or realistic speed.
+2. **House clubs as buyers** of what a tester lists, and "make them accept / counter / reject" buttons.
 
 > **TODO:** a real club can still make an offer *to a tester's club* during a demo, outside it; only bids on demo listings are refused. Fine while testers' clubs aren't used by anyone else.

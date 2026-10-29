@@ -345,11 +345,14 @@ async def build_comparables_index(db: AsyncSession, today: date | None = None) -
     since = today - timedelta(days=COMPS_LOOKBACK_DAYS)
 
     events: list[tuple[Player, date, float, str, str, str | None, str | None]] = []
+    from app.demo.service import shared_deals
+
     platform = (
         await db.execute(
             select(Deal, Player)
             .join(Player, Player.id == Deal.player_id)
             .where(
+                await shared_deals(db),  # not demo or test transfers
                 Deal.status == DealStatus.COMPLETED,
                 Deal.deal_type == DealType.PERMANENT,
                 Deal.agreed_fee > 0,

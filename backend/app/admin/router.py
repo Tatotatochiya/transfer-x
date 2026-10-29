@@ -154,6 +154,33 @@ async def admin_record_deal_medical(deal_id: uuid.UUID, body: DealMedicalRequest
         db, current_user, deal_id, outcome=body.outcome, notes=body.notes, reason=body.reason))
 
 
+class DealTestRequest(AdminReasonRequest):
+    is_test: bool
+
+
+@router.post("/deals/{deal_id}/test")
+async def admin_mark_deal_test(deal_id: uuid.UUID, body: DealTestRequest,
+                               current_user: User = Depends(get_current_superuser),
+                               db: AsyncSession = Depends(get_db)) -> dict:
+    """Mark a deal as a test transfer, or not. A test is left out of
+    valuations, comparable transfers and Recent Transfers; nothing else about
+    it changes (it isn't undone). Audited with the reason."""
+    from app.deals.models import Deal
+
+    deal = await db.get(Deal, deal_id)
+    if deal is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deal not found")
+    deal.is_test = body.is_test
+    await admin_audit.record(
+        db, current_user, "deal.test_marked" if body.is_test else "deal.test_unmarked", entity_type="DEAL",
+        entity_id=deal.id, reason=body.reason,
+        description=("Marked a deal as a test transfer" if body.is_test else "Unmarked a test transfer"),
+        details={"is_test": body.is_test, "status": deal.status.value},
+    )
+    await db.commit()
+    return {"id": str(deal.id), "is_test": deal.is_test}
+
+
 # ── Real-world moves TransferX does not have yet ─────────────────────────────
 
 

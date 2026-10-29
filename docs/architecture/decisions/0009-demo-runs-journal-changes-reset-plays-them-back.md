@@ -26,5 +26,5 @@ Undoing each feature's effects in that feature's code would mean every module le
 - Writes during a demo cost an extra insert per changed row. With no run active, the hooks do nothing more than a cached "any runs?" check every 5 seconds per process.
 - Reset is exact for anything the demo alone touched. A row real activity also changed is reported, not fixed: staff decide.
 - Effects outside the database (emails, pushes, model calls) can't be undone.
-- Shared figures that read completed deals (valuations, comparables) still see demo deals until reset; leaving them out is the next step.
+- Shared figures that read completed deals (valuations, comparables, Recent Transfers) leave out an open run's deals through one filter (`demo.service.shared_deals`, added 2026-10-29). A new reader of completed deals must use it too.
 - A transaction that only changes non-demo rows before touching a demo row is recorded only from that point. The safety check stops reset damaging anything it missed.

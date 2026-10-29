@@ -225,3 +225,39 @@ async def guard_demo_row(db: AsyncSession, table: str, pk: dict, *, what: str) -
                DemoChange.pk == journal.pk_key(pk)).limit(1))).first()
     if row is not None and db.sync_session.info.get("demo_run_id") != row[0]:
         raise PermissionError(f"This {what} is part of someone's demo, so it can't be used outside it.")
+
+
+# ── Keeping demo and test deals out of shared figures ────────────────────────
+
+
+async def active_demo_ids(db: AsyncSession, table: str) -> set[uuid.UUID]:
+    """Ids of the rows active demo runs inserted into `table` (single-column
+    `id` keys). Empty with demo mode off."""
+    from app.config import settings
+
+    if not settings.demo_enabled:
+        return set()
+    keys = (await db.execute(
+        select(DemoChange.pk).join(DemoRun, DemoRun.id == DemoChange.run_id)
+        .where(DemoRun.status == "ACTIVE", DemoChange.op == "insert", DemoChange.table_name == table))).scalars().all()
+    out = set()
+    for key in keys:
+        raw = json.loads(key).get("id")
+        try:
+            out.add(journal.dec(raw) if isinstance(raw, dict) else uuid.UUID(str(raw)))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+async def shared_deals(db: AsyncSession):
+    """A condition on Deal for figures everyone sees (valuations, comparable
+    transfers, Recent Transfers): leaves out deals an open demo made and
+    deals staff marked as tests."""
+    from sqlalchemy import true
+
+    from app.deals.models import Deal
+
+    demo = await active_demo_ids(db, "deals")
+    cond = Deal.is_test.is_(False)
+    return cond & Deal.id.not_in(demo) if demo else cond & true()

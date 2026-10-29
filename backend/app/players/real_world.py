@@ -137,6 +137,16 @@ async def check(db: AsyncSession, players, *, today: date | None = None) -> dict
         select(Contract.player_id, Contract.start_date).where(Contract.player_id.in_(ids), Contract.is_active.is_(True))
     )).all())
     moved_in, open_deals = await _transferx_deals(db, ids)
+    # A player in an open demo's deal isn't checked until it's reset or kept:
+    # the demo moved him, not real football (app/demo).
+    from app.demo.service import active_demo_ids
+
+    demo_deals = await active_demo_ids(db, "deals")
+    if demo_deals:
+        from app.deals.models import Deal
+
+        in_demo = set((await db.execute(select(Deal.player_id).where(Deal.id.in_(demo_deals)))).scalars())
+        players = [p for p in players if p.id not in in_demo]
 
     countries = await _countries(db)
     stats = (await db.execute(select(PlayerStats).where(

@@ -390,6 +390,10 @@ async def list_transfer_activity(
         )
         .where(Deal.status == DealStatus.COMPLETED)
     )
+    # Not demo or test transfers: this feed is public (app/demo).
+    from app.demo.service import shared_deals
+
+    q = q.where(await shared_deals(db))
     if position:
         q = q.join(Player, Deal.player_id == Player.id).where(Player.position == position)
     if is_auction is not None:
@@ -421,6 +425,10 @@ async def get_transfer_analytics(db: AsyncSession) -> dict:
         selectinload(Deal.sale),
     ]
     cutoff_30d = datetime.now(timezone.utc) - timedelta(days=30)
+    # Demo and test deals aren't market figures (app/demo).
+    from app.demo.service import shared_deals
+
+    shared = await shared_deals(db)
 
     # ── Completed aggregates ───────────────────────────────────────────────────
     agg = await db.execute(
@@ -428,7 +436,7 @@ async def get_transfer_analytics(db: AsyncSession) -> dict:
             func.count().label("total_count"),
             func.coalesce(func.sum(Deal.agreed_fee), 0).label("total_spend"),
             func.avg(Deal.agreed_fee).label("avg_fee"),
-        ).where(Deal.status == DealStatus.COMPLETED)
+        ).where(Deal.status == DealStatus.COMPLETED, shared)
     )
     agg_row = agg.one()
 
@@ -438,7 +446,7 @@ async def get_transfer_analytics(db: AsyncSession) -> dict:
             func.count().label("cnt"),
             func.coalesce(func.sum(Deal.agreed_fee), 0).label("spend"),
         ).where(
-            Deal.status == DealStatus.COMPLETED,
+            Deal.status == DealStatus.COMPLETED, shared,
             Deal.completed_at >= cutoff_30d,
         )
     )
@@ -447,7 +455,7 @@ async def get_transfer_analytics(db: AsyncSession) -> dict:
     # Highest fee deal
     highest_result = await db.execute(
         select(Deal).options(*load_opts)
-        .where(Deal.status == DealStatus.COMPLETED)
+        .where(Deal.status == DealStatus.COMPLETED, shared)
         .order_by(Deal.agreed_fee.desc())
         .limit(1)
     )
@@ -456,7 +464,7 @@ async def get_transfer_analytics(db: AsyncSession) -> dict:
     # Top 5 transfers
     top_result = await db.execute(
         select(Deal).options(*load_opts)
-        .where(Deal.status == DealStatus.COMPLETED)
+        .where(Deal.status == DealStatus.COMPLETED, shared)
         .order_by(Deal.agreed_fee.desc())
         .limit(5)
     )
@@ -465,7 +473,7 @@ async def get_transfer_analytics(db: AsyncSession) -> dict:
     # Most active buyer
     buyer_result = await db.execute(
         select(Deal.buyer_club_id, func.count().label("cnt"), func.sum(Deal.agreed_fee).label("spend"))
-        .where(Deal.status == DealStatus.COMPLETED)
+        .where(Deal.status == DealStatus.COMPLETED, shared)
         .group_by(Deal.buyer_club_id)
         .order_by(func.count().desc())
         .limit(1)
@@ -481,7 +489,7 @@ async def get_transfer_analytics(db: AsyncSession) -> dict:
     # Most active seller
     seller_result = await db.execute(
         select(Deal.seller_club_id, func.count().label("cnt"), func.sum(Deal.agreed_fee).label("spend"))
-        .where(Deal.status == DealStatus.COMPLETED, Deal.seller_club_id.is_not(None))
+        .where(Deal.status == DealStatus.COMPLETED, shared, Deal.seller_club_id.is_not(None))
         .group_by(Deal.seller_club_id)
         .order_by(func.count().desc())
         .limit(1)
@@ -498,7 +506,7 @@ async def get_transfer_analytics(db: AsyncSession) -> dict:
     pos_result = await db.execute(
         select(Player.position, func.count().label("cnt"), func.coalesce(func.sum(Deal.agreed_fee), 0).label("spend"))
         .join(Player, Deal.player_id == Player.id)
-        .where(Deal.status == DealStatus.COMPLETED)
+        .where(Deal.status == DealStatus.COMPLETED, shared)
         .group_by(Player.position)
         .order_by(func.count().desc())
     )
@@ -515,14 +523,14 @@ async def get_transfer_analytics(db: AsyncSession) -> dict:
             ).label("with_sale"),
         ).select_from(
             Deal.__table__.outerjoin(Sale.__table__, Deal.sale_id == Sale.id)
-        ).where(Deal.status == DealStatus.COMPLETED)
+        ).where(Deal.status == DealStatus.COMPLETED, shared)
     )
     # Simpler: count auction deals by joining sale
     auction_result = await db.execute(
         select(func.count())
         .select_from(Deal)
         .join(Sale, Deal.sale_id == Sale.id)
-        .where(Deal.status == DealStatus.COMPLETED, Sale.sale_type == SaleType.AUCTION)
+        .where(Deal.status == DealStatus.COMPLETED, shared, Sale.sale_type == SaleType.AUCTION)
     )
     auction_count = auction_result.scalar_one()
     offer_count = (agg_row.total_count or 0) - auction_count
@@ -532,13 +540,13 @@ async def get_transfer_analytics(db: AsyncSession) -> dict:
         select(
             func.count().label("total"),
             func.coalesce(func.sum(Deal.agreed_fee), 0).label("fees"),
-        ).where(Deal.status == DealStatus.IN_PROGRESS)
+        ).where(Deal.status == DealStatus.IN_PROGRESS, shared)
     )
     ongoing_row = ongoing_agg.one()
 
     stage_result = await db.execute(
         select(Deal.stage, func.count().label("cnt"))
-        .where(Deal.status == DealStatus.IN_PROGRESS)
+        .where(Deal.status == DealStatus.IN_PROGRESS, shared)
         .group_by(Deal.stage)
     )
     by_stage = {row.stage.value: row.cnt for row in stage_result}
