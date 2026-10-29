@@ -201,7 +201,7 @@ describe("Sidebar", () => {
   it("gives a TransferX staff account the admin pages, not a club's nav", async () => {
     auth.value = { ...auth.value, hasClub: false, isStaffAccount: true };
     renderSidebar("/admin");
-    for (const label of ["Overview", "Users", "Clubs", "Audit log", "Health", "Verification"]) {
+    for (const label of ["Overview", "Users", "Clubs", "Real-world moves", "Audit log", "Health", "Verification"]) {
       expect(screen.getByRole("link", { name: new RegExp(`^${label}`) })).toBeInTheDocument();
     }
     expect(screen.queryByRole("link", { name: /^My Club/ })).not.toBeInTheDocument();

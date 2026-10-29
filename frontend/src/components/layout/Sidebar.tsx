@@ -70,6 +70,7 @@ const STAFF_GROUPS: NavGroup[] = [
       { label: "Users",      to: "/admin/users",   icon: "user" },
       { label: "Clubs",      to: "/admin/clubs",   icon: "shield" },
       { label: "Players",    to: "/admin/players", icon: "users" },
+      { label: "Real-world moves", to: "/admin/real-world-moves", icon: "arrow-right-left" },
       { label: "Sales",      to: "/admin/sales",   icon: "tag" },
       { label: "Deals",      to: "/admin/deals",   icon: "arrow-right-left" },
       { label: "Offers",     to: "/admin/offers",  icon: "send" },
