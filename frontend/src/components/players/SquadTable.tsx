@@ -313,11 +313,11 @@ function PlayerRow({
               <button
                 type="button"
                 disabled={!!listBlockedReason}
-                title={listBlockedReason ?? `List ${player.name} for sale`}
+                title={listBlockedReason ?? `Sell ${player.name}: list him for sale`}
                 onClick={() => onList({ id: player.id, name: player.name })}
                 className="rounded-lg bg-surface px-2.5 py-[3px] text-[13px] font-semibold text-text-secondary ring-1 ring-inset ring-input-border hover:bg-surface-inset disabled:cursor-not-allowed disabled:opacity-50"
               >
-                List
+                Sell
               </button>
             )
           ) : flag ? (

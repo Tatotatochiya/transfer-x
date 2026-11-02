@@ -351,7 +351,24 @@ export default function MyClubPage() {
             </p>
           )}
         </div>
-        <div className="flex shrink-0 gap-2 whitespace-nowrap">
+        <div className="flex shrink-0 flex-wrap gap-2 whitespace-nowrap">
+          {/* Buying and selling first: they're what the club is here to do. */}
+          {canMarketWrite && (
+            <>
+              <Button variant="primary" size="sm" onClick={() => navigate("/players/market")}>
+                Buy a player
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={!!listClosedReason}
+                title={listClosedReason ?? "List one of your players for sale"}
+                onClick={() => setListing({})}
+              >
+                Sell a player
+              </Button>
+            </>
+          )}
           {can("TEAM_MANAGE") && (
             <Button variant="secondary" size="sm" onClick={() => navigate("/club/team")}>
               Team

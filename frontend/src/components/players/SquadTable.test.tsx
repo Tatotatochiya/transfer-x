@@ -80,7 +80,7 @@ describe("SquadTable", () => {
       />,
     );
     expect(screen.getByText("On loan")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "List" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sell" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "+ set" })).not.toBeInTheDocument();
   });
 
@@ -88,7 +88,7 @@ describe("SquadTable", () => {
     renderWithProviders(
       <SquadTable players={[SQUAD[0]]} showContractDetails onList={vi.fn()} onUnlist={vi.fn()} listBlockedReason="The window is closed." />,
     );
-    const list = screen.getByRole("button", { name: "List" });
+    const list = screen.getByRole("button", { name: "Sell" });
     expect(list).toBeDisabled();
     expect(list).toHaveAttribute("title", "The window is closed.");
   });
