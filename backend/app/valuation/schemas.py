@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.valuation.constants import DivergenceBand, ValuationConfidence
 
@@ -31,6 +31,17 @@ class ValuationDivergence(BaseModel):
     band: DivergenceBand
 
 
+class LastTransfer(BaseModel):
+    fee_gbp: float
+    fee_display: str | None = None  # as reported, e.g. "€ 116.6M"; None for a TransferX deal
+    date: str
+    from_club: str | None = Field(None, alias="from")
+    to_club: str | None = Field(None, alias="to")
+    source: str  # "API-Football" | "TransferX"
+
+    model_config = {"populate_by_name": True}
+
+
 class ValuationResponse(BaseModel):
     player_id: uuid.UUID
     fair_value: Decimal
@@ -53,6 +64,9 @@ class ValuationResponse(BaseModel):
     drivers: list[ValuationDriver] = []
     comparables_used: int | None = None
     divergence: ValuationDivergence | None = None
+    # What a club last paid for him (players/last_fee.py), shown beside the
+    # model's value so it can be checked against a real figure.
+    last_transfer: LastTransfer | None = None
 
     model_config = {"from_attributes": True}
 

@@ -76,7 +76,8 @@ function ShortlistButton({ p }: { p: LiteSearchResult }) {
 function PlayerRow({ p }: { p: LiteSearchResult }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const facts = [p.club ?? (p.state === "free_agent" ? "Free agent" : null), p.position && POSITION_LABEL[p.position], p.age != null && `age ${p.age}`]
+  const facts = [p.club ?? (p.state === "free_agent" ? "Free agent" : null), p.position && POSITION_LABEL[p.position], p.age != null && `age ${p.age}`,
+    p.last_fee && `last sold for ${liteMoney(p.last_fee.fee_gbp)} (${new Date(p.last_fee.date).getFullYear()})`]
     .filter(Boolean).join(" · ");
   const price = p.state === "buyable" && p.price != null
     ? `${liteMoney(p.price)}${p.price_basis === "listed" ? "" : " (our estimate)"}`

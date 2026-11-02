@@ -363,6 +363,9 @@ async def _resolve_for_club(db: AsyncSession, club, rows) -> list[dict]:
         select(Club.id, Club.name).where(Club.id.in_({o for o in owner_of.values() if o}))
     )).all())
     shortlisted = await _shortlisted(db, club.id, ids)
+    from app.players.last_fee import last_transfer_fees
+
+    last_fees = await last_transfer_fees(db, ids)
 
     found = []
     for p in rows:
@@ -395,6 +398,9 @@ async def _resolve_for_club(db: AsyncSession, club, rows) -> list[dict]:
             "price_basis": basis if state in ("buyable", "free_agent") else None,
             "offer_id": str(offer_id) if offer_id else None, "note": note,
             "shortlisted": p.id in shortlisted,
+            # What a club last paid for him: a real figure beside our price.
+            "last_fee": ({"fee_gbp": last_fees[p.id]["fee_gbp"], "date": last_fees[p.id]["date"]}
+                         if p.id in last_fees else None),
         })
     return found
 

@@ -50,6 +50,8 @@ export interface LiteSearchResult {
   offer_id: string | null;
   note: string | null;
   shortlisted: boolean;
+  /** What a club last paid for him. */
+  last_fee?: { fee_gbp: number; date: string } | null;
   /** Targets only: the club's shortlists he is on (none: marked as of interest). */
   on_shortlists?: string[];
 }

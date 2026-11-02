@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 
 import { parseValuation } from "../../../lib/money";
 import { formatCurrency } from "../../../lib/utils";
-import type { FairValueSignal, PlayerDetail } from "../../../types/api";
+import type { FairValueSignal, LastTransfer, PlayerDetail } from "../../../types/api";
 
 /**
  * The facts strip (HANDOFF.md §4): model value, market value, contract, wage,
@@ -43,8 +43,10 @@ function Cell({ label, value, sub, valueClass = "text-text" }: { label: string; 
 const SOURCE: Record<string, string> = { TRANSFERMARKT: "Transfermarkt", ETV: "Estimated", MANUAL: "Club", CAPOLOGY: "Capology" };
 
 export default function FactsStrip({
-  player, fairValue, form, isMyPlayer, valuationPending, onSaveValuation,
+  player, fairValue, form, isMyPlayer, valuationPending, onSaveValuation, lastTransfer,
 }: {
+  /** What a club last paid for him: a real figure beside the model's. */
+  lastTransfer?: LastTransfer | null;
   player: PlayerDetail;
   fairValue: FairValueSignal | null;
   form: { score: number | null; trend: number | null };
@@ -73,6 +75,11 @@ export default function FactsStrip({
     <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] overflow-hidden rounded-[10px] bg-surface ring-1 ring-border">
       <Cell label="Model value" value={fairValue ? money(fairValue.fair_value) : "—"}
         sub={fairValue ? `Range ${money(fairValue.fair_value_low)}–${money(fairValue.fair_value_high)}` : "Not enough recent data"} />
+      <Cell label="Last transfer" value={lastTransfer ? money(lastTransfer.fee_gbp) : "—"}
+        sub={lastTransfer
+          ? [monthYear(lastTransfer.date), lastTransfer.from && lastTransfer.to ? `${lastTransfer.from} → ${lastTransfer.to}` : null]
+            .filter(Boolean).join(" · ")
+          : "No fee on record"} />
       <Cell label="Market value" value={money(player.market_value, player.market_value_currency)}
         sub={player.market_value != null ? [SOURCE[player.valuation_source ?? ""] ?? null,
           player.valuation_as_of ? monthYear(player.valuation_as_of) : null].filter(Boolean).join(" · ") || undefined : undefined} />

@@ -66,6 +66,12 @@ describe("Lite Buy: search by name", () => {
     expect(screen.queryByRole("heading", { name: "Your shortlist" })).not.toBeInTheDocument();
   });
 
+  it("says what a club last paid for him", () => {
+    state.search = { players: [row({ player_id: "r", name: "D. Rice", last_fee: { fee_gbp: 99_700_000, date: "2023-07-15" } })] };
+    page("/lite/buy?q=rice");
+    expect(screen.getByRole("listitem")).toHaveTextContent("last sold for £99.7m (2023)");
+  });
+
   it("puts a player on the shortlist from the search", () => {
     state.search = { players: [row({ player_id: "b", name: "Buyable Ben" })] };
     page("/lite/buy?q=ben");
