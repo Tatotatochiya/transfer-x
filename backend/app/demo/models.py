@@ -22,6 +22,8 @@ class DemoRun(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ended_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    # How fast house clubs answer in this run (demo/house.py): instant | realistic.
+    speed: Mapped[str] = mapped_column(String(20), nullable=False, default="instant", server_default="instant")
     # What reset did: {"undone": n, "skipped": [{"table", "pk", "why"}]}.
     report: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 

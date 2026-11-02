@@ -184,6 +184,16 @@ async def _demo_auto_reset_job() -> None:
         logger.info("Demo auto-reset: %s run(s)", n)
 
 
+async def _demo_house_clubs_job() -> None:
+    """Demo mode: house clubs answer offers and do their side of deals in open demos (demo/house.py)."""
+    from app.config import settings
+    from app.database import AsyncSessionLocal
+    from app.demo.house import tick
+
+    if settings.demo_enabled:
+        await tick(AsyncSessionLocal)
+
+
 async def _execute_held_actions_job() -> None:
     """Lite L6 (ADR 0007): send the held actions whose undo window has
     closed, each in its own transaction, as the user who confirmed it."""
@@ -354,6 +364,10 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(
         _monitoring_retention_job, "interval", hours=24, id="monitoring_retention",
         next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5),
+    )
+    _scheduler.add_job(
+        _demo_house_clubs_job, "interval", seconds=5, id="demo_house_clubs", max_instances=1,
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=15),
     )
     _scheduler.add_job(
         _demo_auto_reset_job, "interval", hours=24, id="demo_auto_reset",

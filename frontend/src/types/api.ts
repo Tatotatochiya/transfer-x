@@ -72,6 +72,8 @@ export interface DemoRun {
   started_at: string;
   resets_on: string | null;
   changes: number;
+  /** How fast house clubs answer: on the next tick, or after a few minutes. */
+  speed?: "instant" | "realistic";
   report: { undone?: number; kept?: number; skipped?: { table: string; pk: Record<string, unknown>; why: string }[] } | null;
 }
 

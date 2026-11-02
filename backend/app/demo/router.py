@@ -48,6 +48,27 @@ async def start_run(
     return await service.describe(db, run)
 
 
+class SpeedRequest(BaseModel):
+    speed: str
+
+
+@router.patch("/demo/run")
+async def set_speed(
+    body: SpeedRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """How fast house clubs answer in your demo: instant, or realistic (a few minutes)."""
+    from app.demo.house import SPEEDS
+
+    if body.speed not in SPEEDS:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Speed is instant or realistic.")
+    run = await _own_run(db, current_user)
+    run.speed = body.speed
+    await db.commit()
+    return await service.describe(db, run)
+
+
 @router.post("/demo/run/reset")
 async def reset_run(
     current_user: User = Depends(get_current_user),
