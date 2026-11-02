@@ -114,6 +114,16 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
             )}
           </div>
 
+          {fairValueSignal?.last_transfer && (
+            <div className="flex items-baseline gap-x-1.5" title={`Last transfer: ${fairValueSignal.last_transfer.from ?? "?"} → ${fairValueSignal.last_transfer.to ?? "?"}${fairValueSignal.last_transfer.fee_display ? ` (${fairValueSignal.last_transfer.fee_display})` : ""}`}>
+              <span className="w-[46px] shrink-0 text-[13px] text-text-muted">last fee</span>
+              <span className="text-[13px] tabular-nums text-text-secondary">
+                {formatCompactCurrency(fairValueSignal.last_transfer.fee_gbp)}
+                <span className="ml-1 text-text-muted">{new Date(fairValueSignal.last_transfer.date).getFullYear()}</span>
+              </span>
+            </div>
+          )}
+
           {asking != null && (
             <div className="flex flex-wrap items-baseline gap-x-1.5">
               <span className="w-[46px] shrink-0 text-[13px] text-text-muted">asking</span>

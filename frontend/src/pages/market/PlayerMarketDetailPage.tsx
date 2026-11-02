@@ -774,6 +774,7 @@ export default function PlayerMarketDetailPage() {
         isMyPlayer={isMyPlayer}
         valuationPending={valuationMutation.isPending}
         onSaveValuation={(v) => valuationMutation.mutate(v)}
+        lastTransfer={ledger?.last_transfer ?? null}
       />
 
       {/* Body: the ledger, and the panels for this viewer */}

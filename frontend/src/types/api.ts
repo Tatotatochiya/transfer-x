@@ -538,6 +538,17 @@ export interface ValuationDivergence {
   band: ValuationBand;
 }
 
+/** A player's last permanent transfer with a known fee: API-Football's or a TransferX deal. */
+export interface LastTransfer {
+  fee_gbp: number;
+  /** As reported, e.g. "€ 116.6M"; null for a TransferX deal. */
+  fee_display: string | null;
+  date: string;
+  from: string | null;
+  to: string | null;
+  source: "API-Football" | "TransferX";
+}
+
 export interface FairValueSignal {
   player_id: string;
   fair_value: number;
@@ -553,6 +564,8 @@ export interface FairValueSignal {
   minutes: number | null;
   as_of: string;
   breakdown: ValuationBreakdownEntry[];
+  /** What a club last paid for him, beside the model's value. */
+  last_transfer?: LastTransfer | null;
   /** market-v2 only; empty on boxscore-v1 valuations. */
   drivers?: ValuationDriver[];
   comparables_used?: number | null;
@@ -1953,6 +1966,8 @@ export interface PlayerLedger {
   form: { score: number | null; trend: number | null; recent: LedgerRecentGame[] };
   /** API-Football has him at another club than the one TransferX has him registered to. */
   real_world?: RealWorldMove | null;
+  /** What a club last paid for him (backend players/last_fee.py). */
+  last_transfer?: LastTransfer | null;
 }
 
 /** A real-world move TransferX doesn't have yet (backend players/real_world.py). */

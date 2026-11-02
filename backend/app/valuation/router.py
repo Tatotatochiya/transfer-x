@@ -18,7 +18,7 @@ from app.players import service as players_service
 from app.players.models import Player, PlayerVisibility
 from app.valuation import service
 from app.valuation.constants import BATCH_MAX_IDS
-from app.valuation.schemas import ValuationBatchResponse, ValuationResponse
+from app.valuation.schemas import LastTransfer, ValuationBatchResponse, ValuationResponse
 
 logger = logging.getLogger(__name__)
 
@@ -75,14 +75,16 @@ async def batch_valuations(
     # `divergence` and both were dead. One extra query for the whole page, never
     # one per row.
     references = await service.get_reference_prices(db, visible)
-    return ValuationBatchResponse(
-        valuations={
-            str(player_id): service.build_valuation_response(
-                row, reference_price=references.get(player_id)
-            )
-            for player_id, row in rows.items()
-        }
-    )
+    from app.players.last_fee import last_transfer_fees
+
+    fees = await last_transfer_fees(db, list(rows))
+    out = {}
+    for player_id, row in rows.items():
+        resp = service.build_valuation_response(row, reference_price=references.get(player_id))
+        if player_id in fees:
+            resp.last_transfer = LastTransfer(**fees[player_id])
+        out[str(player_id)] = resp
+    return ValuationBatchResponse(valuations=out)
 
 
 @router.get("/players/{player_id}", response_model=ValuationResponse)
@@ -101,7 +103,12 @@ async def get_player_valuation(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="No model valuation for this player"
         )
-    return service.build_valuation_response(row, reference_price=reference_price)
+    resp = service.build_valuation_response(row, reference_price=reference_price)
+    from app.players.last_fee import last_transfer_fees
+
+    fee = (await last_transfer_fees(db, [player_id])).get(player_id)
+    resp.last_transfer = LastTransfer(**fee) if fee else None
+    return resp
 
 
 @router.post("/players/{player_id}/recompute", response_model=ValuationResponse)
