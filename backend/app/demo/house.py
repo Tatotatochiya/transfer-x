@@ -18,7 +18,10 @@ rival bidder):
   account) proposes a 5% commission paid by the buyer; the player (if he
   has no account in use) agrees personal terms; the club signs the
   transfer agreement.
-- **A player the tester lists** (not an auction): two house clubs bid, at
+- **A player the tester lists:** in an auction, two house clubs bid against
+  each other, one bid per tick, each about a third of the way from the best
+  bid to its limit (its top share of his price); the tester accepts a bid as usual. Otherwise two house
+  clubs bid, at
   their opening share of his price (BUYER). A tester's counter is accepted up
   to the club's top share, met halfway otherwise, and after MAX_COUNTERS
   counters the club walks away. Buying, it does every buyer's step of the
@@ -337,8 +340,15 @@ async def _answer_offer(db: AsyncSession, offer_id: uuid.UUID, run_id: uuid.UUID
     return None  # waiting on the tester
 
 
+async def _bids(db: AsyncSession, sale_id: uuid.UUID) -> list:
+    from app.sales.models import Bid
+
+    return list((await db.execute(select(Bid).where(Bid.sale_id == sale_id))).scalars())
+
+
 async def _bid_on_listing(db: AsyncSession, sale_id: uuid.UUID, run_id: uuid.UUID) -> str | None:
-    """House clubs bid for a player the tester listed (not auctions)."""
+    """House clubs bid for a player the tester listed: offers on an
+    open-to-offers or fixed-price listing, bids in an auction."""
     from app.auth.models import User
     from app.clubs.models import Club
     from app.demo.models import DemoRun
@@ -350,11 +360,17 @@ async def _bid_on_listing(db: AsyncSession, sale_id: uuid.UUID, run_id: uuid.UUI
 
     db.sync_session.info["demo_run_id"] = run_id
     sale = await db.get(Sale, sale_id)
-    if sale is None or sale.status != SaleStatus.OPEN or sale.sale_type == SaleType.AUCTION:
+    if sale is None or sale.status != SaleStatus.OPEN:
         return None
     seller = await db.get(Club, sale.seller_club_id)
     if seller is None or seller.house_club:
         return None
+    if sale.sale_type == SaleType.AUCTION:
+        run = await db.get(DemoRun, run_id)
+        last = max([b.updated_at or b.created_at for b in (await _bids(db, sale.id))] or [sale.created_at])
+        if not _due(last, getattr(run, "speed", "instant"), datetime.now(timezone.utc)):
+            return None
+        return await _bid_in_auction(db, sale)
     already = (await db.execute(select(Offer.id).join(Club, Club.id == Offer.from_club_id).where(
         Offer.player_id == sale.player_id, Club.house_club.is_(True)).limit(1))).first()
     run = await db.get(DemoRun, run_id)
@@ -387,6 +403,57 @@ async def _bid_on_listing(db: AsyncSession, sale_id: uuid.UUID, run_id: uuid.UUI
             logger.info("Demo house bid skipped: %s", exc.detail)
         db.sync_session.info["demo_run_id"] = run_id
     return "bids" if made else None
+
+
+async def _bid_in_auction(db: AsyncSession, sale) -> str | None:
+    """Two house clubs bid against each other in the tester's auction, one bid
+    per tick at the minimum next bid, each up to its top share of his price."""
+    from app.clubs.models import Club
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+    from app.players.models import Player
+    from app.sales import service as sales_service
+    from app.sales.models import BidStatus
+
+    seller = await db.get(Club, sale.seller_club_id)
+    player = await db.get(Player, sale.player_id)
+    reference = await _reference(db, player, owned=True) or (Decimal(str(sale.asking_price)) if sale.asking_price else None)
+    if reference is None:
+        return None
+    sale = await sales_service.get_sale_by_id(db, sale.id)
+    active = [b for b in sale.bids if b.status == BidStatus.ACTIVE]
+    best = max(active, key=lambda b: b.amount, default=None)
+    next_bid = sales_service.get_minimum_next_bid(sale)
+    for club in await _house_clubs(db, exclude={seller.id}, seed=_seed(sale.id), n=LISTING_BIDDERS):
+        if best is not None and best.buyer_club_id == club.id:
+            continue  # already ahead
+        _open, top = BUYER.get(club.house_personality or "fair", BUYER["fair"])
+        spread = Decimal((_seed(club.id) + _seed(sale.id)) % 9 - 4) / 100
+        limit = reference * (Decimal(str(top)) + spread)
+        if next_bid > limit:
+            continue  # past what it will pay
+        # Real bidders jump: about a third of the way from the best bid to what
+        # it will pay, in whole increments, never past its limit.
+        step = sale.min_increment or HALF_M
+        floor = best.amount if best else next_bid
+        amount = ((floor + (limit - floor) * Decimal("0.35")) / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
+        amount = max(next_bid, amount)
+        if amount > limit:
+            amount = next_bid
+        try:
+            await sales_service.place_bid(db, sale_id=sale.id, buyer_club_id=club.id, amount=amount,
+                                          notes=LABEL + f"{club.name} bids {_money(amount)}.")
+        except ValueError as exc:  # no budget, deadline passed…
+            logger.info("Demo auction bid skipped: %s", exc)
+            await db.rollback()
+            return None
+        await notif_service.notify_club(
+            db, seller.id, type=NotificationType.AUCTION_BID_RECEIVED,
+            message=f"New bid received on {player.name if player else 'your player'}: {_money(amount)} (automated, demo)",
+            link=f"/sales/{sale.id}", related_player_id=sale.player_id)
+        await db.commit()
+        return "auction_bid"
+    return None
 
 
 # ── Deals ────────────────────────────────────────────────────────────────────
@@ -498,6 +565,79 @@ async def _deal_step(db: AsyncSession, deal_id: uuid.UUID, run_id: uuid.UUID) ->
         await deals.advance_deal(db, deal, actor_club_id=house_buyer.id, actor_user_id=house_buyer.user_id)
         return await done("completed", f"{house_buyer.name} completed the transfer.")
     return None
+
+
+# ── "Make them …": the tester chooses the house club's move ─────────────────
+
+MAKE = {"seller": ("accept", "counter", "reject"), "buyer": ("accept", "counter", "withdraw")}
+
+
+async def offer_controls(db: AsyncSession, user, offer_id: uuid.UUID) -> dict | None:
+    """For a demo offer in the user's own run: which house club, whether it's
+    its move, and what the tester can make it do. None when it isn't one."""
+    from app.clubs.models import Club
+    from app.demo.service import active_run
+    from app.offers.models import Offer, OfferStatus
+
+    run = await active_run(db, user.id)
+    if run is None or (await _demo_rows(db, "offers")).get(offer_id) != run.id:
+        return None
+    offer = await db.get(Offer, offer_id)
+    if offer is None or offer.to_club_id is None:
+        return None
+    seller, buyer = await db.get(Club, offer.to_club_id), await db.get(Club, offer.from_club_id)
+    if seller.house_club and not buyer.house_club:
+        house, side, moves = seller, "seller", offer.last_actor_club_id != seller.id
+    elif buyer.house_club and not seller.house_club:
+        house, side, moves = buyer, "buyer", offer.last_actor_club_id == seller.id
+    else:
+        return None
+    open_ = offer.status in (OfferStatus.SENT, OfferStatus.COUNTERED)
+    return {"offer_id": str(offer.id), "house_club": house.name, "side": side,
+            "house_move": open_ and moves, "actions": list(MAKE[side]) if open_ and moves else []}
+
+
+async def make(db: AsyncSession, user, offer_id: uuid.UUID, action: str, fee: Decimal | None) -> str:
+    """Make the house club accept, counter (at `fee`, else what it would ask)
+    or reject / withdraw now. ValueError when it can't."""
+    from app.auth.models import User
+    from app.clubs.models import Club
+    from app.offers import actions
+    from app.offers.models import Offer
+    from app.offers.schemas import OfferCounterRequest
+    from app.players.models import Player
+
+    controls = await offer_controls(db, user, offer_id)
+    if controls is None:
+        raise LookupError("Not an offer in your demo.")
+    if action not in controls["actions"]:
+        raise ValueError("It isn't the house club's move, or it can't do that.")
+    run_id = (await _demo_rows(db, "offers"))[offer_id]
+    db.sync_session.info["demo_run_id"] = run_id
+    offer = await db.get(Offer, offer_id)
+    house = await db.get(Club, offer.to_club_id if controls["side"] == "seller" else offer.from_club_id)
+    owner = await db.get(User, house.user_id)
+    if action == "counter" and fee is None:
+        reference = await _reference(db, await db.get(Player, offer.player_id), owned=True)
+        if controls["side"] == "seller":
+            _a, fee, _r = decide(offer.fee_amount, reference, house.house_personality, 0)
+            fee = fee if fee is not None and fee > (offer.fee_amount or 0) else _round_half_m((offer.fee_amount or 0) + HALF_M)
+        else:
+            _a, fee, _r = decide_buyer(offer.fee_amount, reference, house.house_personality, 0)
+            fee = fee if fee is not None and fee < (offer.fee_amount or 0) else _round_half_m((offer.fee_amount or 0) * Decimal("0.9"))
+    said = {"accept": "We accept.", "reject": "We'll pass on this one.", "withdraw": "We'll look elsewhere.",
+            "counter": f"We'd do it for {_money(fee)}." if fee else ""}[action]
+    await actions.add_message(db, owner, house, offer, "Automated (demo, the tester's choice): " + said)
+    offer = await db.get(Offer, offer_id)
+    if action == "accept":
+        await actions.accept_offer(db, owner, house, offer)
+    elif action == "counter":
+        await actions.counter_offer(db, owner, house, offer, OfferCounterRequest(fee_amount=fee))
+    elif action == "reject":
+        await actions.reject_offer(db, owner, house, offer)
+    else:
+        await actions.withdraw_offer(db, owner, house, offer)
+    return action
 
 
 async def tick(session_factory) -> int:

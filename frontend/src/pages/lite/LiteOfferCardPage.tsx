@@ -18,6 +18,7 @@ import { timeLeft } from "../../lib/timeLeft";
 import AskTeamButton from "../../components/lite/AskTeamButton";
 import { SwipeNav, WaitingHeader } from "../../components/lite/WaitingNav";
 import PlayerLink from "../../components/ui/PlayerLink";
+import DemoOfferControls from "../../components/demo/DemoOfferControls";
 
 type Mode = "answer" | "accept" | "counter" | "reject";
 
@@ -111,6 +112,7 @@ export default function LiteOfferCardPage() {
   return (
     <SwipeNav kind="offer" id={card.offer_id} enabled={fromPush}>
     <div className="flex flex-col gap-4">
+      <DemoOfferControls offerId={card.offer_id} />
       {fromPush && <WaitingHeader kind="offer" id={card.offer_id} />}
       {fromPush && !open && (
         <div role="status" className="rounded-2xl bg-warning-bg px-5 py-4 text-[1.0625rem] text-text ring-1 ring-border">

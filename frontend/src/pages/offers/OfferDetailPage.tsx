@@ -33,6 +33,7 @@ import { NegotiationSummaryPanel, OfferAdvisor, TermsWarnings } from "../../comp
 import { useOfferCheck } from "../../hooks/useAssistant";
 import type { SuggestedTerms } from "../../types/api";
 import { Estimate } from "../../components/ui/Money";
+import DemoOfferControls from "../../components/demo/DemoOfferControls";
 
 /** The value after it has stopped changing for `ms` — for the live terms check. */
 function useDebounced<T>(value: T, ms = 400): T {
@@ -597,6 +598,7 @@ export default function OfferDetailPage() {
       </Card>
 
       {/* Actions */}
+      <DemoOfferControls offerId={offer.id} />
       {(canAct || canWithdraw || waitingFor) && (
         <Card>
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Actions</p>
