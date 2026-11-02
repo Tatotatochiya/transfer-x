@@ -53,7 +53,7 @@ async def describe(db: AsyncSession, run: DemoRun | None) -> dict | None:
     return {
         "id": str(run.id), "status": run.status, "started_at": started.isoformat(),
         "resets_on": (started + timedelta(days=AUTO_RESET_DAYS)).date().isoformat() if run.status == "ACTIVE" else None,
-        "changes": await change_count(db, run.id), "report": run.report,
+        "changes": await change_count(db, run.id), "report": run.report, "speed": run.speed or "instant",
     }
 
 

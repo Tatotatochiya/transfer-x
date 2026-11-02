@@ -1,7 +1,7 @@
 ---
 title: "Demo Mode"
-last_updated: 2026-10-29
-status: Steps 1–2 built (runs, journal, reset, house clubs, play-as; demo and test deals kept out of shared figures); house clubs acting on their own not built
+last_updated: 2026-11-02
+status: Steps 1–3 built (runs, journal, reset, play-as; demo and test deals kept out of shared figures; house clubs answer on their own as sellers); house clubs as buyers not built
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -31,6 +31,24 @@ Not the same as the [demo scenario generator](./demo-scenario-generator.md), whi
 
 The whole feature is off unless the server sets `DEMO_ENABLED=true`. Off, nobody can start a demo and nothing is journaled; open runs wait to be reset.
 
+## House clubs answer on their own
+
+Added 2026-11-02 (`backend/app/demo/house.py`, job `demo_house_clubs`, every 5 seconds with `DEMO_ENABLED`). When it's a house club's move on an offer or deal an open demo made, the club makes it, as its owner, through the same actions a person uses. Every move is journaled under the run (Reset undoes it) and says "Automated (demo): …" in the offer's messages or the deal's notes.
+
+**An offer for one of its players.** Priced against the listing's asking price, else the model's value, else his last transfer fee, else his market value:
+
+| Personality | Accepts at | Counters at | Turns down below |
+|---|---|---|---|
+| Hard-nosed | 110% | 120% | 80% |
+| Fair (default) | 95% | 100% | 70% |
+| Eager to sell | 85% | 95% | 60% |
+
+A counter is always above the offer and rounded to £0.5m. After two counters the club takes anything above the midpoint and walks away otherwise. A loan offer is accepted. With no price to judge by, a hard or fair club counters once (130% / 115%), then accepts; an eager one accepts.
+
+**Its side of the deal.** The player's agent, if nobody uses the agent's account, proposes a 5% commission paid by the buying club. The player, if he has no account in use, agrees personal terms. The club signs its side of the transfer agreement. The buying club's own steps (agreeing commission, proposing terms, the medical, registration, completing) stay with the tester.
+
+**Speed.** In the Demo pill, house clubs answer **Straight away** (the next tick) or **After a few minutes** (3 minutes after the tester's last move, as a real club would take its time). `PATCH /demo/run {"speed": "instant" | "realistic"}`, migration `0106`.
+
 ## Kept out of shared figures
 
 Added 2026-10-29. While a run is open, the deals it made don't count in what everyone sees: valuations (including the 22:00 refresh), Ask TransferX's comparable transfers and recent-transfers answers, Recent Transfers and its analytics. A player in an open demo's deal isn't checked for real-world moves either: the demo moved him, not real football. Keeping a run makes its deals count; resetting removes them. All of these use one filter, `demo.service.shared_deals`.
@@ -59,7 +77,6 @@ Code: `backend/app/demo/` (`journal.py`, `service.py`, `router.py`), migration `
 
 ## Not built yet
 
-1. **House clubs acting on their own:** answering bids by our valuation and their personality, and doing their side of a deal, at an instant or realistic speed.
-2. **House clubs as buyers** of what a tester lists, and "make them accept / counter / reject" buttons.
+1. **House clubs as buyers** of what a tester lists, and "make them accept / counter / reject" buttons.
 
 > **TODO:** a real club can still make an offer *to a tester's club* during a demo, outside it; only bids on demo listings are refused. Fine while testers' clubs aren't used by anyone else.

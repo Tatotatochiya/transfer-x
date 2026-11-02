@@ -62,6 +62,17 @@ describe("DemoControl", () => {
     expect(addToast).toHaveBeenCalledWith("Demo reset. Everything is back as it was.", "success");
   });
 
+  it("sets how fast house clubs answer", async () => {
+    api.get.mockImplementation((url: string) => Promise.resolve({ data: url === "/demo/run" ? { can_demo: true, run } : [] }));
+    (api as unknown as { patch: ReturnType<typeof vi.fn> }).patch = vi.fn().mockResolvedValue({ data: {} });
+    renderWithProviders(<DemoControl />);
+    await userEvent.click(await screen.findByRole("button", { name: /Demo · 12 changes/ }));
+    expect(screen.getByRole("radio", { name: "Straight away" })).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(screen.getByRole("radio", { name: "After a few minutes" }));
+    await waitFor(() => expect((api as unknown as { patch: ReturnType<typeof vi.fn> }).patch)
+      .toHaveBeenCalledWith("/demo/run", { speed: "realistic" }));
+  });
+
   it("in a play-as tab, shows whose demo it is instead", () => {
     auth.demoPlayedBy = "Luke";
     renderWithProviders(<><DemoPlayAsBanner /><DemoControl /></>);

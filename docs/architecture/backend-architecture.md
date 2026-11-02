@@ -1,6 +1,6 @@
 ---
 title: "Backend Architecture"
-last_updated: 2026-10-27
+last_updated: 2026-11-02
 status: Active
 owner: "TODO — assign a Technical Owner"
 ---
@@ -101,6 +101,7 @@ Modules live under `backend/app/` and mostly follow `models.py` / `schemas.py` /
 | `loan_lifecycle` | 24 h | Returns loans at expiry, warns two weeks ahead, converts obligations |
 | `monitoring_retention` | 24 h | Deletes monitoring data past retention |
 | `demo_auto_reset` | 24 h | Resets demo runs left open for 14 days (only with `DEMO_ENABLED`) |
+| `demo_house_clubs` | 5 s | House clubs answer offers and do their side of deals in open demos (only with `DEMO_ENABLED`; `demo/house.py`) |
 
 **In the `stats-worker` service.** `python -m app.jobs.daily_refresh` runs at 17:00 and 22:00 UK time:
 - current-season stats, injuries, match ratings and form;

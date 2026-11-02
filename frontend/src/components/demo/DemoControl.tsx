@@ -71,6 +71,11 @@ function DemoPill() {
     onSuccess: () => { done(); addToast("Demo ended. Its changes stay.", "success"); },
     onError: (err) => addToast(getApiError(err, "Couldn't end the demo."), "error"),
   });
+  const speed = useMutation({
+    mutationFn: (value: "instant" | "realistic") => api.patch("/demo/run", { speed: value }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["demo", "run"] }),
+    onError: (err) => addToast(getApiError(err, "Couldn't change the speed."), "error"),
+  });
   const playAs = useMutation({
     mutationFn: (clubId: string) =>
       api.post<{ access_token: string }>(`/demo/house-clubs/${clubId}/play-as`).then((r) => r.data),
@@ -113,7 +118,28 @@ function DemoPill() {
           <p className="mt-1 text-text-secondary">
             {run.changes} change{run.changes === 1 ? "" : "s"} so far. Resets by itself on {run.resets_on ? formatDate(run.resets_on) : "—"}.
           </p>
-          <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Play the other side</p>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-text-muted">House clubs answer</p>
+          <div role="radiogroup" aria-label="How fast house clubs answer" className="mt-1 flex gap-1 rounded-lg bg-surface-inset p-1">
+            {(["instant", "realistic"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={(run.speed ?? "instant") === v}
+                disabled={speed.isPending}
+                onClick={() => speed.mutate(v)}
+                className={`flex-1 rounded-md px-2 py-1 text-xs font-semibold ${
+                  (run.speed ?? "instant") === v ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
+                }`}
+              >
+                {v === "instant" ? "Straight away" : "After a few minutes"}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-text-muted">
+            They accept, counter or turn down your offers by their valuation, and do their side of the deal. Each move says &ldquo;Automated (demo)&rdquo;.
+          </p>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Or play the other side yourself</p>
           {houses.isLoading ? (
             <p className="mt-1 text-text-muted">Loading…</p>
           ) : !houses.data?.length ? (
