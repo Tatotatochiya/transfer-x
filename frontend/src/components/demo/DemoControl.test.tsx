@@ -71,6 +71,10 @@ describe("DemoControl", () => {
     await userEvent.click(screen.getByRole("radio", { name: "After a few minutes" }));
     await waitFor(() => expect((api as unknown as { patch: ReturnType<typeof vi.fn> }).patch)
       .toHaveBeenCalledWith("/demo/run", { speed: "realistic" }));
+    expect(screen.getByRole("radio", { name: "sometimes" })).toHaveAttribute("aria-checked", "true");
+    await userEvent.click(screen.getByRole("radio", { name: "always" }));
+    await waitFor(() => expect((api as unknown as { patch: ReturnType<typeof vi.fn> }).patch)
+      .toHaveBeenCalledWith("/demo/run", { rivals: "always" }));
   });
 
   it("in a play-as tab, shows whose demo it is instead", () => {

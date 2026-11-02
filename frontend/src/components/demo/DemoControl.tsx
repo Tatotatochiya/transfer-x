@@ -72,7 +72,8 @@ function DemoPill() {
     onError: (err) => addToast(getApiError(err, "Couldn't end the demo."), "error"),
   });
   const speed = useMutation({
-    mutationFn: (value: "instant" | "realistic") => api.patch("/demo/run", { speed: value }),
+    mutationFn: (value: { speed?: "instant" | "realistic"; rivals?: "never" | "sometimes" | "always" }) =>
+      api.patch("/demo/run", value),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["demo", "run"] }),
     onError: (err) => addToast(getApiError(err, "Couldn't change the speed."), "error"),
   });
@@ -127,7 +128,7 @@ function DemoPill() {
                 role="radio"
                 aria-checked={(run.speed ?? "instant") === v}
                 disabled={speed.isPending}
-                onClick={() => speed.mutate(v)}
+                onClick={() => speed.mutate({ speed: v })}
                 className={`flex-1 rounded-md px-2 py-1 text-xs font-semibold ${
                   (run.speed ?? "instant") === v ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
                 }`}
@@ -136,8 +137,26 @@ function DemoPill() {
               </button>
             ))}
           </div>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Rival bidders</p>
+          <div role="radiogroup" aria-label="Rival bidders" className="mt-1 flex gap-1 rounded-lg bg-surface-inset p-1">
+            {(["never", "sometimes", "always"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={(run.rivals ?? "sometimes") === v}
+                disabled={speed.isPending}
+                onClick={() => speed.mutate({ rivals: v })}
+                className={`flex-1 rounded-md px-2 py-1 text-xs font-semibold capitalize ${
+                  (run.rivals ?? "sometimes") === v ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
           <p className="mt-1 text-xs text-text-muted">
-            They accept, counter or turn down your offers by their valuation, and do their side of the deal. Each move says &ldquo;Automated (demo)&rdquo;.
+            They answer your offers by their valuation, bid for players you list, and do their side of each deal. Sometimes another club bids against you. Each move says &ldquo;Automated (demo)&rdquo;.
           </p>
           <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Or play the other side yourself</p>
           {houses.isLoading ? (
