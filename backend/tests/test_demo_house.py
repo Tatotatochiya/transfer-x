@@ -182,3 +182,123 @@ async def test_an_unused_agent_proposes_commission_then_waits_for_the_buying_clu
     assert neg.commission_amount == Decimal("500000.00")
     assert await _tick(demo) == 0  # the buying club's move: agree or not
     assert offer["id"]
+
+
+# ── House clubs as buyers and rivals ─────────────────────────────────────────
+
+
+def test_a_buying_house_club_meets_halfway_then_walks():
+    from app.demo.house import decide_buyer
+
+    m = Decimal(1_000_000)
+    assert decide_buyer(10 * m, 10 * m, "fair", 0)[0] == "accept"  # within 105%
+    assert decide_buyer(12 * m, 10 * m, "fair", 0)[:2] == ("counter", Decimal("10.5") * m)
+    assert decide_buyer(12 * m, 10 * m, "fair", 2)[0] == "withdraw"
+    assert decide_buyer(11 * m, 10 * m, "eager", 0)[0] == "accept"  # eager goes to 115%
+
+
+async def _second_house(client, db, name="House Wanderers") -> dict:
+    tokens = await _register(client, f"{name.lower().replace(' ', '_')}@demo-example.com", club_name=name)
+    tokens["email"] = f"{name.lower().replace(' ', '_')}@demo-example.com"
+    await _give_budget(db)
+    await _house(db, tokens)
+    return tokens
+
+
+async def test_house_clubs_bid_for_a_listed_player_and_buy_him(client: AsyncClient, db, demo):
+    from app.deals.models import Deal
+    from app.offers.models import Offer, OfferMessage
+    from app.players.models import Player
+    from app.valuation.models import PlayerValuation, ValuationConfidence
+
+    await _second_house(client, db)
+    mine = await _create_player_for_seller(client, demo["h"])
+    db.add(PlayerValuation(player_id=uuid.UUID(mine["id"]), fair_value=Decimal(10_000_000),
+                           fair_value_low=Decimal(8_000_000), fair_value_high=Decimal(12_000_000),
+                           performance_score=Decimal("60"), confidence=list(ValuationConfidence)[0],
+                           model_version="test", league_tier=1, age_factor=Decimal("1")))
+    await db.commit()
+    await _start(client, demo["tester"])
+    sale = await client.post("/sales", headers=demo["h"], json={
+        "player_id": mine["id"], "sale_type": "OPEN_TO_OFFERS", "asking_price": 12_000_000})
+    assert sale.status_code == 201, sale.text
+    assert await _tick(demo) == 1
+    bids = (await db.execute(select(Offer).where(Offer.player_id == uuid.UUID(mine["id"])))).scalars().all()
+    assert len(bids) == 2 and all(b.fee_amount >= Decimal(8_000_000) for b in bids)
+    assert await _tick(demo) == 0  # bid once; now the tester's move
+
+    bid_id = max(bids, key=lambda b: b.fee_amount).id
+    countered = await client.post(f"/offers/{bid_id}/counter", headers=demo["h"], json={"fee_amount": 20_000_000})
+    assert countered.status_code == 200, countered.text
+    await _tick(demo)
+    db.expire_all()
+    bid = await db.get(Offer, bid_id)
+    assert bid.status.value == "COUNTERED" and bid.fee_amount < Decimal(20_000_000)
+    said = [m.body for m in (await db.execute(select(OfferMessage).where(OfferMessage.offer_id == bid_id))).scalars()]
+    assert any(b.startswith("Automated (demo): Our best is") for b in said)
+
+    accepted = await client.post(f"/offers/{bid_id}/accept", headers=demo["h"])
+    assert accepted.status_code == 200, accepted.text
+    deal_id = (await db.execute(select(Deal.id).where(Deal.player_id == uuid.UUID(mine["id"])))).scalar_one()
+    # The buying house club works through every step it owns.
+    for _ in range(12):
+        await _tick(demo)
+        db.expire_all()
+        deal = await db.get(Deal, deal_id)
+        if deal.stage.value == "PAPERWORK" and deal.agreement_signed_by_seller_at is None and deal.agreement_signed_by_buyer_at:
+            r = await client.post(f"/deals/{deal_id}/paperwork/sign-agreement", headers=demo["h"])
+            assert r.status_code == 200, r.text
+        if deal.status.value == "COMPLETED":
+            break
+    db.expire_all()
+    deal = await db.get(Deal, deal_id)
+    assert deal.status.value == "COMPLETED"
+    house_buyer = deal.buyer_club_id
+    assert (await db.get(Player, uuid.UUID(mine["id"]))).current_club_id == house_buyer
+
+    report = (await client.post("/demo/run/reset", headers=demo["h"])).json()
+    assert report["skipped"] == []
+    db.expire_all()
+    assert (await db.get(Player, uuid.UUID(mine["id"]))).current_club_id != house_buyer
+    assert (await db.execute(select(Deal))).scalars().all() == []
+
+
+async def test_a_rival_bids_and_the_seller_asks_the_tester_to_improve(client: AsyncClient, db, demo):
+    from app.offers.models import Offer, OfferMessage
+
+    await _second_house(client, db)
+    await _start(client, demo["tester"])
+    await client.patch("/demo/run", headers=demo["h"], json={"rivals": "always"})
+    offer = await _offer(client, demo, 8_000_000)
+    mine_id = uuid.UUID(offer["id"])
+    await _tick(demo)
+    db.expire_all()
+    mine = await db.get(Offer, mine_id)
+    rivals = [o for o in (await db.execute(select(Offer).where(Offer.player_id == mine.player_id))).scalars()
+              if o.id != mine_id]
+    assert len(rivals) == 1 and rivals[0].fee_amount > Decimal(8_000_000)
+    rival_id, rival_fee = rivals[0].id, rivals[0].fee_amount
+    assert mine.status.value == "COUNTERED" and mine.fee_amount > rival_fee
+    said = [m.body for m in (await db.execute(select(OfferMessage).where(OfferMessage.offer_id == mine_id))).scalars()]
+    assert "Automated (demo): We have a better offer on the table. Can you improve?" in said
+    assert not any("House Wanderers" in b for b in said)  # the rival isn't named
+
+    # The tester meets the price: a deal, and the rival's bid is turned down.
+    assert (await client.post(f"/offers/{mine_id}/accept", headers=demo["h"])).status_code == 200
+    await _tick(demo)
+    db.expire_all()
+    assert (await db.get(Offer, rival_id)).status.value == "REJECTED"
+
+
+async def test_two_testers_demos_dont_share_a_player(client: AsyncClient, db, demo):
+    from app.auth.models import User
+
+    other = await _register(client, "h_other@demo-example.com", club_name="Other Testers")
+    (await db.execute(select(User).where(User.email == "h_other@demo-example.com"))).scalar_one().can_demo = True
+    await db.commit()
+    await _start(client, demo["tester"])
+    await _offer(client, demo, 9_000_000)
+    await _start(client, other)
+    clash = await client.post("/offers", headers=_auth_headers(other), json={
+        "player_id": demo["player"]["id"], "to_club_id": demo["house_id"], "fee_amount": 9_500_000})
+    assert clash.status_code == 409 and "another tester's demo" in clash.text

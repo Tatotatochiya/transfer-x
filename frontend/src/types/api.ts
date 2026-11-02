@@ -74,6 +74,8 @@ export interface DemoRun {
   changes: number;
   /** How fast house clubs answer: on the next tick, or after a few minutes. */
   speed?: "instant" | "realistic";
+  /** Whether another house club bids against you: never, sometimes (about one offer in three) or always. */
+  rivals?: "never" | "sometimes" | "always";
   report: { undone?: number; kept?: number; skipped?: { table: string; pk: Record<string, unknown>; why: string }[] } | null;
 }
 

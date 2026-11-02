@@ -24,6 +24,8 @@ class DemoRun(Base):
     ended_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     # How fast house clubs answer in this run (demo/house.py): instant | realistic.
     speed: Mapped[str] = mapped_column(String(20), nullable=False, default="instant", server_default="instant")
+    # Whether another house club bids against the tester (demo/house.py): never | sometimes | always.
+    rivals: Mapped[str] = mapped_column(String(20), nullable=False, default="sometimes", server_default="sometimes")
     # What reset did: {"undone": n, "skipped": [{"table", "pk", "why"}]}.
     report: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 

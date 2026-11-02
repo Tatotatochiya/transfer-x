@@ -54,6 +54,7 @@ async def describe(db: AsyncSession, run: DemoRun | None) -> dict | None:
         "id": str(run.id), "status": run.status, "started_at": started.isoformat(),
         "resets_on": (started + timedelta(days=AUTO_RESET_DAYS)).date().isoformat() if run.status == "ACTIVE" else None,
         "changes": await change_count(db, run.id), "report": run.report, "speed": run.speed or "instant",
+        "rivals": run.rivals or "sometimes",
     }
 
 
@@ -209,6 +210,31 @@ async def guard_counterparty(db: AsyncSession, user, *, club_id: uuid.UUID | Non
     club = await db.get(Club, club_id)
     if club is not None and not club.house_club:
         raise PermissionError(NOT_HOUSE.format(club=club.name))
+    if player_id is not None:
+        await _not_in_another_demo(db, user.id, player_id)
+
+
+async def _not_in_another_demo(db: AsyncSession, user_id: uuid.UUID, player_id: uuid.UUID) -> None:
+    """Two testers' demos bidding for the same player would trip over each
+    other (one deal per player) and over each other's reset. PermissionError."""
+    from app.deals.models import Deal, DealStatus
+    from app.offers.models import Offer, OfferStatus
+
+    own = await active_run(db, user_id)
+    open_ids = {("offers", i) for i in (await db.execute(select(Offer.id).where(
+        Offer.player_id == player_id, Offer.status.in_([OfferStatus.SENT, OfferStatus.COUNTERED])))).scalars()}
+    open_ids |= {("deals", i) for i in (await db.execute(select(Deal.id).where(
+        Deal.player_id == player_id, Deal.status.in_([DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION])))).scalars()}
+    if not open_ids:
+        return
+    keys = {(t, journal.pk_key({"id": i})) for t, i in open_ids}
+    rows = (await db.execute(
+        select(DemoChange.table_name, DemoChange.pk, DemoChange.run_id).join(DemoRun, DemoRun.id == DemoChange.run_id)
+        .where(DemoRun.status == "ACTIVE", DemoChange.op == "insert",
+               DemoChange.table_name.in_(["offers", "deals"]),
+               DemoChange.pk.in_([k for _t, k in keys])))).all()
+    if any((t, k) in keys and run_id != (own.id if own else None) for t, k, run_id in rows):
+        raise PermissionError("He's in another tester's demo right now. Try another player, or wait until it's reset.")
 
 
 async def guard_demo_row(db: AsyncSession, table: str, pk: dict, *, what: str) -> None:
