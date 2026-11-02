@@ -139,6 +139,51 @@ async def play_as(
     return {"access_token": token, "expires_at": expires_at.isoformat(), "club_name": club.name}
 
 
+class MakeRequest(BaseModel):
+    action: str
+    fee_amount: float | None = None
+
+
+@router.get("/demo/offers/{offer_id}")
+async def demo_offer(
+    offer_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """For an offer in your demo: the house club, whether it's its move, and
+    what you can make it do. `{"in_demo": false}` otherwise."""
+    from app.demo import house
+
+    controls = await house.offer_controls(db, current_user, offer_id)
+    return {"in_demo": controls is not None, **(controls or {})}
+
+
+@router.post("/demo/offers/{offer_id}/make")
+async def make_house_move(
+    offer_id: uuid.UUID,
+    body: MakeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Make the house club accept, counter or reject (withdraw, if it's
+    buying) now, instead of waiting for its rules. Reset undoes it."""
+    from decimal import Decimal
+
+    from app.demo import house
+    from app.offers.actions import OfferActionError
+
+    try:
+        done = await house.make(db, current_user, offer_id, body.action,
+                                Decimal(str(body.fee_amount)) if body.fee_amount else None)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    except OfferActionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+    return {"done": done}
+
+
 # ── Staff ────────────────────────────────────────────────────────────────────
 
 

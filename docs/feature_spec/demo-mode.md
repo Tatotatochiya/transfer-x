@@ -1,7 +1,7 @@
 ---
 title: "Demo Mode"
-last_updated: 2026-11-03
-status: Built (runs, journal, reset, play-as; demo and test deals kept out of shared figures; house clubs sell, buy and bid as rivals on their own); auctions and "make them…" buttons not built
+last_updated: 2026-11-04
+status: Built (runs, journal, reset, play-as; demo and test deals kept out of shared figures; house clubs sell, buy, bid in auctions and as rivals; "make them…" controls)
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -49,7 +49,11 @@ A counter is always above the offer and rounded to £0.5m. After two counters th
 
 **A player the tester lists** (added 2026-11-03; not auctions). Two house clubs bid, each at its opening share of his price (asking price, model value, last fee or market value), a little apart: hard-nosed 85%, fair 95%, eager 105%, give or take 4%. On a fixed-price listing they offer the asking price. A tester's counter is accepted up to the club's top (95% / 105% / 115%), met halfway otherwise ("Our best is £…"), and after two counters the club walks away. Once a deal starts, the buying house club does every buyer's step: moves it on, agrees the agent's commission, proposes personal terms (four years, 10% over his current wage), signs, records a passed medical, submits the registration and completes. The tester signs their side as the seller.
 
+**An auction** (added 2026-11-04). Two house clubs bid against each other, one bid per tick, each about a third of the way from the best bid to its limit (its top share of his price, a little apart), so an auction settles in about ten bids. The tester gets the usual "New bid received" notification, marked automated, and accepts a bid as for any auction; the winner then buys him as above.
+
 **Rival bidders** (added 2026-11-03). When the tester bids for a house club's player, another house club bids too, at 95–115% of his price: **sometimes** (about one offer in three, the default), **always** or **never**, set in the Demo pill (`PATCH /demo/run {"rivals": …}`, migration `0107`). The seller weighs the best offer. If the rival's is higher it says only "We have a better offer on the table. Can you improve?" (never naming the club or the figure) and counters just above it; after two counters it takes the rival's and tells the tester "We've accepted another club's offer." If the tester's offer wins, the rival's is turned down.
+
+**Make them answer now** (added 2026-11-04). On an offer in your own demo where it's the house club's move, a "Demo: make {club} answer now" panel on the offer page (full app and Lite) makes it **accept**, **counter** (at the fee you type, or its own price) or **reject** (**walk away**, if it's buying) straight away, instead of waiting for its rules. The message says "Automated (demo, the tester's choice): …". `GET /demo/offers/{id}`, `POST /demo/offers/{id}/make`.
 
 **One player, one demo.** A tester can't bid for a player who is in another tester's open demo: "He's in another tester's demo right now."
 
@@ -83,7 +87,6 @@ Code: `backend/app/demo/` (`journal.py`, `service.py`, `router.py`), migration `
 
 ## Not built yet
 
-1. **Auctions:** house clubs don't bid in auctions yet, only on open-to-offers and fixed-price listings.
-2. **"Make them accept / counter / reject" buttons** on a demo offer, to force a path without waiting for the rules.
+Nothing planned. Ideas: house clubs making the first approach for a tester's unlisted players; enquiries answered by house clubs.
 
 > **TODO:** a real club can still make an offer *to a tester's club* during a demo, outside it; only bids on demo listings are refused. Fine while testers' clubs aren't used by anyone else.

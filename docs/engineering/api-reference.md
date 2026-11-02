@@ -45,7 +45,7 @@ Verified against the router mounts in `backend/app/main.py` on 2026-10-11.
 | `/board` | The Transfers board |
 | `/conversation` | One conversation per transfer |
 | `/lite` | Lite home, buy page (search by name, the club's shortlist and players of interest, shortlist add and remove), offer cards, held sends, team contact, email confirmations |
-| `/demo` | Demo mode: your run (start, reset, keep, house clubs' speed and rivals), house clubs and play-as; staff side under `/admin/demo` ([spec](../feature_spec/demo-mode.md)) |
+| `/demo` | Demo mode: your run (start, reset, keep, house clubs' speed and rivals), house clubs and play-as, making a house club answer an offer now; staff side under `/admin/demo` ([spec](../feature_spec/demo-mode.md)) |
 | `/ai` | The assistant, Ask TransferX (`/ai/ask`), the analyst (`/ai/analyst`, `/ai/analyst/export`) |
 | `/valuation` | Fair-value reads and staff recompute |
 | `/agents`, `/mandates`, `/negotiations` | Agents, mandates, agent negotiation messages |
