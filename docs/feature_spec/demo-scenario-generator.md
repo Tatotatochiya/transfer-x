@@ -209,7 +209,7 @@ This is a real constraint, not a workaround: without the superuser path, an unma
 
 **Mandated players may not be on the three demo clubs.** The 16 active mandates are not guaranteed to point at players currently contracted to Arsenal, Chelsea, or Liverpool. Resolve this by **querying for the intersection** (mandated ∧ contracted-to-a-demo-club) and, if it's empty, creating a mandate for a suitable squad player rather than silently falling back to an unmandated player — which would quietly produce the wrong stage. Fail loudly instead.
 
-**Transfer windows.** `is_transfer_allowed` returns `True` when no windows are configured, which is the current state — so nothing blocks generation. If a window is ever configured, generation must run inside it.
+**Transfer windows.** Since 2026-11-07 a window blocks nothing but completion (product ADR 0010), so generation can run at any time; a scenario that completes a deal needs the buying club's window open, or no windows configured.
 
 **Deal-stage deadlocks.** Audit finding H7 notes `AGENT_NEGOTIATION` has no per-stage expiry. `D2` deliberately parks a deal there; that's intended for the demo, but don't be surprised when it never moves on its own.
 

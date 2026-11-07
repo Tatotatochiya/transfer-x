@@ -37,18 +37,18 @@ def _aware(dt: datetime | None) -> datetime | None:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-async def window_state(db: AsyncSession, now: datetime) -> dict:
-    """The window as deadline mode sees it: open (with hours left), closed
-    (with when the next opens) or none configured."""
+async def window_state(db: AsyncSession, now: datetime, country: str | None = None) -> dict:
+    """The window of clubs in `country` as deadline mode sees it: open (with
+    hours left), closed (with when the next opens) or none configured."""
     from app.transfer_window import service as window_service
 
-    current = await window_service.get_current_window(db)
+    current = await window_service.get_current_window(db, country, now)
     if current is not None:
         closes = _aware(current.closes_at)
         hours = max(0.0, (closes - now).total_seconds() / 3600)
         return {"state": "open", "id": str(current.id), "name": current.name, "closes_at": closes.isoformat(),
                 "hours_left": round(hours, 1), "deadline_mode": hours <= DEADLINE_MODE_HOURS}
-    upcoming = await window_service.get_next_window(db)
+    upcoming = await window_service.get_next_window(db, country, now)
     return {"state": "closed" if upcoming else "none", "id": None, "name": upcoming.name if upcoming else None,
             "closes_at": None, "opens_at": _aware(upcoming.opens_at).isoformat() if upcoming else None,
             "hours_left": None, "deadline_mode": False}
@@ -80,9 +80,10 @@ async def board(db: AsyncSession, club_id: uuid.UUID, now: datetime | None = Non
     """Everything deadline mode shows for one club."""
     from app.board import service as board_service
     from app.common.schemas import WhoseMove
+    from app.transfer_window.service import club_country
 
     now = now or datetime.now(timezone.utc)
-    window = await window_state(db, now)
+    window = await window_state(db, now, await club_country(db, club_id))
     hours = window["hours_left"]
     board_view = await board_service.get_board(db, club_id)
 
@@ -140,16 +141,17 @@ async def send_reminders(db: AsyncSession, now: datetime | None = None) -> int:
     from app.notifications.models import NotificationType
 
     now = now or datetime.now(timezone.utc)
-    window = await window_state(db, now)
-    if window["state"] != "open":
-        return 0
-    hours = window["hours_left"]
-    due = [t for t in REMINDER_HOURS if hours <= t]
-    if not due:
-        return 0
-    threshold = min(due)  # the tightest one reached; the others went out earlier or are moot
     told = 0
-    for club_id in (await db.execute(select(Club.id))).scalars():
+    # Each club follows its own country's window.
+    for club_id, country in (await db.execute(select(Club.id, Club.country))).all():
+        window = await window_state(db, now, country)
+        if window["state"] != "open":
+            continue
+        hours = window["hours_left"]
+        due = [t for t in REMINDER_HOURS if hours <= t]
+        if not due:
+            continue
+        threshold = min(due)  # the tightest one reached; the others went out earlier or are moot
         view = await board(db, club_id, now)
         counts = view["counts"]
         if not counts["open"]:

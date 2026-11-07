@@ -84,7 +84,7 @@ So a completed loan leaves the parent club with **no contract, no wage liability
 
 ### Out of scope (v1)
 
-- **Loan-specific transfer windows.** Real football has separate domestic loan windows; TransferX has one window model (`transfer_window/service.py:48`). Loans use the same gate. Revisit when windows are per-competition.
+- **Loan-specific transfer windows.** Real football has separate domestic loan windows; TransferX has one window model per country (`transfer_window/service.py`). Loans wait for it like transfers. Revisit when windows are per-competition.
 - **Sub-loans** (loanee loaning the player on again). Explicitly rejected: the ownership chain gets ambiguous and no user has asked.
 - **Recall clauses tied to appearance counts.** `recall_allowed` is a boolean in v1, not a condition engine. The existing `DealClause` machinery is the natural home if this is ever wanted.
 - **Wage split changing mid-loan.**

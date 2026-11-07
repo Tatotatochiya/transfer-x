@@ -283,11 +283,8 @@ async def _execute(db: AsyncSession, approval: PendingApproval) -> None:
     elif approval.action_type == ApprovalActionType.CREATE_OFFER:
         from app.notifications.service import notify_club
         from app.offers import service as offers_service
-        from app.transfer_window import service as window_service
 
         # Router-level guards, re-checked fresh (D7).
-        if not await window_service.is_transfer_allowed(db):
-            raise ValueError("Transfer window is closed")
         player_id = uuid.UUID(payload["player_id"])
         existing = await offers_service.get_active_offer_for_buyer(db, player_id, club_id)
         if existing:

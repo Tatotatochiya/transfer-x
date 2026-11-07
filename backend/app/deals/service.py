@@ -674,7 +674,8 @@ async def advance_deal(
       Item 5: this also flips status to PENDING_COMPLETION with an SLA
       deadline — everything is agreed, only administrative execution is left.
     - CONFIRMED → COMPLETED: clubs or staff (triggers player transfer), unless
-      a real-world move holds it (players/real_world.completion_hold)
+      a real-world move holds it (players/real_world.completion_hold) or the
+      buying club's transfer window is closed (transfer_window/service.py)
     """
     await _lock(db, deal, "status", "stage")
     if deal.status not in (DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION):
@@ -756,8 +757,12 @@ async def advance_deal(
         # staff: the seller may not hold his registration. The staff Complete
         # tool overrides this, with a reason (players/real_world.py).
         from app.players.real_world import completion_hold
+        from app.transfer_window.service import completion_hold as window_hold
 
         if (hold := await completion_hold(db, deal)) is not None:
+            raise ValueError(hold)
+        # Agreed outside a window: the player can't be registered until it opens.
+        if (hold := await window_hold(db, deal)) is not None:
             raise ValueError(hold)
         deal.stage = DealStage.COMPLETED
         await _complete_deal(db, deal)
@@ -801,8 +806,15 @@ async def check_deal_sla_breaches(db: AsyncSession) -> int:
     )
     deals = list(result.scalars())
 
+    from app.transfer_window import service as window_service
+
     count = 0
     for deal in deals:
+        # Waiting for a window isn't overdue: the clock starts when it opens.
+        if await window_service.completion_hold(db, deal) is not None:
+            opens = await window_service.hold_until(db, deal)
+            deal.sla_deadline = max(opens or now, now) + timedelta(days=_DEAL_SLA_DAYS)
+            continue
         deal.sla_escalated_at = now
         await audit_service.emit(
             db,
@@ -823,7 +835,7 @@ async def check_deal_sla_breaches(db: AsyncSession) -> int:
             )
         count += 1
 
-    if count:
+    if deals:
         await db.flush()
     return count
 

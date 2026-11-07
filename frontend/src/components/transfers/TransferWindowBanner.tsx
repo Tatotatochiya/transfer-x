@@ -37,20 +37,23 @@ export default function TransferWindowBanner() {
     );
   }
 
-  // Window enforced but closed
+  // Closed: deals go ahead, and complete once the window opens.
   const next = windowStatus.next_window;
   return (
-    <div className="mb-6 flex items-center justify-between rounded-xl bg-danger/10 px-5 py-3 ring-1 ring-danger/20">
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-xl bg-surface-inset px-5 py-3 ring-1 ring-border">
       <div className="flex items-center gap-3">
-        <span className="h-2 w-2 rounded-full bg-danger shrink-0" />
-        <span className="text-sm font-semibold text-danger-text">Transfer window is closed</span>
+        <span className="h-2 w-2 rounded-full bg-text-muted shrink-0" />
+        <span className="text-sm text-text-secondary">
+          <span className="font-semibold text-text">The transfer window is closed.</span>{" "}
+          You can still make offers and agree deals. They complete when it opens.
+        </span>
       </div>
       {next ? (
         <span className="text-xs text-text-muted">
           Next: <span className="text-text">{next.name}</span> opens {formatDate(next.opens_at)}
         </span>
       ) : (
-        <span className="text-xs text-text-muted">No upcoming window scheduled</span>
+        <span className="text-xs text-text-muted">No date set for the next one</span>
       )}
     </div>
   );

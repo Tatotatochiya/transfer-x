@@ -84,15 +84,6 @@ describe("SquadTable", () => {
     expect(screen.queryByRole("button", { name: "+ set" })).not.toBeInTheDocument();
   });
 
-  it("disables List with the reason as its tooltip", () => {
-    renderWithProviders(
-      <SquadTable players={[SQUAD[0]]} showContractDetails onList={vi.fn()} onUnlist={vi.fn()} listBlockedReason="The window is closed." />,
-    );
-    const list = screen.getByRole("button", { name: "Sell" });
-    expect(list).toBeDisabled();
-    expect(list).toHaveAttribute("title", "The window is closed.");
-  });
-
   it("says how far a player's sale has got, links to it, and filters to players in play", () => {
     const inPlay = new Map([
       ["d1", { label: "Offer £6.0m", detail: "Offer received · your reply", link: "/offers/o1", yourMove: true, listingOnly: false }],

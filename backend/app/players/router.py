@@ -190,21 +190,15 @@ async def player_market_detail(
 
 async def _resolve_direct_signing_context(db: AsyncSession, player_id: uuid.UUID, current_user: User):
     """Shared preamble for direct-signing endpoints that bypass the normal
-    offer/bid pipeline: resolve the buyer's club, check the transfer window,
-    fetch the player, and block if a deal is already in progress."""
+    offer/bid pipeline: resolve the buyer's club, fetch the player, and block
+    if a deal is already in progress. The transfer window doesn't stop a
+    signing: it holds completion (transfer_window/service.completion_hold)."""
     from app.clubs import service as clubs_service
     from app.deals import service as deals_service
-    from app.transfer_window import service as window_service
 
     club = await clubs_service.get_club_for_user(db, current_user.id)
     if club is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No club profile")
-
-    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Transfer window is closed. Transfers cannot be made outside of a transfer window.",
-        )
 
     player = await players_service.get_player_by_id(db, player_id)
     if player is None:

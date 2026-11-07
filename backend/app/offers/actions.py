@@ -23,7 +23,6 @@ from app.notifications import service as notif_service
 from app.notifications.models import NotificationType
 from app.offers import service
 from app.offers.schemas import OfferCounterRequest, OfferCreateRequest, OfferImproveRequest
-from app.transfer_window import service as window_service
 from app.ws.manager import manager as ws_manager
 
 
@@ -158,8 +157,8 @@ async def _player_name(db: AsyncSession, player_id) -> str:
 
 
 async def create_offer(db: AsyncSession, user: User, club, body: OfferCreateRequest) -> ActionResult:
-    if not user.is_superuser and not await window_service.is_transfer_allowed(db):
-        raise OfferActionError(403, "Transfer window is closed. Offers cannot be made outside of a transfer window.")
+    # Offers run all year; a transfer window holds only completion
+    # (transfer_window/service.completion_hold).
 
     # Demo mode (app/demo): in a tester's demo, only a house club can be on the other side.
     from app.demo.service import guard_counterparty

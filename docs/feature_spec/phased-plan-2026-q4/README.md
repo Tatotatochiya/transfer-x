@@ -56,11 +56,11 @@ Goal: a deal can't reach "Signed" until the steps the authorities require are do
 
 - [ ] **Registration checklist in the paperwork stage** (L): FIFA TMS entry, the ITC request and receipt, league registration and the work permit. Each has an owner, a due time, a document slot and reminders. It replaces the single `registration` paperwork step.
 - [ ] **Work permit eligibility** (M): GBE-criteria guidance on players and on offers to English clubs.
-- [ ] **Transfer windows by federation** (M). Today `transfer_windows` has no league or country; the buying club's federation should decide.
+- [x] **Transfer windows by federation** (M). Built 2026-11-07 ([product ADR 0010](../../product/decisions/0010-deals-run-all-year-windows-hold-completion.md)): each window names a country, and the buying club's country decides. Offers and deals run all year; a closed window holds only completion. Admins enter the dates with a source link (no official feed exists) and are warned about countries with nothing set up for six months. Was: today `transfer_windows` has no league or country; the buying club's federation should decide.
 - [ ] **A real medical step** (S–M): date, location and attendees, with pass, fail, or pass with conditions (which can reopen the fee).
 - [x] **Deadline-day mode** (M). Built 2026-10-17: `/deadline`, in Lite or the full app, lists every open offer and deal with its next step and owner (from the deal page's own steps), your moves first, then those at risk (fewer than 6 hours left per step still to do). A banner on the Lite home and the dashboard inside the last three days; pushes at 24, 6 and 2 hours (`DEADLINE_DAY`, migration `0102`). Was: every open deal by hours left, with what's blocking it, on screen and in pushes.
 
-Done when: a demo deal walks through TMS, ITC, permit and registration with dated steps, and an offer outside the buying club's window is refused with the federation named.
+Done when: a demo deal walks through TMS, ITC, permit and registration with dated steps, and a deal outside the buying club's window waits for it, with the country named (changed 2026-11-07: offers are no longer refused, ADR 0010).
 
 ## Phase 3 — Simplify the core
 

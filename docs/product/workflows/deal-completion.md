@@ -1,6 +1,6 @@
 ---
 title: "Workflow: Deal Completion"
-last_updated: 2026-10-11
+last_updated: 2026-11-07
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -51,6 +51,16 @@ A deal carries one medical check record: a status and free-text notes, via `PUT 
 - The seller's listing for him is closed, so he is no longer "available" (availability follows listings, product ADR 0005); the new club decides afresh.
 - Any `PENDING` `AgentCommission` for the deal moves to `CONFIRMED` (the agent's commission is due, but not yet invoiced or paid — see [`agent-representation.md`](./agent-representation.md)).
 - A `DEAL_COMPLETED` event is recorded in the deal's audit log (see [`../../architecture/data-model.md`](../../architecture/data-model.md) for the audit-log schema).
+
+## When the transfer window is closed
+
+Added 2026-11-07 ([product ADR 0010](../decisions/0010-deals-run-all-year-windows-hold-completion.md)). Clubs make offers and agree deals all year; a window is when the buying club can **register** the player. So a transfer between two clubs can't complete while the buying club's country has its window closed: CONFIRMED → COMPLETED is refused with "The transfer window in {country} is closed. The deal can complete when the {name} window opens on {date}." Both clubs see that on the deal page (`GET /deals/{id}/real-world`, `window`) from the moment the deal opens; talks and paperwork carry on.
+
+- **Which window:** the buying club's country's windows (`Club.country`), or the windows with no country when its country has none. No windows at all: nothing waits.
+- **Who doesn't wait:** free-agent signings and pre-contracts; an out-of-contract player can be registered at any time. Loans between clubs wait like transfers.
+- **When it opens:** the `window_opened` job (every 15 minutes) tells both clubs of each waiting deal that it can be completed now, once per window. The clubs complete it as usual.
+- **Completion deadline:** waiting for the window isn't overdue. The deal's deadline restarts from the window's opening (`check_deal_sla_breaches`).
+- **Override:** the staff Complete tool, with a reason.
 
 ## When the player has moved in real life
 

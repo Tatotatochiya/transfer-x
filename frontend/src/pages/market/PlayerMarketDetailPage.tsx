@@ -5,7 +5,7 @@ import api from "../../lib/api";
 import type { ActiveDealStub, Club, FairValueSignal, OrderBook, PlayerDetail, PlayerLedger, PlayerRepresentation } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
-import { useListingClosedReason, useOpenListings } from "../../hooks/useListing";
+import { useOpenListings } from "../../hooks/useListing";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import ClubLink from "../../components/ui/ClubLink";
@@ -397,7 +397,6 @@ export default function PlayerMarketDetailPage() {
   const canList = isMyPlayer && can("MARKET_WRITE") && !player?.active_loan;
   const { byPlayer: openListings, isSuccess: listingsKnown } = useOpenListings(myClub?.id, canList);
   const listingId = id ? openListings.get(id) : undefined;
-  const listClosedReason = useListingClosedReason(canList);
   const [listOpen, setListOpen] = useState(false);
   const closeListing = useCallback(() => setListOpen(false), []);
   const [askOpen, setAskOpen] = useState(false);
@@ -648,21 +647,16 @@ export default function PlayerMarketDetailPage() {
               <>
                 <Button
                   variant="primary"
-                  disabled={player.active_deal?.status === "IN_PROGRESS" || !!listClosedReason}
+                  disabled={player.active_deal?.status === "IN_PROGRESS"}
                   title={
                     player.active_deal?.status === "IN_PROGRESS"
                       ? "A transfer deal is already in progress for this player"
-                      : listClosedReason ?? undefined
+                      : undefined
                   }
                   onClick={() => setListOpen(true)}
                 >
                   List for sale
                 </Button>
-                {/* The deal case needs no line here: the deal banner
-                    below already says so. */}
-                {listClosedReason && (
-                  <span className="text-[13px] text-text-muted">{listClosedReason}</span>
-                )}
               </>
             )
           )}

@@ -84,7 +84,7 @@ These decisions came out of reviewing the earlier Lite mock and testing six dire
 
 **8. Decide outside the app.** Many directors live in email and WhatsApp and open a new app a few times a week at most. The daily digest already sends "waiting on you" by email. Adding one-tap decision links there reaches them where they already are. WhatsApp follows because its reply buttons (maximum three) match our three-option decisions exactly.
 
-**9. Seasonal tiles.** "Buy a player" is the wrong first tile when the window is closed. Outside the window the home shows Renew contracts, Plan January, My squad and Ask anything.
+**9. Seasonal tiles.** "Buy a player" is the wrong first tile when the window is closed. Outside the window the home shows Renew contracts, Plan January, My squad and Ask anything. *Reversed 2026-11-07 ([product ADR 0010](../../product/decisions/0010-deals-run-all-year-windows-hold-completion.md)): clubs buy and sell all year and the window holds only completion, so the home shows the same four tiles all year.*
 
 **10. Lite mode in the profile menu, on by role.** A switch in the top bar is easy to hit by accident. The first-login question from the earlier mock was also dropped: it asked people to choose before they had seen either option. Instead the default is set by role and changing it is one tap in the profile menu. The full app gets a matching "Back to Lite mode" item so switching off never feels like a trap.
 
@@ -126,6 +126,8 @@ Design size is iPad landscape, 1194 × 834. See "Responsive" for other sizes.
 - **Answer offers destination**: a Lite list of the `waiting_on_you` items, each as an action card (screen 5 layout) with its three buttons. One card per item, stacked.
 
 ### Screen 2 — Lite home, window closed (3d)
+
+> **Changed 2026-11-07:** the tiles no longer change with the window (ADR 0010). The greeting reads "The window is closed, but you can still agree deals. They complete when it opens on {1 January}." The rest of this section is the original design.
 
 Same layout. The greeting line reads "The window is closed. The next one opens on {1 January}, in {95} days." (from `get_next_window`). If no window is configured, the line is dropped.
 

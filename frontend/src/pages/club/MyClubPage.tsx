@@ -24,7 +24,7 @@ import { formatCompactCurrency, formatCurrency, getApiError } from "../../lib/ut
 import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
-import { useListingClosedReason, useOpenListings } from "../../hooks/useListing";
+import { useOpenListings } from "../../hooks/useListing";
 
 type Tab = "squad" | "stats" | "listings" | "fixtures";
 
@@ -169,7 +169,6 @@ export default function MyClubPage() {
   // "Listed" chip and per-row flag both need this to cross-reference players.
 
   const { data: salesData, isLoading: salesLoading, byPlayer: openListings } = useOpenListings(club?.id);
-  const listClosedReason = useListingClosedReason(can("MARKET_WRITE"));
 
   // Listing opens a modal over the page: with a player from his squad row, or
   // with a picker from the Listings tab.
@@ -361,8 +360,7 @@ export default function MyClubPage() {
               <Button
                 variant="primary"
                 size="sm"
-                disabled={!!listClosedReason}
-                title={listClosedReason ?? "List one of your players for sale"}
+                title="List one of your players for sale"
                 onClick={() => setListing({})}
               >
                 Sell a player
@@ -490,13 +488,6 @@ export default function MyClubPage() {
                   {Object.keys(formScores).length > 0 && (
                     <TopPerformers players={players} formScores={formScores} />
                   )}
-                  {/* The rows' List buttons are disabled with this as their
-                      tooltip; a tooltip never shows on touch, so say it once. */}
-                  {canMarketWrite && listClosedReason && (
-                    <p className="mb-3 text-[13px] text-text-secondary">
-                      {listClosedReason} Players can be listed again once it opens.
-                    </p>
-                  )}
                   <SquadTable
                     players={players}
                     showContractDetails
@@ -511,7 +502,6 @@ export default function MyClubPage() {
                     // Not until we know who is listed: the squad lands first,
                     // and a listed player's row would offer List meanwhile.
                     onList={canMarketWrite && salesData ? (player) => setListing({ player }) : undefined}
-                    listBlockedReason={listClosedReason}
                     density={density}
                     onDensityChange={changeDensity}
                   />

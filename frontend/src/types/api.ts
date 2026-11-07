@@ -992,17 +992,35 @@ export interface TransferActivity {
 export interface TransferWindowResponse {
   id: string;
   name: string;
+  /** The country whose clubs it governs; null covers every club. */
+  country: string | null;
   opens_at: string;
   closes_at: string;
+  /** Where an admin read the dates, and when. */
+  source_url: string | null;
+  checked_on: string | null;
   is_open: boolean;
   created_at: string;
 }
 
+/** The windows of the signed-in club's country. Deals run all year; a
+ *  closed window holds only completion. */
 export interface TransferWindowStatus {
   enforced: boolean;
   is_open: boolean;
+  country: string | null;
   current_window: TransferWindowResponse | null;
   next_window: TransferWindowResponse | null;
+}
+
+/** One country with clubs on TransferX (admin). */
+export interface WindowCoverage {
+  country: string;
+  own_windows: boolean;
+  current_window: TransferWindowResponse | null;
+  next_window: TransferWindowResponse | null;
+  /** Nothing open or opening in the next six months. */
+  missing: boolean;
 }
 
 export interface ShortlistHit {

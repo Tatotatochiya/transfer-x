@@ -25,6 +25,18 @@ describe("DealRealWorldNotice", () => {
     expect(screen.getByRole("note")).not.toHaveTextContent("Talks and paperwork");
   });
 
+  it("says the deal completes when the transfer window opens", async () => {
+    api.get.mockResolvedValue({ data: {
+      hold: null, note: null, window_opens_at: "2027-01-01T00:00:00Z",
+      window: "The transfer window in England is closed. The deal can complete when the January 2027 window opens on 1 January 2027.",
+    } });
+    renderWithProviders(<DealRealWorldNotice dealId="d1" open />);
+    expect(await screen.findByText("Completes when the transfer window opens")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent("opens on 1 January 2027");
+    expect(screen.getByRole("note")).toHaveTextContent("Both clubs are told when it opens");
+    expect(screen.queryByText(/moved in real life/i)).not.toBeInTheDocument();
+  });
+
   it("asks nothing for a closed deal", () => {
     renderWithProviders(<DealRealWorldNotice dealId="d1" open={false} />);
     expect(api.get).not.toHaveBeenCalled();

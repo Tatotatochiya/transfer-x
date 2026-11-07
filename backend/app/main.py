@@ -301,6 +301,21 @@ async def _deadline_reminders_job() -> None:
             logger.exception("Error in deadline reminders job")
 
 
+async def _window_opened_job() -> None:
+    """When a transfer window opens, tell the clubs whose deals were waiting
+    for it that they can complete them (transfer_window/service.py)."""
+    from app.transfer_window.service import notify_opened_windows
+
+    async with AsyncSessionLocal() as db:
+        try:
+            count = await notify_opened_windows(db)
+            await db.commit()
+            if count:
+                logger.info("Told clubs %d deal(s) can complete now their window is open", count)
+        except Exception:
+            logger.exception("Error in window opened job")
+
+
 async def _client_alerts_job() -> None:
     """TRA-134: scan agent rosters for contract-expiry, valuation-change, and club-interest alerts."""
     from app.mandates.alerts_service import check_and_create_alerts
@@ -392,6 +407,10 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(
         _deadline_reminders_job, "interval", minutes=15, id="deadline_reminders",
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=50),
+    )
+    _scheduler.add_job(
+        _window_opened_job, "interval", minutes=15, id="window_opened",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=55),
     )
     _scheduler.add_job(
         _deal_sla_job, "interval", hours=24, id="deal_sla",
