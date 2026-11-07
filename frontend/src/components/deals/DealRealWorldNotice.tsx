@@ -7,12 +7,17 @@ interface Notice {
   hold: string | null;
   /** A loan elsewhere in real life: worth knowing, nothing waits. */
   note: string | null;
+  /** The buying club's transfer window is closed: it completes once it opens. */
+  window: string | null;
+  window_opens_at: string | null;
 }
 
 /**
- * API-Football has the player at another club than the selling one
- * (players/real_world.deal_notice). Shown to both clubs on an open deal.
- * Completion is refused while `hold` is set; talks and paperwork carry on.
+ * What completion waits on besides the deal's own steps, shown to both clubs
+ * on an open deal: API-Football has the player at another club than the
+ * selling one (players/real_world.deal_notice), or the buying club's
+ * transfer window is closed (transfer_window/service.completion_hold).
+ * Completion is refused while either holds; talks and paperwork carry on.
  */
 export default function DealRealWorldNotice({ dealId, open }: { dealId: string; open: boolean }) {
   const { data } = useQuery<Notice>({
@@ -21,8 +26,26 @@ export default function DealRealWorldNotice({ dealId, open }: { dealId: string; 
     enabled: open,
     staleTime: 5 * 60_000,
   });
-  if (!open || !data || (!data.hold && !data.note)) return null;
-  const held = !!data.hold;
+  if (!open || !data) return null;
+  return (
+    <>
+      {data.window && (
+        <div role="note" className="mb-6 rounded-xl bg-surface-inset px-5 py-4 text-sm ring-1 ring-border">
+          <p className="font-semibold text-text">Completes when the transfer window opens</p>
+          <p className="mt-1 text-text-secondary">{data.window}</p>
+          <p className="mt-1 text-text-muted">
+            Talks and paperwork carry on as normal. Both clubs are told when it opens.
+          </p>
+        </div>
+      )}
+      <RealWorld hold={data.hold} note={data.note} />
+    </>
+  );
+}
+
+function RealWorld({ hold, note }: { hold: string | null; note: string | null }) {
+  if (!hold && !note) return null;
+  const held = !!hold;
   return (
     <div
       role="note"
@@ -31,7 +54,7 @@ export default function DealRealWorldNotice({ dealId, open }: { dealId: string; 
       }`}
     >
       <p className="font-semibold text-text">{held ? "Completion on hold: moved in real life" : "Moved in real life"}</p>
-      <p className="mt-1 text-text-secondary">{data.hold ?? data.note}</p>
+      <p className="mt-1 text-text-secondary">{hold ?? note}</p>
       {held && (
         <p className="mt-1 text-text-muted">
           Talks and paperwork carry on as normal. Only completing the transfer waits. Source: API-Football.

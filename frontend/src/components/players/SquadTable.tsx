@@ -63,8 +63,6 @@ interface Props {
   openListings?: Map<string, string>;
   /** When set, each row a writer sees gets a List action that calls this. */
   onList?: (player: { id: string; name: string }) => void;
-  /** Why nothing can be listed right now (window closed) — disables List. */
-  listBlockedReason?: string | null;
   /** Loans where this club is the *loanee*, keyed by player id. These players
    *  hold our registration and appear in the squad, but we do not own them:
    *  the server already refuses to let us list or sell them, and the row
@@ -109,7 +107,7 @@ const HIT = "-my-2 py-2";
 
 function PlayerRow({
   player, showContractDetails, formScore, fairValue, listingId, loan, inPlay,
-  onUnlist, unlisting, onSetValuation, onList, listBlockedReason, density, cols,
+  onUnlist, unlisting, onSetValuation, onList, density, cols,
 }: {
   player: SquadPlayer;
   showContractDetails: boolean;
@@ -122,7 +120,6 @@ function PlayerRow({
   unlisting?: boolean;
   onSetValuation?: (playerId: string, value: number | null) => void;
   onList?: (player: { id: string; name: string }) => void;
-  listBlockedReason?: string | null;
   density: SquadDensity;
   cols: string;
 }) {
@@ -312,8 +309,7 @@ function PlayerRow({
             ) : (
               <button
                 type="button"
-                disabled={!!listBlockedReason}
-                title={listBlockedReason ?? `Sell ${player.name}: list him for sale`}
+                title={`Sell ${player.name}: list him for sale`}
                 onClick={() => onList({ id: player.id, name: player.name })}
                 className="rounded-lg bg-surface px-2.5 py-[3px] text-[13px] font-semibold text-text-secondary ring-1 ring-inset ring-input-border hover:bg-surface-inset disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -384,7 +380,7 @@ export function SquadTableSkeleton() {
 
 export default function SquadTable({
   players, showContractDetails = false, formScores, fairValues,
-  onUnlist, unlistingIds, onSetValuation, openListings, loanedIn, inPlay, onList, listBlockedReason,
+  onUnlist, unlistingIds, onSetValuation, openListings, loanedIn, inPlay, onList,
   density = "compact", onDensityChange,
 }: Props) {
   const [chip, setChip] = useState<ChipKey>("all");
@@ -513,7 +509,6 @@ export default function SquadTable({
                     unlisting={unlistingIds?.has(p.id)}
                     onSetValuation={onSetValuation}
                     onList={onList}
-                    listBlockedReason={listBlockedReason}
                     density={density}
                     cols={cols}
                   />

@@ -83,26 +83,26 @@ async def update_preferences(
 from datetime import date, datetime, timedelta, timezone  # noqa: E402
 
 RESUME_TTL = timedelta(days=14)
-RENEW_WITHIN_DAYS = 180  # the same horizon as the squad context and the Dashboard
 
 
 def _utc(dt: datetime) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-async def window_state(db: AsyncSession) -> dict:
-    """"open", "closed" or "none" (no window configured, so transfers are
-    always allowed), with the days until it closes or the next one opens."""
+async def window_state(db: AsyncSession, country: str | None = None) -> dict:
+    """The window of clubs in `country`: "open", "closed" or "none" (none
+    configured), with the days until it closes or the next one opens. Deals
+    run either way; a closed window holds only completion."""
     from app.transfer_window import service as window_service
 
     now = datetime.now(timezone.utc)
-    if not await window_service.any_window_exists(db):
+    if not await window_service.any_window_exists(db, country):
         return {"state": "none"}
-    current = await window_service.get_current_window(db)
+    current = await window_service.get_current_window(db, country)
     if current is not None:
         closes = _utc(current.closes_at)
         return {"state": "open", "closes_at": closes.isoformat(), "days": max(0, (closes - now).days)}
-    nxt = await window_service.get_next_window(db)
+    nxt = await window_service.get_next_window(db, country)
     if nxt is not None:
         opens = _utc(nxt.opens_at)
         return {"state": "closed", "next_opens_at": opens.isoformat(), "days": max(0, (opens - now).days)}
@@ -119,48 +119,28 @@ def _names(clubs: list[str]) -> str:
     return f"{clubs[0]}, {clubs[1]} and {len(clubs) - 2} more are"
 
 
-def build_tiles(window: dict, waiting: dict, *, renew_count: int, can_market: bool) -> list[dict]:
+def build_tiles(waiting: dict, *, can_market: bool) -> list[dict]:
     """The four home tiles. One place for the rules, so they can change
-    without a frontend release (README "Screen 1" and "Screen 2").
+    without a frontend release (README "Screen 1"). The same all year: clubs
+    buy and sell outside the window too, and the deal completes when it opens.
 
     Until a Lite squad picker exists, selling goes to the full-app squad page
     that does the job today; swap the href when it ships.
     """
     no_market = None if can_market else "Your role can't buy or sell players. Ask your club's owner."
     count = waiting["count"]
-    offers = {
-        "key": "offers", "style": "offers", "title": "Answer offers",
-        "subtitle": (_names(waiting["club_names"]) + " waiting for you.") if count else "Nothing waiting",
-        "href": "/lite/offers", "badge": f"{count} waiting" if count else None,
-    }
-    ask = {
-        "key": "ask", "style": "ai", "title": "Ask anything",
-        "subtitle": "Ask a question in your own words. Get the answer or a shortcut.", "href": "/lite/ask",
-    }
-    if window["state"] in ("open", "none"):
-        return [
-            {"key": "buy", "style": "accent", "title": "Buy a player",
-             "subtitle": "Search by name, or tell us what you need.",
-             "href": "/lite/buy", "disabled_reason": no_market},
-            {"key": "sell", "style": "plain", "title": "Sell or loan a player",
-             "subtitle": "Pick someone from your squad.", "href": "/club", "disabled_reason": no_market},
-            offers,
-            ask,
-        ]
-    renew = {
-        "key": "renew", "style": "accent", "title": "Renew contracts",
-        "subtitle": (
-            "1 player's contract ends this season" if renew_count == 1
-            else f"{renew_count} players' contracts end this season" if renew_count
-            else "No contracts end in the next six months"
-        ),
-        "href": "/club",
-    }
-    plan = {"key": "plan", "style": "plain", "title": "Plan the next window",
-            "subtitle": "Make a shortlist before the window opens", "href": "/scouting/shortlists"}
-    squad = {"key": "squad", "style": "plain", "title": "My squad",
-             "subtitle": "Who's playing, who's on loan", "href": "/club"}
-    return [renew, plan, offers if count else squad, ask]
+    return [
+        {"key": "buy", "style": "accent", "title": "Buy a player",
+         "subtitle": "Search by name, or tell us what you need.",
+         "href": "/lite/buy", "disabled_reason": no_market},
+        {"key": "sell", "style": "plain", "title": "Sell or loan a player",
+         "subtitle": "Pick someone from your squad.", "href": "/club", "disabled_reason": no_market},
+        {"key": "offers", "style": "offers", "title": "Answer offers",
+         "subtitle": (_names(waiting["club_names"]) + " waiting for you.") if count else "Nothing waiting",
+         "href": "/lite/offers", "badge": f"{count} waiting" if count else None},
+        {"key": "ask", "style": "ai", "title": "Ask anything",
+         "subtitle": "Ask a question in your own words. Get the answer or a shortcut.", "href": "/lite/ask"},
+    ]
 
 
 def _cached_briefing_headline(user_id) -> str | None:
@@ -176,16 +156,15 @@ def _cached_briefing_headline(user_id) -> str | None:
 
 
 async def lite_home(db: AsyncSession, user) -> dict:
-    from app.ai.assist import _budget_facts, _contract_ends
+    from app.ai.assist import _budget_facts
     from app.clubs.capabilities import Capability, capabilities_for_role
     from app.clubs.service import get_club_and_role_for_user
     from app.dashboard import service as dashboard_service
-    from app.players.models import Player
 
     club, role = await get_club_and_role_for_user(db, user.id)
     if club is None:
         raise LookupError("No club")
-    window = await window_state(db)
+    window = await window_state(db, club.country)
 
     from app.clubs.models import ClubFinance
 
@@ -208,13 +187,8 @@ async def lite_home(db: AsyncSession, user) -> dict:
             names.append(i.club_name)
     waiting = {"count": len(items), "club_names": names}
 
-    squad = (await db.execute(select(Player).where(Player.current_club_id == club.id))).scalars().all()
-    ends = await _contract_ends(db, squad)
-    horizon = date.today() + timedelta(days=RENEW_WITHIN_DAYS)
-    renew_count = sum(1 for p in squad if ends.get(p.id) and ends[p.id] <= horizon)
-
     can_market = Capability.MARKET_WRITE in capabilities_for_role(role or "OWNER")
-    tiles = build_tiles(window, waiting, renew_count=renew_count, can_market=can_market)
+    tiles = build_tiles(waiting, can_market=can_market)
 
     resume = None
     row = await get_row(db, user.id)
@@ -581,7 +555,6 @@ async def offer_draft(db: AsyncSession, user, *, player_id: uuid.UUID) -> dict:
     from app.offers.service import get_active_offer_for_buyer
     from app.players.models import Contract, PlayerStatus
     from app.players.service import get_owning_club_id, get_player_by_id
-    from app.transfer_window.service import is_transfer_allowed
 
     club, role = await get_club_and_role_for_user(db, user.id)
     if club is None:
@@ -609,8 +582,6 @@ async def offer_draft(db: AsyncSession, user, *, player_id: uuid.UUID) -> dict:
     deal = await get_active_deal_for_player(db, player.id)
     if not await _can_market(db, user, role):
         disabled = NO_MARKET_REASON
-    elif not user.is_superuser and not await is_transfer_allowed(db):
-        disabled = "The transfer window is closed, so offers can't be sent until it opens."
     elif existing is not None:
         disabled = "You already have an offer in for him."
     elif deal is not None and deal.status == "IN_PROGRESS":

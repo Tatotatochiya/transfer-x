@@ -20,7 +20,6 @@ from app.notifications import service as notif_service
 from app.notifications.models import NotificationType
 from app.sales import service
 from app.sales.models import Bid, BidStatus, ListingAvailability, Sale, SaleStatus, SaleType
-from app.transfer_window import service as window_service
 from app.ws.manager import manager as ws_manager
 from app.sales.schemas import (
     BidCreateRequest,
@@ -234,12 +233,6 @@ async def create_sale(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Player is not registered to your club",
-        )
-
-    if not current_user.is_superuser and not await window_service.is_transfer_allowed(db):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Transfer window is closed. Sales cannot be created outside of a transfer window.",
         )
 
     # Guard: cannot list a player for sale while a deal is already in progress for them

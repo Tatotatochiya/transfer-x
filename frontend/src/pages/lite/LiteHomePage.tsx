@@ -21,9 +21,10 @@ function situation(home: LiteHome): string {
     return `What would you like to do? ${money ? `${money} and ${days}.` : `${days[0].toUpperCase()}${days.slice(1)}.`}`;
   }
   if (w.state === "closed") {
-    if (!w.next_opens_at) return "The window is closed.";
+    // Deals still go ahead; they complete when the window opens.
+    if (!w.next_opens_at) return "The window is closed, but you can still agree deals.";
     const when = new Date(w.next_opens_at).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
-    return `The window is closed. The next one opens on ${when}, in ${w.days} day${w.days === 1 ? "" : "s"}.`;
+    return `The window is closed, but you can still agree deals. They complete when it opens on ${when}.`;
   }
   return `What would you like to do?${money ? ` ${money}.` : ""}`;
 }

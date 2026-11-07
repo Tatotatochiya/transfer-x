@@ -85,15 +85,12 @@ async def _check(db: AsyncSession, user, club, kind: str, payload: dict) -> None
     if kind == "bid":
         from app.deals import service as deals_service
         from app.offers.schemas import OfferCreateRequest
-        from app.transfer_window import service as window_service
 
         await get_buyer_user(current_user=user, db=db)
         try:
             body = OfferCreateRequest(**payload)
         except Exception as exc:
             raise _bad(f"These terms aren't complete: {exc}")
-        if not user.is_superuser and not await window_service.is_transfer_allowed(db):
-            raise _bad("The transfer window is closed, so offers can't be made now.", status.HTTP_403_FORBIDDEN)
         if await offers_service.get_active_offer_for_buyer(db, body.player_id, club.id):
             raise _bad("You already have an open offer for this player.", status.HTTP_409_CONFLICT)
         active = await deals_service.get_active_deal_for_player(db, body.player_id)

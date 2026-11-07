@@ -515,7 +515,7 @@ async def test_at_the_buying_club_in_real_life_is_no_conflict(client: AsyncClien
     deal_id = await _open_deal(client, db, clubs, p, clubs["Tottenham"]["tokens"])
     assert await _check(db, p) is None
     notice = (await client.get(f"/deals/{deal_id}/real-world", headers=_auth_headers(clubs["Tottenham"]["tokens"]))).json()
-    assert notice == {"hold": None, "note": None}
+    assert notice == {"hold": None, "note": None, "window": None, "window_opens_at": None}
     done = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(clubs["Tottenham"]["tokens"]))
     assert done.status_code == 200, done.text
 

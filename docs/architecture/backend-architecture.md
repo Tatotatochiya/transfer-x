@@ -38,7 +38,7 @@ Modules live under `backend/app/` and mostly follow `models.py` / `schemas.py` /
 | `loans` | Loan registration, recall, expiry and conversion of obligations ([ADR 0005](./decisions/0005-loan-registration-separate-from-ownership.md)) |
 | `board` | The Transfers board: every player a club is buying or selling, once, at its furthest point (product ADR 0008) |
 | `conversation` | One conversation per transfer, read across the existing message stores ([ADR 0008](./decisions/0008-one-conversation-read-across-existing-messages.md)) |
-| `transfer_window` | Transfer windows and their enforcement |
+| `transfer_window` | Transfer windows per country, and the completion hold while the buying club's window is closed |
 | `valuation` | The fair-value model: `market-v2` engine, comparables, append-only `PlayerValuation` history ([spec](../feature_spec/valuation-model-v2.md)) |
 | `scouting` | Shortlists and player interest |
 

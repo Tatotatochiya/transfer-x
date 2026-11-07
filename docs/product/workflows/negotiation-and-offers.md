@@ -40,7 +40,7 @@ Any listing's deadline expires it. Anti-sniping settings exist in the config but
 
 ## Listing a player
 
-Only the club that owns a player can list him. A player on loan *to* a club is registered there, but his parent club owns him and is the one that can sell him (see [ADR 0005](../../architecture/decisions/0005-loan-registration-separate-from-ownership.md)). He cannot be listed while a transfer deal for him is in progress, or outside a transfer window when windows are configured.
+Only the club that owns a player can list him. A player on loan *to* a club is registered there, but his parent club owns him and is the one that can sell him (see [ADR 0005](../../architecture/decisions/0005-loan-registration-separate-from-ownership.md)). He cannot be listed while a transfer deal for him is in progress. Since 2026-11-07 a closed transfer window doesn't stop listing, offers or bids; it holds only completion ([product ADR 0010](../decisions/0010-deals-run-all-year-windows-hold-completion.md)).
 
 A club lists a player from wherever he is: **List** on his squad row, **List for sale** on his own page, or the listings pages, which open the same form with a squad picker. The picker disables players who cannot be listed and says why. `/sales/new?player_id=` opens the form as a page, for deep links. Once a player is listed, his row shows **Listed →** and his page shows **View listing**, both linking to the listing.
 

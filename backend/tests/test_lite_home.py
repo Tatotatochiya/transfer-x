@@ -56,13 +56,14 @@ async def test_open_window_counts_days_to_close(client: AsyncClient, db, no_mode
 
 
 @pytest.mark.asyncio
-async def test_closed_window_shows_the_seasonal_tiles(client: AsyncClient, db, no_model):
+async def test_closed_window_still_shows_the_buying_tiles(client: AsyncClient, db, no_model):
+    """Deals run all year; the window holds only completion (transfer_window/service.py)."""
     await _window(db, opens_in_days=95)
     club = await _register(client, "home_lite@clubs-example.com", club_name="Home FC")
     home = await _home(client, club)
     assert home["window"]["state"] == "closed"
     assert home["window"]["days"] in (94, 95)
-    assert [t["key"] for t in home["tiles"]] == ["renew", "plan", "squad", "ask"]
+    assert [t["key"] for t in home["tiles"]] == ["buy", "sell", "offers", "ask"]
 
 
 @pytest.mark.asyncio
@@ -82,20 +83,6 @@ async def test_waiting_matches_the_war_room_and_masks_anonymous_buyers(client: A
     assert "Hidden Buyer" not in str(home)
     offers = next(t for t in home["tiles"] if t["key"] == "offers")
     assert offers["badge"] == "1 waiting"
-
-
-@pytest.mark.asyncio
-async def test_closed_window_with_offers_waiting_swaps_squad_for_offers(client: AsyncClient, db, no_model):
-    await _window(db, opens_in_days=60)
-    buyer = await _register(client, "buyer_home@clubs-example.com", club_name="Buying FC")
-    seller = await _register(client, "seller_home@clubs-example.com", club_name="Selling FC")
-    await _give_budget(db)
-    player = await _create_player_for_seller(client, _auth_headers(seller))
-    # Enquiries are allowed outside the window, and they wait on the seller.
-    await client.post("/enquiries", json={"player_id": player["id"], "body": "Would you sell?"},
-                      headers=_auth_headers(buyer))
-    home = await _home(client, seller)
-    assert [t["key"] for t in home["tiles"]] == ["renew", "plan", "offers", "ask"]
 
 
 @pytest.mark.asyncio

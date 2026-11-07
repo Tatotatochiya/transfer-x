@@ -44,6 +44,7 @@ JOB_LABELS = {
     "expire_mandates": "Expire representation mandates",
     "deal_sla": "Flag deals past their paperwork deadline",
     "deadline_reminders": "Deadline-day reminders (24, 6 and 2 hours before the window closes)",
+    "window_opened": "Tell clubs their waiting deals can complete once a transfer window opens",
     "real_world_alerts": "Tell clubs which of their players moved in real life",
     "loan_lifecycle": "Start, end and recall loans",
     "daily_digest": "Daily digest emails",

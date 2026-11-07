@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "../lib/api";
-import { formatDate } from "../lib/utils";
-import { useAuth } from "./useAuth";
-import type { Paginated, Sale, TransferWindowStatus } from "../types/api";
+import type { Paginated, Sale } from "../types/api";
 
 /**
  * The club's open listings, plus who is listed (player id → listing id).
@@ -29,24 +27,4 @@ export function useOpenListings(clubId: string | undefined, enabled = true) {
   );
 
   return { ...query, byPlayer };
-}
-
-/**
- * Why a player cannot be listed right now, or null when he can. Same query as
- * TransferWindowBanner, so a disabled List button and the banner never
- * disagree. Superusers are exempt server-side, so they are here too.
- */
-export function useListingClosedReason(enabled = true): string | null {
-  const { isSuperuser } = useAuth();
-  const { data } = useQuery<TransferWindowStatus>({
-    queryKey: ["transfer-window", "status"],
-    queryFn: () => api.get<TransferWindowStatus>("/transfers/window/status").then((r) => r.data),
-    staleTime: 60_000,
-    enabled,
-  });
-
-  if (isSuperuser || !data?.enforced || data.is_open) return null;
-  return data.next_window
-    ? `The transfer window is closed until ${formatDate(data.next_window.opens_at)}.`
-    : "The transfer window is closed.";
 }

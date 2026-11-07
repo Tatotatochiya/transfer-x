@@ -40,7 +40,7 @@ Verified against the router mounts in `backend/app/main.py` on 2026-10-11.
 | `/offers` | Offers, counters, messages, the order book |
 | `/enquiries` | Enquiries |
 | `/deals` | Deals, the deal room, paperwork, personal terms, audit log |
-| `/transfers` | Public transfer activity; `/transfers/window` for transfer windows |
+| `/transfers` | Public transfer activity; `/transfers/window` for transfer windows (`/status` for the signed-in club's country or `?country=`, `/coverage` for staff: each country's windows and gaps) |
 | `/loans` | Loans (also under `/clubs/me/loans` and `/admin/loans`) |
 | `/board` | The Transfers board |
 | `/conversation` | One conversation per transfer |

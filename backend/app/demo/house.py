@@ -562,6 +562,10 @@ async def _deal_step(db: AsyncSession, deal_id: uuid.UUID, run_id: uuid.UUID) ->
         return None
 
     if deal.stage == DealStage.CONFIRMED and house_buyer is not None:
+        from app.transfer_window.service import completion_hold as window_hold
+
+        if await window_hold(db, deal) is not None:
+            return None  # completes when the window opens, like any club's
         await deals.advance_deal(db, deal, actor_club_id=house_buyer.id, actor_user_id=house_buyer.user_id)
         return await done("completed", f"{house_buyer.name} completed the transfer.")
     return None
