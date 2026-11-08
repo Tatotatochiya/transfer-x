@@ -246,6 +246,13 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **The deal room answers first** ([spec](./feature_spec/deal-room-focus/README.md)). Before any scrolling, on a phone or a laptop: the player as the page's heading with the route and fee, one status card saying what happens next and who does it (with the button for it), and the progress line. It replaces the "Blocked on" header, the Next steps panel, the three lanes, the stage banners, the paperwork block and the Actions card. The six terms panels are one "Agreed terms" card; the medical result is recorded in a dialog; "Collapse deal…" moved to a More menu. Below 1024px the page has Overview · Messages · Documents tabs (`?tab=`), and from 1024px a sticky messages rail. Behaviour changes:
+  - The stage list always shows Personal terms, and keeps the agent stage once it's done (it used to show four stages unless the deal was at one of those two).
+  - At Agreement the button says "Move on to personal terms" (it said "Advance to Agent Negotiation", which isn't where the deal goes).
+  - Completing a transfer asks for confirmation first ("Execute Transfer" was one click).
+  - Once the buying club agrees the agent's commission, the buying club can move the deal on too, not only the agent (the backend always allowed it). The selling club waits.
+  - The collapse dialog no longer asks for a reason: the endpoint takes none, so it was thrown away.
+  - A player viewing his own deal while his answer is pending is told it's his move, with a link to his player page where he answers (he used to read "Waiting on" himself).
 - **Buy, Sell and search sit in their own top bar** on computers: a white bar with a line under it, and a divider between Buy/Sell and search, instead of a row on the page's background that read as part of each page's header. It stays at the top as the page scrolls.
 - **Buying and selling are front and centre in the full app** (team feedback, 2026-10-29). "Buy a player" and "Sell a player" sit in the top bar on every page (short "Buy" / "Sell" on phones) and first on My Club, before Team and Edit profile. Each player's row in your squad now says **Sell** instead of List. Only for club members whose role can trade; Lite already has both as home tiles.
 - **Real-world moves take TransferX's own deals into account** ([product ADR 0009](./product/decisions/0009-real-world-moves-flagged-applied-by-staff.md#update-2026-10-21-transferxs-own-deals-count)).

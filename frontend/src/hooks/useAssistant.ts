@@ -4,7 +4,6 @@ import api from "../lib/api";
 import type {
   AskAnswer,
   ClubBriefing,
-  DealNextSteps,
   ListingAdvice,
   NegotiationSummary,
   OfferAdvice,
@@ -59,16 +58,6 @@ export function useOfferCheck(body: { offer_id?: string; terms: Record<string, u
     staleTime: 60_000,
     retry: false,
     placeholderData: (prev) => prev,
-  });
-}
-
-export function useDealNextSteps(dealId: string | undefined, version: string) {
-  return useQuery<DealNextSteps>({
-    queryKey: ["ai", "deal-next-steps", dealId, version],
-    queryFn: () => api.get<DealNextSteps>(`/ai/deals/${dealId}/next-steps`).then((r) => r.data),
-    enabled: !!dealId,
-    staleTime: 60_000,
-    retry: false,
   });
 }
 

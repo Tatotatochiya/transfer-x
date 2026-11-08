@@ -323,14 +323,33 @@ with you" · "Listing terms".
 
 Route: `/deals/:id`. Reference: same file, "Contract negotiation".
 
-Header carries the blocker, not the stage: 11px overline `"Blocked on"`, then the blocker at
-22px/700 amber, then `"{n} days without movement"`. The six-pill stage tracker sits beneath.
+Answer first ([spec](../feature_spec/deal-room-focus/README.md)). Four blocks in this order on
+every device: header → status card → progress → sections.
 
-**Three lanes** — `repeat(auto-fit, minmax(230px, 1fr))`, 12px gap. Each: 4px accent strip on
-top, status overline in the accent colour, title 15px/700, a two-line explanation, then a metric
-row above a rule.
-Club to club (green when agreed) · Agent commission (amber when blocking) · Personal terms (grey
-when not started).
+**Header** — "← Back", the player as the page's only h1 (22px/700, 24px at `lg`) beside a 52px
+photo or initials, the route `{seller} → {buyer}` (and the agent at `lg`), and the fee with
+"{type} · {payment}". The More menu (Ask TransferX, Collapse deal…) sits at the right. No status
+badge.
+
+**Status card** — the one place that says what happens next: an overline ("Your move", "Waiting
+on {club}", "Completed"…) with a due date or idle days, a 19–20px/700 headline, one or two plain
+sentences, and the primary and secondary buttons (full width on phones, a 200–220px column from
+`sm`). The ring is red for your move, amber on hold, green when done. At Paperwork the checklist
+sits inside it (behind "Show the 4 paperwork steps" on phones). Real-world and window notices are
+amber strips at its foot. Worked out by `components/deals/dealStatus.ts`.
+
+**Progress** — phones: "Step n of N · {stage}", a 6px bar and "Show all stages". From `sm`: the
+pill row (Agreement · Agent · Personal terms · Paperwork · Confirmed · Completed; Agent only with
+an agent) and a sentence of what each stage agreed.
+
+**Sections** — below 1024px a segmented control, Overview · Messages · Documents, with "How this
+was agreed", Notes and Activity as disclosure rows in Overview. From 1024px the main column has
+tabs (Overview · How this was agreed · Activity) and a 340px sticky rail holds Messages ·
+Documents. `?tab=` names the section on every device.
+
+**Agreed terms** — one card, two columns from `sm`: fee (with fair value), loan terms, payment
+(the instalments open in place), sell-on, wage and contract, signing bonus, agent commission,
+add-ons (open in place), player consent and medical.
 
 **Terms diff** — the spine of the screen. Header `"Terms — version {n} proposed by {club}"` with
 `"{n} of {n} terms changed · sent {when}"` beneath, and the state right in amber.
@@ -338,7 +357,7 @@ Columns: Term · Agreed (v{n-1}) · Proposed (v{n}) · Effect on you (right).
 Unchanged rows: white, old and new identical, effect `"No change"` muted.
 Changed rows: `#fff8f7` tint, old value muted with `line-through`, new value 700, effect in red
 or green.
-Footer: Accept / Counter / Collapse buttons, then a 12px summary line —
+Footer: a 12px summary line —
 `"Net change against version {n-1}: −£340K to {club} over the life of the deal."`
 
 Mobile: one card per term. Unchanged terms collapse behind `"{n} unchanged terms"`.
