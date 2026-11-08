@@ -634,6 +634,47 @@ async def _lock_offer(db: AsyncSession, offer: Offer) -> None:
     await db.refresh(offer, attribute_names=columns, with_for_update=True)
 
 
+# The terms a counter or a raised offer replaces, kept on its event so both
+# clubs can see what changed (the offer row only ever holds the latest terms).
+SNAPSHOT_TERMS = (
+    "fee_amount", "wage_weekly", "contract_years", "contract_end_date", "loan_fee", "wage_split_pct",
+    "loan_start", "loan_end", "option_to_buy", "obligation_to_buy", "recall_allowed", "sell_on_pct",
+    "instalments", "clauses",
+)
+
+
+def terms_snapshot(offer: Offer) -> dict:
+    """The offer's terms as JSON: money as strings, dates as ISO, lists as stored."""
+    out = {}
+    for field in SNAPSHOT_TERMS:
+        v = getattr(offer, field)
+        out[field] = v if v is None or isinstance(v, (bool, int, list)) else str(v)
+    return out
+
+
+def last_change(offer: Offer) -> dict | None:
+    """The latest counter or raise: who made it and the terms it replaced.
+
+    Events written before the snapshot was kept carry only the new fee, so
+    for those the previous fee is rebuilt from the events before it."""
+    events = [e for e in offer.events if e.event_type in (
+        OfferEventType.SENT, OfferEventType.COUNTERED, OfferEventType.IMPROVED)]
+    changes = [e for e in events if e.event_type != OfferEventType.SENT]
+    if not changes:
+        return None
+    last = changes[-1]
+    previous = (last.payload or {}).get("previous")
+    if previous is None:
+        fee = None
+        for e in events:
+            if e is last:
+                break
+            if (e.payload or {}).get("fee_amount") is not None:
+                fee = e.payload["fee_amount"]
+        previous = {"fee_amount": fee} if fee is not None else {}
+    return {"kind": last.event_type.value, "actor_club_id": last.actor_club_id, "previous": previous}
+
+
 async def counter_offer(
     db: AsyncSession,
     offer: Offer,
@@ -779,6 +820,7 @@ async def counter_offer(
 
     # Update terms. `deal_type` is deliberately absent: countering a loan with
     # a permanent offer is a different proposal, not a counter.
+    previous = terms_snapshot(offer)
     if fee_amount is not None:
         offer.fee_amount = fee_amount
     if wage_weekly is not None:
@@ -827,6 +869,7 @@ async def counter_offer(
         # Every term the counter changed, not just the fee — a loan counter
         # changes no fee at all, and its audit entry used to record nothing.
         payload={
+            "previous": previous,
             "fee_amount": str(fee_amount) if fee_amount else None,
             "changes": {
                 **{
@@ -905,6 +948,7 @@ async def improve_own_offer(
     offer.reserved_transfer_amount = new_reserve
     offer.reserved_wage_weekly = new_wage_reserve
 
+    previous = terms_snapshot(offer)
     offer.fee_amount = new_fee
     offer.wage_weekly = new_wage
     offer.loan_fee = new_loan_fee
@@ -914,6 +958,7 @@ async def improve_own_offer(
         event_type=OfferEventType.IMPROVED,
         actor_club_id=actor_club_id,
         payload={
+            "previous": previous,
             "fee_amount": str(new_fee) if new_fee is not None else None,
             "loan_fee": str(new_loan_fee) if new_loan_fee is not None else None,
         },

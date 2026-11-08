@@ -29,6 +29,7 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useToast } from "../../context/ToastContext";
 import { isLoan, loanPeriod, offerHeadline, purchaseClause, wageSharePct } from "../../lib/offerTerms";
+import { lastChange } from "../../lib/offerChanges";
 import { NegotiationSummaryPanel, OfferAdvisor, TermsWarnings } from "../../components/ai/Assistant";
 import { useOfferCheck } from "../../hooks/useAssistant";
 import type { SuggestedTerms } from "../../types/api";
@@ -368,6 +369,47 @@ function OfferTerms({ offer }: { offer: Offer }) {
   );
 }
 
+/**
+ * The latest counter or raise beside what it replaced, so a club answering a
+ * counter sees its own last offer without scrolling the conversation. Shown
+ * while the offer is open and only for terms that changed.
+ */
+function OfferChanges({ offer, myClubId }: { offer: Offer; myClubId: string | undefined }) {
+  const change = lastChange(offer);
+  if (!change || change.changes.length === 0) return null;
+  const mine = !!myClubId && change.actorClubId === myClubId;
+  const verb = change.kind === "IMPROVED" ? "raised" : "countered";
+  const heading = mine ? `You ${verb}` : `They ${verb}`;
+  const wasLabel = mine ? "Their offer" : "Your offer";
+  const nowLabel = mine
+    ? change.kind === "IMPROVED" ? "Your raised offer" : "Your counter"
+    : change.kind === "IMPROVED" ? "Their raised offer" : "Their counter";
+  return (
+    <Card>
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-text-muted">What changed</p>
+      <p className="mb-3 text-sm text-text">{heading}. Only the terms that changed are shown.</p>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-xs text-text-muted">
+            <th className="pb-1 font-medium">Term</th>
+            <th className="pb-1 font-medium">{wasLabel}</th>
+            <th className="pb-1 font-medium">{nowLabel}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {change.changes.map((c) => (
+            <tr key={c.label} className="border-t border-border">
+              <td className="py-1.5 pr-2 text-text-muted">{c.label}</td>
+              <td className="py-1.5 pr-2 text-text-muted line-through decoration-text-muted/60">{c.was}</td>
+              <td className="py-1.5 font-semibold text-text">{c.now}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Card>
+  );
+}
+
 /** The accept confirmation says what is being agreed. For a loan with an
  *  obligation that includes a sale, which "Accept this offer?" never said. */
 function acceptMessage(offer: Offer): string {
@@ -587,6 +629,8 @@ export default function OfferDetailPage() {
           <Metric label="Date"         value={formatDate(offer.created_at)} />
         </div>
       </Card>
+
+      {isParty && isActive && <OfferChanges offer={offer} myClubId={myClubId} />}
 
       {/* Terms */}
       <Card>

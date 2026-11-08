@@ -9,7 +9,7 @@ import {
 import Spinner from "../../components/ui/Spinner";
 import { useOfferCheck } from "../../hooks/useAssistant";
 import { CLUB_DASHBOARD_KEY } from "../../hooks/useClubDashboard";
-import { useLiteOfferCard } from "../../hooks/useLite";
+import { useLiteOfferCard, type LiteOfferCard } from "../../hooks/useLite";
 import { holdAndOpen } from "./LiteSentPage";
 import { liteMoney, liteWage } from "../../lib/liteMoney";
 import { getApiError } from "../../lib/utils";
@@ -25,6 +25,22 @@ type Mode = "answer" | "accept" | "counter" | "reject";
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const shortDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
+
+/** "was £20m, your offer": a term's value before the latest counter or raise. */
+function Was({ card, term, format }: {
+  card: LiteOfferCard; term: "fee" | "wage_weekly" | "wage_split_pct" | "contract_years";
+  format: (v: number) => string;
+}) {
+  const change = card.last_change;
+  if (!change || !(term in change.was)) return null;
+  const v = change.was[term];
+  const whose = change.by === "them" ? "your offer" : `${card.other_club}'s offer`;
+  return (
+    <span className="ml-2 text-[0.9375rem] font-normal text-text-muted">
+      (was {v == null ? "not set" : format(v)}, {whose})
+    </span>
+  );
+}
 
 /**
  * An offer waiting for the club, as an action card (README "Screen 5",
@@ -137,7 +153,9 @@ export default function LiteOfferCardPage() {
           <FactRow label="Player">
             <PlayerLink id={card.player_id} name={card.player_name} photoUrl={card.player_photo_url ?? null} size="md" className="font-semibold" />
           </FactRow>
-          <FactRow label={loan ? "Loan fee" : "Fee"}><Money value={card.fee} format={liteMoney} /></FactRow>
+          <FactRow label={loan ? "Loan fee" : "Fee"}>
+            <Money value={card.fee} format={liteMoney} /><Was card={card} term="fee" format={liteMoney} />
+          </FactRow>
           {card.your_valuation != null && <FactRow label="Your valuation"><Money value={card.your_valuation} format={liteMoney} /></FactRow>}
           {open && card.expires_at && (
             <FactRow label="Reply by">
@@ -148,13 +166,23 @@ export default function LiteOfferCardPage() {
           )}
           {loan ? (
             <>
-              <FactRow label="Wages paid by them">{card.wage_split_pct != null ? `${Math.round(card.wage_split_pct * 100)}%` : "All of them"}</FactRow>
+              <FactRow label="Wages paid by them">
+                {card.wage_split_pct != null ? `${Math.round(card.wage_split_pct * 100)}%` : "All of them"}
+                <Was card={card} term="wage_split_pct" format={(v) => `${Math.round(v * 100)}%`} />
+              </FactRow>
               <FactRow label="Loan">{shortDate(card.loan_start)} to {shortDate(card.loan_end)}</FactRow>
             </>
           ) : (
             <>
-              <FactRow label="Wages offered">{card.wage_weekly != null ? liteWage(card.wage_weekly) : "Agreed with him later"}</FactRow>
-              {card.contract_years != null && <FactRow label="Contract">{card.contract_years} years</FactRow>}
+              <FactRow label="Wages offered">
+                {card.wage_weekly != null ? liteWage(card.wage_weekly) : "Agreed with him later"}
+                <Was card={card} term="wage_weekly" format={liteWage} />
+              </FactRow>
+              {card.contract_years != null && (
+                <FactRow label="Contract">
+                  {card.contract_years} years<Was card={card} term="contract_years" format={(v) => `${v} years`} />
+                </FactRow>
+              )}
             </>
           )}
           {card.has_add_ons && (

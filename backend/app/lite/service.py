@@ -618,7 +618,8 @@ async def offer_card(db: AsyncSession, user, *, offer_id: uuid.UUID) -> dict:
         raise LookupError("No club")
     offer = (await db.execute(
         select(Offer).where(Offer.id == offer_id).options(
-            selectinload(Offer.from_club), selectinload(Offer.to_club), selectinload(Offer.player))
+            selectinload(Offer.from_club), selectinload(Offer.to_club), selectinload(Offer.player),
+            selectinload(Offer.events))
     )).scalar_one_or_none()
     if offer is None or club.id not in (offer.from_club_id, offer.to_club_id):
         raise LookupError("Offer not found")
@@ -697,6 +698,35 @@ async def offer_card(db: AsyncSession, user, *, offer_id: uuid.UUID) -> dict:
         "disabled_reason": disabled,
         "expires_at": offer.expires_at.isoformat() if offer.expires_at else None,
         "your_valuation": valuation,
+        "last_change": _last_change(offer, club.id, loan),
+    }
+
+
+def _last_change(offer, club_id, loan: bool) -> dict | None:
+    """What the latest counter or raise replaced, for the terms the card
+    shows: only the ones that changed, so "was £20m" sits beside the fee."""
+    from app.offers.service import last_change
+
+    change = last_change(offer)
+    if change is None:
+        return None
+    prev = change["previous"]
+    as_float = lambda v: float(v) if v is not None else None  # noqa: E731
+    # The card's term → the offer's field.
+    fields = {"fee": "loan_fee" if loan else "fee_amount", "wage_weekly": "wage_weekly",
+              "wage_split_pct": "wage_split_pct", "contract_years": "contract_years"}
+    changed = {}
+    for key, field in fields.items():
+        if field not in prev:
+            continue
+        cast = (lambda v: v) if field == "contract_years" else as_float
+        was, now = cast(prev[field]), cast(getattr(offer, field))
+        if was != now:
+            changed[key] = was
+    return {
+        "by": "you" if change["actor_club_id"] == club_id else "them",
+        "kind": change["kind"],
+        "was": changed,
     }
 
 

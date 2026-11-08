@@ -240,3 +240,47 @@ async def test_offer_card_masks_anonymous_buyers_and_suggests_a_counter(client: 
 
     outsider = await _register(client, "outsider_act@test.com", club_name="Nosy FC")
     assert (await client.get(f"/lite/offers/{offer['id']}", headers=_auth_headers(outsider))).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_a_counter_shows_what_it_replaced(client: AsyncClient, buyer, seller, db):
+    """A club answering a counter sees its own last offer: the counter's event
+    keeps the terms it replaced, and the Lite card says what each one was."""
+    await _give_budget(db)
+    player = await _create_player_for_seller(client, _auth_headers(seller))
+    offer = await _send(client, buyer, seller, player["id"], 6_000_000)
+
+    assert (await client.get(f"/lite/offers/{offer['id']}", headers=_auth_headers(buyer))).json()["last_change"] is None
+
+    countered = await client.post(f"/offers/{offer['id']}/counter", headers=_auth_headers(seller),
+                                  json={"fee_amount": 9_000_000, "wage_weekly": 20_000})
+    assert countered.status_code == 200, countered.text
+    event = [e for e in countered.json()["events"] if e["event_type"] == "COUNTERED"][-1]
+    assert Decimal(event["payload"]["previous"]["fee_amount"]) == 6_000_000
+    assert event["payload"]["previous"]["contract_years"] == 3
+
+    card = (await client.get(f"/lite/offers/{offer['id']}", headers=_auth_headers(buyer))).json()
+    assert card["fee"] == 9_000_000
+    # Only the fee changed: the unchanged wage isn't listed.
+    assert card["last_change"] == {"by": "them", "kind": "COUNTERED", "was": {"fee": 6_000_000}}
+    theirs = (await client.get(f"/lite/offers/{offer['id']}", headers=_auth_headers(seller))).json()
+    assert theirs["last_change"]["by"] == "you"
+
+
+@pytest.mark.asyncio
+async def test_an_old_counter_rebuilds_the_previous_fee(client: AsyncClient, buyer, seller, db):
+    """Counters made before the replaced terms were kept still show the old fee."""
+    from app.offers.models import OfferEvent, OfferEventType
+
+    await _give_budget(db)
+    player = await _create_player_for_seller(client, _auth_headers(seller))
+    offer = await _send(client, buyer, seller, player["id"], 6_000_000)
+    assert (await client.post(f"/offers/{offer['id']}/counter", headers=_auth_headers(seller),
+                              json={"fee_amount": 9_000_000})).status_code == 200
+    event = (await db.execute(select(OfferEvent).where(
+        OfferEvent.offer_id == uuid.UUID(offer["id"]), OfferEvent.event_type == OfferEventType.COUNTERED))).scalar_one()
+    event.payload = {k: v for k, v in event.payload.items() if k != "previous"}
+    await db.commit()
+
+    card = (await client.get(f"/lite/offers/{offer['id']}", headers=_auth_headers(buyer))).json()
+    assert card["last_change"]["was"] == {"fee": 6_000_000}

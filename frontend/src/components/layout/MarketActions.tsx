@@ -9,7 +9,7 @@ import { useClubCapabilities } from "../../hooks/useClubCapabilities";
  * owner, 2026-10-29). Only for club members whose role can trade; not in a
  * read-only view-as tab. Lite has the same two as its home tiles.
  */
-export default function MarketActions({ compact = false }: { compact?: boolean }) {
+export default function MarketActions({ compact = false, divider = false }: { compact?: boolean; divider?: boolean }) {
   const { isAuthenticated, userType, hasClub, viewedBy } = useAuth();
   const { can } = useClubCapabilities();
   if (!isAuthenticated || userType !== "CLUB" || !hasClub || viewedBy || !can("MARKET_WRITE")) return null;
@@ -28,6 +28,8 @@ export default function MarketActions({ compact = false }: { compact?: boolean }
       >
         {compact ? "Sell" : "Sell a player"}
       </Link>
+      {/* Sets Buy and Sell apart from search, in the desktop top bar. */}
+      {divider && <div aria-hidden className="ml-1 h-6 w-px bg-border" />}
     </div>
   );
 }
