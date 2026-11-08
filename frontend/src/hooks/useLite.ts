@@ -118,6 +118,12 @@ export interface LiteOfferCard {
   expires_at: string | null;
   /** The selling club's own valuation (seller's card only; confidential). */
   your_valuation?: number | null;
+  /** The latest counter or raise, and what each term it changed was before. */
+  last_change?: {
+    by: "you" | "them";
+    kind: "COUNTERED" | "IMPROVED";
+    was: Partial<Record<"fee" | "wage_weekly" | "wage_split_pct" | "contract_years", number | null>>;
+  } | null;
 }
 
 export function useLiteOfferCard(offerId: string | undefined) {

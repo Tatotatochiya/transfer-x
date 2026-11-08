@@ -104,15 +104,18 @@ export default function AppShell({ children }: AppShellProps) {
 
       {/* Main content */}
       <main className="pt-14 lg:pt-0 lg:ml-[232px]">
-        {/* Desktop search, >=1024px: a slim row above the page, in the flow.
-            It used to be pinned to the window's corner, where it covered
-            page headers' buttons (My Club's Team and Edit profile, "+ New
-            listing", "Mark all as read"…). ⌘K still opens it from anywhere. */}
-        <div className="mx-auto hidden h-14 max-w-[1280px] items-center justify-end gap-3 px-8 lg:flex">
-          <MarketActions />
-          <GlobalSearch />
-        </div>
-        <div className="mx-auto max-w-[1280px] px-4 py-6 md:px-6 lg:px-8 lg:pt-1">
+        {/* Desktop top bar, >=1024px: Buy, Sell and search in their own
+            bar, apart from the page below (a slim row on the page's own
+            background read as part of each page's header). It sits in the
+            flow, not pinned over the page, so it never covers page headers'
+            buttons. ⌘K still opens search from anywhere. */}
+        <header className="sticky top-0 z-30 hidden border-b border-border bg-surface lg:block">
+          <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-end gap-3 px-8">
+            <MarketActions divider />
+            <GlobalSearch />
+          </div>
+        </header>
+        <div className="mx-auto max-w-[1280px] px-4 py-6 md:px-6 lg:px-8">
           {isAuthenticated && <NamePrompt />}
           {children}
         </div>
