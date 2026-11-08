@@ -1,4 +1,4 @@
-"""Clubs run a deal end to end: auction deals, and personal-terms consent
+"""Clubs run a deal end to end, and personal-terms consent
 recorded by the buying club for a player with no account or agent (ADR 0006)."""
 
 import uuid
@@ -9,7 +9,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from tests.conftest import _auth_headers, _register
-from tests.test_deals import _create_deal_via_offer, _create_player_for_seller, _get_club_id, _give_budget
+from tests.test_deals import _create_deal_via_offer
 
 
 @pytest_asyncio.fixture
@@ -174,48 +174,3 @@ async def test_collapsed_deal_refuses_terms_and_consent(client, buyer, seller, d
     )
     assert consent.status_code == 400
     assert "no longer in progress" in consent.json()["detail"]
-
-
-# ── Auction deals run by the clubs ───────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_accepted_bid_releases_rival_offers_and_clubs_advance(client, buyer, seller, rival, db):
-    await _give_budget(db)
-    sel_headers = _auth_headers(seller)
-    player = await _create_player_for_seller(client, sel_headers)
-    seller_club_id = await _get_club_id(client, sel_headers)
-
-    sale = await client.post(
-        "/sales", json={"player_id": player["id"], "sale_type": "AUCTION", "asking_price": 5_000_000},
-        headers=sel_headers,
-    )
-    assert sale.status_code == 201, sale.text
-    sale_id = sale.json()["id"]
-
-    # A rival approaches the seller directly, outside the auction.
-    rival_offer = await client.post(
-        "/offers", json={"player_id": player["id"], "to_club_id": seller_club_id, "fee_amount": 4_000_000},
-        headers=_auth_headers(rival),
-    )
-    assert rival_offer.status_code == 201, rival_offer.text
-    rival_before = (await client.get("/clubs/me", headers=_auth_headers(rival))).json()["finance"]
-
-    bid = await client.post(f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=_auth_headers(buyer))
-    assert bid.status_code == 201, bid.text
-    deal = await client.post(f"/sales/{sale_id}/bids/{bid.json()['id']}/accept", headers=sel_headers)
-    assert deal.status_code == 200, deal.text
-    deal_id = deal.json()["id"]
-
-    # The rival's offer is closed and its reservation released.
-    offer = (await client.get(f"/offers/{rival_offer.json()['id']}", headers=_auth_headers(rival))).json()
-    assert offer["status"] == "REJECTED"
-    rival_after = (await client.get("/clubs/me", headers=_auth_headers(rival))).json()["finance"]
-    assert float(rival_after["transfer_reserved"]) < float(rival_before["transfer_reserved"])
-
-    assert await _audit(db, deal_id, "DEAL_CREATED")
-
-    # No staff needed: the buying club moves the deal on.
-    advanced = await client.post(f"/deals/{deal_id}/advance", headers=_auth_headers(buyer))
-    assert advanced.status_code == 200, advanced.text
-    assert advanced.json()["stage"] == "PERSONAL_TERMS"

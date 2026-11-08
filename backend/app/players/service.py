@@ -144,9 +144,8 @@ async def trigger_release_clause(db: AsyncSession, player: Player, *, buyer_club
     creates the Deal directly, skipping the offer/accept negotiation.
 
     Scope note: this only tidies up rival OFFERS for the player (mirroring
-    item 1). A simultaneous open Sale/auction for the same player is left
-    untouched — that overlap is rare enough, and consequential enough
-    (compensating displaced bidders), that it deserves its own explicit
+    item 1). A simultaneous open listing for the same player is left
+    untouched — that overlap is rare enough that it deserves its own explicit
     product decision rather than folding it in here.
     """
     from app.deals.models import Deal, DealStage, DealStatus

@@ -29,7 +29,7 @@ Out of scope: implementation detail (`architecture/`, `engineering/`), the backl
 ## What TransferX is
 
 TransferX is a web platform for professional football transfers. It connects **selling clubs**, **buying clubs**, **agents** and **players** around one structured deal:
-- **Before an offer:** a club enquires about a player, or lists one (open to offers, or by auction).
+- **Before an offer:** a club enquires about a player, or lists one open to offers, optionally with an "Offers by" date (auctions are retired, [ADR 0011](./product/decisions/0011-auctions-retired.md)).
 - **The offer:** buying clubs make offers that carry the full terms (fee, wage, payment schedule, add-ons, sell-on, or a loan), and the clubs counter.
 - **The deal:** an accepted offer becomes a deal. The player's agent negotiates commission, the player (or his agent) consents to personal terms, and the clubs complete the paperwork through to completion.
 

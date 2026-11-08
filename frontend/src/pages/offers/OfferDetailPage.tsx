@@ -748,16 +748,13 @@ export default function OfferDetailPage() {
     <SellerOrderBook
       saleId={offer.sale_id ?? undefined}
       playerId={offer.sale_id ? undefined : offer.player_id}
-      saleType="OPEN_TO_OFFERS"
       isOpen={isActive}
       selectedId={offer.id}
-      onSelectBid={undefined}
     />
   ) : (
     <BuyerOrderBook
       saleId={offer.sale_id ?? undefined}
       playerId={offer.sale_id ? undefined : offer.player_id}
-      saleType="OPEN_TO_OFFERS"
     />
   );
 

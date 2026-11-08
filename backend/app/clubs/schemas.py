@@ -14,7 +14,7 @@ class CommitmentItem(BaseModel):
     """B5: one row backing ClubFinance's transfer_reserved/committed and
     wage_reserved_weekly/committed_weekly totals — what it's attached to and
     what releases it."""
-    kind: Literal["offer", "bid", "deal"]
+    kind: Literal["offer", "deal"]
     id: uuid.UUID
     player_name: str | None = None
     transfer_amount: Decimal

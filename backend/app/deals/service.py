@@ -853,7 +853,7 @@ async def collapse_deal(
     Item 4: a collapsed deal used to leave the world exactly as it was at the
     moment of acceptance — the originating sale stayed CLOSED forever and past
     bidders were never told they could come back. Reopen the sale (if any) and
-    let every club that had bid on it know it's live again.
+    let every club that had made an offer on it know it's live again.
     """
     await _lock(db, deal, "status", "stage")
     if deal.status in (DealStatus.COMPLETED, DealStatus.COLLAPSED):
@@ -900,10 +900,13 @@ async def collapse_deal(
 
 
 async def _reopen_sale_after_collapse(db: AsyncSession, deal: Deal) -> None:
-    """Re-list the originating sale and tell past bidders it's live again."""
+    """Re-list the originating sale and tell the clubs that made offers on
+    it that it's live again. An old auction comes back open to offers:
+    auctions are retired (ADR 0011)."""
     from app.notifications import service as notif_service
     from app.notifications.models import NotificationType
-    from app.sales.models import Bid, Sale, SaleStatus
+    from app.offers.models import Offer
+    from app.sales.models import Sale, SaleStatus, SaleType
 
     sale_result = await db.execute(
         select(Sale).where(Sale.id == deal.sale_id).with_for_update()
@@ -913,21 +916,22 @@ async def _reopen_sale_after_collapse(db: AsyncSession, deal: Deal) -> None:
         return
 
     sale.status = SaleStatus.OPEN
+    if sale.sale_type == SaleType.AUCTION:
+        sale.sale_type = SaleType.OPEN_TO_OFFERS
     await db.flush()
     from app.sales.service import sync_listed_flag
 
     await sync_listed_flag(db, sale.player_id)
 
-    bids_result = await db.execute(select(Bid).where(Bid.sale_id == sale.id))
-    bidder_club_ids = {b.buyer_club_id for b in bids_result.scalars()}
-    bidder_club_ids.discard(deal.buyer_club_id)  # already notified via DEAL_COLLAPSED
+    offerers = set((await db.execute(select(Offer.from_club_id).where(Offer.sale_id == sale.id))).scalars())
+    offerers.discard(deal.buyer_club_id)  # already notified via DEAL_COLLAPSED
 
-    for club_id in bidder_club_ids:
+    for club_id in offerers:
         await notif_service.notify_club(
             db,
             club_id,
             type=NotificationType.SALE_REOPENED,
-            message="A deal for a player you bid on has collapsed — the sale is open again",
+            message="A deal for a player you made an offer on has collapsed — he's listed again",
             link=f"/sales/{sale.id}",
             related_player_id=sale.player_id,
         )

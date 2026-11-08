@@ -11,7 +11,7 @@ vi.mock("../../lib/api", () => ({ default: api }));
 const prefs = [
   { type: "OFFER_RECEIVED", enabled: true, email_enabled: true, push_enabled: true, tier: "YOUR_MOVE" },
   { type: "DEAL_COMPLETED", enabled: true, email_enabled: true, push_enabled: true, tier: "FYI" },
-  { type: "OUTBID", enabled: false, email_enabled: true, push_enabled: true, tier: "HEADS_UP" },
+  { type: "OFFER_EXPIRING", enabled: false, email_enabled: true, push_enabled: true, tier: "HEADS_UP" },
 ];
 
 async function showEveryType() {
@@ -34,7 +34,7 @@ describe("NotificationTypesTable", () => {
     expect(fyi).toHaveAttribute("aria-checked", "false");
     expect(fyi).toHaveAttribute("title", "Not pushed: these stay in the app");
     // In-app off means no notification at all, so no push either.
-    expect(screen.getByRole("switch", { name: "Push: Outbid on an auction" })).toBeDisabled();
+    expect(screen.getByRole("switch", { name: "Push: Offer expiring soon" })).toBeDisabled();
   });
 
   it("switches push off for one type", async () => {

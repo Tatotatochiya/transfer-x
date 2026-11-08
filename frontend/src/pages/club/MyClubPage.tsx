@@ -153,7 +153,6 @@ export default function MyClubPage() {
         const amount = c.amount != null ? ` ${formatCompactCurrency(Number(c.amount))}` : "";
         const label = c.kind === "deal" ? `Deal: ${col.label}`
           : c.kind === "offer" ? `Offer${amount}`
-          : c.kind === "bid" ? `Bid${amount}`
           : c.kind === "enquiry" ? "Enquiry"
           : "Listed";
         map.set(c.player_id, {
@@ -547,7 +546,7 @@ export default function MyClubPage() {
               ) : !salesData || salesData.items.length === 0 ? (
                 <EmptyState
                   title="No active listings"
-                  body="You have no players currently listed for sale or auction."
+                  body="You have no players currently listed."
                   action={canMarketWrite ? { label: "Create listing", onClick: () => setListing({}) } : undefined}
                 />
               ) : (

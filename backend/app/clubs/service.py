@@ -836,18 +836,16 @@ async def get_commitments(db: AsyncSession, club_id: uuid.UUID) -> list[Commitme
 
     Walks every real source of reserve_budget/commit_budget (not a parallel
     query path): offers this club sent (still SENT/COUNTERED → reserved),
-    active bids this club placed (→ reserved), and deals in progress with
+    and deals in progress with
     this club as buyer (→ committed, net of any instalments already paid).
     Local imports avoid a circular import — offers/deals/sales all import
     `clubs` at module level already.
     """
-    from sqlalchemy.orm import selectinload
 
     from app.deals import service as deals_service
     from app.deals.models import DealStatus, DealType
     from app.offers import service as offers_service
     from app.offers.models import OfferStatus
-    from app.sales.models import Bid, BidStatus, Sale
 
     items: list[CommitmentItem] = []
 
@@ -866,23 +864,6 @@ async def get_commitments(db: AsyncSession, club_id: uuid.UUID) -> list[Commitme
             status="reserved",
             releases_when="Offer withdrawn, rejected, or resolved",
             link=f"/offers/{o.id}",
-        ))
-
-    bid_result = await db.execute(
-        select(Bid)
-        .where(Bid.buyer_club_id == club_id, Bid.status == BidStatus.ACTIVE)
-        .options(selectinload(Bid.sale).selectinload(Sale.player))
-    )
-    for b in bid_result.scalars():
-        items.append(CommitmentItem(
-            kind="bid",
-            id=b.id,
-            player_name=b.sale.player.name if b.sale and b.sale.player else None,
-            transfer_amount=b.reserved_transfer_amount,
-            wage_weekly_amount=b.reserved_wage_weekly or None,
-            status="reserved",
-            releases_when="Outbid, sale closes, or bid withdrawn",
-            link=f"/sales/{b.sale_id}",
         ))
 
     deals, _ = await deals_service.list_deals(db, club_id=club_id, page=1, page_size=200)

@@ -1,6 +1,5 @@
 import type { BadgeVariant } from "../components/ui/Badge";
 import type {
-  BidStatus,
   DealStage,
   DealStatus,
   DealType,
@@ -152,16 +151,6 @@ export function offerOutcome(
     variant: "info",
     note: "deal in progress",
   };
-}
-
-export function bidStatusVariant(s: BidStatus): BadgeVariant {
-  const map: Record<BidStatus, BadgeVariant> = {
-    ACTIVE:   "success",
-    WITHDRAWN:"neutral",
-    ACCEPTED: "success",
-    REJECTED: "danger",
-  };
-  return map[s];
 }
 
 export function dealStatusVariant(s: DealStatus): BadgeVariant {

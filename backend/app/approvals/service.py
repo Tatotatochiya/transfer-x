@@ -2,7 +2,7 @@
 
 Capture happens inside the four money-committing actions after their request
 validation; execution replays the stored payload through the *same* service
-calls, so budget, transfer window, and auction state are all re-validated
+calls, so budget and the offer's state are all re-validated
 fresh. A stale approval fails soft into APPROVED_FAILED with a reason — never
 a 500, never a partial execution.
 """
@@ -211,7 +211,7 @@ async def approve_and_execute(
 ) -> PendingApproval:
     """Execute the captured action with everything re-validated fresh (D7).
 
-    Success → APPROVED_EXECUTED; any domain failure (auction closed, outbid,
+    Success → APPROVED_EXECUTED; any domain failure (offer no longer open,
     budget insufficient, window shut, entity deleted) → APPROVED_FAILED with
     the reason recorded and both parties notified. Never raises for domain
     failures; raises PermissionError only for status-machine violations.
@@ -255,32 +255,12 @@ async def _execute(db: AsyncSession, approval: PendingApproval) -> None:
     payload = approval.payload_json or {}
     club_id = uuid.UUID(str(approval.club_id))
 
-    if approval.action_type == ApprovalActionType.PLACE_BID:
-        from app.notifications.service import notify_club
-        from app.sales import service as sales_service
+    if approval.action_type in (ApprovalActionType.PLACE_BID, ApprovalActionType.ACCEPT_BID):
+        # Auctions are retired (ADR 0011); migration 0109 cancelled the
+        # pending ones, and this covers any that slipped through.
+        raise ValueError("Auctions are no longer offered, so this bid can't go ahead")
 
-        sale_id = uuid.UUID(payload["sale_id"])
-        await sales_service.place_bid(
-            db,
-            sale_id=sale_id,
-            buyer_club_id=club_id,
-            amount=Decimal(payload["amount"]),
-            wage_offer_weekly=Decimal(payload["wage_offer_weekly"]) if payload.get("wage_offer_weekly") else None,
-            notes=payload.get("notes"),
-        )
-        sale = await sales_service.get_sale_by_id(db, sale_id)
-        if sale:
-            player_name = sale.player.name if sale.player else "a player"
-            await notify_club(
-                db,
-                uuid.UUID(str(sale.seller_club_id)),
-                type=NotificationType.AUCTION_BID_RECEIVED,
-                message=f"New bid received on {player_name}",
-                link=f"/sales/{sale_id}",
-                related_player_id=sale.player_id,
-            )
-
-    elif approval.action_type == ApprovalActionType.CREATE_OFFER:
+    if approval.action_type == ApprovalActionType.CREATE_OFFER:
         from app.notifications.service import notify_club
         from app.offers import service as offers_service
 
@@ -364,27 +344,6 @@ async def _execute(db: AsyncSession, approval: PendingApproval) -> None:
                 link=f"/offers/{offer.id}",
                 related_player_id=offer.player_id,
             )
-
-    elif approval.action_type == ApprovalActionType.ACCEPT_BID:
-        from app.notifications.service import notify_club
-        from app.sales import service as sales_service
-
-        deal = await sales_service.accept_bid(
-            db,
-            sale_id=uuid.UUID(payload["sale_id"]),
-            bid_id=uuid.UUID(payload["bid_id"]),
-            actor_club_id=club_id,
-        )
-        sale = await sales_service.get_sale_by_id(db, uuid.UUID(payload["sale_id"]))
-        player_name = sale.player.name if sale and sale.player else "a player"
-        await notify_club(
-            db,
-            uuid.UUID(str(deal.buyer_club_id)),
-            type=NotificationType.AUCTION_BID_ACCEPTED,
-            message=f"Your bid on {player_name} has been accepted",
-            link=f"/deals/{deal.id}",
-            related_player_id=deal.player_id,
-        )
 
     elif approval.action_type == ApprovalActionType.EXERCISE_OPTION:
         from app.loans import service as loans_service

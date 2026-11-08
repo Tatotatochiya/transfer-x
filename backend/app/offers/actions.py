@@ -161,10 +161,13 @@ async def create_offer(db: AsyncSession, user: User, club, body: OfferCreateRequ
     # (transfer_window/service.completion_hold).
 
     # Demo mode (app/demo): in a tester's demo, only a house club can be on the other side.
-    from app.demo.service import guard_counterparty
+    # And nobody outside a demo makes an offer against a listing the demo made.
+    from app.demo.service import guard_counterparty, guard_demo_row
 
     try:
         await guard_counterparty(db, user, club_id=body.to_club_id, player_id=body.player_id)
+        if body.sale_id is not None:
+            await guard_demo_row(db, "sales", {"id": body.sale_id}, what="listing")
     except PermissionError as exc:
         raise OfferActionError(409, str(exc))
 

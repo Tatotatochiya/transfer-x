@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Club, FairValueSignal, Loan, Paginated, PlayerDetail, Sale } from "../../types/api";
-import type { ListingAvailability, SaleType } from "../../types/enums";
+import type { ListingAvailability } from "../../types/enums";
 import Button from "../ui/Button";
 import CurrencyInput from "../ui/CurrencyInput";
 import Modal from "../ui/Modal";
@@ -52,22 +52,11 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
   const [playerId, setPlayerId] = useState(player?.id ?? defaultPlayerId ?? "");
   const [availability, setAvailability] = useState<ListingAvailability>("TRANSFER");
   // One kind of listing: open to offers, with an optional guide price and an
-  // optional deadline. "Fixed price" was that with a firmer label, so it is
-  // folded in. An auction stays available, but as an advanced option — and
-  // only for a transfer, since a loan cannot be auctioned.
-  const [asAuction, setAsAuction] = useState(false);
-  const saleType: SaleType = asAuction ? "AUCTION" : "OPEN_TO_OFFERS";
-
-  function chooseAvailability(a: ListingAvailability) {
-    setAvailability(a);
-    if (a !== "TRANSFER") setAsAuction(false);
-  }
+  // optional date. "Fixed price" was that with a firmer label, so it is
+  // folded in. Auctions are retired (product ADR 0011): the club chooses
+  // among the offers, and "Offers by" covers "best bids by Friday".
   const [askingPrice, setAskingPrice] = useState("");
-  const [reservePrice, setReservePrice] = useState("");
-  const [minIncrement, setMinIncrement] = useState("500000");
-  const [deadline, setDeadline] = useState(() => toLocalInputValue(new Date(Date.now() + 7 * 86_400_000)));
-  // "Hear offers until" — optional on an open-to-offers listing, which then
-  // expires at that time; required (as the auction's close) on an auction.
+  // "Offers by": optional; the listing expires then.
   const [offersUntil, setOffersUntil] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -138,8 +127,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
     onSuccess: (sale) => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       const what =
-        sale.sale_type === "AUCTION" ? "as an auction"
-        : sale.availability === "LOAN" ? "for loan"
+        sale.availability === "LOAN" ? "for loan"
         : sale.availability === "EITHER" ? "for transfer or loan"
         : "for transfer";
       addToast(`${sale.player?.name ?? player?.name ?? "Player"} is listed — ${what}.`, "success");
@@ -156,7 +144,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
 
     const body: Record<string, unknown> = {
       player_id: playerId,
-      sale_type: saleType,
+      sale_type: "OPEN_TO_OFFERS",
       availability,
       ...(notes && { notes }),
     };
@@ -166,23 +154,11 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
     if (!loanOnly && askingPrice && !isNaN(parsedAsking)) body.asking_price = parsedAsking;
     if (aiPrice != null && aiPrice === askingPrice) body.ai_assisted = true;
 
-    if (saleType === "AUCTION") {
-      const parsedReserve = parseFloat(reservePrice);
-      if (reservePrice && !isNaN(parsedReserve)) body.reserve_price = parsedReserve;
-
-      const parsedIncrement = parseFloat(minIncrement);
-      if (!isNaN(parsedIncrement) && parsedIncrement > 0) body.min_increment = parsedIncrement;
-
-      if (!deadline) { setError("Auctions require a deadline."); return; }
-      body.deadline = new Date(deadline).toISOString();
-    } else if (offersUntil) {
-      body.deadline = new Date(offersUntil).toISOString();
-    }
+    if (offersUntil) body.deadline = new Date(offersUntil).toISOString();
 
     mutation.mutate(body);
   }
 
-  const isAuction = saleType === "AUCTION";
   const loanOnly = availability === "LOAN";
   const players = squad?.items ?? [];
 
@@ -228,7 +204,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
               key={a.value}
               type="button"
               aria-pressed={availability === a.value}
-              onClick={() => chooseAvailability(a.value)}
+              onClick={() => setAvailability(a.value)}
               className={`min-h-11 flex-1 rounded-lg px-2 py-2 text-sm leading-tight transition-colors lg:min-h-0 ${
                 availability === a.value
                   ? "bg-accent-bg text-accent-active ring-1 ring-accent"
@@ -290,7 +266,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
                 variant="secondary"
                 size="sm"
                 onClick={() => {
-                  chooseAvailability(advice.availability);
+                  setAvailability(advice.availability);
                   if (advice.guide_price != null && advice.availability !== "LOAN") {
                     const v = String(advice.guide_price);
                     setAskingPrice(v);
@@ -311,7 +287,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
       {!loanOnly && (
       <div>
         <label htmlFor={`${ids}-price`} className="mb-1.5 block text-sm font-semibold text-text-secondary">
-          {isAuction ? "Starting price" : availability === "EITHER" ? "Guide price for a transfer" : "Guide price"}{" "}
+          {availability === "EITHER" ? "Guide price for a transfer" : "Guide price"}{" "}
           <span className="text-text-muted font-normal">(optional)</span>
         </label>
         <div className="relative">
@@ -324,9 +300,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
             className={`${INPUT_CLASS} pl-7`}
           />
         </div>
-        {/* Not on auctions: the bidding sets that price, and the market never
-            shows the model against an auction either (D7). */}
-        {fairValue && suggested != null && !isAuction && (
+        {fairValue && suggested != null && (
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span
               className="text-[13px] text-text-muted"
@@ -343,93 +317,25 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
 
       )}
 
-      {/* Hear offers until — optional, and not for an auction (which has its
-          own deadline below). A loan listing needs no end. */}
-      {!isAuction && (
-        <div>
-          <label htmlFor={`${ids}-until`} className="mb-1.5 block text-sm font-semibold text-text-secondary">
-            Hear offers until <span className="text-text-muted font-normal">(optional)</span>
-          </label>
-          <input
-            id={`${ids}-until`}
-            type="datetime-local"
-            value={offersUntil}
-            onChange={(e) => setOffersUntil(e.target.value)}
-            min={toLocalInputValue(new Date(Date.now() + 60 * 60 * 1000))}
-            className={INPUT_CLASS}
-          />
-          <p className="mt-1 text-[13px] text-text-muted">
-            The listing closes then. Leave it empty to keep hearing offers until you withdraw it.
-          </p>
-        </div>
-      )}
-
-      {/* Advanced: an auction. Only for a transfer — a loan cannot be
-          auctioned, so the option is not offered for loan listings. */}
-      {availability === "TRANSFER" && (
-        <label className="flex min-h-11 cursor-pointer items-start gap-2.5 lg:min-h-0">
-          <input
-            type="checkbox"
-            checked={asAuction}
-            onChange={(e) => setAsAuction(e.target.checked)}
-            className="mt-0.5 h-4 w-4 shrink-0 rounded accent-accent"
-          />
-          <span className="text-[13px] text-text-secondary">
-            <span className="font-semibold">Advanced: run as an auction</span> — clubs bid against each other
-            until a deadline, and you can accept the highest bid.
-          </span>
+      {/* Offers by — optional. The "best offers by Friday" a club would set
+          when several want him; a loan listing needs no end. */}
+      <div>
+        <label htmlFor={`${ids}-until`} className="mb-1.5 block text-sm font-semibold text-text-secondary">
+          Offers by <span className="text-text-muted font-normal">(optional)</span>
         </label>
-      )}
-
-      {isAuction && (
-        <>
-          <div>
-            <label htmlFor={`${ids}-reserve`} className="mb-1.5 block text-sm font-semibold text-text-secondary">
-              Reserve price <span className="text-text-muted font-normal">(optional)</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">£</span>
-              <CurrencyInput
-                id={`${ids}-reserve`}
-                value={reservePrice}
-                onChange={setReservePrice}
-                placeholder="Minimum to sell"
-                className={`${INPUT_CLASS} pl-7`}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor={`${ids}-increment`} className="mb-1.5 block text-sm font-semibold text-text-secondary">
-              Minimum bid increment
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">£</span>
-              <CurrencyInput
-                id={`${ids}-increment`}
-                value={minIncrement}
-                onChange={setMinIncrement}
-                className={`${INPUT_CLASS} pl-7`}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor={`${ids}-deadline`} className="mb-1.5 block text-sm font-semibold text-text-secondary">
-              Auction deadline
-            </label>
-            <input
-              id={`${ids}-deadline`}
-              type="datetime-local"
-              required
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              min={toLocalInputValue(new Date(Date.now() + 60 * 60 * 1000))}
-              className={INPUT_CLASS}
-            />
-          </div>
-        </>
-      )}
+        <input
+          id={`${ids}-until`}
+          type="datetime-local"
+          value={offersUntil}
+          onChange={(e) => setOffersUntil(e.target.value)}
+          min={toLocalInputValue(new Date(Date.now() + 60 * 60 * 1000))}
+          className={INPUT_CLASS}
+        />
+        <p className="mt-1 text-[13px] text-text-muted">
+          Clubs see this date. The listing closes then, and you choose from the offers you have. Leave it
+          empty to keep hearing offers until you withdraw it.
+        </p>
+      </div>
 
       <div>
         <label htmlFor={`${ids}-notes`} className="mb-1.5 block text-sm font-semibold text-text-secondary">

@@ -375,11 +375,11 @@ def check_terms(terms: dict, *, role: str, player: dict, budget: dict | None,
 
 
 async def _guide_price(db: AsyncSession, player_id: uuid.UUID) -> float | None:
-    """The open listing's asking price — public; auctions excluded."""
-    from app.sales.models import Sale, SaleStatus, SaleType
+    """The open listing's asking price — public."""
+    from app.sales.models import Sale, SaleStatus
 
     sale = (await db.execute(
-        select(Sale).where(Sale.player_id == player_id, Sale.status == SaleStatus.OPEN, Sale.sale_type != SaleType.AUCTION)
+        select(Sale).where(Sale.player_id == player_id, Sale.status == SaleStatus.OPEN)
     )).scalars().first()
     return _num(sale.asking_price) if sale else None
 

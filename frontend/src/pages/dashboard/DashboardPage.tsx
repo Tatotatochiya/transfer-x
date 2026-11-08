@@ -26,7 +26,7 @@ import { formatCurrency, formatDate } from "../../lib/utils";
 import { useAuth } from "../../hooks/useAuth";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { ScoutReportPanel } from "../../components/ai/ScoutReportPanel";
-import { dealWhoseMove, offerWhoseMove, saleWhoseMove } from "../../lib/whoseMove";
+import { dealWhoseMove, offerWhoseMove, type WhoseMove } from "../../lib/whoseMove";
 import WaitingOnYouBand, { type WaitingItem } from "../../components/dashboard/WaitingOnYouBand";
 import { BriefingCard } from "../../components/ai/Assistant";
 import { useClubDashboard } from "../../hooks/useClubDashboard";
@@ -38,7 +38,6 @@ const WAITING_ACTION_LABEL: Record<DashboardItem["kind"], string> = {
   approval: "Review",
   offer:    "Respond",
   deal:     "Open",
-  sale:     "Review bids",
   enquiry:  "Reply",
 };
 
@@ -46,7 +45,6 @@ const WAITING_FALLBACK_TITLE: Record<DashboardItem["kind"], string> = {
   approval: "Approval request",
   offer:    "Offer",
   deal:     "Deal",
-  sale:     "Listing",
   enquiry:  "Enquiry",
 };
 import FigureCard from "../../components/dashboard/FigureCard";
@@ -291,9 +289,10 @@ export default function DashboardPage() {
   // ── Tier 3 ──
   const listingRows = sales.slice(0, 3).map((s) => ({
     key: s.id, onClick: () => navigate(`/sales/${s.id}`),
-    name: s.player?.name ?? "—", player: { id: s.player?.id, photoUrl: s.player?.photo_url }, sub: s.bid_count ? `${s.bid_count} bid${s.bid_count === 1 ? "" : "s"}` : "No bids yet",
-    value: s.best_bid != null ? formatCurrency(s.best_bid) : s.asking_price != null ? formatCurrency(s.asking_price) : "—",
-    move: saleWhoseMove(s),
+    name: s.player?.name ?? "—", player: { id: s.player?.id, photoUrl: s.player?.photo_url }, sub: s.deadline ? `Offers by ${formatDate(s.deadline)}` : "Open to offers",
+    value: s.asking_price != null ? formatCurrency(s.asking_price) : "—",
+    // A listing is never anyone's move: its offers are, and show as offers.
+    move: "neither" as WhoseMove,
   }));
   const offerRows = offers.slice(0, 3).map((o) => ({
     key: o.id, onClick: () => navigate(`/offers/${o.id}`),

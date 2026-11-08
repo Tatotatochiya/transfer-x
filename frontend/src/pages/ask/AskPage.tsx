@@ -65,7 +65,7 @@ const STARTERS = [
   "What's waiting on us, and what expires this week?",
   "Our highest earners whose contract ends within 18 months",
   "How much transfer budget do we have left?",
-  "Auctions ending this week",
+  "Listings closing this week",
 ];
 
 const CONTEXT_STARTERS: Record<AskContext["type"], (name: string) => string[]> = {

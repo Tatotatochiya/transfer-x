@@ -2,7 +2,6 @@ import type {
   AgreementStatus,
   ApprovalActionType,
   ApprovalStatus,
-  BidStatus,
   ClauseStatus,
   ClauseType,
   ClubCapability,
@@ -494,8 +493,9 @@ export interface Sale {
   sale_type: SaleType;
   availability: ListingAvailability;
   asking_price: number | null;
+  /** The seller's private floor: null for everyone but the seller and staff (TRA-139). */
   reserve_price: number | null;
-  min_increment: number;
+  /** "Offers by": the listing closes then. */
   deadline: string | null;
   notes: string | null;
   status: SaleStatus;
@@ -503,14 +503,9 @@ export interface Sale {
   updated_at: string;
   player: PlayerSummary | null;
   seller_club: SellerClubSummary | null;
-  // auction summary fields (reserve_price/best_bid/bid_count are null for non-seller/staff viewers — TRA-139)
-  bid_count: number | null;
-  best_bid: number | null;
-  minimum_next_bid: number | null;
-  reserve_met: boolean;
   // TRA-91 fair-value signal — null for player-account/anonymous viewers and
-  // ineligible players; divergence present on FIXED_PRICE and OPEN_TO_OFFERS,
-  // never on AUCTION (D7)
+  // ineligible players; divergence present on FIXED_PRICE and OPEN_TO_OFFERS
+  // (D7). Auctions are retired (ADR 0011).
   fair_value_signal?: FairValueSignal | null;
   // Detail endpoint only, and only once the listing is no longer OPEN — explains
   // what resolved it. Null when nothing did (withdrawn, expired unsold).
@@ -574,19 +569,6 @@ export interface FairValueSignal {
   drivers?: ValuationDriver[];
   comparables_used?: number | null;
   divergence: ValuationDivergence | null;
-}
-
-export interface Bid {
-  id: string;
-  sale_id: string;
-  buyer_club_id: string;
-  amount: number;
-  wage_offer_weekly: number | null;
-  notes: string | null;
-  status: BidStatus;
-  created_at: string;
-  updated_at: string;
-  buyer_club: { id: string; name: string } | null;
 }
 
 export interface DealStub {
@@ -1418,7 +1400,7 @@ export interface Enquiry {
 }
 
 export interface DashboardItem {
-  kind: "approval" | "deal" | "offer" | "sale" | "enquiry";
+  kind: "approval" | "deal" | "offer" | "enquiry";
   id: string;
   player_name: string | null;
   player_id?: string | null;
@@ -1512,7 +1494,7 @@ export interface OrderBookClubSummary {
 
 export interface OrderBookEntry {
   rank: number;
-  kind: "bid" | "offer";
+  kind: "offer";
   id: string;
   club: OrderBookClubSummary | null;
   fee_amount: number | null;

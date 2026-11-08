@@ -1,4 +1,4 @@
-import type { Deal, Offer, Sale } from "../types/api";
+import type { Deal, Offer } from "../types/api";
 
 export type WhoseMove = "your" | "their" | "neither";
 
@@ -14,7 +14,6 @@ export type WhoseMove = "your" | "their" | "neither";
  */
 
 const AGENT_SILENCE_HOURS = 72;
-const AUCTION_CLOSING_SOON_HOURS = 48;
 
 function hoursSince(iso: string): number {
   return (Date.now() - new Date(iso).getTime()) / 3_600_000;
@@ -86,20 +85,6 @@ export function dealWhoseMoveReason(deal: Deal): string {
     default:
       return "Clubs — agreeing terms";
   }
-}
-
-/** Listing with no bids → neither. Auction with a bid meeting reserve and
- * the deadline inside 48h → your move (the seller needs to decide before
- * it closes on its own). Reserve/bid data is only ever populated for the
- * seller/staff viewer to begin with (TRA-139), so this is inherently
- * seller-side — exactly the dashboard's own context. */
-export function saleWhoseMove(sale: Sale): WhoseMove {
-  if (!sale.bid_count) return "neither";
-  if (sale.reserve_met && sale.deadline) {
-    const hoursUntilClose = -hoursSince(sale.deadline); // positive while still open
-    if (hoursUntilClose >= 0 && hoursUntilClose <= AUCTION_CLOSING_SOON_HOURS) return "your";
-  }
-  return "neither";
 }
 
 export const WHOSE_MOVE_LABEL: Record<WhoseMove, string> = {

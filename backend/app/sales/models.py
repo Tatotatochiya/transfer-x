@@ -11,6 +11,8 @@ from app.database import Base
 
 
 class SaleType(str, enum.Enum):
+    # Retired (product ADR 0011): no new auctions. Kept so past listings and
+    # the deals they produced still read.
     AUCTION = "AUCTION"
     OPEN_TO_OFFERS = "OPEN_TO_OFFERS"
     FIXED_PRICE = "FIXED_PRICE"
@@ -18,8 +20,7 @@ class SaleType(str, enum.Enum):
 
 class ListingAvailability(str, enum.Enum):
     """What the selling club will consider for this player — separate from
-    `SaleType`, which is *how* offers arrive. A loan cannot be auctioned, so
-    this is not a fourth sale type."""
+    `SaleType`, which is *how* offers arrive."""
     TRANSFER = "TRANSFER"
     LOAN = "LOAN"
     EITHER = "EITHER"
@@ -43,6 +44,8 @@ class SaleEventType(str, enum.Enum):
     SALE_EXPIRED = "SALE_EXPIRED"
 
 
+# Bids were made in auctions, which are retired (ADR 0011). The table and
+# these values stay as history: deals made from a bid point at it.
 class BidStatus(str, enum.Enum):
     ACTIVE = "ACTIVE"
     WITHDRAWN = "WITHDRAWN"
@@ -73,6 +76,7 @@ class Sale(Base):
     )
     asking_price: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
     reserve_price: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    # An auction's bidding step; unused since auctions were retired (ADR 0011).
     min_increment: Mapped[Decimal] = mapped_column(
         Numeric(15, 2), nullable=False, default=Decimal("500000")
     )

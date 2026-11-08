@@ -1,26 +1,26 @@
-"""M3 — Sales + Bidding service layer."""
+"""M3 — Sales (listings) service layer.
+
+Auctions are retired (product ADR 0011): a club lists a player open to
+offers, optionally with a date it will hear offers until, and chooses among
+the offers. Old auction listings, bids and the deals they produced stay in
+the database as history; nothing creates or acts on them any more."""
 
 import logging
 import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app import clubs as clubs_module
-from app.audit import service as audit_service
-from app.clubs.models import ClubFinance
 from app.common.filters import apply_date_range
-from app.common.schemas import WhoseMove
-from app.deals.models import Deal, DealStage, DealStatus, DealType
-from app.sales.models import (
-    Bid, BidStatus, ListingAvailability, Sale, SaleEvent, SaleEventType, SaleStatus, SaleType,
-)
+from app.deals.models import DealType
+from app.sales.models import ListingAvailability, Sale, SaleEvent, SaleEventType, SaleStatus, SaleType
 
-# B1: matches AUCTION_CLOSING_SOON_HOURS in frontend/src/lib/whoseMove.ts.
-_AUCTION_CLOSING_SOON_HOURS = 48
+AUCTIONS_RETIRED = (
+    "Auctions are no longer offered. List him open to offers, with a date you'll hear offers until if you want one."
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,17 +33,16 @@ def validate_listing_terms(
 ) -> None:
     """What a listing may offer.
 
-    An auction sells to the highest bidder, so it is transfer-only. A fixed
-    price is a transfer price; a fixed-price listing may also welcome loan
+    No new auctions (ADR 0011). A fixed price is a transfer price; a fixed-price listing may also welcome loan
     approaches ("either") but cannot be loan-only. A loan-only listing is open
     to offers and carries **no asking price**: a figure on it would read as the
     player's price — to buyers, and to the fair-value signal, which compares an
     asking price against the model's valuation of the player.
     """
+    if sale_type == SaleType.AUCTION:
+        raise ValueError(AUCTIONS_RETIRED)
     if availability == ListingAvailability.TRANSFER:
         return
-    if sale_type == SaleType.AUCTION:
-        raise ValueError("An auction is for a transfer — list him open to offers to consider loans")
     if availability == ListingAvailability.LOAN:
         if sale_type != SaleType.OPEN_TO_OFFERS:
             raise ValueError("A loan-only listing is open to offers — a fixed price is a transfer price")
@@ -73,7 +72,6 @@ async def create_sale(
     sale_type: SaleType,
     asking_price: Decimal | None = None,
     reserve_price: Decimal | None = None,
-    min_increment: Decimal = Decimal("500000"),
     deadline: datetime | None = None,
     notes: str | None = None,
     availability: ListingAvailability = ListingAvailability.TRANSFER,
@@ -90,7 +88,6 @@ async def create_sale(
         availability=availability,
         asking_price=asking_price,
         reserve_price=reserve_price,
-        min_increment=min_increment,
         deadline=deadline,
         notes=notes,
         status=SaleStatus.OPEN,
@@ -156,7 +153,6 @@ async def get_sale_by_id(db: AsyncSession, sale_id: uuid.UUID) -> Sale | None:
         .options(
             selectinload(Sale.player),
             selectinload(Sale.seller_club),
-            selectinload(Sale.bids).selectinload(Bid.buyer_club),
         )
     )
     return result.scalar_one_or_none()
@@ -181,7 +177,6 @@ async def list_sales(
     q = select(Sale).options(
         selectinload(Sale.player),
         selectinload(Sale.seller_club),
-        selectinload(Sale.bids).selectinload(Bid.buyer_club),
     )
     if status:
         q = q.where(Sale.status == status)
@@ -207,14 +202,14 @@ async def list_sales(
 async def withdraw_sale(
     db: AsyncSession, sale: Sale, actor_club_id: uuid.UUID | None, *, staff_reason: str | None = None,
 ) -> Sale:
-    """Withdraw an OPEN sale. Releases all active bid reservations and the
-    budget held by offers made against it, and tells everyone affected.
+    """Withdraw an OPEN sale. Releases the budget held by offers made against
+    it, and tells everyone affected.
 
     With `staff_reason`, TransferX staff are cancelling it (admin panel): the
     messages say who and why, and the seller is told too. The sale ends
     WITHDRAWN either way (there is no separate cancelled status); the admin
     audit event records that staff did it."""
-    # Lock the sale row so concurrent bid placements are blocked until we finish
+    # Lock the sale row so a concurrent accept can't close it under us.
     locked_result = await db.execute(
         select(Sale).where(Sale.id == sale.id).with_for_update()
     )
@@ -227,31 +222,7 @@ async def withdraw_sale(
     from app.notifications.models import NotificationType
     from app.offers.models import Offer, OfferEvent, OfferEventType, OfferStatus
 
-    # Read active bids after acquiring the lock — no concurrent bids can be added now
-    active_bids_result = await db.execute(
-        select(Bid).where(Bid.sale_id == sale.id, Bid.status == BidStatus.ACTIVE)
-    )
-    active_bids = list(active_bids_result.scalars())
-
     by_staff = f"TransferX staff cancelled this sale: {staff_reason}" if staff_reason else None
-    for bid in active_bids:
-        bid.status = BidStatus.WITHDRAWN
-        await clubs_module.service.release_budget(
-            db,
-            club_id=bid.buyer_club_id,
-            transfer_amount=bid.reserved_transfer_amount,
-            wage_weekly=bid.reserved_wage_weekly,
-        )
-        # Item 1: bidders were never told the sale they bid on was pulled.
-        await notif_service.notify_club(
-            db,
-            bid.buyer_club_id,
-            type=NotificationType.OUTBID,
-            message=by_staff or "This sale has been withdrawn by the seller",
-            link=f"/sales/{sale.id}",
-            related_player_id=sale.player_id,
-            group_key=f"sale:{sale.id}",
-        )
 
     # Item 1: direct offers made against this listing (OPEN_TO_OFFERS sales)
     # otherwise survive the withdrawal untouched and remain acceptable.
@@ -308,352 +279,21 @@ async def withdraw_sale(
     return sale
 
 
-# ── Auction helpers ───────────────────────────────────────────────────────────
-
-
-def get_best_bid_amount(bids: list[Bid]) -> Decimal | None:
-    active = [b for b in bids if b.status == BidStatus.ACTIVE]
-    if not active:
-        return None
-    return max(b.amount for b in active)
-
-
-def get_minimum_next_bid(sale: Sale) -> Decimal:
-    best = get_best_bid_amount(sale.bids)
-    if best is None:
-        # No bids yet — start at asking_price or 1
-        return sale.asking_price or Decimal("1")
-    return best + sale.min_increment
-
-
-def is_reserve_met(sale: Sale) -> bool:
-    if sale.reserve_price is None:
-        return True
-    best = get_best_bid_amount(sale.bids)
-    if best is None:
-        return False
-    return best >= sale.reserve_price
-
-
-def compute_sale_whose_move(
-    *, bid_count: int | None, reserve_met: bool, deadline: datetime | None
-) -> WhoseMove:
-    """B1: mirrors saleWhoseMove() in frontend/src/lib/whoseMove.ts exactly.
-    Inherently seller-side: bid_count is only ever non-null for the seller or
-    staff (TRA-139), so a non-seller viewer's null bid_count already falls
-    through to NEITHER, same as the frontend's `!sale.bid_count` check.
-    """
-    if not bid_count:
-        return WhoseMove.NEITHER
-    if reserve_met and deadline is not None:
-        if deadline.tzinfo is None:  # SQLite drops tzinfo
-            deadline = deadline.replace(tzinfo=timezone.utc)
-        hours_until_close = (deadline - datetime.now(timezone.utc)).total_seconds() / 3600
-        if 0 <= hours_until_close <= _AUCTION_CLOSING_SOON_HOURS:
-            return WhoseMove.YOUR
-    return WhoseMove.NEITHER
-
-
-# ── Bid placement (concurrency-safe) ─────────────────────────────────────────
-
-
-async def place_bid(
-    db: AsyncSession,
-    *,
-    sale_id: uuid.UUID,
-    buyer_club_id: uuid.UUID,
-    amount: Decimal,
-    wage_offer_weekly: Decimal | None = None,
-    notes: str | None = None,
-) -> Bid:
-    """Place a bid on an AUCTION sale.
-
-    Uses SELECT FOR UPDATE on the Sale row to prevent concurrent bids.
-    Raises ValueError on business rule violations.
-    """
-    # Lock the sale row
-    result = await db.execute(
-        select(Sale)
-        .where(Sale.id == sale_id)
-        .with_for_update()
-        .options(selectinload(Sale.bids))
-    )
-    sale = result.scalar_one_or_none()
-
-    if sale is None:
-        raise ValueError("Sale not found")
-    if sale.status != SaleStatus.OPEN:
-        raise ValueError("Sale is not open for bidding")
-    if sale.sale_type != SaleType.AUCTION:
-        raise ValueError("Bid can only be placed on AUCTION sales")
-    if sale.seller_club_id == buyer_club_id:
-        raise ValueError("Cannot bid on your own sale")
-
-    # Check deadline
-    deadline = sale.deadline
-    if deadline is not None and deadline.tzinfo is None:  # SQLite drops tzinfo
-        deadline = deadline.replace(tzinfo=timezone.utc)
-    if deadline and datetime.now(timezone.utc) > deadline:
-        sale.status = SaleStatus.EXPIRED
-        db.add(SaleEvent(sale_id=sale.id, event_type=SaleEventType.SALE_EXPIRED))
-        await db.flush()
-        await sync_listed_flag(db, sale.player_id)
-        raise ValueError("Sale deadline has passed")
-
-    min_bid = get_minimum_next_bid(sale)
-    if amount < min_bid:
-        raise ValueError(f"Bid must be at least {min_bid}")
-
-    # Check if this club already has an active bid
-    existing_result = await db.execute(
-        select(Bid).where(
-            Bid.sale_id == sale_id,
-            Bid.buyer_club_id == buyer_club_id,
-            Bid.status == BidStatus.ACTIVE,
-        )
-    )
-    existing_bid = existing_result.scalar_one_or_none()
-
-    wage_weekly = wage_offer_weekly or Decimal("0")
-
-    if existing_bid:
-        # Upgrade bid — release old reservation, reserve new amount
-        delta_transfer = amount - existing_bid.reserved_transfer_amount
-        delta_wage = wage_weekly - existing_bid.reserved_wage_weekly
-
-        if delta_transfer > 0 or delta_wage > 0:
-            # Need additional funds reserved
-            await clubs_module.service.reserve_budget(
-                db,
-                club_id=buyer_club_id,
-                transfer_amount=max(Decimal("0"), delta_transfer),
-                wage_weekly=max(Decimal("0"), delta_wage),
-            )
-        elif delta_transfer < 0 or delta_wage < 0:
-            # Releasing surplus
-            await clubs_module.service.release_budget(
-                db,
-                club_id=buyer_club_id,
-                transfer_amount=max(Decimal("0"), -delta_transfer),
-                wage_weekly=max(Decimal("0"), -delta_wage),
-            )
-
-        existing_bid.amount = amount
-        existing_bid.wage_offer_weekly = wage_offer_weekly
-        existing_bid.reserved_transfer_amount = amount
-        existing_bid.reserved_wage_weekly = wage_weekly
-        existing_bid.notes = notes
-        bid = existing_bid
-        event_type = SaleEventType.BID_REPLACED
-    else:
-        # Reserve budget for new bid
-        await clubs_module.service.reserve_budget(
-            db,
-            club_id=buyer_club_id,
-            transfer_amount=amount,
-            wage_weekly=wage_weekly,
-        )
-
-        bid = Bid(
-            sale_id=sale_id,
-            buyer_club_id=buyer_club_id,
-            amount=amount,
-            wage_offer_weekly=wage_offer_weekly,
-            notes=notes,
-            status=BidStatus.ACTIVE,
-            reserved_transfer_amount=amount,
-            reserved_wage_weekly=wage_weekly,
-        )
-        db.add(bid)
-        await db.flush()
-        event_type = SaleEventType.BID_PLACED
-
-    db.add(
-        SaleEvent(
-            sale_id=sale_id,
-            event_type=event_type,
-            actor_club_id=buyer_club_id,
-            bid_id=bid.id,
-            amount=amount,
-        )
-    )
-    await db.flush()
-    return bid
-
-
-# ── Accept bid (creates Deal) ─────────────────────────────────────────────────
-
-
-async def accept_bid(
-    db: AsyncSession,
-    *,
-    sale_id: uuid.UUID,
-    bid_id: uuid.UUID,
-    actor_club_id: uuid.UUID,
-) -> Deal:
-    """Accept a bid, close the sale, and create a Deal.
-
-    Commits the winning bid's reservation; releases all other bids.
-    """
-    result = await db.execute(
-        select(Sale)
-        .where(Sale.id == sale_id)
-        .with_for_update()
-        .options(selectinload(Sale.bids))
-    )
-    sale = result.scalar_one_or_none()
-
-    if sale is None:
-        raise ValueError("Sale not found")
-    if sale.status != SaleStatus.OPEN:
-        raise ValueError("Sale is not open")
-    if sale.seller_club_id != actor_club_id:
-        raise ValueError("Only the seller can accept a bid")
-
-    # Find winning bid
-    bid_result = await db.execute(
-        select(Bid).where(Bid.id == bid_id, Bid.sale_id == sale_id, Bid.status == BidStatus.ACTIVE)
-    )
-    winning_bid = bid_result.scalar_one_or_none()
-    if winning_bid is None:
-        raise ValueError("Bid not found or not active")
-
-    # Release all OTHER active bids
-    from app.notifications import service as notif_service
-    from app.notifications.models import NotificationType
-
-    for bid in sale.bids:
-        if bid.id != bid_id and bid.status == BidStatus.ACTIVE:
-            bid.status = BidStatus.REJECTED
-            await clubs_module.service.release_budget(
-                db,
-                club_id=bid.buyer_club_id,
-                transfer_amount=bid.reserved_transfer_amount,
-                wage_weekly=bid.reserved_wage_weekly,
-            )
-            # Item 1: losing bidders get their budget back but were never told why.
-            await notif_service.notify_club(
-                db,
-                bid.buyer_club_id,
-                type=NotificationType.OUTBID,
-                message="Your bid was not accepted — this sale has closed",
-                link=f"/sales/{sale_id}",
-                related_player_id=sale.player_id,
-                group_key=f"sale:{sale_id}",
-            )
-
-    # Commit winning bid budget
-    await clubs_module.service.commit_budget(
-        db,
-        club_id=winning_bid.buyer_club_id,
-        transfer_amount=winning_bid.reserved_transfer_amount,
-        wage_weekly=winning_bid.reserved_wage_weekly,
-    )
-
-    winning_bid.status = BidStatus.ACCEPTED
-    sale.status = SaleStatus.CLOSED
-    await db.flush()
-    await sync_listed_flag(db, sale.player_id)
-
-    db.add(
-        SaleEvent(
-            sale_id=sale_id,
-            event_type=SaleEventType.BID_ACCEPTED,
-            actor_club_id=actor_club_id,
-            bid_id=bid_id,
-            amount=winning_bid.amount,
-        )
-    )
-    db.add(
-        SaleEvent(
-            sale_id=sale_id,
-            event_type=SaleEventType.SALE_CLOSED,
-            actor_club_id=actor_club_id,
-        )
-    )
-
-    deal = Deal(
-        sale_id=sale_id,
-        bid_id=bid_id,
-        buyer_club_id=winning_bid.buyer_club_id,
-        seller_club_id=sale.seller_club_id,
-        player_id=sale.player_id,
-        agreed_fee=winning_bid.amount,
-        agreed_wage_weekly=winning_bid.wage_offer_weekly,
-        status=DealStatus.IN_PROGRESS,
-        stage=DealStage.AGREEMENT,
-    )
-    db.add(deal)
-    await db.flush()
-
-    # From here an auction deal is run like any other: the clubs take it
-    # through personal terms and the paperwork checklist themselves. So it
-    # gets the same start as a deal from an accepted offer — until now it
-    # skipped all three of these, and waited on TransferX staff instead.
-    from app.offers import service as offers_service
-
-    await audit_service.emit(
-        db,
-        entity_type="DEAL", entity_id=deal.id,
-        action="DEAL_CREATED",
-        payload={"agreed_fee": str(deal.agreed_fee), "stage": deal.stage.value, "bid_id": str(bid_id)},
-        description="Deal created from accepted auction bid",
-    )
-    # Offers made to the seller directly, outside the auction, are moot now:
-    # release their reservations and tell those clubs.
-    await offers_service.reject_offers_for_player(db, deal.player_id)
-    # A mandated player's agent is brought in, as on the offer path.
-    await offers_service.maybe_invite_agent_for_deal(db, deal)
-    return deal
-
-
 async def close_sale_after_offer_accepted(
     db: AsyncSession, sale_id: uuid.UUID, *, actor_club_id: uuid.UUID
 ) -> None:
     """Close a listing because a direct offer made against it was accepted.
 
-    Mirrors accept_bid's own closing block. Without this, the auction path
-    (accept a bid) closed the listing but the OPEN_TO_OFFERS path (accept an
-    offer made against the listing) left it OPEN forever — the player kept
-    showing as "Listed" while their deal was already in progress, which the
-    app's own deal banner states is impossible.
-
-    Any still-active bids are released and their bidders notified, the same way
-    losing bidders are handled in accept_bid — a listing can carry both bids and
-    linked offers, and closing it must not strand a bidder's reserved budget.
-    """
-    from app.notifications import service as notif_service
-    from app.notifications.models import NotificationType
-
+    Without this the listing stayed OPEN forever: the player kept showing as
+    "Listed" while his deal was already in progress."""
     result = await db.execute(
         select(Sale)
         .where(Sale.id == sale_id)
         .with_for_update()
-        .options(selectinload(Sale.bids))
     )
     sale = result.scalar_one_or_none()
     if sale is None or sale.status != SaleStatus.OPEN:
         return
-
-    for bid in sale.bids:
-        if bid.status != BidStatus.ACTIVE:
-            continue
-        bid.status = BidStatus.REJECTED
-        await clubs_module.service.release_budget(
-            db,
-            club_id=bid.buyer_club_id,
-            transfer_amount=bid.reserved_transfer_amount,
-            wage_weekly=bid.reserved_wage_weekly,
-        )
-        await notif_service.notify_club(
-            db,
-            bid.buyer_club_id,
-            type=NotificationType.OUTBID,
-            message="Your bid was not accepted — this sale has closed",
-            link=f"/sales/{sale.id}",
-            related_player_id=sale.player_id,
-            group_key=f"sale:{sale.id}",
-        )
 
     sale.status = SaleStatus.CLOSED
     await db.flush()
@@ -672,14 +312,11 @@ async def close_sale_after_offer_accepted(
 
 
 async def close_expired_sales(db: AsyncSession) -> int:
-    """Expire OPEN listings past their deadline; for auctions, release every
-    bid reservation too.
+    """Expire OPEN listings past their deadline.
 
-    Every listing can carry a deadline now — an "Open to offers" listing's is
-    optional, and says "we will hear offers until…". Before, only auctions
-    were ever closed, so a deadline on any other listing did nothing. Offers
-    already made against an expired listing are untouched: they run to their
-    own expiry and can still be answered.
+    An "Open to offers" listing's deadline is optional, and says "we will
+    hear offers until…". Offers already made against an expired listing are
+    untouched: they run to their own expiry and can still be answered.
 
     Returns the number of sales expired.
     """
@@ -692,35 +329,12 @@ async def close_expired_sales(db: AsyncSession) -> int:
             Sale.deadline.is_not(None),
             Sale.deadline < now,
         )
-        .options(selectinload(Sale.bids))
         .with_for_update(skip_locked=True)
     )
     expired_sales = list(result.scalars())
 
-    from app.notifications import service as notif_service
-    from app.notifications.models import NotificationType
-
     count = 0
     for sale in expired_sales:
-        for bid in sale.bids:
-            if bid.status == BidStatus.ACTIVE:
-                bid.status = BidStatus.REJECTED
-                await clubs_module.service.release_budget(
-                    db,
-                    club_id=bid.buyer_club_id,
-                    transfer_amount=bid.reserved_transfer_amount,
-                    wage_weekly=bid.reserved_wage_weekly,
-                )
-                # Item 1: tell bidders the auction lapsed, not just release their funds silently.
-                await notif_service.notify_club(
-                    db,
-                    bid.buyer_club_id,
-                    type=NotificationType.OUTBID,
-                    message="This auction closed with no accepted bid — your reservation has been released",
-                    link=f"/sales/{sale.id}",
-                    related_player_id=sale.player_id,
-                    group_key=f"sale:{sale.id}",
-                )
         sale.status = SaleStatus.EXPIRED
         db.add(SaleEvent(sale_id=sale.id, event_type=SaleEventType.SALE_EXPIRED))
         await db.flush()
@@ -785,156 +399,69 @@ async def get_order_book(
     sale: Sale,
     my_club_id: uuid.UUID | None,
 ) -> "OrderBookResponse":
-    from app.sales.schemas import OrderBookClubSummary, OrderBookEntry, OrderBookResponse
+    from app.sales.schemas import OrderBookResponse
     from app.offers import service as offers_svc
     from app.offers.models import OfferStatus
 
     is_seller = my_club_id is not None and str(my_club_id) == str(sale.seller_club_id)
 
-    if sale.sale_type == SaleType.AUCTION:
-        # ── AUCTION: order book of bids ──
-        result = await db.execute(
-            select(Bid)
-            .where(Bid.sale_id == sale.id)
-            .options(selectinload(Bid.buyer_club))
-            .order_by(Bid.amount.desc())
+    # The offers made against the listing.
+    all_offers = await offers_svc.list_offers_for_sale(db, sale.id)
+    _active_statuses = {OfferStatus.SENT, OfferStatus.COUNTERED}
+    active_offers = [o for o in all_offers if o.status in _active_statuses]
+    active_count = len(active_offers)
+
+    # Shared with the player-scoped competition view, including its
+    # anonymous-buyer mask — this copy used to build its own rows and named
+    # an anonymous buyer to the seller of the very listing they bid on.
+    entries = offers_svc.order_book_entries(all_offers, my_club_id)
+
+    if is_seller:
+        best = max(
+            (o.fee_amount for o in active_offers if o.fee_amount and o.deal_type != DealType.LOAN),
+            default=None,
         )
-        all_bids = list(result.scalars())
-        active_bids = [b for b in all_bids if b.status == BidStatus.ACTIVE]
-        active_count = len(active_bids)
-
-        # Build entries: active first (ranked), then inactive (rank=0)
-        def bid_sort_key(b: Bid):
-            return (b.status != BidStatus.ACTIVE, -float(b.amount or 0))
-
-        entries: list[OrderBookEntry] = []
-        rank = 1
-        for bid in sorted(all_bids, key=bid_sort_key):
-            is_active = bid.status == BidStatus.ACTIVE
-            entry = OrderBookEntry(
-                rank=rank if is_active else 0,
-                kind="bid",
-                id=bid.id,
-                club=OrderBookClubSummary(
-                    id=bid.buyer_club.id,
-                    name=bid.buyer_club.name,
-                    crest_url=getattr(bid.buyer_club, "crest_url", None),
-                ) if bid.buyer_club else None,
-                fee_amount=bid.amount,
-                wage_weekly=bid.wage_offer_weekly,
-                status=bid.status.value,
-                is_countered=False,
-                is_active=is_active,
-                last_action_at=bid.updated_at,
-            )
-            entries.append(entry)
-            if is_active:
-                rank += 1
-
-        if is_seller:
-            best = max((b.amount for b in active_bids if b.amount), default=None)
-            reserve_met = (
-                sale.reserve_price is not None
-                and best is not None
-                and best >= sale.reserve_price
-            )
-            parts = [f"{active_count} {'club' if active_count == 1 else 'clubs'}"]
-            if best:
-                parts.append(f"Best {_fmt_millions(best)}")
-            if sale.reserve_price is not None:
-                parts.append("Reserve: Met" if reserve_met else "Reserve: Not met")
-            return OrderBookResponse(
-                sale_id=sale.id,
-                role="seller",
-                active_count=active_count,
-                entries=entries,
-                summary=" · ".join(parts),
-            )
-        else:
-            my_bid = next(
-                (b for b in active_bids if my_club_id and str(b.buyer_club_id) == str(my_club_id)),
-                None,
-            )
-            if my_bid is None:
-                return OrderBookResponse(sale_id=sale.id, role="buyer", active_count=active_count)
-            active_amounts = [b.amount for b in active_bids if b.amount is not None]
-            sorted_amounts = sorted(active_amounts, reverse=True)
-            my_rank = (sorted_amounts.index(my_bid.amount) + 1) if my_bid.amount in sorted_amounts else None
-            band = _band_width(max(active_amounts)) if active_amounts else Decimal("5000000")
-            other_amounts = [
-                b.amount for b in active_bids
-                if str(b.buyer_club_id) != str(my_club_id) and b.amount is not None
-            ]
-            tiers = _compute_tiers(other_amounts, my_bid.amount, band)
-            my_entry = next((e for e in entries if str(e.id) == str(my_bid.id)), None)
-            return OrderBookResponse(
-                sale_id=sale.id,
-                role="buyer",
-                active_count=active_count,
-                tiers=tiers,
-                your_rank=my_rank,
-                is_leading=my_rank == 1,
-                your_entry=my_entry,
-            )
-
+        reserve_met = (
+            sale.reserve_price is not None
+            and best is not None
+            and best >= sale.reserve_price
+        )
+        parts = [f"{active_count} {'club' if active_count == 1 else 'clubs'}"]
+        if best:
+            parts.append(f"Best {_fmt_millions(best)}")
+        if sale.reserve_price is not None:
+            parts.append("Reserve: Met" if reserve_met else "Reserve: Not met")
+        parts.extend(offers_svc.loan_summary_parts(active_offers))
+        return OrderBookResponse(
+            sale_id=sale.id,
+            role="seller",
+            active_count=active_count,
+            entries=entries,
+            summary=" · ".join(parts),
+        )
     else:
-        # ── OPEN_TO_OFFERS / FIXED_PRICE: order book of offers ──
-        all_offers = await offers_svc.list_offers_for_sale(db, sale.id)
-        _active_statuses = {OfferStatus.SENT, OfferStatus.COUNTERED}
-        active_offers = [o for o in all_offers if o.status in _active_statuses]
-        active_count = len(active_offers)
-
-        # Shared with the player-scoped competition view, including its
-        # anonymous-buyer mask — this copy used to build its own rows and named
-        # an anonymous buyer to the seller of the very listing they bid on.
-        entries = offers_svc.order_book_entries(all_offers, my_club_id)
-
-        if is_seller:
-            best = max(
-                (o.fee_amount for o in active_offers if o.fee_amount and o.deal_type != DealType.LOAN),
-                default=None,
-            )
-            reserve_met = (
-                sale.reserve_price is not None
-                and best is not None
-                and best >= sale.reserve_price
-            )
-            parts = [f"{active_count} {'club' if active_count == 1 else 'clubs'}"]
-            if best:
-                parts.append(f"Best {_fmt_millions(best)}")
-            if sale.reserve_price is not None:
-                parts.append("Reserve: Met" if reserve_met else "Reserve: Not met")
-            parts.extend(offers_svc.loan_summary_parts(active_offers))
-            return OrderBookResponse(
-                sale_id=sale.id,
-                role="seller",
-                active_count=active_count,
-                entries=entries,
-                summary=" · ".join(parts),
-            )
-        else:
-            my_offer = next(
-                (o for o in active_offers if my_club_id and str(o.from_club_id) == str(my_club_id)),
-                None,
-            )
-            if my_offer is None:
-                return OrderBookResponse(sale_id=sale.id, role="buyer", active_count=active_count)
-            active_amounts = [o.fee_amount for o in active_offers if o.fee_amount is not None]
-            sorted_amounts = sorted(active_amounts, reverse=True)
-            my_rank = (sorted_amounts.index(my_offer.fee_amount) + 1) if my_offer.fee_amount in sorted_amounts else None
-            band = _band_width(max(active_amounts)) if active_amounts else Decimal("5000000")
-            other_amounts = [
-                o.fee_amount for o in active_offers
-                if str(o.from_club_id) != str(my_club_id) and o.fee_amount is not None
-            ]
-            tiers = _compute_tiers(other_amounts, my_offer.fee_amount, band)
-            my_entry = next((e for e in entries if str(e.id) == str(my_offer.id)), None)
-            return OrderBookResponse(
-                sale_id=sale.id,
-                role="buyer",
-                active_count=active_count,
-                tiers=tiers,
-                your_rank=my_rank,
-                is_leading=my_rank == 1,
-                your_entry=my_entry,
-            )
+        my_offer = next(
+            (o for o in active_offers if my_club_id and str(o.from_club_id) == str(my_club_id)),
+            None,
+        )
+        if my_offer is None:
+            return OrderBookResponse(sale_id=sale.id, role="buyer", active_count=active_count)
+        active_amounts = [o.fee_amount for o in active_offers if o.fee_amount is not None]
+        sorted_amounts = sorted(active_amounts, reverse=True)
+        my_rank = (sorted_amounts.index(my_offer.fee_amount) + 1) if my_offer.fee_amount in sorted_amounts else None
+        band = _band_width(max(active_amounts)) if active_amounts else Decimal("5000000")
+        other_amounts = [
+            o.fee_amount for o in active_offers
+            if str(o.from_club_id) != str(my_club_id) and o.fee_amount is not None
+        ]
+        tiers = _compute_tiers(other_amounts, my_offer.fee_amount, band)
+        my_entry = next((e for e in entries if str(e.id) == str(my_offer.id)), None)
+        return OrderBookResponse(
+            sale_id=sale.id,
+            role="buyer",
+            active_count=active_count,
+            tiers=tiers,
+            your_rank=my_rank,
+            is_leading=my_rank == 1,
+            your_entry=my_entry,
+        )

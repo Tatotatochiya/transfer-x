@@ -12,9 +12,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.board.schemas import BoardCard, BoardColumn, BoardResponse
 from app.common.masking import buyer_name
@@ -24,7 +22,7 @@ from app.deals.models import DealStage, DealStatus
 from app.offers import service as offers_service
 from app.offers.models import OfferStatus
 from app.sales import service as sales_service
-from app.sales.models import Bid, BidStatus, Sale, SaleStatus, SaleType
+from app.sales.models import SaleStatus, SaleType
 
 COLUMNS = [
     ("talking", "Talking"),
@@ -198,42 +196,10 @@ async def _listing_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, hi
                 detail="Listing withdrawn" if s.status == SaleStatus.WITHDRAWN else "Listing expired",
             ), s.player)))
             continue
-        active = [b for b in (s.bids or []) if b.status == BidStatus.ACTIVE]
-        if s.sale_type == SaleType.AUCTION and active:
-            best = sales_service.get_best_bid_amount(s.bids or [])
-            move = sales_service.compute_sale_whose_move(
-                bid_count=len(active), reserve_met=sales_service.is_reserve_met(s), deadline=s.deadline,
-            )
-            cards.append(BoardCard(**_player(dict(
-                base, column="offers", kind="bid", amount=best,
-                detail=f"{len(active)} bid{'s' if len(active) != 1 else ''} · best {_money(best)}",
-                whose_move=move, deadline=s.deadline,
-            ), s.player)))
-        else:
-            kind = {SaleType.AUCTION: "Auction", SaleType.FIXED_PRICE: "Fixed price"}.get(s.sale_type, "Listed")
-            cards.append(BoardCard(**_player(dict(
-                base, column="talking", kind="listing", amount=s.asking_price,
-                detail=f"{kind} · no offers yet", deadline=s.deadline,
-            ), s.player)))
-
-    # Bids this club placed on other clubs' auctions.
-    rows = await db.execute(
-        select(Bid).where(Bid.buyer_club_id == club_id, Bid.status == BidStatus.ACTIVE)
-        .options(selectinload(Bid.sale).selectinload(Sale.player), selectinload(Bid.sale).selectinload(Sale.seller_club),
-                 selectinload(Bid.sale).selectinload(Sale.bids))
-    )
-    for b in rows.scalars():
-        s = b.sale
-        if s is None or s.player is None or s.status != SaleStatus.OPEN:
-            continue
-        best = sales_service.get_best_bid_amount(s.bids or [])
-        leading = best is not None and b.amount >= best
+        kind = "Fixed price" if s.sale_type == SaleType.FIXED_PRICE else "Listed"
         cards.append(BoardCard(**_player(dict(
-            key=f"BUYING:{s.player_id}", side="BUYING", column="offers", kind="bid", entity_id=s.id,
-            counterparty=s.seller_club.name if s.seller_club else None, amount=b.amount,
-            detail="Your bid · leading" if leading else f"Your bid · outbid at {_money(best)}",
-            whose_move=WhoseMove.THEIR if leading else WhoseMove.YOUR, deadline=s.deadline,
-            link=f"/sales/{s.id}", updated_at=_aware(getattr(b, "updated_at", None) or getattr(b, "created_at", None)),
+            base, column="talking", kind="listing", amount=s.asking_price,
+            detail=f"{kind} · no offers yet", deadline=s.deadline,
         ), s.player)))
     return cards
 

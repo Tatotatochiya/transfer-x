@@ -90,10 +90,9 @@ const TYPE_GROUPS: { label: string; types: string[] }[] = [
   // First: for a club that visits a few times a week, this one email is the
   // thing most likely to stop an offer expiring unseen.
   { label: "Daily summary", types: ["DAILY_DIGEST"] },
-  { label: "Auctions", types: ["AUCTION_BID_RECEIVED", "AUCTION_ENDING", "AUCTION_BID_ACCEPTED", "OUTBID", "SALE_REOPENED"] },
   {
     label: "Offers",
-    types: ["ENQUIRY_RECEIVED", "ENQUIRY_REPLIED", "OFFER_RECEIVED", "OFFER_ACCEPTED", "OFFER_REJECTED", "OFFER_COUNTERED", "OFFER_WITHDRAWN", "OFFER_EXPIRING", "OFFER_MESSAGE", "RELEASE_CLAUSE_TRIGGERED"],
+    types: ["SALE_REOPENED", "ENQUIRY_RECEIVED", "ENQUIRY_REPLIED", "OFFER_RECEIVED", "OFFER_ACCEPTED", "OFFER_REJECTED", "OFFER_COUNTERED", "OFFER_WITHDRAWN", "OFFER_EXPIRING", "OFFER_MESSAGE", "RELEASE_CLAUSE_TRIGGERED"],
   },
   {
     label: "Deals",

@@ -31,7 +31,7 @@ Modules live under `backend/app/` and mostly follow `models.py` / `schemas.py` /
 | Module | Responsibility |
 |---|---|
 | `players` | Players, contracts, transfer history, injuries, the season ledger (`ledger.py`), profile views |
-| `sales` | Listings (open to offers by default; auction as an advanced option; fixed price kept for existing listings) and bids |
+| `sales` | Listings (open to offers, with an optional "Offers by" date; fixed price kept for existing listings). Auctions are retired (product ADR 0011); the `bids` table is history |
 | `offers` | Offers and counter-offers, including loans and anonymous buyers. The actions live in `actions.py`, which Lite's held sends call too |
 | `enquiries` | Pre-offer conversations, open or anonymous |
 | `deals` | The deal and its stage machine, the club-run paperwork checklist, and the deal room (`room_*`: terms versions, comments, attachments) |
@@ -88,7 +88,7 @@ Modules live under `backend/app/` and mostly follow `models.py` / `schemas.py` /
 | `release_held_pushes` | 5 min | Sends pushes held back by quiet hours |
 | `email_fallback` | 5 min | Emails "your move" pushes left unread for 30 minutes |
 | `morning_summary` | 15 min | Morning summary pushes, at each person's time |
-| `notify_upcoming_events` | 1 h | Reminders: offers expiring, auctions ending, instalments due |
+| `notify_upcoming_events` | 1 h | Reminders: offers expiring, instalments due |
 | `daily_digest` | 1 h | The daily "waiting on you" email, once a day each |
 | `refresh_watch` | 1 h | Slack alert when the 17:00 or 22:00 data refresh didn't run |
 | `client_alerts` | 6 h | Agents' client alerts (contract expiry, valuation change, interest) |

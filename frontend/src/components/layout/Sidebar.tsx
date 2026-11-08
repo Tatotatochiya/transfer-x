@@ -19,15 +19,13 @@ const ROLE_LABEL: Record<IdentityRole, string> = { CLUB: "Club", AGENT: "Agent",
  * Which nav destination each B2 `kind` belongs to.
  *
  * Keyed by route rather than label so a renamed nav item can't silently drop
- * its badge. Sales map to "My Auctions" (`/sales/mine`) rather than the public
- * listings browse — a sale needing your attention is always one you're selling.
+ * its badge.
  */
 const WAITING_ROUTE: Record<DashboardItem["kind"], string> = {
   // Everything a transfer is waiting on shows on the Transfers board
   // (product ADR 0008); approvals keep their own page.
   offer:    "/board",
   deal:     "/board",
-  sale:     "/board",
   approval: "/club/approvals",
   enquiry:  "/board",
 };

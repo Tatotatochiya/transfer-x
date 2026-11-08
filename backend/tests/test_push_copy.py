@@ -217,32 +217,3 @@ async def test_an_approval_request_says_what_who_and_the_budget_after(client: As
     # test_deals._give_budget sets £100m; a captured offer reserves nothing.
     assert n.body == "copy_mgr, Manager · budget after £95.8m"
     assert n.group_key.startswith("approval:") and n.deadline_at is not None
-
-
-# ── Auctions ──────────────────────────────────────────────────────────────────
-
-
-def _sale(**kw):
-    return SimpleNamespace(id=uuid.uuid4(), deadline=NOW + timedelta(minutes=50), **kw)
-
-
-def test_outbid_never_names_the_rival_and_offers_the_next_step():
-    from app.notifications.copy import outbid
-
-    sale = _sale()
-    c = outbid(sale=sale, player="Theo Marsh", best=Decimal("3400000"), next_bid=Decimal("3600000"))
-    assert c["title"] == "You've been outbid on Theo Marsh"
-    assert render(c["body"], c["deadline_at"], LONDON, NOW) == "Highest bid now £3.4m · ends in 50 minutes"
-    assert c["actions"][0] == {"action": "bid", "title": "Bid £3.6m", "url": f"/sales/{sale.id}?bid=3600000"}
-
-
-def test_auction_ending_for_the_seller_and_for_a_bidder():
-    from app.notifications.copy import auction_ending
-
-    sale = _sale()
-    seller = auction_ending(sale=sale, player="Yannick Sorel", seller_view=True, best=Decimal("6500000"), bids=6, own_bid=None)
-    assert render(seller["title"], sale.deadline, LONDON, NOW) == "50 minutes left on the Yannick Sorel auction"
-    assert seller["body"] == "Highest bid £6.5m · 6 bids"
-    bidder = auction_ending(sale=sale, player="Yannick Sorel", seller_view=False, best=Decimal("6500000"), bids=6,
-                            own_bid=Decimal("6000000"))
-    assert bidder["body"] == "Your bid £6m · highest £6.5m"

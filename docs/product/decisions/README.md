@@ -27,6 +27,7 @@ In scope: product-level decisions (what to build, what not to build, scope trade
 - [0008 — One Transfers board, one main way to buy, Lite decides and the full app operates](./0008-transfers-board-one-way-to-buy-lite-decides.md)
 - [0009 — Real-world moves are flagged, and applied only by TransferX staff](./0009-real-world-moves-flagged-applied-by-staff.md)
 - [0010 — Deals run all year; a country's transfer window holds only completion](./0010-deals-run-all-year-windows-hold-completion.md)
+- [0011 — Auctions are retired; clubs choose among offers](./0011-auctions-retired.md)
 
 > **TODO:** Add further decisions here as `NNNN-short-title.md`, following the short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
 

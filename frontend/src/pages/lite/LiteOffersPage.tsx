@@ -6,7 +6,7 @@ import { liteMoney } from "../../lib/liteMoney";
 import type { DashboardItem } from "../../types/api";
 
 const KIND_WORD: Record<DashboardItem["kind"], string> = {
-  offer: "Offer", approval: "Your approval", deal: "Transfer", sale: "Listing", enquiry: "Enquiry",
+  offer: "Offer", approval: "Your approval", deal: "Transfer", enquiry: "Enquiry",
 };
 
 function deadlineText(iso: string | null): string | null {

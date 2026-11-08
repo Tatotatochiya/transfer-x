@@ -1,7 +1,7 @@
 """Spending-authority approvals (club-team-roles spec, Phase 5 / D7).
 
 A pending approval is an *intent*, not a hold: nothing is reserved when it is
-captured, and everything (budget, transfer window, auction state) is
+captured, and everything (budget, the offer's state) is
 re-validated fresh when an approver executes it.
 """
 import enum
@@ -18,6 +18,8 @@ from app.database import Base
 
 
 class ApprovalActionType(str, enum.Enum):
+    # PLACE_BID and ACCEPT_BID were auction actions. Auctions are retired
+    # (ADR 0011); the values stay so past approvals still read.
     PLACE_BID = "PLACE_BID"
     CREATE_OFFER = "CREATE_OFFER"
     ACCEPT_OFFER = "ACCEPT_OFFER"
