@@ -18,11 +18,8 @@ rival bidder):
   account) proposes a 5% commission paid by the buyer; the player (if he
   has no account in use) agrees personal terms; the club signs the
   transfer agreement.
-- **A player the tester lists:** in an auction, two house clubs bid against
-  each other, one bid per tick, each about a third of the way from the best
-  bid to its limit (its top share of his price); the tester accepts a bid as usual. Otherwise two house
-  clubs bid, at
-  their opening share of his price (BUYER). A tester's counter is accepted up
+- **A player the tester lists:** two house clubs make offers, at their
+  opening share of his price (BUYER). A tester's counter is accepted up
   to the club's top share, met halfway otherwise, and after MAX_COUNTERS
   counters the club walks away. Buying, it does every buyer's step of the
   deal: personal terms, the commission, signing, the medical, registration
@@ -340,15 +337,8 @@ async def _answer_offer(db: AsyncSession, offer_id: uuid.UUID, run_id: uuid.UUID
     return None  # waiting on the tester
 
 
-async def _bids(db: AsyncSession, sale_id: uuid.UUID) -> list:
-    from app.sales.models import Bid
-
-    return list((await db.execute(select(Bid).where(Bid.sale_id == sale_id))).scalars())
-
-
 async def _bid_on_listing(db: AsyncSession, sale_id: uuid.UUID, run_id: uuid.UUID) -> str | None:
-    """House clubs bid for a player the tester listed: offers on an
-    open-to-offers or fixed-price listing, bids in an auction."""
+    """House clubs make offers for a player the tester listed."""
     from app.auth.models import User
     from app.clubs.models import Club
     from app.demo.models import DemoRun
@@ -365,12 +355,6 @@ async def _bid_on_listing(db: AsyncSession, sale_id: uuid.UUID, run_id: uuid.UUI
     seller = await db.get(Club, sale.seller_club_id)
     if seller is None or seller.house_club:
         return None
-    if sale.sale_type == SaleType.AUCTION:
-        run = await db.get(DemoRun, run_id)
-        last = max([b.updated_at or b.created_at for b in (await _bids(db, sale.id))] or [sale.created_at])
-        if not _due(last, getattr(run, "speed", "instant"), datetime.now(timezone.utc)):
-            return None
-        return await _bid_in_auction(db, sale)
     already = (await db.execute(select(Offer.id).join(Club, Club.id == Offer.from_club_id).where(
         Offer.player_id == sale.player_id, Club.house_club.is_(True)).limit(1))).first()
     run = await db.get(DemoRun, run_id)
@@ -403,57 +387,6 @@ async def _bid_on_listing(db: AsyncSession, sale_id: uuid.UUID, run_id: uuid.UUI
             logger.info("Demo house bid skipped: %s", exc.detail)
         db.sync_session.info["demo_run_id"] = run_id
     return "bids" if made else None
-
-
-async def _bid_in_auction(db: AsyncSession, sale) -> str | None:
-    """Two house clubs bid against each other in the tester's auction, one bid
-    per tick at the minimum next bid, each up to its top share of his price."""
-    from app.clubs.models import Club
-    from app.notifications import service as notif_service
-    from app.notifications.models import NotificationType
-    from app.players.models import Player
-    from app.sales import service as sales_service
-    from app.sales.models import BidStatus
-
-    seller = await db.get(Club, sale.seller_club_id)
-    player = await db.get(Player, sale.player_id)
-    reference = await _reference(db, player, owned=True) or (Decimal(str(sale.asking_price)) if sale.asking_price else None)
-    if reference is None:
-        return None
-    sale = await sales_service.get_sale_by_id(db, sale.id)
-    active = [b for b in sale.bids if b.status == BidStatus.ACTIVE]
-    best = max(active, key=lambda b: b.amount, default=None)
-    next_bid = sales_service.get_minimum_next_bid(sale)
-    for club in await _house_clubs(db, exclude={seller.id}, seed=_seed(sale.id), n=LISTING_BIDDERS):
-        if best is not None and best.buyer_club_id == club.id:
-            continue  # already ahead
-        _open, top = BUYER.get(club.house_personality or "fair", BUYER["fair"])
-        spread = Decimal((_seed(club.id) + _seed(sale.id)) % 9 - 4) / 100
-        limit = reference * (Decimal(str(top)) + spread)
-        if next_bid > limit:
-            continue  # past what it will pay
-        # Real bidders jump: about a third of the way from the best bid to what
-        # it will pay, in whole increments, never past its limit.
-        step = sale.min_increment or HALF_M
-        floor = best.amount if best else next_bid
-        amount = ((floor + (limit - floor) * Decimal("0.35")) / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
-        amount = max(next_bid, amount)
-        if amount > limit:
-            amount = next_bid
-        try:
-            await sales_service.place_bid(db, sale_id=sale.id, buyer_club_id=club.id, amount=amount,
-                                          notes=LABEL + f"{club.name} bids {_money(amount)}.")
-        except ValueError as exc:  # no budget, deadline passed…
-            logger.info("Demo auction bid skipped: %s", exc)
-            await db.rollback()
-            return None
-        await notif_service.notify_club(
-            db, seller.id, type=NotificationType.AUCTION_BID_RECEIVED,
-            message=f"New bid received on {player.name if player else 'your player'}: {_money(amount)} (automated, demo)",
-            link=f"/sales/{sale.id}", related_player_id=sale.player_id)
-        await db.commit()
-        return "auction_bid"
-    return None
 
 
 # ── Deals ────────────────────────────────────────────────────────────────────

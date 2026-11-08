@@ -3,7 +3,6 @@
 Each authenticated user may hold multiple connections (multiple tabs).
 Events are JSON-serialisable dicts, e.g.:
   {"type": "SALE_UPDATED",  "id": "<sale_id>"}
-  {"type": "BID_PLACED",    "sale_id": "<sale_id>"}
   {"type": "OFFER_UPDATED", "id": "<offer_id>"}
   {"type": "DEAL_UPDATED",  "id": "<deal_id>"}
 """

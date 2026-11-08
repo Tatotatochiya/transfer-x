@@ -26,7 +26,7 @@ from app.notifications.schemas import (
     PushTestResponse,
     UnreadCountResponse,
 )
-from app.notifications.tiers import tier_of
+from app.notifications.tiers import RETIRED, tier_of
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -97,6 +97,7 @@ async def _preferences_response(db: AsyncSession, user_id: uuid.UUID) -> Notific
             tier=tier_of(t).value,
         )
         for t in NotificationType
+        if t not in RETIRED
     ]
     return NotificationPreferencesResponse(preferences=prefs)
 

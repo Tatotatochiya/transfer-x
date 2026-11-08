@@ -62,9 +62,7 @@ export default function SaleCard({ sale }: SaleCardProps) {
       {/* Price + deadline */}
       <div className="mt-3 flex items-center justify-between text-sm">
         <span className="font-semibold text-text">
-          {sale.sale_type === "AUCTION" && sale.best_bid
-            ? formatCurrency(sale.best_bid)
-            : sale.asking_price
+          {sale.asking_price
             ? formatCurrency(sale.asking_price)
             : sale.availability === "LOAN"
             ? "Loan terms open"
@@ -76,18 +74,6 @@ export default function SaleCard({ sale }: SaleCardProps) {
           </span>
         )}
       </div>
-
-      {/* Auction stats */}
-      {sale.sale_type === "AUCTION" && (
-        <div className="mt-2 flex items-center gap-3 text-xs text-text-muted">
-          {sale.bid_count != null && (
-            <span>{sale.bid_count} bid{sale.bid_count !== 1 ? "s" : ""}</span>
-          )}
-          {!sale.reserve_met && sale.reserve_price && (
-            <span className="text-warning-text/80">Reserve not met</span>
-          )}
-        </div>
-      )}
     </div>
   );
 }

@@ -27,7 +27,7 @@ export interface BoardCard {
   key: string;
   side: "BUYING" | "SELLING";
   column: string;
-  kind: "enquiry" | "listing" | "offer" | "bid" | "deal";
+  kind: "enquiry" | "listing" | "offer" | "deal";
   entity_id: string;
   player_id: string;
   player_name: string;
@@ -121,7 +121,7 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
 }
 
 const OPEN_LABEL: Record<BoardCard["kind"], string> = {
-  enquiry: "Open the enquiry", offer: "Open the offer", deal: "Open the deal", listing: "Open the listing", bid: "Open the auction",
+  enquiry: "Open the enquiry", offer: "Open the offer", deal: "Open the deal", listing: "Open the listing",
 };
 
 /** A card opened: its summary, a way to the full page, and the transfer's

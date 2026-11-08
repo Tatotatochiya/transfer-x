@@ -209,41 +209,6 @@ def negotiation_message(*, deal_id, sender: str, role: str | None, text: str) ->
     }
 
 
-# ── Auctions ──────────────────────────────────────────────────────────────────
-
-
-def auction_ending(*, sale, player: str, seller_view: bool, best: Decimal | None, bids: int, own_bid: Decimal | None) -> dict:
-    """An hour or less left. The seller sees the best bid and how many there
-    are; a bidder sees its own bid against the best, never who made it."""
-    title = f"{_sentence_start(TIME_LEFT)} on the {player} auction"
-    if seller_view:
-        body = (f"Highest bid {money(best)} · {bids} bid{'s' if bids != 1 else ''}" if best else "No bids yet")
-    else:
-        body = f"Your bid {money(own_bid)}" + (f" · highest {money(best)}" if best else "") if own_bid else (
-            f"Highest bid {money(best)}" if best else None)
-    return {
-        "title": title, "body": body, "group_key": f"sale:{sale.id}", "deadline_at": sale.deadline,
-        "actions": [{"action": "open", "title": "Open", "url": f"/sales/{sale.id}"}],
-    }
-
-
-def outbid(*, sale, player: str, best: Decimal, next_bid: Decimal) -> dict:
-    """The rival isn't named: bidders see the book anonymised."""
-    parts = [f"Highest bid now {money(best)}"]
-    if sale.deadline:
-        parts.append(f"ends in {TIME_REMAINING}")
-    return {
-        "title": f"You've been outbid on {player}",
-        "body": " · ".join(parts),
-        "group_key": f"sale:{sale.id}",
-        "deadline_at": sale.deadline,
-        "actions": [
-            {"action": "bid", "title": f"Bid {money(next_bid)}", "url": f"/sales/{sale.id}?bid={int(next_bid)}"},
-            {"action": "open", "title": "Open", "url": f"/sales/{sale.id}"},
-        ],
-    }
-
-
 # ── Approvals ─────────────────────────────────────────────────────────────────
 
 

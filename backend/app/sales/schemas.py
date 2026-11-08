@@ -4,9 +4,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, field_validator
 
-from app.common.schemas import WhoseMove
 from app.players.schemas import ActiveDealStub
-from app.sales.models import BidStatus, ListingAvailability, SaleStatus, SaleType
+from app.sales.models import ListingAvailability, SaleStatus, SaleType
 from app.valuation.schemas import ValuationResponse
 
 
@@ -19,14 +18,15 @@ class SaleCreateRequest(BaseModel):
     # sales/service.validate_listing_terms.
     availability: ListingAvailability = ListingAvailability.TRANSFER
     asking_price: Decimal | None = None
+    # The seller's private floor: only the seller and staff see it.
     reserve_price: Decimal | None = None
-    min_increment: Decimal = Decimal("500000")
+    # "We'll hear offers until…": the listing closes then (sales.service.close_expired_sales).
     deadline: datetime | None = None
     notes: str | None = None
     # The guide price came from the listing assistant; audited, not binding.
     ai_assisted: bool = False
 
-    @field_validator("asking_price", "reserve_price", "min_increment", mode="before")
+    @field_validator("asking_price", "reserve_price", mode="before")
     @classmethod
     def non_negative(cls, v):
         if v is not None and v < 0:
@@ -58,7 +58,6 @@ class SaleResponse(BaseModel):
     availability: ListingAvailability = ListingAvailability.TRANSFER
     asking_price: Decimal | None
     reserve_price: Decimal | None
-    min_increment: Decimal
     deadline: datetime | None
     notes: str | None
     status: SaleStatus
@@ -66,18 +65,11 @@ class SaleResponse(BaseModel):
     updated_at: datetime
     player: PlayerSummary | None = None
     seller_club: SellerClubSummary | None = None
-    # auction summary fields (populated for AUCTION type; null for non-seller/staff viewers — TRA-139)
-    bid_count: int | None = 0
-    best_bid: Decimal | None = None
-    minimum_next_bid: Decimal | None = None
-    reserve_met: bool = False
     # TRA-91 fair-value signal — populated on the detail endpoint only; null for
     # player-account/anonymous viewers and ineligible players (D6). Divergence
-    # on any listing that publishes an asking price, never on an AUCTION
-    # (D7 — never against reserve_price or any bid figure).
+    # on any listing that publishes an asking price (D7 — never against
+    # reserve_price).
     fair_value_signal: ValuationResponse | None = None
-    # B1
-    whose_move: WhoseMove = WhoseMove.NEITHER
     # Withdrawn by TransferX staff rather than the seller. The reason is for
     # the seller and staff only.
     cancelled_by_staff: bool = False
@@ -87,43 +79,6 @@ class SaleResponse(BaseModel):
     # Player-scoped (not sale-scoped) on purpose: it stays correct for listings
     # closed before deals began carrying sale_id.
     active_deal: ActiveDealStub | None = None
-
-    model_config = {"from_attributes": True}
-
-
-# ── Bid schemas ───────────────────────────────────────────────────────────────
-
-class BidCreateRequest(BaseModel):
-    amount: Decimal
-    wage_offer_weekly: Decimal | None = None
-    notes: str | None = None
-
-    @field_validator("amount", mode="before")
-    @classmethod
-    def positive(cls, v):
-        if v <= 0:
-            raise ValueError("bid amount must be positive")
-        return v
-
-
-class BidderClubSummary(BaseModel):
-    id: uuid.UUID
-    name: str
-
-    model_config = {"from_attributes": True}
-
-
-class BidResponse(BaseModel):
-    id: uuid.UUID
-    sale_id: uuid.UUID
-    buyer_club_id: uuid.UUID
-    amount: Decimal
-    wage_offer_weekly: Decimal | None
-    notes: str | None
-    status: BidStatus
-    created_at: datetime
-    updated_at: datetime
-    buyer_club: BidderClubSummary | None = None
 
     model_config = {"from_attributes": True}
 
@@ -164,13 +119,13 @@ class OrderBookClubSummary(BaseModel):
 class OrderBookEntry(BaseModel):
     """One row in the order book."""
     rank: int
-    kind: str  # "bid" | "offer"
+    kind: str  # "offer"
     id: uuid.UUID
     club: OrderBookClubSummary | None = None
     fee_amount: Decimal | None
     wage_weekly: Decimal | None = None
     # Offers only: a loan's money is its loan fee, and the two must not be
-    # read as the same figure. Bids are always permanent and leave these unset.
+    # read as the same figure.
     deal_type: str | None = None
     loan_fee: Decimal | None = None
     status: str

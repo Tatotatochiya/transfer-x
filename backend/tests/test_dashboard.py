@@ -7,7 +7,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 
 from tests.conftest import _auth_headers, _register
-from tests.test_approvals import _make_auction, _set_threshold
+from tests.test_approvals import _make_target, _offer, _set_threshold
 from tests.test_capabilities import _create_staff, _give_budget
 
 
@@ -116,12 +116,10 @@ async def test_dashboard_shows_confirmed_deal_to_both_parties(client: AsyncClien
 async def test_dashboard_shows_pending_approval_to_owner(client: AsyncClient, db, buyer: dict, seller: dict):
     await _give_budget(db)
     await _set_threshold(client, buyer, 5_000_000)
-    sale_id = await _make_auction(client, seller)
+    target = await _make_target(client, seller)
     manager = await _create_staff(client, db, _auth_headers(buyer), "dash_mgr@test.com", "MANAGER")
 
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=_auth_headers(manager)
-    )
+    resp = await _offer(client, manager, target, 6_000_000)
     assert resp.status_code == 202, resp.text
     approval_id = resp.json()["approval_id"]
 

@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 # notifications.service, `once=True`); this is the second guard, so a
 # reminder is never pushed twice within REPEAT_WINDOW. Event-driven types are
 # not checked: a second counter-offer on the same offer is news.
-REMINDER_TYPES = {NotificationType.OFFER_EXPIRING, NotificationType.AUCTION_ENDING, NotificationType.INSTALMENT_DUE}
+REMINDER_TYPES = {NotificationType.OFFER_EXPIRING, NotificationType.INSTALMENT_DUE}
 REPEAT_WINDOW = timedelta(hours=20)
 
 # Review decision 2: a "your move" push breaks through quiet hours when its
@@ -501,7 +501,7 @@ def _summary_text(items: list, zone: ZoneInfo, now: datetime) -> tuple[str, str 
     n = len(items)
     title = f"{n} thing{'s' if n != 1 else ''} waiting on you"
     words = {"offer": ("offer", "offers"), "approval": ("approval", "approvals"), "deal": ("deal", "deals"),
-             "sale": ("auction", "auctions"), "enquiry": ("enquiry", "enquiries")}
+             "enquiry": ("enquiry", "enquiries")}
     counts: dict[str, int] = {}
     for it in items:
         counts[it.kind] = counts.get(it.kind, 0) + 1

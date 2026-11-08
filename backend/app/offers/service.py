@@ -1125,8 +1125,6 @@ async def accept_offer(
     await reject_offers_for_player(db, offer.player_id, exclude_offer_id=offer.id)
 
     # ...and so is the listing the offer was made against, for the same reason.
-    # accept_bid already closes the sale on the auction path; this is the
-    # equivalent for a direct offer accepted against a listing.
     if offer.sale_id is not None:
         from app.sales import service as sales_service
 

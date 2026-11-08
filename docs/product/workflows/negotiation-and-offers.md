@@ -1,6 +1,6 @@
 ---
 title: "Workflow: Negotiation & Offers"
-last_updated: 2026-10-11
+last_updated: 2026-11-08
 status: Draft
 owner: "TODO — assign a Product Owner"
 ---
@@ -9,7 +9,7 @@ owner: "TODO — assign a Product Owner"
 
 ## Purpose
 
-Describes how a listing attracts interest and how that interest becomes an agreed deal — auctions (bidding) and direct offers (negotiation).
+Describes how a listing attracts interest and how that interest becomes an agreed deal, through offers and negotiation. Auctions are retired ([product ADR 0011](../decisions/0011-auctions-retired.md)).
 
 ## Scope
 
@@ -21,7 +21,6 @@ Out of scope: what happens after a deal exists (see [`transfer-lifecycle.md`](./
 - [Listing types](#listing-types)
 - [Listing a player](#listing-a-player)
 - [Before an offer: enquiries](#before-an-offer-enquiries)
-- [Auction / bidding flow](#auction--bidding-flow)
 - [Direct offer flow](#direct-offer-flow)
 - [Diagram](#diagram)
 - [Related documents](#related-documents)
@@ -32,31 +31,25 @@ A listing means "available" ([product ADR 0005](../decisions/0005-one-listing-li
 
 | Type | Mechanic |
 |---|---|
-| **Open to Offers** (the default) | An optional guide price and deadline; buying clubs make offers |
-| **Auction** (under "Advanced") | Buying clubs bid; the seller can accept the best bid above any reserve, or the auction closes at its deadline |
+| **Open to Offers** (every new listing) | An optional guide price and an optional "Offers by" date; buying clubs make offers and the seller chooses |
 | **Fixed Price** | No longer offered in the UI; existing fixed-price listings still work |
+| **Auction** | Retired 2026-11-08 ([ADR 0011](../decisions/0011-auctions-retired.md)). `POST /sales` refuses it; past auctions and their deals stay as history |
 
-Any listing's deadline expires it. Anti-sniping settings exist in the config but aren't used.
+The "Offers by" date is the "best offers by Friday" a club sets when several want a player: clubs see it, and the listing expires then (`close_expired_sales`). Offers already made run to their own expiry and can still be answered.
 
 ## Listing a player
 
-Only the club that owns a player can list him. A player on loan *to* a club is registered there, but his parent club owns him and is the one that can sell him (see [ADR 0005](../../architecture/decisions/0005-loan-registration-separate-from-ownership.md)). He cannot be listed while a transfer deal for him is in progress. Since 2026-11-07 a closed transfer window doesn't stop listing, offers or bids; it holds only completion ([product ADR 0010](../decisions/0010-deals-run-all-year-windows-hold-completion.md)).
+Only the club that owns a player can list him. A player on loan *to* a club is registered there, but his parent club owns him and is the one that can sell him (see [ADR 0005](../../architecture/decisions/0005-loan-registration-separate-from-ownership.md)). He cannot be listed while a transfer deal for him is in progress. Since 2026-11-07 a closed transfer window doesn't stop listing or offers; it holds only completion ([product ADR 0010](../decisions/0010-deals-run-all-year-windows-hold-completion.md)).
 
 A club lists a player from wherever he is: **List** on his squad row, **List for sale** on his own page, or the listings pages, which open the same form with a squad picker. The picker disables players who cannot be listed and says why. `/sales/new?player_id=` opens the form as a page, for deep links. Once a player is listed, his row shows **Listed →** and his page shows **View listing**, both linking to the listing.
 
-- **Defaults:** Open to Offers, no price. Auction fields (reserve, minimum bid increment, and a deadline defaulted a week out) appear only for an auction.
-- **The model's estimate** appears beside the price as a one-click suggestion. It is never pre-filled and is not shown for auctions. The reasons are in [product ADR 0003](../decisions/0003-listing-a-player.md).
+- **Defaults:** Open to Offers, no price, no "Offers by" date.
+- **The model's estimate** appears beside the price as a one-click suggestion. It is never pre-filled. The reasons are in [product ADR 0003](../decisions/0003-listing-a-player.md).
 - **A player has at most one open listing**, enforced by the database. A listing cannot be edited: to change its price or type, withdraw it and list again.
 
 ## Before an offer: enquiries
 
 A club can ask about any TransferX player before making an offer: openly, or anonymously as "A {league} club". There's one open enquiry per club per player. Either side replies or closes it, and it shows as "your move" on the dashboard and board.
-
-## Auction / bidding flow
-
-- **Buying club:** places a bid at or above the minimum next bid. Its budget is reserved for the bid, and released if it's outbid. It sees the order book without other clubs' identities.
-- **Selling club:** sees every bid and accepts one, with a confirmation. Accepting creates a deal the clubs run themselves, like any other, and releases the other bidders' reservations.
-- **Deadline:** an unaccepted auction closes at its deadline (the `close_expired_sales` job).
 
 ## Direct offer flow
 

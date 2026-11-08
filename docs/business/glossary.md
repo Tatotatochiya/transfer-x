@@ -41,10 +41,10 @@ Out of scope: pure engineering jargon (framework names, library names) — those
 
 | Term | Definition |
 |---|---|
-| **Sale / listing** | A player listing created by the club that owns him. **Open to Offers** is the default, **Auction** is an advanced option, and **Fixed Price** is no longer offered (existing ones still work). A listing can be for transfer, loan or either. |
+| **Sale / listing** | A player listing created by the club that owns him. Every new listing is **Open to Offers**, with an optional guide price and "Offers by" date. **Fixed Price** is no longer offered (existing ones still work), and **Auction** is retired (product ADR 0011; past auctions stay as history). A listing can be for transfer, loan or either. |
 | **Listed (available)** | A player is available exactly when he has an open listing. There's no separate "open to offers" switch for club players (product ADR 0005). |
-| **Bid** | An amount placed by a buying club against an auction-type Sale. |
-| **Reserve price** | The minimum amount a seller will accept in an auction; visible only to the seller. |
+| **Bid** | An amount placed in an auction. Auctions are retired (product ADR 0011); past bids stay as history. In Lite, "bid" also means making an offer. |
+| **Reserve price** | A seller's private floor on a listing; visible only to the seller and staff. |
 | **Order book** | The ranked view of active bids/offers on a Sale. |
 | **Fair value (model)** | TransferX's own estimate of a player's transfer value, with a confidence range. Since 2026-10-07 it's the `market-v2` model: up to three seasons of stats, age and potential, form, contract length, availability, league, and comparable transfers ([spec](../feature_spec/valuation-model-v2.md)). An estimate, never an official valuation. Not shown to player accounts. |
 | **Divergence** | How far a reference price (asking price or agreed fee) sits from the model fair value, as a percentage with a band from "Well below model" to "Well above model". Never computed against a hidden reserve price. |

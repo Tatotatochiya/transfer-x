@@ -191,15 +191,17 @@ async def test_in_a_demo_only_house_clubs_are_dealt_with(client: AsyncClient, db
     assert ok.status_code == 201, ok.text
 
 
-async def test_nobody_outside_a_demo_bids_on_its_listing(client: AsyncClient, db, setup):
+async def test_nobody_outside_a_demo_offers_on_its_listing(client: AsyncClient, db, setup):
     tester, real = setup["tester"], setup["real"]
     mine = await _create_player_for_seller(client, _auth_headers(tester))
     await _start(client, tester)
     sale = await client.post("/sales", headers=_auth_headers(tester), json={
         "player_id": mine["id"], "sale_type": "OPEN_TO_OFFERS", "asking_price": 4_000_000})
     assert sale.status_code == 201, sale.text
-    bid = await client.post(f"/sales/{sale.json()['id']}/bids", headers=_auth_headers(real), json={"amount": 4_000_000})
-    assert bid.status_code == 409 and "part of someone's demo" in bid.text
+    tester_club = await _get_club_id(client, _auth_headers(tester))
+    offer = await client.post("/offers", headers=_auth_headers(real), json={
+        "player_id": mine["id"], "to_club_id": tester_club, "fee_amount": 4_000_000, "sale_id": sale.json()["id"]})
+    assert offer.status_code == 409 and "part of someone's demo" in offer.text
 
 
 async def test_runs_left_open_two_weeks_reset_themselves(client: AsyncClient, db, setup):

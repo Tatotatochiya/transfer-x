@@ -1,18 +1,14 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { Bid, Club, Sale } from "../../types/api";
+import type { Club, Sale } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
 import FairValueBadge from "../../components/players/FairValueBadge";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Spinner from "../../components/ui/Spinner";
-import BidForm from "../../components/sales/BidForm";
-import BidLadder from "../../components/sales/BidLadder";
-import SellerConsequenceCard from "../../components/sales/SellerConsequenceCard";
-import SaleRail from "../../components/sales/SaleRail";
 import SellerOrderBook from "../../components/sales/SellerOrderBook";
 import BuyerOrderBook from "../../components/sales/BuyerOrderBook";
 import {
@@ -85,10 +81,6 @@ function ResolutionNote({ sale, onOpenDeal }: { sale: Sale; onOpenDeal: (dealId:
 }
 
 export default function SaleDetailPage() {
-  // "Bid £3.6m" on an outbid push opens this page with ?bid=3600000: the
-  // bid box starts there, and the person still sends it themselves.
-  const [searchParams] = useSearchParams();
-  const suggestedBid = Number(searchParams.get("bid")) > 0 ? Number(searchParams.get("bid")) : null;
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -110,12 +102,6 @@ export default function SaleDetailPage() {
     queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
     enabled: isAuthenticated,
     staleTime: 60_000,
-  });
-
-  const { data: myBids } = useQuery<Bid[]>({
-    queryKey: ["sales", id, "bids"],
-    queryFn: () => api.get<Bid[]>(`/sales/${id}/bids`).then((r) => r.data),
-    enabled: isAuthenticated && !!id && sale?.sale_type === "AUCTION",
   });
 
   const withdrawMutation = useMutation({
@@ -145,11 +131,9 @@ export default function SaleDetailPage() {
   const isSeller = !!myClub && myClub.id === sale.seller_club_id;
   const isBuyer  = !!myClub && myClub.id !== sale.seller_club_id;
   const isOpen   = sale.status === "OPEN";
-  const myActiveBid = isBuyer ? myBids?.find((b) => b.status === "ACTIVE") : undefined;
-  const showRail = sale.sale_type !== "FIXED_PRICE" && (isSeller || isBuyer);
-  const bestActiveBid = sale.sale_type === "AUCTION" && myBids
-    ? [...myBids].filter((b) => b.status === "ACTIVE").sort((a, b) => b.amount - a.amount)[0]
-    : undefined;
+  // The order book beside the listing. Auctions are retired (ADR 0011): an
+  // old auction listing shows on its own, as history.
+  const showRail = sale.sale_type === "OPEN_TO_OFFERS" && (isSeller || isBuyer);
 
   const detailContent = (
     <div className="space-y-4">
@@ -196,21 +180,13 @@ export default function SaleDetailPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {sale.deadline && (
           <FigureCard
-            label="Closes in"
+            label="Offers close in"
             value={deadline.state === "expired" ? "Expired" : deadline.label}
             valueColour={deadline.state === "danger" ? "text-danger-text" : undefined}
           />
         )}
-        {sale.best_bid != null && <FigureCard label="Best bid" value={<Money value={sale.best_bid} stacked />} />}
         {isSeller && sale.reserve_price != null && (
-          <FigureCard
-            label="Reserve"
-            value={sale.reserve_met ? "Met" : formatCurrency(sale.reserve_price)}
-            valueColour={sale.reserve_met ? "text-success-text" : "text-danger-text"}
-          />
-        )}
-        {sale.minimum_next_bid != null && isOpen && (
-          <FigureCard label="Minimum next bid" value={<Money value={sale.minimum_next_bid} stacked />} />
+          <FigureCard label="Your reserve" value={formatCurrency(sale.reserve_price)} />
         )}
         {sale.asking_price != null && sale.sale_type !== "AUCTION" && (
           <FigureCard label="Asking price" value={<Money value={sale.asking_price} stacked />} />
@@ -252,35 +228,6 @@ export default function SaleDetailPage() {
         </div>
       )}
 
-      {/* AUCTION: seller consequence card + bid ladder */}
-      {sale.sale_type === "AUCTION" && isSeller && myClub && (
-        <div className="border-t border-rule pt-4 space-y-4">
-          {sale.reserve_met && bestActiveBid && isOpen && canMarketWrite && (
-            <SellerConsequenceCard sale={sale} bid={bestActiveBid} myClub={myClub} />
-          )}
-          <BidLadder sale={sale} isSeller />
-        </div>
-      )}
-
-      {/* AUCTION: bid ladder (buyer view, read-only) + composer */}
-      {sale.sale_type === "AUCTION" && isBuyer && (
-        <div className="border-t border-rule pt-4 space-y-4">
-          <BidLadder sale={sale} isSeller={false} />
-          {isOpen && canMarketWrite && (
-            <div className="border-t border-rule pt-4">
-              <BidForm sale={sale} existingBid={myActiveBid} suggestedAmount={suggestedBid} />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* AUCTION: not logged in */}
-      {sale.sale_type === "AUCTION" && !isAuthenticated && isOpen && (
-        <p className="text-sm text-text-secondary">
-          <button onClick={() => navigate("/login")} className="text-accent hover:underline">Sign in</button>{" "}to place a bid.
-        </p>
-      )}
-
       {/* OPEN_TO_OFFERS: Make offer (buyer) */}
       {sale.sale_type === "OPEN_TO_OFFERS" && isBuyer && canMarketWrite && (
         <div className="border-t border-rule pt-3">
@@ -320,9 +267,9 @@ export default function SaleDetailPage() {
     </div>
   );
 
-  const contextContent = sale.sale_type === "OPEN_TO_OFFERS"
-    ? (isSeller ? <SellerOrderBook saleId={sale.id} saleType={sale.sale_type} isOpen={isOpen} /> : <BuyerOrderBook saleId={sale.id} saleType={sale.sale_type} />)
-    : <SaleRail sale={sale} isSeller={isSeller} />;
+  const contextContent = isSeller
+    ? <SellerOrderBook saleId={sale.id} isOpen={isOpen} />
+    : <BuyerOrderBook saleId={sale.id} />;
 
   return (
     <div>
@@ -346,7 +293,7 @@ export default function SaleDetailPage() {
                     : "text-text-muted border-b-2 border-transparent"
                 }`}
               >
-                {section === "detail" ? "Detail" : sale.sale_type === "OPEN_TO_OFFERS" ? "Order book" : "Context"}
+                {section === "detail" ? "Detail" : "Order book"}
               </button>
             ))}
           </div>
@@ -358,7 +305,7 @@ export default function SaleDetailPage() {
             <div
               className={`w-full lg:w-80 shrink-0 border-t lg:border-t-0 lg:border-l border-rule bg-surface-quiet lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] overflow-y-auto ${
                 mobileSection === "detail" ? "hidden sm:block" : ""
-              } ${sale.sale_type === "OPEN_TO_OFFERS" ? "" : "p-4"}`}
+              }`}
             >
               {contextContent}
             </div>

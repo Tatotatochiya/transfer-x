@@ -6,12 +6,13 @@ export type PlayerVisibility = "PUBLIC" | "CLUBS_ONLY" | "PRIVATE";
 // (ADR 0003). Not signable; never presented as an available player.
 export type PlayerStatus = "CONTRACTED" | "EXTERNAL" | "FREE_AGENT";
 
+/** AUCTION is retired (product ADR 0011): no new auctions, but past listings
+ *  and the deals they produced still carry it. */
 export type SaleType = "AUCTION" | "OPEN_TO_OFFERS" | "FIXED_PRICE";
 /** What a listing's club will consider — separate from SaleType, which is how
- *  offers arrive (a loan cannot be auctioned). */
+ *  offers arrive. */
 export type ListingAvailability = "TRANSFER" | "LOAN" | "EITHER";
 export type SaleStatus = "OPEN" | "CLOSED" | "WITHDRAWN" | "EXPIRED";
-export type BidStatus = "ACTIVE" | "WITHDRAWN" | "ACCEPTED" | "REJECTED";
 
 export type OfferStatus =
   | "DRAFT"

@@ -1,7 +1,7 @@
 ---
 title: "Demo Mode"
-last_updated: 2026-11-04
-status: Built (runs, journal, reset, play-as; demo and test deals kept out of shared figures; house clubs sell, buy, bid in auctions and as rivals; "make them…" controls)
+last_updated: 2026-11-08
+status: Built (runs, journal, reset, play-as; demo and test deals kept out of shared figures; house clubs sell, buy and bid as rivals; "make them…" controls)
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -47,9 +47,9 @@ A counter is always above the offer and rounded to £0.5m. After two counters th
 
 **Its side of the deal.** The player's agent, if nobody uses the agent's account, proposes a 5% commission paid by the buying club. The player, if he has no account in use, agrees personal terms. The club signs its side of the transfer agreement. The buying club's own steps (agreeing commission, proposing terms, the medical, registration, completing) stay with the tester.
 
-**A player the tester lists** (added 2026-11-03; not auctions). Two house clubs bid, each at its opening share of his price (asking price, model value, last fee or market value), a little apart: hard-nosed 85%, fair 95%, eager 105%, give or take 4%. On a fixed-price listing they offer the asking price. A tester's counter is accepted up to the club's top (95% / 105% / 115%), met halfway otherwise ("Our best is £…"), and after two counters the club walks away. Once a deal starts, the buying house club does every buyer's step: moves it on, agrees the agent's commission, proposes personal terms (four years, 10% over his current wage), signs, records a passed medical, submits the registration and completes. The tester signs their side as the seller.
+**A player the tester lists** (added 2026-11-03). Two house clubs make offers, each at its opening share of his price (asking price, model value, last fee or market value), a little apart: hard-nosed 85%, fair 95%, eager 105%, give or take 4%. On a fixed-price listing they offer the asking price. A tester's counter is accepted up to the club's top (95% / 105% / 115%), met halfway otherwise ("Our best is £…"), and after two counters the club walks away. Once a deal starts, the buying house club does every buyer's step: moves it on, agrees the agent's commission, proposes personal terms (four years, 10% over his current wage), signs, records a passed medical, submits the registration and completes. The tester signs their side as the seller.
 
-**An auction** (added 2026-11-04). Two house clubs bid against each other, one bid per tick, each about a third of the way from the best bid to its limit (its top share of his price, a little apart), so an auction settles in about ten bids. The tester gets the usual "New bid received" notification, marked automated, and accepts a bid as for any auction; the winner then buys him as above.
+**Auctions** (2026-11-04 to 2026-11-08): house clubs bid in a tester's auction. Removed when auctions were retired ([product ADR 0011](../product/decisions/0011-auctions-retired.md)).
 
 **Rival bidders** (added 2026-11-03). When the tester bids for a house club's player, another house club bids too, at 95–115% of his price: **sometimes** (about one offer in three, the default), **always** or **never**, set in the Demo pill (`PATCH /demo/run {"rivals": …}`, migration `0107`). The seller weighs the best offer. If the rival's is higher it says only "We have a better offer on the table. Can you improve?" (never naming the club or the figure) and counters just above it; after two counters it takes the rival's and tells the tester "We've accepted another club's offer." If the tester's offer wins, the rival's is turned down.
 

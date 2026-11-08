@@ -18,7 +18,7 @@ The design handoff is [`HANDOFF.md`](./HANDOFF.md), with the HTML reference. It 
 Also decided while building:
 
 - **Pushes are sent after the commit**, from a session `after_commit` hook, never from inside the request. The handoff's `create_task` from `create_notification` would race the commit (the task could miss the row) and could push something the request then rolled back.
-- **The repeat check is for the scheduled reminders only** (`OFFER_EXPIRING`, `AUCTION_ENDING`, `INSTALMENT_DUE`). Applied to every type, the handoff's 20-hour window would have dropped a genuine second counter-offer on the same offer.
+- **The repeat check is for the scheduled reminders only** (`OFFER_EXPIRING`, `INSTALMENT_DUE`; `AUCTION_ENDING` until auctions were retired, ADR 0011). Applied to every type, the handoff's 20-hour window would have dropped a genuine second counter-offer on the same offer.
 - **The service worker reports a tap with a token in the push**, good for that one notification. It can't use the login: the access token lives in the page's memory.
 - **A device belongs to whoever subscribed on it last.**
 - **Corrections to the handoff:**

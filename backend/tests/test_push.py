@@ -105,8 +105,10 @@ def test_every_notification_type_has_a_tier():
 
 def test_tiers_match_the_spec_examples():
     assert TIERS[NotificationType.OFFER_RECEIVED] is Tier.YOUR_MOVE
-    assert TIERS[NotificationType.OUTBID] is Tier.HEADS_UP
+    assert TIERS[NotificationType.OFFER_EXPIRING] is Tier.HEADS_UP
     assert TIERS[NotificationType.DEAL_COMPLETED] is Tier.FYI
+    # Auctions are retired (ADR 0011): their old notifications are never pushed.
+    assert TIERS[NotificationType.OUTBID] is Tier.FYI
 
 
 # ── Quiet hours ───────────────────────────────────────────────────────────────
@@ -155,7 +157,7 @@ async def test_your_move_outside_quiet_hours_is_sent_with_sound(db, user, sent):
 @pytest.mark.asyncio
 async def test_heads_up_is_silent_and_normal_urgency(db, user, sent):
     await _device(db, user["id"])
-    n = await _notification(db, user["id"], type_=NotificationType.OUTBID)
+    n = await _notification(db, user["id"], type_=NotificationType.OFFER_ACCEPTED)
     await push.deliver(db, n, NOON)
     (_e, payload, headers), = sent.calls
     assert payload["notification"]["silent"] is True
@@ -177,7 +179,7 @@ async def test_fyi_no_device_or_switched_off_is_not_pushed(db, user, sent):
 
     db.add(UserPreference(user_id=user["id"], push_heads_up=PushMode.OFF))
     await db.flush()
-    outbid = await _notification(db, user["id"], type_=NotificationType.OUTBID)
+    outbid = await _notification(db, user["id"], type_=NotificationType.OFFER_ACCEPTED)
     assert await push.deliver(db, outbid, NOON) is None
     assert sent.calls == []
 
@@ -185,7 +187,7 @@ async def test_fyi_no_device_or_switched_off_is_not_pushed(db, user, sent):
 @pytest.mark.asyncio
 async def test_quiet_hours_hold_then_release(db, user, sent):
     await _device(db, user["id"])
-    n = await _notification(db, user["id"], type_=NotificationType.OUTBID)
+    n = await _notification(db, user["id"], type_=NotificationType.OFFER_ACCEPTED)
     d = await push.deliver(db, n, NIGHT)
     assert d.status is PushDeliveryStatus.HELD
     assert push._aware(d.send_after) == QUIET_END
@@ -200,7 +202,7 @@ async def test_quiet_hours_hold_then_release(db, user, sent):
 @pytest.mark.asyncio
 async def test_a_held_push_read_in_the_meantime_is_skipped(db, user, sent):
     await _device(db, user["id"])
-    n = await _notification(db, user["id"], type_=NotificationType.OUTBID)
+    n = await _notification(db, user["id"], type_=NotificationType.OFFER_ACCEPTED)
     d = await push.deliver(db, n, NIGHT)
     n.is_read = True
     await push.release_held_pushes(db, QUIET_END)
@@ -226,7 +228,7 @@ async def test_your_move_breaks_through_when_the_deadline_comes_before_morning(d
     assert (await push.deliver(db, later, NIGHT)).status is PushDeliveryStatus.HELD
 
     # Only "your move" breaks through: a heads-up with a near deadline waits.
-    heads_up = await _notification(db, user["id"], type_=NotificationType.AUCTION_ENDING, deadline_at=expires_at_3am)
+    heads_up = await _notification(db, user["id"], type_=NotificationType.OFFER_EXPIRING, deadline_at=expires_at_3am)
     assert (await push.deliver(db, heads_up, NIGHT)).status is PushDeliveryStatus.HELD
 
 

@@ -165,38 +165,6 @@ async def test_commitments_shows_sent_offer_as_reserved(
     assert float(resp.json()["total_transfer_reserved"]) == float(finance["transfer_reserved"])
 
 
-async def test_commitments_shows_active_bid_as_reserved(
-    client: AsyncClient, commit_buyer: dict, commit_seller: dict, db
-):
-    await _commit_give_budget(db)
-    buy_headers = _auth_headers(commit_buyer)
-    sel_headers = _auth_headers(commit_seller)
-
-    player = await client.post(
-        "/players", json={"name": "Bid Commit Player", "position": "DEF"}, headers=sel_headers
-    )
-    sale = await client.post(
-        "/sales",
-        json={"player_id": player.json()["id"], "sale_type": "AUCTION", "asking_price": 3_000_000},
-        headers=sel_headers,
-    )
-    bid = await client.post(
-        f"/sales/{sale.json()['id']}/bids", json={"amount": 3_500_000}, headers=buy_headers
-    )
-    assert bid.status_code == 201, bid.text
-
-    resp = await client.get("/clubs/me/commitments", headers=buy_headers)
-    items = resp.json()["items"]
-    match = [i for i in items if i["kind"] == "bid" and i["id"] == bid.json()["id"]]
-    assert len(match) == 1
-    assert match[0]["status"] == "reserved"
-    assert float(match[0]["transfer_amount"]) == 3_500_000
-
-    # The seller's own commitments are untouched by a bid on their listing.
-    seller_resp = await client.get("/clubs/me/commitments", headers=sel_headers)
-    assert seller_resp.json()["items"] == []
-
-
 async def test_commitments_shows_in_progress_deal_as_committed(
     client: AsyncClient, commit_buyer: dict, commit_seller: dict, db
 ):

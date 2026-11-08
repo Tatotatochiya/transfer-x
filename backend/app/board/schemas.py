@@ -16,7 +16,7 @@ class BoardCard(BaseModel):
     key: str  # side:player_id, stable across refreshes
     side: Literal["BUYING", "SELLING"]
     column: ColumnKey | Literal["closed"]
-    kind: Literal["enquiry", "listing", "offer", "bid", "deal"]
+    kind: Literal["enquiry", "listing", "offer", "deal"]
     entity_id: uuid.UUID
     player_id: uuid.UUID
     player_name: str

@@ -23,7 +23,6 @@ from app.auth.models import RefreshToken, User
 from app.clubs.models import Club, ClubFinance
 from app.notifications.models import Notification
 from tests.conftest import _auth_headers, _register
-from tests.test_approvals import _make_auction
 from tests.test_deals import _create_player_for_seller, _get_club_id, _give_budget
 
 pytestmark = pytest.mark.asyncio
@@ -53,12 +52,17 @@ async def _audit(db, action: str) -> list[AuditEvent]:
 # ── Cancel sale and force-withdraw release the money ──────────────────────────
 
 
-async def test_cancelling_a_sale_releases_bids_tells_everyone_and_is_audited(client: AsyncClient, db, admin):
+async def test_cancelling_a_sale_releases_offers_tells_everyone_and_is_audited(client: AsyncClient, db, admin):
     seller = await _register(client, "fix_seller@test.com", club_name="Fix Sellers")
     buyer = await _register(client, "fix_buyer@test.com", club_name="Fix Buyers")
     await _give_budget(db)
-    sale_id = await _make_auction(client, seller, "Cancelled Man")
-    resp = await client.post(f"/sales/{sale_id}/bids", json={"amount": 3_000_000}, headers=_auth_headers(buyer))
+    player = await client.post("/players", json={"name": "Cancelled Man", "position": "FWD"}, headers=_auth_headers(seller))
+    sale = await client.post("/sales", json={"player_id": player.json()["id"], "sale_type": "OPEN_TO_OFFERS"},
+                             headers=_auth_headers(seller))
+    sale_id = sale.json()["id"]
+    resp = await client.post("/offers", json={
+        "player_id": player.json()["id"], "to_club_id": await _get_club_id(client, _auth_headers(seller)),
+        "fee_amount": 3_000_000, "sale_id": sale_id}, headers=_auth_headers(buyer))
     assert resp.status_code == 201, resp.text
     assert (await _finance(db, "Fix Buyers")).transfer_reserved == Decimal("3000000")
 

@@ -26,7 +26,6 @@ EMAIL_ENABLED_TYPES = {
     NotificationType.OFFER_REJECTED,
     NotificationType.DEAL_COMPLETED,
     NotificationType.OFFER_EXPIRING,
-    NotificationType.AUCTION_ENDING,
     NotificationType.REPRESENTATION_STARTED,
     NotificationType.INSTALMENT_DUE,
     NotificationType.DEAL_CLAUSE_TRIGGERED,

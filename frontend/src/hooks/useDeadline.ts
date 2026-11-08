@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "../lib/api";
 
 export interface DeadlineItem {
-  kind: "offer" | "deal" | "bid";
+  kind: "offer" | "deal";
   id: string;
   side: "BUYING" | "SELLING";
   player_id: string;

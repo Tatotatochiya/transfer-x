@@ -291,14 +291,11 @@ async def notify_player_available(db: AsyncSession, player_id: uuid.UUID) -> Non
 
 
 async def notify_upcoming_events(db: AsyncSession) -> None:
-    """Background job: notify about offers expiring soon and auctions ending soon."""
+    """Background job: notify about offers expiring soon and instalments due."""
     now = datetime.now(timezone.utc)
 
     # Offers expiring within 24h
     await _notify_expiring_offers(db, now)
-
-    # Auctions ending within 1h
-    await _notify_ending_auctions(db, now)
 
     # TRA-76: instalments due within 3 days (or overdue)
     await _notify_instalments_due(db, now)
@@ -380,75 +377,6 @@ async def _notify_expiring_offers(db: AsyncSession, now: datetime) -> None:
                 group_key=f"offer:{offer.id}",
                 deadline_at=offer.expires_at,
                 once=True,
-            )
-
-
-async def _notify_ending_auctions(db: AsyncSession, now: datetime) -> None:
-    from app.sales.models import Bid, BidStatus, Sale, SaleStatus, SaleType
-
-    cutoff = now + timedelta(hours=1)
-    result = await db.execute(
-        select(Sale).where(
-            Sale.status == SaleStatus.OPEN,
-            Sale.sale_type == SaleType.AUCTION,
-            Sale.deadline != None,  # noqa: E711
-            Sale.deadline <= cutoff,
-            Sale.deadline > now,
-        )
-    )
-    sales = list(result.scalars())
-    if not sales:
-        return
-
-    sale_ids = [s.id for s in sales]
-
-    # Batch-load all active bids for these sales in one query
-    bids_result = await db.execute(
-        select(Bid).where(Bid.sale_id.in_(sale_ids), Bid.status == BidStatus.ACTIVE)
-    )
-    all_bids = list(bids_result.scalars())
-    bids_by_sale: dict[uuid.UUID, list[Bid]] = {}
-    for bid in all_bids:
-        bids_by_sale.setdefault(uuid.UUID(str(bid.sale_id)), []).append(bid)
-
-    from app.notifications import copy as push_copy
-    from app.players.models import Player
-
-    for sale in sales:
-        bids = bids_by_sale.get(uuid.UUID(str(sale.id)), [])
-        best = max((b.amount for b in bids), default=None)
-        player = (await db.execute(select(Player.name).where(Player.id == sale.player_id))).scalar_one_or_none() or "a player"
-
-        # Notify seller
-        if sale.seller_club_id:
-            await notify_club(
-                db,
-                uuid.UUID(str(sale.seller_club_id)),
-                type=NotificationType.AUCTION_ENDING,
-                message="Auction ending soon",
-                link=f"/sales/{sale.id}",
-                related_player_id=sale.player_id,
-                once=True,
-                **push_copy.auction_ending(sale=sale, player=player, seller_view=True, best=best,
-                                           bids=len(bids), own_bid=None),
-            )
-
-        # Notify all active bidders, once per club with its best bid
-        own: dict[str, object] = {}
-        for bid in bids:
-            if bid.buyer_club_id and (str(bid.buyer_club_id) not in own or bid.amount > own[str(bid.buyer_club_id)]):
-                own[str(bid.buyer_club_id)] = bid.amount
-        for club_id, own_bid in own.items():
-            await notify_club(
-                db,
-                uuid.UUID(club_id),
-                type=NotificationType.AUCTION_ENDING,
-                message="Auction you're bidding on is ending soon",
-                link=f"/sales/{sale.id}",
-                related_player_id=sale.player_id,
-                once=True,
-                **push_copy.auction_ending(sale=sale, player=player, seller_view=False, best=best,
-                                           bids=len(bids), own_bid=own_bid),
             )
 
 

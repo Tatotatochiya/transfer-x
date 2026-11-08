@@ -2,29 +2,22 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Paginated, Sale } from "../../types/api";
-import type { SaleType } from "../../types/enums";
 import SaleCard from "../../components/sales/SaleCard";
 import PageHeader from "../../components/ui/PageHeader";
 import Pagination from "../../components/ui/Pagination";
 import EmptyState from "../../components/ui/EmptyState";
 import { ListSkeleton } from "../../components/ui/Skeleton";
 
-// New listings are open to offers or (as an advanced option) auctions; the
-// old fixed-price type is folded into open to offers, so it is not a filter.
-const SALE_TYPES: { value: SaleType | ""; label: string }[] = [
-  { value: "",        label: "All listings" },
-  { value: "AUCTION", label: "Auctions" },
-];
-
+// Every listing is open to offers: fixed price is folded in, and auctions
+// are retired (product ADR 0011), so the type is not a filter.
 export default function SaleListPage() {
-  const [saleType, setSaleType] = useState<SaleType | "">("");
   // "Available for loan" is what a loan-hunting club is looking for: loan-only
   // listings and those open to either. The server does the "or either".
   const [forLoan, setForLoan] = useState(false);
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError } = useQuery<Paginated<Sale>>({
-    queryKey: ["sales", { status: "OPEN", saleType, forLoan, page }],
+    queryKey: ["sales", { status: "OPEN", forLoan, page }],
     queryFn: () =>
       api
         .get<Paginated<Sale>>("/sales", {
@@ -32,17 +25,11 @@ export default function SaleListPage() {
             status: "OPEN",
             page,
             page_size: 20,
-            ...(saleType && { sale_type: saleType }),
             ...(forLoan && { available_for: "LOAN" }),
           },
         })
         .then((r) => r.data),
   });
-
-  function handleTypeChange(next: SaleType | "") {
-    setSaleType(next);
-    setPage(1);
-  }
 
   return (
     <div>
@@ -50,20 +37,6 @@ export default function SaleListPage() {
 
       {/* Filters */}
       <div className="mb-6 flex flex-wrap gap-3">
-        {SALE_TYPES.map((t) => (
-          <button
-            key={t.value}
-            onClick={() => handleTypeChange(t.value)}
-            className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-              saleType === t.value
-                ? "bg-success/15 text-success-text ring-1 ring-success/30"
-                : "bg-surface-inset text-text-muted hover:text-text"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-        <span className="mx-1 self-center text-text-muted" aria-hidden>·</span>
         <button
           aria-pressed={forLoan}
           onClick={() => { setForLoan((v) => !v); setPage(1); }}

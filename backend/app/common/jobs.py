@@ -35,7 +35,7 @@ JOB_LABELS = {
     "execute_held_actions": "Send Lite actions once their undo window closes",
     "morning_summary": "Morning summary pushes",
     "email_fallback": "Emails for unread \"your move\" pushes after 30 minutes",
-    "notify_upcoming_events": "Reminders: offers expiring, auctions ending, instalments due",
+    "notify_upcoming_events": "Reminders: offers expiring, instalments due",
     "enrichment_sync": "Player data refresh",
     "refresh_watch": "Check the data refresh ran on time",
     "monitoring_retention": "Delete old run logs, errors and request figures",

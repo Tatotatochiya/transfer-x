@@ -1,8 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import api from "../../lib/api";
 import type { OrderBook, OrderBookEntry } from "../../types/api";
-import type { SaleType } from "../../types/enums";
 import Spinner from "../ui/Spinner";
 import { formatCurrency } from "../../lib/utils";
 import { isLoan, offerHeadline } from "../../lib/offerTerms";
@@ -15,21 +14,19 @@ const STATUS_VARIANT: Record<string, string> = {
   REJECTED:  "bg-danger/20 text-danger-text",
   WITHDRAWN: "bg-text-muted/15 text-text-muted",
   EXPIRED:   "bg-text-muted/15 text-text-muted",
-  OUTBID:    "bg-text-muted/10 text-text-muted",
 };
 
 interface Props {
   saleId?: string;
   playerId?: string;
-  saleType: SaleType;
   isOpen: boolean;
   selectedId?: string;
-  onSelectBid?: (bidId: string) => void; // AUCTION only
 }
 
-export default function SellerOrderBook({ saleId, playerId, saleType, isOpen, selectedId, onSelectBid }: Props) {
+/** The offers made for a listed player (or, with `playerId`, every offer for
+ *  him), best first. A row opens the offer. */
+export default function SellerOrderBook({ saleId, playerId, isOpen, selectedId }: Props) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const queryKey = saleId ? ["sales", saleId, "order-book"] : ["offers", "competition", playerId];
   const queryFn = saleId
@@ -39,18 +36,8 @@ export default function SellerOrderBook({ saleId, playerId, saleType, isOpen, se
   const { data: ob, isLoading } = useQuery<OrderBook>({
     queryKey,
     queryFn,
-    refetchInterval: 300_000,  // fallback; WS OFFER_UPDATED / BID_PLACED events drive real-time updates
+    refetchInterval: 300_000,  // fallback; WS OFFER_UPDATED events drive real-time updates
     enabled: !!(saleId || playerId),
-  });
-
-  const acceptBidMutation = useMutation({
-    mutationFn: (bidId: string) =>
-      api.post(`/sales/${saleId}/bids/${bidId}/accept`).then((r) => r.data),
-    onSuccess: (deal: { id: string }) => {
-      queryClient.invalidateQueries({ queryKey: ["sales", saleId] });
-      queryClient.invalidateQueries({ queryKey });
-      navigate(`/deals/${deal.id}`);
-    },
   });
 
   if (isLoading) {
@@ -70,11 +57,7 @@ export default function SellerOrderBook({ saleId, playerId, saleType, isOpen, se
   const maxFee = Math.max(...ob.entries.filter((e) => !isLoan(e)).map((e) => Number(e.fee_amount ?? 0)), 1);
 
   function handleRowClick(entry: OrderBookEntry) {
-    if (saleType === "AUCTION") {
-      onSelectBid?.(entry.id);
-    } else {
-      navigate(`/offers/${entry.id}`);
-    }
+    navigate(`/offers/${entry.id}`);
   }
 
   return (
@@ -82,7 +65,7 @@ export default function SellerOrderBook({ saleId, playerId, saleType, isOpen, se
       {/* Summary strip */}
       <div className="px-4 py-3 border-b border-border bg-surface-inset">
         <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
-          {saleType === "AUCTION" ? "Bid Order Book" : "Offer Order Book"}
+          Offer Order Book
         </p>
         {ob.summary ? (
           <p className="text-sm text-text">{ob.summary}</p>
@@ -95,7 +78,7 @@ export default function SellerOrderBook({ saleId, playerId, saleType, isOpen, se
       <div className="flex-1 overflow-y-auto">
         {activeEntries.length === 0 && (
           <div className="px-4 py-8 text-center text-sm text-text-muted">
-            No active {saleType === "AUCTION" ? "bids" : "offers"} yet
+            No active offers yet
           </div>
         )}
 
@@ -166,19 +149,7 @@ export default function SellerOrderBook({ saleId, playerId, saleType, isOpen, se
               <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_VARIANT[entry.status] ?? "bg-text-muted/15 text-text-muted"}`}>
                 {entry.status}
               </span>
-              {isOpen && saleType === "AUCTION" && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    acceptBidMutation.mutate(entry.id);
-                  }}
-                  disabled={acceptBidMutation.isPending}
-                  className="text-xs px-2 py-0.5 rounded bg-success/15 text-success-text ring-1 ring-success/30 hover:bg-success/25 transition-colors disabled:opacity-50"
-                >
-                  Accept
-                </button>
-              )}
-              {isOpen && saleType !== "AUCTION" && (
+              {isOpen && (
                 <span className="text-xs text-text-muted group-hover:text-text-secondary transition-colors">
                   View →
                 </span>

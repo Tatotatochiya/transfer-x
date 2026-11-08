@@ -304,41 +304,7 @@ async def test_two_testers_demos_dont_share_a_player(client: AsyncClient, db, de
     assert clash.status_code == 409 and "another tester's demo" in clash.text
 
 
-# ── Auctions and "make them …" ───────────────────────────────────────────────
-
-
-async def test_house_clubs_bid_against_each_other_in_an_auction(client: AsyncClient, db, demo):
-    from app.deals.models import Deal
-    from app.sales.models import Bid, BidStatus
-    from app.valuation.models import PlayerValuation, ValuationConfidence
-
-    await _second_house(client, db)
-    mine = await _create_player_for_seller(client, demo["h"])
-    db.add(PlayerValuation(player_id=uuid.UUID(mine["id"]), fair_value=Decimal(10_000_000),
-                           fair_value_low=Decimal(8_000_000), fair_value_high=Decimal(12_000_000),
-                           performance_score=Decimal("60"), confidence=list(ValuationConfidence)[0],
-                           model_version="test", league_tier=1, age_factor=Decimal("1")))
-    await db.commit()
-    await _start(client, demo["tester"])
-    sale = await client.post("/sales", headers=demo["h"], json={
-        "player_id": mine["id"], "sale_type": "AUCTION", "asking_price": 8_000_000, "min_increment": 500_000,
-        "deadline": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()})
-    assert sale.status_code == 201, sale.text
-    sale_id = uuid.UUID(sale.json()["id"])
-    for _ in range(20):
-        if not await _tick(demo):
-            break
-    bids = (await db.execute(select(Bid).where(Bid.sale_id == sale_id, Bid.status == BidStatus.ACTIVE))).scalars().all()
-    assert len({b.buyer_club_id for b in bids}) == 2  # both took part
-    best = max(bids, key=lambda b: b.amount)
-    assert Decimal(9_000_000) <= best.amount <= Decimal(12_000_000)  # up to each club's limit, not beyond
-    assert all(b.notes.startswith("Automated (demo):") for b in bids)
-    best_id = best.id
-    assert await _tick(demo) == 0  # both at their limits
-
-    accepted = await client.post(f"/sales/{sale_id}/bids/{best_id}/accept", headers=demo["h"])
-    assert accepted.status_code == 200, accepted.text
-    assert (await db.execute(select(Deal).where(Deal.player_id == uuid.UUID(mine["id"])))).scalar_one()
+# ── "Make them answer now" ───────────────────────────────────────────────────
 
 
 async def test_the_tester_can_make_the_house_club_move_now(client: AsyncClient, db, demo):

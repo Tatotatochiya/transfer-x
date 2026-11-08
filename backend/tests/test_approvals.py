@@ -37,17 +37,20 @@ async def _set_threshold(client: AsyncClient, owner: dict, amount: float | None)
     return resp.json()
 
 
-async def _make_auction(client: AsyncClient, seller: dict, name: str = "Approval Player") -> str:
+async def _make_target(client: AsyncClient, seller: dict, name: str = "Approval Player") -> tuple[str, str]:
+    """A player at the selling club to make offers for: (player_id, seller_club_id)."""
     headers = _auth_headers(seller)
     player = await client.post("/players", json={"name": name, "position": "FWD"}, headers=headers)
     assert player.status_code == 201, player.text
-    sale = await client.post(
-        "/sales",
-        json={"player_id": player.json()["id"], "sale_type": "AUCTION", "asking_price": 1_000_000},
-        headers=headers,
+    return player.json()["id"], await _get_club_id(client, headers)
+
+
+async def _offer(client: AsyncClient, tokens: dict, target: tuple[str, str], amount: float):
+    player_id, seller_club_id = target
+    return await client.post(
+        "/offers", json={"player_id": player_id, "to_club_id": seller_club_id, "fee_amount": amount},
+        headers=_auth_headers(tokens),
     )
-    assert sale.status_code == 201, sale.text
-    return sale.json()["id"]
 
 
 async def _notif_types(client: AsyncClient, tokens: dict) -> list[str]:
@@ -64,12 +67,10 @@ async def test_manager_bid_at_or_over_threshold_captured_nothing_reserved(
 ):
     await _give_budget(db)
     await _set_threshold(client, buyer, 5_000_000)
-    sale_id = await _make_auction(client, seller)
+    target = await _make_target(client, seller)
     manager = await _create_staff(client, db, _auth_headers(buyer), "appr_mgr@test.com", "MANAGER")
 
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=_auth_headers(manager)
-    )
+    resp = await _offer(client, manager, target, 6_000_000)
     assert resp.status_code == 202, resp.text
     body = resp.json()
     assert body["status"] == "PENDING_APPROVAL"
@@ -78,10 +79,9 @@ async def test_manager_bid_at_or_over_threshold_captured_nothing_reserved(
     # Nothing executed, nothing reserved (D7: an approval is an intent, not a hold)
     from sqlalchemy import select
     from app.clubs.models import ClubFinance
-    from app.sales.models import Bid
+    from app.offers.models import Offer
 
-    bids = (await db.execute(select(Bid))).scalars().all()
-    assert bids == []
+    assert (await db.execute(select(Offer))).scalars().all() == []
     buyer_club_id = await _get_club_id(client, _auth_headers(buyer))
     fin = (
         await db.execute(select(ClubFinance).where(ClubFinance.club_id == uuid.UUID(buyer_club_id)))
@@ -100,12 +100,10 @@ async def test_manager_bid_at_or_over_threshold_captured_nothing_reserved(
 async def test_exactly_at_threshold_escalates(client: AsyncClient, db, buyer: dict, seller: dict):
     await _give_budget(db)
     await _set_threshold(client, buyer, 5_000_000)
-    sale_id = await _make_auction(client, seller)
+    target = await _make_target(client, seller)
     manager = await _create_staff(client, db, _auth_headers(buyer), "appr_mgr_eq@test.com", "MANAGER")
 
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 5_000_000}, headers=_auth_headers(manager)
-    )
+    resp = await _offer(client, manager, target, 5_000_000)
     assert resp.status_code == 202, resp.text
 
 
@@ -115,19 +113,15 @@ async def test_below_threshold_and_null_threshold_execute_directly(
 ):
     await _give_budget(db)
     await _set_threshold(client, buyer, 5_000_000)
-    sale_id = await _make_auction(client, seller)
+    target = await _make_target(client, seller)
     manager = await _create_staff(client, db, _auth_headers(buyer), "appr_mgr_lo@test.com", "MANAGER")
 
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 4_000_000}, headers=_auth_headers(manager)
-    )
+    resp = await _offer(client, manager, target, 4_000_000)
     assert resp.status_code == 201, resp.text
 
     # Clear the threshold — the feature disappears entirely
     await _set_threshold(client, buyer, None)
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 9_000_000}, headers=_auth_headers(manager)
-    )
+    resp = await _offer(client, manager, await _make_target(client, seller, "Second Target"), 9_000_000)
     assert resp.status_code == 201, resp.text
 
 
@@ -135,17 +129,13 @@ async def test_below_threshold_and_null_threshold_execute_directly(
 async def test_owner_and_sd_are_exempt(client: AsyncClient, db, buyer: dict, seller: dict):
     await _give_budget(db)
     await _set_threshold(client, buyer, 5_000_000)
-    sale_id = await _make_auction(client, seller)
+    target = await _make_target(client, seller)
     sd = await _create_staff(client, db, _auth_headers(buyer), "appr_sd@test.com", "SPORTING_DIRECTOR")
 
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=_auth_headers(sd)
-    )
+    resp = await _offer(client, sd, target, 6_000_000)
     assert resp.status_code == 201, resp.text
 
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 7_000_000}, headers=_auth_headers(buyer)
-    )
+    resp = await _offer(client, buyer, await _make_target(client, seller, "Owner Target"), 7_000_000)
     assert resp.status_code == 201, resp.text
 
 
@@ -158,13 +148,11 @@ async def test_approve_executes_with_dual_attribution_and_seller_notified(
 ):
     await _give_budget(db)
     await _set_threshold(client, buyer, 5_000_000)
-    sale_id = await _make_auction(client, seller)
+    target = await _make_target(client, seller)
     manager = await _create_staff(client, db, _auth_headers(buyer), "appr_flow_mgr@test.com", "MANAGER")
     sd = await _create_staff(client, db, _auth_headers(buyer), "appr_flow_sd@test.com", "SPORTING_DIRECTOR")
 
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=_auth_headers(manager)
-    )
+    resp = await _offer(client, manager, target, 6_000_000)
     assert resp.status_code == 202
     approval_id = resp.json()["approval_id"]
 
@@ -182,13 +170,12 @@ async def test_approve_executes_with_dual_attribution_and_seller_notified(
     assert decided["decided_by_user_id"] is not None
     assert decided["decided_by_user_id"] != decided["requested_by_user_id"]
 
-    # The bid now exists for the buying club
-    bids = await client.get(f"/sales/{sale_id}/bids", headers=_auth_headers(buyer))
-    amounts = [b["amount"] for b in bids.json()]
-    assert any(Decimal(a) == Decimal("6000000") for a in amounts)
+    # The offer now exists for the buying club
+    sent = await client.get("/offers/sent", headers=_auth_headers(buyer))
+    assert any(Decimal(o["fee_amount"]) == Decimal("6000000") for o in sent.json()["items"])
 
     # Seller side notified normally; requester told of execution
-    assert "AUCTION_BID_RECEIVED" in await _notif_types(client, seller)
+    assert "OFFER_RECEIVED" in await _notif_types(client, seller)
     assert "APPROVAL_DECIDED" in await _notif_types(client, manager)
 
 
@@ -196,21 +183,20 @@ async def test_approve_executes_with_dual_attribution_and_seller_notified(
 async def test_stale_approval_fails_soft_when_sale_withdrawn(
     client: AsyncClient, db, buyer: dict, seller: dict
 ):
-    """Auction closes between capture and approval → APPROVED_FAILED with
-    reason, both parties notified, no 500 (D7 re-validation)."""
+    """The club makes its own offer for him between capture and approval →
+    APPROVED_FAILED with reason, both parties notified, no 500 (D7
+    re-validation)."""
     await _give_budget(db)
     await _set_threshold(client, buyer, 5_000_000)
-    sale_id = await _make_auction(client, seller)
+    target = await _make_target(client, seller)
     manager = await _create_staff(client, db, _auth_headers(buyer), "appr_stale_mgr@test.com", "MANAGER")
     sd = await _create_staff(client, db, _auth_headers(buyer), "appr_stale_sd@test.com", "SPORTING_DIRECTOR")
 
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=_auth_headers(manager)
-    )
+    resp = await _offer(client, manager, target, 6_000_000)
     approval_id = resp.json()["approval_id"]
 
-    resp = await client.post(f"/sales/{sale_id}/withdraw", headers=_auth_headers(seller))
-    assert resp.status_code == 200, resp.text
+    resp = await _offer(client, buyer, target, 5_500_000)  # the owner is exempt
+    assert resp.status_code == 201, resp.text
 
     resp = await client.post(f"/clubs/me/approvals/{approval_id}/approve", headers=_auth_headers(sd))
     assert resp.status_code == 200, resp.text
@@ -229,12 +215,10 @@ async def test_stale_approval_fails_soft_when_sale_withdrawn(
 async def test_status_machine_is_one_way(client: AsyncClient, db, buyer: dict, seller: dict):
     await _give_budget(db)
     await _set_threshold(client, buyer, 5_000_000)
-    sale_id = await _make_auction(client, seller)
+    target = await _make_target(client, seller)
     manager = await _create_staff(client, db, _auth_headers(buyer), "appr_sm_mgr@test.com", "MANAGER")
 
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=_auth_headers(manager)
-    )
+    resp = await _offer(client, manager, target, 6_000_000)
     approval_id = resp.json()["approval_id"]
 
     resp = await client.post(f"/clubs/me/approvals/{approval_id}/approve", headers=_auth_headers(buyer))
@@ -258,14 +242,12 @@ async def test_status_machine_is_one_way(client: AsyncClient, db, buyer: dict, s
 async def test_reject_and_cancel_paths(client: AsyncClient, db, buyer: dict, seller: dict):
     await _give_budget(db)
     await _set_threshold(client, buyer, 5_000_000)
-    sale_id = await _make_auction(client, seller)
+    target = await _make_target(client, seller)
     manager = await _create_staff(client, db, _auth_headers(buyer), "appr_rc_mgr@test.com", "MANAGER")
     manager2 = await _create_staff(client, db, _auth_headers(buyer), "appr_rc_mgr2@test.com", "MANAGER")
 
     # Reject with reason → requester notified, nothing executed
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=_auth_headers(manager)
-    )
+    resp = await _offer(client, manager, target, 6_000_000)
     first_id = resp.json()["approval_id"]
     resp = await client.post(
         f"/clubs/me/approvals/{first_id}/reject",
@@ -278,9 +260,7 @@ async def test_reject_and_cancel_paths(client: AsyncClient, db, buyer: dict, sel
     assert "APPROVAL_DECIDED" in await _notif_types(client, manager)
 
     # A MANAGER cannot decide (no APPROVE_ACTIONS)
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 7_000_000}, headers=_auth_headers(manager)
-    )
+    resp = await _offer(client, manager, await _make_target(client, seller, "Second Target"), 7_000_000)
     second_id = resp.json()["approval_id"]
     assert (
         await client.post(f"/clubs/me/approvals/{second_id}/approve", headers=_auth_headers(manager2))
@@ -332,27 +312,23 @@ async def test_create_offer_capture_and_approve(client: AsyncClient, db, buyer: 
 
 
 @pytest.mark.asyncio
-async def test_seller_side_accept_bid_capture(client: AsyncClient, db, buyer: dict, seller: dict):
-    """ACCEPT_BID is threshold-gated on the *seller* club's manager."""
+async def test_seller_side_accept_offer_capture(client: AsyncClient, db, buyer: dict, seller: dict):
+    """ACCEPT_OFFER is threshold-gated on the *seller* club's manager."""
     await _give_budget(db)
     await _set_threshold(client, seller, 5_000_000)
-    sale_id = await _make_auction(client, seller)
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=_auth_headers(buyer)
-    )
-    bid_id = resp.json()["id"]
+    target = await _make_target(client, seller)
+    resp = await _offer(client, buyer, target, 6_000_000)
+    assert resp.status_code == 201, resp.text
     sel_manager = await _create_staff(client, db, _auth_headers(seller), "appr_selmgr@test.com", "MANAGER")
 
-    resp = await client.post(
-        f"/sales/{sale_id}/bids/{bid_id}/accept", headers=_auth_headers(sel_manager)
-    )
+    resp = await client.post(f"/offers/{resp.json()['id']}/accept", headers=_auth_headers(sel_manager))
     assert resp.status_code == 202, resp.text
     approval_id = resp.json()["approval_id"]
 
     resp = await client.post(f"/clubs/me/approvals/{approval_id}/approve", headers=_auth_headers(seller))
     assert resp.status_code == 200, resp.text
     assert resp.json()["status"] == "APPROVED_EXECUTED"
-    assert "AUCTION_BID_ACCEPTED" in await _notif_types(client, buyer)
+    assert "OFFER_ACCEPTED" in await _notif_types(client, buyer)
 
 
 @pytest.mark.asyncio
@@ -363,12 +339,10 @@ async def test_expiry_job_expires_and_notifies(client: AsyncClient, db, buyer: d
 
     await _give_budget(db)
     await _set_threshold(client, buyer, 5_000_000)
-    sale_id = await _make_auction(client, seller)
+    target = await _make_target(client, seller)
     manager = await _create_staff(client, db, _auth_headers(buyer), "appr_exp_mgr@test.com", "MANAGER")
 
-    resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=_auth_headers(manager)
-    )
+    resp = await _offer(client, manager, target, 6_000_000)
     assert resp.status_code == 202
 
     approval = (await db.execute(select(PendingApproval))).scalars().one()
@@ -569,9 +543,9 @@ async def test_approved_zero_fee_offer_replays_without_crashing(
 async def test_one_approval_for_its_decision_sheet(client: AsyncClient, db, buyer: dict, seller: dict):
     await _give_budget(db)
     await _set_threshold(client, buyer, 5_000_000)
-    sale_id = await _make_auction(client, seller, name="Sheet Player")
+    target = await _make_target(client, seller, name="Sheet Player")
     manager = await _create_staff(client, db, _auth_headers(buyer), "appr_sheet_mgr@test.com", "MANAGER")
-    resp = await client.post(f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=_auth_headers(manager))
+    resp = await _offer(client, manager, target, 6_000_000)
     approval_id = resp.json()["approval_id"]
 
     sheet = (await client.get(f"/clubs/me/approvals/{approval_id}", headers=_auth_headers(buyer))).json()

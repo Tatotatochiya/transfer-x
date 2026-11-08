@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { OrderBook } from "../../types/api";
-import type { SaleType } from "../../types/enums";
 import Spinner from "../ui/Spinner";
 import { formatCurrency } from "../../lib/utils";
 import { offerHeadline } from "../../lib/offerTerms";
@@ -9,10 +8,9 @@ import { offerHeadline } from "../../lib/offerTerms";
 interface Props {
   saleId?: string;
   playerId?: string;
-  saleType: SaleType;
 }
 
-export default function BuyerOrderBook({ saleId, playerId, saleType }: Props) {
+export default function BuyerOrderBook({ saleId, playerId }: Props) {
   const queryKey = saleId ? ["sales", saleId, "order-book"] : ["offers", "competition", playerId];
   const queryFn = saleId
     ? () => api.get<OrderBook>(`/sales/${saleId}/order-book`).then((r) => r.data)
@@ -21,7 +19,7 @@ export default function BuyerOrderBook({ saleId, playerId, saleType }: Props) {
   const { data: ob, isLoading } = useQuery<OrderBook>({
     queryKey,
     queryFn,
-    refetchInterval: 300_000,  // fallback; WS OFFER_UPDATED / BID_PLACED events drive real-time updates
+    refetchInterval: 300_000,  // fallback; WS OFFER_UPDATED events drive real-time updates
     enabled: !!(saleId || playerId),
   });
 
@@ -50,7 +48,7 @@ export default function BuyerOrderBook({ saleId, playerId, saleType }: Props) {
         <div className="flex items-baseline gap-1.5">
           <span className="text-2xl font-bold text-text tabular-nums">{ob.active_count}</span>
           <span className="text-sm text-text-muted">
-            {ob.active_count === 1 ? "club" : "clubs"} {saleType === "AUCTION" ? "bidding" : "have made offers"}
+            {ob.active_count === 1 ? "club" : "clubs"} have made offers
           </span>
         </div>
 
@@ -60,7 +58,7 @@ export default function BuyerOrderBook({ saleId, playerId, saleType }: Props) {
             {ob.is_leading ? (
               <div className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
-                <span className="text-sm font-semibold text-success-text">You have the leading {saleType === "AUCTION" ? "bid" : "offer"}</span>
+                <span className="text-sm font-semibold text-success-text">You have the leading offer</span>
               </div>
             ) : (
               <p className="text-sm text-text-secondary">
@@ -110,7 +108,7 @@ export default function BuyerOrderBook({ saleId, playerId, saleType }: Props) {
       {ob.your_entry && (
         <div className="px-4 py-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
-            Your {saleType === "AUCTION" ? "bid" : "offer"}
+            Your offer
           </p>
           <div className="rounded-lg bg-surface-inset ring-1 ring-success/20 px-3 py-2.5">
             <div className="flex items-center justify-between">
@@ -144,7 +142,7 @@ export default function BuyerOrderBook({ saleId, playerId, saleType }: Props) {
       {/* No participation yet */}
       {!hasParticipated && (
         <div className="px-4 py-6 text-center text-xs text-text-muted">
-          Competition details visible after submitting {saleType === "AUCTION" ? "a bid" : "an offer"}
+          Competition details visible after submitting an offer
         </div>
       )}
     </div>

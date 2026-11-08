@@ -36,7 +36,7 @@ Verified against the router mounts in `backend/app/main.py` on 2026-10-11.
 | `/users/me/preferences` | Lite and display preferences (`lite`) |
 | `/clubs` | Clubs, `/clubs/me/*` (membership, staff, finance, commitments, contract cliff, squad check, dashboard, approvals and the approval policy) |
 | `/players` | Players, the market, contracts, ledger, invitations; batch stats and form under `/players/stats/batch` and `/players/form/batch` |
-| `/sales` | Listings and bids |
+| `/sales` | Listings (open to offers; auctions and bids retired, product ADR 0011) |
 | `/offers` | Offers, counters, messages, the order book |
 | `/enquiries` | Enquiries |
 | `/deals` | Deals, the deal room, paperwork, personal terms, audit log |

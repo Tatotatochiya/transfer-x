@@ -90,7 +90,7 @@ async def get_approval(
         if approval.requested_by_user_id != current_user.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approval not found")
     resp = await _to_response(db, approval)
-    if approval.action_type in (A.PLACE_BID, A.CREATE_OFFER, A.EXERCISE_OPTION):
+    if approval.action_type in (A.CREATE_OFFER, A.EXERCISE_OPTION):
         finance = (await db.execute(select(ClubFinance).where(ClubFinance.club_id == club.id))).scalar_one_or_none()
         if finance is not None:
             resp.budget_after = max(finance.transfer_remaining - approval.amount, 0)

@@ -190,7 +190,7 @@ async def search_listings(ctx: Ctx, position: str | None = None, sale_type: str 
     q = select(Sale).where(Sale.status == SaleStatus.OPEN).options(selectinload(Sale.player), selectinload(Sale.seller_club))
     if not include_own:
         q = q.where(Sale.seller_club_id != ctx.club.id)
-    if sale_type in ("AUCTION", "OPEN_TO_OFFERS", "FIXED_PRICE"):
+    if sale_type in ("OPEN_TO_OFFERS", "FIXED_PRICE"):
         q = q.where(Sale.sale_type == SaleType(sale_type))
     sales = list((await ctx.db.execute(q)).scalars())
     now = datetime.now(timezone.utc)
@@ -414,9 +414,9 @@ TOOLS: dict[str, Tool] = {t.name: t for t in [
          "use this before saying anything about a named player.",
          {"type": "object", "properties": {"name": _STR}, "required": ["name"]}, get_player),
     Tool("search_listings", "Open listings across the market (players other clubs are selling or loaning), with "
-         "asking price and deadline. Use for 'who's for sale', 'auctions ending this week', 'loan options'.",
+         "asking price and deadline. Use for 'who's for sale', 'listings closing this week', 'loan options'.",
          {"type": "object", "properties": {
-             "position": _POS, "sale_type": {"type": "string", "enum": ["OPEN_TO_OFFERS", "AUCTION", "FIXED_PRICE"]},
+             "position": _POS, "sale_type": {"type": "string", "enum": ["OPEN_TO_OFFERS", "FIXED_PRICE"]},
              "loan": _BOOL, "max_price": {"type": "number", "description": "pounds"}, "ending_within_days": _INT,
              "include_own": _BOOL, "limit": _LIM}}, search_listings),
     Tool("squad", "The asking club's own players with contracts: wage, end date, the club's valuation, listed. Use "

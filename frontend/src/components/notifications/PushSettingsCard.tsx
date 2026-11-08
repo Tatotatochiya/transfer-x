@@ -241,7 +241,7 @@ export default function PushSettingsCard() {
               <Dot className="bg-warning-fill" />
               <div>
                 <p className="text-sm font-semibold text-text">Heads-up</p>
-                <p className="text-xs text-text-muted">Outbid, messages, auctions ending. {MODE_SUMMARY[prefs.push_heads_up]}.</p>
+                <p className="text-xs text-text-muted">Answers to your offers, messages, offers expiring. {MODE_SUMMARY[prefs.push_heads_up]}.</p>
               </div>
             </div>
             <ModeControl label="Heads-up" value={prefs.push_heads_up} onChange={(m) => save({ push_heads_up: m })} />

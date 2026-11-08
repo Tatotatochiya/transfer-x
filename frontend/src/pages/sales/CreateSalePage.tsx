@@ -12,7 +12,7 @@ export default function CreateSalePage() {
 
   return (
     <div className="max-w-2xl">
-      <PageHeader title="New Listing" subtitle="List a player for sale or auction" />
+      <PageHeader title="New Listing" subtitle="List a player for sale or loan" />
 
       <TransferWindowBanner />
 

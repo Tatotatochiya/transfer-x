@@ -22,8 +22,6 @@ from app.deals import service as deals_service
 from app.deals.models import Deal, DealStage
 from app.offers import service as offers_service
 from app.offers.models import Offer, OfferStatus
-from app.sales import service as sales_service
-from app.sales.models import BidStatus, SaleStatus
 
 # Bounds each per-entity candidate fetch — a club's simultaneously-open offers/
 # deals/sales realistically stays well under this; if it ever doesn't, the fix
@@ -145,39 +143,6 @@ async def _deal_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[dateti
     return out
 
 
-async def _sale_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[datetime, DashboardItem]]:
-    # whose_move is inherently seller-side for sales (TRA-139) — only this
-    # club's own listings can ever produce a "your move" auction item.
-    sales, _ = await sales_service.list_sales(
-        db, seller_club_id=club_id, status=SaleStatus.OPEN, page=1, page_size=_CANDIDATE_PAGE_SIZE
-    )
-    out = []
-    for s in sales:
-        active_bids = [b for b in (s.bids or []) if b.status == BidStatus.ACTIVE]
-        bid_count = len(active_bids)
-        reserve_ok = sales_service.is_reserve_met(s) if s.bids is not None else False
-        whose_move = sales_service.compute_sale_whose_move(
-            bid_count=bid_count, reserve_met=reserve_ok, deadline=s.deadline
-        )
-        if whose_move != WhoseMove.YOUR:
-            continue
-        best = sales_service.get_best_bid_amount(s.bids or [])
-        out.append((
-            s.deadline,
-            DashboardItem(
-                kind="sale",
-                id=s.id,
-                player_name=s.player.name if s.player else None,
-                player_id=s.player_id, player_photo_url=s.player.photo_url if s.player else None,
-                amount=best,
-                reason="Reserve met — auction closing soon",
-                link=f"/sales/{s.id}",
-                deadline=s.deadline,
-            ),
-        ))
-    return out
-
-
 async def _enquiry_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[datetime, DashboardItem]]:
     """Open enquiries where the other club wrote last — someone is waiting for
     an answer from this club."""
@@ -208,18 +173,15 @@ async def get_dashboard(db: AsyncSession, *, club: Club, current_user: User) -> 
     approval_pairs = await _approval_items(db, club.id, current_user)
     offer_pairs = await _offer_items(db, club.id)
     deal_pairs = await _deal_items(db, club.id)
-    sale_pairs = await _sale_items(db, club.id)
     enquiry_pairs = await _enquiry_items(db, club.id)
 
     # Priority order: approvals and confirmed deals block the single most
-    # concrete next step; offers are still mid-negotiation; sales are only
-    # urgent right at closing. Within a kind, oldest-waiting (or
-    # soonest-closing, for sales) first.
+    # concrete next step; offers are still mid-negotiation. Within a kind,
+    # oldest-waiting first.
     waiting_on_you = (
         [item for _, item in sorted(approval_pairs, key=lambda p: p[0])]
         + [item for _, item in sorted(deal_pairs, key=lambda p: p[0])]
         + [item for _, item in sorted(offer_pairs, key=lambda p: p[0])]
-        + [item for _, item in sorted(sale_pairs, key=lambda p: p[0])]
         + [item for _, item in sorted(enquiry_pairs, key=lambda p: p[0])]
     )
     return DashboardResponse(waiting_on_you=waiting_on_you)

@@ -82,35 +82,6 @@ async def _create_deal_via_offer(
     return deal_resp.json()
 
 
-async def _create_deal_via_bid(
-    client: AsyncClient,
-    buyer: dict,
-    seller: dict,
-    db,
-) -> dict:
-    """Create a deal by placing and accepting a bid on an auction."""
-    await _give_budget(db)
-    sel_headers = _auth_headers(seller)
-    buy_headers = _auth_headers(buyer)
-    player = await _create_player_for_seller(client, sel_headers)
-
-    sale_resp = await client.post(
-        "/sales",
-        json={"player_id": player["id"], "sale_type": "AUCTION", "asking_price": 5_000_000},
-        headers=sel_headers,
-    )
-    sale_id = sale_resp.json()["id"]
-
-    bid_resp = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 5_000_000}, headers=buy_headers
-    )
-    bid_id = bid_resp.json()["id"]
-
-    deal_resp = await client.post(f"/sales/{sale_id}/bids/{bid_id}/accept", headers=sel_headers)
-    assert deal_resp.status_code == 200, deal_resp.text
-    return deal_resp.json()
-
-
 async def _register_player_account(client: AsyncClient, email: str, player_id: str) -> dict:
     resp = await client.post("/auth/register", json={
         "email": email, "password": "password123",
@@ -611,47 +582,48 @@ async def test_collapse_reopens_originating_sale_and_notifies_rivals(
     client: AsyncClient, buyer: dict, seller: dict, rival: dict, db,
 ):
     """Item 4: collapsing a deal must re-list the sale it came from and tell
-    the clubs who lost the auction that it's open again."""
+    the other clubs that made offers on it that it's open again. A listing
+    that was an auction (retired, ADR 0011) comes back open to offers."""
     from sqlalchemy import select
 
     from app.auth.models import User
     from app.notifications.models import Notification, NotificationType
+    from app.sales.models import Sale, SaleType
 
     await _give_budget(db)
     sel_headers = _auth_headers(seller)
-    buy_headers = _auth_headers(buyer)
-    rival_headers = _auth_headers(rival)
     player = await _create_player_for_seller(client, sel_headers)
+    seller_club_id = await _get_club_id(client, sel_headers)
 
     sale_resp = await client.post(
         "/sales",
-        json={"player_id": player["id"], "sale_type": "AUCTION", "asking_price": 5_000_000},
+        json={"player_id": player["id"], "sale_type": "OPEN_TO_OFFERS", "asking_price": 5_000_000},
         headers=sel_headers,
     )
     sale_id = sale_resp.json()["id"]
 
-    rival_bid = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 5_000_000}, headers=rival_headers
-    )
-    assert rival_bid.status_code == 201
-    winning_bid = await client.post(
-        f"/sales/{sale_id}/bids", json={"amount": 6_000_000}, headers=buy_headers
-    )
-    assert winning_bid.status_code == 201
-    bid_id = winning_bid.json()["id"]
+    offers = {}
+    for who, fee in (("rival", 5_000_000), ("buyer", 6_000_000)):
+        tokens = rival if who == "rival" else buyer
+        r = await client.post("/offers", headers=_auth_headers(tokens), json={
+            "player_id": player["id"], "to_club_id": seller_club_id, "fee_amount": fee, "sale_id": sale_id})
+        assert r.status_code == 201, r.text
+        offers[who] = r.json()["id"]
 
-    accept_resp = await client.post(f"/sales/{sale_id}/bids/{bid_id}/accept", headers=sel_headers)
-    assert accept_resp.status_code == 200
+    accept_resp = await client.post(f"/offers/{offers['buyer']}/accept", headers=sel_headers)
+    assert accept_resp.status_code == 200, accept_resp.text
     deal_id = accept_resp.json()["id"]
+    assert (await client.get(f"/sales/{sale_id}")).json()["status"] == "CLOSED"
 
-    sale_closed = await client.get(f"/sales/{sale_id}")
-    assert sale_closed.json()["status"] == "CLOSED"
+    # As if it had been listed as an auction before they were retired.
+    (await db.get(Sale, uuid.UUID(sale_id))).sale_type = SaleType.AUCTION
+    await db.commit()
 
-    collapse_resp = await client.post(f"/deals/{deal_id}/collapse", headers=buy_headers)
+    collapse_resp = await client.post(f"/deals/{deal_id}/collapse", headers=_auth_headers(buyer))
     assert collapse_resp.status_code == 200
 
-    sale_after = await client.get(f"/sales/{sale_id}")
-    assert sale_after.json()["status"] == "OPEN"
+    sale_after = (await client.get(f"/sales/{sale_id}")).json()
+    assert sale_after["status"] == "OPEN" and sale_after["sale_type"] == "OPEN_TO_OFFERS"
 
     await db.rollback()
     rival_user_id = (await db.execute(select(User).where(User.email == "rival_deal@test.com"))).scalar_one().id
@@ -743,14 +715,7 @@ async def test_non_staff_cannot_use_staff_endpoints(client: AsyncClient, buyer: 
     assert resp.status_code == 403
 
 
-# ── Auction deal ──────────────────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_auction_deal_is_flagged(client: AsyncClient, buyer: dict, seller: dict, db):
-    deal = await _create_deal_via_bid(client, buyer, seller, db)
-    resp = await client.get(f"/deals/{deal['id']}", headers=_auth_headers(buyer))
-    assert resp.json()["is_auction_deal"] is True
+# ── Auction deals (history only: auctions are retired, ADR 0011) ────────────
 
 
 @pytest.mark.asyncio
