@@ -44,6 +44,7 @@ Statuses verified against the code and `CHANGELOG.md` on 2026-10-11. Once a spec
 
 | Spec | Implemented |
 |---|---|
+| [`deal-room-focus/`](./deal-room-focus/README.md): the deal room, answer first (header, status card, progress, sections) | 2026-11-08 |
 | [`lite-mode/`](./lite-mode/README.md) (with [`BACKEND.md`](./lite-mode/BACKEND.md)): Lite mode for directors | 2026-10-04, L1–L8 |
 | [`mobile-notifications/`](./mobile-notifications/README.md) (with `HANDOFF.md`): phone notifications | 2026-10-04 |
 | [`player-profile-ledger/`](./player-profile-ledger/README.md) (with `HANDOFF.md`, cited by the code): the season ledger | 2026-10-01 |

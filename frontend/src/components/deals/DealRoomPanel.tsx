@@ -319,9 +319,15 @@ function DocumentsTab({
   );
 }
 
-// ── Main panel ────────────────────────────────────────────────────────────────
+// ── Messages and documents (deal-room-focus §5.9) ───────────────────────────
 
-export default function DealRoomPanel({
+/**
+ * The deal's messages. Clubs talk in the whole transfer's conversation: the
+ * enquiry and offer messages before the deal, shared and club-only messages,
+ * @mentions and the agent thread (product ADR 0008). Agents and players keep
+ * the deal-room channels, which show them what they may read.
+ */
+export function DealMessages({
   dealId,
   canWrite = true,
   viewerSide = null,
@@ -331,25 +337,20 @@ export default function DealRoomPanel({
 }: {
   dealId: string;
   /** TRA-151: club members without DEAL_WRITE (scout/read-only) view the room
-   * but the composer and upload controls are hidden. Agents/players pass true. */
+   * but the composer is hidden. Agents/players pass true. */
   canWrite?: boolean;
   /** Item 8: which side of the deal the viewer's own club is on, if any —
    * agents/players and non-participants pass null and never see a private-channel option. */
   viewerSide?: ViewerSide;
-  /** Only non-null while the deal is at AGENT_NEGOTIATION and a negotiation
-   * exists — the same window the existing agent workspace is shown in. */
+  /** Only non-null while the deal is at AGENT_NEGOTIATION and a negotiation exists. */
   negotiationId?: string | null;
   myClubName?: string;
   theirClubName?: string;
 }) {
-  // Clubs talk in the whole transfer's conversation: the enquiry and offer
-  // messages before the deal, shared and club-only messages, @mentions and
-  // the agent thread (product ADR 0008). Agents and players keep the
-  // deal-room view, which shows them what they may read.
-  const tabs = viewerSide ? (["conversation", "documents"] as const) : (["messages", "documents"] as const);
-  const [tab, setTab] = useState<"conversation" | "messages" | "documents">(viewerSide ? "conversation" : "messages");
   const privateAudience = privateAudienceFor(viewerSide);
   const [channel, setChannel] = useState<Channel>("SHARED");
+
+  if (viewerSide) return <ConversationPanel context={{ dealId }} />;
 
   const availableChannels: { key: Channel; label: string }[] = [
     { key: "SHARED", label: "Shared" },
@@ -359,76 +360,52 @@ export default function DealRoomPanel({
   const activeChannel = availableChannels.some((c) => c.key === channel) ? channel : "SHARED";
 
   return (
-    <div className="mb-6 rounded-xl bg-surface ring-1 ring-border">
-      <div className="flex items-center justify-between border-b border-rule px-5 py-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Deal Room</p>
-        <div className="flex gap-1">
-          {tabs.map((t) => (
+    <div>
+      {availableChannels.length > 1 && (
+        <div className="flex border-b border-rule">
+          {availableChannels.map((c) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`rounded-lg px-3 py-1 text-xs font-medium capitalize transition-colors ${
-                tab === t ? "bg-surface-inset text-text" : "text-text-muted hover:text-text"
+              key={c.key}
+              onClick={() => setChannel(c.key)}
+              className={`min-h-11 flex-1 py-2.5 text-sm font-semibold transition-colors ${
+                activeChannel === c.key
+                  ? "text-accent border-b-2 border-accent"
+                  : "text-text-muted border-b-2 border-transparent hover:text-text"
               }`}
             >
-              {t}
+              {c.label}
             </button>
           ))}
         </div>
+      )}
+
+      {activeChannel === "CLUB_ONLY" && (
+        <div className="bg-warning-bg px-5 py-2.5 text-[13px] text-warning-text">
+          Private to {myClubName ?? "your club"} — {theirClubName ?? "the counterparty"} and the agent cannot see this channel.
+        </div>
+      )}
+
+      <div className="py-3">
+        {activeChannel === "AGENT" && negotiationId ? (
+          <NegotiationMessageThread negotiationId={negotiationId} thread="CLUB_SIDE" />
+        ) : (
+          <CommentThread
+            dealId={dealId}
+            canWrite={canWrite}
+            audience={activeChannel === "CLUB_ONLY" && privateAudience ? privateAudience : "SHARED"}
+            channelLabel={availableChannels.find((c) => c.key === activeChannel)?.label ?? "Shared"}
+          />
+        )}
       </div>
-
-      {tab === "conversation" && (
-        <div className="px-5 py-4">
-          <ConversationPanel context={{ dealId }} />
-        </div>
-      )}
-
-      {tab === "messages" && (
-        <>
-          {availableChannels.length > 1 && (
-            <div className="flex border-b border-rule">
-              {availableChannels.map((c) => (
-                <button
-                  key={c.key}
-                  onClick={() => setChannel(c.key)}
-                  className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
-                    activeChannel === c.key
-                      ? "text-accent border-b-2 border-accent"
-                      : "text-text-muted border-b-2 border-transparent hover:text-text"
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {activeChannel === "CLUB_ONLY" && (
-            <div className="bg-warning-bg px-5 py-2.5 text-[13px] text-warning-text">
-              Private to {myClubName ?? "your club"} — {theirClubName ?? "the counterparty"} and the agent cannot see this channel.
-            </div>
-          )}
-
-          <div className="px-5 py-4">
-            {activeChannel === "AGENT" && negotiationId ? (
-              <NegotiationMessageThread negotiationId={negotiationId} thread="CLUB_SIDE" />
-            ) : (
-              <CommentThread
-                dealId={dealId}
-                canWrite={canWrite}
-                audience={activeChannel === "CLUB_ONLY" && privateAudience ? privateAudience : "SHARED"}
-                channelLabel={availableChannels.find((c) => c.key === activeChannel)?.label ?? "Shared"}
-              />
-            )}
-          </div>
-        </>
-      )}
-
-      {tab === "documents" && (
-        <div className="px-5 py-4">
-          <DocumentsTab dealId={dealId} canWrite={canWrite} viewerSide={viewerSide} />
-        </div>
-      )}
     </div>
   );
+}
+
+/** The deal's documents, with the club-only option for club members. */
+export function DealDocuments({ dealId, canWrite = true, viewerSide = null }: {
+  dealId: string;
+  canWrite?: boolean;
+  viewerSide?: ViewerSide;
+}) {
+  return <DocumentsTab dealId={dealId} canWrite={canWrite} viewerSide={viewerSide} />;
 }
