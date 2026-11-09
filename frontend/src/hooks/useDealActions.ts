@@ -28,7 +28,8 @@ export function useDealActions(dealId: string | undefined, opts: { onDone?: () =
   });
 
   const collapse = useMutation({
-    mutationFn: () => api.post<Deal>(`/deals/${dealId}/collapse`).then((r) => r.data),
+    mutationFn: (reason?: string) =>
+      api.post<Deal>(`/deals/${dealId}/collapse`, { reason: reason?.trim() || null }).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
       queryClient.invalidateQueries({ queryKey: ["deals"] });

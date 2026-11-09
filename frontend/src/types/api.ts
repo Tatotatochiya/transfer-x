@@ -901,6 +901,9 @@ export interface Deal {
   seller_club: ClubSummary | null;
   player: PlayerSummary | null;
   deal_notes: DealNote[];
+  /** A collapsed deal: the reason given, if any, and the club that called it off (null for a staff override). */
+  collapse_reason?: string | null;
+  collapsed_by_club_id?: string | null;
 }
 
 export interface DealInvitationDealSummary {
