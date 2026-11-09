@@ -175,7 +175,7 @@ export default function ConversationPanel({
           .map((row) => "e" in row && row.e ? (
           <div key={`t:${row.e.id}`} className="flex items-center gap-3 py-0.5">
             <div className="h-px flex-1 bg-rule" />
-            <span className="text-[11px] text-text-muted">{row.e.text} · {formatDateTime(row.e.created_at)}</span>
+            <span className="text-[13px] text-text-muted">{row.e.text} · {formatDateTime(row.e.created_at)}</span>
             <div className="h-px flex-1 bg-rule" />
           </div>
         ) : "m" in row && row.m ? ((m) => (
@@ -187,7 +187,7 @@ export default function ConversationPanel({
               } text-text`}
             >
               <p className="whitespace-pre-wrap">{m.body}</p>
-              <p className="mt-1 text-[11px] text-text-muted">
+              <p className="mt-1 text-[13px] text-text-muted">
                 {m.author} · {formatDateTime(m.created_at)} · {m.context}
                 {m.audience !== "both_clubs" && <> · <span className="font-semibold">{m.audience_label}</span></>}
               </p>
@@ -208,17 +208,17 @@ export default function ConversationPanel({
             maxLength={4000}
             placeholder={placeholder}
             aria-label="Message"
-            className="w-full resize-y rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+            className="w-full resize-y rounded-lg bg-surface px-3 py-2 text-base text-text lg:text-sm ring-1 ring-input-border focus:outline-none focus:ring-accent"
           />
           {mentionable && participants.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-text-muted">Mention:</span>
+              <span className="text-[13px] text-text-muted">Mention:</span>
               {participants.map((p) => {
                 const on = mentions.includes(p.user_id);
                 return (
                   <button key={p.user_id} type="button" aria-pressed={on}
                     onClick={() => setMentions((ms) => (on ? ms.filter((x) => x !== p.user_id) : [...ms, p.user_id]))}
-                    className={`rounded-full px-2 py-0.5 text-xs ring-1 ${on ? "bg-accent-bg text-accent ring-accent/40" : "text-text-secondary ring-border"}`}>
+                    className={`inline-flex min-h-11 lg:min-h-0 items-center rounded-full px-2.5 py-0.5 text-[13px] ring-1 ${on ? "bg-accent-bg text-accent ring-accent/40" : "text-text-secondary ring-border"}`}>
                     @{p.label}
                   </button>
                 );
@@ -232,27 +232,27 @@ export default function ConversationPanel({
           )}
           <div className="flex flex-wrap items-center justify-between gap-2">
             {data.can_post_to.length > 1 ? (
-              <label className="flex items-center gap-2 text-xs text-text-secondary">
+              <label className="flex items-center gap-2 text-[13px] text-text-secondary">
                 Who can read it
                 <select
                   value={audience ?? ""}
                   onChange={(e) => setAudience(e.target.value as Audience)}
-                  className="rounded-lg bg-surface px-2 py-1.5 text-xs text-text ring-1 ring-input-border"
+                  className="min-h-11 lg:min-h-0 rounded-lg bg-surface px-2 py-1.5 text-base text-text ring-1 ring-input-border lg:text-[13px]"
                 >
                   {data.can_post_to.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
                 </select>
               </label>
             ) : (
-              <span className="text-xs text-text-muted">{selected?.label} can read this</span>
+              <span className="text-[13px] text-text-muted">{selected?.label} can read this</span>
             )}
-            <Button type="submit" size="sm" disabled={!body.trim() || send.isPending}>
+            <Button type="submit" size="sm" className="min-h-11 lg:min-h-0" disabled={!body.trim() || send.isPending}>
               {send.isPending ? "Sending…" : "Send"}
             </Button>
           </div>
         </form>
       ) : (
         data.can_post_to.length === 0 && (
-          <p className="border-t border-rule-faint pt-3 text-xs text-text-muted">Nothing is open on this transfer, so it can't take new messages.</p>
+          <p className="border-t border-rule-faint pt-3 text-[13px] text-text-muted">Nothing is open on this transfer, so it can't take new messages.</p>
         )
       )}
     </div>
