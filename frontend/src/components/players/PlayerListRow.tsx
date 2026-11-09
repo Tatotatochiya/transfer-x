@@ -11,6 +11,7 @@ import { useCompare } from "../../context/CompareContext";
 import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
 import { BAND_COLOUR, BAND_PHRASE } from "./FairValueBadge";
 import FallbackImage from "../ui/FallbackImage";
+import { askingPrice } from "../../lib/playerPrice";
 
 interface PlayerListRowProps {
   player: Player;
@@ -26,12 +27,8 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
   const queryClient = useQueryClient();
   const { toggle, has } = useCompare();
   const comparing = has(player.id);
-  // The server resolves the reference price (an open fixed-price listing's
-  // asking price, else the legacy market_value — D7 excludes auctions), so it
-  // arrives on the divergence. `market_value` is the fallback for a player with
-  // an asking price but no model row to diverge from.
   const divergence = fairValueSignal?.divergence ?? null;
-  const asking = divergence?.reference_price ?? player.market_value ?? null;
+  const asking = askingPrice(player, fairValueSignal);
   const bargain = divergence?.band === "WELL_BELOW" || divergence?.band === "BELOW";
 
   function prefetch() {
