@@ -53,6 +53,22 @@ function params(ctx: ConversationContext) {
   };
 }
 
+// An unsent message survives the panel remounting: the transfer pages draw
+// different trees either side of 1024px (tabs below, a rail above), so
+// rotating an iPad used to lose it. Per tab only (sessionStorage).
+const draftKey = (ctx: ConversationContext) => `conversation-draft:${JSON.stringify(params(ctx))}`;
+
+function readDraft(key: string): string {
+  try { return sessionStorage.getItem(key) ?? ""; } catch { return ""; }
+}
+
+function writeDraft(key: string, value: string) {
+  try {
+    if (value) sessionStorage.setItem(key, value);
+    else sessionStorage.removeItem(key);
+  } catch { /* storage unavailable: the draft lives only in this panel */ }
+}
+
 export default function ConversationPanel({
   context, compact = false, timeline = [], placeholder = "Write a message…",
 }: {
@@ -70,7 +86,9 @@ export default function ConversationPanel({
     queryFn: () => api.get<Conversation>("/conversation", { params: params(context) }).then((r) => r.data),
     refetchInterval: 30_000,
   });
-  const [body, setBody] = useState("");
+  const storageKey = draftKey(context);
+  const [body, setBodyState] = useState(() => readDraft(storageKey));
+  const setBody = (value: string) => { setBodyState(value); writeDraft(storageKey, value); };
   const [audience, setAudience] = useState<Audience | null>(null);
   const [mentions, setMentions] = useState<string[]>([]);
   const live = data?.live;

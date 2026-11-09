@@ -32,6 +32,20 @@ describe("ConversationPanel", () => {
     api.get.mockReset().mockResolvedValue({ data: conversation });
     api.post.mockReset().mockResolvedValue({ data: conversation });
     caps.allowed = true;
+    sessionStorage.clear();
+  });
+
+  it("keeps an unsent message when the panel remounts, and forgets it once sent", async () => {
+    const first = renderPanel();
+    await screen.findByText("Would you sell?");
+    await userEvent.type(screen.getByLabelText("Message"), "Half a thought");
+    first.unmount();
+
+    renderPanel();
+    expect(await screen.findByLabelText("Message")).toHaveValue("Half a thought");
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(screen.getByLabelText("Message")).toHaveValue(""));
+    expect(sessionStorage.getItem('conversation-draft:{"deal_id":"d1"}')).toBeNull();
   });
 
   it("shows the whole transfer in order, and says who can read private messages", async () => {
