@@ -53,9 +53,36 @@ export const DEFAULT_PLAYER_FILTERS: PlayerFilterState = {
 
 const POSITIONS: PlayerPosition[] = ["GK", "DEF", "MID", "FWD"];
 
-const fieldCls = "flex items-center justify-between gap-2 rounded-lg bg-surface px-[11px] py-[9px] text-sm ring-1 ring-input-border focus-within:ring-accent transition-colors";
+// The sheet below 1024px grows every control to a 44–48px touch target, in
+// 16px text so iOS doesn't zoom into a focused field.
+const FIELD = {
+  rail: "flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg bg-surface px-[11px] py-[9px] text-sm ring-1 ring-input-border focus-within:ring-accent transition-colors",
+  sheet: "flex min-h-12 min-w-0 flex-1 items-center justify-between gap-2 rounded-lg bg-surface px-3 text-base ring-1 ring-input-border focus-within:ring-accent transition-colors",
+};
 const inputCls = "w-full bg-transparent text-text placeholder-text-muted focus:outline-none";
 const numInputCls = `${inputCls} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`;
+
+/** The club-name filter: its own field after the filters in the rail and the sheet. */
+export function ClubSearchField({ filters, onChange, layout = "rail" }: {
+  filters: PlayerFilterState;
+  onChange: (f: PlayerFilterState) => void;
+  layout?: "rail" | "sheet";
+}) {
+  // Kept visible, not buried in "More filters": searching for a club by name
+  // is common enough that hiding it caused real players to look missing.
+  return (
+    <div className={FIELD[layout]}>
+      <input
+        type="text"
+        placeholder="Club…"
+        aria-label="Club"
+        value={filters.club_search}
+        onChange={(e) => onChange({ ...filters, club_search: e.target.value })}
+        className={inputCls}
+      />
+    </div>
+  );
+}
 
 function countActiveFilters(f: PlayerFilterState): number {
   let n = 0;
@@ -72,15 +99,20 @@ function countActiveFilters(f: PlayerFilterState): number {
 interface Props {
   filters: PlayerFilterState;
   onChange: (f: PlayerFilterState) => void;
-  view: ViewMode;
-  onViewChange: (v: ViewMode) => void;
+  /** Without these there's no view toggle (the toolbar has it below 1024px). */
+  view?: ViewMode;
+  onViewChange?: (v: ViewMode) => void;
+  layout?: "rail" | "sheet";
 }
 
-// ── Filter rail: the six primary spec'd fields as boxed rows, plus a
-// collapsible section for the rest of the existing (working) filter set. ────
+// ── Filter rail: the primary fields as boxed rows, plus a collapsible section
+// for the rest. The name search and the club field live outside it
+// (MarketSearch, ClubSearchField). ────
 
-export default function PlayerFilters({ filters, onChange, view, onViewChange }: Props) {
+export default function PlayerFilters({ filters, onChange, view, onViewChange, layout = "rail" }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
+  const fieldCls = FIELD[layout];
+  const sheet = layout === "sheet";
 
   function set<K extends keyof PlayerFilterState>(key: K, value: PlayerFilterState[K]) {
     onChange({ ...filters, [key]: value });
@@ -90,34 +122,10 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange }:
 
   return (
     <div className="space-y-3">
-      {/* Search */}
-      <div className={fieldCls}>
-        <input
-          type="text"
-          placeholder="Search players…"
-          value={filters.search}
-          onChange={(e) => set("search", e.target.value)}
-          className={inputCls}
-        />
-      </div>
-
-      {/* Club — kept visible, not buried in "More filters": searching for a
-          club by name is common enough (and easy to mistake for the player
-          search above) that hiding it caused real players to look missing. */}
-      <div className={fieldCls}>
-        <input
-          type="text"
-          placeholder="Club…"
-          value={filters.club_search}
-          onChange={(e) => set("club_search", e.target.value)}
-          className={inputCls}
-        />
-      </div>
-
       {/* Buyable — kept visible: whether a player can be signed here at all is
           the first thing a buying club needs to know, and most of the market
           plays for clubs that are not on TransferX. */}
-      <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 lg:min-h-0">
+      <label className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 ${sheet ? "" : "lg:min-h-0"}`}>
         <span className="text-sm text-text-secondary">
           Buyable on TransferX only
           <span className="block text-[13px] text-text-muted">
@@ -145,8 +153,10 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange }:
             return (
               <button
                 key={pos}
+                type="button"
+                aria-pressed={active}
                 onClick={() => set("position", active ? "" : pos)}
-                className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-bold ring-1 transition-colors ${
+                className={`flex-1 rounded-lg px-2 font-bold ring-1 transition-colors ${sheet ? "min-h-11 text-sm" : "py-1.5 text-xs"} ${
                   active ? "bg-accent-bg text-accent-active ring-accent" : "bg-surface text-text-muted ring-input-border hover:ring-accent"
                 }`}
               >
@@ -197,8 +207,10 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange }:
 
       {/* More filters toggle */}
       <button
+        type="button"
+        aria-expanded={moreOpen}
         onClick={() => setMoreOpen((o) => !o)}
-        className="flex w-full items-center justify-between text-xs font-semibold text-text-muted hover:text-text transition-colors"
+        className={`flex w-full items-center justify-between font-semibold text-text-muted hover:text-text transition-colors ${sheet ? "min-h-11 text-sm" : "text-xs"}`}
       >
         <span>More filters{moreCount > 0 ? ` (${moreCount})` : ""}</span>
         <svg className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -216,7 +228,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange }:
               <option value="FREE_AGENT">Free Agent</option>
             </select>
           </div>
-          <label className="flex items-center justify-between rounded-lg bg-surface px-[11px] py-[9px] ring-1 ring-input-border cursor-pointer">
+          <label className={`flex items-center justify-between rounded-lg bg-surface ring-1 ring-input-border cursor-pointer ${sheet ? "min-h-12 px-3" : "px-[11px] py-[9px]"}`}>
             <span className="text-sm text-text-secondary">Listed only</span>
             <div
               onClick={(e) => { e.preventDefault(); set("open_to_offers", !filters.open_to_offers); }}
@@ -235,32 +247,46 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange }:
         </div>
       )}
 
-      {(moreCount > 0 || filters.min_age || filters.max_age || filters.min_value || filters.max_value || filters.contract_expiry_months || filters.min_form_score) && (
+      {/* The sheet has its own "Clear all" in the header. */}
+      {!sheet && (moreCount > 0 || filters.position || filters.club_search || filters.min_age || filters.max_age || filters.min_value || filters.max_value || filters.contract_expiry_months || filters.min_form_score) && (
         <button
-          onClick={() => onChange(DEFAULT_PLAYER_FILTERS)}
+          type="button"
+          onClick={() => onChange({ ...DEFAULT_PLAYER_FILTERS, search: filters.search, sort_by: filters.sort_by, sort_dir: filters.sort_dir })}
           className="text-xs text-text-muted hover:text-text-secondary transition-colors"
         >
           Clear all filters
         </button>
       )}
 
-      {/* View toggle (grid/list) — kept as an existing, working feature */}
-      <div className="flex rounded-lg ring-1 ring-input-border overflow-hidden w-fit">
-        <button
-          onClick={() => onViewChange("grid")}
-          title="Grid view"
-          className={`px-2.5 py-1.5 transition-colors ${view === "grid" ? "bg-accent-bg text-accent-active" : "bg-surface text-text-muted hover:text-text"}`}
-        >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 5h4v4H4zM10 5h4v4h-4zM16 5h4v4h-4zM4 11h4v4H4zM10 11h4v4h-4zM16 11h4v4h-4zM4 17h4v4H4zM10 17h4v4h-4zM16 17h4v4h-4z" /></svg>
-        </button>
-        <button
-          onClick={() => onViewChange("list")}
-          title="List view"
-          className={`px-2.5 py-1.5 transition-colors ${view === "list" ? "bg-accent-bg text-accent-active" : "bg-surface text-text-muted hover:text-text"}`}
-        >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-        </button>
-      </div>
+      {view && onViewChange && <ViewToggle view={view} onViewChange={onViewChange} />}
+    </div>
+  );
+}
+
+/** Grid or list, as two pressed-state buttons (the rail's view switch). */
+export function ViewToggle({ view, onViewChange }: { view: ViewMode; onViewChange: (v: ViewMode) => void }) {
+  return (
+    <div className="flex rounded-lg ring-1 ring-input-border overflow-hidden w-fit">
+      <button
+        type="button"
+        onClick={() => onViewChange("grid")}
+        title="Grid view"
+        aria-label="Grid view"
+        aria-pressed={view === "grid"}
+        className={`px-2.5 py-1.5 transition-colors ${view === "grid" ? "bg-accent-bg text-accent-active" : "bg-surface text-text-muted hover:text-text"}`}
+      >
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 5h4v4H4zM10 5h4v4h-4zM16 5h4v4h-4zM4 11h4v4H4zM10 11h4v4h-4zM16 11h4v4h-4zM4 17h4v4H4zM10 17h4v4h-4zM16 17h4v4h-4z" /></svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => onViewChange("list")}
+        title="List view"
+        aria-label="List view"
+        aria-pressed={view === "list"}
+        className={`px-2.5 py-1.5 transition-colors ${view === "list" ? "bg-accent-bg text-accent-active" : "bg-surface text-text-muted hover:text-text"}`}
+      >
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+      </button>
     </div>
   );
 }

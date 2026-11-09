@@ -13,9 +13,9 @@ function setup(overrides: Partial<PlayerFilterState> = {}) {
 }
 
 describe("PlayerFilters", () => {
-  it("renders search, position pills, and the primary rail fields", () => {
+  it("renders position pills and the primary rail fields, but no name search (the page's search box has it)", () => {
     setup();
-    expect(screen.getByPlaceholderText(/Search players/i)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Search players/i)).not.toBeInTheDocument();
     expect(screen.getByText("GK")).toBeInTheDocument();
     expect(screen.getByText("DEF")).toBeInTheDocument();
     expect(screen.getByText("MID")).toBeInTheDocument();
@@ -23,14 +23,9 @@ describe("PlayerFilters", () => {
     expect(screen.getByPlaceholderText("Min age")).toBeInTheDocument();
   });
 
-  it("calls onChange when search text changes", () => {
-    const { onChange } = setup();
-    // fireEvent.change fires a single event with the full value — needed for controlled inputs
-    // because userEvent.type fires per-character but parent state doesn't update between calls.
-    fireEvent.change(screen.getByPlaceholderText(/Search players/i), { target: { value: "Salah" } });
-    expect(onChange).toHaveBeenCalled();
-    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PlayerFilterState;
-    expect(lastCall.search).toBe("Salah");
+  it("has no view toggle without a view (the toolbar has it below 1024px)", () => {
+    render(<PlayerFilters filters={DEFAULT_PLAYER_FILTERS} onChange={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "List view" })).not.toBeInTheDocument();
   });
 
   it("calls onChange with correct position when a position pill is clicked", async () => {
@@ -98,17 +93,17 @@ describe("PlayerFilters", () => {
     expect(screen.getByText("Clear all filters")).toBeInTheDocument();
   });
 
-  it("resets to defaults when Clear all filters is clicked", async () => {
+  it("resets to defaults, keeping the name search and sort, when Clear all filters is clicked", async () => {
     const onChange = vi.fn();
     render(
       <PlayerFilters
-        filters={{ ...DEFAULT_PLAYER_FILTERS, min_age: "20", position: "FWD" }}
+        filters={{ ...DEFAULT_PLAYER_FILTERS, min_age: "20", position: "FWD", search: "Isak", sort_by: "price" }}
         onChange={onChange}
         view="grid"
         onViewChange={vi.fn()}
       />
     );
     await userEvent.click(screen.getByText("Clear all filters"));
-    expect(onChange).toHaveBeenCalledWith(DEFAULT_PLAYER_FILTERS);
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_PLAYER_FILTERS, search: "Isak", sort_by: "price" });
   });
 });

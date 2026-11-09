@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent";
@@ -11,16 +11,33 @@ export interface MoreMenuItem {
   onSelect?: () => void;
   danger?: boolean;
   dividerBefore?: boolean;
+  /** Set on every item to make a single-choice menu (menuitemradio). */
+  checked?: boolean;
 }
+
+const TRIGGER = "min-h-11 rounded-lg bg-surface px-3.5 text-[15px] font-semibold text-text-secondary ring-1 ring-inset ring-input-border hover:text-text lg:min-h-10 lg:text-sm";
 
 /**
  * A transfer page's secondary actions (deal-room-focus §5.7,
  * offer-room-focus §5.10), kept away from the main action. Keyboard as the
  * account menu in Sidebar.tsx: arrows, Home/End, Escape returns focus to the
  * button; it closes on an outside click, Tab and a route change. With no
- * items the trigger is hidden.
+ * items the trigger is hidden. Browse Players' Sort menu reuses it with its
+ * own trigger and checked items.
  */
-export default function MoreMenu({ items }: { items: MoreMenuItem[] }) {
+export default function MoreMenu({
+  items,
+  label = "More ⋯",
+  menuLabel = "More actions",
+  triggerClassName = TRIGGER,
+  align = "right",
+}: {
+  items: MoreMenuItem[];
+  label?: ReactNode;
+  menuLabel?: string;
+  triggerClassName?: string;
+  align?: "left" | "right";
+}) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -39,7 +56,7 @@ export default function MoreMenu({ items }: { items: MoreMenuItem[] }) {
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  const menuItems = () => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+  const menuItems = () => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]') ?? []);
 
   useEffect(() => {
     if (open && focusFirst.current) menuItems()[0]?.focus();
@@ -85,17 +102,17 @@ export default function MoreMenu({ items }: { items: MoreMenuItem[] }) {
         aria-expanded={open}
         onClick={(e) => { focusFirst.current = e.detail === 0; setOpen((o) => !o); }}
         onKeyDown={onButtonKeyDown}
-        className="min-h-11 rounded-lg bg-surface px-3.5 text-[15px] font-semibold text-text-secondary ring-1 ring-inset ring-input-border hover:text-text lg:min-h-10 lg:text-sm"
+        className={triggerClassName}
       >
-        More ⋯
+        {label}
       </button>
       {open && (
         <div
           ref={menuRef}
           role="menu"
-          aria-label="More actions"
+          aria-label={menuLabel}
           onKeyDown={onMenuKeyDown}
-          className="absolute right-0 top-[calc(100%+6px)] z-50 w-64 rounded-xl bg-surface p-1.5 shadow-xl ring-1 ring-border"
+          className={`absolute ${align === "right" ? "right-0" : "left-0"} top-[calc(100%+6px)] z-50 w-64 rounded-xl bg-surface p-1.5 shadow-xl ring-1 ring-border`}
         >
           {items.map((item, i) => (
             <Fragment key={item.label}>
@@ -107,11 +124,15 @@ export default function MoreMenu({ items }: { items: MoreMenuItem[] }) {
               ) : (
                 <button
                   type="button"
-                  role="menuitem"
+                  role={item.checked === undefined ? "menuitem" : "menuitemradio"}
+                  aria-checked={item.checked}
                   tabIndex={-1}
-                  onClick={() => { setOpen(false); item.onSelect?.(); }}
-                  className={`${ITEM} ${item.danger ? "text-danger-text-alt" : ""}`}
+                  onClick={() => { if (item.checked === undefined) setOpen(false); else close(); item.onSelect?.(); }}
+                  className={`${ITEM} ${item.danger ? "text-danger-text-alt" : ""} ${item.checked ? "font-semibold" : ""}`}
                 >
+                  {item.checked !== undefined && (
+                    <span aria-hidden className="mr-2 inline-block w-4 text-accent">{item.checked ? "✓" : ""}</span>
+                  )}
                   {item.label}
                 </button>
               )}

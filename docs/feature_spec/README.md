@@ -1,6 +1,6 @@
 ---
 title: "Feature Specs"
-last_updated: 2026-10-11
+last_updated: 2026-11-09
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -44,6 +44,7 @@ Statuses verified against the code and `CHANGELOG.md` on 2026-10-11. Once a spec
 
 | Spec | Implemented |
 |---|---|
+| [`browse-players-focus/`](./browse-players-focus/README.md): Browse Players, players first (search, toolbar, chips, filters sheet, phone rows), plus server sort, image fallbacks and the grid fix | 2026-11-09 |
 | [`offer-room-focus/`](./offer-room-focus/README.md): the offer page, answer first (status card, counter sheet, where it stands, Raise your offer) | 2026-11-09 |
 | [`deal-room-focus/`](./deal-room-focus/README.md): the deal room, answer first (header, status card, progress, sections) | 2026-11-08 |
 | [`lite-mode/`](./lite-mode/README.md) (with [`BACKEND.md`](./lite-mode/BACKEND.md)): Lite mode for directors | 2026-10-04, L1–L8 |

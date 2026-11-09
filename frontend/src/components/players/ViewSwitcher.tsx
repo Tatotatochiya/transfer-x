@@ -11,6 +11,9 @@ interface Props {
   onSelect: (id: string | null) => void;
   onSaveCurrentToView: (id: string) => Promise<void>;
   onSaveCurrentAsNew: (name: string) => Promise<void>;
+  /** "sheet" (below 1024px): the list sits behind one full-width button, and
+   *  every control is a 44px touch target with its actions always shown. */
+  layout?: "rail" | "sheet";
 }
 
 export default function ViewSwitcher({
@@ -23,7 +26,10 @@ export default function ViewSwitcher({
   onSelect,
   onSaveCurrentToView,
   onSaveCurrentAsNew,
+  layout = "rail",
 }: Props) {
+  const sheet = layout === "sheet";
+  const [listOpen, setListOpen] = useState(!sheet);
   const [showNewForm, setShowNewForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -93,15 +99,34 @@ export default function ViewSwitcher({
   }
 
   const activeView = views.find((v) => v.id === activeViewId) ?? null;
+  const rowText = sheet ? "min-h-11 text-[15px]" : "py-1.5 text-[13px]";
+  const iconBtn = sheet ? "flex h-11 w-11 items-center justify-center text-sm" : "p-0.5 text-xs";
 
   return (
     <div>
       <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Saved views</p>
 
-      <div className="space-y-0.5">
+      {sheet && (
         <button
+          type="button"
+          aria-expanded={listOpen}
+          onClick={() => setListOpen((o) => !o)}
+          className="flex min-h-12 w-full items-center justify-between gap-2 rounded-lg bg-surface px-3 text-left text-base text-text ring-1 ring-input-border"
+        >
+          <span className="truncate">
+            {activeView ? activeView.name : "All players"}
+            {isModified && <span className="ml-1.5 text-sm text-warning-text">(changed)</span>}
+          </span>
+          <span aria-hidden className={`text-text-muted transition-transform ${listOpen ? "rotate-180" : ""}`}>⌄</span>
+        </button>
+      )}
+
+      {listOpen && (
+      <div className={`space-y-0.5 ${sheet ? "mt-1.5" : ""}`}>
+        <button
+          type="button"
           onClick={() => { onSelect(null); setRenamingId(null); setConfirmDeleteId(null); }}
-          className={`block w-full rounded-md px-2 py-1.5 text-left text-[13px] transition-colors ${
+          className={`flex w-full items-center rounded-md px-2 text-left transition-colors ${rowText} ${
             activeViewId === null ? "font-semibold text-ink" : "text-text-secondary hover:text-text"
           }`}
         >
@@ -141,8 +166,9 @@ export default function ViewSwitcher({
           return (
             <div key={view.id} className="group flex items-center rounded-md hover:bg-surface-inset">
               <button
+                type="button"
                 onClick={() => { onSelect(view.id); setConfirmDeleteId(null); setRenamingId(null); }}
-                className={`flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-left text-[13px] transition-colors ${
+                className={`flex min-w-0 flex-1 items-center gap-1.5 px-2 text-left transition-colors ${rowText} ${
                   isActive ? "font-semibold text-ink" : "text-text-secondary group-hover:text-text"
                 }`}
               >
@@ -153,25 +179,28 @@ export default function ViewSwitcher({
                 )}
               </button>
 
-              <div className="hidden shrink-0 items-center gap-0.5 pr-1 group-hover:flex">
+              <div className={`shrink-0 items-center gap-0.5 pr-1 ${sheet ? "flex" : "hidden group-hover:flex"}`}>
                 <button
+                  type="button"
                   title={view.is_default ? "Remove default" : "Set as default"}
                   onClick={() => handleSetDefault(view)}
-                  className={`p-0.5 text-xs transition-colors ${view.is_default ? "text-warning-fill" : "text-text-muted hover:text-warning-fill"}`}
+                  className={`${iconBtn} transition-colors ${view.is_default ? "text-warning-fill" : "text-text-muted hover:text-warning-fill"}`}
                 >
                   ★
                 </button>
                 <button
+                  type="button"
                   title="Rename"
                   onClick={() => { setRenamingId(view.id); setRenameValue(view.name); }}
-                  className="p-0.5 text-xs text-text-muted hover:text-text transition-colors"
+                  className={`${iconBtn} text-text-muted hover:text-text transition-colors`}
                 >
                   ✏
                 </button>
                 <button
+                  type="button"
                   title="Delete"
                   onClick={() => setConfirmDeleteId(view.id)}
-                  className="p-0.5 text-xs text-text-muted hover:text-danger-text transition-colors"
+                  className={`${iconBtn} text-text-muted hover:text-danger-text transition-colors`}
                 >
                   ✕
                 </button>
@@ -180,6 +209,7 @@ export default function ViewSwitcher({
           );
         })}
       </div>
+      )}
 
       {/* New view */}
       {showNewForm ? (
@@ -204,13 +234,14 @@ export default function ViewSwitcher({
         </form>
       ) : (
         <button
+          type="button"
           onClick={() => setShowNewForm(true)}
-          className="mt-1.5 flex items-center gap-1 text-xs text-text-muted hover:text-text transition-colors"
+          className={`mt-1.5 flex items-center gap-1 text-text-muted hover:text-text transition-colors ${sheet ? "min-h-11 text-sm font-semibold" : "text-xs"}`}
         >
           <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-          New view
+          {sheet ? "Save as view" : "New view"}
         </button>
       )}
 

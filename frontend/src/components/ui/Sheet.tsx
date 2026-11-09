@@ -15,11 +15,14 @@ const FOCUSABLE =
  * On open, focus goes to the element marked `data-autofocus`, else the first
  * control; on close it returns to whatever opened the sheet.
  */
-export default function Sheet({ open, onClose, title, subtitle, footer, children }: {
+export default function Sheet({ open, onClose, title, subtitle, headerAction, closeLabel = "Close without sending", footer, children }: {
   open: boolean;
   onClose: () => void;
   title: string;
   subtitle?: ReactNode;
+  /** Beside the close button, e.g. the filters sheet's "Clear all". */
+  headerAction?: ReactNode;
+  closeLabel?: string;
   footer: ReactNode;
   children: ReactNode;
 }) {
@@ -81,9 +84,10 @@ export default function Sheet({ open, onClose, title, subtitle, footer, children
             <h2 id={titleId} className="text-lg font-bold text-text">{title}</h2>
             {subtitle && <p className="mt-0.5 text-sm text-text-secondary">{subtitle}</p>}
           </div>
+          {headerAction}
           <button
             type="button"
-            aria-label="Close without sending"
+            aria-label={closeLabel}
             onClick={() => onClose()}
             className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-xl text-text-muted hover:bg-surface-inset hover:text-text"
           >

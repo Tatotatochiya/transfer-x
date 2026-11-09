@@ -1,6 +1,6 @@
 ---
 title: "Screen Specifications"
-last_updated: 2026-10-11
+last_updated: 2026-11-09
 status: Active
 owner: "TODO — assign a Design Owner"
 ---
@@ -244,34 +244,20 @@ Mobile: keep avatar, identity, contract and wage. Drop the value bar and flag in
 
 ## Browse players
 
-Route: `/market`. Reference: same file, "Browse players". Chrome restyled.
+Route: `/players/market`. Spec: [`browse-players-focus`](../feature_spec/browse-players-focus/README.md). Players come first: four short rows above the results on every size.
 
-Tier-2 figures: Budget free · Wage room · `"Under fair value"` count.
-Header subtitle names the active saved view: `"Search view: {name} · {n} matches · budget allows
-{n} signings"`.
+1. **Title and count:** "Browse players" (22px, 24px from 1024px) and "{n} players" 14px muted. For a club, the budget line on the right from 640px: "£232.5M to spend · £49.9M a week in wages".
+2. **One search box** (`MarketSearch`, `role="search"`): by name, debounced 300ms; "✦ Describe" switches it to the AI search, whose results ("Interpreted as", rows with why each matched, "Back to all players") replace the list.
+3. **Toolbar** below 1024px, sticky under the top bar: Filters (n) · Sort: {label} · grid/list. From 640px the search box joins it. From 1024px only Sort, beside the search box.
+4. **Active filters as chips** ("Remove filter …" buttons, then "Clear"): one sideways-scrolling row below 1024px, wrapping above. Below 640px the club's budget line sits under them.
 
-**Filter rail** — 250px, white, ringed, sticky `top: 24px`. Fields as 14px boxed rows with a
-`1px solid #d0d5dd` border, radius 8, `9px 11px`, the value left and an 11px muted hint right.
-Position · Asking price · Wage per week · Age · Contract ends within · Form score. Below a rule,
-"Saved views" as a 13px list, active one 600 `#14171f`.
+**Sort** is one menu, all on the server: Name (A–Z) · Best value · Form · Cheapest · Youngest.
 
-**Sort chips**: Best value first · Form · Cheapest · Youngest. Right, 13px muted:
-`"{n} players · {n} selected to compare"`.
+**Filters:** below 1024px a `Sheet` (full height on phones, 560px dialog on tablets) holding saved views, the filters and "Club…". It edits a draft with a live "Show {n} players" count; closing with changes asks first. From 1024px a 250px sticky rail: saved views, filters, Club, the view switch.
 
-**Result row** — white card, radius 14, ring; `#e4e7ec` normally, tinted when the player is under
-fair value. Padding `16px 20px`, 20px gap, wrapping.
+**Results:** cards in `auto-fill, minmax(220px, 1fr)` columns. Below 640px the list view is the default and each player is a 72px `PlayerRow` link (photo, name and position, "club · age · nationality", price and form, Shortlist). From 640px list view is `PlayerListRow`. "✦ Picks for your squad gaps" (clubs only) is a row after the 5th player or the first card row, opening the recommendations in a sheet; from 1024px it is a link at the end of the chip row that expands them in place. Below 1024px "Show {n} more" and "Showing {n} of {total}"; from 1024px pagination.
 
-Avatar 44px · identity `0 1 200px` (name 16px/600 with position 11px/700 beside it; club, age,
-nationality 13px `#667085`) · **value signal `1 1 200px`** (11px muted `"Asking vs fair value"`
-left with the plain-language signal right in its colour; 8px bar; asking and fair values 12px
-muted beneath) · Form `0 1 96px` · Wage `0 1 110px` with the wage-fit line 11px coloured ·
-"Make offer" primary and "Shortlist" secondary.
-
-Signal wording is always plain: `"15% under fair value"`, `"20% over fair value"`,
-`"Free transfer"`. Never a bare number or a letter grade.
-
-**Compare tray** — fixed to the bottom, `#14171f`, `14px 36px`. `"Comparing"` label, then a pill
-per selected player, then a white `"Compare {n} players"` button right.
+**Compare tray**: fixed to the bottom, unchanged; the page leaves room for it.
 
 ---
 

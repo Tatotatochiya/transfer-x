@@ -22,26 +22,27 @@ Overwritten at the end of each session by the [`session-lifecycle`](../.claude/s
 
 ## Latest Session Summary
 
-## Session Summary — 2026-11-09
+## Session Summary — 2026-11-09 (Browse Players)
 
 **Completed work:**
-- PRs #60–#63 merged: transfer windows by country (deals run all year), counters show what they replaced, auctions retired (ADR 0011, migration `0109`), deal room answer first.
-- Offer page answer first, on branch `offer-room-focus` ([spec](./feature_spec/offer-room-focus/README.md)): status card with deadline, changes and valuation gap; counter in a sheet below 1024px or in place above; "Where it stands"; Raise your offer (`POST /offers/{id}/improve`); Withdraw in More; tabs or rail. The deal room's header, status card shell and More menu moved to `components/transfer/` and are shared.
-- Backend: a fee-only raise keeps an unset wage (was set to £0), with a test.
+- PR #64 merged: the offer page, answer first.
+- Browse Players spec ([`browse-players-focus`](./feature_spec/browse-players-focus/README.md)) built in two local branches, not yet pushed:
+  - `quick-fixes-nov` (part 1, 5 commits): `FallbackImage` for every player photo and club crest (initials when an image fails); auto-fill grid columns at least 220px wide; `GET /players/market?sort_by=price` (free agent, else open non-auction listing's asking price, else latest fee-model price) and every sort chip on the server; the value filter labelled "Market value (€ millions)".
+  - `browse-players-focus` (part 2, on top of part 1): one search box with "✦ Describe"; sticky Filters · Sort · view toolbar below 1024px; filter chips; filters `Sheet` with a draft and live count; compact 72px phone rows (`PlayerRow`); "Show {n} more" below 1024px; recommendations as one row; budget as one line; `MoreMenu` and `Sheet` gained optional props.
+- Tests: frontend 59 files, 416 passing (28 new); backend players, valuation and Lite tests, 108 passing (1 new).
 
 **Important decisions:**
-- Both transfer pages use tabs on tablets, not the "rail below" rule (RESPONSIVE.md).
-- The seller's valuation comes only from the Lite offer card, which sends it to the seller alone; the offer page never derives it.
-- "Where it stands" shows from the second round.
+- Review revisions R1–R15 in the spec, notably: removing "On TransferX" turns it off; "Clear" keeps the search and sort; the sort menu reuses `MoreMenu`; no "{n} of {total}" beside Sort.
+- The Cheapest sort has no 30% contract-ending discount (the Lite price rule has it); noted in code.
 
 **Outstanding work:**
-- Visual checks of the deal room at other stages, and of the offer page with several rounds, loans, anonymous buyers and a valuation gap (both specs' Deviations).
-- Follow-ups: collapse reason stored; unread count on Messages; draft kept across 1024px; 13px pass on reused message/timeline parts; offer Q1 (pending approval after a 202) and Q2 (asking price).
-- Railway: mark the 4 test transfers, house clubs and testers (Chelsea), England's windows.
+- Push both branches and open two PRs, part 1 first.
+- Not checked on screen: a real iPhone, blocked photos, 200% zoom (spec Deviations).
+- Follow-ups: a price filter in pounds (Q1); demo data's weekly wage ceiling and a Finance-form sanity warning; earlier items still open (deal room visual checks, offer Q1/Q2, Railway test-data cleanup).
 
 **Risks:**
 - No eslint in the repo, so lint never runs.
-- The offer page's Lite card query 404s for non-parties; it is disabled for them, and the page works without it.
+- `reference_price` can be the legacy `market_value`, stored in euros, and rows show it with £ (pre-existing).
 
 **Recommended next task:**
 - Registration checklist: split the single "registration" paperwork step into the league's real items.
