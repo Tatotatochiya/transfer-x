@@ -78,3 +78,52 @@ export function lastChange(offer: Offer): LastChange | null {
 
   return { kind: event.event_type as LastChange["kind"], actorClubId: event.actor_club_id, changes };
 }
+
+/**
+ * What a draft counter would change, against the offer as it stands: the
+ * laptop counter's "What {Other} will see" panel (offer-room-focus §5.6).
+ * `draft` holds the draft's full terms in the offer's own field names (the
+ * same object the live rule check reads); only fields it carries are compared,
+ * with the labels and formats lastChange uses.
+ */
+export function diffDraft(offer: Offer, draft: Terms): TermChange[] {
+  const current = offer as unknown as Terms;
+  return (isLoan(offer) ? LOAN : PERMANENT)
+    .filter(([field]) => field in draft)
+    .map(([field, label, format]) => ({ label, was: format(current[field]), now: format(draft[field]) }))
+    .filter((c) => c.was !== c.now);
+}
+
+/** One move in the negotiation: the offer, each counter and each raise. */
+export interface OfferRound {
+  side: "me" | "them" | "buyer" | "seller";
+  kind: "SENT" | "COUNTERED" | "IMPROVED";
+  at: string;
+  actorClubId: string | null;
+  /** The fee after this move (a loan raise: its loan fee). Carried forward
+   *  when the move didn't send one, since a counter that left the fee alone
+   *  sends none. */
+  fee: number | null;
+}
+
+/**
+ * The rounds of an offer, oldest first (offer-room-focus §5.8). For a party
+ * each is "me" or "them"; for anyone else, "buyer" or "seller".
+ */
+export function offerRounds(offer: Offer, myClubId: string | undefined): OfferRound[] {
+  const party = !!myClubId && (myClubId === offer.from_club_id || myClubId === offer.to_club_id);
+  let fee: number | null = null;
+  return (offer.events ?? [])
+    .filter((e) => e.event_type === "SENT" || e.event_type === "COUNTERED" || e.event_type === "IMPROVED")
+    .map((e) => {
+      const p = e.payload ?? {};
+      const raw = isLoan(offer) && e.event_type === "IMPROVED" ? p.loan_fee : p.fee_amount;
+      if (raw != null && raw !== "") fee = Number(raw);
+      // A SENT event carries no actor on legacy offers; the buyer sends.
+      const actor = e.actor_club_id ?? (e.event_type === "SENT" ? offer.from_club_id : null);
+      const side: OfferRound["side"] = party
+        ? actor === myClubId ? "me" : "them"
+        : actor === offer.from_club_id ? "buyer" : "seller";
+      return { side, kind: e.event_type as OfferRound["kind"], at: e.created_at, actorClubId: actor, fee };
+    });
+}

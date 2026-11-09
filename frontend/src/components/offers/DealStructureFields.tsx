@@ -85,15 +85,165 @@ export default function DealStructureFields({
   value,
   onChange,
   fee,
+  bare = false,
 }: {
   value: StructureDraft;
   onChange: (next: StructureDraft) => void;
   /** The fee being offered, so the schedule can show what is left to place. */
   fee: number | null;
+  /** Without its own disclosure, for a caller that already has one (the offer page's counter). */
+  bare?: boolean;
 }) {
   const set = (patch: Partial<StructureDraft>) => onChange({ ...value, ...patch });
   const scheduled = value.instalments.reduce((s, i) => s + (Number(i.amount) || 0), 0);
   const used = value.instalments.length > 0 || value.clauses.length > 0 || !!value.sellOn;
+
+  const fields = (
+    <div className={bare ? "space-y-5" : "mt-4 space-y-5"}>
+      {/* Payment schedule */}
+      <div>
+        <p className="mb-1.5 text-[13px] font-semibold text-text-secondary">Payment</p>
+        {value.instalments.length === 0 ? (
+          <p className="text-[13px] text-text-muted">The whole fee is paid on completion.</p>
+        ) : (
+          <div className="space-y-2">
+            {value.instalments.map((row, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="date"
+                  aria-label={`Payment ${i + 1} due`}
+                  value={row.due_date}
+                  onChange={(e) => set({
+                    instalments: value.instalments.map((r, j) => (j === i ? { ...r, due_date: e.target.value } : r)),
+                  })}
+                  className={INPUT}
+                />
+                <CurrencyInput
+                  aria-label={`Payment ${i + 1} amount`}
+                  placeholder="Amount (£)"
+                  value={row.amount}
+                  onChange={(v) => set({
+                    instalments: value.instalments.map((r, j) => (j === i ? { ...r, amount: v } : r)),
+                  })}
+                  className={INPUT}
+                />
+                <button
+                  type="button"
+                  onClick={() => set({ instalments: value.instalments.filter((_, j) => j !== i) })}
+                  className="min-h-11 px-2 text-sm text-text-muted hover:text-danger-text lg:min-h-0"
+                  aria-label={`Remove payment ${i + 1}`}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <p className="text-[13px] text-text-muted">
+              {formatCurrency(scheduled)} of {fee != null ? formatCurrency(fee) : "the fee"} scheduled
+            </p>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => set({ instalments: [...value.instalments, { due_date: "", amount: "" }] })}
+          className="mt-2 text-[13px] font-semibold text-accent hover:underline"
+        >
+          {value.instalments.length === 0 ? "Pay in instalments" : "+ Add a payment"}
+        </button>
+      </div>
+
+      {/* Add-ons */}
+      <div>
+        <p className="mb-1.5 text-[13px] font-semibold text-text-secondary">Add-ons</p>
+        {value.clauses.length === 0 && (
+          <p className="text-[13px] text-text-muted">None. Add-ons are paid only if their trigger is met.</p>
+        )}
+        <div className="space-y-3">
+          {value.clauses.map((c, i) => {
+            const update = (patch: Partial<StructureDraft["clauses"][number]>) =>
+              set({ clauses: value.clauses.map((r, j) => (j === i ? { ...r, ...patch } : r)) });
+            return (
+              <div key={i} className="grid grid-cols-1 gap-2 rounded-lg bg-surface p-3 ring-1 ring-border sm:grid-cols-2">
+                <select
+                  aria-label="Add-on type"
+                  value={c.clause_type}
+                  onChange={(e) => update({ clause_type: e.target.value as ClauseType })}
+                  className={INPUT}
+                >
+                  {CLAUSE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+                <input
+                  aria-label="Add-on trigger"
+                  value={c.trigger_description}
+                  onChange={(e) => update({ trigger_description: e.target.value })}
+                  maxLength={300}
+                  placeholder="e.g. After 50 league appearances"
+                  className={INPUT}
+                />
+                <CurrencyInput
+                  aria-label="Add-on amount"
+                  value={c.amount}
+                  onChange={(v) => update({ amount: v })}
+                  placeholder="Amount (£)"
+                  className={INPUT}
+                />
+                <div className="flex items-center gap-2">
+                  <CurrencyInput
+                    aria-label="Add-on cap"
+                    value={c.cap}
+                    onChange={(v) => update({ cap: v })}
+                    placeholder="Cap (£, optional)"
+                    className={INPUT}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => set({ clauses: value.clauses.filter((_, j) => j !== i) })}
+                    className="min-h-11 px-2 text-sm text-text-muted hover:text-danger-text lg:min-h-0"
+                    aria-label="Remove add-on"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={() => set({
+            clauses: [...value.clauses, { clause_type: "APPEARANCES", trigger_description: "", amount: "", cap: "" }],
+          })}
+          className="mt-2 text-[13px] font-semibold text-accent hover:underline"
+        >
+          + Add an add-on
+        </button>
+      </div>
+
+      {/* Sell-on */}
+      <div>
+        <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
+          Sell-on <span className="font-normal text-text-muted">(optional)</span>
+        </label>
+        <div className="relative max-w-[160px]">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={0.5}
+            value={value.sellOn}
+            onChange={(e) => set({ sellOn: e.target.value })}
+            placeholder="e.g. 15"
+            className={`${INPUT} pr-8`}
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">%</span>
+        </div>
+        <p className="mt-1 text-[13px] text-text-muted">
+          The share of a future fee his current club receives if you sell him on.
+        </p>
+      </div>
+    </div>
+  );
+
+  if (bare) return fields;
 
   return (
     <details open={used} className="rounded-lg bg-surface-inset px-4 py-3 ring-1 ring-border">
@@ -102,148 +252,7 @@ export default function DealStructureFields({
         <span className="font-normal text-text-muted">(optional)</span>
       </summary>
 
-      <div className="mt-4 space-y-5">
-        {/* Payment schedule */}
-        <div>
-          <p className="mb-1.5 text-[13px] font-semibold text-text-secondary">Payment</p>
-          {value.instalments.length === 0 ? (
-            <p className="text-[13px] text-text-muted">The whole fee is paid on completion.</p>
-          ) : (
-            <div className="space-y-2">
-              {value.instalments.map((row, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    aria-label={`Payment ${i + 1} due`}
-                    value={row.due_date}
-                    onChange={(e) => set({
-                      instalments: value.instalments.map((r, j) => (j === i ? { ...r, due_date: e.target.value } : r)),
-                    })}
-                    className={INPUT}
-                  />
-                  <CurrencyInput
-                    aria-label={`Payment ${i + 1} amount`}
-                    placeholder="Amount (£)"
-                    value={row.amount}
-                    onChange={(v) => set({
-                      instalments: value.instalments.map((r, j) => (j === i ? { ...r, amount: v } : r)),
-                    })}
-                    className={INPUT}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => set({ instalments: value.instalments.filter((_, j) => j !== i) })}
-                    className="min-h-11 px-2 text-sm text-text-muted hover:text-danger-text lg:min-h-0"
-                    aria-label={`Remove payment ${i + 1}`}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-              <p className="text-[13px] text-text-muted">
-                {formatCurrency(scheduled)} of {fee != null ? formatCurrency(fee) : "the fee"} scheduled
-              </p>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => set({ instalments: [...value.instalments, { due_date: "", amount: "" }] })}
-            className="mt-2 text-[13px] font-semibold text-accent hover:underline"
-          >
-            {value.instalments.length === 0 ? "Pay in instalments" : "+ Add a payment"}
-          </button>
-        </div>
-
-        {/* Add-ons */}
-        <div>
-          <p className="mb-1.5 text-[13px] font-semibold text-text-secondary">Add-ons</p>
-          {value.clauses.length === 0 && (
-            <p className="text-[13px] text-text-muted">None. Add-ons are paid only if their trigger is met.</p>
-          )}
-          <div className="space-y-3">
-            {value.clauses.map((c, i) => {
-              const update = (patch: Partial<StructureDraft["clauses"][number]>) =>
-                set({ clauses: value.clauses.map((r, j) => (j === i ? { ...r, ...patch } : r)) });
-              return (
-                <div key={i} className="grid grid-cols-1 gap-2 rounded-lg bg-surface p-3 ring-1 ring-border sm:grid-cols-2">
-                  <select
-                    aria-label="Add-on type"
-                    value={c.clause_type}
-                    onChange={(e) => update({ clause_type: e.target.value as ClauseType })}
-                    className={INPUT}
-                  >
-                    {CLAUSE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
-                  <input
-                    aria-label="Add-on trigger"
-                    value={c.trigger_description}
-                    onChange={(e) => update({ trigger_description: e.target.value })}
-                    maxLength={300}
-                    placeholder="e.g. After 50 league appearances"
-                    className={INPUT}
-                  />
-                  <CurrencyInput
-                    aria-label="Add-on amount"
-                    value={c.amount}
-                    onChange={(v) => update({ amount: v })}
-                    placeholder="Amount (£)"
-                    className={INPUT}
-                  />
-                  <div className="flex items-center gap-2">
-                    <CurrencyInput
-                      aria-label="Add-on cap"
-                      value={c.cap}
-                      onChange={(v) => update({ cap: v })}
-                      placeholder="Cap (£, optional)"
-                      className={INPUT}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => set({ clauses: value.clauses.filter((_, j) => j !== i) })}
-                      className="min-h-11 px-2 text-sm text-text-muted hover:text-danger-text lg:min-h-0"
-                      aria-label="Remove add-on"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <button
-            type="button"
-            onClick={() => set({
-              clauses: [...value.clauses, { clause_type: "APPEARANCES", trigger_description: "", amount: "", cap: "" }],
-            })}
-            className="mt-2 text-[13px] font-semibold text-accent hover:underline"
-          >
-            + Add an add-on
-          </button>
-        </div>
-
-        {/* Sell-on */}
-        <div>
-          <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
-            Sell-on <span className="font-normal text-text-muted">(optional)</span>
-          </label>
-          <div className="relative max-w-[160px]">
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step={0.5}
-              value={value.sellOn}
-              onChange={(e) => set({ sellOn: e.target.value })}
-              placeholder="e.g. 15"
-              className={`${INPUT} pr-8`}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">%</span>
-          </div>
-          <p className="mt-1 text-[13px] text-text-muted">
-            The share of a future fee his current club receives if you sell him on.
-          </p>
-        </div>
-      </div>
+      {fields}
     </details>
   );
 }

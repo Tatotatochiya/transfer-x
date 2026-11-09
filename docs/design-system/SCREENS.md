@@ -319,6 +319,39 @@ with you" · "Listing terms".
 
 ---
 
+## Offer detail
+
+Route: `/offers/:id`.
+
+Answer first ([spec](../feature_spec/offer-room-focus/README.md)), with the deal room's shared
+header, status card and More menu (`components/transfer/`). Order on every device: header →
+status card → "Where it stands" → sections.
+
+**Header** — "← Back", the player as the h1, `{seller} → {buyer}` (a masked buyer is plain text
+with an "Anonymous" badge) and, at `lg`, the date the offer was made; the amount and
+"{Permanent | Loan} · {payment}" on the right. More menu: View the listing, Ask TransferX,
+Withdraw offer… (buyer).
+
+**Status card** — "Your move · reply by 18:00 today" (red under 24 hours), the latest move as the
+headline ("Meridian FC countered at £4,200,000"), the gap to the seller's own valuation (seller
+only), and up to four changed terms as `was → now` rows (the middle column from 1024px). Buttons:
+Accept {fee} and Counter side by side on phones, a column from `sm`; "Reject this offer" is a text
+button under them. Waiting: "Waiting on {club} · 2 days", with Raise your offer for the buyer or
+Message {club} for the seller. Worked out by `components/offers/offerStatus.ts`.
+
+**Counter** — below 1024px a `Sheet` (full height on phones, 560px centred on tablets) with Send
+counter pinned in its footer; from 1024px the status card becomes the form with a "What {club}
+will see" panel. The fee leads, with one-tap amounts (Suggested, Your valuation, Your last ask);
+payment, add-ons and sell-on sit behind a disclosure. Raise your offer uses the same containers.
+
+**Where it stands** — from the second round: a track of their first and latest fee, the seller's
+valuation and your latest figure, with the gap shaded, and every round (a disclosure on phones,
+the Offer history tab from 1024px).
+
+**Sections** — below 1024px a segmented control, Terms · Messages · Other bids (the buyer:
+Your ranking). From 1024px, Terms · Offer history tabs and a 340px sticky rail with Messages ·
+Other bids. `?tab=` names the section. Non-parties see the terms and the read-only thread only.
+
 ## Deal room
 
 Route: `/deals/:id`. Reference: same file, "Contract negotiation".

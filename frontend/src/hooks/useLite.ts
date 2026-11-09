@@ -126,11 +126,12 @@ export interface LiteOfferCard {
   } | null;
 }
 
-export function useLiteOfferCard(offerId: string | undefined) {
+/** `enabled`: the full offer page asks only for a party's offers, since the endpoint 404s for anyone else. */
+export function useLiteOfferCard(offerId: string | undefined, enabled = true) {
   return useQuery<LiteOfferCard>({
     queryKey: ["lite", "offer-card", offerId],
     queryFn: () => api.get<LiteOfferCard>(`/lite/offers/${offerId}`).then((r) => r.data),
-    enabled: !!offerId,
+    enabled: !!offerId && enabled,
     retry: false,
   });
 }
