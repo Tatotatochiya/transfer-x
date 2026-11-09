@@ -60,6 +60,8 @@ function applySavedFilters(saved: Record<string, unknown>, current: PlayerFilter
     min_appearances: (saved.min_appearances as string) ?? "",
     min_avg_rating: (saved.min_avg_rating as string) ?? "",
     min_form_score: (saved.min_form_score as string) ?? "",
+    min_price: (saved.min_price as string) ?? "",
+    max_price: (saved.max_price as string) ?? "",
     min_value: (saved.min_value as string) ?? "",
     max_value: (saved.max_value as string) ?? "",
     contract_expiry_months: (saved.contract_expiry_months as string) ?? "",

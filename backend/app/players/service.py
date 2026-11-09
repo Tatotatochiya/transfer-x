@@ -354,7 +354,7 @@ async def list_own_players(
     return list(rows.scalars()), total
 
 
-def _latest_valuation_subquery():
+def _latest_valuation_subquery(name: str = "val_latest"):
     """One row per player: his most recent fair value (pid, s_fair_value)."""
     from app.valuation.models import PlayerValuation
 
@@ -369,13 +369,52 @@ def _latest_valuation_subquery():
             )
             .label("rn"),
         )
-        .subquery("val_rn")
+        .subquery(f"{name}_rn")
     )
     return (
         select(val_rn.c.pid, val_rn.c.s_fair_value)
         .where(val_rn.c.rn == 1)
-        .subquery("val_latest")
+        .subquery(name)
     )
+
+
+def _with_price(q):
+    """Join what a player would cost here onto `q`; returns (q, price column).
+
+    A free agent costs nothing; else an open fixed-price or open-to-offers
+    listing's asking price (the latest, if there are several); else the fee
+    model's latest value; else NULL. This is lite/service._prices without its
+    30% contract-ending discount, which needs a per-player contract lookup
+    SQL can't sort or filter on cheaply.
+    """
+    from app.sales.models import Sale, SaleStatus, SaleType
+
+    val_latest = _latest_valuation_subquery("price_val")
+    sale_rn = (
+        select(
+            Sale.player_id.label("pid"),
+            Sale.asking_price.label("s_asking"),
+            func.row_number()
+            .over(partition_by=Sale.player_id, order_by=Sale.created_at.desc())
+            .label("rn"),
+        )
+        .where(Sale.status == SaleStatus.OPEN, Sale.sale_type != SaleType.AUCTION)
+        .subquery("sale_rn")
+    )
+    open_sale = (
+        select(sale_rn.c.pid, sale_rn.c.s_asking)
+        .where(sale_rn.c.rn == 1)
+        .subquery("open_sale")
+    )
+    q = (
+        q.outerjoin(val_latest, Player.id == val_latest.c.pid)
+        .outerjoin(open_sale, Player.id == open_sale.c.pid)
+    )
+    price = case(
+        (Player.status == PlayerStatus.FREE_AGENT, 0),
+        else_=func.coalesce(open_sale.c.s_asking, val_latest.c.s_fair_value),
+    )
+    return q, price
 
 
 async def list_market_players(
@@ -401,6 +440,9 @@ async def list_market_players(
     min_market_value: Decimal | None = None,
     max_market_value: Decimal | None = None,
     contract_expiry_within_months: int | None = None,
+    # What he would cost here, in pounds (_with_price); unpriced players drop out.
+    min_price: Decimal | None = None,
+    max_price: Decimal | None = None,
     sort_by: str = "name",
     sort_dir: str = "asc",
     page: int = 1,
@@ -488,6 +530,14 @@ async def list_market_players(
         cutoff = date.today() + timedelta(days=30 * contract_expiry_within_months)
         q = q.where(Player.contract_expiry.is_not(None), Player.contract_expiry <= cutoff)
 
+    price_col = None
+    if min_price is not None or max_price is not None:
+        q, price_col = _with_price(q)
+        if min_price is not None:
+            q = q.where(price_col >= min_price)
+        if max_price is not None:
+            q = q.where(price_col <= max_price)
+
     # Sorting — stats columns require a left-join to aggregated stats
     stats_sort_cols = ("goals", "assists", "appearances", "avg_rating")
     if sort_by in stats_sort_cols:
@@ -530,37 +580,10 @@ async def list_market_players(
         q = q.outerjoin(val_latest, Player.id == val_latest.c.pid)
         order_col = val_latest.c.s_fair_value - Player.market_value
     elif sort_by == "price":
-        # "Cheapest": what he would cost here. A free agent costs nothing; else
-        # an open fixed/offers listing's asking price; else the fee model. This
-        # is lite/service._prices without its 30% contract-ending discount,
-        # which needs a per-player contract lookup SQL can't sort on cheaply.
-        from app.sales.models import Sale, SaleStatus, SaleType
-
-        val_latest = _latest_valuation_subquery()
-        sale_rn = (
-            select(
-                Sale.player_id.label("pid"),
-                Sale.asking_price.label("s_asking"),
-                func.row_number()
-                .over(partition_by=Sale.player_id, order_by=Sale.created_at.desc())
-                .label("rn"),
-            )
-            .where(Sale.status == SaleStatus.OPEN, Sale.sale_type != SaleType.AUCTION)
-            .subquery("sale_rn")
-        )
-        open_sale = (
-            select(sale_rn.c.pid, sale_rn.c.s_asking)
-            .where(sale_rn.c.rn == 1)
-            .subquery("open_sale")
-        )
-        q = (
-            q.outerjoin(val_latest, Player.id == val_latest.c.pid)
-            .outerjoin(open_sale, Player.id == open_sale.c.pid)
-        )
-        order_col = case(
-            (Player.status == PlayerStatus.FREE_AGENT, 0),
-            else_=func.coalesce(open_sale.c.s_asking, val_latest.c.s_fair_value),
-        )
+        # "Cheapest": what he would cost here (see _with_price).
+        if price_col is None:
+            q, price_col = _with_price(q)
+        order_col = price_col
     else:
         order_col = Player.name
 

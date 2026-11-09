@@ -38,6 +38,12 @@ export function activeFilterChips(f: PlayerFilterState): ActiveFilterChip[] {
       : `${f.min_age} and over`;
     chips.push({ key: "age", label, remove: reset("min_age", "max_age") });
   }
+  if (f.min_price || f.max_price) {
+    const label = f.min_price && f.max_price ? `£${f.min_price}–${f.max_price}M price`
+      : f.min_price ? `£${f.min_price}M+ price`
+      : `Up to £${f.max_price}M price`;
+    chips.push({ key: "price", label, remove: reset("min_price", "max_price") });
+  }
   if (f.min_value || f.max_value) {
     const label = f.min_value && f.max_value ? `€${f.min_value}–${f.max_value}M market value`
       : f.min_value ? `€${f.min_value}M+ market value`
