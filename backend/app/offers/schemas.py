@@ -179,6 +179,16 @@ class OfferEventResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class OfferPendingApproval(BaseModel):
+    """The viewer's own club's acceptance of this offer, waiting on an
+    approver (an offer accepted at or above the club's threshold by a
+    manager). Never shown to the other club."""
+    id: uuid.UUID
+    requested_by: str | None = None
+    requested_at: datetime
+    expires_at: datetime
+
+
 class OfferResponse(BaseModel):
     id: uuid.UUID
     player_id: uuid.UUID
@@ -223,6 +233,7 @@ class OfferResponse(BaseModel):
     # is not what became of the transfer, and ACCEPTED renders green whether the
     # deal completed or collapsed at personal terms. Readers need both facts.
     deal: ActiveDealStub | None = None
+    pending_approval: OfferPendingApproval | None = None
     # Both parties always see *that* an offer is anonymous — a seller has to
     # know they are dealing with an undisclosed club, even before they know
     # which one. Only the identity is withheld, never the fact.

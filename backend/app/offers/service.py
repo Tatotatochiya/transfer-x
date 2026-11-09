@@ -1568,3 +1568,24 @@ async def _release_offer_budget(db: AsyncSession, offer: Offer) -> None:
         )
         offer.reserved_transfer_amount = Decimal("0")
         offer.reserved_wage_weekly = Decimal("0")
+
+
+async def pending_acceptance(db: AsyncSession, offer_id: uuid.UUID, club_id: uuid.UUID):
+    """The club's acceptance of this offer waiting on an approver, if any
+    (a PENDING, unexpired ACCEPT_OFFER approval for it)."""
+    from datetime import datetime, timezone
+
+    from app.approvals.models import ApprovalActionType, ApprovalStatus, PendingApproval
+
+    return (await db.execute(
+        select(PendingApproval)
+        .where(
+            PendingApproval.club_id == club_id,
+            PendingApproval.action_type == ApprovalActionType.ACCEPT_OFFER,
+            PendingApproval.status == ApprovalStatus.PENDING,
+            PendingApproval.expires_at > datetime.now(timezone.utc),
+            PendingApproval.payload_json["offer_id"].as_string() == str(offer_id),
+        )
+        .order_by(PendingApproval.created_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()

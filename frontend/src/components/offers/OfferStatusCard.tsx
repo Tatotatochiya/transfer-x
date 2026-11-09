@@ -59,6 +59,7 @@ export default function OfferStatusCard({
       case "raise": onRaise(); break;
       case "open-messages": onOpenMessages(); break;
       case "view-deal": if (offer.deal) navigate(`/deals/${offer.deal.id}`); break;
+      case "view-approvals": navigate("/club/approvals"); break;
     }
   }
 

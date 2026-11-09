@@ -128,6 +128,17 @@ describe("getOfferStatus: changes", () => {
   });
 });
 
+describe("getOfferStatus: waiting for approval", () => {
+  it("our acceptance waiting on an approver replaces the buttons", () => {
+    const o = offer({ pending_approval: { id: "a1", requested_by: "Sam Reid", requested_at: "2026-11-09T08:00:00", expires_at: "2026-11-10T08:00:00" } } as Partial<Offer>);
+    const v = getOfferStatus(o, seller());
+    expect(v).toMatchObject({ tone: "hold", overline: "Waiting for approval", headline: "Accepting £4,200,000 is waiting for approval" });
+    expect(v.body).toBe("Sam Reid accepted it. It goes ahead when an approver at your club agrees, and lapses 08:00 tomorrow if no one decides.");
+    expect(v.primary).toBeUndefined();
+    expect(v.secondary).toEqual({ kind: "view-approvals", label: "Open approvals" });
+  });
+});
+
 describe("getOfferStatus: waiting", () => {
   it("a buyer who can write may raise", () => {
     const v = getOfferStatus(offer({ expires_at: "2026-11-09T18:00:00" }), buyer());

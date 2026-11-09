@@ -332,6 +332,40 @@ async def test_seller_side_accept_offer_capture(client: AsyncClient, db, buyer: 
 
 
 @pytest.mark.asyncio
+async def test_a_pending_acceptance_shows_on_the_offer_for_that_club_only(
+    client: AsyncClient, db, buyer: dict, seller: dict,
+):
+    from sqlalchemy import func, select
+    from app.approvals.models import PendingApproval
+
+    await _give_budget(db)
+    await _set_threshold(client, seller, 5_000_000)
+    target = await _make_target(client, seller)
+    offer_id = (await _offer(client, buyer, target, 6_000_000)).json()["id"]
+    assert (await client.get(f"/offers/{offer_id}", headers=_auth_headers(seller))).json()["pending_approval"] is None
+
+    sel_manager = await _create_staff(client, db, _auth_headers(seller), "appr_wait_mgr@test.com", "MANAGER")
+    first = await client.post(f"/offers/{offer_id}/accept", headers=_auth_headers(sel_manager))
+    assert first.status_code == 202, first.text
+
+    seen = (await client.get(f"/offers/{offer_id}", headers=_auth_headers(seller))).json()
+    assert seen["status"] in ("SENT", "COUNTERED")
+    assert seen["pending_approval"]["id"] == first.json()["approval_id"]
+    assert seen["pending_approval"]["requested_by"]
+    # The buying club isn't told the seller's internal approval.
+    assert (await client.get(f"/offers/{offer_id}", headers=_auth_headers(buyer))).json()["pending_approval"] is None
+
+    # Accepting again points at the same request instead of asking twice.
+    again = await client.post(f"/offers/{offer_id}/accept", headers=_auth_headers(sel_manager))
+    assert again.status_code == 202 and again.json()["approval_id"] == first.json()["approval_id"]
+    assert (await db.execute(select(func.count()).select_from(PendingApproval))).scalar_one() == 1
+
+    # Once decided it's gone.
+    await client.post(f"/clubs/me/approvals/{first.json()['approval_id']}/reject", json={"reason": "No"}, headers=_auth_headers(seller))
+    assert (await client.get(f"/offers/{offer_id}", headers=_auth_headers(seller))).json()["pending_approval"] is None
+
+
+@pytest.mark.asyncio
 async def test_expiry_job_expires_and_notifies(client: AsyncClient, db, buyer: dict, seller: dict):
     from sqlalchemy import select
     from app.approvals.models import PendingApproval
