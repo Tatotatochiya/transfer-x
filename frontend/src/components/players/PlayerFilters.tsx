@@ -157,13 +157,13 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange }:
         </div>
       </div>
 
-      {/* Asking price (maps to market-value filter) */}
+      {/* The outside market estimate, stored in euros; not the asking price. */}
       <div>
-        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Asking price</p>
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Market value (€ millions)</p>
         <div className="flex items-center gap-1.5">
-          <div className={fieldCls}><input type="number" min={0} placeholder="Min €M" value={filters.min_value} onChange={(e) => set("min_value", e.target.value)} className={numInputCls} /></div>
+          <div className={fieldCls}><input type="number" min={0} placeholder="Min" aria-label="Minimum market value, € millions" value={filters.min_value} onChange={(e) => set("min_value", e.target.value)} className={numInputCls} /></div>
           <span className="text-text-muted text-xs shrink-0">–</span>
-          <div className={fieldCls}><input type="number" min={0} placeholder="Max €M" value={filters.max_value} onChange={(e) => set("max_value", e.target.value)} className={numInputCls} /></div>
+          <div className={fieldCls}><input type="number" min={0} placeholder="Max" aria-label="Maximum market value, € millions" value={filters.max_value} onChange={(e) => set("max_value", e.target.value)} className={numInputCls} /></div>
         </div>
       </div>
 
