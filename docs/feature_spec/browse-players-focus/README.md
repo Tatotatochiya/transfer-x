@@ -547,3 +547,4 @@ Decisions taken while building, where the spec was silent, self-contradictory or
 - **Not checked:** a real iPhone (sheet footer above the home indicator, keyboard over the search box), blocked photos in devtools (covered by `FallbackImage` tests), 200% zoom. Lint can't run (no eslint in the repo).
 - **Follow-up tickets (suggested, not raised):** Q1, a price filter in pounds matching the Cheapest sort; review item 7, the demo data's weekly wage ceiling (£50M a week) and a sanity warning on the Finance form.
 
+- **Follow-ups built 2026-11-09** (branch `follow-ups-nov`): Q1 a price filter in pounds; the admin warning for an implausible weekly wage budget (review item 7). The production club showing about £50M a week still needs its budget corrected by staff.

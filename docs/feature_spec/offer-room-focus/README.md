@@ -661,3 +661,4 @@ Same as the deal room spec §11:
 - **Checked on screen** with the one open local offer (Chelsea → Manchester City, round 1, permanent, no valuation): phone 390 (seller, buyer), iPad 768 (seller), laptop 1280×790 (seller countering, buyer waiting). Every fold target held and nothing scrolled sideways. **Not checked on screen:** a track with several rounds, a loan, an anonymous buyer, a valuation gap, dark theme, 200% zoom, a real iPhone. The tests cover the logic for each.
 - **Follow-up tickets not opened:** Q1 (pending-approval state after a 202) and Q2 (asking price in the gap line).
 
+- **Follow-ups built 2026-11-09** (branch `follow-ups-nov`): Q1 the waiting-for-approval state after a 202; Q2 the seller's asking price in the gap line.

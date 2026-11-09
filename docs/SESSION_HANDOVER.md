@@ -22,27 +22,34 @@ Overwritten at the end of each session by the [`session-lifecycle`](../.claude/s
 
 ## Latest Session Summary
 
-## Session Summary — 2026-11-09 (Browse Players)
+## Session Summary — 2026-11-09 (follow-ups)
 
 **Completed work:**
-- PR #64 merged: the offer page, answer first.
-- Browse Players spec ([`browse-players-focus`](./feature_spec/browse-players-focus/README.md)) built in two local branches, not yet pushed:
-  - `quick-fixes-nov` (part 1, 5 commits): `FallbackImage` for every player photo and club crest (initials when an image fails); auto-fill grid columns at least 220px wide; `GET /players/market?sort_by=price` (free agent, else open non-auction listing's asking price, else latest fee-model price) and every sort chip on the server; the value filter labelled "Market value (€ millions)".
-  - `browse-players-focus` (part 2, on top of part 1): one search box with "✦ Describe"; sticky Filters · Sort · view toolbar below 1024px; filter chips; filters `Sheet` with a draft and live count; compact 72px phone rows (`PlayerRow`); "Show {n} more" below 1024px; recommendations as one row; budget as one line; `MoreMenu` and `Sheet` gained optional props.
-- Tests: frontend 59 files, 416 passing (28 new); backend players, valuation and Lite tests, 108 passing (1 new).
+- PRs #65 and #66 merged (Browse Players).
+- Branch `follow-ups-nov`, 8 commits, not pushed yet:
+  - Deal collapse reason stored and shown (`collapse_reason`, `collapsed_by_club_id`).
+  - Admin warning for a weekly wage budget above £5M.
+  - Browse Players price filter in pounds (`min_price`/`max_price`, shared `_with_price`).
+  - Offer page: the seller's asking price in the gap line (`your_asking_price` on the Lite card).
+  - Offer page: "waiting for approval" after a 202 (`pending_approval`), and no duplicate approval requests.
+  - Unsent conversation drafts survive the 1024px layout switch.
+  - Unread count on Messages: `conversation_reads` (migration `0110`), `unread` on `GET /conversation`, `POST /conversation/read`.
+  - 13px/44px pass on the reused message and timeline components.
+- Tests: frontend 61 files, 426 passing; backend deals, offers, approvals, conversation, players, Lite and negotiation tests, 199 passing.
 
 **Important decisions:**
-- Review revisions R1–R15 in the spec, notably: removing "On TransferX" turns it off; "Clear" keeps the search and sort; the sort menu reuses `MoreMenu`; no "{n} of {total}" beside Sort.
-- The Cheapest sort has no 30% contract-ending discount (the Lite price rule has it); noted in code.
+- Unread is per person, keyed by player + buying club (one conversation per transfer, ADR 0008); never-opened conversations count only the last 14 days; "read" means up to the newest message seen, by its own timestamp.
+- The collapse reason is visible to both clubs (dialog says so).
+- The asking price beats the valuation in the seller's gap line; the buyer never sees either.
 
 **Outstanding work:**
-- Push both branches and open two PRs, part 1 first.
-- Not checked on screen: a real iPhone, blocked photos, 200% zoom (spec Deviations).
-- Follow-ups: a price filter in pounds (Q1); demo data's weekly wage ceiling and a Finance-form sanity warning; earlier items still open (deal room visual checks, offer Q1/Q2, Railway test-data cleanup).
+- Push `follow-ups-nov` and open its PR; migration `0110` runs on deploy.
+- Production: correct the club whose weekly wage budget is about £50M (staff, admin club page).
+- Earlier: registration checklist; real-iPhone checks; Railway test-data cleanup.
 
 **Risks:**
 - No eslint in the repo, so lint never runs.
-- `reference_price` can be the legacy `market_value`, stored in euros, and rows show it with £ (pre-existing).
+- Backend tests run on SQLite, which stores whole seconds; the unread test backdates rows to stay reliable.
 
 **Recommended next task:**
 - Registration checklist: split the single "registration" paperwork step into the league's real items.
