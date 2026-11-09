@@ -35,6 +35,19 @@ describe("ConversationPanel", () => {
     sessionStorage.clear();
   });
 
+  it("marks the conversation read when it shows unread messages, and not otherwise", async () => {
+    api.get.mockResolvedValue({ data: { ...conversation, unread: 2 } });
+    renderPanel();
+    await screen.findByText("Would you sell?");
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/conversation/read", null, { params: { deal_id: "d1" } }));
+
+    api.post.mockClear();
+    api.get.mockResolvedValue({ data: { ...conversation, unread: 0 } });
+    renderPanel();
+    await screen.findAllByText("Would you sell?");
+    expect(api.post).not.toHaveBeenCalledWith("/conversation/read", expect.anything(), expect.anything());
+  });
+
   it("keeps an unsent message when the panel remounts, and forgets it once sent", async () => {
     const first = renderPanel();
     await screen.findByText("Would you sell?");

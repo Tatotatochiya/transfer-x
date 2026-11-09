@@ -104,3 +104,42 @@ async def test_the_agent_thread_joins_and_strangers_are_refused(client: AsyncCli
 
     stranger = _auth_headers(await _register(client, "conv_stranger@test.com", club_name="Strangers"))
     assert (await client.get("/conversation", params={"deal_id": deal_id}, headers=stranger)).status_code == 403
+
+
+async def test_unread_counts_the_other_clubs_messages_until_read(client: AsyncClient, db):
+    seller = _auth_headers(await _register(client, "unread_seller@test.com", club_name="Unread Sellers"))
+    buyer = _auth_headers(await _register(client, "unread_buyer@test.com", club_name="Unread Buyers"))
+    await _give_budget(db)
+    player = await _create_player_for_seller(client, seller)
+    offer = (await client.post("/offers", json={"player_id": player["id"], "fee_amount": 5_000_000,
+                                                "to_club_id": await _get_club_id(client, seller)}, headers=buyer)).json()
+    for text in ("First", "Second"):
+        await client.post("/conversation", json={"offer_id": offer["id"], "audience": "both_clubs", "body": text}, headers=buyer)
+
+    assert (await _conv(client, seller, offer_id=offer["id"]))["unread"] == 2
+    assert (await _conv(client, buyer, offer_id=offer["id"]))["unread"] == 0  # their own
+    # Reading the conversation doesn't mark it; the read endpoint does.
+    assert (await _conv(client, seller, offer_id=offer["id"]))["unread"] == 2
+    resp = await client.post("/conversation/read", params={"offer_id": offer["id"]}, headers=seller)
+    assert resp.status_code == 204, resp.text
+    assert (await _conv(client, seller, offer_id=offer["id"]))["unread"] == 0
+
+    # The test database keeps whole seconds: move what's been read into the past.
+    from datetime import timedelta
+
+    from app.conversation.models import ConversationRead
+    from app.offers.models import OfferMessage
+
+    for m in (await db.execute(select(OfferMessage))).scalars():
+        m.created_at = m.created_at - timedelta(minutes=2)
+    for r in (await db.execute(select(ConversationRead))).scalars():
+        r.read_at = r.read_at - timedelta(minutes=2)
+    await db.commit()
+    await client.post("/conversation", json={"offer_id": offer["id"], "audience": "both_clubs", "body": "Third"}, headers=buyer)
+    assert (await _conv(client, seller, offer_id=offer["id"]))["unread"] == 1
+    # Marking twice is fine (an upsert).
+    await client.post("/conversation/read", params={"offer_id": offer["id"]}, headers=seller)
+    assert (await client.post("/conversation/read", params={"offer_id": offer["id"]}, headers=seller)).status_code == 204
+
+    stranger = _auth_headers(await _register(client, "unread_stranger@test.com", club_name="Unread Strangers"))
+    assert (await client.post("/conversation/read", params={"offer_id": offer["id"]}, headers=stranger)).status_code in (403, 404)

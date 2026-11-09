@@ -17,13 +17,14 @@ old pages are retired (ADR 0008, decision 4).
 """
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.models import User
+from app.conversation.models import ConversationRead
 from app.common.masking import buyer_is_masked, masked_name
 from app.deals.models import Deal, DealStatus
 from app.enquiries.models import Enquiry, EnquiryStatus
@@ -300,3 +301,36 @@ async def post(db: AsyncSession, t: Transfer, user: User, club, *, audience: str
         db, negotiation=neg, deal=deal, thread=NegotiationThread.CLUB_SIDE, sender=user, text=body,
     )
     await db.commit()
+
+
+# ── Unread ────────────────────────────────────────────────────────────────────
+
+# Someone who has never opened a conversation (every conversation, the day
+# this shipped) counts only the last fortnight as unread, not its history.
+UNREAD_WINDOW = timedelta(days=14)
+
+
+def _aware(dt: datetime) -> datetime:
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
+async def unread_count(db: AsyncSession, t: Transfer, viewer: User, msgs: list[dict]) -> int:
+    """Messages the viewer didn't write, since they last read this
+    conversation: the other club's, and on deal messages a colleague's too
+    (offer and enquiry messages are the club's, so a colleague's are "mine")."""
+    row = await db.get(ConversationRead, (viewer.id, t.player_id, t.buyer_club_id))
+    since = _aware(row.read_at) if row else datetime.now(timezone.utc) - UNREAD_WINDOW
+    return sum(1 for m in msgs if not m["mine"] and _aware(m["created_at"]) > since)
+
+
+async def mark_read(db: AsyncSession, t: Transfer, viewer: User) -> None:
+    """Read up to the newest message the viewer can see. Its own timestamp,
+    not the app's clock, so a message written a moment later is never
+    hidden by a clock difference between the app and the database."""
+    msgs = await messages(db, t, viewer)
+    now = max((_aware(m["created_at"]) for m in msgs), default=datetime.now(timezone.utc))
+    row = await db.get(ConversationRead, (viewer.id, t.player_id, t.buyer_club_id))
+    if row is None:
+        db.add(ConversationRead(user_id=viewer.id, player_id=t.player_id, buyer_club_id=t.buyer_club_id, read_at=now))
+    else:
+        row.read_at = now

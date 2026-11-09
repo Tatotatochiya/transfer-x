@@ -30,6 +30,8 @@ interface Message {
 }
 
 interface Conversation {
+  /** Messages from others since this person last marked it read. */
+  unread?: number;
   messages: Message[];
   can_post_to: { key: Audience; label: string }[];
   /** What a new message attaches to now: picks the AI draft. */
@@ -51,6 +53,24 @@ function params(ctx: ConversationContext) {
     ...(ctx.dealId && { deal_id: ctx.dealId }),
     ...(ctx.enquiryId && { enquiry_id: ctx.enquiryId }),
   };
+}
+
+const fetchConversation = (ctx: ConversationContext) =>
+  api.get<Conversation>("/conversation", { params: params(ctx) }).then((r) => r.data);
+
+/**
+ * How many messages on this transfer are new to the viewer, for a Messages
+ * tab's badge. Shares the panel's query, so it costs nothing once the panel
+ * has loaded, and drops to 0 when the panel is shown (it marks it read).
+ */
+export function useConversationUnread(context: ConversationContext, enabled = true): number {
+  const { data } = useQuery<Conversation>({
+    queryKey: ["conversation", params(context)],
+    queryFn: () => fetchConversation(context),
+    refetchInterval: 30_000,
+    enabled,
+  });
+  return data?.unread ?? 0;
 }
 
 // An unsent message survives the panel remounting: the transfer pages draw
@@ -83,9 +103,16 @@ export default function ConversationPanel({
   const key = ["conversation", params(context)];
   const { data, isLoading, isError } = useQuery<Conversation>({
     queryKey: key,
-    queryFn: () => api.get<Conversation>("/conversation", { params: params(context) }).then((r) => r.data),
+    queryFn: () => fetchConversation(context),
     refetchInterval: 30_000,
   });
+  // Shown means seen: mark it read, and clear the badge at once.
+  const unread = data?.unread ?? 0;
+  useEffect(() => {
+    if (unread === 0) return;
+    qc.setQueryData<Conversation>(key, (c) => (c ? { ...c, unread: 0 } : c));
+    api.post("/conversation/read", null, { params: params(context) }).catch(() => { /* the badge comes back next refresh */ });
+  }, [unread]); // eslint-disable-line react-hooks/exhaustive-deps
   const storageKey = draftKey(context);
   const [body, setBodyState] = useState(() => readDraft(storageKey));
   const setBody = (value: string) => { setBodyState(value); writeDraft(storageKey, value); };

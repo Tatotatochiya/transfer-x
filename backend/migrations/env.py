@@ -38,6 +38,7 @@ from app.lite.models import UserPreference  # noqa: F401
 from app.common.jobs import SchedulerJobRun  # noqa: F401
 from app.monitoring.models import JobRun, JobRunLog, ErrorIssue, ErrorEvent, RequestMinute  # noqa: F401
 from app.ai.models import AISuggestionEvent, AssistantQuery  # noqa: F401
+from app.conversation.models import ConversationRead  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url_sync)

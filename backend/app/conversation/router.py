@@ -46,6 +46,9 @@ class ConversationResponse(BaseModel):
     messages: list[ConversationMessage]
     can_post_to: list[AudienceOption]
     live: LiveItems = LiveItems()
+    # Messages from others since this person last marked it read (POST
+    # /conversation/read). Reading it here doesn't mark it.
+    unread: int = 0
 
 
 class ConversationPost(BaseModel):
@@ -70,8 +73,10 @@ async def _load(db, user, offer_id, deal_id, enquiry_id):
 
 
 async def _response(db, t, user) -> ConversationResponse:
+    msgs = await service.messages(db, t, user)
     return ConversationResponse(
-        messages=[ConversationMessage(**m) for m in await service.messages(db, t, user)],
+        messages=[ConversationMessage(**m) for m in msgs],
+        unread=await service.unread_count(db, t, user, msgs),
         can_post_to=[AudienceOption(key=k, label=service.AUDIENCE_LABEL[k]) for k in await service.post_options(db, t)],
         live=LiveItems(
             offer_id=t.open_offer.id if t.open_offer else None,
@@ -93,6 +98,20 @@ async def get_conversation(
     thread) that this club can see, in order (product ADR 0008)."""
     _club, t = await _load(db, current_user, offer_id, deal_id, enquiry_id)
     return await _response(db, t, current_user)
+
+
+@router.post("/conversation/read", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_conversation_read(
+    offer_id: uuid.UUID | None = None,
+    deal_id: uuid.UUID | None = None,
+    enquiry_id: uuid.UUID | None = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """The person has seen this transfer's conversation as it is now."""
+    _club, t = await _load(db, current_user, offer_id, deal_id, enquiry_id)
+    await service.mark_read(db, t, current_user)
+    await db.commit()
 
 
 @router.post("/conversation", response_model=ConversationResponse)

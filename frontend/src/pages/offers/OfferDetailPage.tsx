@@ -7,7 +7,7 @@ import Spinner from "../../components/ui/Spinner";
 import Tabs from "../../components/ui/Tabs";
 import SegmentedControl from "../../components/ui/SegmentedControl";
 import OfferThread, { offerTimeline } from "../../components/offers/OfferThread";
-import ConversationPanel from "../../components/conversation/ConversationPanel";
+import ConversationPanel, { useConversationUnread } from "../../components/conversation/ConversationPanel";
 import SellerOrderBook from "../../components/sales/SellerOrderBook";
 import BuyerOrderBook from "../../components/sales/BuyerOrderBook";
 import DemoOfferControls from "../../components/demo/DemoOfferControls";
@@ -86,6 +86,7 @@ export default function OfferDetailPage() {
   const isParty = isBuyer || isSeller;
 
   const { data: card } = useLiteOfferCard(id, isParty);
+  const unread = useConversationUnread({ offerId: id }, isParty);
   const actions = useOfferActions(offer);
   const { data: aiStatus } = useAIStatus();
   const advice = useOfferAdvice(offer?.id ?? "", offer?.last_action_at ?? "", askedSuggestion && !!offer);
@@ -273,7 +274,7 @@ export default function OfferDetailPage() {
               <SegmentedControl
                 idPrefix="offer-rail" ariaLabel="Messages and other bids" size="sm"
                 items={[
-                  { key: "messages", label: "Messages" },
+                  { key: "messages", label: "Messages", badge: unread, badgeLabel: "unread" },
                   { key: "bids", label: isSeller && book ? `${bidsLabel} · ${book.active_count}` : bidsLabel },
                 ]}
                 active={railTab}
@@ -291,7 +292,7 @@ export default function OfferDetailPage() {
           <div className="mb-4">
             <SegmentedControl
               idPrefix="offer-section" ariaLabel="Offer sections"
-              items={[{ key: "terms", label: "Terms" }, { key: "messages", label: "Messages" }, { key: "bids", label: bidsLabel }]}
+              items={[{ key: "terms", label: "Terms" }, { key: "messages", label: "Messages", badge: unread, badgeLabel: "unread" }, { key: "bids", label: bidsLabel }]}
               active={section}
               onChange={(k) => writeTab(k as Tab)}
             />

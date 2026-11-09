@@ -1,6 +1,12 @@
 import { useRef } from "react";
 
-export interface SegmentItem { key: string; label: string }
+export interface SegmentItem {
+  key: string;
+  label: string;
+  /** A count beside the label, e.g. unread messages; hidden at 0. */
+  badge?: number;
+  badgeLabel?: string;
+}
 
 interface SegmentedControlProps {
   items: SegmentItem[];
@@ -45,6 +51,7 @@ export default function SegmentedControl({ items, active, onChange, size = "md",
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(item.key)}
             onKeyDown={(e) => onKeyDown(e, i)}
+            aria-label={item.badge ? `${item.label}, ${item.badge} ${item.badgeLabel ?? "new"}` : undefined}
             className={`${sizing} rounded-[9px] px-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
               selected
                 ? "bg-surface font-semibold text-text shadow-[0_1px_2px_rgba(16,24,40,0.1)]"
@@ -52,6 +59,11 @@ export default function SegmentedControl({ items, active, onChange, size = "md",
             }`}
           >
             {item.label}
+            {!!item.badge && item.badge > 0 && (
+              <span aria-hidden className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 align-[1px] text-[13px] font-bold leading-none text-white">
+                {item.badge > 99 ? "99+" : item.badge}
+              </span>
+            )}
           </button>
         );
       })}
