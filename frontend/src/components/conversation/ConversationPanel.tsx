@@ -30,6 +30,8 @@ interface Message {
 }
 
 interface Conversation {
+  /** Messages from others since this person last marked it read. */
+  unread?: number;
   messages: Message[];
   can_post_to: { key: Audience; label: string }[];
   /** What a new message attaches to now: picks the AI draft. */
@@ -53,6 +55,40 @@ function params(ctx: ConversationContext) {
   };
 }
 
+const fetchConversation = (ctx: ConversationContext) =>
+  api.get<Conversation>("/conversation", { params: params(ctx) }).then((r) => r.data);
+
+/**
+ * How many messages on this transfer are new to the viewer, for a Messages
+ * tab's badge. Shares the panel's query, so it costs nothing once the panel
+ * has loaded, and drops to 0 when the panel is shown (it marks it read).
+ */
+export function useConversationUnread(context: ConversationContext, enabled = true): number {
+  const { data } = useQuery<Conversation>({
+    queryKey: ["conversation", params(context)],
+    queryFn: () => fetchConversation(context),
+    refetchInterval: 30_000,
+    enabled,
+  });
+  return data?.unread ?? 0;
+}
+
+// An unsent message survives the panel remounting: the transfer pages draw
+// different trees either side of 1024px (tabs below, a rail above), so
+// rotating an iPad used to lose it. Per tab only (sessionStorage).
+const draftKey = (ctx: ConversationContext) => `conversation-draft:${JSON.stringify(params(ctx))}`;
+
+function readDraft(key: string): string {
+  try { return sessionStorage.getItem(key) ?? ""; } catch { return ""; }
+}
+
+function writeDraft(key: string, value: string) {
+  try {
+    if (value) sessionStorage.setItem(key, value);
+    else sessionStorage.removeItem(key);
+  } catch { /* storage unavailable: the draft lives only in this panel */ }
+}
+
 export default function ConversationPanel({
   context, compact = false, timeline = [], placeholder = "Write a message…",
 }: {
@@ -67,10 +103,19 @@ export default function ConversationPanel({
   const key = ["conversation", params(context)];
   const { data, isLoading, isError } = useQuery<Conversation>({
     queryKey: key,
-    queryFn: () => api.get<Conversation>("/conversation", { params: params(context) }).then((r) => r.data),
+    queryFn: () => fetchConversation(context),
     refetchInterval: 30_000,
   });
-  const [body, setBody] = useState("");
+  // Shown means seen: mark it read, and clear the badge at once.
+  const unread = data?.unread ?? 0;
+  useEffect(() => {
+    if (unread === 0) return;
+    qc.setQueryData<Conversation>(key, (c) => (c ? { ...c, unread: 0 } : c));
+    api.post("/conversation/read", null, { params: params(context) }).catch(() => { /* the badge comes back next refresh */ });
+  }, [unread]); // eslint-disable-line react-hooks/exhaustive-deps
+  const storageKey = draftKey(context);
+  const [body, setBodyState] = useState(() => readDraft(storageKey));
+  const setBody = (value: string) => { setBodyState(value); writeDraft(storageKey, value); };
   const [audience, setAudience] = useState<Audience | null>(null);
   const [mentions, setMentions] = useState<string[]>([]);
   const live = data?.live;
@@ -130,7 +175,7 @@ export default function ConversationPanel({
           .map((row) => "e" in row && row.e ? (
           <div key={`t:${row.e.id}`} className="flex items-center gap-3 py-0.5">
             <div className="h-px flex-1 bg-rule" />
-            <span className="text-[11px] text-text-muted">{row.e.text} · {formatDateTime(row.e.created_at)}</span>
+            <span className="text-[13px] text-text-muted">{row.e.text} · {formatDateTime(row.e.created_at)}</span>
             <div className="h-px flex-1 bg-rule" />
           </div>
         ) : "m" in row && row.m ? ((m) => (
@@ -142,7 +187,7 @@ export default function ConversationPanel({
               } text-text`}
             >
               <p className="whitespace-pre-wrap">{m.body}</p>
-              <p className="mt-1 text-[11px] text-text-muted">
+              <p className="mt-1 text-[13px] text-text-muted">
                 {m.author} · {formatDateTime(m.created_at)} · {m.context}
                 {m.audience !== "both_clubs" && <> · <span className="font-semibold">{m.audience_label}</span></>}
               </p>
@@ -163,17 +208,17 @@ export default function ConversationPanel({
             maxLength={4000}
             placeholder={placeholder}
             aria-label="Message"
-            className="w-full resize-y rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+            className="w-full resize-y rounded-lg bg-surface px-3 py-2 text-base text-text lg:text-sm ring-1 ring-input-border focus:outline-none focus:ring-accent"
           />
           {mentionable && participants.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-text-muted">Mention:</span>
+              <span className="text-[13px] text-text-muted">Mention:</span>
               {participants.map((p) => {
                 const on = mentions.includes(p.user_id);
                 return (
                   <button key={p.user_id} type="button" aria-pressed={on}
                     onClick={() => setMentions((ms) => (on ? ms.filter((x) => x !== p.user_id) : [...ms, p.user_id]))}
-                    className={`rounded-full px-2 py-0.5 text-xs ring-1 ${on ? "bg-accent-bg text-accent ring-accent/40" : "text-text-secondary ring-border"}`}>
+                    className={`inline-flex min-h-11 lg:min-h-0 items-center rounded-full px-2.5 py-0.5 text-[13px] ring-1 ${on ? "bg-accent-bg text-accent ring-accent/40" : "text-text-secondary ring-border"}`}>
                     @{p.label}
                   </button>
                 );
@@ -187,27 +232,27 @@ export default function ConversationPanel({
           )}
           <div className="flex flex-wrap items-center justify-between gap-2">
             {data.can_post_to.length > 1 ? (
-              <label className="flex items-center gap-2 text-xs text-text-secondary">
+              <label className="flex items-center gap-2 text-[13px] text-text-secondary">
                 Who can read it
                 <select
                   value={audience ?? ""}
                   onChange={(e) => setAudience(e.target.value as Audience)}
-                  className="rounded-lg bg-surface px-2 py-1.5 text-xs text-text ring-1 ring-input-border"
+                  className="min-h-11 lg:min-h-0 rounded-lg bg-surface px-2 py-1.5 text-base text-text ring-1 ring-input-border lg:text-[13px]"
                 >
                   {data.can_post_to.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
                 </select>
               </label>
             ) : (
-              <span className="text-xs text-text-muted">{selected?.label} can read this</span>
+              <span className="text-[13px] text-text-muted">{selected?.label} can read this</span>
             )}
-            <Button type="submit" size="sm" disabled={!body.trim() || send.isPending}>
+            <Button type="submit" size="sm" className="min-h-11 lg:min-h-0" disabled={!body.trim() || send.isPending}>
               {send.isPending ? "Sending…" : "Send"}
             </Button>
           </div>
         </form>
       ) : (
         data.can_post_to.length === 0 && (
-          <p className="border-t border-rule-faint pt-3 text-xs text-text-muted">Nothing is open on this transfer, so it can't take new messages.</p>
+          <p className="border-t border-rule-faint pt-3 text-[13px] text-text-muted">Nothing is open on this transfer, so it can't take new messages.</p>
         )
       )}
     </div>

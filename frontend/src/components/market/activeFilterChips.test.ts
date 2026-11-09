@@ -13,12 +13,12 @@ describe("activeFilterChips", () => {
 
   it("labels each field", () => {
     const all = labels({
-      position: "MID", status: "FREE_AGENT", min_age: "18", max_age: "25", min_value: "5", max_value: "20",
+      position: "MID", status: "FREE_AGENT", min_age: "18", max_age: "25", min_price: "2", max_price: "10", min_value: "5", max_value: "20",
       contract_expiry_months: "12", min_form_score: "60", open_to_offers: true, nationality: "Sweden",
       club_search: "Arsenal", min_goals: "10", min_assists: "5", min_appearances: "20", min_avg_rating: "7",
     });
     expect(all).toEqual([
-      "On TransferX", "MID", "Free agents", "Age 18–25", "€5–20M market value", "Contract ends within 12 months",
+      "On TransferX", "MID", "Free agents", "Age 18–25", "£2–10M price", "€5–20M market value", "Contract ends within 12 months",
       "Form 60+", "Listed", "Sweden", "Club: Arsenal", "Goals 10+", "Assists 5+", "Apps 20+", "Rating 7.0+",
     ]);
   });
@@ -28,6 +28,8 @@ describe("activeFilterChips", () => {
     expect(labels({ min_age: "26" })).toContain("26 and over");
     expect(labels({ min_value: "5" })).toContain("€5M+ market value");
     expect(labels({ max_value: "20" })).toContain("Up to €20M market value");
+    expect(labels({ min_price: "5" })).toContain("£5M+ price");
+    expect(labels({ max_price: "8" })).toContain("Up to £8M price");
   });
 
   it("search and sort never make a chip", () => {

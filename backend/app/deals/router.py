@@ -14,6 +14,7 @@ from app.database import get_db
 from app.deals import room_service, service
 from app.deals.models import ClauseStatus, DealStage, DealStatus
 from app.deals.schemas import (
+    DealCollapseRequest,
     AgentNegotiationResponse,
     ClubTransferStat,
     CompletedStats,
@@ -168,6 +169,7 @@ async def _build_deal_response(
     personal_terms = None
     if deal.personal_terms is not None:
         personal_terms = await _build_personal_terms_response(db, deal.personal_terms, deal)
+    collapse_reason, collapsed_by = await service.collapse_details(db, deal)
     return DealResponse(
         id=deal.id,
         sale_id=deal.sale_id,
@@ -217,6 +219,8 @@ async def _build_deal_response(
         sla_deadline=deal.sla_deadline,
         sla_escalated_at=deal.sla_escalated_at,
         whose_move=service.compute_deal_whose_move(deal, viewer_club_id),
+        collapse_reason=collapse_reason,
+        collapsed_by_club_id=collapsed_by,
     )
 
 
@@ -422,6 +426,7 @@ async def advance_deal(
 @router.post("/deals/{deal_id}/collapse", response_model=DealResponse)
 async def collapse_deal(
     deal_id: uuid.UUID,
+    body: DealCollapseRequest | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     _write: User = Depends(_deal_write),
@@ -432,7 +437,7 @@ async def collapse_deal(
     try:
         await service.collapse_deal(
             db, deal, actor_club_id=club.id, is_staff=current_user.is_superuser,
-            actor_user_id=current_user.id,
+            actor_user_id=current_user.id, reason=body.reason if body else None,
         )
         player_name = deal.player.name if deal.player else "the player"
         await _db_notify_deal_parties(

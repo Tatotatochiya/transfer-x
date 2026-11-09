@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from app.agents.models import AgreementStatus, CommissionPayer, NegotiationStatus  # noqa: F401 (re-exported)
 from app.common.schemas import WhoseMove
@@ -317,6 +317,14 @@ class DealResponse(BaseModel):
     deal_notes: list[DealNoteResponse] = []
     # B1
     whose_move: WhoseMove | None = None
+    # A collapsed deal: why (optional) and which club called it off (None
+    # for a staff override). Both clubs see these, as on the timeline.
+    collapse_reason: str | None = None
+    collapsed_by_club_id: uuid.UUID | None = None
     # The player's agent on this deal, named on every negotiation stage.
     agent: DealAgentSummary | None = None
     model_config = {"from_attributes": True}
+
+
+class DealCollapseRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)

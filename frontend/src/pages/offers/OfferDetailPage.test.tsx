@@ -15,7 +15,8 @@ vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ addToast }) })
 const canWrite = vi.hoisted(() => ({ value: true }));
 vi.mock("../../hooks/useClubCapabilities", () => ({ useClubCapabilities: () => ({ can: () => canWrite.value }) }));
 // The page's own sections are tested elsewhere; here, only where they mount.
-vi.mock("../../components/conversation/ConversationPanel", () => ({ default: () => <p>MESSAGES</p> }));
+const unread = vi.hoisted(() => ({ n: 0 }));
+vi.mock("../../components/conversation/ConversationPanel", () => ({ default: () => <p>MESSAGES</p>, useConversationUnread: () => unread.n }));
 vi.mock("../../components/sales/SellerOrderBook", () => ({ default: () => <p>ORDER BOOK</p> }));
 vi.mock("../../components/sales/BuyerOrderBook", () => ({ default: () => <p>RANKING</p> }));
 vi.mock("../../components/demo/DemoOfferControls", () => ({ default: () => null }));
@@ -80,6 +81,7 @@ describe("OfferDetailPage, answer first", () => {
     me = SELLER;
     card = { other_club: "Meridian FC", your_valuation: 4_800_000, counter_suggestion: 4_600_000, expires_at: null, disabled_reason: null };
     canWrite.value = true;
+    unread.n = 0;
     desktop(false);
     api.get.mockReset().mockImplementation(serve);
     api.post.mockReset().mockImplementation((url: string) =>
@@ -236,5 +238,11 @@ describe("OfferDetailPage, answer first", () => {
     await userEvent.click(screen.getByRole("button", { name: "Counter" }));
     expect(screen.getByRole("dialog", { name: "Counter an undisclosed Premier League club" })).toBeInTheDocument();
     expect(container.textContent + document.body.textContent).not.toMatch(/Meridian/);
+  });
+
+  it("the Messages tab counts unread messages", async () => {
+    unread.n = 3;
+    renderPage();
+    expect(await screen.findByRole("tab", { name: "Messages, 3 unread" })).toBeInTheDocument();
   });
 });

@@ -677,3 +677,4 @@ The one behaviour change in who can do what is **Q1**: clubs get the Advance but
 - **The agent workspace's "Club: PENDING" chip** now reads "Club: waiting / agreed / declined" (no enum names on screen, §11).
 - **Not done here:** the manual device checks in §13 (they need a browser and the demo scenario deals), and the follow-up tickets for Q2 (store a collapse reason), Q3 (unread count), Q5 (keep a draft across 1024px) and the 13px pass on reused components.
 
+- **Follow-ups built 2026-11-09** (branch `follow-ups-nov`): Q2 the collapse reason is stored and shown; Q3 an unread badge on Messages; Q5 an unsent message survives crossing 1024px; the 13px/44px pass on the reused components.

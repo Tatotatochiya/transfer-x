@@ -50,7 +50,7 @@ export default function DealTimeline({ dealId }: { dealId: string }) {
                 </span>
               </div>
               {ev.actor_label && (
-                <p className="mt-0.5 text-xs text-text-muted">{ev.actor_label}</p>
+                <p className="mt-0.5 text-[13px] text-text-muted">{ev.actor_label}</p>
               )}
             </div>
           </div>

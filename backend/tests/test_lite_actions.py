@@ -243,6 +243,28 @@ async def test_offer_card_masks_anonymous_buyers_and_suggests_a_counter(client: 
 
 
 @pytest.mark.asyncio
+async def test_offer_card_gives_the_seller_its_asking_price_and_no_one_else(client: AsyncClient, buyer, seller, db):
+    from app.sales.models import Sale, SaleStatus, SaleType
+
+    await _give_budget(db)
+    player = await _create_player_for_seller(client, _auth_headers(seller))
+    offer = await _send(client, buyer, seller, player["id"], 6_000_000)
+    seller_card = await client.get(f"/lite/offers/{offer['id']}", headers=_auth_headers(seller))
+    assert seller_card.json()["your_asking_price"] is None
+
+    db.add(Sale(
+        player_id=uuid.UUID(player["id"]), seller_club_id=uuid.UUID(await _get_club_id(client, _auth_headers(seller))),
+        sale_type=SaleType.OPEN_TO_OFFERS, asking_price=Decimal("8000000"), min_increment=Decimal("500000"),
+        status=SaleStatus.OPEN,
+    ))
+    await db.commit()
+    card = (await client.get(f"/lite/offers/{offer['id']}", headers=_auth_headers(seller))).json()
+    assert card["your_asking_price"] == 8_000_000
+    mine = (await client.get(f"/lite/offers/{offer['id']}", headers=_auth_headers(buyer))).json()
+    assert mine["your_asking_price"] is None
+
+
+@pytest.mark.asyncio
 async def test_a_counter_shows_what_it_replaced(client: AsyncClient, buyer, seller, db):
     """A club answering a counter sees its own last offer: the counter's event
     keeps the terms it replaced, and the Lite card says what each one was."""

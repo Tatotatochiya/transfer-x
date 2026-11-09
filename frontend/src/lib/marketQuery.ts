@@ -20,6 +20,9 @@ export function marketParams(filters: PlayerFilterState): Record<string, string 
     ...(filters.min_assists      && { min_assists: Number(filters.min_assists) }),
     ...(filters.min_appearances  && { min_appearances: Number(filters.min_appearances) }),
     ...(filters.min_avg_rating   && { min_avg_rating: Number(filters.min_avg_rating) }),
+    // What he would cost here, in £ millions on screen.
+    ...(filters.min_price        && { min_price: Number(filters.min_price) * 1_000_000 }),
+    ...(filters.max_price        && { max_price: Number(filters.max_price) * 1_000_000 }),
     // The outside market estimate, in € millions on screen.
     ...(filters.min_value        && { min_market_value: Number(filters.min_value) * 1_000_000 }),
     ...(filters.max_value        && { max_market_value: Number(filters.max_value) * 1_000_000 }),

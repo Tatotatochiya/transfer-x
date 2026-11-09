@@ -578,6 +578,31 @@ async def test_collapse_deal(client: AsyncClient, buyer: dict, seller: dict, db)
 
 
 @pytest.mark.asyncio
+async def test_collapse_reason_is_kept_and_both_clubs_see_it(client: AsyncClient, buyer: dict, seller: dict, db):
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    resp = await client.post(
+        f"/deals/{deal['id']}/collapse", json={"reason": "  Failed the medical  "}, headers=_auth_headers(buyer),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["collapse_reason"] == "Failed the medical"
+    assert resp.json()["collapsed_by_club_id"] == resp.json()["buyer_club_id"]
+
+    seen = (await client.get(f"/deals/{deal['id']}", headers=_auth_headers(seller))).json()
+    assert seen["collapse_reason"] == "Failed the medical"
+    log = (await client.get(f"/deals/{deal['id']}/audit-log", headers=_auth_headers(seller))).json()
+    assert any(e["description"].endswith("Reason: Failed the medical") for e in log)
+
+
+@pytest.mark.asyncio
+async def test_collapse_without_a_reason_has_none(client: AsyncClient, buyer: dict, seller: dict, db):
+    deal = await _create_deal_via_offer(client, buyer, seller, db)
+    resp = await client.post(f"/deals/{deal['id']}/collapse", json={"reason": "  "}, headers=_auth_headers(seller))
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["collapse_reason"] is None
+    assert resp.json()["collapsed_by_club_id"] == resp.json()["seller_club_id"]
+
+
+@pytest.mark.asyncio
 async def test_collapse_reopens_originating_sale_and_notifies_rivals(
     client: AsyncClient, buyer: dict, seller: dict, rival: dict, db,
 ):

@@ -13,7 +13,7 @@ import { formatCurrency, formatDate } from "../../lib/utils";
  * it has loaded. The first matching row of the spec's table wins.
  */
 
-export type OfferTone = "you" | "wait" | "info" | "done" | "closed";
+export type OfferTone = "you" | "wait" | "hold" | "info" | "done" | "closed";
 
 export type OfferAction =
   | { kind: "accept"; label: string; highlight?: boolean }
@@ -21,7 +21,8 @@ export type OfferAction =
   | { kind: "reject"; label: "Reject this offer" }
   | { kind: "raise"; label: "Raise your offer" }
   | { kind: "open-messages"; label: string }
-  | { kind: "view-deal"; label: "View the deal" };
+  | { kind: "view-deal"; label: "View the deal" }
+  | { kind: "view-approvals"; label: "Open approvals" };
 
 export interface OfferStatusView {
   tone: OfferTone;
@@ -158,6 +159,20 @@ export function getOfferStatus(offer: Offer, viewer: OfferViewer): OfferStatusVi
 
   const deadline = deadlineText(card?.expires_at ?? offer.expires_at, now);
 
+  // 5a: our acceptance is waiting on an approver at our club. Nothing else
+  // to do here until they decide; the other club isn't told.
+  if (offer.pending_approval) {
+    const pa = offer.pending_approval;
+    const lapses = deadlineText(pa.expires_at, now);
+    return {
+      ...base, tone: "hold", overline: "Waiting for approval", meta: `since ${formatDate(pa.requested_at)}`,
+      headline: `Accepting ${amount} is waiting for approval`,
+      body: `${pa.requested_by ?? "Someone at your club"} accepted it. It goes ahead when an approver at your club agrees` +
+        (lapses ? `, and lapses ${lapses.text} if no one decides.` : "."),
+      secondary: { kind: "view-approvals", label: "Open approvals" },
+    };
+  }
+
   // 6–7: their move was last, so it's ours.
   if (viewer.isMyTurn) {
     const theirs = lastMove(offer, (e) => !myClubId || e.actor_club_id !== myClubId);
@@ -178,13 +193,17 @@ export function getOfferStatus(offer: Offer, viewer: OfferViewer): OfferStatusVi
     }
 
     const body: string[] = [];
-    // The valuation is the selling club's alone (§9): never read for the buyer.
+    // The gap to the seller's own figure: its asking price where it listed
+    // one (the number the market saw), else its private valuation. Both are
+    // the selling club's alone (§9): never read for the buyer.
+    const asking = side === "seller" ? card?.your_asking_price ?? null : null;
     const val = side === "seller" ? card?.your_valuation ?? null : null;
-    if (!loan && val != null && offer.fee_amount != null) {
+    const [mark, word] = asking != null ? [asking, "asking price"] : [val, "valuation"];
+    if (!loan && mark != null && offer.fee_amount != null) {
       const fee = Number(offer.fee_amount);
-      body.push(fee < val
-        ? `That's ${formatCurrency(val - fee)} under your ${formatCurrency(val)} valuation.`
-        : `That's at or above your ${formatCurrency(val)} valuation.`);
+      body.push(fee < mark
+        ? `That's ${formatCurrency(mark - fee)} under your ${formatCurrency(mark)} ${word}.`
+        : `That's at or above your ${formatCurrency(mark)} ${word}.`);
     }
     if (loan) {
       const purchase = offer.obligation_to_buy && offer.option_to_buy != null

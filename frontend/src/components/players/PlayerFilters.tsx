@@ -21,7 +21,10 @@ export interface PlayerFilterState {
   min_appearances: string;
   min_avg_rating: string;
   min_form_score: string;
-  // Enrichment filters
+  // What he would cost here, in £ millions: asking price, else the fee model
+  min_price: string;
+  max_price: string;
+  // Enrichment filters (the outside market value, € millions)
   min_value: string;
   max_value: string;
   contract_expiry_months: string;
@@ -44,6 +47,8 @@ export const DEFAULT_PLAYER_FILTERS: PlayerFilterState = {
   min_appearances: "",
   min_avg_rating: "",
   min_form_score: "",
+  min_price: "",
+  max_price: "",
   min_value: "",
   max_value: "",
   contract_expiry_months: "",
@@ -167,6 +172,16 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
         </div>
       </div>
 
+      {/* What he would cost here: the asking price, else the fee model (the Cheapest sort's rule). */}
+      <div>
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Price (£ millions)</p>
+        <div className="flex items-center gap-1.5">
+          <div className={fieldCls}><input type="number" min={0} placeholder="Min" aria-label="Minimum price, £ millions" value={filters.min_price} onChange={(e) => set("min_price", e.target.value)} className={numInputCls} /></div>
+          <span className="text-text-muted text-xs shrink-0">–</span>
+          <div className={fieldCls}><input type="number" min={0} placeholder="Max" aria-label="Maximum price, £ millions" value={filters.max_price} onChange={(e) => set("max_price", e.target.value)} className={numInputCls} /></div>
+        </div>
+      </div>
+
       {/* The outside market estimate, stored in euros; not the asking price. */}
       <div>
         <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Market value (€ millions)</p>
@@ -248,7 +263,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
       )}
 
       {/* The sheet has its own "Clear all" in the header. */}
-      {!sheet && (moreCount > 0 || filters.position || filters.club_search || filters.min_age || filters.max_age || filters.min_value || filters.max_value || filters.contract_expiry_months || filters.min_form_score) && (
+      {!sheet && (moreCount > 0 || filters.position || filters.club_search || filters.min_age || filters.max_age || filters.min_price || filters.max_price || filters.min_value || filters.max_value || filters.contract_expiry_months || filters.min_form_score) && (
         <button
           type="button"
           onClick={() => onChange({ ...DEFAULT_PLAYER_FILTERS, search: filters.search, sort_by: filters.sort_by, sort_dir: filters.sort_dir })}

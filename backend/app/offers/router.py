@@ -218,7 +218,28 @@ async def get_offer(
     from app.deals import service as deals_service
 
     deals = await deals_service.get_deals_by_offer_ids(db, [offer.id])
-    return _offer_response(offer, club.id, deals.get(offer.id))
+    resp = _offer_response(offer, club.id, deals.get(offer.id))
+    resp.pending_approval = await _pending_approval(db, offer, club.id)
+    return resp
+
+
+async def _pending_approval(db: AsyncSession, offer, club_id: uuid.UUID):
+    """The viewer's own club's acceptance waiting on an approver, if any."""
+    from app.auth.models import User
+    from app.offers.schemas import OfferPendingApproval
+
+    if offer.status not in (OfferStatus.SENT, OfferStatus.COUNTERED):
+        return None
+    approval = await service.pending_acceptance(db, offer.id, club_id)
+    if approval is None:
+        return None
+    requester = await db.get(User, approval.requested_by_user_id)
+    return OfferPendingApproval(
+        id=approval.id,
+        requested_by=requester.display_label if requester else None,
+        requested_at=approval.created_at,
+        expires_at=approval.expires_at,
+    )
 
 
 # ── Actions (logic in offers/actions.py) ──────────────────────────────────────

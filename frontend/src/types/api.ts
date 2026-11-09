@@ -683,6 +683,8 @@ export interface Offer {
   /** Set only while the buyer is masked from you: the one thing you're told
    *  about them. */
   buyer_league_name: string | null;
+  /** The viewer's own club's acceptance waiting on an approver (detail endpoint only). */
+  pending_approval?: { id: string; requested_by: string | null; requested_at: string; expires_at: string } | null;
 }
 
 // ── Deals ─────────────────────────────────────────────────────────────────────
@@ -901,6 +903,9 @@ export interface Deal {
   seller_club: ClubSummary | null;
   player: PlayerSummary | null;
   deal_notes: DealNote[];
+  /** A collapsed deal: the reason given, if any, and the club that called it off (null for a staff override). */
+  collapse_reason?: string | null;
+  collapsed_by_club_id?: string | null;
 }
 
 export interface DealInvitationDealSummary {

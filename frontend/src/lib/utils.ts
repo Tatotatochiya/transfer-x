@@ -28,11 +28,12 @@ export function formatCompactCurrency(value: number | null | undefined): string 
   return compact("£", value);
 }
 
-/** A headline amount in a sentence: "£232.5M", "£609K". */
+/** A headline amount in a sentence: "£2.6B", "£232.5M", "£609K". */
 export function formatCompact(value: number | null | undefined): string {
   if (value == null) return "—";
   const n = Math.abs(value);
   const sign = value < 0 ? "-" : "";
+  if (n >= 1_000_000_000) return `${sign}£${(n / 1_000_000_000).toFixed(1)}B`;
   if (n >= 1_000_000) return `${sign}£${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${sign}£${Math.round(n / 1_000)}K`;
   return `${sign}£${Math.round(n)}`;

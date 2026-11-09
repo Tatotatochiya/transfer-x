@@ -345,6 +345,44 @@ async def test_market_sort_by_price_free_agents_then_asking_or_model_price(
     assert await order("desc") == [modelled["id"], listed["id"], free["id"], unpriced["id"]]
 
 
+async def test_market_price_filter_uses_what_he_would_cost(client: AsyncClient, auth_headers: dict, db):
+    from decimal import Decimal
+
+    from app.sales.models import Sale, SaleStatus, SaleType
+
+    club_id = (await client.get("/clubs/me", headers=auth_headers)).json()["id"]
+    free = await _create_player(client, auth_headers, "Band Free Agent", position="DEF")
+    listed = await _create_player(client, auth_headers, "Band Listed", position="DEF")
+    modelled = await _create_player(client, auth_headers, "Band Modelled", position="DEF")
+    unpriced = await _create_player(client, auth_headers, "Band Unknown", position="DEF")
+    for p in (listed, modelled, unpriced):
+        await _make_contracted(db, p["id"], club_id)
+    # Asking £8M (the model says £30M: the asking price is what counts).
+    await _seed_market_valuation(db, listed["id"], Decimal("30000000"))
+    db.add(Sale(
+        player_id=uuid.UUID(listed["id"]), seller_club_id=uuid.UUID(club_id),
+        sale_type=SaleType.OPEN_TO_OFFERS, asking_price=Decimal("8000000"),
+        min_increment=Decimal("500000"), status=SaleStatus.OPEN,
+    ))
+    await db.commit()
+    await _seed_market_valuation(db, modelled["id"], Decimal("12000000"))
+    ours = {free["id"], listed["id"], modelled["id"], unpriced["id"]}
+
+    async def ids(query: str) -> set[str]:
+        resp = await client.get(f"/players/market?position=DEF&page_size=100&{query}", headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+        return {p["id"] for p in resp.json()["items"]} & ours
+
+    assert await ids("max_price=10000000") == {free["id"], listed["id"]}
+    assert await ids("min_price=5000000&max_price=20000000") == {listed["id"], modelled["id"]}
+    assert await ids("min_price=10000000") == {modelled["id"]}
+    # Filtering and sorting by price together.
+    resp = await client.get(
+        "/players/market?position=DEF&page_size=100&max_price=20000000&sort_by=price&sort_dir=desc", headers=auth_headers,
+    )
+    assert [p["id"] for p in resp.json()["items"] if p["id"] in ours] == [modelled["id"], listed["id"], free["id"]]
+
+
 # ── B4: wage fit ─────────────────────────────────────────────────────────────
 
 

@@ -57,6 +57,15 @@ describe("getDealStatus: finished deals", () => {
     expect(v.primary).toBeUndefined();
   });
 
+  it("a collapsed deal says who called it off, and why when they said", () => {
+    const d = deal({ status: "COLLAPSED", collapsed_by_club_id: "s", collapse_reason: "Failed the medical" });
+    expect(getDealStatus(d, viewer()).body).toBe("Castlebrook called it off: “Failed the medical”");
+    expect(getDealStatus(d, viewer({ side: "seller" })).body).toBe("You called it off: “Failed the medical”");
+    expect(getDealStatus(deal({ status: "COLLAPSED", collapsed_by_club_id: "b" }), viewer()).body).toBe("You called it off.");
+    expect(getDealStatus(deal({ status: "COLLAPSED", collapse_reason: "Duplicate deal" }), viewer()).body).toBe("Reason: “Duplicate deal”");
+    expect(getDealStatus(deal({ status: "COLLAPSED" }), viewer()).body).toBeUndefined();
+  });
+
   it("a completed deal names the next instalment, or says all are paid", () => {
     const inst = (paid: boolean, due: string) => ({ id: due, deal_id: "d1", due_date: due, amount: 1_800_000, paid, paid_at: paid ? due : null });
     const unpaid = getDealStatus(deal({ status: "COMPLETED", stage: "COMPLETED", completed_at: "2026-11-09T10:00:00Z",

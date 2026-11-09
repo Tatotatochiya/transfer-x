@@ -39,6 +39,7 @@ export function useOfferActions(offer: Offer | undefined) {
       // Phase 5 (D7): 202 means the acceptance was captured for approval.
       if ("approval_id" in (deal as object)) {
         addToast("Acceptance sent for approval — an approver at your club must sign it off.", "info");
+        queryClient.invalidateQueries({ queryKey: ["offers", id] });
         queryClient.invalidateQueries({ queryKey: ["clubs", "me", "approvals"] });
         return;
       }

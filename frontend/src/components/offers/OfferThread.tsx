@@ -81,7 +81,7 @@ function MessageBubble({
         }`}
       >
         {!isMine && msg.sender_club && (
-          <p className="mb-1 text-xs font-semibold text-text-muted">
+          <p className="mb-1 text-[13px] font-semibold text-text-muted">
             {/* An anonymous buyer's messages arrive with no sender club (offers router _mask_buyer). */}
             <ClubLink id={msg.sender_club.id} name={msg.sender_club.name} crestUrl={msg.sender_club.crest_url ?? null} />
           </p>
@@ -100,7 +100,7 @@ function EventRow({ evt }: { evt: OfferEvent }) {
   return (
     <div className="flex items-center gap-3 py-1">
       <div className="h-px flex-1 bg-rule" />
-      <span className={`text-xs font-medium ${colour}`}>
+      <span className={`text-[13px] font-medium ${colour}`}>
         {EVENT_LABELS[evt.event_type] ?? evt.event_type}
         <span className="ml-2 text-text-muted font-normal">
           {formatDateTime(evt.created_at)}
@@ -158,7 +158,7 @@ export default function OfferThread({
     <div className="space-y-3">
       {/* Thread items */}
       {items.length === 0 ? (
-        <p className="text-center text-xs text-text-muted py-4">
+        <p className="text-center text-[13px] text-text-muted py-4">
           No messages yet.
         </p>
       ) : (
@@ -185,7 +185,7 @@ export default function OfferThread({
             onChange={(e) => setBody(e.target.value)}
             rows={2}
             placeholder="Write a message… (e.g. why your latest terms are fair)"
-            className="w-full resize-y rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+            className="w-full resize-y rounded-lg bg-surface px-3 py-2 text-base text-text lg:text-sm placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <DraftButton kind="counter_note" id={offer.id} current={body} onDraft={setBody} onDrafted={draftTracking.drafted} />
@@ -193,6 +193,7 @@ export default function OfferThread({
               type="submit"
               variant="primary"
               size="sm"
+              className="min-h-11 lg:min-h-0"
               loading={mutation.isPending}
             >
               Send
@@ -200,7 +201,7 @@ export default function OfferThread({
           </div>
         </form>
       )}
-      {error && <p className="text-xs text-danger-text">{error}</p>}
+      {error && <p className="text-[13px] text-danger-text">{error}</p>}
     </div>
   );
 }

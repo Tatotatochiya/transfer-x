@@ -345,6 +345,11 @@ async def improve_offer(db: AsyncSession, user: User, club, offer, body: OfferIm
 
 
 async def accept_offer(db: AsyncSession, user: User, club, offer, *, ai_assisted: bool = False) -> ActionResult:
+    # An acceptance already waiting on an approver: point at it rather than
+    # asking the approvers a second time.
+    waiting = await service.pending_acceptance(db, offer.id, club.id)
+    if waiting is not None:
+        return ActionResult(approval=waiting)
     # Phase 5 (D7): a MANAGER accepting an offer at/above the club threshold is
     # captured as a pending approval instead of executing.
     terms = dict(

@@ -17,6 +17,7 @@ import DealNotes from "../../components/deals/DealNotes";
 import DealProgress from "../../components/deals/DealProgress";
 import { useDealRealWorld } from "../../components/deals/DealRealWorldNotice";
 import { DealDocuments, DealMessages } from "../../components/deals/DealRoomPanel";
+import { useConversationUnread } from "../../components/conversation/ConversationPanel";
 import DealStatusCard from "../../components/deals/DealStatusCard";
 import DealTermsCard from "../../components/deals/DealTermsCard";
 import DealTimeline from "../../components/deals/DealTimeline";
@@ -117,6 +118,11 @@ export default function DealDetailPage() {
   });
   const isActive = deal?.status === "IN_PROGRESS" || deal?.status === "PENDING_COMPLETION";
   const { data: realWorld } = useDealRealWorld(id, !!isActive);
+
+  // Unread messages for the Messages tab: a club on the deal only (the
+  // conversation is the two clubs'; agents and players read the room).
+  const onDeal = !!deal && !!myClub && (myClub.id === deal.buyer_club_id || myClub.id === deal.seller_club_id);
+  const unread = useConversationUnread({ dealId: id }, onDeal);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Spinner size="lg" /></div>;
@@ -284,7 +290,7 @@ export default function DealDetailPage() {
               <div className="p-3">
                 <SegmentedControl
                   idPrefix="deal-rail" ariaLabel="Messages and documents" size="sm"
-                  items={[{ key: "messages", label: "Messages" }, { key: "documents", label: "Documents" }]}
+                  items={[{ key: "messages", label: "Messages", badge: unread, badgeLabel: "unread" }, { key: "documents", label: "Documents" }]}
                   active={railTab}
                   onChange={(k) => { setRailTab(k as typeof railTab); writeTab(k as Tab); }}
                 />
@@ -302,7 +308,7 @@ export default function DealDetailPage() {
             <div className="mb-4">
               <SegmentedControl
                 idPrefix="deal-section" ariaLabel="Deal sections"
-                items={[{ key: "overview", label: "Overview" }, { key: "messages", label: "Messages" }, { key: "documents", label: "Documents" }]}
+                items={[{ key: "overview", label: "Overview" }, { key: "messages", label: "Messages", badge: unread, badgeLabel: "unread" }, { key: "documents", label: "Documents" }]}
                 active={section}
                 onChange={(k) => writeTab(k as Tab)}
               />

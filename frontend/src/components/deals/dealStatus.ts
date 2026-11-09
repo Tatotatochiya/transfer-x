@@ -132,7 +132,17 @@ function row(deal: Deal, v: StatusViewer): Row {
 
   // 1–2: finished deals.
   if (deal.status === "COLLAPSED") {
-    return { tone: "collapsed", overline: "Collapsed", meta: formatDate(deal.updated_at), headline: "This transfer fell through" };
+    const by = deal.collapsed_by_club_id;
+    const who = !by ? null
+      : by === deal.buyer_club_id ? (v.side === "buyer" ? "You" : B)
+      : by === deal.seller_club_id ? (v.side === "seller" ? "You" : S)
+      : null;
+    const reason = deal.collapse_reason ? `“${deal.collapse_reason}”` : null;
+    const body = who && reason ? `${who} called it off: ${reason}`
+      : who ? `${who} called it off.`
+      : reason ? `Reason: ${reason}`
+      : undefined;
+    return { tone: "collapsed", overline: "Collapsed", meta: formatDate(deal.updated_at), headline: "This transfer fell through", body };
   }
   if (deal.status === "COMPLETED") {
     const headline = isLoan(deal)

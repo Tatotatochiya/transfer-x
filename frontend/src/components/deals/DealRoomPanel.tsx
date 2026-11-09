@@ -45,13 +45,14 @@ function CommentRow({
     <div className="mt-3">
       <div className={`rounded-[10px] px-3 py-2 text-sm ${isMine ? "bg-accent-bg" : "bg-page"}`}>
         <div className="mb-0.5 flex items-center justify-between gap-2">
-          <span className="text-xs font-bold text-text-secondary">{comment.author_label ?? "Unknown"}</span>
-          <span className="text-[11px] text-text-muted">{formatDateTime(comment.created_at)}</span>
+          <span className="text-[13px] font-bold text-text-secondary">{comment.author_label ?? "Unknown"}</span>
+          <span className="text-[13px] text-text-muted">{formatDateTime(comment.created_at)}</span>
         </div>
         <p className="whitespace-pre-wrap break-words text-[13px] leading-normal text-text">{comment.body}</p>
         <button
+          type="button"
           onClick={() => onReply(comment)}
-          className="mt-1 text-[11px] text-text-muted transition-colors hover:text-text-secondary"
+          className="-ml-1 mt-1 inline-flex min-h-11 lg:min-h-0 items-center px-1 text-[13px] text-text-muted transition-colors hover:text-text-secondary"
         >
           Reply
         </button>
@@ -59,8 +60,8 @@ function CommentRow({
       {replies.map((r) => (
         <div key={r.id} className="ml-6 mt-2 rounded-[10px] bg-surface-inset px-3 py-2 text-sm">
           <div className="mb-0.5 flex items-center justify-between gap-2">
-            <span className="text-xs font-bold text-text-secondary">{r.author_label ?? "Unknown"}</span>
-            <span className="text-[11px] text-text-muted">{formatDateTime(r.created_at)}</span>
+            <span className="text-[13px] font-bold text-text-secondary">{r.author_label ?? "Unknown"}</span>
+            <span className="text-[13px] text-text-muted">{formatDateTime(r.created_at)}</span>
           </div>
           <p className="whitespace-pre-wrap break-words text-[13px] leading-normal text-text">{r.body}</p>
         </div>
@@ -150,9 +151,9 @@ function CommentThread({
       {canWrite && (
         <form onSubmit={handleSubmit} className="mt-4 border-t border-rule pt-3">
           {replyTo && (
-            <div className="mb-2 flex items-center justify-between rounded-lg bg-surface-inset px-3 py-1.5 text-xs text-text-muted">
+            <div className="mb-2 flex items-center justify-between rounded-lg bg-surface-inset px-3 py-1.5 text-[13px] text-text-muted">
               <span>Replying to <span className="text-text-secondary">{replyTo.author_label}</span></span>
-              <button type="button" onClick={() => setReplyTo(null)} className="text-text-muted hover:text-text">✕</button>
+              <button type="button" aria-label="Stop replying" onClick={() => setReplyTo(null)} className="-mr-2 flex h-11 w-11 items-center justify-center text-text-muted hover:text-text lg:h-7 lg:w-7">✕</button>
             </div>
           )}
           <textarea
@@ -160,7 +161,7 @@ function CommentThread({
             onChange={(e) => setBody(e.target.value)}
             rows={2}
             placeholder={`Write to ${channelLabel}…`}
-            className="w-full resize-none rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
+            className="w-full resize-none rounded-lg bg-surface px-3 py-2 text-base text-text placeholder-text-muted lg:text-sm ring-1 ring-input-border focus:outline-none focus:ring-accent"
           />
           {participants.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -170,7 +171,7 @@ function CommentThread({
                   key={p.user_id}
                   type="button"
                   onClick={() => toggleMention(p)}
-                  className={`rounded-full px-2 py-0.5 text-[13px] font-medium ring-1 transition-colors ${
+                  className={`inline-flex min-h-11 lg:min-h-0 items-center rounded-full px-2.5 py-0.5 text-[13px] font-medium ring-1 transition-colors ${
                     mentions.some((m) => m.user_id === p.user_id)
                       ? "bg-accent-bg text-accent-active ring-accent"
                       : "bg-surface-inset text-text-muted ring-input-border hover:text-text"
@@ -190,7 +191,7 @@ function CommentThread({
               onDraft={setBody}
               onDrafted={draftTracking.drafted}
             />
-            <Button type="submit" variant="primary" size="sm" loading={mutation.isPending} disabled={!body.trim()}>
+            <Button type="submit" variant="primary" size="sm" className="min-h-11 lg:min-h-0" loading={mutation.isPending} disabled={!body.trim()}>
               Post
             </Button>
           </div>
@@ -264,12 +265,12 @@ function DocumentsTab({
                 <p className="flex items-center gap-1.5 truncate text-[13px] font-medium text-text">
                   {a.filename}
                   {a.audience !== "SHARED" && (
-                    <span className="shrink-0 rounded-full bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-warning-text">
+                    <span className="shrink-0 rounded-full bg-warning-bg px-1.5 py-0.5 text-[13px] font-semibold text-warning-text">
                       Private
                     </span>
                   )}
                 </p>
-                <p className="text-[11px] text-text-muted">
+                <p className="text-[13px] text-text-muted">
                   {formatFileSize(a.size_bytes)} · {a.uploaded_by_label ?? "Unknown"} · {formatDateTime(a.created_at)}
                 </p>
               </div>
@@ -282,11 +283,11 @@ function DocumentsTab({
       {canWrite && (
         <div className="mt-4">
           {privateAudience && (
-            <div className="mb-2 flex w-fit gap-1 rounded-lg bg-surface-inset p-0.5 text-[11px]">
+            <div className="mb-2 flex w-fit gap-1 rounded-lg bg-surface-inset p-0.5 text-[13px]">
               <button
                 type="button"
                 onClick={() => setAudience("SHARED")}
-                className={`rounded-md px-2 py-1 font-medium transition-colors ${
+                className={`min-h-11 lg:min-h-0 rounded-md px-3 py-1 font-medium transition-colors ${
                   audience === "SHARED" ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
                 }`}
               >
@@ -295,7 +296,7 @@ function DocumentsTab({
               <button
                 type="button"
                 onClick={() => setAudience(privateAudience)}
-                className={`rounded-md px-2 py-1 font-medium transition-colors ${
+                className={`min-h-11 lg:min-h-0 rounded-md px-3 py-1 font-medium transition-colors ${
                   audience === privateAudience ? "bg-warning-bg text-warning-text" : "text-text-muted hover:text-text"
                 }`}
               >
@@ -303,7 +304,7 @@ function DocumentsTab({
               </button>
             </div>
           )}
-          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-input-border px-4 py-3 text-xs text-text-muted transition-colors hover:border-accent hover:text-text">
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-input-border px-4 py-3 text-[13px] text-text-muted transition-colors hover:border-accent hover:text-text">
             {uploading ? "Uploading…" : "+ Upload file (PDF, DOC, JPG, PNG — max 10MB)"}
             <input
               type="file"

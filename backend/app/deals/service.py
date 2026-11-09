@@ -847,8 +847,14 @@ async def collapse_deal(
     actor_club_id: uuid.UUID,
     is_staff: bool = False,
     actor_user_id: uuid.UUID | None = None,
+    reason: str | None = None,
+    by_club: bool = True,
 ) -> Deal:
     """Collapse a deal — releases buyer's committed budget.
+
+    `reason`, optional, is stored on the audit event, which both clubs can
+    read on the deal's timeline. `by_club` is False for the staff override,
+    so the deal doesn't say a club called it off.
 
     Item 4: a collapsed deal used to leave the world exactly as it was at the
     moment of acceptance — the originating sale stayed CLOSED forever and past
@@ -884,12 +890,14 @@ async def collapse_deal(
             finance.wage_committed_weekly = max(Decimal("0"), finance.wage_committed_weekly - wage)
 
     deal.status = DealStatus.COLLAPSED
+    reason = (reason or "").strip() or None
     await audit_service.emit(
         db,
         entity_type="DEAL", entity_id=deal.id,
         action="DEAL_COLLAPSED",
         actor_user_id=actor_user_id,
-        description="Deal collapsed — committed budget released",
+        payload={"reason": reason, "club_id": str(actor_club_id) if by_club else None},
+        description="Deal collapsed — committed budget released" + (f". Reason: {reason}" if reason else ""),
     )
 
     if deal.sale_id:
@@ -897,6 +905,24 @@ async def collapse_deal(
 
     await db.flush()
     return deal
+
+
+async def collapse_details(db: AsyncSession, deal: Deal) -> tuple[str | None, uuid.UUID | None]:
+    """(reason, club that collapsed it) from the deal's DEAL_COLLAPSED audit
+    event; (None, None) when it isn't collapsed or nothing was recorded."""
+    if deal.status != DealStatus.COLLAPSED:
+        return None, None
+    from app.audit.models import AuditEvent
+
+    ev = (await db.execute(
+        select(AuditEvent)
+        .where(AuditEvent.entity_type == "DEAL", AuditEvent.entity_id == deal.id, AuditEvent.action == "DEAL_COLLAPSED")
+        .order_by(AuditEvent.created_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+    payload = (ev.payload_json if ev else None) or {}
+    club = payload.get("club_id")
+    return payload.get("reason"), uuid.UUID(club) if club else None
 
 
 async def _reopen_sale_after_collapse(db: AsyncSession, deal: Deal) -> None:
@@ -974,7 +1000,7 @@ async def staff_complete(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UU
 async def staff_collapse(db: AsyncSession, deal: Deal, *, actor_user_id: uuid.UUID | None = None) -> Deal:
     """Staff override: force deal to COLLAPSED."""
     return await collapse_deal(
-        db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id,
+        db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id, by_club=False,
     )
 
 

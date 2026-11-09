@@ -139,7 +139,10 @@ describe("DealDetailPage, answer first", () => {
     expect(screen.queryByRole("button", { name: /Collapse deal/ })).not.toBeInTheDocument();
     await userEvent.click(screen.getAllByRole("button", { name: "More ⋯" })[0]);
     await userEvent.click(screen.getByRole("menuitem", { name: "Collapse deal…" }));
-    expect(screen.getByRole("dialog", { name: "Collapse this deal?" })).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "Collapse this deal?" });
+    await userEvent.type(within(dialog).getByLabelText("Reason (optional)"), "Failed the medical");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Confirm collapse" }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/deals/d1/collapse", { reason: "Failed the medical" }));
   });
 
   it("without DEAL_WRITE there is nothing to do, and no collapse", async () => {

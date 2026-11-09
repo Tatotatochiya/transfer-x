@@ -649,6 +649,20 @@ async def offer_card(db: AsyncSession, user, *, offer_id: uuid.UUID) -> dict:
         ))).scalars().first()
         valuation = float(v) if v is not None else None
 
+    # The seller's own asking price for him: the offer's listing if it has
+    # one, else his open fixed-price or open-to-offers listing (as _prices).
+    asking = None
+    if side == "seller":
+        from app.sales.models import Sale, SaleStatus, SaleType
+
+        sale_q = select(Sale.asking_price).where(Sale.seller_club_id == club.id, Sale.asking_price.is_not(None))
+        sale_q = (
+            sale_q.where(Sale.id == offer.sale_id) if offer.sale_id is not None
+            else sale_q.where(Sale.player_id == offer.player_id, Sale.status == SaleStatus.OPEN, Sale.sale_type != SaleType.AUCTION)
+        )
+        a = (await db.execute(sale_q.order_by(Sale.created_at.desc()).limit(1))).scalars().first()
+        asking = float(a) if a is not None else None
+
     counter = None
     if your_move and not loan:
         if side == "seller" and valuation and valuation > fee:
@@ -698,6 +712,7 @@ async def offer_card(db: AsyncSession, user, *, offer_id: uuid.UUID) -> dict:
         "disabled_reason": disabled,
         "expires_at": offer.expires_at.isoformat() if offer.expires_at else None,
         "your_valuation": valuation,
+        "your_asking_price": asking,
         "last_change": _last_change(offer, club.id, loan),
     }
 
