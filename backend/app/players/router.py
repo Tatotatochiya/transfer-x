@@ -67,7 +67,7 @@ async def player_market(
     min_market_value: Decimal | None = Query(None, ge=0),
     max_market_value: Decimal | None = Query(None, ge=0),
     contract_expiry_within_months: int | None = Query(None, ge=1, le=36),
-    sort_by: str = Query("name", pattern="^(name|age|goals|assists|appearances|avg_rating|form_score|value)$"),
+    sort_by: str = Query("name", pattern="^(name|age|goals|assists|appearances|avg_rating|form_score|value|price)$"),
     sort_dir: str = Query("asc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(24, ge=1, le=100),

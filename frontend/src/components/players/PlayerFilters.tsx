@@ -25,7 +25,7 @@ export interface PlayerFilterState {
   min_value: string;
   max_value: string;
   contract_expiry_months: string;
-  sort_by: "name" | "age" | "goals" | "assists" | "appearances" | "avg_rating" | "form_score";
+  sort_by: "name" | "age" | "goals" | "assists" | "appearances" | "avg_rating" | "form_score" | "value" | "price";
   sort_dir: "asc" | "desc";
 }
 

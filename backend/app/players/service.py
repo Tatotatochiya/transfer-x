@@ -354,6 +354,30 @@ async def list_own_players(
     return list(rows.scalars()), total
 
 
+def _latest_valuation_subquery():
+    """One row per player: his most recent fair value (pid, s_fair_value)."""
+    from app.valuation.models import PlayerValuation
+
+    val_rn = (
+        select(
+            PlayerValuation.player_id.label("pid"),
+            PlayerValuation.fair_value.label("s_fair_value"),
+            func.row_number()
+            .over(
+                partition_by=PlayerValuation.player_id,
+                order_by=PlayerValuation.computed_at.desc(),
+            )
+            .label("rn"),
+        )
+        .subquery("val_rn")
+    )
+    return (
+        select(val_rn.c.pid, val_rn.c.s_fair_value)
+        .where(val_rn.c.rn == 1)
+        .subquery("val_latest")
+    )
+
+
 async def list_market_players(
     db: AsyncSession,
     *,
@@ -498,36 +522,45 @@ async def list_market_players(
     elif sort_by == "age":
         order_col = Player.age
     elif sort_by == "value":
-        # B3: server-side "best value first" — PlayerMarketPage.tsx's own
-        # comment documents this as page-local-only today because this param
-        # didn't exist ("the /players/market endpoint only accepts
-        # name|age|goals|assists|appearances|avg_rating|form_score"). Ranks by
-        # fair-value model score minus nominal market_value (desc = most
-        # undervalued first); nullslast below handles players with no
-        # valuation row or no market_value the same way every other sort here
-        # already handles missing data.
-        from app.valuation.models import PlayerValuation
-
-        val_rn = (
-            select(
-                PlayerValuation.player_id.label("pid"),
-                PlayerValuation.fair_value.label("s_fair_value"),
-                func.row_number()
-                .over(
-                    partition_by=PlayerValuation.player_id,
-                    order_by=PlayerValuation.computed_at.desc(),
-                )
-                .label("rn"),
-            )
-            .subquery("val_rn")
-        )
-        val_latest = (
-            select(val_rn.c.pid, val_rn.c.s_fair_value)
-            .where(val_rn.c.rn == 1)
-            .subquery("val_latest")
-        )
+        # B3: server-side "best value first". Ranks by fair-value model score
+        # minus nominal market_value (desc = most undervalued first); nullslast
+        # below handles players with no valuation row or no market_value the
+        # same way every other sort here already handles missing data.
+        val_latest = _latest_valuation_subquery()
         q = q.outerjoin(val_latest, Player.id == val_latest.c.pid)
         order_col = val_latest.c.s_fair_value - Player.market_value
+    elif sort_by == "price":
+        # "Cheapest": what he would cost here. A free agent costs nothing; else
+        # an open fixed/offers listing's asking price; else the fee model. This
+        # is lite/service._prices without its 30% contract-ending discount,
+        # which needs a per-player contract lookup SQL can't sort on cheaply.
+        from app.sales.models import Sale, SaleStatus, SaleType
+
+        val_latest = _latest_valuation_subquery()
+        sale_rn = (
+            select(
+                Sale.player_id.label("pid"),
+                Sale.asking_price.label("s_asking"),
+                func.row_number()
+                .over(partition_by=Sale.player_id, order_by=Sale.created_at.desc())
+                .label("rn"),
+            )
+            .where(Sale.status == SaleStatus.OPEN, Sale.sale_type != SaleType.AUCTION)
+            .subquery("sale_rn")
+        )
+        open_sale = (
+            select(sale_rn.c.pid, sale_rn.c.s_asking)
+            .where(sale_rn.c.rn == 1)
+            .subquery("open_sale")
+        )
+        q = (
+            q.outerjoin(val_latest, Player.id == val_latest.c.pid)
+            .outerjoin(open_sale, Player.id == open_sale.c.pid)
+        )
+        order_col = case(
+            (Player.status == PlayerStatus.FREE_AGENT, 0),
+            else_=func.coalesce(open_sale.c.s_asking, val_latest.c.s_fair_value),
+        )
     else:
         order_col = Player.name
 

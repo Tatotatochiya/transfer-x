@@ -295,6 +295,56 @@ async def test_market_sort_by_value_ranks_most_undervalued_first(client: AsyncCl
     assert ids.index(overpriced["id"]) < ids.index(unvalued["id"])
 
 
+async def _make_contracted(db, player_id: str, club_id: str) -> None:
+    from sqlalchemy import select
+
+    from app.players.models import Player, PlayerStatus
+
+    p = (await db.execute(select(Player).where(Player.id == uuid.UUID(player_id)))).scalar_one()
+    p.status = PlayerStatus.CONTRACTED
+    p.current_club_id = uuid.UUID(club_id)
+    await db.commit()
+
+
+async def test_market_sort_by_price_free_agents_then_asking_or_model_price(
+    client: AsyncClient, auth_headers: dict, db
+):
+    from decimal import Decimal
+
+    from app.sales.models import Sale, SaleStatus, SaleType
+
+    club_id = (await client.get("/clubs/me", headers=auth_headers)).json()["id"]
+    free = await _create_player(client, auth_headers, "Price Free Agent", position="GK")
+    listed = await _create_player(client, auth_headers, "Price Listed", position="GK")
+    modelled = await _create_player(client, auth_headers, "Price Modelled", position="GK")
+    unpriced = await _create_player(client, auth_headers, "Price Unknown", position="GK")
+    for p in (listed, modelled, unpriced):
+        await _make_contracted(db, p["id"], club_id)
+
+    # Listed at £8M with a model price of £20M: the asking price wins, so he
+    # sorts ahead of the £12M model-priced player.
+    await _seed_market_valuation(db, listed["id"], Decimal("20000000"))
+    db.add(Sale(
+        player_id=uuid.UUID(listed["id"]), seller_club_id=uuid.UUID(club_id),
+        sale_type=SaleType.FIXED_PRICE, asking_price=Decimal("8000000"),
+        min_increment=Decimal("500000"), status=SaleStatus.OPEN,
+    ))
+    await db.commit()
+    await _seed_market_valuation(db, modelled["id"], Decimal("12000000"))
+
+    async def order(direction: str) -> list[str]:
+        resp = await client.get(
+            f"/players/market?sort_by=price&sort_dir={direction}&position=GK&page_size=50", headers=auth_headers
+        )
+        assert resp.status_code == 200, resp.text
+        ids = [p["id"] for p in resp.json()["items"]]
+        return [i for i in ids if i in {free["id"], listed["id"], modelled["id"], unpriced["id"]}]
+
+    assert await order("asc") == [free["id"], listed["id"], modelled["id"], unpriced["id"]]
+    # Reversed, with no price still last.
+    assert await order("desc") == [modelled["id"], listed["id"], free["id"], unpriced["id"]]
+
+
 # ── B4: wage fit ─────────────────────────────────────────────────────────────
 
 
