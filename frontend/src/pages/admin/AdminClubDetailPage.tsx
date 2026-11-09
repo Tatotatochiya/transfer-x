@@ -10,6 +10,7 @@ import Metric from "../../components/ui/Metric";
 import Spinner from "../../components/ui/Spinner";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
 import { useAskReason, useConfirm } from "../../context/ConfirmContext";
+import { weeklyWageWarning } from "../../lib/budgetSanity";
 import FallbackImage from "../../components/ui/FallbackImage";
 
 const ROLES = ["BUYER", "SELLER", "BOTH", "ADMIN"];
@@ -304,6 +305,11 @@ export default function AdminClubDetailPage() {
                   onChange={(e) => setFWage(e.target.value)}
                   className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
                 />
+                {weeklyWageWarning(fWage) && (
+                  <p role="status" className="mt-1.5 rounded-md bg-warning-bg px-2.5 py-1.5 text-[13px] text-warning-text ring-1 ring-warning-fill/30">
+                    {weeklyWageWarning(fWage)}
+                  </p>
+                )}
               </div>
               {financeMutation.isError && (
                 <p className="text-xs text-danger-text">{getApiError(financeMutation.error, "Save failed.")}</p>
