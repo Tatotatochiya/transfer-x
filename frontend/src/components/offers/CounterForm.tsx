@@ -204,13 +204,15 @@ export default function CounterForm({
     onDone(false);
   }
 
-  // ── One-tap amounts (permanent only): suggested, valuation, my last ──────
+  // ── One-tap amounts (permanent only): suggested, asking, valuation, my last
   const theirFee = offer.fee_amount != null ? Number(offer.fee_amount) : null;
   const valuation = side === "seller" ? card?.your_valuation ?? null : null;
+  const asking = side === "seller" ? card?.your_asking_price ?? null : null;
   const amounts: { amount: number; label: string }[] = [];
   if (!loan) {
     for (const [amount, label] of [
       [card?.counter_suggestion ?? null, "Suggested"],
+      [asking, "Your asking price"],
       [valuation, "Your valuation"],
       [myLastFee ?? null, side === "seller" ? "Your last ask" : "Your last offer"],
     ] as [number | null, string][]) {

@@ -178,13 +178,17 @@ export function getOfferStatus(offer: Offer, viewer: OfferViewer): OfferStatusVi
     }
 
     const body: string[] = [];
-    // The valuation is the selling club's alone (§9): never read for the buyer.
+    // The gap to the seller's own figure: its asking price where it listed
+    // one (the number the market saw), else its private valuation. Both are
+    // the selling club's alone (§9): never read for the buyer.
+    const asking = side === "seller" ? card?.your_asking_price ?? null : null;
     const val = side === "seller" ? card?.your_valuation ?? null : null;
-    if (!loan && val != null && offer.fee_amount != null) {
+    const [mark, word] = asking != null ? [asking, "asking price"] : [val, "valuation"];
+    if (!loan && mark != null && offer.fee_amount != null) {
       const fee = Number(offer.fee_amount);
-      body.push(fee < val
-        ? `That's ${formatCurrency(val - fee)} under your ${formatCurrency(val)} valuation.`
-        : `That's at or above your ${formatCurrency(val)} valuation.`);
+      body.push(fee < mark
+        ? `That's ${formatCurrency(mark - fee)} under your ${formatCurrency(mark)} ${word}.`
+        : `That's at or above your ${formatCurrency(mark)} ${word}.`);
     }
     if (loan) {
       const purchase = offer.obligation_to_buy && offer.option_to_buy != null

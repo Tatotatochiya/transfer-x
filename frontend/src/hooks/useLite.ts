@@ -118,6 +118,8 @@ export interface LiteOfferCard {
   expires_at: string | null;
   /** The selling club's own valuation (seller's card only; confidential). */
   your_valuation?: number | null;
+  /** Seller only: its own listing's asking price for him, if it set one. */
+  your_asking_price?: number | null;
   /** The latest counter or raise, and what each term it changed was before. */
   last_change?: {
     by: "you" | "them";

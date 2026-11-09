@@ -50,6 +50,13 @@ describe("getOfferStatus: your move", () => {
       .toBe("That's at or above your £4,000,000 valuation.");
   });
 
+  it("prefers the seller's asking price to its valuation", () => {
+    const v = getOfferStatus(offer(), seller({ card: card({ your_valuation: 4_800_000, your_asking_price: 5_000_000 }) }));
+    expect(v.body).toBe("That's £800,000 under your £5,000,000 asking price.");
+    expect(getOfferStatus(offer(), seller({ card: card({ your_asking_price: 4_000_000 }) })).body)
+      .toBe("That's at or above your £4,000,000 asking price.");
+  });
+
   it("has no gap sentence without the Lite card", () => {
     expect(getOfferStatus(offer(), seller()).body).toBeUndefined();
   });
@@ -63,9 +70,9 @@ describe("getOfferStatus: your move", () => {
 
   it("never states the valuation to the buyer, even if a card carries one", () => {
     const o = offer({ status: "COUNTERED", last_actor_club_id: SELLER, events: [ev("SENT", BUYER), ev("COUNTERED", SELLER)] });
-    const v = getOfferStatus(o, buyer({ isMyTurn: true, card: card({ other_club: "Ashfield United", your_valuation: 9_000_000 }) }));
+    const v = getOfferStatus(o, buyer({ isMyTurn: true, card: card({ other_club: "Ashfield United", your_valuation: 9_000_000, your_asking_price: 8_000_000 }) }));
     expect(v.headline).toBe("Ashfield United countered at £4,200,000");
-    expect(JSON.stringify(v)).not.toMatch(/valuation|9,000,000/);
+    expect(JSON.stringify(v)).not.toMatch(/valuation|asking|9,000,000|8,000,000/);
   });
 
   it("without MARKET_WRITE it is the club's move, not yours, with no actions", () => {
