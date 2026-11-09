@@ -1,11 +1,13 @@
 ---
 title: "Browse Players, players first (plus four quick fixes)"
 last_updated: 2026-11-09
-status: Active
+status: Implemented
 owner: "TODO — assign a Product Owner"
 ---
 
 # Browse Players, players first
+
+**Implemented 2026-11-09.** Part 1 on `quick-fixes-nov`, part 2 on `browse-players-focus`. Where the build differs from the text below, see [Review revisions](#review-revisions) and [Deviations](#deviations).
 
 Written against `Tatotatochiya/transfer-x` `main` at `e91795b` (9 Nov 2026). Route: `/players/market`. Page: `frontend/src/pages/market/PlayerMarketPage.tsx` (429 lines).
 
@@ -511,3 +513,37 @@ New pieces: `MarketHeader` (title, count, budget line), `MarketSearch`, `MarketT
 - **Price figures on rows** follow `lib/playerPrice` (asking price, else model), not the mock's sample numbers.
 - **"Buy" and "Sell" in the mock's top bar** are today's AppShell, unchanged by this spec.
 - **Sample data.** The mock's players, values and form scores are samples.
+
+---
+
+## Review revisions
+
+Decisions taken while building, where the spec was silent, self-contradictory or would have misbehaved. Each is the default the build ships with.
+
+- **R1. Removing "On TransferX" turns it off.** It is the default (`buyable: true`), so "reset the field to `DEFAULT_PLAYER_FILTERS`" would leave it on and the chip would never go.
+- **R2. "Clear" keeps the name search and the sort**, in the chip row, the sheet's "Clear all" and the rail's "Clear all filters" alike. The sort isn't a filter and has no chip; clearing filters shouldn't change it.
+- **R3. The name search is now debounced (300ms).** §5.7 calls that today's behaviour; the old rail field set the filter on every keystroke.
+- **R4. "Show {n} more" says how many will load:** the page size (24 grid, 40 list) or what remains. The phone list is 40 a page, so it reads "Show 40 more", not the mock's 24.
+- **R5. No "{n} of {total}" beside Sort on laptops.** It repeated the title's count and Pagination's "1–24 of 60" without saying anything new.
+- **R6. Chips for the two fields §5.5 didn't label:** status ("Free agents", "On TransferX clubs", "At clubs outside TransferX") and a one-sided value range ("€5M+ market value", "Up to €20M market value").
+- **R7. The Sort menu is `MoreMenu`** with new optional props (`label`, `menuLabel`, `triggerClassName`, `align`; items with `checked` render as `menuitemradio`). The deal and offer pages' More menus are unchanged. The button shows a short label ("Sort: Name"); the menu shows "Name (A–Z)".
+- **R8. Part 1's chips:** picking the active chip again returns to Name (A–Z), the default.
+- **R9. The picks row in a grid** goes after the first card row, measured from the grid's real column count, since auto-fill columns aren't known in advance.
+- **R10. `formatCompact`** writes thousands as "K" ("£609K") beside "M", so the budget line is consistent when the wage room is under £1M.
+- **R11. The rail scrolls on its own** (`max-height: 100vh − 6rem`): saved views plus every filter is taller than a 790px laptop screen, so a plain sticky rail would hide its bottom.
+- **R12. The budget line renders once:** in the header from 640px, under the chips below 640px, not twice with one hidden by CSS.
+- **R13. `lib/playerPrice`** has two parts: `askingPrice` keeps the list row's `market_value` fallback exactly; `playerPrice` adds the free agent ("Free") and the model fallback for `PlayerRow`.
+- **R14. Saved views in the sheet** show their star, rename and delete buttons at 44px all the time; on the rail they still appear on hover.
+- **R15. The spec was added to the repo in part 1,** so part 1's changelog link resolves.
+
+## Deviations
+
+- **Code that differs from the spec, left as it was:**
+  - `localStorage.playerMarketView` is written but never read: from 640px the first view comes from the account preference (`defaultMarketView`) only. Unchanged, as D5 asks.
+  - `PlayerCard` is a clickable `div`, not a link, so grid results are not "a list of links" (§8). Unchanged; the phone list rows are links.
+  - The AI player search card was only used here, so it is gone; `NLPlayerSearch.tsx` now holds only `FilterChips`.
+- **At 1024px the grid is one column** (439px): beside the sidebar and rail, two need 452px and the scrollbar takes 15px. No card is under 220px, which is the criterion.
+- **Checked on screen (local demo data, Manchester City):** phone 390×700 and 375×667 (first player at 315px; five and four rows visible), the filters sheet at 390 and as the 560px dialog at 768, the Sort menu, iPad 768 (three columns), 1024, 1280 and 1440 (narrowest card 224px), dark theme at 390 and 1280, signed out at 390. No horizontal scroll at any size.
+- **Not checked:** a real iPhone (sheet footer above the home indicator, keyboard over the search box), blocked photos in devtools (covered by `FallbackImage` tests), 200% zoom. Lint can't run (no eslint in the repo).
+- **Follow-up tickets (suggested, not raised):** Q1, a price filter in pounds matching the Cheapest sort; review item 7, the demo data's weekly wage ceiling (£50M a week) and a sanity warning on the Finance form.
+

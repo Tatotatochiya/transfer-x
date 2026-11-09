@@ -1,6 +1,6 @@
 ---
 title: "Responsive Behaviour"
-last_updated: 2026-10-11
+last_updated: 2026-11-09
 status: Active
 owner: "TODO — assign a Design Owner"
 ---
@@ -149,13 +149,14 @@ context).
 
 ## Filter rails
 
-Browse Players has a persistent left filter rail on desktop.
+Browse Players has a sticky left filter rail from 1024px (it scrolls on its own when taller than the screen).
 
-- **Tablet:** collapses to a "Filters (3)" button that opens a sheet from the bottom, showing the
-  active count.
-- **Mobile:** same sheet, full height. Sort chips stay visible above the results as a
-  horizontally scrollable row — this is the one place horizontal scroll is allowed, because the
-  chips are clearly a single-axis strip.
+- **Below 1024px:** a "Filters (n)" button in a sticky toolbar opens a `Sheet`: full height on phones, the 560px centred dialog on tablets. Saved views go at the top. The sheet edits a draft: "Show {n} players" applies it with a live count, and closing with unapplied changes asks first.
+- The active filters show above the results as removable chips, a horizontally scrollable row below 1024px. That is the one place horizontal scroll is allowed, because the chips are clearly a single-axis strip.
+
+## Grids
+
+Card grids use `grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))`, never breakpoint column counts. Breakpoints measure the window and ignore the sidebar and any rail, which squeezed Browse Players' cards to ~165px at 1280px.
 
 ## Touch targets
 
