@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import FallbackImage from "./FallbackImage";
 
 interface ClubLinkProps {
   /** Registered club ID → routes to /clubs/{id} */
@@ -38,13 +39,7 @@ export default function ClubLink({
 
   const content = showCrestSlot ? (
     <>
-      {crestUrl ? (
-        <img src={crestUrl} alt="" loading="lazy" className="h-4 w-4 shrink-0 object-contain" />
-      ) : (
-        <span className="h-4 w-4 shrink-0 rounded-full bg-surface-inset flex items-center justify-center text-[11px] font-bold text-text-muted">
-          {name[0]?.toUpperCase()}
-        </span>
-      )}
+      <FallbackImage src={crestUrl} name={name} kind="club" sizeClass="h-4 w-4 text-[9px]" colorClass="bg-surface-inset text-text-muted" />
       <span className="truncate">{name}</span>
     </>
   ) : (

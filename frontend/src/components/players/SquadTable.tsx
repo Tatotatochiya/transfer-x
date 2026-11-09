@@ -4,6 +4,7 @@ import type { ActiveDealStub, FairValueSignal, Player, PlayerDetail } from "../.
 import { parseValuation } from "../../lib/money";
 import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
 import PlayerLink from "../ui/PlayerLink";
+import FallbackImage from "../ui/FallbackImage";
 
 /**
  * The squad as one compact table (docs/feature_spec/my-club-compact-squad):
@@ -167,13 +168,13 @@ function PlayerRow({
     >
       {/* Player */}
       <div role="cell" className="flex min-w-0 items-center gap-2.5">
-        {player.photo_url ? (
-          <img src={player.photo_url} alt="" loading="lazy" className="h-[26px] w-[26px] shrink-0 rounded-full object-cover object-top ring-1 ring-border" />
-        ) : (
-          <span className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-xs font-bold ${player.position ? POSITION_COLOUR[player.position] : "bg-surface-inset text-text-muted"}`}>
-            {player.name[0]?.toUpperCase()}
-          </span>
-        )}
+        <FallbackImage
+          src={player.photo_url}
+          name={player.name}
+          sizeClass="h-[26px] w-[26px] text-[11px]"
+          colorClass={player.position ? POSITION_COLOUR[player.position] : "bg-surface-inset text-text-muted"}
+          className={player.photo_url ? "ring-1 ring-border" : ""}
+        />
         <PlayerLink id={player.id} name={player.name} title={player.name} className="min-w-0 truncate text-sm font-semibold text-text" />
         {meta && <span className="shrink-0 text-text-muted">{meta}</span>}
       </div>

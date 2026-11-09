@@ -4,6 +4,7 @@ import Spinner from "../../components/ui/Spinner";
 import { useClubDashboard } from "../../hooks/useClubDashboard";
 import { liteMoney } from "../../lib/liteMoney";
 import type { DashboardItem } from "../../types/api";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 const KIND_WORD: Record<DashboardItem["kind"], string> = {
   offer: "Offer", approval: "Your approval", deal: "Transfer", enquiry: "Enquiry",
@@ -52,9 +53,7 @@ export default function LiteOffersPage() {
                 >
                   {/* His photo; the card it opens links to his profile. */}
                   {item.player_name && (
-                    item.player_photo_url
-                      ? <img src={item.player_photo_url} alt="" className="h-16 w-16 shrink-0 rounded-full bg-surface-inset object-cover object-top" />
-                      : <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-surface-inset text-[1.5rem] font-extrabold text-text-muted">{item.player_name[0]?.toUpperCase()}</span>
+                    <FallbackImage src={item.player_photo_url} name={item.player_name} sizeClass="h-16 w-16 text-[1.5rem]" colorClass="bg-surface-inset text-text-muted" className="font-extrabold" />
                   )}
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-2">

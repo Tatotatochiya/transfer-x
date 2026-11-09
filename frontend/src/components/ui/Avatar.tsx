@@ -1,4 +1,5 @@
 import type { IdentityRole } from "../../hooks/useIdentity";
+import FallbackImage from "./FallbackImage";
 
 const ROLE_STYLE: Record<IdentityRole, string> = {
   CLUB: "bg-role-club-bg text-role-club-text",
@@ -36,7 +37,7 @@ export default function Avatar({ name, crestUrl, role, isSuperuser, size = "md",
       } ${SIZE_CLASSES[size]} ${roleClass} ${ringClass} ${className}`}
     >
       {crestUrl ? (
-        <img src={crestUrl} alt="" className="h-full w-full object-contain p-1" />
+        <FallbackImage src={crestUrl} name={name ?? "?"} kind="club" sizeClass="h-full w-full" colorClass="" />
       ) : (
         (name ?? "?")[0]?.toUpperCase() ?? "?"
       )}

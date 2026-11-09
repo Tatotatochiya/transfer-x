@@ -80,16 +80,18 @@ describe("PlayerCard", () => {
     expect(screen.getByText(/Egypt/)).toBeInTheDocument();
   });
 
-  it("shows initial letter avatar when no photo", () => {
+  it("shows initials when there is no photo", () => {
     renderWithProviders(<PlayerCard player={BASE_PLAYER} />);
-    expect(screen.getByText("M")).toBeInTheDocument(); // first letter of "Mohamed"
+    expect(screen.getByText("MS")).toBeInTheDocument(); // Mohamed Salah
   });
 
   it("renders photo img when photo_url is set", () => {
     const player: Player = { ...BASE_PLAYER, photo_url: "https://example.com/salah.jpg" };
-    renderWithProviders(<PlayerCard player={player} />);
-    const img = screen.getByRole("img", { name: "Mohamed Salah" });
+    const { container } = renderWithProviders(<PlayerCard player={player} />);
+    // Decorative (alt=""): the name is printed beside it.
+    const img = container.querySelector("img");
     expect(img).toHaveAttribute("src", "https://example.com/salah.jpg");
+    expect(img).toHaveAttribute("alt", "");
   });
 
   it("renders form badge when formScore provided", () => {

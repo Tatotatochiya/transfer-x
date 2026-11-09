@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Player } from "../../types/api";
 import { useCompare } from "../../context/CompareContext";
+import FallbackImage from "../ui/FallbackImage";
 
 function PlayerSlot({ id, onRemove }: { id: string; onRemove: () => void }) {
   const { data: player } = useQuery<Player>({
@@ -13,13 +14,7 @@ function PlayerSlot({ id, onRemove }: { id: string; onRemove: () => void }) {
 
   return (
     <div className="flex items-center gap-2 rounded-lg bg-white/10 px-2.5 py-1.5 ring-1 ring-white/15">
-      {player?.photo_url ? (
-        <img src={player.photo_url} alt={player.name} className="h-6 w-6 shrink-0 rounded-full object-cover" />
-      ) : (
-        <div className="h-6 w-6 shrink-0 rounded-full bg-white/15 flex items-center justify-center text-[11px] font-bold text-white/80">
-          {player?.name[0]?.toUpperCase() ?? "?"}
-        </div>
-      )}
+      <FallbackImage src={player?.photo_url} name={player?.name ?? "?"} sizeClass="h-6 w-6 text-[10px]" colorClass="bg-white/15 text-white/80" />
       <span className="max-w-[100px] truncate text-xs font-medium text-white">
         {player?.name ?? "…"}
       </span>

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import PlayerLink from "../ui/PlayerLink";
+import FallbackImage from "../ui/FallbackImage";
 
 const POS_CLASS: Record<string, string> = {
   GK: "bg-pos-gk-bg text-pos-gk-text",
@@ -8,11 +9,6 @@ const POS_CLASS: Record<string, string> = {
   MID: "bg-pos-mid-bg text-pos-mid-text",
   FWD: "bg-pos-fwd-bg text-pos-fwd-text",
 };
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
-}
 
 /**
  * Who a transfer is for, shared by the deal room and the offer page
@@ -47,18 +43,12 @@ export default function TransferHeader({ player, routeFrom, routeTo, amount, fac
       </div>
 
       <div className="mt-1 flex items-center gap-3.5 lg:gap-4">
-        {player.photoUrl ? (
-          <img src={player.photoUrl} alt="" aria-hidden className="h-[52px] w-[52px] shrink-0 rounded-full bg-surface-inset object-cover object-top" />
-        ) : (
-          <span
-            aria-hidden
-            className={`flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full text-lg font-bold ${
-              (pos && POS_CLASS[pos]) || "bg-accent-avatar text-accent-active"
-            }`}
-          >
-            {name ? initials(name) : "?"}
-          </span>
-        )}
+        <FallbackImage
+          src={player.photoUrl}
+          name={name ?? "?"}
+          sizeClass="h-[52px] w-[52px] text-lg"
+          colorClass={(pos && POS_CLASS[pos]) || "bg-accent-avatar text-accent-active"}
+        />
         <div className="min-w-0 flex-1">
           <h1 className="text-[22px] font-bold leading-tight tracking-[-0.01em] text-text lg:text-2xl">
             <PlayerLink id={player.id} name={name} fallback="Unknown player" />

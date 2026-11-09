@@ -30,6 +30,7 @@ import { CareerLedger, InjuriesLedger, OverviewLedger, type StatSet } from "../.
 import { PlayerFitCard } from "../../components/ai/PlayerFitCard";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 // ── Deal banner ───────────────────────────────────────────────────────────────
 
@@ -530,7 +531,7 @@ export default function PlayerMarketDetailPage() {
   const metaItems: ReactNode[] = [];
   if (clubName) metaItems.push(
     <span key="club" className="flex items-center gap-1.5 font-medium text-text">
-      {clubCrest && <img src={clubCrest} alt="" loading="lazy" className="h-4 w-4 object-contain" />}
+      {clubCrest && <FallbackImage src={clubCrest} name={clubName} kind="club" sizeClass="h-4 w-4 text-[9px]" colorClass="bg-surface-inset text-text-muted" />}
       <ClubLink id={player.current_club?.id} worldTeamId={player.world_team?.id} name={clubName} />
     </span>,
   );
@@ -564,14 +565,7 @@ export default function PlayerMarketDetailPage() {
 
       {/* Header */}
       <div className="flex flex-wrap items-start gap-3.5">
-        {player.photo_url ? (
-          <img src={player.photo_url} alt={player.name} loading="lazy"
-            className="h-[52px] w-[52px] shrink-0 rounded-full object-cover object-top ring-2 ring-border" />
-        ) : (
-          <div className={`flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full text-[22px] font-extrabold ring-2 ${avatarBg}`}>
-            {player.name[0]?.toUpperCase()}
-          </div>
-        )}
+        <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-[52px] w-[52px] text-xl" colorClass={avatarBg} className="font-extrabold ring-2 ring-border" loading="eager" />
         <div className="flex min-w-[280px] flex-1 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-[22px] font-bold text-text">{player.name}</h1>

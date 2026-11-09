@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { PlayerDetail } from "../../types/api";
 import FormBadge from "../players/FormBadge";
+import FallbackImage from "../ui/FallbackImage";
 
 export default function TopPerformers({
   players,
@@ -26,13 +27,7 @@ export default function TopPerformers({
             to={`/players/market/${p.id}`}
             className="flex items-center gap-2 rounded-lg hover:bg-surface-inset px-2 py-1 transition-colors"
           >
-            {p.photo_url ? (
-              <img src={p.photo_url} alt={p.name} loading="lazy" className="h-7 w-7 rounded-full object-cover ring-1 ring-border" />
-            ) : (
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
-                {p.name[0]?.toUpperCase()}
-              </div>
-            )}
+            <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-7 w-7 text-[11px]" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
             <span className="text-sm font-medium text-text hover:text-accent transition-colors">
               {p.name}
             </span>

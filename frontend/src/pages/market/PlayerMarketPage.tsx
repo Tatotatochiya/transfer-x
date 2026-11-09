@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useAuth } from "../../hooks/useAuth";
@@ -70,21 +70,15 @@ function getInitialView(): ViewMode {
   return usePreferencesStore.getState().defaultMarketView as ViewMode;
 }
 
-// ── Sort chips ─────────────────────────────────────────────────────────────────
-// "Form" and "Youngest" map onto real server sort_by values, so they trigger a
-// real re-fetch (sorted across every page). "Best value" and "Cheapest" have no
-// server-side equivalent — the /players/market endpoint only accepts
-// name|age|goals|assists|appearances|avg_rating|form_score — so those two sort
-// only the current page, using the fair-value/market-value data already on
-// screen. Documented rather than silently wrong.
+// ── Sort ──────────────────────────────────────────────────────────────────
+// Every option sorts the whole result set on the server. The chosen sort lives
+// in the filters, so a saved view keeps it and the chip follows from it.
 
-type SortChip = "value" | "form" | "cheapest" | "youngest";
-
-const SORT_CHIPS: { key: SortChip; label: string }[] = [
-  { key: "value", label: "Best value first" },
-  { key: "form", label: "Form" },
-  { key: "cheapest", label: "Cheapest" },
-  { key: "youngest", label: "Youngest" },
+const SORT_OPTIONS: { label: string; sort_by: PlayerFilterState["sort_by"]; sort_dir: PlayerFilterState["sort_dir"] }[] = [
+  { label: "Best value first", sort_by: "value", sort_dir: "desc" },
+  { label: "Form", sort_by: "form_score", sort_dir: "desc" },
+  { label: "Cheapest", sort_by: "price", sort_dir: "asc" },
+  { label: "Youngest", sort_by: "age", sort_dir: "asc" },
 ];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -100,7 +94,6 @@ export default function PlayerMarketPage() {
   const [page, setPage] = useState(1);
   const [view, setView] = useState<ViewMode>(getInitialView);
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
-  const [sortChip, setSortChip] = useState<SortChip | null>(null);
   const defaultApplied = useRef(false);
 
   // ── Search views ─────────────────────────────────────────────────────────
@@ -182,13 +175,15 @@ export default function PlayerMarketPage() {
     await createViewMutation.mutateAsync({ name, filters: toSavedFilters(filters) });
   }
 
-  // ── Sort chip handling ───────────────────────────────────────────────────
+  // ── Sort ──────────────────────────────────────────────────────────────
 
-  function handleSortChip(chip: SortChip) {
-    setSortChip(chip);
-    if (chip === "form") { setFilters((f) => ({ ...f, sort_by: "form_score", sort_dir: "desc" })); setPage(1); }
-    if (chip === "youngest") { setFilters((f) => ({ ...f, sort_by: "age", sort_dir: "asc" })); setPage(1); }
-    // "value" and "cheapest" are applied client-side below — no re-fetch.
+  function handleSort(option: (typeof SORT_OPTIONS)[number]) {
+    const active = filters.sort_by === option.sort_by && filters.sort_dir === option.sort_dir;
+    // Picking the active chip again returns to the default, Name (A–Z).
+    setFilters((f) => active
+      ? { ...f, sort_by: DEFAULT_PLAYER_FILTERS.sort_by, sort_dir: DEFAULT_PLAYER_FILTERS.sort_dir }
+      : { ...f, sort_by: option.sort_by, sort_dir: option.sort_dir });
+    setPage(1);
   }
 
   // ── Player query ──────────────────────────────────────────────────────────
@@ -268,25 +263,6 @@ export default function PlayerMarketPage() {
     staleTime: 60_000,
   });
 
-  // Client-side sort for the two chips with no server equivalent — page-local only.
-  const players = useMemo(() => {
-    if (sortChip === "cheapest") {
-      return [...fetchedPlayers].sort((a, b) => (a.market_value ?? Infinity) - (b.market_value ?? Infinity));
-    }
-    if (sortChip === "value") {
-      return [...fetchedPlayers].sort((a, b) => {
-        const da = fairValues[a.id]?.divergence?.pct ?? Infinity;
-        const db = fairValues[b.id]?.divergence?.pct ?? Infinity;
-        return da - db;
-      });
-    }
-    return fetchedPlayers;
-  }, [fetchedPlayers, sortChip, fairValues]);
-
-  const underFairValueCount = fetchedPlayers.filter(
-    (p) => fairValues[p.id]?.divergence?.band === "BELOW" || fairValues[p.id]?.divergence?.band === "WELL_BELOW"
-  ).length;
-
   return (
     <div>
       <div className="mb-5">
@@ -308,11 +284,6 @@ export default function PlayerMarketPage() {
             <p className="text-xs font-semibold text-text-secondary">Wage room</p>
             <p className="mt-1.5 text-[28px] font-bold text-text">{formatCurrency(Number(myClub.finance.wage_remaining_weekly))}</p>
             <p className="mt-[3px] text-xs text-text-muted">per week</p>
-          </Card>
-          <Card tier={2}>
-            <p className="text-xs font-semibold text-text-secondary">Under fair value</p>
-            <p className="mt-1.5 text-[28px] font-bold text-text">{underFairValueCount}</p>
-            <p className="mt-[3px] text-xs text-text-muted">on this page</p>
           </Card>
         </div>
       )}
@@ -352,17 +323,22 @@ export default function PlayerMarketPage() {
 
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap gap-2">
-              {SORT_CHIPS.map((c) => (
-                <button
-                  key={c.key}
-                  onClick={() => handleSortChip(c.key)}
-                  className={`rounded-lg px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
-                    sortChip === c.key ? "bg-ink text-white" : "bg-surface text-text-secondary ring-1 ring-input-border hover:ring-accent"
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
+              {SORT_OPTIONS.map((o) => {
+                const active = filters.sort_by === o.sort_by && filters.sort_dir === o.sort_dir;
+                return (
+                  <button
+                    key={o.sort_by}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => handleSort(o)}
+                    className={`rounded-lg px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
+                      active ? "bg-ink text-white" : "bg-surface text-text-secondary ring-1 ring-input-border hover:ring-accent"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
             </div>
             {data && (
               <span className="text-[13px] text-text-muted">
@@ -389,8 +365,8 @@ export default function PlayerMarketPage() {
           {data && data.items.length > 0 && (
             <>
               {view === "grid" && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-                  {players.map((player) => (
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
+                  {fetchedPlayers.map((player) => (
                     <PlayerCard
                       key={player.id}
                       player={player}
@@ -404,7 +380,7 @@ export default function PlayerMarketPage() {
 
               {view === "list" && (
                 <div className="space-y-2.5">
-                  {players.map((player) => (
+                  {fetchedPlayers.map((player) => (
                     <PlayerListRow
                       key={player.id}
                       player={player}

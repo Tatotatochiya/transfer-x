@@ -12,6 +12,7 @@ import {
 } from "../../hooks/usePreferences";
 import Icon from "../layout/Icon";
 import DemoControl, { DemoPlayAsBanner } from "../demo/DemoControl";
+import FallbackImage from "../ui/FallbackImage";
 
 /**
  * The Lite shell (docs/feature_spec/lite-mode, README "Shared: Lite top bar"
@@ -135,7 +136,7 @@ function ProfileMenu({ scale }: { scale: TextScale }) {
         aria-label="Your account"
         className="flex h-[2.75rem] w-[2.75rem] items-center justify-center overflow-hidden rounded-full bg-accent-bg text-[1.0625rem] font-extrabold text-accent ring-1 ring-border focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        {identity.crestUrl ? <img src={identity.crestUrl} alt="" className="h-full w-full object-contain p-1" /> : initial}
+        {identity.crestUrl ? <FallbackImage src={identity.crestUrl} name={initial} kind="club" sizeClass="h-full w-full" colorClass="" /> : initial}
       </button>
 
       {open && (

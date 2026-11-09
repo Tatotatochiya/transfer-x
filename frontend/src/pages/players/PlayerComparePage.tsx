@@ -7,6 +7,7 @@ import FormBadge from "../../components/players/FormBadge";
 import Spinner from "../../components/ui/Spinner";
 import ClubLink from "../../components/ui/ClubLink";
 import { positionVariant } from "../../lib/badges";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 // ── Stat comparison row ────────────────────────────────────────────────────────
 
@@ -47,18 +48,12 @@ function PlayerHeader({ player, form }: { player: PlayerDetail; form: PlayerForm
 
   return (
     <div className="flex flex-col items-center gap-2 p-4 text-center">
-      {player.photo_url ? (
-        <img src={player.photo_url} alt={player.name} className="h-16 w-16 rounded-full object-cover object-top ring-2 ring-border" />
-      ) : (
-        <div className="h-16 w-16 rounded-full bg-surface-inset flex items-center justify-center text-2xl font-black text-text-muted">
-          {player.name[0]?.toUpperCase()}
-        </div>
-      )}
+      <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-16 w-16 text-2xl" colorClass="bg-surface-inset text-text-muted" className="font-black ring-2 ring-border" />
       <div>
         <p className="text-base font-bold text-text">{player.name}</p>
         {club && (
           <p className="mt-0.5 flex items-center justify-center gap-1 text-xs text-text-muted">
-            {crest && <img src={crest} alt="" className="h-3.5 w-3.5 object-contain" />}
+            {crest && <FallbackImage src={crest} name={club} kind="club" sizeClass="h-3.5 w-3.5 text-[8px]" colorClass="bg-surface-inset text-text-muted" />}
             <ClubLink
               id={player.current_club?.id}
               worldTeamId={player.world_team?.id}

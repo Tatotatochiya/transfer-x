@@ -24,7 +24,7 @@ describe("ClubLink", () => {
   it("renders an initials fallback when crestUrl is explicitly null", () => {
     renderWithProviders(<ClubLink id="c1" name="Arsenal FC" crestUrl={null} />);
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
-    expect(screen.getByText("A")).toBeInTheDocument();
+    expect(screen.getByText("AF")).toBeInTheDocument();
   });
 
   it("routes to /clubs/{id} when id is given", () => {

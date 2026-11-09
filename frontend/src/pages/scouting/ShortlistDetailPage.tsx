@@ -15,6 +15,7 @@ import { getApiError } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
 import type { PlayerPosition } from "../../types/enums";
 import type { ShortlistItem } from "../../types/api";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 /** A public market value in its own currency (Transfermarkt's are in EUR). */
 function marketValue(v: number | string, currency: string | null | undefined): string {
@@ -135,13 +136,7 @@ function AddPlayerForm({
                   onMouseDown={() => selectPlayer(p)}
                   className="flex w-full items-center gap-3 px-3 py-2.5 hover:bg-surface-inset transition-colors text-left"
                 >
-                  {p.photo_url ? (
-                    <img src={p.photo_url} alt={p.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-border" />
-                  ) : (
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
-                      {p.name[0]?.toUpperCase()}
-                    </div>
-                  )}
+                  <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-7 w-7 text-[11px]" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-text">{p.name}</p>
                     <p className="text-xs text-text-muted truncate">

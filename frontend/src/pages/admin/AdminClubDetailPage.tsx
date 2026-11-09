@@ -10,6 +10,7 @@ import Metric from "../../components/ui/Metric";
 import Spinner from "../../components/ui/Spinner";
 import { formatCurrency, formatDate, getApiError } from "../../lib/utils";
 import { useAskReason, useConfirm } from "../../context/ConfirmContext";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 const ROLES = ["BUYER", "SELLER", "BOTH", "ADMIN"];
 
@@ -141,11 +142,7 @@ export default function AdminClubDetailPage() {
       <div className="mb-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-inset text-xl font-bold text-text-muted overflow-hidden">
-            {club.crest_url ? (
-              <img src={club.crest_url} alt={club.name} className="h-full w-full object-contain p-1" />
-            ) : (
-              club.name[0]?.toUpperCase()
-            )}
+            <FallbackImage src={club.crest_url} name={club.name} kind="club" sizeClass="h-full w-full" colorClass="" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-text">{club.name}</h1>

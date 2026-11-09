@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Fixture } from "../../types/api";
 import Spinner from "../ui/Spinner";
+import FallbackImage from "../ui/FallbackImage";
 
 const LEAGUE_NAMES: Record<string, string> = {
   "39":  "Premier League",
@@ -80,13 +81,7 @@ function TeamBadge({
       onClick={handleClick}
       className={`flex items-center gap-2 min-w-0 cursor-pointer group ${align === "right" ? "flex-row-reverse" : ""}`}
     >
-      {crest ? (
-        <img src={crest} alt={name} className="h-6 w-6 shrink-0 object-contain" />
-      ) : (
-        <div className="h-6 w-6 shrink-0 rounded-full bg-surface-inset flex items-center justify-center text-[11px] font-bold text-text-muted">
-          {name[0]?.toUpperCase()}
-        </div>
-      )}
+      <FallbackImage src={crest} name={name} kind="club" sizeClass="h-6 w-6 text-[11px]" colorClass="bg-surface-inset text-text-muted" />
       <span
         className={`truncate text-sm font-medium transition-colors group-hover:text-accent ${
           isHighlighted ? "text-text" : "text-text-muted"
