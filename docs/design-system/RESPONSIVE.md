@@ -135,11 +135,14 @@ tables in the app.
 Offer detail, deal room and sale detail use a content pane plus a rail (messages, documents,
 context).
 
-- **Desktop:** side by side, rail 300–360px, sticky at `top: 24px`. The deal room's rail is
-  340px and sticky at `top: 80px`, below the 56px desktop header.
-- **Tablet:** rail moves below the content, full width. **Except the deal room**, which uses the
-  phone's segmented control on tablets too: stacking its rail under the terms made the iPad page
-  as long as the old phone page ([deal room spec](../feature_spec/deal-room-focus/README.md), D3).
+- **Desktop:** side by side, rail 300–360px, sticky at `top: 24px`. The deal room's and offer
+  detail's rails are 340px and sticky at `top: 80px`, below the 56px desktop header.
+- **Tablet:** rail moves below the content, full width. **Except the deal room and offer
+  detail**, which use the phone's segmented control on tablets too: stacking the rail under the
+  terms made the iPad page as long as the old phone page
+  ([deal room spec](../feature_spec/deal-room-focus/README.md) D3,
+  [offer page spec](../feature_spec/offer-room-focus/README.md) D5). Both rails are 340px and
+  sticky at `top: 80px`.
 - **Mobile:** rail becomes a segmented control at the top of the page — `Detail | Messages |
   Documents` — showing one section at a time. Do not stack all three; the page becomes
   unnavigably long.

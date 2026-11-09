@@ -6,16 +6,8 @@ import CurrencyInput from "../ui/CurrencyInput";
 import { useConfirm } from "../../context/ConfirmContext";
 import type { DealActions } from "../../hooks/useDealActions";
 import { formatCurrency, getApiError } from "../../lib/utils";
-import type { DealStatusView, StatusAction, StatusTone } from "./dealStatus";
-
-const TONE: Record<StatusTone, { ring: string; overline: string }> = {
-  you: { ring: "ring-danger-ring", overline: "text-danger-text" },
-  wait: { ring: "ring-border", overline: "text-text-secondary" },
-  info: { ring: "ring-border", overline: "text-text-muted" },
-  hold: { ring: "ring-warning-fill/40", overline: "text-warning-text" },
-  done: { ring: "ring-success/30", overline: "text-success-text" },
-  collapsed: { ring: "ring-danger-border", overline: "text-danger-text-alt" },
-};
+import StatusCardShell from "../transfer/StatusCardShell";
+import type { DealStatusView, StatusAction } from "./dealStatus";
 
 const INPUT = "w-full min-h-12 lg:min-h-0 rounded-lg bg-surface px-3 py-2 text-[15px] text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
 
@@ -117,7 +109,6 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
   const confirm = useConfirm();
   const [showSteps, setShowSteps] = useState(false);
   const [inline, setInline] = useState<"propose-terms" | "record-consent" | null>(null);
-  const tone = TONE[view.tone];
   const P = deal.player?.name ?? "the player";
   const B = deal.buyer_club?.name ?? "the buying club";
 
@@ -245,66 +236,59 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
   const advanceError = actions.advance.isError ? getApiError(actions.advance.error, "Failed.") : null;
 
   return (
-    <section
-      aria-labelledby="deal-status-headline"
-      className={`rounded-xl bg-surface p-4 shadow-[0_1px_2px_rgba(16,24,40,0.06)] ring-1 sm:px-5 sm:py-[18px] ${tone.ring}`}
-    >
-      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:gap-5 lg:flex-nowrap lg:items-center lg:gap-7">
-        <div className="min-w-0 sm:flex-[1_1_360px] lg:flex-1">
-          <p className={`text-xs font-bold uppercase tracking-[0.05em] ${tone.overline}`}>
-            {view.overline}
-            {view.meta && <span className="text-[13px] font-semibold normal-case tracking-normal text-text-secondary"> · {view.meta}</span>}
-          </p>
-          <h2 id="deal-status-headline" tabIndex={-1} className="mt-1.5 text-[19px] font-bold leading-snug text-text focus:outline-none lg:text-xl">
-            {view.headline}
-          </h2>
-          {view.body && <p className="mt-1.5 text-base leading-normal text-text-secondary">{view.body}</p>}
-        </div>
-
-        {checklist && <div className="hidden lg:block lg:w-[300px] lg:shrink-0">{checklist}</div>}
-
-        {(view.primary || view.secondary) && (
-          <div className="flex flex-col gap-2 sm:flex-[0_0_220px] lg:w-[200px] lg:flex-none">
-            {view.primary && actionButton(view.primary, true)}
-            {view.secondary && (
-              // R-d: on a phone the tabs sit right below, so "Message …" beside a
-              // main action is left to them.
-              <div className={view.primary && view.secondary.kind === "open-messages" ? "hidden sm:block" : undefined}>
-                {actionButton(view.secondary, false)}
-              </div>
-            )}
-            {advanceError && <p role="alert" className="text-sm text-danger-text">{advanceError}</p>}
-          </div>
-        )}
-      </div>
-
-      {checklist && (
+    <StatusCardShell
+      tone={view.tone}
+      overline={view.overline}
+      meta={view.meta}
+      headline={view.headline}
+      headlineId="deal-status-headline"
+      body={view.body && <p className="mt-1.5 text-base leading-normal text-text-secondary">{view.body}</p>}
+      actions={(view.primary || view.secondary) && (
         <>
-          <div className="hidden border-t border-rule pt-3 mt-4 sm:block lg:hidden">{checklist}</div>
-          <div className="sm:hidden">
-            <button
-              type="button"
-              aria-expanded={showSteps}
-              aria-controls="deal-status-steps"
-              onClick={() => setShowSteps((v) => !v)}
-              className="mt-2 min-h-11 w-full text-[15px] font-semibold text-accent"
-            >
-              {showSteps ? "Hide the steps" : `Show the ${steps.length} paperwork steps`}
-            </button>
-            {showSteps && <div id="deal-status-steps" className="mt-2">{checklist}</div>}
-          </div>
+          {view.primary && actionButton(view.primary, true)}
+          {view.secondary && (
+            // R-d: on a phone the tabs sit right below, so "Message …" beside a
+            // main action is left to them.
+            <div className={view.primary && view.secondary.kind === "open-messages" ? "hidden sm:block" : undefined}>
+              {actionButton(view.secondary, false)}
+            </div>
+          )}
+          {advanceError && <p role="alert" className="text-sm text-danger-text">{advanceError}</p>}
         </>
       )}
+      footer={
+        <>
+          {checklist && (
+            <>
+              <div className="hidden border-t border-rule pt-3 mt-4 sm:block lg:hidden">{checklist}</div>
+              <div className="sm:hidden">
+                <button
+                  type="button"
+                  aria-expanded={showSteps}
+                  aria-controls="deal-status-steps"
+                  onClick={() => setShowSteps((v) => !v)}
+                  className="mt-2 min-h-11 w-full text-[15px] font-semibold text-accent"
+                >
+                  {showSteps ? "Hide the steps" : `Show the ${steps.length} paperwork steps`}
+                </button>
+                {showSteps && <div id="deal-status-steps" className="mt-2">{checklist}</div>}
+              </div>
+            </>
+          )}
 
-      {inline === "propose-terms" && <ProposeTermsForm actions={actions} onCancel={() => setInline(null)} />}
-      {inline === "record-consent" && <RecordConsentForm deal={deal} actions={actions} onCancel={() => setInline(null)} />}
+          {inline === "propose-terms" && <ProposeTermsForm actions={actions} onCancel={() => setInline(null)} />}
+          {inline === "record-consent" && <RecordConsentForm deal={deal} actions={actions} onCancel={() => setInline(null)} />}
 
-      {view.strips.map((s) => (
-        <div key={s.title} role="note" className="mt-3 rounded-lg bg-warning-bg px-3 py-2.5 text-sm text-warning-text">
-          <p className="font-semibold">{s.title}</p>
-          <p>{s.body}</p>
-        </div>
-      ))}
-    </section>
+          {view.strips.map((s) => (
+            <div key={s.title} role="note" className="mt-3 rounded-lg bg-warning-bg px-3 py-2.5 text-sm text-warning-text">
+              <p className="font-semibold">{s.title}</p>
+              <p>{s.body}</p>
+            </div>
+          ))}
+        </>
+      }
+    >
+      {checklist && <div className="hidden lg:block lg:w-[300px] lg:shrink-0">{checklist}</div>}
+    </StatusCardShell>
   );
 }

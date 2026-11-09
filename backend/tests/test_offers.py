@@ -534,6 +534,23 @@ async def test_improve_reserves_the_delta(client: AsyncClient, buyer: dict, sell
     assert Decimal(after["transfer_reserved"]) - Decimal(before["transfer_reserved"]) == Decimal("1500000")
 
 
+@pytest.mark.asyncio
+async def test_improve_fee_only_keeps_an_unset_wage(client: AsyncClient, buyer: dict, seller: dict, db):
+    """A raise that sends only a fee used to turn a missing wage into £0/wk."""
+    await _give_budget(db)
+    sel_headers = _auth_headers(seller)
+    buy_headers = _auth_headers(buyer)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+
+    offer = await _make_offer(client, buy_headers, player["id"], seller_club_id, fee=5_000_000)
+    assert offer["wage_weekly"] is None
+
+    resp = await client.post(f"/offers/{offer['id']}/improve", json={"fee_amount": 6_000_000}, headers=buy_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["wage_weekly"] is None
+
+
 # ── Messages ──────────────────────────────────────────────────────────────────
 
 

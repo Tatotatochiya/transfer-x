@@ -919,7 +919,9 @@ async def improve_own_offer(
         new_fee = None
     else:
         new_fee = fee_amount if fee_amount is not None else (offer.fee_amount or Decimal("0"))
-    new_wage = wage_weekly if wage_weekly is not None else (offer.wage_weekly or Decimal("0"))
+    # A raise that leaves the wage alone keeps it as it was: falling back to 0
+    # turned an offer with no wage into one proposing £0 a week.
+    new_wage = wage_weekly if wage_weekly is not None else offer.wage_weekly
     new_loan_fee = loan_fee if loan_fee is not None else offer.loan_fee
     new_add_ons = dict(offer.add_ons or {})
     if add_ons:
