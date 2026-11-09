@@ -1,6 +1,6 @@
 ---
 title: "Changelog"
-last_updated: 2026-10-17
+last_updated: 2026-11-09
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -246,6 +246,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Browse Players sorts on the server for every option, including a new "Cheapest"** ([spec](./feature_spec/browse-players-focus/README.md), part 1). `GET /players/market` gained `sort_by=price`: a free agent costs nothing, else an open fixed-price or open-to-offers listing's asking price, else the latest fee-model price; no price sorts last. It is the Lite pricing rule without the 30% contract-ending discount. "Best value first" and "Cheapest" sorted only the loaded page before; the "Under fair value · on this page" tile is gone. The market value filter is now labelled "Market value (€ millions)" (it was "Asking price", which it never filtered). (`backend/app/players/`, `PlayerMarketPage.tsx`, `PlayerFilters.tsx`)
 - **The offer page answers first** ([spec](./feature_spec/offer-room-focus/README.md)), on the deal room's pattern. Before any scrolling: the player, the amount, one status card with whose move it is, the deadline ("reply by 18:00 today", red under 24 hours), what the other club just changed (was → now) and, for the seller, the gap to their own valuation; then Accept and Counter. It replaces the Offer, Parties, What changed and Actions cards. The terms are one card that marks changed rows; "Where it stands" tracks the fee across rounds; the advisor and negotiation summary sit in one "✦ Advice on this offer" disclosure. Below 1024px the page has Terms · Messages · Other bids tabs (`?tab=`); from 1024px a sticky rail. Behaviour changes:
   - **Countering opens where you are**: a sheet with Send always on screen below 1024px, inside the status card from 1024px with a "What {club} will see" panel. It used to open under the whole conversation. The fee leads, with one-tap amounts (Suggested, Your valuation, Your last ask) and "✦ Suggest a counter". What a counter sends is unchanged.
   - **Raise your offer** (new): a buyer waiting on a reply can raise the fee (or loan fee) and wage, after a confirmation naming the extra budget reserved. `POST /offers/{id}/improve` existed with no screen. A raise that sends only a fee no longer turns an unset wage into £0 a week.
@@ -331,6 +332,8 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **Player cards no longer overlap on laptops.** The Browse Players grid uses auto-fill columns at least 220px wide instead of counting the window's breakpoints, which ignored the sidebar and filter rail (three ~165px columns at 1280px). (`PlayerMarketPage.tsx`)
+- **A player photo or club crest that fails to load shows initials,** everywhere, instead of a broken image or its alt text. One `FallbackImage` component now draws every photo and crest. (`components/ui/FallbackImage.tsx`)
 - **Demo listings were open to real clubs' offers.** Only bids were refused on a listing a tester's demo had made; an offer against it from a club outside the demo went through and would have been lost on reset. Offers are now refused the same way ("This listing is part of someone's demo").
 - **Ask TransferX failed on Railway with "The assistant could not answer just now".** Each deploy installed the newest `litellm` (1.106.0), which fails any model call that passes tools ("No module named 'mcp'"); the analyst is the one assistant that does, so the rest kept working. `litellm` is now pinned to 1.103.2, the version used locally.
 - **The email decision page leaked the club's valuation.** Opening a "Say no" / "Accept" / "Ask for" link from an offer email showed the selling club's own valuation of the player, and the counter TransferX suggested from it, to anyone with the link: signed in or not, and even after the link was used. A forwarded email gave that figure away. Only the email's recipient, signed in, sees them now; anyone else sees the player, the other club (masked if anonymous), the offer and the time left. (`backend/app/lite/email_actions.py`)
