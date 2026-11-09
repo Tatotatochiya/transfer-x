@@ -7,6 +7,7 @@ import Button from "../../components/ui/Button";
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import { getApiError } from "../../lib/utils";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 const ROLES = ["BUYER", "SELLER", "BOTH"];
 
@@ -232,11 +233,7 @@ export default function AdminWorldImportPage() {
                     }`}
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset overflow-hidden">
-                      {team.crest_url ? (
-                        <img src={team.crest_url} alt={team.name} className="h-full w-full object-contain p-0.5" />
-                      ) : (
-                        <span className="text-xs font-bold text-text-muted">{team.name[0]}</span>
-                      )}
+                      <FallbackImage src={team.crest_url} name={team.name} kind="club" sizeClass="h-full w-full text-xs" colorClass="text-text-muted" />
                     </div>
                     <div className="min-w-0">
                       <p className="font-medium text-text truncate">{team.name}</p>
@@ -268,11 +265,7 @@ export default function AdminWorldImportPage() {
               {/* Team header */}
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-inset overflow-hidden">
-                  {selected.crest_url ? (
-                    <img src={selected.crest_url} alt={selected.name} className="h-full w-full object-contain" />
-                  ) : (
-                    <span className="text-sm font-bold text-text-muted">{selected.name[0]}</span>
-                  )}
+                  <FallbackImage src={selected.crest_url} name={selected.name} kind="club" sizeClass="h-full w-full text-sm" colorClass="text-text-muted" />
                 </div>
                 <div>
                   <p className="font-semibold text-text">{selected.name}</p>

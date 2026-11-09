@@ -5,6 +5,7 @@ import type { OrderBook, OrderBookEntry } from "../../types/api";
 import Spinner from "../ui/Spinner";
 import { formatCurrency } from "../../lib/utils";
 import { isLoan, offerHeadline } from "../../lib/offerTerms";
+import FallbackImage from "../ui/FallbackImage";
 
 const STATUS_VARIANT: Record<string, string> = {
   ACTIVE:    "bg-success/20 text-success-text",
@@ -112,17 +113,7 @@ export default function SellerOrderBook({ saleId, playerId, isOpen, selectedId }
 
               {/* Club crest + name */}
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                {entry.club?.crest_url ? (
-                  <img
-                    src={entry.club.crest_url}
-                    alt={entry.club.name}
-                    className="h-6 w-6 rounded object-contain shrink-0"
-                  />
-                ) : (
-                  <div className="h-6 w-6 rounded bg-surface-inset flex items-center justify-center shrink-0 text-xs font-bold text-text-muted">
-                    {entry.club?.name?.[0]?.toUpperCase() ?? "?"}
-                  </div>
-                )}
+                <FallbackImage src={entry.club?.crest_url} name={entry.club?.name ?? "?"} kind="club" sizeClass="h-6 w-6 text-[11px]" colorClass="bg-surface-inset text-text-muted" />
                 <span className="truncate text-sm font-medium text-text">
                   {entry.club?.name ?? "Unknown"}
                 </span>

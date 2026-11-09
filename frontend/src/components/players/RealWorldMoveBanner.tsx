@@ -4,6 +4,7 @@ import { useAuth } from "../../hooks/useAuth";
 import type { RealWorldMove } from "../../types/api";
 import { describeMove } from "../../lib/realWorld";
 import { formatDate } from "../../lib/utils";
+import FallbackImage from "../ui/FallbackImage";
 
 /**
  * API-Football has the player at another club than the one TransferX has him
@@ -16,7 +17,7 @@ export default function RealWorldMoveBanner({ move, isMyPlayer }: { move: RealWo
   return (
     <div role="note" className="mb-3 flex items-start gap-3 rounded-[14px] bg-warning-fill/10 px-4 py-3 ring-1 ring-warning-fill/30">
       {move.real_club_logo ? (
-        <img src={move.real_club_logo} alt="" className="mt-0.5 h-8 w-8 shrink-0 object-contain" />
+        <FallbackImage src={move.real_club_logo} name={move.real_club ?? "?"} kind="club" sizeClass="h-8 w-8 text-xs" colorClass="bg-surface-inset text-text-muted" className="mt-0.5" />
       ) : (
         <span aria-hidden className="mt-0.5 text-lg">⇄</span>
       )}

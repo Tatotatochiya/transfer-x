@@ -12,6 +12,7 @@ import PlayerAccountCard from "../../components/players/PlayerAccountCard";
 import { formatDate, getApiError } from "../../lib/utils";
 import { positionVariant } from "../../lib/badges";
 import type { PlayerPosition } from "../../types/enums";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 /** GET /admin/players/{id}: the player plus every contract, past and present. */
 type AdminPlayer = Player & {
@@ -112,13 +113,7 @@ export default function AdminPlayerDetailPage() {
       </button>
 
       <div className="mb-6 flex items-center gap-3">
-        {player.photo_url ? (
-          <img src={player.photo_url} alt={player.name} className="h-12 w-12 rounded-full object-cover ring-1 ring-border" />
-        ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-inset text-lg font-bold text-text-muted">
-            {player.name[0]?.toUpperCase()}
-          </div>
-        )}
+        <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-12 w-12 text-lg" colorClass="bg-surface-inset text-text-muted" className={player.photo_url ? "ring-1 ring-border" : ""} />
         <div>
           <h1 className="text-2xl font-bold text-text">{player.name}</h1>
           <p className="text-xs text-text-muted">ID: {player.id}</p>

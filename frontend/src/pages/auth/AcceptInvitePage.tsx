@@ -9,6 +9,7 @@ import Icon from "../../components/layout/Icon";
 import Spinner from "../../components/ui/Spinner";
 import { getApiError, formatDateTime } from "../../lib/utils";
 import NameFields from "../../components/auth/NameFields";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 const ROLE_LABELS: Record<string, string> = {
   SPORTING_DIRECTOR: "Sporting Director",
@@ -103,13 +104,7 @@ export default function AcceptInvitePage() {
               {/* Invitation card */}
               <div className="mb-6 flex items-center gap-4 rounded-lg bg-surface-inset px-4 py-3.5 ring-1 ring-border">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface">
-                  {preview.club_crest_url ? (
-                    <img src={preview.club_crest_url} alt="" className="h-full w-full object-contain p-1.5" />
-                  ) : (
-                    <span className="text-lg font-bold text-text-muted">
-                      {preview.club_name[0]?.toUpperCase()}
-                    </span>
-                  )}
+                  <FallbackImage src={preview.club_crest_url} name={preview.club_name} kind="club" sizeClass="h-full w-full text-lg" colorClass="text-text-muted" loading="eager" />
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-text">{preview.club_name}</p>

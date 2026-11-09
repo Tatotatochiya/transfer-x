@@ -4,6 +4,7 @@ import api from "../../lib/api";
 import type { PlayerDetail, PlayerStats } from "../../types/api";
 import SectionHeader from "../ui/SectionHeader";
 import Spinner from "../ui/Spinner";
+import FallbackImage from "../ui/FallbackImage";
 
 export default function SquadStatsPanel({ players }: { players: PlayerDetail[] }) {
   const playerIds = players.map((p) => p.id).join(",");
@@ -81,13 +82,7 @@ export default function SquadStatsPanel({ players }: { players: PlayerDetail[] }
                   className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-surface-inset transition-colors group"
                 >
                   <span className="w-4 shrink-0 text-xs font-bold text-text-muted tabular-nums">{i + 1}</span>
-                  {p.photo_url ? (
-                    <img src={p.photo_url} alt={p.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-border" />
-                  ) : (
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
-                      {p.name[0]?.toUpperCase()}
-                    </div>
-                  )}
+                  <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-7 w-7 text-[11px]" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-text group-hover:text-accent transition-colors">{p.name}</p>
                     {p.position && <p className="text-xs text-text-muted">{p.position}</p>}
@@ -112,13 +107,7 @@ export default function SquadStatsPanel({ players }: { players: PlayerDetail[] }
                   className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-surface-inset transition-colors group"
                 >
                   <span className="w-4 shrink-0 text-xs font-bold text-text-muted tabular-nums">{i + 1}</span>
-                  {p.photo_url ? (
-                    <img src={p.photo_url} alt={p.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-border" />
-                  ) : (
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
-                      {p.name[0]?.toUpperCase()}
-                    </div>
-                  )}
+                  <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-7 w-7 text-[11px]" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-text group-hover:text-accent transition-colors">{p.name}</p>
                     {p.position && <p className="text-xs text-text-muted">{p.position}</p>}

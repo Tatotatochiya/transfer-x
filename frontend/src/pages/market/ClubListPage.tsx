@@ -8,6 +8,7 @@ import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import EmptyState from "../../components/ui/EmptyState";
 import Icon from "../../components/layout/Icon";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 const SORT_OPTIONS = [
   { value: "name|asc",         label: "Name (A–Z)" },
@@ -127,13 +128,7 @@ export default function ClubListPage() {
                 className="cursor-pointer rounded-xl bg-surface ring-1 ring-border hover:ring-input-border hover:-translate-y-0.5 transition-all duration-200 px-5 py-4"
               >
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-surface-inset overflow-hidden">
-                  {club.crest_url ? (
-                    <img src={club.crest_url} alt={club.name} loading="lazy" className="h-full w-full object-contain p-1" />
-                  ) : (
-                    <span className="text-xl font-bold text-text-muted">
-                      {club.name[0]?.toUpperCase()}
-                    </span>
-                  )}
+                  <FallbackImage src={club.crest_url} name={club.name} kind="club" sizeClass="h-full w-full text-xl" colorClass="text-text-muted" />
                 </div>
                 <p className="flex items-center gap-1 font-semibold text-text truncate">
                   <span className="truncate">{club.name}</span>

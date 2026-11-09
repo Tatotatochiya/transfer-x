@@ -7,6 +7,7 @@ import type { Club, ClubPublic, Player } from "../../types/api";
 import { useAIStatus, useAsk } from "../../hooks/useAssistant";
 import { useAuth } from "../../hooks/useAuth";
 import { getApiError } from "../../lib/utils";
+import FallbackImage from "../ui/FallbackImage";
 
 interface SearchResults {
   players: Player[];
@@ -208,13 +209,7 @@ export default function GlobalSearch() {
                   onClick={() => go(`/players/market/${p.id}`)}
                   className="flex w-full items-center gap-3 px-4 py-2.5 hover:bg-surface-inset transition-colors text-left"
                 >
-                  {p.photo_url ? (
-                    <img src={p.photo_url} alt={p.name} loading="lazy" className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-border" />
-                  ) : (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
-                      {p.name[0]?.toUpperCase()}
-                    </div>
-                  )}
+                  <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-8 w-8 text-xs" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-text">{p.name}</p>
                     <p className="text-xs text-text-muted truncate">
@@ -241,13 +236,7 @@ export default function GlobalSearch() {
                   onClick={() => go(`/clubs/${c.id}`)}
                   className="flex w-full items-center gap-3 px-4 py-2.5 hover:bg-surface-inset transition-colors text-left"
                 >
-                  {c.crest_url ? (
-                    <img src={c.crest_url} alt={c.name} loading="lazy" className="h-8 w-8 shrink-0 object-contain" />
-                  ) : (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-sm font-bold text-text-muted">
-                      {c.name[0]?.toUpperCase()}
-                    </div>
-                  )}
+                  <FallbackImage src={c.crest_url} name={c.name} kind="club" sizeClass="h-8 w-8 text-sm" colorClass="bg-surface-inset text-text-muted" />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-text">{c.name}</p>
                     <p className="text-xs text-text-muted truncate">

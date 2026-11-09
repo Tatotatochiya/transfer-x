@@ -13,6 +13,7 @@ import {
   type LiteSearchResult,
 } from "../../hooks/useLite";
 import AskTeamButton from "../../components/lite/AskTeamButton";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 /**
  * Buy a player (docs/feature_spec/lite-mode README "Screen 3"): a search by
@@ -26,18 +27,8 @@ import AskTeamButton from "../../components/lite/AskTeamButton";
 
 const POSITION_LABEL: Record<string, string> = { GK: "Goalkeeper", DEF: "Defender", MID: "Midfielder", FWD: "Forward" };
 
-function initials(name: string) {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
-}
-
 function Avatar({ name, photo }: { name: string; photo?: string | null }) {
-  return photo ? (
-    <img src={photo} alt="" className="h-12 w-12 shrink-0 rounded-full bg-surface-inset object-cover object-top" />
-  ) : (
-    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-bg text-[1.25rem] font-extrabold text-accent">
-      {initials(name)}
-    </span>
-  );
+  return <FallbackImage src={photo} name={name} sizeClass="h-12 w-12 text-[1.25rem]" colorClass="bg-accent-bg text-accent" className="font-extrabold" />;
 }
 
 const rowBtn = "flex min-h-[3.25rem] items-center justify-center rounded-xl px-5 text-[1.0625rem] font-bold no-underline";

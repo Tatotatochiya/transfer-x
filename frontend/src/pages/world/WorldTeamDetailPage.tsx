@@ -10,6 +10,7 @@ import Spinner from "../../components/ui/Spinner";
 import EmptyState from "../../components/ui/EmptyState";
 import Badge from "../../components/ui/Badge";
 import FixturesPanel from "../../components/fixtures/FixturesPanel";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 // ── Top performers ─────────────────────────────────────────────────────────────
 
@@ -35,17 +36,7 @@ function TopPerformers({
       <div className="flex flex-wrap gap-2">
         {ranked.map((p) => (
           <Link key={p.id} to={`/players/market/${p.id}`} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-surface-inset transition-colors group">
-            {p.photo_url ? (
-              <img
-                src={p.photo_url}
-                alt={p.name}
-                className="h-7 w-7 rounded-full object-cover ring-1 ring-border"
-              />
-            ) : (
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
-                {p.name[0]?.toUpperCase()}
-              </div>
-            )}
+            <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-7 w-7 text-[11px]" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
             <span className="text-sm font-medium text-text group-hover:text-accent transition-colors">{p.name}</span>
             <FormBadge score={formScores[p.id].score} trend={formScores[p.id].trend} />
           </Link>
@@ -135,13 +126,7 @@ function SquadStatsPanel({ players }: { players: Player[] }) {
                 className="flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-surface-inset transition-colors group"
               >
                 <span className="w-4 shrink-0 text-xs font-bold text-text-muted tabular-nums">{i + 1}</span>
-                {player.photo_url ? (
-                  <img src={player.photo_url} alt={player.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-border" />
-                ) : (
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
-                    {player.name[0]?.toUpperCase()}
-                  </div>
-                )}
+                <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-7 w-7 text-[11px]" colorClass="bg-surface-inset text-text-muted" className={player.photo_url ? "ring-1 ring-border" : ""} />
                 <span className="flex-1 truncate text-sm text-text-secondary group-hover:text-accent transition-colors">{player.name}</span>
                 <span className="shrink-0 text-sm font-bold text-success-text tabular-nums">{goals}g</span>
               </Link>
@@ -160,13 +145,7 @@ function SquadStatsPanel({ players }: { players: Player[] }) {
                 className="flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-surface-inset transition-colors group"
               >
                 <span className="w-4 shrink-0 text-xs font-bold text-text-muted tabular-nums">{i + 1}</span>
-                {player.photo_url ? (
-                  <img src={player.photo_url} alt={player.name} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-border" />
-                ) : (
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-inset text-xs font-bold text-text-muted">
-                    {player.name[0]?.toUpperCase()}
-                  </div>
-                )}
+                <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-7 w-7 text-[11px]" colorClass="bg-surface-inset text-text-muted" className={player.photo_url ? "ring-1 ring-border" : ""} />
                 <span className="flex-1 truncate text-sm text-text-secondary group-hover:text-accent transition-colors">{player.name}</span>
                 <span className="shrink-0 text-sm font-bold text-accent tabular-nums">{assists}a</span>
               </Link>
@@ -302,17 +281,15 @@ export default function WorldTeamDetailPage() {
 
       {/* Team header */}
       <div className="mb-8 flex items-start gap-5">
-        {team.crest_url ? (
-          <img
-            src={team.crest_url}
-            alt={team.name}
-            className="h-20 w-20 shrink-0 object-contain drop-shadow-lg"
-          />
-        ) : (
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-surface-inset text-3xl font-black text-text-muted ring-1 ring-border">
-            {team.name[0]?.toUpperCase()}
-          </div>
-        )}
+        <FallbackImage
+          src={team.crest_url}
+          name={team.name}
+          kind="club"
+          sizeClass="h-20 w-20 text-3xl"
+          colorClass="bg-surface-inset text-text-muted ring-1 ring-border"
+          className="rounded-2xl font-black"
+          loading="eager"
+        />
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-4">

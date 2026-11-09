@@ -9,6 +9,7 @@ import FairValueBadge from "./FairValueBadge";
 import { positionVariant, playerStatusVariant, playerStatusLabel } from "../../lib/badges";
 import AddToShortlistButton from "../scouting/AddToShortlistButton";
 import { useCompare } from "../../context/CompareContext";
+import FallbackImage from "../ui/FallbackImage";
 
 interface PlayerCardProps {
   player: Player;
@@ -50,18 +51,7 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
       <div className="flex items-start gap-3">
         {/* Avatar */}
         <div className="shrink-0">
-          {player.photo_url ? (
-            <img
-              src={player.photo_url}
-              alt={player.name}
-              loading="lazy"
-              className="h-12 w-12 rounded-full object-cover object-top ring-1 ring-border"
-            />
-          ) : (
-            <div className={`h-12 w-12 rounded-full flex items-center justify-center text-lg font-black ring-1 ring-border ${avatarBg}`}>
-              {player.name[0]?.toUpperCase()}
-            </div>
-          )}
+          <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-12 w-12 text-lg" colorClass={avatarBg} className="font-black ring-1 ring-border" />
         </div>
 
         {/* Info */}

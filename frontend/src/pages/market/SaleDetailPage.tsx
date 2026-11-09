@@ -27,6 +27,7 @@ import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 import type { DealStage, PlayerPosition } from "../../types/enums";
 import Money from "../../components/ui/Money";
 import PlayerLink from "../../components/ui/PlayerLink";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 function FigureCard({ label, value, valueColour }: { label: string; value: ReactNode; valueColour?: string }) {
   return (
@@ -139,13 +140,7 @@ export default function SaleDetailPage() {
     <div className="space-y-4">
       {/* Player header */}
       <div className="flex items-center gap-3">
-        {sale.player?.photo_url ? (
-          <img src={sale.player.photo_url} alt="" className="h-11 w-11 shrink-0 rounded-full bg-surface-inset object-cover object-top" />
-        ) : (
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-inset text-base font-bold text-text-muted">
-            {sale.player?.name?.[0]?.toUpperCase() ?? "?"}
-          </div>
-        )}
+        <FallbackImage src={sale.player?.photo_url} name={sale.player?.name ?? "?"} sizeClass="h-11 w-11 text-base" colorClass="bg-surface-inset text-text-muted" />
         <div className="min-w-0">
           <PlayerLink id={sale.player_id} name={sale.player?.name} fallback="Unknown" className="block truncate font-semibold text-text" />
           <div className="flex items-center gap-2 mt-0.5">

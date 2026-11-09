@@ -10,6 +10,7 @@ import AddToShortlistButton from "../scouting/AddToShortlistButton";
 import { useCompare } from "../../context/CompareContext";
 import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
 import { BAND_COLOUR, BAND_PHRASE } from "./FairValueBadge";
+import FallbackImage from "../ui/FallbackImage";
 
 interface PlayerListRowProps {
   player: Player;
@@ -56,13 +57,7 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
       <div className="flex flex-wrap items-center gap-5">
         {/* Avatar + identity */}
         <div className="flex flex-1 basis-[200px] items-center gap-3 min-w-0">
-          {player.photo_url ? (
-            <img src={player.photo_url} alt={player.name} loading="lazy" className="h-11 w-11 shrink-0 rounded-full object-cover object-top ring-1 ring-border" />
-          ) : (
-            <div className="h-11 w-11 shrink-0 rounded-full bg-surface-inset flex items-center justify-center text-sm font-bold text-text-muted ring-1 ring-border">
-              {player.name[0]?.toUpperCase()}
-            </div>
-          )}
+          <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-11 w-11 text-sm" colorClass="bg-surface-inset text-text-muted" className="ring-1 ring-border" />
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 truncate text-base font-semibold text-text">
               {player.name}

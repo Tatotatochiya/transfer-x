@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import FallbackImage from "./FallbackImage";
 
 interface PlayerLinkProps {
   /** Player ID → routes to his profile, /players/market/{id} */
@@ -31,13 +32,7 @@ export default function PlayerLink({ id, name, photoUrl, fallback = "—", class
   const ps = PHOTO[size];
   const content = showPhoto ? (
     <>
-      {photoUrl ? (
-        <img src={photoUrl} alt="" loading="lazy" className={`${ps.box} shrink-0 rounded-full bg-surface-inset object-cover object-top`} />
-      ) : (
-        <span className={`flex ${ps.box} shrink-0 items-center justify-center rounded-full bg-surface-inset ${ps.text} font-bold text-text-muted`}>
-          {name[0]?.toUpperCase()}
-        </span>
-      )}
+      <FallbackImage src={photoUrl} name={name} sizeClass={`${ps.box} ${ps.text}`} colorClass="bg-surface-inset text-text-muted" />
       <span className="truncate">{name}</span>
     </>
   ) : name;

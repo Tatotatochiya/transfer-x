@@ -12,6 +12,7 @@ import { formatDate, getApiError } from "../../lib/utils";
 import { useAskReason } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { MOVE_KIND_LABEL } from "../../lib/realWorld";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 interface MoveRow extends RealWorldMove {
   player_id: string;
@@ -275,7 +276,7 @@ export default function AdminRealWorldMovesPage() {
                       <td className="px-4 py-3 text-text">{m.registered_club ?? "—"}</td>
                       <td className="px-4 py-3">
                         <span className="flex items-center gap-2 text-text">
-                          {m.real_club_logo && <img src={m.real_club_logo} alt="" className="h-5 w-5 object-contain" />}
+                          {m.real_club_logo && <FallbackImage src={m.real_club_logo} name={m.real_club ?? "?"} kind="club" sizeClass="h-5 w-5 text-[9px]" colorClass="bg-surface-inset text-text-muted" />}
                           {m.real_club ?? "—"}
                         </span>
                         {m.real_club_on_transferx_id && <span className="text-xs text-text-muted">on TransferX</span>}

@@ -13,6 +13,7 @@ import EmptyState from "../../components/ui/EmptyState";
 import Spinner from "../../components/ui/Spinner";
 import FixturesPanel from "../../components/fixtures/FixturesPanel";
 import VerifiedBadge from "../../components/verification/VerifiedBadge";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 type Tab = "squad" | "stats" | "listings" | "fixtures";
 
@@ -141,11 +142,7 @@ export default function ClubDetailPage() {
       {/* ── Header ── */}
       <div className="mb-6 flex items-start gap-5">
         <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-surface-inset overflow-hidden ring-1 ring-border">
-          {club.crest_url ? (
-            <img src={club.crest_url} alt={club.name} loading="lazy" className="h-full w-full object-contain p-2" />
-          ) : (
-            <span className="text-3xl font-bold text-text-muted">{club.name[0]?.toUpperCase()}</span>
-          )}
+          <FallbackImage src={club.crest_url} name={club.name} kind="club" sizeClass="h-full w-full text-3xl" colorClass="text-text-muted" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

@@ -9,6 +9,7 @@ import DateRangeFilter, { EMPTY_DATE_RANGE, type DateRange } from "../../compone
 import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import { formatDate, getApiError } from "../../lib/utils";
+import FallbackImage from "../../components/ui/FallbackImage";
 
 const ROLE_VARIANT: Record<string, "success" | "info" | "warning" | "neutral"> = {
   BOTH:   "success",
@@ -67,9 +68,7 @@ function WorldTeamPicker({
               className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-surface-inset transition-colors"
             >
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-inset overflow-hidden">
-                {team.crest_url
-                  ? <img src={team.crest_url} alt={team.name} className="h-full w-full object-contain p-0.5" />
-                  : <span className="text-xs font-bold text-text-muted">{team.name[0]}</span>}
+                <FallbackImage src={team.crest_url} name={team.name} kind="club" sizeClass="h-full w-full text-xs" colorClass="text-text-muted" />
               </div>
               <div>
                 <p className="font-medium text-text">{team.name}</p>
@@ -142,9 +141,7 @@ function CreateClubPanel({ onCreated }: { onCreated: (club: AdminClubDetail) => 
       ) : (
         <div className="flex items-center gap-3 rounded-lg bg-surface-inset px-3 py-2 ring-1 ring-border">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface overflow-hidden">
-            {prefilled.crest_url
-              ? <img src={prefilled.crest_url} alt={prefilled.name} className="h-full w-full object-contain p-0.5" />
-              : <span className="text-xs font-bold text-text-muted">{prefilled.name[0]}</span>}
+            <FallbackImage src={prefilled.crest_url} name={prefilled.name} kind="club" sizeClass="h-full w-full text-xs" colorClass="text-text-muted" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-text truncate">{prefilled.name}</p>
@@ -478,11 +475,7 @@ export default function AdminClubsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-xs font-bold text-text-muted overflow-hidden">
-                          {club.crest_url ? (
-                            <img src={club.crest_url} alt={club.name} className="h-full w-full object-contain p-0.5" />
-                          ) : (
-                            club.name[0]?.toUpperCase()
-                          )}
+                          <FallbackImage src={club.crest_url} name={club.name} kind="club" sizeClass="h-full w-full" colorClass="" />
                         </div>
                         <span className="font-medium text-text">{club.name}</span>
                       </div>

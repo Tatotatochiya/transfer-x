@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import FallbackImage from "../../ui/FallbackImage";
 
 /**
  * The season ledger (docs/feature_spec/player-profile-ledger, HANDOFF.md §5c):
@@ -29,7 +30,7 @@ export function ClubCell({ name, logo, loan }: { name: ReactNode; logo?: string 
   return (
     <span className="flex min-w-0 items-center gap-2">
       {logo ? (
-        <img src={logo} alt="" loading="lazy" className="h-4 w-4 shrink-0 object-contain" />
+        <FallbackImage src={logo} name={typeof name === "string" ? name : "?"} kind="club" sizeClass="h-4 w-4 text-[9px]" colorClass="bg-surface-inset text-text-muted" />
       ) : (
         <span className="h-2 w-2 shrink-0 rounded-sm bg-border" aria-hidden="true" />
       )}
