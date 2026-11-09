@@ -1,0 +1,39 @@
+/**
+ * "✦ Picks for your squad gaps" (browse-players-focus D7): one row in the
+ * results that opens the recommendations. No count until they've loaded.
+ */
+export default function RecommendationsRow({ clubName, onOpen, expanded, variant = "row" }: {
+  clubName?: string | null;
+  onOpen: () => void;
+  /** From 1024px it expands the panel in place. */
+  expanded?: boolean;
+  /** "row" in the results; "link" in the chip row on laptops. */
+  variant?: "row" | "link";
+}) {
+  if (variant === "link") {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-expanded={expanded}
+        className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-sm font-semibold text-role-agent-text hover:bg-role-agent-text/10"
+      >
+        <span aria-hidden>✦</span> Picks for your squad gaps <span aria-hidden>{expanded ? "⌃" : "›"}</span>
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-haspopup="dialog"
+      className="flex min-h-[60px] w-full items-center gap-3 bg-role-agent-text/5 px-3.5 py-2 text-left ring-1 ring-inset ring-role-agent-text/20 hover:bg-role-agent-text/10"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-semibold text-role-agent-text"><span aria-hidden>✦</span> Picks for your squad gaps</span>
+        {clubName && <span className="block truncate text-sm text-text-muted">Recommended for {clubName}</span>}
+      </span>
+      <span aria-hidden className="text-lg text-role-agent-text">›</span>
+    </button>
+  );
+}

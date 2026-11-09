@@ -1,13 +1,18 @@
-import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { useAuth } from "../../hooks/useAuth";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { useNLPlayerSearch } from "../../hooks/useAI";
 import { usePreferencesStore } from "../../store/preferences";
 import type { Club, FairValueSignal, Paginated, Player, PlayerForm, PlayerSearchView } from "../../types/api";
 import PlayerCard from "../../components/players/PlayerCard";
 import PlayerListRow from "../../components/players/PlayerListRow";
+import PlayerRow, { rowFromPlayer, rowFromSearchResult } from "../../components/players/PlayerRow";
 import PlayerFilters, {
+  ClubSearchField,
   DEFAULT_PLAYER_FILTERS,
+  ViewToggle,
   type PlayerFilterState,
   type ViewMode,
 } from "../../components/players/PlayerFilters";
@@ -15,11 +20,18 @@ import ViewSwitcher from "../../components/players/ViewSwitcher";
 import Card from "../../components/ui/Card";
 import Pagination from "../../components/ui/Pagination";
 import EmptyState from "../../components/ui/EmptyState";
+import Sheet from "../../components/ui/Sheet";
 import Spinner from "../../components/ui/Spinner";
 import { MarketRecommendationsPanel } from "../../components/ai/MarketRecommendationsPanel";
-import { NLPlayerSearch } from "../../components/ai/NLPlayerSearch";
+import { FilterChips } from "../../components/ai/NLPlayerSearch";
+import MarketHeader, { BudgetLine } from "../../components/market/MarketHeader";
+import MarketSearch from "../../components/market/MarketSearch";
+import MarketToolbar, { SortMenu } from "../../components/market/MarketToolbar";
+import ActiveFilterChips, { activeFilterCount } from "../../components/market/ActiveFilterChips";
+import FiltersSheet from "../../components/market/FiltersSheet";
+import RecommendationsRow from "../../components/market/RecommendationsRow";
 import { useCompare } from "../../context/CompareContext";
-import { formatCurrency } from "../../lib/utils";
+import { fetchMarket } from "../../lib/marketQuery";
 
 // ── Saveable filter keys (search + club_search are intentionally excluded) ────
 
@@ -70,30 +82,61 @@ function getInitialView(): ViewMode {
   return usePreferencesStore.getState().defaultMarketView as ViewMode;
 }
 
-// ── Sort ──────────────────────────────────────────────────────────────────
-// Every option sorts the whole result set on the server. The chosen sort lives
-// in the filters, so a saved view keeps it and the chip follows from it.
+// Below 640px the page opens in list view unless the person picked grid here,
+// on this device (D5). From 640px the account preference applies as before.
+const PHONE_VIEW_KEY = "playerMarketView.phone";
 
-const SORT_OPTIONS: { label: string; sort_by: PlayerFilterState["sort_by"]; sort_dir: PlayerFilterState["sort_dir"] }[] = [
-  { label: "Best value first", sort_by: "value", sort_dir: "desc" },
-  { label: "Form", sort_by: "form_score", sort_dir: "desc" },
-  { label: "Cheapest", sort_by: "price", sort_dir: "asc" },
-  { label: "Youngest", sort_by: "age", sort_dir: "asc" },
-];
+function getPhoneView(): ViewMode {
+  try {
+    return localStorage.getItem(PHONE_VIEW_KEY) === "grid" ? "grid" : "list";
+  } catch {
+    return "list";
+  }
+}
+
+/** How many columns an auto-fill grid is showing, so a full-width row can follow the first row. */
+function useGridColumns(el: HTMLElement | null): number {
+  const [cols, setCols] = useState(1);
+  useEffect(() => {
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => setCols(Math.max(1, getComputedStyle(el).gridTemplateColumns.split(" ").filter(Boolean).length));
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    return () => ro.disconnect();
+  }, [el]);
+  return cols;
+}
+
+type FormMap = Record<string, { score: number; trend: number | null }>;
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+/**
+ * Browse Players, players first (browse-players-focus): four short rows above
+ * the results (title and count, one search box, Filters · Sort · view, the
+ * active filters as chips). Below 1024px the filters are a sheet and the list
+ * grows with "Show n more"; from 1024px a sticky rail and pagination.
+ */
 export default function PlayerMarketPage() {
   const { accessToken, user, isClub } = useAuth();
   const isAuthenticated = !!accessToken;
   const isPlayerAccount = user?.user_type === "PLAYER";
   const queryClient = useQueryClient();
   const { compareIds } = useCompare();
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const isWide = useMediaQuery("(min-width: 640px)");
 
   const [filters, setFilters] = useState<PlayerFilterState>(DEFAULT_PLAYER_FILTERS);
   const [page, setPage] = useState(1);
-  const [view, setView] = useState<ViewMode>(getInitialView);
+  const [wideView, setWideView] = useState<ViewMode>(getInitialView);
+  const [phoneView, setPhoneView] = useState<ViewMode>(getPhoneView);
+  const view = isWide ? wideView : phoneView;
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [recsOpen, setRecsOpen] = useState(false);
+  const [describe, setDescribe] = useState(false);
+  const nl = useNLPlayerSearch();
   const defaultApplied = useRef(false);
 
   // ── Search views ─────────────────────────────────────────────────────────
@@ -135,32 +178,45 @@ export default function PlayerMarketPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["search-views"] }),
   });
 
-  function handleSelectView(id: string | null) {
+  /** Applies a saved view (or "All players") and returns the filters it set. */
+  function handleSelectView(id: string | null): PlayerFilterState {
     setActiveViewId(id);
-    if (id === null) {
-      setFilters(DEFAULT_PLAYER_FILTERS);
-    } else {
-      const v = views.find((v) => v.id === id);
-      if (v) setFilters((f) => applySavedFilters(v.filters, f));
-    }
+    const v = id === null ? null : views.find((x) => x.id === id);
+    const next = id === null ? DEFAULT_PLAYER_FILTERS : v ? applySavedFilters(v.filters, filters) : filters;
+    setFilters(next);
     setPage(1);
+    return next;
   }
 
   const activeView = views.find((v) => v.id === activeViewId) ?? null;
-  const isModified = !!(activeView && !filtersMatchSaved(filters, activeView.filters));
+  const isModifiedFor = (f: PlayerFilterState) => !!(activeView && !filtersMatchSaved(f, activeView.filters));
 
   function handleFiltersChange(next: PlayerFilterState) {
     setFilters(next);
     setPage(1);
   }
 
-  function handleViewChange(v: ViewMode) {
-    setView(v);
-    try { localStorage.setItem("playerMarketView", v); } catch {}
+  const handleSearch = useCallback((search: string) => {
+    setFilters((f) => ({ ...f, search }));
+    setPage(1);
+  }, []);
+
+  function handleSort(sort_by: PlayerFilterState["sort_by"], sort_dir: PlayerFilterState["sort_dir"]) {
+    handleFiltersChange({ ...filters, sort_by, sort_dir });
   }
 
-  async function handleCreate(name: string) {
-    await createViewMutation.mutateAsync({ name, filters: toSavedFilters(filters) });
+  function handleViewChange(v: ViewMode) {
+    if (isWide) {
+      setWideView(v);
+      try { localStorage.setItem("playerMarketView", v); } catch { /* storage unavailable */ }
+    } else {
+      setPhoneView(v);
+      try { localStorage.setItem(PHONE_VIEW_KEY, v); } catch { /* storage unavailable */ }
+    }
+  }
+
+  async function handleCreate(name: string, f: PlayerFilterState = filters) {
+    await createViewMutation.mutateAsync({ name, filters: toSavedFilters(f) });
   }
   async function handleUpdate(id: string, patch: { name?: string; filters?: Record<string, unknown>; is_default?: boolean }) {
     await updateViewMutation.mutateAsync({ id, patch });
@@ -168,94 +224,74 @@ export default function PlayerMarketPage() {
   async function handleDelete(id: string) {
     await deleteViewMutation.mutateAsync(id);
   }
-  async function handleSaveCurrentToView(id: string) {
-    await updateViewMutation.mutateAsync({ id, patch: { filters: toSavedFilters(filters) } });
-  }
-  async function handleSaveCurrentAsNew(name: string) {
-    await createViewMutation.mutateAsync({ name, filters: toSavedFilters(filters) });
+  async function handleSaveToView(id: string, f: PlayerFilterState = filters) {
+    await updateViewMutation.mutateAsync({ id, patch: { filters: toSavedFilters(f) } });
   }
 
-  // ── Sort ──────────────────────────────────────────────────────────────
-
-  function handleSort(option: (typeof SORT_OPTIONS)[number]) {
-    const active = filters.sort_by === option.sort_by && filters.sort_dir === option.sort_dir;
-    // Picking the active chip again returns to the default, Name (A–Z).
-    setFilters((f) => active
-      ? { ...f, sort_by: DEFAULT_PLAYER_FILTERS.sort_by, sort_dir: DEFAULT_PLAYER_FILTERS.sort_dir }
-      : { ...f, sort_by: option.sort_by, sort_dir: option.sort_dir });
-    setPage(1);
-  }
-
-  // ── Player query ──────────────────────────────────────────────────────────
+  // ── Player queries ────────────────────────────────────────────────────────
+  // From 1024px one page at a time with pagination; below, pages append.
 
   const pageSize = view === "list" ? 40 : 24;
 
-  const { data, isLoading, isError } = useQuery<Paginated<Player>>({
+  const paged = useQuery<Paginated<Player>>({
     queryKey: ["players", "market", { ...filters, page, pageSize }],
-    queryFn: () =>
-      api
-        .get<Paginated<Player>>("/players/market", {
-          params: {
-            page,
-            page_size: pageSize,
-            sort_by: filters.sort_by,
-            sort_dir: filters.sort_dir,
-            ...(filters.search         && { search: filters.search }),
-            ...(filters.position       && { position: filters.position }),
-            ...(filters.status         && { status: filters.status }),
-            ...(filters.open_to_offers && { open_to_offers: true }),
-            ...(filters.buyable        && { buyable: true }),
-            ...(filters.min_age        && { min_age: Number(filters.min_age) }),
-            ...(filters.max_age        && { max_age: Number(filters.max_age) }),
-            ...(filters.nationality    && { nationality: filters.nationality }),
-            ...(filters.club_search    && { club_search: filters.club_search }),
-            ...(filters.min_goals        && { min_goals: Number(filters.min_goals) }),
-            ...(filters.min_assists      && { min_assists: Number(filters.min_assists) }),
-            ...(filters.min_appearances  && { min_appearances: Number(filters.min_appearances) }),
-            ...(filters.min_avg_rating   && { min_avg_rating: Number(filters.min_avg_rating) }),
-            ...(filters.min_value        && { min_market_value: Number(filters.min_value) * 1_000_000 }),
-            ...(filters.max_value        && { max_market_value: Number(filters.max_value) * 1_000_000 }),
-            ...(filters.contract_expiry_months && { contract_expiry_within_months: Number(filters.contract_expiry_months) }),
-            ...(filters.min_form_score   && { min_form_score: Number(filters.min_form_score) }),
-          },
-        })
-        .then((r) => r.data),
+    queryFn: () => fetchMarket(filters, page, pageSize),
+    enabled: isDesktop,
   });
 
-  const fetchedPlayers = data?.items ?? [];
-  const playerIds = fetchedPlayers.map((p) => p.id).join(",");
-
-  const { data: formScores = {} } = useQuery<Record<string, { score: number; trend: number | null }>>({
-    queryKey: ["players", "form-batch", playerIds],
-    enabled: fetchedPlayers.length > 0,
-    staleTime: 60_000,
-    queryFn: async () => {
-      const resp = await api
-        .get<Record<string, PlayerForm>>("/players/form/batch", { params: { player_ids: playerIds } })
-        .catch(() => ({ data: {} as Record<string, PlayerForm> }));
-      const map: Record<string, { score: number; trend: number | null }> = {};
-      for (const [pid, form] of Object.entries(resp.data)) {
-        map[pid] = { score: Number(form.form_score), trend: form.trend != null ? Number(form.trend) : null };
-      }
-      return map;
-    },
+  const infinite = useInfiniteQuery({
+    queryKey: ["players", "market", "infinite", { ...filters, pageSize }],
+    queryFn: ({ pageParam }) => fetchMarket(filters, pageParam, pageSize),
+    initialPageParam: 1,
+    getNextPageParam: (last: Paginated<Player>) => (last.page * last.page_size < last.total ? last.page + 1 : undefined),
+    enabled: !isDesktop,
   });
 
-  // TRA-92: one batch valuation call per page of cards, never per card.
-  // D6: a player-account identity must not fire the call at all.
-  const { data: fairValues = {} } = useQuery<Record<string, FairValueSignal>>({
-    queryKey: ["valuation", "batch", playerIds],
-    enabled: isAuthenticated && !isPlayerAccount && fetchedPlayers.length > 0,
-    staleTime: 300_000,
-    queryFn: async () => {
-      const resp = await api
-        .get<{ valuations: Record<string, FairValueSignal> }>("/valuation/players", { params: { ids: playerIds } })
-        .catch(() => ({ data: { valuations: {} as Record<string, FairValueSignal> } }));
-      return resp.data.valuations;
-    },
-  });
+  const pages: Paginated<Player>[] = isDesktop ? (paged.data ? [paged.data] : []) : (infinite.data?.pages ?? []);
+  const players = pages.flatMap((p) => p.items);
+  const total = pages[0]?.total;
+  const isLoading = isDesktop ? paged.isLoading : infinite.isLoading;
+  const isError = isDesktop ? paged.isError : infinite.isError;
 
-  // Club-only budget context for the tier-2 figures.
+  // Form and valuation: one batch call per loaded page, keyed by that page's
+  // ids, never per card (TRA-92). A player account never fires the valuation
+  // call (D6).
+  const pageIds = pages.map((p) => p.items.map((x) => x.id).join(",")).filter(Boolean);
+
+  const formQueries = useQueries({
+    queries: pageIds.map((ids) => ({
+      queryKey: ["players", "form-batch", ids],
+      staleTime: 60_000,
+      queryFn: async (): Promise<FormMap> => {
+        const resp = await api
+          .get<Record<string, PlayerForm>>("/players/form/batch", { params: { player_ids: ids } })
+          .catch(() => ({ data: {} as Record<string, PlayerForm> }));
+        const map: FormMap = {};
+        for (const [pid, form] of Object.entries(resp.data)) {
+          map[pid] = { score: Number(form.form_score), trend: form.trend != null ? Number(form.trend) : null };
+        }
+        return map;
+      },
+    })),
+  });
+  const formScores: FormMap = Object.assign({}, ...formQueries.map((q) => q.data ?? {}));
+
+  const valuationQueries = useQueries({
+    queries: pageIds.map((ids) => ({
+      queryKey: ["valuation", "batch", ids],
+      enabled: isAuthenticated && !isPlayerAccount,
+      staleTime: 300_000,
+      queryFn: async (): Promise<Record<string, FairValueSignal>> => {
+        const resp = await api
+          .get<{ valuations: Record<string, FairValueSignal> }>("/valuation/players", { params: { ids } })
+          .catch(() => ({ data: { valuations: {} as Record<string, FairValueSignal> } }));
+        return resp.data.valuations;
+      },
+    })),
+  });
+  const fairValues: Record<string, FairValueSignal> = Object.assign({}, ...valuationQueries.map((q) => q.data ?? {}));
+
+  // Club-only budget line.
   const { data: myClub } = useQuery<Club>({
     queryKey: ["clubs", "me"],
     queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
@@ -263,142 +299,311 @@ export default function PlayerMarketPage() {
     staleTime: 60_000,
   });
 
-  return (
-    <div>
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold tracking-[-0.01em] text-text">Player Market</h1>
-        <p className="mt-[3px] text-sm text-text-muted">
-          {activeView
-            ? `Search view: ${activeView.name} · ${data?.total ?? 0} matches`
-            : "Browse available players"}
-        </p>
-      </div>
+  // ── "Show n more": focus the first new row once it lands ─────────────────
 
-      {isClub && myClub?.finance && (
-        <div className="mb-5 grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
-          <Card tier={2}>
-            <p className="text-xs font-semibold text-text-secondary">Budget free</p>
-            <p className="mt-1.5 text-[28px] font-bold text-text">{formatCurrency(Number(myClub.finance.transfer_remaining))}</p>
-          </Card>
-          <Card tier={2}>
-            <p className="text-xs font-semibold text-text-secondary">Wage room</p>
-            <p className="mt-1.5 text-[28px] font-bold text-text">{formatCurrency(Number(myClub.finance.wage_remaining_weekly))}</p>
-            <p className="mt-[3px] text-xs text-text-muted">per week</p>
-          </Card>
+  const rowRefs = useRef<(HTMLElement | null)[]>([]);
+  const focusFrom = useRef<number | null>(null);
+  function loadMore() {
+    focusFrom.current = players.length;
+    infinite.fetchNextPage();
+  }
+  useLayoutEffect(() => {
+    const i = focusFrom.current;
+    if (i != null && players.length > i) {
+      focusFrom.current = null;
+      rowRefs.current[i]?.focus();
+    }
+  }, [players.length]);
+
+  const [gridEl, setGridEl] = useState<HTMLElement | null>(null);
+  const gridCols = useGridColumns(gridEl);
+
+  // ── Layout ────────────────────────────────────────────────────────────────
+
+  const describing = describe && (nl.data || nl.isPending || nl.error);
+  const showRecs = isClub;
+  const filterCount = activeFilterCount(filters);
+
+  function leaveDescribe() {
+    setDescribe(false);
+    nl.reset();
+  }
+
+  const search = (
+    <MarketSearch
+      search={filters.search}
+      onSearch={handleSearch}
+      describe={describe}
+      onDescribeChange={(on) => (on ? setDescribe(true) : leaveDescribe())}
+      onDescribeSubmit={(query) => nl.mutate({ query, buyable: filters.buyable })}
+      describePending={nl.isPending}
+      canDescribe={isAuthenticated}
+    />
+  );
+
+  const recsRow = showRecs && (
+    <RecommendationsRow clubName={myClub?.name} onOpen={() => setRecsOpen(true)} />
+  );
+
+  const results = describing ? (
+    <DescribeResults nl={nl} onBack={leaveDescribe} />
+  ) : (
+    <>
+      {isLoading && <div className="flex justify-center py-16"><Spinner size="lg" /></div>}
+
+      {isError && (
+        <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+          Failed to load players. Please try again.
         </div>
       )}
 
-      {isAuthenticated && <NLPlayerSearch buyable={filters.buyable} />}
+      {!isLoading && !isError && total === 0 && (
+        <EmptyState title="No players found" body="Try adjusting your filters." />
+      )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[250px_1fr]">
-        {/* Filter rail */}
-        <div className="lg:sticky lg:top-6 h-fit space-y-5">
-          <Card>
-            <PlayerFilters filters={filters} onChange={handleFiltersChange} view={view} onViewChange={handleViewChange} />
-          </Card>
-          {isAuthenticated && (
-            <Card>
-              <ViewSwitcher
-                views={views}
-                activeViewId={activeViewId}
-                isModified={isModified}
-                onCreate={handleCreate}
-                onUpdate={handleUpdate}
-                onDelete={handleDelete}
-                onSelect={handleSelectView}
-                onSaveCurrentToView={handleSaveCurrentToView}
-                onSaveCurrentAsNew={handleSaveCurrentAsNew}
-              />
-            </Card>
+      {players.length > 0 && (
+        <>
+          {view === "grid" && (
+            <ul ref={setGridEl} className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
+              {players.map((player, i) => (
+                <GridItem key={player.id} index={i} rowRefs={rowRefs} after={!isDesktop && i === gridCols - 1 ? recsRow : null}>
+                  <PlayerCard
+                    player={player}
+                    formScore={formScores[player.id]?.score}
+                    formTrend={formScores[player.id]?.trend}
+                    fairValueSignal={fairValues[player.id]}
+                  />
+                </GridItem>
+              ))}
+            </ul>
           )}
-        </div>
 
-        {/* Results */}
-        <div className="min-w-0">
-          {isAuthenticated && (
-            <div className="mb-4">
-              <MarketRecommendationsPanel positionFilter={filters.position || undefined} maxBudget={undefined} />
+          {view === "list" && !isWide && (
+            <ul className="overflow-hidden rounded-xl bg-surface ring-1 ring-border">
+              {players.map((player, i) => (
+                <ListItem key={player.id} after={i === 4 ? recsRow : null}>
+                  <PlayerRow
+                    ref={(el) => { rowRefs.current[i] = el; }}
+                    row={rowFromPlayer(player, fairValues[player.id], formScores[player.id]?.score)}
+                  />
+                </ListItem>
+              ))}
+            </ul>
+          )}
+
+          {view === "list" && isWide && (
+            <ul className="space-y-2.5">
+              {players.map((player, i) => (
+                <li key={player.id} ref={(el) => { rowRefs.current[i] = el; }} tabIndex={-1} className="focus:outline-none">
+                  <PlayerListRow
+                    player={player}
+                    formScore={formScores[player.id]?.score}
+                    formTrend={formScores[player.id]?.trend}
+                    fairValueSignal={fairValues[player.id]}
+                    canAct={isClub}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {isDesktop && paged.data && (
+            <div className="mt-6">
+              <Pagination page={paged.data.page} total={paged.data.total} pageSize={paged.data.page_size} onChange={setPage} />
             </div>
           )}
 
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
-              {SORT_OPTIONS.map((o) => {
-                const active = filters.sort_by === o.sort_by && filters.sort_dir === o.sort_dir;
-                return (
-                  <button
-                    key={o.sort_by}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => handleSort(o)}
-                    className={`rounded-lg px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
-                      active ? "bg-ink text-white" : "bg-surface text-text-secondary ring-1 ring-input-border hover:ring-accent"
-                    }`}
-                  >
-                    {o.label}
-                  </button>
-                );
-              })}
+          {!isDesktop && total != null && (
+            <div className="mt-4 flex flex-col items-center gap-2">
+              {infinite.hasNextPage && (
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={infinite.isFetchingNextPage}
+                  className="min-h-12 w-full rounded-xl bg-surface text-base font-semibold text-text ring-1 ring-inset ring-input-border hover:ring-accent disabled:opacity-60"
+                >
+                  {infinite.isFetchingNextPage ? "Loading…" : `Show ${Math.min(pageSize, total - players.length)} more`}
+                </button>
+              )}
+              <p className="text-sm text-text-muted">Showing {players.length.toLocaleString("en-GB")} of {total.toLocaleString("en-GB")}</p>
             </div>
-            {data && (
-              <span className="text-[13px] text-text-muted">
-                {data.total} player{data.total !== 1 ? "s" : ""}
-                {compareIds.length > 0 && ` · ${compareIds.length} selected to compare`}
-              </span>
-            )}
+          )}
+        </>
+      )}
+    </>
+  );
+
+  return (
+    // On phones the compare bar is fixed at the bottom: leave room for it so
+    // it never covers "Show n more".
+    <div className={compareIds.length > 0 ? "pb-24 lg:pb-0" : ""}>
+      <MarketHeader total={describing ? undefined : total} club={isClub && isWide ? myClub : null} />
+
+      {!isDesktop && (
+        <>
+          <div className="mt-3 sm:hidden">{search}</div>
+          <MarketToolbar
+            filters={filters}
+            onSort={handleSort}
+            activeCount={filterCount}
+            view={view}
+            onViewChange={handleViewChange}
+            onOpenFilters={() => setFiltersOpen(true)}
+            search={isWide ? search : undefined}
+          />
+          <div className="mt-1 space-y-2">
+            <ActiveFilterChips filters={filters} onChange={handleFiltersChange} />
+            {isClub && !isWide && <BudgetLine club={myClub} />}
           </div>
+          <div className="mt-3">{results}</div>
 
-          {isLoading && (
-            <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+          <FiltersSheet
+            open={filtersOpen}
+            onClose={() => setFiltersOpen(false)}
+            filters={filters}
+            onApply={handleFiltersChange}
+            saved={isAuthenticated ? {
+              views,
+              activeViewId,
+              isModified: isModifiedFor,
+              onSelect: handleSelectView,
+              onCreate: handleCreate,
+              onUpdate: handleUpdate,
+              onDelete: handleDelete,
+              onSaveToView: handleSaveToView,
+            } : undefined}
+          />
+          {showRecs && (
+            <Sheet
+              open={recsOpen}
+              onClose={() => setRecsOpen(false)}
+              title="Picks for your squad gaps"
+              subtitle={myClub ? `Recommended for ${myClub.name}` : undefined}
+              closeLabel="Close"
+              footer={
+                <button type="button" onClick={() => setRecsOpen(false)} className="min-h-12 w-full rounded-xl bg-surface text-base font-semibold text-text ring-1 ring-inset ring-input-border">
+                  Back to players
+                </button>
+              }
+            >
+              <MarketRecommendationsPanel positionFilter={filters.position || undefined} maxBudget={undefined} />
+            </Sheet>
           )}
+        </>
+      )}
 
-          {isError && (
-            <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
-              Failed to load players. Please try again.
-            </div>
-          )}
-
-          {data && data.items.length === 0 && (
-            <EmptyState title="No players found" body="Try adjusting your filters." />
-          )}
-
-          {data && data.items.length > 0 && (
-            <>
-              {view === "grid" && (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
-                  {fetchedPlayers.map((player) => (
-                    <PlayerCard
-                      key={player.id}
-                      player={player}
-                      formScore={formScores[player.id]?.score}
-                      formTrend={formScores[player.id]?.trend}
-                      fairValueSignal={fairValues[player.id]}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {view === "list" && (
-                <div className="space-y-2.5">
-                  {fetchedPlayers.map((player) => (
-                    <PlayerListRow
-                      key={player.id}
-                      player={player}
-                      formScore={formScores[player.id]?.score}
-                      formTrend={formScores[player.id]?.trend}
-                      fairValueSignal={fairValues[player.id]}
-                      canAct={isClub}
-                    />
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-6">
-                <Pagination page={data.page} total={data.total} pageSize={data.page_size} onChange={setPage} />
+      {isDesktop && (
+        <div className="mt-4 grid grid-cols-[250px_1fr] gap-6">
+          <aside aria-label="Filters" className="sticky top-20 h-fit max-h-[calc(100vh-6rem)] space-y-5 overflow-y-auto pb-2 [scrollbar-width:thin]">
+            {isAuthenticated && (
+              <Card>
+                <ViewSwitcher
+                  views={views}
+                  activeViewId={activeViewId}
+                  isModified={isModifiedFor(filters)}
+                  onCreate={(name) => handleCreate(name)}
+                  onUpdate={handleUpdate}
+                  onDelete={handleDelete}
+                  onSelect={handleSelectView}
+                  onSaveCurrentToView={(id) => handleSaveToView(id)}
+                  onSaveCurrentAsNew={(name) => handleCreate(name)}
+                />
+              </Card>
+            )}
+            <Card>
+              <div className="space-y-3">
+                <PlayerFilters filters={filters} onChange={handleFiltersChange} />
+                <ClubSearchField filters={filters} onChange={handleFiltersChange} />
+                <ViewToggle view={view} onViewChange={handleViewChange} />
               </div>
-            </>
-          )}
+            </Card>
+          </aside>
+
+          <div className="min-w-0 space-y-3">
+            <div className="flex items-center gap-2">
+              {search}
+              <SortMenu filters={filters} onSort={handleSort} className="shrink-0" />
+            </div>
+            <ActiveFilterChips
+              filters={filters}
+              onChange={handleFiltersChange}
+              trailing={showRecs ? <RecommendationsRow variant="link" expanded={recsOpen} onOpen={() => setRecsOpen((o) => !o)} /> : undefined}
+            />
+            {showRecs && recsOpen && (
+              <MarketRecommendationsPanel positionFilter={filters.position || undefined} maxBudget={undefined} />
+            )}
+            {results}
+          </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function ListItem({ children, after }: { children: React.ReactNode; after: React.ReactNode }) {
+  return (
+    <>
+      {children}
+      {after && <li className="border-t border-rule">{after}</li>}
+    </>
+  );
+}
+
+function GridItem({ children, after, index, rowRefs }: {
+  children: React.ReactNode;
+  after: React.ReactNode;
+  index: number;
+  rowRefs: React.MutableRefObject<(HTMLElement | null)[]>;
+}) {
+  return (
+    <>
+      <li ref={(el) => { rowRefs.current[index] = el; }} tabIndex={-1} className="min-w-0 focus:outline-none">{children}</li>
+      {after && <li className="col-span-full overflow-hidden rounded-xl">{after}</li>}
+    </>
+  );
+}
+
+/** The AI search's results in place of the list (browse-players-focus §5.7). */
+function DescribeResults({ nl, onBack }: { nl: ReturnType<typeof useNLPlayerSearch>; onBack: () => void }) {
+  const back = (
+    <button type="button" onClick={onBack} className="min-h-11 text-[15px] font-semibold text-accent hover:text-accent-hover">
+      ← Back to all players
+    </button>
+  );
+  if (nl.isPending) {
+    return (
+      <div className="flex items-center gap-2 py-8 text-sm text-text-muted">
+        <Spinner size="sm" /> Reading your description and searching…
+      </div>
+    );
+  }
+  if (nl.error) {
+    return (
+      <div className="space-y-2">
+        <p className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
+          {(nl.error as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Search failed. Please try again."}
+        </p>
+        {back}
+      </div>
+    );
+  }
+  const data = nl.data!;
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <p className="text-sm font-semibold text-text-secondary">Interpreted as:</p>
+        <FilterChips filters={data.filters} />
+      </div>
+      {data.players.length === 0 ? (
+        <EmptyState title="No players matched" body="Try describing him another way." />
+      ) : (
+        <ul className="overflow-hidden rounded-xl bg-surface ring-1 ring-border">
+          {data.players.map((p) => <PlayerRow key={p.player_id} row={rowFromSearchResult(p)} />)}
+        </ul>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-text-muted">{data.total} player{data.total === 1 ? "" : "s"} found</p>
+        {back}
       </div>
     </div>
   );
