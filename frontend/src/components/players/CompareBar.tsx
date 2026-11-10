@@ -38,7 +38,9 @@ export default function CompareBar() {
   if (compareIds.length === 0) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center px-4 pb-4 pointer-events-none">
+    // --action-bar-h: the player page's bottom action bar, when it shows
+    // below 1024px, so this sits above it rather than over it.
+    <div className="fixed bottom-[var(--action-bar-h,0px)] left-0 right-0 z-50 flex items-center justify-center px-4 pb-4 pointer-events-none">
       <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-ink px-9 py-3.5 shadow-2xl">
         <span className="text-xs font-semibold text-white/60 shrink-0">Comparing</span>
 

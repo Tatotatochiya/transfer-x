@@ -44,6 +44,7 @@ Statuses verified against the code and `CHANGELOG.md` on 2026-10-11. Once a spec
 
 | Spec | Implemented |
 |---|---|
+| [`player-actions/`](./player-actions/README.md): one blue button, the top bar as navigation and the player page's actions by situation | 2026-11-10 |
 | [`browse-players-focus/`](./browse-players-focus/README.md): Browse Players, players first (search, toolbar, chips, filters sheet, phone rows), plus server sort, image fallbacks and the grid fix | 2026-11-09 |
 | [`offer-room-focus/`](./offer-room-focus/README.md): the offer page, answer first (status card, counter sheet, where it stands, Raise your offer) | 2026-11-09 |
 | [`deal-room-focus/`](./deal-room-focus/README.md): the deal room, answer first (header, status card, progress, sections) | 2026-11-08 |

@@ -197,6 +197,17 @@ Cards keep their internal padding at all sizes except tier-1 mobile cards, which
 - Rails: sticky on desktop only. Never sticky on mobile — they eat the viewport.
 - Compare tray (Browse Players): fixed to the bottom on all sizes, but on mobile it collapses to
   a single bar showing "3 selected · Compare" rather than listing the players.
+- Player page action bar: below 1024px the player's primary and secondary actions are fixed to
+  the bottom (above the home indicator), and the page pads by its height. The compare tray sits
+  above it (`--action-bar-h`), never over it.
+
+## Buttons
+
+- **One primary (blue) button per screen**: the action the screen is for. Everything else is
+  secondary, a text button, or in More.
+- **The top bar never has one.** Its "Find players" / "Sell a player" are navigation, styled quietly.
+- No disabled buttons that explain themselves in a tooltip: say why in a sentence, and offer the
+  useful next step.
 
 ## What to check before calling a screen done
 

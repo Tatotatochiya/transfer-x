@@ -14,27 +14,35 @@ describe("MarketActions", () => {
     caps.marketWrite = true;
   });
 
-  it("offers Buy and Sell to a club member who can trade", () => {
+  it("offers Find players and Sell a player to a club member who can trade, never in blue", () => {
     renderWithProviders(<MarketActions />);
-    expect(screen.getByRole("link", { name: "Buy a player" })).toHaveAttribute("href", "/players/market");
-    expect(screen.getByRole("link", { name: "Sell a player" })).toHaveAttribute("href", "/sales/new");
+    const find = screen.getByRole("link", { name: "Find players" });
+    const sell = screen.getByRole("link", { name: "Sell a player" });
+    expect(find).toHaveAttribute("href", "/players/market");
+    expect(sell).toHaveAttribute("href", "/sales/new");
+    for (const l of [find, sell]) expect(l.className).not.toMatch(/\bbg-accent\b/);
   });
 
-  it("is short on a phone", () => {
+  it("is short on a phone, with the same names", () => {
     renderWithProviders(<MarketActions compact />);
-    expect(screen.getByRole("link", { name: "Buy" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sell" })).toBeInTheDocument();
+    const find = screen.getByRole("link", { name: "Find players" });
+    const sell = screen.getByRole("link", { name: "Sell a player" });
+    expect(find).toHaveTextContent("Players");
+    expect(sell).toHaveTextContent("Sell");
+    expect(find).toHaveAttribute("href", "/players/market");
+    expect(sell).toHaveAttribute("href", "/sales/new");
+    for (const l of [find, sell]) expect(l.className).not.toMatch(/\bbg-accent\b/);
   });
 
   it("isn't there for a role that can't trade, an agent, or a view-as tab", () => {
     caps.marketWrite = false;
     const { unmount } = renderWithProviders(<MarketActions />);
-    expect(screen.queryByRole("link", { name: /Buy/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Find players/ })).not.toBeInTheDocument();
     unmount();
     caps.marketWrite = true;
     auth.value = { ...auth.value, userType: "AGENT" };
     const second = renderWithProviders(<MarketActions />);
-    expect(screen.queryByRole("link", { name: /Buy/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Find players/ })).not.toBeInTheDocument();
     second.unmount();
     auth.value = { isAuthenticated: true, userType: "CLUB", hasClub: true, viewedBy: "staff@transferx" };
     renderWithProviders(<MarketActions />);

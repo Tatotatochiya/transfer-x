@@ -10,7 +10,9 @@ import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 interface Props {
   playerId: string;
   /** compact = small icon only; default = icon + label */
-  size?: "compact" | "default";
+  size?: "compact" | "default" | "icon";
+  /** The trigger's accessible name, e.g. "Shortlist João Pedro". */
+  label?: string;
 }
 
 /**
@@ -18,7 +20,7 @@ interface Props {
  * leaving the page. Lists he is already on are ticked and can't be picked
  * again; a new list is created and he is added to it in one step.
  */
-export default function AddToShortlistButton({ playerId, size = "default" }: Props) {
+export default function AddToShortlistButton({ playerId, size = "default", label }: Props) {
   const { accessToken } = useAuthStore();
   const { membership, can } = useClubCapabilities();
   const navigate = useNavigate();
@@ -121,21 +123,25 @@ export default function AddToShortlistButton({ playerId, size = "default" }: Pro
       }}
     >
       <button
+        type="button"
         onClick={() => setOpen((o) => !o)}
         title="Add to shortlist"
+        aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
         className={`flex items-center gap-1.5 rounded-lg ring-1 transition-colors ${
-          isCompact
+          size === "icon"
+            ? "h-11 w-11 justify-center bg-surface ring-inset ring-input-border text-text-secondary hover:text-text"
+            : isCompact
             ? "p-1.5 bg-surface-inset ring-input-border hover:bg-border hover:ring-input-border text-text-muted hover:text-text"
-            : "px-3 py-2 bg-surface-inset ring-input-border hover:bg-border text-sm font-medium text-text-secondary hover:text-text"
+            : "min-h-11 lg:min-h-10 px-3 py-2 bg-surface ring-inset ring-input-border hover:bg-surface-inset text-sm font-medium text-text-secondary hover:text-text"
         }`}
       >
         {/* Bookmark icon */}
-        <svg className={isCompact ? "h-3.5 w-3.5" : "h-4 w-4"} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <svg aria-hidden className={isCompact ? "h-3.5 w-3.5" : size === "icon" ? "h-5 w-5" : "h-4 w-4"} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
         </svg>
-        {!isCompact && <span>Shortlist</span>}
+        {size === "default" && <span>Shortlist</span>}
       </button>
 
       {open && (

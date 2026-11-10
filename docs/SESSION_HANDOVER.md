@@ -22,34 +22,28 @@ Overwritten at the end of each session by the [`session-lifecycle`](../.claude/s
 
 ## Latest Session Summary
 
-## Session Summary — 2026-11-09 (follow-ups)
+## Session Summary — 2026-11-10 (one blue button)
 
 **Completed work:**
-- PRs #65 and #66 merged (Browse Players).
-- Branch `follow-ups-nov`, 8 commits, not pushed yet:
-  - Deal collapse reason stored and shown (`collapse_reason`, `collapsed_by_club_id`).
-  - Admin warning for a weekly wage budget above £5M.
-  - Browse Players price filter in pounds (`min_price`/`max_price`, shared `_with_price`).
-  - Offer page: the seller's asking price in the gap line (`your_asking_price` on the Lite card).
-  - Offer page: "waiting for approval" after a 202 (`pending_approval`), and no duplicate approval requests.
-  - Unsent conversation drafts survive the 1024px layout switch.
-  - Unread count on Messages: `conversation_reads` (migration `0110`), `unread` on `GET /conversation`, `POST /conversation/read`.
-  - 13px/44px pass on the reused message and timeline components.
-- Tests: frontend 61 files, 426 passing; backend deals, offers, approvals, conversation, players, Lite and negotiation tests, 199 passing.
+- PR #67 merged (November follow-ups; migration `0110`).
+- Branch `player-actions` ([spec](./feature_spec/player-actions/README.md)), not pushed yet:
+  - Top bar: "Find players" / "Sell a player" ("Players" / "Sell" on phones) as quiet navigation, never blue.
+  - `lib/playerSituation`: the player page's one primary, secondary, sentence and More items by situation (12 rows).
+  - `TransferHeader` gained optional `sub`, `actions`, `amount` and `linkName`; the deal and offer pages are unchanged.
+  - Player page: shared header, header actions from 1024px, a fixed bottom bar below, More menu (Compare, ✦ Ask TransferX, View club, release clause), sentences instead of disabled buttons; CompareBar sits above the bar.
+- Tests: frontend 63 files, 462 passing (`playerSituation` 24, the page 12, top bar updated).
 
 **Important decisions:**
-- Unread is per person, keyed by player + buying club (one conversation per transfer, ADR 0008); never-opened conversations count only the last 14 days; "read" means up to the newest message seen, by its own timestamp.
-- The collapse reason is visible to both clubs (dialog says so).
-- The asking price beats the valuation in the seller's gap line; the buyer never sees either.
+- Review revisions R1–R6 in the spec, notably: deal rows before own-player rows; non-parties keep today's banner; the release clause only where it can work.
+- Signed-out viewers and agents lose Compare on the player page (spec §4).
 
 **Outstanding work:**
-- Push `follow-ups-nov` and open its PR; migration `0110` runs on deploy.
-- Production: correct the club whose weekly wage budget is about £50M (staff, admin club page).
-- Earlier: registration checklist; real-iPhone checks; Railway test-data cleanup.
+- Push `player-actions` and open its PR.
+- Not checked: a real iPhone, 200% zoom, a release clause on screen.
+- Production: correct the club with a ~£50M weekly wage budget (staff).
 
 **Risks:**
 - No eslint in the repo, so lint never runs.
-- Backend tests run on SQLite, which stores whole seconds; the unread test backdates rows to stay reliable.
 
 **Recommended next task:**
 - Registration checklist: split the single "registration" paperwork step into the league's real items.

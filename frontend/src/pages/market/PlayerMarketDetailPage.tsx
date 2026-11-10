@@ -17,7 +17,13 @@ import {
   playerStatusVariant,
 } from "../../lib/badges";
 import { formatCurrency, getApiError } from "../../lib/utils";
-import AskAboutButton from "../../components/ai/AskAboutButton";
+import { askAboutPath } from "../../lib/ask";
+import { playerSituation } from "../../lib/playerSituation";
+import TransferHeader from "../../components/transfer/TransferHeader";
+import MoreMenu, { type MoreMenuItem } from "../../components/transfer/MoreMenu";
+import PlayerActions, { type ActionHandlers } from "../../components/players/PlayerActions";
+import PlayerActionBar, { ACTION_BAR_HEIGHT } from "../../components/players/PlayerActionBar";
+import PlayerActionNote from "../../components/players/PlayerActionNote";
 import AddToShortlistButton from "../../components/scouting/AddToShortlistButton";
 import AskAboutPlayerModal from "../../components/enquiries/AskAboutPlayerModal";
 import { PotentialBuyersPanel } from "../../components/ai/Assistant";
@@ -74,13 +80,6 @@ function DealBanner({ deal }: { deal: ActiveDealStub }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-
-const positionAvatarBg: Record<string, string> = {
-  GK:  "bg-pos-gk-bg text-pos-gk-text ring-border",
-  DEF: "bg-pos-def-bg text-pos-def-text ring-border",
-  MID: "bg-pos-mid-bg text-pos-mid-text ring-border",
-  FWD: "bg-pos-fwd-bg text-pos-fwd-text ring-border",
-};
 
 // ── Tab bar ────────────────────────────────────────────────────────────────────
 
@@ -500,10 +499,6 @@ export default function PlayerMarketDetailPage() {
     );
   }
 
-  const avatarBg = player.position
-    ? (positionAvatarBg[player.position] ?? "bg-surface-inset text-text-muted ring-border")
-    : "bg-surface-inset text-text-muted ring-border";
-
   const clubCrest = player.current_club?.crest_url ?? player.world_team?.crest_url ?? null;
   const clubName  = player.current_club?.name ?? player.world_team?.name ?? player.team_name ?? null;
   const isContracted = !!(player.current_club || player.world_team || player.team_name);
@@ -547,209 +542,142 @@ export default function PlayerMarketDetailPage() {
     </span>,
   );
 
+  // ── Actions: which show and where (player-actions §4); whether each is
+  // allowed is the flags above, unchanged. ──────────────────────────────────
+  const canMarketWrite = can("MARKET_WRITE");
+  const canAsk = isAuthenticated && !isAgent && canMarketWrite && !isFreeAgentPlayer && !isOffPlatform;
+  const situation = playerSituation({
+    playerId: player.id,
+    isAuthenticated, isAgent, isPlayerAccount, isMyPlayer, canList, listingsKnown, listingId,
+    isOffPlatform, isFreeAgentPlayer, inPreContractWindow, canMarketWrite,
+    activeDeal: player.active_deal, myClubId: myClub?.id, contractEndDate,
+    clubName: isOffPlatform ? (player.world_team?.name ?? player.team_name ?? null) : clubName,
+    parentClubName: player.active_loan?.parent_club?.name ?? null,
+    onLoanToUs: isMyPlayer && !!player.active_loan,
+    hasReleaseClause: player.active_contract?.release_clause != null,
+  });
+  const handlers: ActionHandlers = {
+    pending: signFreeAgentMutation.isPending ? "sign-free-agent" : preContractMutation.isPending ? "pre-contract" : null,
+    onAction: (key) => {
+      if (key === "list") setListOpen(true);
+      else if (key === "ask-club") setAskOpen(true);
+      else if (key === "sign-free-agent") void handleSignFreeAgent();
+      else if (key === "pre-contract") void handlePreContract();
+    },
+  };
+  const clubPath = player.current_club?.id ? `/clubs/${player.current_club.id}`
+    : player.world_team?.id ? `/world/teams/${player.world_team.id}`
+    : clubName ? `/clubs?search=${encodeURIComponent(clubName)}` : null;
+  const clause = player.active_contract?.release_clause;
+  const moreItems: MoreMenuItem[] = situation.more.flatMap((k): MoreMenuItem[] => {
+    switch (k) {
+      case "ask-club": return [{ label: situation.askLabel, onSelect: () => setAskOpen(true) }];
+      case "compare": return [{ label: has(player.id) ? "Remove from compare" : "Compare with others", onSelect: () => toggle(player.id) }];
+      case "ask-transferx": return [{ label: "✦ Ask TransferX about him", to: askAboutPath("player", player.id, player.name) }];
+      case "view-club": return clubPath && clubName ? [{ label: `View ${clubName}`, to: clubPath }] : [];
+      case "release-clause":
+        return clause != null
+          ? [{ label: `Pay the release clause (${formatCurrency(clause)})…`, onSelect: () => void handleTriggerReleaseClause(), danger: true, dividerBefore: true }]
+          : [];
+    }
+  });
+  const more = <MoreMenu items={moreItems} />;
+
   const moves = ledger?.transfers.length ?? 0;
   const injuryCount = ledger?.injuries
     ? ledger.injuries.periods.filter((p) => ledger.seasons.some((s) => s.season === p.season)).length
     : null;
 
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-3">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-[13px] text-text-muted" aria-label="Breadcrumb">
-        <button onClick={() => navigate(-1)} className="hover:text-text">← Back</button>
-        <span aria-hidden="true">·</span>
-        <button onClick={() => navigate("/players/market")} className="hover:text-text">Market</button>
-        <span aria-hidden="true">/</span>
-        <span className="truncate text-text-secondary">{player.name}</span>
-      </nav>
-
-      {/* Header */}
-      <div className="flex flex-wrap items-start gap-3.5">
-        <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-[52px] w-[52px] text-xl" colorClass={avatarBg} className="font-extrabold ring-2 ring-border" loading="eager" />
-        <div className="flex min-w-[280px] flex-1 flex-col gap-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-[22px] font-bold text-text">{player.name}</h1>
-            {player.is_verified_player && <VerifiedBadge />}
-            {player.position && <Badge variant={positionVariant(player.position)}>{player.position}</Badge>}
-            {isContracted ? (
-              <Badge variant="info">Contracted</Badge>
-            ) : (
-              <Badge variant={playerStatusVariant(player.status)}>{playerStatusLabel(player.status)}</Badge>
+    // Room for the bottom action bar below 1024px, so it never hides the end of the page.
+    <div
+      className="mx-auto flex max-w-[1280px] flex-col gap-3 lg:!pb-0"
+      style={situation.primary || situation.secondary ? { paddingBottom: `calc(${ACTION_BAR_HEIGHT}px + env(safe-area-inset-bottom))` } : undefined}
+    >
+      <TransferHeader
+        player={{ id: player.id, name: player.name, position: player.position ?? null, photoUrl: player.photo_url ?? null }}
+        linkName={false}
+        sub={
+          <div className="mt-1 flex flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2">
+              {player.is_verified_player && <VerifiedBadge />}
+              {player.position && <Badge variant={positionVariant(player.position)}>{player.position}</Badge>}
+              {isContracted ? (
+                <Badge variant="info">Contracted</Badge>
+              ) : (
+                <Badge variant={playerStatusVariant(player.status)}>{playerStatusLabel(player.status)}</Badge>
+              )}
+              {/* open_to_offers now means "listed" (sales/service.sync_listed_flag). */}
+              {player.open_to_offers && (
+                <span className="flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[13px] font-semibold text-success-text">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" /> Listed
+                </span>
+              )}
+              {isMyPlayer && competition && competition.active_count > 0 && (
+                <button
+                  onClick={() => navigate("/board?side=SELLING")}
+                  className="flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[13px] font-semibold text-accent hover:bg-accent/25"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
+                  {competition.active_count} active offer{competition.active_count !== 1 ? "s" : ""}
+                </button>
+              )}
+            </div>
+            {metaItems.length > 0 && (
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-text-secondary">
+                {metaItems.map((m, i) => (
+                  <span key={i} className="flex items-center gap-2">{i > 0 && <span aria-hidden="true" className="text-text-muted">·</span>}{m}</span>
+                ))}
+              </p>
             )}
-            {/* open_to_offers now means "listed" (sales/service.sync_listed_flag). */}
-            {player.open_to_offers && (
-              <span className="flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success-text">
-                <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" /> Listed
-              </span>
-            )}
-            {isMyPlayer && competition && competition.active_count > 0 && (
-              <button
-                onClick={() => navigate("/board?side=SELLING")}
-                className="flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent hover:bg-accent/25"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
-                {competition.active_count} active offer{competition.active_count !== 1 ? "s" : ""}
-              </button>
+            {/* A loan is public knowledge, and it changes who an approach
+                goes to: the club shown above holds his registration, but
+                the parent club owns him and is the one who can sell. */}
+            {player.active_loan && (
+              <p className="text-[13px] text-accent">
+                On loan at {player.active_loan.loanee_club?.name ?? "another club"} until{" "}
+                {new Date(player.active_loan.end_date).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+                {player.active_loan.parent_club?.name && (
+                  <span className="text-text-muted"> · owned by {player.active_loan.parent_club.name}</span>
+                )}
+              </p>
             )}
           </div>
-          {metaItems.length > 0 && (
-            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-text-secondary">
-              {metaItems.map((m, i) => (
-                <span key={i} className="flex items-center gap-2">{i > 0 && <span aria-hidden="true" className="text-text-muted">·</span>}{m}</span>
-              ))}
-            </p>
-          )}
-          {/* A loan is public knowledge, and it changes who an approach
-              goes to: the club shown above holds his registration, but
-              the parent club owns him and is the one who can sell. */}
-          {player.active_loan && (
-            <p className="text-[13px] text-accent">
-              On loan at {player.active_loan.loanee_club?.name ?? "another club"} until{" "}
-              {new Date(player.active_loan.end_date).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
-              {player.active_loan.parent_club?.name && (
-                <span className="text-text-muted"> · owned by {player.active_loan.parent_club.name}</span>
-              )}
-            </p>
-          )}
-        </div>
+        }
+        moreMenu={
+          <div className="flex items-center gap-2">
+            {!isMyPlayer && <AddToShortlistButton playerId={player.id} size="icon" label={`Shortlist ${player.name}`} />}
+            {more}
+          </div>
+        }
+        actions={
+          <PlayerActions
+            primary={situation.primary}
+            secondary={situation.secondary}
+            handlers={handlers}
+            shortlist={!isMyPlayer ? <AddToShortlistButton playerId={player.id} /> : undefined}
+            more={more}
+          />
+        }
+      />
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => toggle(player.id)}
-            title={has(player.id) ? "Remove from comparison" : "Add to comparison"}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium ring-1 transition-colors ${
-              has(player.id)
-                ? "bg-success/15 text-success-text ring-success/30"
-                : "bg-surface-inset text-text-muted ring-input-border hover:text-text"
-            }`}
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            Compare
-          </button>
+      <PlayerActionNote note={situation.note} />
 
-          {/* Not until his listing state is known, or a listed player
-              offers "List for sale" for a moment. */}
-          {canList && listingsKnown && (
-            listingId ? (
-              <Button variant="secondary" onClick={() => navigate(`/sales/${listingId}`)}>
-                View listing
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="primary"
-                  disabled={player.active_deal?.status === "IN_PROGRESS"}
-                  title={
-                    player.active_deal?.status === "IN_PROGRESS"
-                      ? "A transfer deal is already in progress for this player"
-                      : undefined
-                  }
-                  onClick={() => setListOpen(true)}
-                >
-                  List for sale
-                </Button>
-              </>
-            )
-          )}
+      {/* Ask first: the informal step before an offer, committing nobody to anything. */}
+      {canAsk && (
+        <AskAboutPlayerModal
+          open={askOpen}
+          onClose={closeAsk}
+          player={{ id: player.id, name: player.name }}
+          ownerName={player.active_loan?.parent_club?.name ?? player.current_club?.name ?? "His club"}
+        />
+      )}
 
-          {isAuthenticated && !isAgent && !isPlayerAccount && (
-            <AskAboutButton about="player" id={player.id} name={player.name} />
-          )}
-
-          {!isMyPlayer && (
-            <>
-              <AddToShortlistButton playerId={player.id} />
-              {/* A club outside TransferX cannot answer an offer, and the
-                  server refuses one — so say so here, instead of a Make
-                  Offer that leads to an offer no one will ever see. */}
-              {isOffPlatform && (
-                <p className="basis-full text-[13px] text-text-muted">
-                  {player.world_team?.name ?? player.team_name ?? "His club"} is not on TransferX, so an offer
-                  could not be answered. Shortlist him to follow his form and contract.
-                </p>
-              )}
-              {/* Ask first: the informal step before an offer, committing
-                  nobody to anything. */}
-              {isAuthenticated && !isAgent && can("MARKET_WRITE") && !isFreeAgentPlayer && !isOffPlatform && (
-                <>
-                  <Button variant="secondary" onClick={() => setAskOpen(true)}>
-                    Ask about him
-                  </Button>
-                  <AskAboutPlayerModal
-                    open={askOpen}
-                    onClose={closeAsk}
-                    player={{ id: player.id, name: player.name }}
-                    ownerName={player.active_loan?.parent_club?.name ?? player.current_club?.name ?? "His club"}
-                  />
-                </>
-              )}
-              {isAuthenticated && !isAgent && can("MARKET_WRITE") && !isFreeAgentPlayer && !isOffPlatform && (
-                <Button
-                  variant="primary"
-                  disabled={player.active_deal?.status === "IN_PROGRESS"}
-                  title={player.active_deal?.status === "IN_PROGRESS" ? "A transfer deal is already in progress for this player" : undefined}
-                  onClick={() => navigate(`/offers/new?player_id=${player.id}`)}
-                >
-                  Make Offer
-                </Button>
-              )}
-              {isAuthenticated && !isAgent && can("MARKET_WRITE") && isFreeAgentPlayer && (
-                <Button
-                  variant="primary"
-                  loading={signFreeAgentMutation.isPending}
-                  disabled={player.active_deal?.status === "IN_PROGRESS"}
-                  onClick={handleSignFreeAgent}
-                >
-                  Sign Free Agent
-                </Button>
-              )}
-              {isAuthenticated && !isAgent && can("MARKET_WRITE") && inPreContractWindow && (
-                <Button
-                  variant="secondary"
-                  loading={preContractMutation.isPending}
-                  disabled={player.active_deal?.status === "IN_PROGRESS"}
-                  title="Contract expires within 6 months — a pre-contract (Bosman) signing is legal"
-                  onClick={handlePreContract}
-                >
-                  Offer Pre-Contract
-                </Button>
-              )}
-              {isAuthenticated && !isAgent && can("MARKET_WRITE") && player.active_contract?.release_clause != null && (
-                <Button
-                  variant="danger"
-                  loading={releaseClauseMutation.isPending}
-                  disabled={player.active_deal?.status === "IN_PROGRESS"}
-                  title={player.active_deal?.status === "IN_PROGRESS" ? "A transfer deal is already in progress for this player" : undefined}
-                  onClick={handleTriggerReleaseClause}
-                >
-                  Trigger release clause ({formatCurrency(player.active_contract.release_clause)})
-                </Button>
-              )}
-            </>
-          )}
-
-          {/* A club member whose role can't send offers sees why, not nothing. */}
-        {isAuthenticated && !isAgent && !isPlayerAccount && !isMyPlayer && !can("MARKET_WRITE") && !isOffPlatform && (
-          <Button variant="primary" disabled title="Your role can't send offers. Ask your club's owner or sporting director.">
-            Make Offer
-          </Button>
-        )}
-        {!isAuthenticated && !isOffPlatform && (
-            <button
-              onClick={() => navigate("/login")}
-              className="rounded-lg bg-success/10 px-4 py-2 text-sm font-semibold text-success-text ring-1 ring-success/30 hover:bg-success/20 transition-colors"
-            >
-              Sign in to make offer
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Deal banner: new offers, the clause and listing pause while a deal is live */}
-      {player.active_deal && <DealBanner deal={player.active_deal} />}
+      {/* A finished transfer, or one in progress the viewer isn't on (the
+          two clubs on it get the sentence above and a link instead). */}
+      {player.active_deal && (player.active_deal.status !== "IN_PROGRESS" || situation.dealBanner) && (
+        <DealBanner deal={player.active_deal} />
+      )}
 
       {/* API-Football has him at another club than his TransferX registration */}
       {ledger?.real_world && <RealWorldMoveBanner move={ledger.real_world} isMyPlayer={isMyPlayer} />}
@@ -815,6 +743,8 @@ export default function PlayerMarketDetailPage() {
       {canList && (
         <ListPlayerModal open={listOpen} onClose={closeListing} player={{ id: player.id, name: player.name }} />
       )}
+
+      <PlayerActionBar name={player.name} primary={situation.primary} secondary={situation.secondary} handlers={handlers} />
     </div>
   );
 }

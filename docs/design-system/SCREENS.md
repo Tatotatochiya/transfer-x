@@ -393,6 +393,20 @@ Verified green, Pending amber).
 
 ---
 
+## Player profile
+
+Route: `/players/market/:id`. Spec: [`player-actions`](../feature_spec/player-actions/README.md).
+
+**Header** — the shared `TransferHeader`: "← Back", photo, the name as the only h1, then the badges (position, status, Listed, active offers), the club · age · nationality · height · born line, and the loan line.
+
+**One blue button**, chosen by his situation (`lib/playerSituation`): Make an offer · Sign him (free agent) · List for sale / View listing (his own club) · View the deal (a deal your club is on) · Sign in to make an offer. A secondary beside it: Ask his club (or Ask {parent club}) · Offer a pre-contract. Everything else is in More: Compare with others, ✦ Ask TransferX about him, View {club}, Ask his club when it isn't the secondary, and "Pay the release clause (£X)…" last, in red, after a divider. Shortlist stays visible.
+
+**Blocked actions are a sentence**, never a disabled button: no role to trade, a club off TransferX, a deal in progress, on loan to you, a free agent's terms, a contract ending within six months.
+
+**From 1024px** the actions sit right of the name: Shortlist · secondary · primary · More. **Below 1024px** the secondary and primary are pinned in a bottom bar (48px buttons, safe-area padding); the back row holds a Shortlist icon button and More.
+
+---
+
 ## Archetypes for the remaining pages
 
 **Admin table** (17 pages) — page header, optional filter chips, one `ResponsiveTable`. No tiers,

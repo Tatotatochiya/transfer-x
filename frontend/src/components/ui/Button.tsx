@@ -22,6 +22,11 @@ const sizeClasses: Record<ButtonSize, string> = {
   lg: "min-h-12 lg:min-h-0 px-5 py-2.5 text-sm rounded-xl",
 };
 
+/** A Button's look for something that isn't a <button>, e.g. a router Link. */
+export function buttonClasses(variant: ButtonVariant = "primary", size: ButtonSize = "md"): string {
+  return `inline-flex items-center justify-center gap-2 no-underline transition-all duration-150 ${variantClasses[variant]} ${sizeClasses[size]}`;
+}
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
