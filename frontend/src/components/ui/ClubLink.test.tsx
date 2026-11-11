@@ -25,7 +25,7 @@ describe("ClubLink", () => {
     const { container } = renderWithProviders(<ClubLink id="c1" name="Arsenal FC" crestUrl={null} />);
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(screen.queryByText("AF")).not.toBeInTheDocument();
-    expect(container.querySelector("a > span.bg-surface-inset")).toBeInTheDocument();
+    expect(container.querySelector("a > span.bg-border")).toBeInTheDocument();
   });
 
   it("routes to /clubs/{id} when id is given", () => {

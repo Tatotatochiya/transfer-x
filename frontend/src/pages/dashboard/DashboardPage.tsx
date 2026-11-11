@@ -79,13 +79,13 @@ function StandingFiguresTier({ myClub, squadCount, squadNote, windowStatus }: {
         label="Transfer budget free"
         value={<Money value={transferFree} compact stacked />}
         note={`of ${formatCompact(transferTotal)}`}
-        bar={{ pct: transferTotal > 0 ? (transferFree / transferTotal) * 100 : 0, colour: "bg-success" }}
+        bar={{ pct: transferTotal > 0 ? (transferFree / transferTotal) * 100 : 0, colour: "bg-text-secondary" }}
       />
       <FigureCard
         label="Wage room / wk"
         value={formatCompact(wageFree)}
         note={`of ${formatCompact(wageTotal)}`}
-        bar={{ pct: wageTotal > 0 ? (wageFree / wageTotal) * 100 : 0, colour: "bg-accent" }}
+        bar={{ pct: wageTotal > 0 ? (wageFree / wageTotal) * 100 : 0, colour: "bg-text-secondary" }}
       />
       <FigureCard label="Window closes in" value={windowLabel} note={myClub.league_name ?? undefined} />
       <FigureCard label="Squad" value={String(squadCount)} note={squadNote} />

@@ -346,7 +346,7 @@ export default function MyClubPage() {
             </p>
           )}
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2 whitespace-nowrap">
+        <div className="flex min-w-0 flex-wrap gap-2 whitespace-nowrap sm:shrink-0">
           {/* Buying and selling first: they're what the club is here to do. */}
           {canMarketWrite && (
             <>

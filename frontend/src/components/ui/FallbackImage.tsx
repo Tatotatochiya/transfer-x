@@ -60,7 +60,7 @@ export default function FallbackImage({
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center overflow-hidden font-bold leading-none ${shape} ${sizeClass} ${
-        showImage ? (fit === "cover" ? "bg-surface-inset" : "") : dot ? "bg-surface-inset" : colorClass
+        showImage ? (fit === "cover" ? "bg-surface-inset" : "") : dot ? "bg-border" : colorClass
       } ${className}`}
     >
       {showImage ? (
