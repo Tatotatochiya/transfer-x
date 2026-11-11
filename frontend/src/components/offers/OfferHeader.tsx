@@ -27,7 +27,7 @@ export default function OfferHeader({ offer, moreMenu }: { offer: Offer; moreMen
       routeTo={isBuyerMasked(offer) ? (
         <>
           {buyerLabel(offer)}
-          <span className="ml-2 rounded-full bg-surface-inset px-2 py-0.5 text-[13px] font-semibold text-text-muted ring-1 ring-border">
+          <span className="ml-2 rounded-full bg-surface-inset px-2 py-0.5 text-caption font-semibold text-text-muted ring-1 ring-border">
             Anonymous
           </span>
         </>

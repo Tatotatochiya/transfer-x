@@ -100,10 +100,10 @@ export default function TermsDiffSpine({ dealId, isBuyer }: { dealId: string; is
   return (
     <Card noPadding className="mb-6">
       <div className="border-b border-rule px-5 py-4">
-        <p className="text-sm font-bold text-text">
+        <p className="text-body font-bold text-text">
           Terms — version {latest.version_number} proposed by {latest.changed_by_label ?? "the deal"}
         </p>
-        <p className="mt-0.5 text-xs text-text-muted">
+        <p className="mt-0.5 text-caption text-text-muted">
           {diff.changes.length} term{diff.changes.length === 1 ? "" : "s"} changed
           {unchangedCount > 0 && ` · ${unchangedCount} unchanged`}
           {" · sent "}{formatDate(latest.created_at)}
@@ -118,12 +118,12 @@ export default function TermsDiffSpine({ dealId, isBuyer }: { dealId: string; is
             const e = effect(r);
             return (
               <div className="px-4 py-3">
-                <p className="text-sm font-semibold text-text">{TERMS_FIELD_LABELS[r.field] ?? r.field}</p>
-                <div className="mt-1 flex items-center justify-between text-sm">
+                <p className="text-body font-semibold text-text">{TERMS_FIELD_LABELS[r.field] ?? r.field}</p>
+                <div className="mt-1 flex items-center justify-between text-small">
                   <span className="text-text-muted line-through">{formatTermValue(r.field, r.oldValue)}</span>
                   <span className="font-bold text-text">{formatTermValue(r.field, r.newValue)}</span>
                 </div>
-                <p className={`mt-0.5 text-right text-xs font-semibold ${e.className}`}>{e.text}</p>
+                <p className={`mt-0.5 text-right text-caption font-semibold ${e.className}`}>{e.text}</p>
               </div>
             );
           }}
@@ -131,7 +131,7 @@ export default function TermsDiffSpine({ dealId, isBuyer }: { dealId: string; is
       </div>
       {netDelta !== 0 && (
         <div className="border-t border-rule px-5 py-3">
-          <p className="text-xs text-text-muted">
+          <p className="text-caption text-text-muted">
             Net change against version {latest.version_number - 1}:{" "}
             <span className={netDelta < 0 ? "text-danger-text font-semibold" : "text-success-text font-semibold"}>
               {netDelta < 0 ? "−" : "+"}{formatCurrency(Math.abs(netDelta))}

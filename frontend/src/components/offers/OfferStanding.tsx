@@ -69,8 +69,8 @@ function Track({ markers }: { markers: Marker[] }) {
               className={`absolute whitespace-nowrap ${align} ${above ? "top-0" : "top-[52px]"}`}
               style={end ? { [end]: 0 } : { left: `${p}%` }}
             >
-              <span className={`block text-[13px] font-bold leading-tight ${m.text}`}>{formatCurrency(m.value)}</span>
-              <span className="block text-xs leading-tight text-text-muted">{m.label}</span>
+              <span className={`block text-caption font-bold leading-tight ${m.text}`}>{formatCurrency(m.value)}</span>
+              <span className="block text-caption leading-tight text-text-muted">{m.label}</span>
             </span>
           </div>
         );
@@ -91,11 +91,11 @@ export function RoundsList({ offer, rounds, other }: { offer: Offer; rounds: Off
       {[...rounds].reverse().map((r, i) => (
         <li key={`${r.at}-${i}`} className="flex items-start justify-between gap-3 py-2.5">
           <div className="min-w-0">
-            <p className="text-[15px] font-semibold text-text">{who(r)} {VERB[r.kind]}</p>
-            <p className="text-[13px] text-text-muted">{formatDate(r.at)}</p>
-            {i === 0 && r.kind !== "SENT" && summary && <p className="mt-0.5 text-sm text-text-secondary">{summary}</p>}
+            <p className="text-body font-semibold text-text">{who(r)} {VERB[r.kind]}</p>
+            <p className="text-caption text-text-muted">{formatDate(r.at)}</p>
+            {i === 0 && r.kind !== "SENT" && summary && <p className="mt-0.5 text-body text-text-secondary">{summary}</p>}
           </div>
-          {r.fee != null && !isLoan(offer) && <p className="shrink-0 text-[15px] font-bold text-text">{formatCurrency(r.fee)}</p>}
+          {r.fee != null && !isLoan(offer) && <p className="shrink-0 text-body font-bold text-text">{formatCurrency(r.fee)}</p>}
         </li>
       ))}
     </ol>
@@ -131,8 +131,8 @@ export default function OfferStanding({ offer, myClubId, side, other, card, desk
     return (
       <section aria-label="Where it stands" className="flex items-center gap-6 rounded-xl bg-surface px-4 py-3.5 ring-1 ring-border">
         <div className="w-[150px] shrink-0">
-          <p className="text-[15px] font-semibold text-text">Where it stands</p>
-          <p className="text-sm text-text-muted">
+          <p className="text-body font-semibold text-text">Where it stands</p>
+          <p className="text-small text-text-muted">
             Round {n} ·{" "}
             <button type="button" onClick={onShowHistory} className="font-semibold text-accent hover:underline">all rounds</button>
           </p>
@@ -145,8 +145,8 @@ export default function OfferStanding({ offer, myClubId, side, other, card, desk
   return (
     <section aria-label="Where it stands" className="rounded-xl bg-surface px-4 py-3.5 ring-1 ring-border">
       <div className="flex items-baseline justify-between">
-        <p className="text-[15px] font-semibold text-text">Where it stands</p>
-        <p className="text-sm text-text-muted">Round {n}</p>
+        <p className="text-body font-semibold text-text">Where it stands</p>
+        <p className="text-small text-text-muted">Round {n}</p>
       </div>
       {track && <div className="mt-1">{track}</div>}
       <button
@@ -154,7 +154,7 @@ export default function OfferStanding({ offer, myClubId, side, other, card, desk
         aria-expanded={roundsOpen}
         aria-controls="offer-rounds"
         onClick={onToggleRounds}
-        className="min-h-11 text-[15px] font-semibold text-accent"
+        className="min-h-11 text-body font-semibold text-accent"
       >
         {roundsOpen ? "Hide rounds" : `Show all ${n} round${n === 1 ? "" : "s"}`}
       </button>

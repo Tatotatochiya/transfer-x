@@ -16,10 +16,10 @@ export default function CollapseDealDialog({ open, onClose, actions }: { open: b
   return (
     <Modal open={open} onClose={onClose} title="Collapse this deal?" size="md">
       <div className="px-6 py-5">
-        <p className="text-[15px] text-text-secondary">
+        <p className="text-body text-text-secondary">
           This cannot be undone. The transfer will fall through and reserved budget will be released.
         </p>
-        <label htmlFor={id} className="mt-4 block text-sm font-semibold text-text">Reason (optional)</label>
+        <label htmlFor={id} className="mt-4 block text-small font-semibold text-text">Reason (optional)</label>
         <textarea
           id={id}
           value={reason}
@@ -27,9 +27,9 @@ export default function CollapseDealDialog({ open, onClose, actions }: { open: b
           maxLength={500}
           rows={3}
           placeholder="e.g. Failed the medical"
-          className="mt-1.5 w-full rounded-lg bg-surface px-3 py-2 text-base text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-2 focus:ring-accent sm:text-[15px]"
+          className="mt-1.5 w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-2 focus:ring-accent"
         />
-        <p className="mt-1 text-[13px] text-text-muted">Both clubs will see this.</p>
+        <p className="mt-1 text-caption text-text-muted">Both clubs will see this.</p>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button

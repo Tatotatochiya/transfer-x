@@ -64,9 +64,9 @@ interface Props {
   formId: string;
 }
 
-const LABEL = "mb-1 block text-[15px] font-semibold text-text lg:text-sm";
-const INPUT = "w-full min-h-12 lg:min-h-10 rounded-lg bg-surface px-3 py-2 text-[15px] text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors lg:text-sm";
-const BIG = "w-full min-h-14 lg:min-h-12 rounded-lg bg-surface px-3 py-2 text-[22px] font-bold text-text ring-2 ring-accent focus:outline-none lg:text-lg";
+const LABEL = "mb-1 block text-body font-semibold text-text";
+const INPUT = "w-full min-h-12 lg:min-h-10 rounded-lg bg-surface px-3 py-2 text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors";
+const BIG = "w-full min-h-14 lg:min-h-12 rounded-lg bg-surface px-3 py-2 text-headline sm:text-title font-bold text-text ring-2 ring-accent focus:outline-none";
 
 /**
  * Countering an offer (offer-room-focus §5.6). The submit logic — what it
@@ -269,8 +269,8 @@ export default function CounterForm({
                 aria-pressed={on}
                 onClick={() => setFee(String(a.amount))}
                 className={inline
-                  ? `h-9 rounded-full px-3.5 text-sm ring-1 ${on ? "bg-accent-bg-strong font-semibold text-accent-active ring-accent" : "bg-surface text-text-secondary ring-input-border hover:ring-accent"}`
-                  : `flex min-h-11 w-full items-center justify-between rounded-lg px-3.5 text-[15px] ring-1 ${on ? "bg-accent-bg-strong text-accent-active ring-accent" : "bg-surface text-text ring-input-border"}`}
+                  ? `h-9 rounded-full px-3.5 text-body ring-1 ${on ? "bg-accent-bg-strong font-semibold text-accent-active ring-accent" : "bg-surface text-text-secondary ring-input-border hover:ring-accent"}`
+                  : `flex min-h-11 w-full items-center justify-between rounded-lg px-3.5 text-body ring-1 ${on ? "bg-accent-bg-strong text-accent-active ring-accent" : "bg-surface text-text ring-input-border"}`}
               >
                 {inline ? <><strong>{formatCurrency(a.amount)}</strong> · {a.label}</> : (
                   <><strong>{formatCurrency(a.amount)}</strong><span className="text-text-secondary">{a.label}</span></>
@@ -290,8 +290,8 @@ export default function CounterForm({
           className={`flex w-full items-center justify-between gap-3 px-4 text-left ${inline ? "min-h-[52px]" : "min-h-16"}`}
         >
           <span>
-            <span className="block text-[15px] font-semibold text-text lg:text-sm">Payment, add-ons and sell-on</span>
-            <span className="block text-sm text-text-muted">{structureSummary(structure)}</span>
+            <span className="block text-body font-semibold text-text">Payment, add-ons and sell-on</span>
+            <span className="block text-small text-text-muted">{structureSummary(structure)}</span>
           </span>
           <span aria-hidden className={`text-text-muted transition-transform ${structureOpen ? "rotate-90" : ""}`}>›</span>
         </button>
@@ -333,7 +333,7 @@ export default function CounterForm({
       <label className={checkRow}>
         <input type="checkbox" checked={obligation} disabled={!option} onChange={(e) => setObligation(e.target.checked)}
           className="mt-1 h-4 w-4 shrink-0 rounded accent-accent disabled:opacity-40" />
-        <span className="text-[15px] text-text-secondary lg:text-sm">
+        <span className="text-body text-text-secondary">
           <span className="font-semibold">Obligation</span> — the purchase happens at that price when the
           loan ends, rather than being the borrowing club's option.
         </span>
@@ -347,7 +347,7 @@ export default function CounterForm({
       )}
       <label className={checkRow}>
         <input type="checkbox" checked={recall} onChange={(e) => setRecall(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 rounded accent-accent" />
-        <span className="text-[15px] text-text-secondary lg:text-sm">His club may <span className="font-semibold">recall him early</span>.</span>
+        <span className="text-body text-text-secondary">His club may <span className="font-semibold">recall him early</span>.</span>
       </label>
     </div>
   );
@@ -358,11 +358,11 @@ export default function CounterForm({
         type="button"
         onClick={suggest.onClick}
         disabled={suggest.loading}
-        className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-[15px] font-semibold text-ai-text ring-1 ring-border hover:bg-surface-inset disabled:opacity-60 lg:min-h-9 lg:text-sm"
+        className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-body font-semibold text-ai-text ring-1 ring-border hover:bg-surface-inset disabled:opacity-60 lg:min-h-9"
       >
         <span aria-hidden>✦</span> {suggest.loading ? "Thinking…" : "Suggest a counter"}
       </button>
-      {suggest.summary && <p className="mt-1.5 text-sm text-text-muted">{suggest.summary}</p>}
+      {suggest.summary && <p className="mt-1.5 text-small text-text-muted">{suggest.summary}</p>}
     </div>
   );
 
@@ -370,11 +370,11 @@ export default function CounterForm({
     <div className="mt-4 space-y-2">
       <TermsWarnings warnings={check?.warnings} />
       {prefill && (
-        <p className="text-sm text-text-muted">
+        <p className="text-small text-text-muted">
           <span className="text-ai-text">✦</span> Pre-filled from the advisor's suggestion — review before you send.
         </p>
       )}
-      {error && <p role="alert" className="text-sm text-danger-text">{error}</p>}
+      {error && <p role="alert" className="text-body text-danger-text">{error}</p>}
     </div>
   );
 
@@ -403,7 +403,7 @@ export default function CounterForm({
         subtitle={`Their offer: ${[offerHeadline(offer), pay, sellOn].filter(Boolean).join(" · ")}`}
         footer={
           <>
-            {comparison && <p className="mb-2 text-sm text-text-secondary" aria-live="polite">{comparison}</p>}
+            {comparison && <p className="mb-2 text-body text-text-secondary" aria-live="polite">{comparison}</p>}
             {send}
           </>
         }
@@ -417,20 +417,20 @@ export default function CounterForm({
   return (
     <>
       <div className="flex items-baseline justify-between gap-4">
-        <h2 id="offer-status-headline" tabIndex={-1} className="text-xl font-bold text-text focus:outline-none">Counter {other}</h2>
-        {replyBy && <p className="text-sm text-text-muted">{replyBy}</p>}
+        <h2 id="offer-status-headline" tabIndex={-1} className="text-headline font-bold text-text focus:outline-none">Counter {other}</h2>
+        {replyBy && <p className="text-small text-text-muted">{replyBy}</p>}
       </div>
       <div className="mt-4 flex gap-8">
         <div className="min-w-0 flex-1">{form}</div>
         <div className="w-[330px] shrink-0 self-start rounded-xl bg-surface-inset p-4">
-          <h3 className="text-sm font-semibold text-text">What {other} will see</h3>
+          <h3 className="text-body font-semibold text-text">What {other} will see</h3>
           {changes.length === 0 ? (
-            <p className="mt-2 text-sm text-text-muted">Change a term to see it here.</p>
+            <p className="mt-2 text-small text-text-muted">Change a term to see it here.</p>
           ) : (
             <>
               <ul className="mt-2">
                 {changes.map((c) => (
-                  <li key={c.label} className="flex justify-between gap-2.5 border-t border-rule py-2 text-sm first:border-t-0">
+                  <li key={c.label} className="flex justify-between gap-2.5 border-t border-rule py-2 text-body first:border-t-0">
                     <span className="text-text-secondary">{c.label}</span>
                     <span className="text-right">
                       <s className="text-text-muted">{c.was}</s> <span aria-hidden>→</span>
@@ -439,10 +439,10 @@ export default function CounterForm({
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-sm text-text-muted">Everything else stays as they offered it.</p>
+              <p className="mt-2 text-small text-text-muted">Everything else stays as they offered it.</p>
             </>
           )}
-          {comparison && <p className="mt-3 border-t border-rule pt-3 text-sm text-text-secondary">{comparison}</p>}
+          {comparison && <p className="mt-3 border-t border-rule pt-3 text-body text-text-secondary">{comparison}</p>}
         </div>
       </div>
       <div className="mt-4 flex items-center gap-3 border-t border-rule pt-3.5">

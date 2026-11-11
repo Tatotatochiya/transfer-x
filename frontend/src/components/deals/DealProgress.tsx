@@ -26,7 +26,7 @@ export default function DealProgress({ deal, negotiation }: { deal: Deal; negoti
     <section aria-label="Progress" className="rounded-xl bg-surface px-4 py-3.5 ring-1 ring-border">
       {/* Phone */}
       <div className="sm:hidden">
-        <p className="text-[15px] font-semibold text-text">{label}</p>
+        <p className="text-body font-semibold text-text">{label}</p>
         <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-border-quiet">
           <div className={`h-full ${collapsed ? "bg-text-muted" : "bg-success-dot"}`} style={{ width: `${(step / stages.length) * 100}%` }} />
         </div>
@@ -35,7 +35,7 @@ export default function DealProgress({ deal, negotiation }: { deal: Deal; negoti
           aria-expanded={open}
           aria-controls="deal-progress-stages"
           onClick={() => setOpen((o) => !o)}
-          className="mt-1 min-h-11 text-[15px] font-semibold text-accent"
+          className="mt-1 min-h-11 text-body font-semibold text-accent"
         >
           {open ? "Hide stages" : "Show all stages"}
         </button>
@@ -45,18 +45,18 @@ export default function DealProgress({ deal, negotiation }: { deal: Deal; negoti
               <li key={s} className="flex items-start gap-3">
                 <span
                   aria-hidden
-                  className={`mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[13px] font-bold ${
+                  className={`mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-caption font-bold ${
                     states[i] === "done" ? "bg-success text-white" : states[i] === "now" ? "bg-accent text-on-accent" : "bg-surface ring-2 ring-input-border"
                   }`}
                 >
                   {states[i] === "done" ? "✓" : ""}
                 </span>
                 <div className="min-w-0">
-                  <p className={`text-[15px] ${states[i] === "now" ? "font-bold text-text" : "font-medium text-text-secondary"}`}>
+                  <p className={`text-body ${states[i] === "now" ? "font-bold text-text" : "font-medium text-text-secondary"}`}>
                     {STAGE_LONG[s]}
                     <span className="sr-only">{states[i] === "done" ? ", done" : states[i] === "now" ? ", now" : ""}</span>
                   </p>
-                  {notes[i] && <p className="text-sm text-text-muted">{notes[i]}</p>}
+                  {notes[i] && <p className="text-small text-text-muted">{notes[i]}</p>}
                 </div>
               </li>
             ))}
@@ -76,7 +76,7 @@ export default function DealProgress({ deal, negotiation }: { deal: Deal; negoti
             const dot = collapsed ? "bg-input-border" : st === "done" ? "bg-success-dot" : st === "now" ? "bg-accent" : "bg-input-border";
             return (
               <li key={s} className="flex flex-auto items-center last:flex-none" aria-current={st === "now" ? "step" : undefined}>
-                <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-[11px] py-[5px] text-[13px] ${pill}`}>
+                <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-[11px] py-[5px] text-caption ${pill}`}>
                   <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
                   {STAGE_SHORT[s]}
                 </span>
@@ -86,7 +86,7 @@ export default function DealProgress({ deal, negotiation }: { deal: Deal; negoti
           })}
         </ol>
         {(summary || collapsed) && (
-          <p className="mt-2.5 text-sm text-text-secondary lg:truncate" title={collapsed ? label : summary}>
+          <p className="mt-2.5 text-body text-text-secondary lg:truncate" title={collapsed ? label : summary}>
             {collapsed ? label : summary}
           </p>
         )}

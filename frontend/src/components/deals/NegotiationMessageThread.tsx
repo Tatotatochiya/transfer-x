@@ -53,18 +53,18 @@ export default function NegotiationMessageThread({
 
   return (
     <div className="mt-3 border-t border-rule pt-3">
-      <p className="mb-2 text-[13px] font-semibold uppercase tracking-wider text-text-muted">Messages</p>
+      <p className="mb-2 text-caption font-semibold text-text-secondary">Messages</p>
 
       <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
         {isLoading ? (
-          <p className="text-[13px] text-text-muted">Loading…</p>
+          <p className="text-caption text-text-muted">Loading…</p>
         ) : messages.length === 0 ? (
-          <p className="text-[13px] text-text-muted italic">No messages yet.</p>
+          <p className="text-caption text-text-muted italic">No messages yet.</p>
         ) : (
           messages.map((m) => {
             const isMine = m.sender_user_id === user?.id;
             return (
-              <div key={m.id} className={`rounded-lg px-3 py-2 text-[13px] ${isMine ? "bg-accent-bg" : "bg-surface-inset"}`}>
+              <div key={m.id} className={`rounded-lg px-3 py-2 text-body ${isMine ? "bg-accent-bg" : "bg-surface-inset"}`}>
                 <div className="mb-0.5 flex items-center justify-between gap-2">
                   <span className="font-semibold text-text-secondary">{m.sender_label ?? "Unknown"}</span>
                   <span className="text-text-muted">{formatDateTime(m.created_at)}</span>
@@ -82,12 +82,12 @@ export default function NegotiationMessageThread({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Write a message…"
-          className="min-h-11 lg:min-h-0 flex-1 rounded-lg bg-surface px-3 py-1.5 text-base text-text lg:text-[13px] placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
+          className="min-h-11 lg:min-h-0 flex-1 rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
         />
         <button
           type="submit"
           disabled={mutation.isPending || !body.trim()}
-          className="min-h-11 lg:min-h-0 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
+          className="min-h-11 lg:min-h-0 rounded-lg bg-accent px-3 py-1.5 text-small font-semibold text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
         >
           Send
         </button>

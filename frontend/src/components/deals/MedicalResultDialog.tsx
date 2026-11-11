@@ -10,7 +10,7 @@ export const MEDICAL: Record<MedicalStatus, { choice: string; effect: string; ic
     choice: "Passed",
     effect: "Completes the medical step on the Paperwork checklist. If it is the last step, the deal is confirmed.",
     icon: "✓",
-    box: "bg-success/10 ring-success/30 text-success-text",
+    box: "bg-success-bg ring-success-ring text-success-text",
     dot: "bg-success-text text-white",
   },
   FAILED: {
@@ -24,7 +24,7 @@ export const MEDICAL: Record<MedicalStatus, { choice: string; effect: string; ic
     choice: "Still in progress",
     effect: "Booked or under way, with no result yet. The medical step stays open.",
     icon: "…",
-    box: "bg-warning-bg ring-warning-fill/30 text-warning-text",
+    box: "bg-warning-bg ring-warning-ring text-warning-text",
     dot: "bg-warning-fill text-white",
   },
 };
@@ -52,7 +52,7 @@ export default function MedicalResultDialog({ open, onClose, medicalCheck, actio
     <Modal open={open} onClose={onClose} title="Medical result" size="lg">
       <div className="space-y-4 px-6 py-5">
         <fieldset>
-          <legend className="mb-2 text-[15px] font-semibold text-text">What was the result?</legend>
+          <legend className="mb-2 text-body font-semibold text-text">What was the result?</legend>
           <div className="grid gap-2 sm:grid-cols-3" role="radiogroup">
             {(["PASSED", "FAILED", "PENDING"] as MedicalStatus[]).map((s) => {
               const selected = status === s;
@@ -67,27 +67,27 @@ export default function MedicalResultDialog({ open, onClose, medicalCheck, actio
                     selected ? `${MEDICAL[s].box} ring-2` : "bg-surface ring-border hover:ring-accent"
                   }`}
                 >
-                  <span className="flex items-center gap-2 text-[15px] font-bold">
-                    <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[13px] ${selected ? MEDICAL[s].dot : "ring-1 ring-border text-text-muted"}`} aria-hidden>
+                  <span className="flex items-center gap-2 text-body font-bold">
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full text-caption ${selected ? MEDICAL[s].dot : "ring-1 ring-border text-text-muted"}`} aria-hidden>
                       {selected ? MEDICAL[s].icon : ""}
                     </span>
                     <span className={selected ? "" : "text-text"}>{MEDICAL[s].choice}</span>
                   </span>
-                  <span className={`text-[13px] leading-snug ${selected ? "" : "text-text-muted"}`}>{MEDICAL[s].effect}</span>
+                  <span className={`text-caption leading-snug ${selected ? "" : "text-text-muted"}`}>{MEDICAL[s].effect}</span>
                 </button>
               );
             })}
           </div>
         </fieldset>
         <div>
-          <label htmlFor="medical-notes" className="mb-1 block text-[15px] font-semibold text-text">Notes <span className="font-normal text-text-muted">(optional)</span></label>
+          <label htmlFor="medical-notes" className="mb-1 block text-body font-semibold text-text">Notes <span className="font-normal text-text-muted">(optional)</span></label>
           <textarea
             id="medical-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
             placeholder="e.g. Carried out at the training ground by the club doctor; no concerns."
-            className="w-full rounded-lg bg-surface px-3 py-2 text-[15px] text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
+            className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
           />
         </div>
         <div className="flex flex-wrap items-center gap-3">

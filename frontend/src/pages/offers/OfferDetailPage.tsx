@@ -125,7 +125,7 @@ export default function OfferDetailPage() {
   }
   if (isError || !offer) {
     return (
-      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-small text-danger-text ring-1 ring-danger-border">
         Offer not found.{" "}
         <button onClick={() => navigate(-1)} className="underline">Go back</button>
       </div>
@@ -274,7 +274,7 @@ export default function OfferDetailPage() {
             {mainTab === "history" ? (
               <div className="rounded-xl bg-surface p-5 ring-1 ring-border">
                 <RoundsList offer={offer} rounds={rounds} other={other} />
-                <p className="mt-3 border-t border-rule pt-3 text-sm text-text-muted">Offer made {formatDate(offer.created_at)}</p>
+                <p className="mt-3 border-t border-rule pt-3 text-small text-text-muted">Offer made {formatDate(offer.created_at)}</p>
               </div>
             ) : terms}
           </div>

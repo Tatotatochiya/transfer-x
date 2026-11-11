@@ -100,51 +100,6 @@
   "size": 6,
   "extrabold": 1
  },
- "src/components/deals/AgentNegotiationWorkspace.tsx": {
-  "size": 16,
-  "uppercase": 2,
-  "tint": 4
- },
- "src/components/deals/AgreedOfferHistory.tsx": {
-  "size": 1
- },
- "src/components/deals/CollapseDealDialog.tsx": {
-  "size": 5
- },
- "src/components/deals/DealHeader.tsx": {
-  "size": 1,
-  "tint": 2
- },
- "src/components/deals/DealNotes.tsx": {
-  "size": 7
- },
- "src/components/deals/DealProgress.tsx": {
-  "size": 7
- },
- "src/components/deals/DealRoomPanel.tsx": {
-  "size": 23
- },
- "src/components/deals/DealStatusCard.tsx": {
-  "size": 13
- },
- "src/components/deals/DealTermsCard.tsx": {
-  "size": 11,
-  "tint": 2
- },
- "src/components/deals/DealTimeline.tsx": {
-  "size": 4
- },
- "src/components/deals/MedicalResultDialog.tsx": {
-  "size": 6,
-  "tint": 3
- },
- "src/components/deals/NegotiationMessageThread.tsx": {
-  "size": 7,
-  "uppercase": 1
- },
- "src/components/deals/TermsDiffSpine.tsx": {
-  "size": 6
- },
  "src/components/demo/DemoControl.tsx": {
   "size": 10,
   "uppercase": 3
@@ -229,31 +184,6 @@
  },
  "src/components/notifications/PushSoftAsk.tsx": {
   "size": 7
- },
- "src/components/offers/CounterForm.tsx": {
-  "size": 28
- },
- "src/components/offers/DealStructureFields.tsx": {
-  "size": 14
- },
- "src/components/offers/OfferHeader.tsx": {
-  "size": 1
- },
- "src/components/offers/OfferStanding.tsx": {
-  "size": 11
- },
- "src/components/offers/OfferStatusCard.tsx": {
-  "size": 7
- },
- "src/components/offers/OfferTermsCard.tsx": {
-  "size": 11,
-  "tint": 1
- },
- "src/components/offers/OfferThread.tsx": {
-  "size": 8
- },
- "src/components/offers/RaiseOfferForm.tsx": {
-  "size": 9
  },
  "src/components/OnboardingChecklist.tsx": {
   "size": 5,
@@ -360,9 +290,6 @@
  "src/components/scouting/AddToShortlistButton.tsx": {
   "size": 14,
   "uppercase": 1
- },
- "src/components/transfer/MoreMenu.tsx": {
-  "size": 4
  },
  "src/components/transfers/TransferWindowBanner.tsx": {
   "size": 5,
@@ -568,9 +495,6 @@
   "size": 22,
   "extrabold": 3
  },
- "src/pages/deals/DealDetailPage.tsx": {
-  "size": 5
- },
  "src/pages/enquiries/EnquiryDetailPage.tsx": {
   "size": 5
  },
@@ -630,13 +554,6 @@
  },
  "src/pages/notifications/NotificationsPage.tsx": {
   "size": 7
- },
- "src/pages/offers/CreateOfferPage.tsx": {
-  "size": 48,
-  "tint": 8
- },
- "src/pages/offers/OfferDetailPage.tsx": {
-  "size": 2
  },
  "src/pages/player/PlayerProfilePage.tsx": {
   "size": 20,

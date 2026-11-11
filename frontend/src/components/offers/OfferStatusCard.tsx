@@ -68,7 +68,7 @@ export default function OfferStatusCard({
   const changes = view.changes.length > 0 && (
     <ul aria-label="What they changed" className="lg:w-[320px] lg:shrink-0">
       {shown.map((c) => (
-        <li key={c.label} className="flex justify-between gap-2.5 border-t border-rule py-2 text-sm lg:border-t-0 lg:py-1.5">
+        <li key={c.label} className="flex justify-between gap-2.5 border-t border-rule py-2 text-body lg:border-t-0 lg:py-1.5">
           <span className="text-text-secondary">{c.label}</span>
           <span className="text-right">
             <s className="text-text-muted">{c.was}</s> <span aria-hidden>→</span>
@@ -78,7 +78,7 @@ export default function OfferStatusCard({
       ))}
       {more > 0 && (
         <li className="border-t border-rule lg:border-t-0">
-          <button type="button" onClick={onShowAllChanges} className="min-h-11 text-sm font-semibold text-accent lg:min-h-8">
+          <button type="button" onClick={onShowAllChanges} className="min-h-11 text-body font-semibold text-accent lg:min-h-8">
             and {more} more change{more === 1 ? "" : "s"}
           </button>
         </li>
@@ -107,7 +107,7 @@ export default function OfferStatusCard({
   const hasActions = view.primary || view.secondary || view.tertiary;
   const actionsNode = hasActions && (
     <>
-      {highlight && <p className="text-sm font-semibold text-accent">From your notification: accept this offer?</p>}
+      {highlight && <p className="text-body font-semibold text-accent">From your notification: accept this offer?</p>}
       <div className={`grid gap-2 ${view.primary && view.secondary ? "grid-cols-2 sm:grid-cols-1" : "grid-cols-1"}`}>
         {view.primary && button(view.primary, "primary")}
         {view.secondary && button(view.secondary, "secondary")}
@@ -117,12 +117,12 @@ export default function OfferStatusCard({
           type="button"
           disabled={actions.reject.isPending}
           onClick={() => run(view.tertiary!)}
-          className="min-h-11 w-full text-[15px] font-semibold text-danger-text-alt hover:underline disabled:opacity-50 lg:min-h-8 lg:text-sm"
+          className="min-h-11 w-full text-body font-semibold text-danger-text-alt hover:underline disabled:opacity-50 lg:min-h-8"
         >
           {view.tertiary.label}
         </button>
       )}
-      {mutError && <p role="alert" className="text-sm text-danger-text">{mutError}</p>}
+      {mutError && <p role="alert" className="text-body text-danger-text">{mutError}</p>}
     </>
   );
 
@@ -136,7 +136,7 @@ export default function OfferStatusCard({
       headlineId={OFFER_HEADLINE_ID}
       body={
         <>
-          {view.body && <p className="mt-1.5 text-base leading-normal text-text-secondary">{view.body}</p>}
+          {view.body && <p className="mt-1.5 text-body leading-normal text-text-secondary">{view.body}</p>}
           {changes && !desktop && <div className="mt-3">{changes}</div>}
         </>
       }

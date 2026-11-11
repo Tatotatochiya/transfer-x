@@ -39,12 +39,12 @@ function NoteForm({ dealId }: { dealId: string }) {
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder="Add a note…"
-        className="flex-1 rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+        className="flex-1 rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
       />
       <Button type="submit" variant="secondary" size="sm" loading={mutation.isPending}>
         Add
       </Button>
-      {error && <p className="text-xs text-danger-text self-center">{error}</p>}
+      {error && <p className="text-caption text-danger-text self-center">{error}</p>}
     </form>
   );
 }
@@ -56,18 +56,18 @@ function NoteForm({ dealId }: { dealId: string }) {
 export default function DealNotes({ deal, canAdd }: { deal: Deal; canAdd: boolean }) {
   return (
     <div>
-      <p className="mb-3 text-sm text-text-muted">Everyone who can open this deal sees these notes.</p>
+      <p className="mb-3 text-small text-text-muted">Everyone who can open this deal sees these notes.</p>
       {deal.deal_notes.length === 0 ? (
-        <p className="pb-2 text-[15px] text-text-muted">No notes yet.</p>
+        <p className="pb-2 text-body text-text-muted">No notes yet.</p>
       ) : (
         <div className="mb-4 space-y-3">
           {deal.deal_notes.map((note) => (
             <div key={note.id} className="rounded-lg bg-surface-inset px-4 py-3">
               <div className="mb-1 flex items-center justify-between">
-                <p className="text-[13px] font-semibold text-text-secondary">{note.author_club?.name ?? "System"}</p>
-                <p className="text-[13px] text-text-muted">{formatDate(note.created_at)}</p>
+                <p className="text-caption font-semibold text-text-secondary">{note.author_club?.name ?? "System"}</p>
+                <p className="text-caption text-text-muted">{formatDate(note.created_at)}</p>
               </div>
-              <p className="text-[15px] text-text-secondary">{note.body}</p>
+              <p className="text-body text-text-secondary">{note.body}</p>
             </div>
           ))}
         </div>

@@ -237,14 +237,14 @@ export default function CreateOfferPage() {
           title="Make an Offer"
           subtitle="Submit a formal offer to begin negotiations"
         />
-        <div className="rounded-xl bg-warning-bg ring-1 ring-warning-fill/25 px-6 py-5 space-y-3">
+        <div className="rounded-xl bg-warning-bg ring-1 ring-warning-ring px-6 py-5 space-y-3">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-warning-fill/20 text-warning-text font-bold text-xs">!</div>
+            <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-warning-bg text-warning-text font-bold text-caption">!</div>
             <div>
-              <p className="text-sm font-semibold text-warning-text">
+              <p className="text-body font-semibold text-warning-text">
                 You already have an active offer for {player?.name ?? "this player"}
               </p>
-              <p className="mt-1 text-sm text-text-secondary">
+              <p className="mt-1 text-body text-text-secondary">
                 You can only have one active offer per player at a time. To change your terms,
                 use the <span className="text-text font-medium">Counter offer</span> action on your existing offer.
                 To start fresh, withdraw the current offer first.
@@ -254,13 +254,13 @@ export default function CreateOfferPage() {
           <div className="flex gap-3 pt-1">
             <Link
               to={`/offers/${activeOffer.id}`}
-              className="inline-flex items-center rounded-lg bg-warning-fill/15 px-4 py-2 text-sm font-medium text-warning-text ring-1 ring-warning-fill/30 hover:bg-warning-fill/25 transition-colors"
+              className="inline-flex items-center rounded-lg bg-warning-bg px-4 py-2 text-body font-medium text-warning-text ring-1 ring-warning-ring hover:brightness-95 transition-colors"
             >
               View existing offer →
             </Link>
             <button
               onClick={() => navigate(-1)}
-              className="text-sm text-text-muted hover:text-text transition-colors"
+              className="text-body text-text-muted hover:text-text transition-colors"
             >
               Go back
             </button>
@@ -292,7 +292,7 @@ export default function CreateOfferPage() {
       <TransferWindowBanner />
 
       {fromAsk && (
-        <p className="mb-4 rounded-lg bg-accent/10 px-4 py-2.5 text-sm text-text ring-1 ring-accent/20">
+        <p className="mb-4 rounded-lg bg-accent-bg px-4 py-2.5 text-body text-text ring-1 ring-accent-ring">
           ✦ Filled in from Ask TransferX. Nothing has been sent: check the terms, then submit.
         </p>
       )}
@@ -300,8 +300,8 @@ export default function CreateOfferPage() {
       {/* Player info */}
       {player && (
         <div className="mb-6 rounded-xl bg-surface px-4 py-3 ring-1 ring-border">
-          <p className="text-sm font-semibold text-text">{player.name}</p>
-          <p className="text-xs text-text-muted mt-0.5">
+          <p className="text-body font-semibold text-text">{player.name}</p>
+          <p className="text-caption text-text-muted mt-0.5">
             {player.position ?? "No position"} ·{" "}
             {/* Fall through the real-world club signals before concluding "free
                 agent" — a vendor-imported player has no TransferX club but is
@@ -323,7 +323,7 @@ export default function CreateOfferPage() {
               permanent offer is a different proposal, so the server refuses to
               swap it. */}
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+            <label className="mb-1.5 block text-small font-semibold text-text-secondary">
               What are you proposing?
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -341,13 +341,13 @@ export default function CreateOfferPage() {
                     onClick={() => { setDealType(value); setError(null); }}
                     className={`rounded-lg px-3.5 py-2.5 text-left ring-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                       dealType === value
-                        ? "bg-accent-bg text-accent-active ring-accent/40"
+                        ? "bg-accent-bg text-accent-active ring-accent-ring"
                         : "bg-surface-inset text-text-secondary ring-border hover:ring-input-border"
                     }`}
                   >
-                    <span className="block text-sm font-semibold">{label}</span>
+                    <span className="block text-body font-semibold">{label}</span>
                     {/* The reason as text, not a tooltip — touch never shows one. */}
-                    <span className="mt-0.5 block text-[13px] text-text-muted">{blocked ?? hint}</span>
+                    <span className="mt-0.5 block text-caption text-text-muted">{blocked ?? hint}</span>
                   </button>
                 );
               })}
@@ -359,27 +359,27 @@ export default function CreateOfferPage() {
               {/* Dates. Both required — a loan with no end is a transfer. */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                  <label className="mb-1.5 block text-small font-semibold text-text-secondary">
                     Loan starts
                   </label>
                   <input
                     type="date"
                     value={loanStart}
                     onChange={(e) => setLoanStart(e.target.value)}
-                    className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                    className="w-full rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                  <label className="mb-1.5 block text-small font-semibold text-text-secondary">
                     Loan ends
                   </label>
                   <input
                     type="date"
                     value={loanEnd}
                     onChange={(e) => setLoanEnd(e.target.value)}
-                    className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                    className="w-full rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                   />
-                  <p className="mt-1 text-[13px] text-text-muted">
+                  <p className="mt-1 text-caption text-text-muted">
                     Cannot run past his contract with his current club, or past 18 months.
                   </p>
                 </div>
@@ -387,19 +387,19 @@ export default function CreateOfferPage() {
 
               {/* Loan fee */}
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                <label className="mb-1.5 block text-small font-semibold text-text-secondary">
                   Loan fee <span className="font-normal text-text-muted">(optional)</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">£</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-small text-text-muted">£</span>
                   <CurrencyInput
                     value={loanFee}
                     onChange={setLoanFee}
                     placeholder="e.g. 2,000,000"
-                    className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                    className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                   />
                 </div>
-                <p className="mt-1 text-[13px] text-text-muted">
+                <p className="mt-1 text-caption text-text-muted">
                   Paid to his club for the spell. Many loans have none — the wage is the cost.
                 </p>
               </div>
@@ -408,7 +408,7 @@ export default function CreateOfferPage() {
                   in pounds, so the weekly figure is shown live rather than left
                   as an arithmetic exercise. */}
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                <label className="mb-1.5 block text-small font-semibold text-text-secondary">
                   Share of his wage you pay
                 </label>
                 <div className="relative max-w-[160px]">
@@ -418,14 +418,14 @@ export default function CreateOfferPage() {
                     max={100}
                     value={wageSplit}
                     onChange={(e) => setWageSplit(e.target.value)}
-                    className="w-full rounded-lg bg-surface px-3 py-2.5 pr-8 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                    className="w-full rounded-lg bg-surface px-3 py-2.5 pr-8 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">%</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-small text-text-muted">%</span>
                 </div>
                 {/* The wage is his contract wage, read by the server — not a
                     figure to type. A blank used to mean you paid £0. The pound
                     figure appears on the offer once it is sent. */}
-                <p className="mt-1 text-[13px] text-text-muted">
+                <p className="mt-1 text-caption text-text-muted">
                   A share of his current contract wage. The weekly figure is shown on the offer once
                   it is sent, and is reserved from your wage budget.
                 </p>
@@ -433,16 +433,16 @@ export default function CreateOfferPage() {
 
               {/* Option / obligation */}
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                <label className="mb-1.5 block text-small font-semibold text-text-secondary">
                   Option to buy <span className="font-normal text-text-muted">(optional)</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">£</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-small text-text-muted">£</span>
                   <CurrencyInput
                     value={optionToBuy}
                     onChange={setOptionToBuy}
                     placeholder="e.g. 18,000,000"
-                    className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                    className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                   />
                 </div>
                 <label className="mt-2.5 flex items-start gap-2.5">
@@ -453,7 +453,7 @@ export default function CreateOfferPage() {
                     onChange={(e) => setObligation(e.target.checked)}
                     className="mt-0.5 h-4 w-4 shrink-0 rounded accent-accent disabled:opacity-40"
                   />
-                  <span className={`text-[13px] ${optionToBuy ? "text-text-secondary" : "text-text-muted"}`}>
+                  <span className={`text-caption ${optionToBuy ? "text-text-secondary" : "text-text-muted"}`}>
                     Make it an <span className="font-semibold">obligation</span> — you must buy him at
                     that price when the loan ends, not merely may.
                     {!optionToBuy && " Set a price first."}
@@ -461,7 +461,7 @@ export default function CreateOfferPage() {
                 </label>
                 {obligation && (
                   <div className="mt-2.5 pl-6">
-                    <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
+                    <label className="mb-1.5 block text-caption font-semibold text-text-secondary">
                       Conditions <span className="font-normal text-text-muted">(optional)</span>
                     </label>
                     <textarea
@@ -470,9 +470,9 @@ export default function CreateOfferPage() {
                       rows={2}
                       maxLength={1000}
                       placeholder="e.g. If we are promoted, or he plays 20 league games"
-                      className="w-full resize-none rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                      className="w-full resize-none rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                     />
-                    <p className="mt-1 text-[13px] text-text-muted">
+                    <p className="mt-1 text-caption text-text-muted">
                       The platform cannot check these. At the end of the loan the purchase starts
                       either way, and either club can collapse it if they were not met.
                     </p>
@@ -487,7 +487,7 @@ export default function CreateOfferPage() {
                   onChange={(e) => setRecallAllowed(e.target.checked)}
                   className="mt-0.5 h-4 w-4 shrink-0 rounded accent-accent"
                 />
-                <span className="text-[13px] text-text-secondary">
+                <span className="text-caption text-text-secondary">
                   His club may <span className="font-semibold">recall him early</span>. Without this the
                   loan runs to its end date whatever happens.
                 </span>
@@ -498,23 +498,23 @@ export default function CreateOfferPage() {
                described neither: an out-of-contract player is signed from his
                page, not offered for, and a swap cannot be recorded here. */
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+              <label className="mb-1.5 block text-small font-semibold text-text-secondary">
                 Transfer fee
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-small text-text-muted">
                   £
                 </span>
                 <CurrencyInput
                   value={fee}
                   onChange={setFee}
                   placeholder="e.g. 25,000,000"
-                  className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                  className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                 />
               </div>
               {parsedFeeValue === 0 && (
                 <div className="mt-2.5">
-                  <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+                  <label className="mb-1.5 block text-small font-semibold text-text-secondary">
                     Why £0?
                   </label>
                   <textarea
@@ -523,9 +523,9 @@ export default function CreateOfferPage() {
                     rows={2}
                     maxLength={500}
                     placeholder="e.g. We take on his full wage so you can clear it from your books"
-                    className="w-full resize-none rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                    className="w-full resize-none rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                   />
-                  <p className="mt-1 text-[13px] text-text-muted">
+                  <p className="mt-1 text-caption text-text-muted">
                     Sent to his club with the offer. Out of contract? Sign him from his page instead.
                   </p>
                 </div>
@@ -538,25 +538,25 @@ export default function CreateOfferPage() {
 
           {/* Weekly wage */}
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+            <label className="mb-1.5 block text-small font-semibold text-text-secondary">
               Weekly wage <span className="text-text-muted font-normal">(optional)</span>
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-small text-text-muted">
                 £
               </span>
               <CurrencyInput
                 value={wage}
                 onChange={setWage}
                 placeholder="e.g. 100,000"
-                className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
               />
             </div>
           </div>
 
           {/* Contract years */}
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+            <label className="mb-1.5 block text-small font-semibold text-text-secondary">
               Contract length <span className="text-text-muted font-normal">(optional)</span>
             </label>
             <input
@@ -567,20 +567,20 @@ export default function CreateOfferPage() {
               value={years}
               onChange={(e) => setYears(e.target.value)}
               placeholder="Years"
-              className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+              className="w-full rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
             />
           </div>
 
           {/* Contract end date */}
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+            <label className="mb-1.5 block text-small font-semibold text-text-secondary">
               Contract end date <span className="text-text-muted font-normal">(optional)</span>
             </label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+              className="w-full rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
             />
           </div>
           </>)}
@@ -597,10 +597,10 @@ export default function CreateOfferPage() {
                 className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-accent"
               />
               <span>
-                <span className="block text-sm font-semibold text-text-secondary">
+                <span className="block text-body font-semibold text-text-secondary">
                   Approach anonymously
                 </span>
-                <span className="mt-0.5 block text-xs text-text-muted">
+                <span className="mt-0.5 block text-caption text-text-muted">
                   {player?.current_club?.name ?? "The selling club"} sees only your league until
                   they accept — accepting reveals you. If they reject or it expires, you're never
                   named.
@@ -611,7 +611,7 @@ export default function CreateOfferPage() {
 
           <TermsWarnings warnings={check?.warnings} />
 
-          {error && <p className="text-sm text-danger-text">{error}</p>}
+          {error && <p className="text-body text-danger-text">{error}</p>}
 
           <div className="flex gap-3 pt-2">
             <Button

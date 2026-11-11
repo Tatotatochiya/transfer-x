@@ -18,7 +18,7 @@ export default function AgreedOfferHistory({ offerId, myClubId }: { offerId: str
   if (!offer) return null;
   return (
     <div>
-      <p className="text-sm text-text-secondary">
+      <p className="text-body text-text-secondary">
         Offer made {formatDate(offer.created_at)} — {offer.messages.length} message
         {offer.messages.length === 1 ? "" : "s"}, {offer.events.length} step
         {offer.events.length === 1 ? "" : "s"} in the negotiation

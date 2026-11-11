@@ -37,7 +37,7 @@ export default function DealHeader({ deal, moreMenu }: { deal: Deal; moreMenu: R
         <>
           {dealFacts(deal)}
           {deal.is_auction_deal && (
-            <span className="ml-2 inline-flex rounded-full bg-text-muted/15 px-2.5 py-0.5 text-[13px] font-semibold text-text-secondary ring-1 ring-text-muted/30">
+            <span className="ml-2 inline-flex rounded-full bg-surface-inset px-2.5 py-0.5 text-caption font-semibold text-text-secondary ring-1 ring-border">
               Auction deal
             </span>
           )}

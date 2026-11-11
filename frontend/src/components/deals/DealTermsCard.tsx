@@ -8,10 +8,10 @@ import { formatCurrency, formatDate, formatWage } from "../../lib/utils";
 function Row({ label, value, note, span }: { label: string; value: ReactNode; note?: ReactNode; span?: boolean }) {
   return (
     <div className={`flex justify-between gap-3 border-t border-rule py-3 ${span ? "sm:col-span-2" : ""}`}>
-      <span className="text-[15px] text-text-secondary">{label}</span>
+      <span className="text-body text-text-secondary">{label}</span>
       <div className="min-w-0 text-right">
-        <div className="text-base font-semibold text-text">{value}</div>
-        {note && <div className="mt-0.5 text-[13px] text-text-muted">{note}</div>}
+        <div className="text-body font-semibold text-text">{value}</div>
+        {note && <div className="mt-0.5 text-caption text-text-muted">{note}</div>}
       </div>
     </div>
   );
@@ -71,7 +71,7 @@ export default function DealTermsCard({
 
   return (
     <section aria-labelledby="deal-terms-heading" className="rounded-xl bg-surface px-4 pb-4 pt-3.5 ring-1 ring-border sm:px-5">
-      <h3 id="deal-terms-heading" className="mb-1 text-[17px] font-bold text-text">Agreed terms</h3>
+      <h3 id="deal-terms-heading" className="mb-1 text-section font-bold text-text">Agreed terms</h3>
       <div className="grid sm:grid-cols-2 sm:gap-x-8">
         <Row
           label={loan ? "Loan fee" : "Fee"}
@@ -115,7 +115,7 @@ export default function DealTermsCard({
         {!loan && scheduleOpen && deal.instalments.length > 0 && (
           <ul id="deal-schedule" className="space-y-1.5 border-t border-rule py-3 sm:col-span-2">
             {deal.instalments.map((inst) => (
-              <li key={inst.id} className="flex items-center justify-between gap-3 text-[15px]">
+              <li key={inst.id} className="flex items-center justify-between gap-3 text-body">
                 <span className="text-text-secondary">{formatDate(inst.due_date)}</span>
                 <span className="font-semibold text-text">{formatCurrency(inst.amount)}</span>
                 <span className={inst.paid ? "text-success-text" : "text-text-muted"}>
@@ -166,16 +166,16 @@ export default function DealTermsCard({
             {deal.clauses.map((c) => (
               <li key={c.id} className="flex items-center justify-between gap-3 rounded-lg bg-surface-inset px-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold capitalize text-text-secondary">{c.clause_type.toLowerCase()}</p>
-                  <p className="truncate text-[13px] text-text-muted">{c.trigger_description}</p>
+                  <p className="text-body font-semibold capitalize text-text-secondary">{c.clause_type.toLowerCase()}</p>
+                  <p className="truncate text-caption text-text-muted">{c.trigger_description}</p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="text-[15px] font-semibold text-text">{formatCurrency(c.amount)}</p>
-                  {c.cap != null && <p className="text-[13px] text-text-muted">cap {formatCurrency(c.cap)}</p>}
+                  <p className="text-body font-semibold text-text">{formatCurrency(c.amount)}</p>
+                  {c.cap != null && <p className="text-caption text-text-muted">cap {formatCurrency(c.cap)}</p>}
                 </div>
-                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[13px] font-semibold ${
-                  c.status === "PAID" ? "bg-success/15 text-success-text"
-                    : c.status === "TRIGGERED" ? "bg-warning-fill/15 text-warning-text"
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-caption font-semibold ${
+                  c.status === "PAID" ? "bg-success-bg text-success-text"
+                    : c.status === "TRIGGERED" ? "bg-warning-bg text-warning-text"
                     : "bg-surface-inset text-text-secondary"
                 }`}>{c.status === "PAID" ? "Paid" : c.status === "TRIGGERED" ? "Triggered" : "Pending"}</span>
               </li>
@@ -223,7 +223,7 @@ export default function DealTermsCard({
           />
         )}
       </div>
-      <p className="mt-2 text-sm text-text-muted">
+      <p className="mt-2 text-small text-text-muted">
         Agreed on the offer and fixed for this deal. To change them, collapse the deal and re-approach.
       </p>
     </section>

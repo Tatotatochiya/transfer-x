@@ -9,7 +9,7 @@ import { formatCurrency, getApiError } from "../../lib/utils";
 import StatusCardShell from "../transfer/StatusCardShell";
 import type { DealStatusView, StatusAction } from "./dealStatus";
 
-const INPUT = "w-full min-h-12 lg:min-h-0 rounded-lg bg-surface px-3 py-2 text-[15px] text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
+const INPUT = "w-full min-h-12 lg:min-h-0 rounded-lg bg-surface px-3 py-2 text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
 
 interface Props {
   view: DealStatusView;
@@ -29,15 +29,15 @@ function ProposeTermsForm({ actions, onCancel }: { actions: DealActions; onCance
   return (
     <div className="mt-4 grid gap-3 border-t border-rule pt-4 sm:grid-cols-3">
       <div>
-        <label htmlFor="pt-wage" className="mb-1 block text-sm font-medium text-text-secondary">Weekly wage (€)</label>
+        <label htmlFor="pt-wage" className="mb-1 block text-small font-medium text-text-secondary">Weekly wage (€)</label>
         <CurrencyInput id="pt-wage" value={wage} onChange={setWage} className={INPUT} />
       </div>
       <div>
-        <label htmlFor="pt-bonus" className="mb-1 block text-sm font-medium text-text-secondary">Signing bonus (€)</label>
+        <label htmlFor="pt-bonus" className="mb-1 block text-small font-medium text-text-secondary">Signing bonus (€)</label>
         <CurrencyInput id="pt-bonus" value={bonus} onChange={setBonus} className={INPUT} />
       </div>
       <div>
-        <label htmlFor="pt-years" className="mb-1 block text-sm font-medium text-text-secondary">Contract length (years)</label>
+        <label htmlFor="pt-years" className="mb-1 block text-small font-medium text-text-secondary">Contract length (years)</label>
         <input id="pt-years" type="number" min={1} max={10} value={years} onChange={(e) => setYears(e.target.value)} className={INPUT} />
       </div>
       <div className="flex flex-wrap gap-2 sm:col-span-3">
@@ -66,7 +66,7 @@ function RecordConsentForm({ deal, actions, onCancel }: { deal: Deal; actions: D
   const [file, setFile] = useState<File | null>(null);
   return (
     <div className="mt-4 border-t border-rule pt-4">
-      <label htmlFor="pt-signed" className="block text-sm font-medium text-text-secondary">
+      <label htmlFor="pt-signed" className="block text-small font-medium text-text-secondary">
         Signed terms <span className="text-text-muted">(PDF or image, kept in your club&rsquo;s private deal-room channel)</span>
       </label>
       <input
@@ -74,7 +74,7 @@ function RecordConsentForm({ deal, actions, onCancel }: { deal: Deal; actions: D
         type="file"
         accept=".pdf,image/*"
         onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        className="mt-1.5 block w-full min-h-11 text-sm text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-inset file:px-3 file:py-2 file:text-sm file:font-semibold file:text-text"
+        className="mt-1.5 block w-full min-h-11 text-input lg:text-body text-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-surface-inset file:px-3 file:py-2 file:text-small file:font-semibold file:text-text"
       />
       <div className="mt-3 flex flex-wrap gap-2">
         <Button
@@ -189,7 +189,7 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
     const cls = `w-full ${danger ? "text-danger-text-alt" : ""}`;
     if (a.kind === "open-profile") {
       return (
-        <Link to="/player/profile" className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent no-underline shadow-sm hover:bg-accent-hover">
+        <Link to="/player/profile" className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-body font-semibold text-on-accent no-underline shadow-sm hover:bg-accent-hover">
           {a.label}
         </Link>
       );
@@ -220,14 +220,14 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
           <li key={s.key} className="flex items-center gap-2.5">
             <span
               aria-hidden
-              className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[13px] font-bold ${
+              className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-caption font-bold ${
                 s.done ? "bg-success text-white" : isNext ? "ring-2 ring-accent" : "ring-1 ring-input-border"
               }`}
             >
               {s.done ? "✓" : ""}
             </span>
-            <span className={`min-w-0 flex-1 text-[15px] ${isNext ? "font-semibold text-text" : "text-text-secondary"}`}>{s.label}</span>
-            <span className="shrink-0 text-[13px] text-text-muted">{s.done ? "Done" : mine ? "Your move" : "Their move"}</span>
+            <span className={`min-w-0 flex-1 text-body ${isNext ? "font-semibold text-text" : "text-text-secondary"}`}>{s.label}</span>
+            <span className="shrink-0 text-caption text-text-muted">{s.done ? "Done" : mine ? "Your move" : "Their move"}</span>
           </li>
         );
       })}
@@ -242,7 +242,7 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
       meta={view.meta}
       headline={view.headline}
       headlineId="deal-status-headline"
-      body={view.body && <p className="mt-1.5 text-base leading-normal text-text-secondary">{view.body}</p>}
+      body={view.body && <p className="mt-1.5 text-body leading-normal text-text-secondary">{view.body}</p>}
       actions={(view.primary || view.secondary) && (
         <>
           {view.primary && actionButton(view.primary, true)}
@@ -253,7 +253,7 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
               {actionButton(view.secondary, false)}
             </div>
           )}
-          {advanceError && <p role="alert" className="text-sm text-danger-text">{advanceError}</p>}
+          {advanceError && <p role="alert" className="text-body text-danger-text">{advanceError}</p>}
         </>
       )}
       footer={
@@ -267,7 +267,7 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
                   aria-expanded={showSteps}
                   aria-controls="deal-status-steps"
                   onClick={() => setShowSteps((v) => !v)}
-                  className="mt-2 min-h-11 w-full text-[15px] font-semibold text-accent"
+                  className="mt-2 min-h-11 w-full text-body font-semibold text-accent"
                 >
                   {showSteps ? "Hide the steps" : `Show the ${steps.length} paperwork steps`}
                 </button>
@@ -280,7 +280,7 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
           {inline === "record-consent" && <RecordConsentForm deal={deal} actions={actions} onCancel={() => setInline(null)} />}
 
           {view.strips.map((s) => (
-            <div key={s.title} role="note" className="mt-3 rounded-lg bg-warning-bg px-3 py-2.5 text-sm text-warning-text">
+            <div key={s.title} role="note" className="mt-3 rounded-lg bg-warning-bg px-3 py-2.5 text-small text-warning-text">
               <p className="font-semibold">{s.title}</p>
               <p>{s.body}</p>
             </div>
