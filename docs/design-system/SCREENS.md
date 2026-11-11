@@ -335,8 +335,8 @@ valuation and your latest figure, with the gap shaded, and every round (a disclo
 the Offer history tab from 1024px).
 
 **Sections** — below 1024px a segmented control, Terms · Messages · Other bids (the buyer:
-Your ranking). From 1024px, Terms · Offer history tabs and a 340px sticky rail with Messages ·
-Other bids. `?tab=` names the section. Non-parties see the terms and the read-only thread only.
+their place, "2nd of 4" / "Leading" / "Only offer"). From 1024px, Terms · Offer history tabs and a 340px sticky rail with Messages ·
+"Other bids · n" (the buyer: "Ranking · 2nd of 4"). A waiting buyer's status card also says it ("You're 2nd of 4 offers."). `?tab=` names the section. Non-parties see the terms and the read-only thread only.
 
 ## Deal room
 
@@ -399,7 +399,7 @@ Route: `/players/market/:id`. Spec: [`player-actions`](../feature_spec/player-ac
 
 **Header** — the shared `TransferHeader`: "← Back", photo, the name as the only h1, then the badges (position, status, Listed, active offers), the club · age · nationality · height · born line, and the loan line.
 
-**One blue button**, chosen by his situation (`lib/playerSituation`): Make an offer · Sign him (free agent) · List for sale / View listing (his own club) · View the deal (a deal your club is on) · Sign in to make an offer. A secondary beside it: Ask his club (or Ask {parent club}) · Offer a pre-contract. Everything else is in More: Compare with others, ✦ Ask TransferX about him, View {club}, Ask his club when it isn't the secondary, and "Pay the release clause (£X)…" last, in red, after a divider. Shortlist stays visible.
+**One blue button**, chosen by his situation (`lib/playerSituation`): Make an offer, or **View your offer** when your club already has one open (with "Your £X offer is with {club}." or "{club} countered at £X. It's your move.") · Sign him (free agent) · List for sale / View listing (his own club) · View the deal (a deal your club is on) · Sign in to make an offer. A secondary beside it: Ask his club (or Ask {parent club}) · Offer a pre-contract. Everything else is in More: Compare with others, ✦ Ask TransferX about him, View {club}, Ask his club when it isn't the secondary, and "Pay the release clause (£X)…" last, in red, after a divider. Shortlist stays visible.
 
 **Blocked actions are a sentence**, never a disabled button: no role to trade, a club off TransferX, a deal in progress, on loan to you, a free agent's terms, a contract ending within six months.
 

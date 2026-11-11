@@ -648,6 +648,8 @@ Same as the deal room spec §11:
 
 ---
 
+- **R11 (follow-up, 2026-11-11). The buyer's ranking is in the tab's name**, so it rarely needs opening: "Ranking · 2nd of 4", "Ranking · Leading" or "Ranking · Only offer" in the rail, the place alone on phones (three tabs of ~115px), plain "Ranking" until the order book loads. A waiting buyer's status card opens with it: "You're 2nd of 4 offers." The order book is now fetched for both parties, not only read from the cache. Ranks are by fee (the order book's own rule, ties sharing a place), so a loan with no fee has none.
+
 ## Deviations (2026-11-09 build)
 
 - **One pass, not seven commits.** Built on `offer-room-focus` as one change; the page worked after each part locally but the steps were not committed separately. The step-3 interim (Withdraw as a plain button) was skipped.

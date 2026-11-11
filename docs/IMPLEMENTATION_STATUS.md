@@ -1,6 +1,6 @@
 ---
 title: "Implementation Status"
-last_updated: 2026-10-12
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -26,13 +26,13 @@ Rewritten on 2026-10-11 from the code, the CHANGELOG and read-only checks of the
 |---|---|---|---|
 | Listings | Built | 2026-11-08 | Open to Offers, with an optional guide price and "Offers by" date; fixed price for existing listings only; auctions retired (product ADR 0011, migration `0109`). Transfer, loan or either. One open listing per player (unique index). Listed means available (product ADR 0005). List from the squad, the player page or the dashboard |
 | Enquiries | Built | 2026-09-27 | Pre-offer threads, open or anonymous, one per club per player, "your move" everywhere. Swaps deferred |
-| Offers | Built | 2026-10-11 | Permanent and loan offers with the fee, wage, payment schedule, add-ons, sell-on and expiry. Fee and wage reserved; counters validated like new offers; anonymous buyers masked server-side (ADR 0004); rivals released on acceptance; no offers for players at clubs outside TransferX. Logic in `offers/actions.py`. The offer page is answer first (2026-11-09, [spec](./feature_spec/offer-room-focus/README.md)): status card with the deadline and changes, counter in a sheet or in place, "Where it stands", Raise your offer, sections as tabs below 1024px or a rail above. Since 2026-11-09 it also shows an acceptance waiting for approval, measures a bid against the seller's asking price, and counts unread messages |
+| Offers | Built | 2026-10-11 | Permanent and loan offers with the fee, wage, payment schedule, add-ons, sell-on and expiry. Fee and wage reserved; counters validated like new offers; anonymous buyers masked server-side (ADR 0004); rivals released on acceptance; no offers for players at clubs outside TransferX. Logic in `offers/actions.py`. The offer page is answer first (2026-11-09, [spec](./feature_spec/offer-room-focus/README.md)): status card with the deadline and changes, counter in a sheet or in place, "Where it stands", Raise your offer, sections as tabs below 1024px or a rail above; the buyer's ranking in its tab and status card (2026-11-11). Since 2026-11-09 it also shows an acceptance waiting for approval, measures a bid against the seller's asking price, and counts unread messages |
 | Deals | Built | 2026-10-11 | AGREEMENT → (AGENT_NEGOTIATION) → PERSONAL_TERMS → PAPERWORK → CONFIRMED → COMPLETED. Terms fixed from the offer; consented personal terms become the contract; the club-run paperwork checklist with buyer-recorded medical; row locks on every money path. Clause status is tracked, but marking an add-on paid moves no money. The deal room is answer first (2026-11-08, [spec](./feature_spec/deal-room-focus/README.md)): header, one status card with the next action, progress, and sections as tabs below 1024px or a messages rail above. A collapse keeps its optional reason and who called it off (2026-11-09) |
 | Loans | Built | 2026-09-28 | Registration separate from ownership (ADR 0005), wage split, recall, expiry job, option and obligation, conditional obligations confirmed by both clubs with staff settling disputes, approval-gated loan fees and options |
 | Transfers board and conversation | Built | 2026-10-11 | `/board`: every player bought or sold, once, at its furthest point, with Buying and Selling lanes. One conversation per transfer across the message stores (ADR 0008). The classic list pages are retired and redirect to the board |
 | Clubs, roles and approvals | Built | 2026-07-10, rows since | Owner and four staff roles with one capability matrix; invitations for clubs, staff and players; spending approvals above a threshold with the decision sheet; "Check your squad"; people's names; "in play" status on the squad |
 | Agents and mandates | Built | 2026-10-11 | Mandates, agent negotiation of commission, agent answering personal terms (ADR 0007), the Pipeline start page, client alerts. Mandates need no player confirmation (gap below) |
-| Players | Built | 2026-10-01 | Profile v2 season ledger, career and injuries (P1–P4); player accounts by club invitation only; free agents invited by staff or their agent. Browse Players is players first (2026-11-09, [spec](./feature_spec/browse-players-focus/README.md)): one search box with "✦ Describe", a sticky toolbar and filter chips, filters in a sheet below 1024px, a compact phone list, every sort on the server (including Cheapest, `sort_by=price`) |
+| Players | Built | 2026-10-01 | Profile v2 season ledger, career and injuries (P1–P4); player accounts by club invitation only; free agents invited by staff or their agent. Browse Players is players first (2026-11-09, [spec](./feature_spec/browse-players-focus/README.md)): one search box with "✦ Describe", a sticky toolbar and filter chips, filters in a sheet below 1024px, a compact phone list, every sort on the server (including Cheapest, `sort_by=price`). The player page has one blue button chosen by his situation (2026-11-10, [spec](./feature_spec/player-actions/README.md)): Make an offer, or View your offer when the club has one open, Sign him, List for sale, View the deal; a sentence instead of a disabled button; a More menu; a bottom action bar below 1024px |
 | Lite mode | Built | 2026-10-18 | L1–L8: home, Buy page (search by name, and the club's shortlist and players of interest, with a Shortlist button on each row; the guided position/budget path was removed 2026-10-18), action cards with the money effect, Ask anything, held sends with a 10-second undo (ADR 0007), team contact, decisions from email. The default for club members since 2026-10-13, with a visible "Switch to full app" button; the choice is remembered. Loans in the Buy flow are a to-do |
 | Notifications | Built | 2026-10-04 | In-app with live refresh; email per type and the daily digest; Web Push with tiers, quiet hours, the morning summary, decision sheets and a 30-minute email fallback. Railway has push keys but no SMTP (gap below) |
 | AI assistant | Built | 2026-10-06 | Advises, never acts (ADR 0006): offer advisor, terms checks, summaries, deal steps, briefing, pricing, "Who might want him?", drafts, Ask TransferX (⌘K). The analyst (`/ask`): 17 read-only, club-scoped tools, tables, charts, Excel, "Ask about this"; eval 71/72. Cache and rate limit are in memory |
@@ -87,10 +87,11 @@ Each item was checked against the code on 2026-10-11 unless it says otherwise.
 
 ## Test totals
 
-As of 2026-10-12:
+As of 2026-11-11:
 
-- **Backend:** 900 passed (full suite, SQLite).
-- **Frontend:** vitest 266 passed.
+- **Backend:** 938 passed (full suite, SQLite; last run 2026-11-09, no backend change since).
+- **Frontend:** vitest 474 passed (64 files).
+- **Lint:** not run; the repo has no eslint.
 
 - **Type check:** `tsc -b` has 0 errors.
 
