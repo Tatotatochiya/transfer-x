@@ -5,7 +5,7 @@ const ROLE_STYLE: Record<IdentityRole, string> = {
   CLUB: "bg-role-club-bg text-role-club-text",
   AGENT: "bg-role-agent-bg text-role-agent-text",
   // Player reuses warning (amber) rather than adding a third role token.
-  PLAYER: "bg-warning-fill/15 text-warning-text",
+  PLAYER: "bg-warning-bg text-warning-text",
 };
 
 interface AvatarProps {
@@ -20,8 +20,8 @@ interface AvatarProps {
 }
 
 const SIZE_CLASSES: Record<"sm" | "md", string> = {
-  sm: "h-7 w-7 text-xs",
-  md: "h-9 w-9 text-sm",
+  sm: "h-7 w-7 text-caption",
+  md: "h-9 w-9 text-small",
 };
 
 /** Club crest, or role-coloured initials. Shared by the sidebar footer and

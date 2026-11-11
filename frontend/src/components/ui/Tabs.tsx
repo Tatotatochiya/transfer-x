@@ -26,10 +26,10 @@ export default function Tabs({ tabs, active, onChange, className = "" }: TabsPro
             role="tab"
             aria-selected={isActive}
             onClick={() => onChange(tab.key)}
-            className={`min-h-11 lg:min-h-0 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+            className={`min-h-11 lg:min-h-0 border-b-2 px-4 py-2.5 text-body transition-colors ${
               isActive
-                ? "border-accent text-accent"
-                : "border-transparent text-text-muted hover:text-text-secondary"
+                ? "border-accent font-semibold text-text"
+                : "border-transparent font-medium text-text-secondary hover:text-text"
             }`}
           >
             {tab.label}

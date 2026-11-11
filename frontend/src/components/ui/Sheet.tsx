@@ -81,15 +81,15 @@ export default function Sheet({ open, onClose, title, subtitle, headerAction, cl
       >
         <div className="flex shrink-0 items-start gap-3 border-b border-rule px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))] sm:px-5 sm:pt-4">
           <div className="min-w-0 flex-1">
-            <h2 id={titleId} className="text-lg font-bold text-text">{title}</h2>
-            {subtitle && <p className="mt-0.5 text-sm text-text-secondary">{subtitle}</p>}
+            <h2 id={titleId} className="text-headline font-bold text-text">{title}</h2>
+            {subtitle && <p className="mt-0.5 text-small text-text-secondary">{subtitle}</p>}
           </div>
           {headerAction}
           <button
             type="button"
             aria-label={closeLabel}
             onClick={() => onClose()}
-            className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-xl text-text-muted hover:bg-surface-inset hover:text-text"
+            className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-headline text-text-muted hover:bg-surface-inset hover:text-text"
           >
             ×
           </button>

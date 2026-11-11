@@ -27,9 +27,9 @@ export default function Timeline({ events }: TimelineProps) {
             <span className="h-1.5 w-1.5 rounded-full bg-success" />
           </span>
           <div className="min-w-0 flex-1 pb-1">
-            <p className="text-sm font-medium text-text">{event.label}</p>
-            {event.body && <p className="mt-0.5 text-sm text-text-muted">{event.body}</p>}
-            <p className="mt-1 text-xs text-text-muted">{formatDateTime(event.timestamp)}</p>
+            <p className="text-body font-semibold text-text">{event.label}</p>
+            {event.body && <p className="mt-0.5 text-small text-text-secondary">{event.body}</p>}
+            <p className="mt-1 text-caption text-text-muted">{formatDateTime(event.timestamp)}</p>
           </div>
         </li>
       ))}

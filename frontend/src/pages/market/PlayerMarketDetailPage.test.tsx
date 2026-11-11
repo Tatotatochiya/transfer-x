@@ -86,7 +86,7 @@ function signIn(user_type: "CLUB" | "AGENT" | "PLAYER" | null) {
     : { accessToken: null, user: null } as never);
 }
 
-const primaries = () => document.querySelectorAll(".bg-accent.text-white");
+const primaries = () => document.querySelectorAll(".bg-accent.text-on-accent");
 const bar = () => screen.queryByRole("region", { name: /^Actions for/ });
 
 async function openMore() {

@@ -24,11 +24,11 @@ function yearRange(year: number): DateRange {
 // accent and warning token families respectively rather than literal colours.
 const ACCENT = {
   emerald: {
-    active: "bg-accent-bg text-accent ring-1 ring-accent/30",
+    active: "bg-accent-bg text-accent ring-1 ring-accent-ring",
     ring: "focus:ring-accent",
   },
   amber: {
-    active: "bg-warning-fill/15 text-warning-text ring-1 ring-warning-fill/30",
+    active: "bg-warning-bg text-warning-text ring-1 ring-warning-ring",
     ring: "focus:ring-warning-fill",
   },
 };
@@ -47,7 +47,7 @@ export default function DateRangeFilter({ value, onChange, accent = "emerald" }:
   const isCustomActive = !isAllTime && activeYear === undefined;
 
   function pill(active: boolean) {
-    return `rounded-lg px-3 py-1.5 text-sm transition-colors ${
+    return `rounded-lg px-3 py-1.5 text-small transition-colors ${
       active ? colors.active : "bg-surface-inset text-text-muted hover:text-text"
     }`;
   }
@@ -84,14 +84,14 @@ export default function DateRangeFilter({ value, onChange, accent = "emerald" }:
             type="date"
             value={value.dateFrom}
             onChange={(e) => onChange({ ...value, dateFrom: e.target.value })}
-            className={`rounded-lg bg-surface px-2.5 py-1.5 text-xs text-text ring-1 ring-input-border focus:outline-none ${colors.ring}`}
+            className={`rounded-lg bg-surface px-2.5 py-1.5 text-small text-text ring-1 ring-input-border focus:outline-none ${colors.ring}`}
           />
-          <span className="text-xs text-text-muted">to</span>
+          <span className="text-caption text-text-muted">to</span>
           <input
             type="date"
             value={value.dateTo}
             onChange={(e) => onChange({ ...value, dateTo: e.target.value })}
-            className={`rounded-lg bg-surface px-2.5 py-1.5 text-xs text-text ring-1 ring-input-border focus:outline-none ${colors.ring}`}
+            className={`rounded-lg bg-surface px-2.5 py-1.5 text-small text-text ring-1 ring-input-border focus:outline-none ${colors.ring}`}
           />
         </div>
       )}

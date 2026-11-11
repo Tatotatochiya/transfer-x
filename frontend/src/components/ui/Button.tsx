@@ -4,22 +4,22 @@ export type ButtonVariant = "primary" | "primary-success" | "secondary" | "dange
 export type ButtonSize = "sm" | "md" | "lg";
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary:         "bg-accent hover:bg-accent-hover text-white font-semibold shadow-sm",
+  primary:         "bg-accent hover:bg-accent-hover text-on-accent font-semibold shadow-sm",
   "primary-success": "bg-success hover:bg-success-text-alt text-white font-semibold shadow-sm",
-  secondary:       "bg-surface hover:bg-surface-inset text-text-secondary font-medium ring-1 ring-input-border",
-  danger:          "bg-surface hover:bg-danger-bg text-danger-text-alt font-medium ring-1 ring-danger-border",
-  ghost:           "text-text-muted hover:text-text hover:bg-surface-inset font-medium",
+  secondary:       "bg-surface hover:bg-surface-inset text-text-secondary font-semibold ring-1 ring-input-border",
+  danger:          "bg-surface hover:bg-danger-bg text-danger-text-alt font-semibold ring-1 ring-danger-border",
+  ghost:           "text-text-muted hover:text-text hover:bg-surface-inset font-semibold",
 };
 
-// Base sizing matches TOKENS.md exactly (radius 8px, 14px/600 label, 10px/18px
+// Base sizing matches TOKENS.md (radius 8px, 15px/600 label, 10px/18px
 // padding for the standard size). Below 1024px every size gets a min-height
 // floor per RESPONSIVE.md's 44px touch-target rule (48px for `lg`, used for
 // full-width/tier-1 actions) — shed at the lg: breakpoint back to the desktop
 // spec, which doesn't need the floor since pointer input isn't touch.
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "min-h-11 lg:min-h-0 px-3 py-1.5 text-xs rounded-lg",
-  md: "min-h-11 lg:min-h-0 px-[18px] py-2.5 text-sm rounded-lg",
-  lg: "min-h-12 lg:min-h-0 px-5 py-2.5 text-sm rounded-xl",
+  sm: "min-h-11 lg:min-h-0 px-3 py-1.5 text-small rounded-lg",
+  md: "min-h-11 lg:min-h-0 px-[18px] py-2.5 text-body rounded-lg",
+  lg: "min-h-12 lg:min-h-0 px-5 py-2.5 text-body rounded-xl",
 };
 
 /** A Button's look for something that isn't a <button>, e.g. a router Link. */

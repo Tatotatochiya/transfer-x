@@ -27,10 +27,18 @@ export function initialsOf(name: string): string {
   return (first + last).toUpperCase();
 }
 
+/** Below 28px there's no room for 13px initials, the smallest text allowed. */
+function tooSmallForInitials(sizeClass: string): boolean {
+  const m = sizeClass.match(/(?:^|\s)h-(?:(\d+(?:\.\d+)?)|\[(\d+)px\])(?:\s|$)/);
+  if (!m) return false;
+  return (m[2] ? Number(m[2]) : Number(m[1]) * 4) < 28;
+}
+
 /**
  * A player photo or club crest that falls back to initials when there's no
  * image or it fails to load. The box always has its final size, so nothing
- * shifts when an image errors.
+ * shifts when an image errors. A box under 28px shows a plain neutral
+ * circle instead of initials.
  */
 export default function FallbackImage({
   src,
@@ -48,10 +56,11 @@ export default function FallbackImage({
 
   const shape = kind === "club" ? "rounded-md" : "rounded-full";
   const showImage = !!src && !failed;
+  const dot = !showImage && tooSmallForInitials(sizeClass);
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center overflow-hidden font-bold leading-none ${shape} ${sizeClass} ${
-        showImage ? (fit === "cover" ? "bg-surface-inset" : "") : colorClass
+        showImage ? (fit === "cover" ? "bg-surface-inset" : "") : dot ? "bg-surface-inset" : colorClass
       } ${className}`}
     >
       {showImage ? (
@@ -62,7 +71,7 @@ export default function FallbackImage({
           onError={() => setFailed(true)}
           className={fit === "cover" ? "h-full w-full object-cover object-top" : "h-full w-full object-contain p-[8%]"}
         />
-      ) : (
+      ) : dot ? null : (
         <span aria-hidden>{initialsOf(name)}</span>
       )}
     </span>

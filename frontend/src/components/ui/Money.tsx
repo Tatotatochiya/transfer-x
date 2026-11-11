@@ -41,7 +41,7 @@ export function Estimate({ value, stacked = false }: { value: number | string | 
   return (
     <span
       className={stacked
-        ? "block text-sm font-normal tracking-normal text-text-muted"
+        ? "block text-small font-normal tracking-normal text-text-muted"
         : "ml-1 whitespace-nowrap text-[0.8em] font-normal text-text-muted"}
       title={`Estimate at ${basis}. Amounts are agreed in pounds.`}
     >

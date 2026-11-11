@@ -45,7 +45,7 @@ export default function TransferHeader({ player, routeFrom, routeTo, sub, amount
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="-ml-2.5 inline-flex min-h-11 items-center px-2.5 text-[15px] font-medium text-text-secondary hover:text-text"
+          className="-ml-2.5 inline-flex min-h-11 items-center px-2.5 text-body font-medium text-text-secondary hover:text-text"
         >
           ← Back
         </button>
@@ -56,15 +56,15 @@ export default function TransferHeader({ player, routeFrom, routeTo, sub, amount
         <FallbackImage
           src={player.photoUrl}
           name={name ?? "?"}
-          sizeClass="h-[52px] w-[52px] text-lg"
+          sizeClass="h-[52px] w-[52px] text-section"
           colorClass={(pos && POS_CLASS[pos]) || "bg-accent-avatar text-accent-active"}
         />
         <div className="min-w-0 flex-1">
-          <h1 className={`text-[22px] font-bold leading-tight tracking-[-0.01em] text-text lg:text-2xl ${actions ? "lg:truncate" : ""}`}>
+          <h1 className={`text-title-sm font-bold tracking-[-0.01em] text-text sm:text-title ${actions ? "lg:truncate" : ""}`}>
             {linkName ? <PlayerLink id={player.id} name={name} fallback="Unknown player" /> : (name ?? "Unknown player")}
           </h1>
           {sub ?? (
-            <p className="mt-0.5 text-[15px] text-text-secondary">
+            <p className="mt-0.5 text-small text-text-secondary">
               {pos && <>{pos} · </>}
               {routeFrom}
               {" → "}
@@ -75,8 +75,8 @@ export default function TransferHeader({ player, routeFrom, routeTo, sub, amount
         </div>
         {amount != null && (
           <div className="hidden shrink-0 text-right sm:block">
-            <p className="text-[22px] font-bold text-text lg:text-2xl">{amount}</p>
-            <p className="text-sm text-text-muted">{facts}</p>
+            <p className="text-headline font-bold tabular-nums text-text sm:text-title">{amount}</p>
+            <p className="text-small text-text-muted">{facts}</p>
           </div>
         )}
         {actions
@@ -85,8 +85,8 @@ export default function TransferHeader({ player, routeFrom, routeTo, sub, amount
       </div>
 
       {amount != null && (
-        <p className="mt-2.5 text-[15px] text-text-secondary sm:hidden">
-          <span className="text-[17px] font-bold text-text">{amount}</span>
+        <p className="mt-2.5 text-body text-text-secondary sm:hidden">
+          <span className="text-section font-bold tabular-nums text-text">{amount}</span>
           {" · "}{facts}
         </p>
       )}

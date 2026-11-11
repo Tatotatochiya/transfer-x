@@ -44,7 +44,7 @@ export default function Modal({ open, onClose, title, size = "md", children, cla
       >
         {title && (
           <div className="border-b border-rule px-6 py-4">
-            <h3 className="text-base font-bold text-text">{title}</h3>
+            <h3 className="text-headline font-bold text-text">{title}</h3>
           </div>
         )}
         {children}
