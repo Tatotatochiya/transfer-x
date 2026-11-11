@@ -41,12 +41,14 @@ function offer(over: Record<string, unknown> = {}) {
 
 let current = offer();
 let me = SELLER;
+let book: unknown = [];
 let card: unknown = { other_club: "Meridian FC", your_valuation: 4_800_000, counter_suggestion: 4_600_000, expires_at: null, disabled_reason: null };
 
 function serve(url: string) {
   if (url === "/offers/o1") return Promise.resolve({ data: current });
   if (url === "/clubs/me") return Promise.resolve({ data: { id: me, name: me === SELLER ? "Ashfield United" : "Meridian FC" } });
   if (url === "/lite/offers/o1") return card ? Promise.resolve({ data: card }) : Promise.reject(new Error("404"));
+  if (url === "/offers/competition/p") return Promise.resolve({ data: book });
   if (url === "/ai/status") return Promise.resolve({ data: { available: false } });
   return Promise.resolve({ data: [] });
 }
@@ -79,6 +81,7 @@ describe("OfferDetailPage, answer first", () => {
   beforeEach(() => {
     current = offer();
     me = SELLER;
+    book = [];
     card = { other_club: "Meridian FC", your_valuation: 4_800_000, counter_suggestion: 4_600_000, expires_at: null, disabled_reason: null };
     canWrite.value = true;
     unread.n = 0;
@@ -245,4 +248,29 @@ describe("OfferDetailPage, answer first", () => {
     renderPage();
     expect(await screen.findByRole("tab", { name: "Messages, 3 unread" })).toBeInTheDocument();
   });
+
+  it("the waiting buyer sees their ranking in the tab's name and the status card", async () => {
+    me = BUYER;
+    book = { role: "buyer", active_count: 4, your_rank: 2, is_leading: false, tiers: [], entries: [], your_entry: null };
+    renderPage();
+    expect(await screen.findByText(/^You're 2nd of 4 offers\./)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "2nd of 4" })).toBeInTheDocument();
+  });
+
+  it("from 1024px the rail's tab names the ranking in full", async () => {
+    desktop(true);
+    me = BUYER;
+    book = { role: "buyer", active_count: 4, your_rank: 1, is_leading: true, tiers: [], entries: [], your_entry: null };
+    renderPage();
+    expect(await screen.findByRole("tab", { name: "Ranking · Leading" })).toBeInTheDocument();
+  });
+
+  it("the seller's rail tab counts the other bids", async () => {
+    desktop(true);
+    book = { role: "seller", active_count: 3, entries: [], summary: "" };
+    renderPage();
+    expect(await screen.findByRole("tab", { name: "Other bids · 3" })).toBeInTheDocument();
+    expect(screen.queryByText(/of \d offers/)).toBeNull();
+  });
 });
+

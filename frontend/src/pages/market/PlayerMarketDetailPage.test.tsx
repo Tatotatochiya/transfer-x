@@ -45,10 +45,12 @@ function playerFixture(over: Record<string, unknown> = {}) {
 }
 
 let player = playerFixture();
+let myOffer: Record<string, unknown> | null = null;
 
 function serve(url: string) {
   if (url === "/players/market/p1") return Promise.resolve({ data: player });
   if (url === "/clubs/me") return Promise.resolve({ data: ME });
+  if (url === "/offers/active-for-player/p1") return Promise.resolve({ data: myOffer });
   if (url.startsWith("/offers/competition")) return Promise.resolve({ data: { entries: [], active_count: 0 } });
   return Promise.reject(new Error("not needed"));
 }
@@ -96,6 +98,7 @@ async function openMore() {
 describe("PlayerMarketDetailPage actions", () => {
   beforeEach(() => {
     player = playerFixture();
+    myOffer = null;
     caps.marketWrite = true;
     listings.map = new Map();
     listings.known = true;
@@ -232,5 +235,18 @@ describe("PlayerMarketDetailPage actions", () => {
     signIn(null);
     renderPage();
     expect(await screen.findByRole("link", { name: "Sign in to make an offer" })).toHaveAttribute("href", "/login");
+  });
+
+  it("with our offer open: View your offer, and where it stands, never a second Make an offer", async () => {
+    myOffer = {
+      id: "o7", status: "COUNTERED", deal_type: "PERMANENT", fee_amount: "34000000", loan_fee: null,
+      last_actor_club_id: "chelsea", to_club: { id: "chelsea", name: "Chelsea" },
+    };
+    renderPage();
+    const view = await screen.findByRole("link", { name: "View your offer" });
+    expect(view).toHaveAttribute("href", "/offers/o7");
+    expect(screen.getByText("Chelsea countered at £34,000,000. It's your move.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Make an offer" })).toBeNull();
+    expect(primaries()).toHaveLength(1);
   });
 });

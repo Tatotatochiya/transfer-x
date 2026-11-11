@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, type ReactNode } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { ActiveDealStub, Club, FairValueSignal, OrderBook, PlayerDetail, PlayerLedger, PlayerRepresentation } from "../../types/api";
+import type { ActiveDealStub, Club, FairValueSignal, Offer, OrderBook, PlayerDetail, PlayerLedger, PlayerRepresentation } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useOpenListings } from "../../hooks/useListing";
@@ -23,6 +23,7 @@ import TransferHeader from "../../components/transfer/TransferHeader";
 import MoreMenu, { type MoreMenuItem } from "../../components/transfer/MoreMenu";
 import PlayerActions, { type ActionHandlers } from "../../components/players/PlayerActions";
 import PlayerActionBar, { ACTION_BAR_HEIGHT } from "../../components/players/PlayerActionBar";
+import { offerHeadline } from "../../lib/offerTerms";
 import PlayerActionNote from "../../components/players/PlayerActionNote";
 import AddToShortlistButton from "../../components/scouting/AddToShortlistButton";
 import AskAboutPlayerModal from "../../components/enquiries/AskAboutPlayerModal";
@@ -336,7 +337,7 @@ export default function PlayerMarketDetailPage() {
   const isAuthenticated = !!accessToken;
   const isAgent = user?.user_type === "AGENT";
   const isPlayerAccount = user?.user_type === "PLAYER";
-  const { toggle, has } = useCompare();
+  const { compareIds, toggle, has } = useCompare();
   // The tab lives in the URL (?tab=), so a link or Back returns to it.
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -435,6 +436,16 @@ export default function PlayerMarketDetailPage() {
     : null;
   const inPreContractWindow =
     !isFreeAgentPlayer && daysUntilContractEnd != null && daysUntilContractEnd >= 0 && daysUntilContractEnd <= 180;
+
+  // Our club's open offer for him, so the page opens it rather than
+  // offering a second (which the server refuses). The same query, and key,
+  // as the new-offer page's duplicate check. Only where we'd make one.
+  const { data: myOffer = null } = useQuery<Offer | null>({
+    queryKey: ["offers", "active-for-player", id],
+    queryFn: () => api.get<Offer | null>(`/offers/active-for-player/${id}`).then((r) => r.data),
+    enabled: !!id && !!myClub && !isMyPlayer && !isAgent && !isPlayerAccount && !isOffPlatform && !isFreeAgentPlayer,
+    retry: false,
+  });
 
   const signFreeAgentMutation = useMutation({
     mutationFn: () => api.post<{ id: string }>(`/players/${id}/sign-free-agent`).then((r) => r.data),
@@ -555,6 +566,12 @@ export default function PlayerMarketDetailPage() {
     parentClubName: player.active_loan?.parent_club?.name ?? null,
     onLoanToUs: isMyPlayer && !!player.active_loan,
     hasReleaseClause: player.active_contract?.release_clause != null,
+    myOffer: myOffer && (myOffer.status === "SENT" || myOffer.status === "COUNTERED") ? {
+      id: myOffer.id,
+      amount: offerHeadline(myOffer),
+      otherName: myOffer.to_club?.name ?? clubName ?? "his club",
+      isMyTurn: myOffer.last_actor_club_id != null && myOffer.last_actor_club_id !== myClub?.id,
+    } : null,
   });
   const handlers: ActionHandlers = {
     pending: signFreeAgentMutation.isPending ? "sign-free-agent" : preContractMutation.isPending ? "pre-contract" : null,
@@ -568,6 +585,9 @@ export default function PlayerMarketDetailPage() {
   const clubPath = player.current_club?.id ? `/clubs/${player.current_club.id}`
     : player.world_team?.id ? `/world/teams/${player.world_team.id}`
     : clubName ? `/clubs?search=${encodeURIComponent(clubName)}` : null;
+  const hasBar = !!(situation.primary || situation.secondary);
+  const tray = compareIds.length > 0 ? 96 : 0;
+  const bottomRoom = hasBar ? `calc(${ACTION_BAR_HEIGHT + tray}px + env(safe-area-inset-bottom))` : tray ? `${tray}px` : undefined;
   const clause = player.active_contract?.release_clause;
   const moreItems: MoreMenuItem[] = situation.more.flatMap((k): MoreMenuItem[] => {
     switch (k) {
@@ -589,10 +609,11 @@ export default function PlayerMarketDetailPage() {
     : null;
 
   return (
-    // Room for the bottom action bar below 1024px, so it never hides the end of the page.
+    // Room below 1024px for the bottom action bar and the compare tray above
+    // it (96px, as Browse Players leaves), so neither hides the end of the page.
     <div
       className="mx-auto flex max-w-[1280px] flex-col gap-3 lg:!pb-0"
-      style={situation.primary || situation.secondary ? { paddingBottom: `calc(${ACTION_BAR_HEIGHT}px + env(safe-area-inset-bottom))` } : undefined}
+      style={bottomRoom ? { paddingBottom: bottomRoom } : undefined}
     >
       <TransferHeader
         player={{ id: player.id, name: player.name, position: player.position ?? null, photoUrl: player.photo_url ?? null }}

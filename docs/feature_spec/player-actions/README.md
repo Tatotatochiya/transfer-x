@@ -317,6 +317,9 @@ Keep the **confirmation dialogs' wording** unchanged, including "Trigger clause"
 - **R5. `AddToShortlistButton` gained a `size="icon"` (44 × 44) and a `label`** for the phone's back-row button, and its default size became `bg-surface` with a 44px floor below 1024px, to sit with the header's other buttons. Its other uses (compact rows and cards) are unchanged.
 - **R6. `Button` exports `buttonClasses`,** so an action that is a link looks exactly like a button. No visual change elsewhere.
 
+- **R7 (follow-up, 2026-11-11). With your club's offer open, rows 11 and 12 show "View your offer"** (→ `/offers/:id`) instead of "Make an offer", which only led to the new-offer page's "you already have an offer" notice; the server refuses a second. The sentence says where it stands: "Your {amount} offer is with {club}." or, on your move, "{club} countered at {amount}. It's your move." It reads `GET /offers/active-for-player/:id`, the new-offer page's own duplicate check, only where an offer could be made. "Offer a pre-contract" stays beside it: the server allows it, and starting one closes every open offer, ours included. An offer captured for internal approval isn't an offer yet, so it still reads "Make an offer".
+- **R8 (follow-up). Below 1024px the page leaves room for the compare tray (96px) as well as the bar**, and the testers' Start demo button sits above the bar (it covered the blue button).
+
 ## Deviations
 
 - **Code that differs from the spec:**

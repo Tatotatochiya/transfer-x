@@ -18,7 +18,7 @@ import OfferStanding, { RoundsList } from "../../components/offers/OfferStanding
 import OfferTermsCard, { OfferAdvice } from "../../components/offers/OfferTermsCard";
 import CounterForm from "../../components/offers/CounterForm";
 import RaiseOfferForm from "../../components/offers/RaiseOfferForm";
-import { deadlineText, getOfferStatus, otherName } from "../../components/offers/offerStatus";
+import { buyerRanking, deadlineText, getOfferStatus, otherName } from "../../components/offers/offerStatus";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
@@ -95,8 +95,12 @@ export default function OfferDetailPage() {
   const { data: book } = useQuery<OrderBook>({
     queryKey: bookKey,
     queryFn: () => api.get<OrderBook>(offer?.sale_id ? `/sales/${offer.sale_id}/order-book` : `/offers/competition/${offer?.player_id}`).then((r) => r.data),
-    enabled: false,
+    // Parties only: the seller's tab counts the bids, the buyer's says where
+    // they stand. The order book components share this cache entry.
+    enabled: isParty && !!offer?.player_id,
+    refetchInterval: 300_000,
   });
+  const ranking = isBuyer ? buyerRanking(book) : null;
 
   // "✦ Suggest a counter" fills the form the way "Use these terms" does.
   useEffect(() => {
@@ -141,7 +145,7 @@ export default function OfferDetailPage() {
   const side = isBuyer ? "buyer" : isSeller ? "seller" : null;
   const other = otherName(offer, side, card);
   const view = getOfferStatus(offer, {
-    side, isMyTurn: isParty && isActive && isMyTurn, canWrite: canMarketWrite, card, pushAction, myClubId,
+    side, isMyTurn: isParty && isActive && isMyTurn, canWrite: canMarketWrite, card, pushAction, myClubId, ranking,
   });
   const deadline = deadlineText(card?.expires_at ?? offer.expires_at, new Date());
   const rounds = offerRounds(offer, myClubId);
@@ -223,7 +227,12 @@ export default function OfferDetailPage() {
   ) : (
     <BuyerOrderBook saleId={offer.sale_id ?? undefined} playerId={offer.sale_id ? undefined : offer.player_id} />
   );
-  const bidsLabel = isSeller ? "Other bids" : "Your ranking";
+  // The buyer's place is in the tab's own name, so it rarely needs opening.
+  // The phone's three tabs are ~115px each, so there it's the place alone
+  // ("2nd of 4"); the status card says it in full.
+  const bidsLabel = isSeller ? (book?.active_count != null ? `Other bids · ${book.active_count}` : "Other bids")
+    : ranking ? `Ranking · ${ranking.short}` : "Ranking";
+  const bidsTab = isSeller ? "Other bids" : ranking ? ranking.short : "Ranking";
 
   return (
     <div>
@@ -275,7 +284,7 @@ export default function OfferDetailPage() {
                 idPrefix="offer-rail" ariaLabel="Messages and other bids" size="sm"
                 items={[
                   { key: "messages", label: "Messages", badge: unread, badgeLabel: "unread" },
-                  { key: "bids", label: isSeller && book ? `${bidsLabel} · ${book.active_count}` : bidsLabel },
+                  { key: "bids", label: bidsLabel },
                 ]}
                 active={railTab}
                 onChange={(k) => { setRailTab(k as typeof railTab); writeTab(k as Tab); }}
@@ -292,7 +301,7 @@ export default function OfferDetailPage() {
           <div className="mb-4">
             <SegmentedControl
               idPrefix="offer-section" ariaLabel="Offer sections"
-              items={[{ key: "terms", label: "Terms" }, { key: "messages", label: "Messages", badge: unread, badgeLabel: "unread" }, { key: "bids", label: bidsLabel }]}
+              items={[{ key: "terms", label: "Terms" }, { key: "messages", label: "Messages", badge: unread, badgeLabel: "unread" }, { key: "bids", label: bidsTab }]}
               active={section}
               onChange={(k) => writeTab(k as Tab)}
             />

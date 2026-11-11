@@ -12,7 +12,7 @@ import { formatDate } from "./utils";
  * allowed. The first matching row wins.
  */
 
-export type ActionKey = "sign-in" | "list" | "view-listing" | "view-deal" | "sign-free-agent" | "make-offer" | "pre-contract" | "ask-club";
+export type ActionKey = "sign-in" | "list" | "view-listing" | "view-deal" | "view-offer" | "sign-free-agent" | "make-offer" | "pre-contract" | "ask-club";
 export type MoreKey = "ask-club" | "compare" | "ask-transferx" | "view-club" | "release-clause";
 
 export interface SituationAction {
@@ -58,12 +58,33 @@ export interface SituationInput {
   /** On loan to the viewer's club (in our squad, not ours to sell). */
   onLoanToUs: boolean;
   hasReleaseClause: boolean;
+  /** The viewer's club's open offer for him, when it has one (one per club). */
+  myOffer?: MyOpenOffer | null;
+}
+
+export interface MyOpenOffer {
+  id: string;
+  /** "£30M", or "£450K loan fee". */
+  amount: string;
+  /** The club it's with, masked or not as the offer page shows it. */
+  otherName: string;
+  /** They countered: it's the viewer's club's move. */
+  isMyTurn: boolean;
 }
 
 export function playerSituation(i: SituationInput): PlayerSituation {
   const askLabel = i.parentClubName ? `Ask ${i.parentClubName}` : "Ask his club";
   const ask: SituationAction = { key: "ask-club", label: askLabel };
-  const makeOffer: SituationAction = { key: "make-offer", label: "Make an offer", to: `/offers/new?player_id=${i.playerId}` };
+  // A club has one open offer per player, so with one the button opens it
+  // (a second would be refused) and a sentence says where it stands.
+  const makeOffer: SituationAction = i.myOffer
+    ? { key: "view-offer", label: "View your offer", to: `/offers/${i.myOffer.id}` }
+    : { key: "make-offer", label: "Make an offer", to: `/offers/new?player_id=${i.playerId}` };
+  const offerNote = i.myOffer
+    ? i.myOffer.isMyTurn
+      ? { tone: "info" as const, text: `${i.myOffer.otherName} countered at ${i.myOffer.amount}. It's your move.` }
+      : { tone: "neutral" as const, text: `Your ${i.myOffer.amount} offer is with ${i.myOffer.otherName}.` }
+    : undefined;
   const askTransferX = i.isAuthenticated && !i.isAgent && !i.isPlayerAccount;
   // Compare and "✦ Ask TransferX", then "View {club}" where there is one.
   const base = (withClub: boolean): MoreKey[] => [
@@ -144,12 +165,12 @@ export function playerSituation(i: SituationInput): PlayerSituation {
     return out(11, {
       primary: makeOffer,
       secondary: { key: "pre-contract", label: "Offer a pre-contract" },
-      note: i.contractEndDate
+      note: offerNote ?? (i.contractEndDate
         ? { tone: "neutral", text: `His contract ends ${formatDate(i.contractEndDate)}. You can agree a free move for then, or buy him now.` }
-        : undefined,
+        : undefined),
       more: ["ask-club", ...base(true), ...clause],
     });
   }
-  // 12. Everything else: make an offer, or ask first.
-  return out(12, { primary: makeOffer, secondary: ask, more: [...base(true), ...clause] });
+  // 12. Everything else: make an offer (or open ours), or ask first.
+  return out(12, { primary: makeOffer, secondary: ask, note: offerNote, more: [...base(true), ...clause] });
 }

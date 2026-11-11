@@ -19,7 +19,8 @@ interface HouseClub {
 /**
  * Demo mode (backend app/demo), for testers: start a demo, play a house
  * club in its own tab, and put everything back with Reset. Bottom-right on
- * every page, full app and Lite. Hidden from everyone else, and inside a
+ * every page, full app and Lite (above the player page's bottom action bar
+ * on phones). Hidden from everyone else, and inside a
  * view-as or play-as tab.
  */
 export default function DemoControl() {
@@ -104,7 +105,7 @@ function DemoPill() {
         type="button"
         onClick={() => start.mutate()}
         disabled={start.isPending}
-        className="fixed bottom-4 right-4 z-[60] rounded-full bg-surface px-4 py-2 text-sm font-semibold text-text shadow-lg ring-1 ring-border hover:ring-accent disabled:opacity-60"
+        className="fixed bottom-[calc(1rem+var(--action-bar-h,0px))] right-4 z-[60] rounded-full bg-surface px-4 py-2 text-sm font-semibold text-text shadow-lg ring-1 ring-border hover:ring-accent disabled:opacity-60"
       >
         Start demo
       </button>
@@ -112,7 +113,7 @@ function DemoPill() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
+    <div className="fixed bottom-[calc(1rem+var(--action-bar-h,0px))] right-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
       {open && (
         <div role="dialog" aria-label="Demo" className="w-80 max-w-full rounded-2xl bg-surface p-4 text-sm shadow-xl ring-1 ring-border">
           <p className="font-semibold text-text">Your demo</p>
