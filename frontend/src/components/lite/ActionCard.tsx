@@ -67,7 +67,7 @@ export function FeeStepper({ value, onChange, label }: { value: number; onChange
     "flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-surface text-[1.75rem] font-bold text-text ring-1 ring-border hover:ring-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40";
   return (
     <div className="flex items-center gap-3">
-      <button type="button" className={btn} onClick={() => step(-HALF_M)} disabled={value <= HALF_M} aria-label="£0.5m less">−</button>
+      <button type="button" className={btn} onClick={() => step(-HALF_M)} disabled={value <= HALF_M} aria-label="£0.5M less">−</button>
       <label className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-xl bg-surface px-3 ring-1 ring-border focus-within:ring-2 focus-within:ring-accent">
         <span className="text-[1.75rem] font-extrabold text-text">£</span>
         <input
@@ -83,7 +83,7 @@ export function FeeStepper({ value, onChange, label }: { value: number; onChange
         />
         <span className="text-[1.75rem] font-extrabold text-text">m</span>
       </label>
-      <button type="button" className={btn} onClick={() => step(HALF_M)} aria-label="£0.5m more">+</button>
+      <button type="button" className={btn} onClick={() => step(HALF_M)} aria-label="£0.5M more">+</button>
     </div>
   );
 }

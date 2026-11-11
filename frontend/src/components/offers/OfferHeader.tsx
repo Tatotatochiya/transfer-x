@@ -5,7 +5,7 @@ import TransferHeader from "../transfer/TransferHeader";
 import { buyerLabel, isBuyerMasked } from "../../lib/buyerIdentity";
 import { offerStatusLabel } from "../../lib/badges";
 import { isLoan, loanPeriod, offerHeadline } from "../../lib/offerTerms";
-import { formatDate } from "../../lib/utils";
+import { formatCompact, formatDate } from "../../lib/utils";
 
 /**
  * Who the offer is for (offer-room-focus §5.11): the player, seller → buyer,
@@ -35,7 +35,7 @@ export default function OfferHeader({ offer, moreMenu }: { offer: Offer; moreMen
         <ClubLink id={offer.from_club?.id} name={offer.from_club?.name} crestUrl={offer.from_club?.crest_url ?? null} />
       )}
       lgSubExtra={<>offer made {formatDate(offer.created_at)}</>}
-      amount={offerHeadline(offer)}
+      amount={offerHeadline(offer, formatCompact)}
       facts={
         <>
           {isLoan(offer) ? "Loan" : "Permanent"} · {payment}

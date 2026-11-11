@@ -38,7 +38,7 @@ interface Conversation {
   live?: { offer_id: string | null; enquiry_id: string | null; deal_id: string | null };
 }
 
-/** A non-message row in the timeline, e.g. "Countered at £20m" on an offer. */
+/** A non-message row in the timeline, e.g. "Countered at £20M" on an offer. */
 export interface TimelineRow {
   id: string;
   created_at: string;

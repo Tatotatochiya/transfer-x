@@ -7,7 +7,7 @@
 import type { AgentNegotiation, Deal } from "../../types/api";
 import type { DealStage } from "../../types/enums";
 import { dealStageLabel } from "../../lib/badges";
-import { formatCurrency, formatDate, formatWage } from "../../lib/utils";
+import { formatCompact, formatCurrency, formatDate, formatWage } from "../../lib/utils";
 
 export type StatusTone = "you" | "wait" | "info" | "hold" | "done" | "collapsed";
 
@@ -127,7 +127,7 @@ function row(deal: Deal, v: StatusViewer): Row {
   const { P, B, S, other, A } = names(deal, v);
   const party = v.side != null && !v.isAgent;
   const msgOther: StatusAction = { kind: "open-messages", label: other ? `Message ${other}` : "Open messages" };
-  const fee = formatCurrency(Number(deal.agreed_fee ?? 0));
+  const fee = formatCompact(Number(deal.agreed_fee ?? 0));
   const rw = v.realWorld;
 
   // 1–2: finished deals.
@@ -153,7 +153,7 @@ function row(deal: Deal, v: StatusViewer): Row {
     let body: string | undefined;
     if (deal.instalments.length > 0) {
       const next = [...deal.instalments].filter((i) => !i.paid).sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
-      body = next ? `Next instalment: ${formatCurrency(Number(next.amount))} due ${formatDate(next.due_date)}.` : "All instalments are paid.";
+      body = next ? `Next instalment: ${formatCompact(Number(next.amount))} due ${formatDate(next.due_date)}.` : "All instalments are paid.";
     } else if (hasFee(deal)) {
       body = "Paid on completion.";
     }
@@ -391,7 +391,7 @@ export function stageNote(deal: Deal, negotiation: AgentNegotiation | null | und
   const terms = deal.personal_terms;
   switch (stage) {
     case "AGREEMENT":
-      return state === "done" ? (hasFee(deal) ? `Clubs agreed ${formatCurrency(Number(deal.agreed_fee))}` : "Clubs agreed") : state === "now" ? "Clubs are finalising the deal" : null;
+      return state === "done" ? (hasFee(deal) ? `Clubs agreed ${formatCompact(Number(deal.agreed_fee))}` : "Clubs agreed") : state === "now" ? "Clubs are finalising the deal" : null;
     case "AGENT_NEGOTIATION": {
       if (state === "next") return "Not started";
       if (state === "now") return `${A} and ${B} are agreeing commission`;

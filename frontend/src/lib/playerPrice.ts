@@ -18,7 +18,7 @@ export type PlayerPriceBasis = "free agent" | "asking" | "model" | null;
 export interface PlayerPrice {
   amount: number | null;
   basis: PlayerPriceBasis;
-  /** The figure to print: "Free", "£7.4m", or "—". */
+  /** The figure to print: "Free", "£7.4M", or "—". */
   text: string;
 }
 

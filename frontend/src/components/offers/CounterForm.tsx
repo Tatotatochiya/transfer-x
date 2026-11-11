@@ -50,7 +50,7 @@ interface Props {
   replyBy?: string;
   /** Terms from the offer advisor; the counter is then audited as AI-assisted. */
   prefill?: SuggestedTerms | null;
-  /** The fee from a push's "Ask for £21m" button: a starting point, not AI. */
+  /** The fee from a push's "Ask for £21M" button: a starting point, not AI. */
   startFee?: string | null;
   card?: LiteOfferCard;
   /** My side's latest fee, from the rounds. */

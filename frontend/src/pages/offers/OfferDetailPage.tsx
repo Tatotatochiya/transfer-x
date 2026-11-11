@@ -57,7 +57,7 @@ export default function OfferDetailPage() {
   // screens, and "See full details" from the card, stay here.
   useEffect(() => {
     if (params.get("from") === "push" && id && window.matchMedia?.("(max-width: 639px)").matches) {
-      // A push action button ("Ask for £21m", "Accept £18m") carries on to the card.
+      // A push action button ("Ask for £21M", "Accept £18M") carries on to the card.
       const action = params.get("action");
       const amount = params.get("amount");
       const extra = action ? `&action=${encodeURIComponent(action)}${amount ? `&amount=${encodeURIComponent(amount)}` : ""}` : "";

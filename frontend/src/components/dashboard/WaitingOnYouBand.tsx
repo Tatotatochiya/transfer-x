@@ -1,5 +1,5 @@
 import Card from "../ui/Card";
-import { formatCurrency } from "../../lib/utils";
+import { formatCompact } from "../../lib/utils";
 import { useDeadlineCountdown } from "../../hooks/useDeadlineCountdown";
 import PlayerLink from "../ui/PlayerLink";
 
@@ -78,7 +78,7 @@ export default function WaitingOnYouBand({
             </div>
             <div className="basis-[130px] shrink">
               <p className="text-[11px] text-text-muted">Amount</p>
-              <p className="text-base font-bold text-text">{item.amount != null ? formatCurrency(item.amount) : "—"}</p>
+              <p className="text-base font-bold text-text">{item.amount != null ? formatCompact(item.amount) : "—"}</p>
             </div>
             <div className="basis-[130px] shrink">
               <p className="text-[11px] text-text-muted">Deadline</p>

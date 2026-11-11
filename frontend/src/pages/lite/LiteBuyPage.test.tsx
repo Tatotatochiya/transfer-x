@@ -54,7 +54,7 @@ describe("Lite Buy: search by name", () => {
     page("/lite/buy?q=man");
     const items = within(screen.getByRole("list", { name: "Players found" })).getAllByRole("listitem");
     expect(items).toHaveLength(5);
-    expect(items[0]).toHaveTextContent("£7m (our estimate)");
+    expect(items[0]).toHaveTextContent("£7M (our estimate)");
     expect(items[0]).toHaveTextContent("Make an offer");
     expect(screen.getByRole("link", { name: "See your offer" })).toHaveAttribute("href", "/lite/offers/off1");
     expect(screen.getByRole("link", { name: "See how to sign him" })).toHaveAttribute("href", "/players/market/f");
@@ -69,7 +69,7 @@ describe("Lite Buy: search by name", () => {
   it("says what a club last paid for him", () => {
     state.search = { players: [row({ player_id: "r", name: "D. Rice", last_fee: { fee_gbp: 99_700_000, date: "2023-07-15" } })] };
     page("/lite/buy?q=rice");
-    expect(screen.getByRole("listitem")).toHaveTextContent("last sold for £99.7m (2023)");
+    expect(screen.getByRole("listitem")).toHaveTextContent("last sold for £99.7M (2023)");
   });
 
   it("puts a player on the shortlist from the search", () => {

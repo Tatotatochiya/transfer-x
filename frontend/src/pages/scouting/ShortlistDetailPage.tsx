@@ -11,7 +11,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import Spinner from "../../components/ui/Spinner";
 import { positionVariant } from "../../lib/badges";
-import { getApiError } from "../../lib/utils";
+import { formatCompactIn, getApiError } from "../../lib/utils";
 import { useConfirm } from "../../context/ConfirmContext";
 import type { PlayerPosition } from "../../types/enums";
 import type { ShortlistItem } from "../../types/api";
@@ -21,7 +21,7 @@ import FallbackImage from "../../components/ui/FallbackImage";
 function marketValue(v: number | string, currency: string | null | undefined): string {
   const sym = currency === "EUR" ? "€" : currency === "USD" ? "$" : "£";
   const n = Number(v);
-  return n >= 1e6 ? `${sym}${(n / 1e6).toFixed(1)}m` : `${sym}${Math.round(n / 1e3)}k`;
+  return formatCompactIn(sym, n);
 }
 
 function useDebounce<T>(value: T, ms: number): T {

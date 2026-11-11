@@ -115,7 +115,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
   });
 
   const model = fairValue ? Number(fairValue.fair_value) : null;
-  // "Use £23.5m" must put £23,500,000 in the box, not the model's unrounded
+  // "Use £23.5M" must put £23,500,000 in the box, not the model's unrounded
   // figure — the chip says what it does.
   const suggested =
     model == null ? null : model >= 1_000_000 ? Math.round(model / 100_000) * 100_000 : Math.round(model / 1_000) * 1_000;

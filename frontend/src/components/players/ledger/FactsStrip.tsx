@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 
 import { parseValuation } from "../../../lib/money";
-import { formatCurrency } from "../../../lib/utils";
+import { formatCompactIn, formatCurrency } from "../../../lib/utils";
 import type { FairValueSignal, LastTransfer, PlayerDetail } from "../../../types/api";
 
 /**
@@ -16,7 +16,7 @@ const money = (raw: number | string | null | undefined, currency?: string | null
   if (raw == null || raw === "" || Number.isNaN(Number(raw))) return "—";
   const v = Number(raw);
   const sym = currency === "EUR" ? "€" : currency === "USD" ? "$" : "£";
-  return v >= 1e6 ? `${sym}${+(v / 1e6).toFixed(1)}m` : `${sym}${Math.round(v / 1e3)}k`;
+  return formatCompactIn(sym, v);
 };
 const monthYear = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
 

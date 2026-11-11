@@ -7,12 +7,12 @@ describe("money is always pounds; other currencies are estimates", () => {
 
   it("writes £ whatever currency is picked", () => {
     expect(formatCurrency(18_000_000)).toBe("£18,000,000");
-    expect(formatCompactCurrency(18_000_000)).toBe("£18.0m");
+    expect(formatCompactCurrency(18_000_000)).toBe("£18M");
   });
 
   it("estimates in the picked currency", () => {
-    expect(formatEstimate(18_000_000, "EUR", rates)).toBe("≈ €21.1m");
-    expect(formatEstimate("450000", "USD", rates)).toBe("≈ $599k");
+    expect(formatEstimate(18_000_000, "EUR", rates)).toBe("≈ €21.1M");
+    expect(formatEstimate("450000", "USD", rates)).toBe("≈ $599K");
   });
 
   it("shows nothing for pounds, missing rates or missing amounts", () => {

@@ -6,7 +6,7 @@ import Badge from "../ui/Badge";
 import ClubLink from "../ui/ClubLink";
 import PlayerLink from "../ui/PlayerLink";
 import { availabilityLabel, saleStatusLabel, saleStatusVariant, saleTypeLabel, saleTypeVariant } from "../../lib/badges";
-import { formatCurrency, formatDeadline } from "../../lib/utils";
+import { formatCompact, formatDeadline } from "../../lib/utils";
 
 interface SaleCardProps {
   sale: Sale;
@@ -63,7 +63,7 @@ export default function SaleCard({ sale }: SaleCardProps) {
       <div className="mt-3 flex items-center justify-between text-sm">
         <span className="font-semibold text-text">
           {sale.asking_price
-            ? formatCurrency(sale.asking_price)
+            ? formatCompact(sale.asking_price)
             : sale.availability === "LOAN"
             ? "Loan terms open"
             : "Open to offers"}

@@ -6,7 +6,7 @@ import { formatCurrency } from "../../lib/utils";
 /**
  * The payment schedule, add-ons and sell-on of a permanent offer.
  *
- * These are what decide a deal's real value ("£40m + £10m add-ons, over three
+ * These are what decide a deal's real value ("£40M + £10M add-ons, over three
  * years, 15% sell-on"), and they used to be set in the deal room only after
  * the seller had accepted — by either club alone. They are proposed and
  * countered here instead, then copied onto the deal at acceptance.

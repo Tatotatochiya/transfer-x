@@ -46,7 +46,7 @@ describe("SquadTable", () => {
     expect(screen.getByText("No midfielders in the squad.")).toBeInTheDocument();
   });
 
-  it("reads a typed '18' as £18m when setting a valuation", () => {
+  it("reads a typed '18' as £18M when setting a valuation", () => {
     const onSetValuation = vi.fn();
     renderWithProviders(<SquadTable players={SQUAD} showContractDetails onSetValuation={onSetValuation} />);
     fireEvent.click(screen.getAllByRole("button", { name: "+ set" })[0]);
@@ -59,7 +59,7 @@ describe("SquadTable", () => {
   it("keeps the old valuation when the text is not a figure", () => {
     const onSetValuation = vi.fn();
     renderWithProviders(<SquadTable players={SQUAD} showContractDetails onSetValuation={onSetValuation} />);
-    fireEvent.click(screen.getByRole("button", { name: /18\.0m/ }));
+    fireEvent.click(screen.getByRole("button", { name: /18M/ }));
     const input = screen.getByRole("textbox");
     fireEvent.change(input, { target: { value: "about 20m" } });
     fireEvent.keyDown(input, { key: "Enter" });
@@ -86,13 +86,13 @@ describe("SquadTable", () => {
 
   it("says how far a player's sale has got, links to it, and filters to players in play", () => {
     const inPlay = new Map([
-      ["d1", { label: "Offer £6.0m", detail: "Offer received · your reply", link: "/offers/o1", yourMove: true, listingOnly: false }],
+      ["d1", { label: "Offer £6M", detail: "Offer received · your reply", link: "/offers/o1", yourMove: true, listingOnly: false }],
       ["gk1", { label: "Deal: Paperwork", detail: "Waiting on Leeds", link: "/deals/x1", yourMove: false, listingOnly: false }],
     ]);
     renderWithProviders(
       <SquadTable players={SQUAD} showContractDetails onList={vi.fn()} onUnlist={vi.fn()} openListings={new Map()} inPlay={inPlay} />,
     );
-    const offer = screen.getByRole("link", { name: /Offer £6.0m/ });
+    const offer = screen.getByRole("link", { name: /Offer £6M/ });
     expect(offer).toHaveAttribute("href", "/offers/o1");
     expect(offer).toHaveAttribute("title", "Offer received · your reply");
     expect(screen.getByLabelText("Your move")).toBeInTheDocument();

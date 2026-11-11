@@ -14,7 +14,7 @@ import type {
 } from "../../types/api";
 import Spinner from "../../components/ui/Spinner";
 import PageHeader from "../../components/ui/PageHeader";
-import { formatCurrency } from "../../lib/utils";
+import { formatCompact } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
 
 // ── Stage config ──────────────────────────────────────────────────────────────
@@ -100,12 +100,12 @@ function DealCard({ item, stageKey }: { item: PipelineDealItem; stageKey: StageK
         <DealParties item={item} />
         {item.agreed_fee != null && (
           <p className="mt-1.5 text-xs font-semibold text-text tabular-nums">
-            {formatCurrency(item.agreed_fee)}
+            {formatCompact(item.agreed_fee)}
           </p>
         )}
         {item.commission_amount != null && (
           <p className="text-[13px] text-success-text tabular-nums mt-0.5">
-            Commission: {formatCurrency(item.commission_amount)}
+            Commission: {formatCompact(item.commission_amount)}
           </p>
         )}
       </div>
@@ -152,7 +152,7 @@ function CommissionRow({
         </Link>
       </td>
       <td className="px-4 py-3 text-right text-sm font-semibold text-text tabular-nums">
-        {formatCurrency(commission.amount)}
+        {formatCompact(commission.amount)}
       </td>
       <td className="px-4 py-3 text-right text-xs text-text-muted tabular-nums">
         {commission.pct != null ? `${(commission.pct * 100).toFixed(2)}%` : "—"}
@@ -228,19 +228,19 @@ function CommissionsTab() {
       <div className="mb-6 grid grid-cols-3 gap-3">
         <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
           <p className="text-2xl font-bold text-success-text tabular-nums break-words">
-            {summary ? formatCurrency(summary.earned) : "—"}
+            {summary ? formatCompact(summary.earned) : "—"}
           </p>
           <p className="mt-0.5 text-xs text-text-muted">Earned (paid)</p>
         </div>
         <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
           <p className="text-2xl font-bold text-warning-text tabular-nums break-words">
-            {summary ? formatCurrency(summary.outstanding) : "—"}
+            {summary ? formatCompact(summary.outstanding) : "—"}
           </p>
           <p className="mt-0.5 text-xs text-text-muted">Outstanding (invoiced)</p>
         </div>
         <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
           <p className="text-2xl font-bold text-text tabular-nums break-words">
-            {summary ? formatCurrency(summary.pipeline) : "—"}
+            {summary ? formatCompact(summary.pipeline) : "—"}
           </p>
           <p className="mt-0.5 text-xs text-text-muted">Pipeline (pending)</p>
         </div>
@@ -378,7 +378,7 @@ export default function AgentPipelinePage() {
           <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
             <p className="text-2xl font-bold text-success-text tabular-nums break-words">
               {pipeline.total_commission_pipeline > 0
-                ? formatCurrency(pipeline.total_commission_pipeline)
+                ? formatCompact(pipeline.total_commission_pipeline)
                 : "—"}
             </p>
             <p className="mt-0.5 text-xs text-text-muted">Commission pipeline</p>
@@ -462,7 +462,7 @@ export default function AgentPipelinePage() {
                     </p>
                     {item.agreed_fee != null && (
                       <p className="mt-0.5 text-sm font-semibold text-text tabular-nums">
-                        {formatCurrency(item.agreed_fee)}
+                        {formatCompact(item.agreed_fee)}
                       </p>
                     )}
                   </div>

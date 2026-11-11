@@ -13,30 +13,31 @@ export function formatCurrency(value: number | null | undefined): string {
   return "£" + Math.round(value).toLocaleString("en-GB");
 }
 
-function compact(symbol: string, value: number): string {
+/** One compact format everywhere: capital B/M/K, one decimal, no trailing
+ *  ".0" ("£52M", "£21.5M", "£450K", "£2.6B"), in any currency symbol. */
+export function formatCompactIn(symbol: string, value: number): string {
   const n = Math.abs(value);
   const sign = value < 0 ? "-" : "";
-  if (n >= 1_000_000) return `${sign}${symbol}${(n / 1_000_000).toFixed(1)}m`;
-  if (n >= 1_000) return `${sign}${symbol}${Math.round(n / 1_000)}k`;
+  const one = (x: number) => x.toFixed(1).replace(/\.0$/, "");
+  if (n >= 1_000_000_000) return `${sign}${symbol}${one(n / 1_000_000_000)}B`;
+  if (n >= 1_000_000) return `${sign}${symbol}${one(n / 1_000_000)}M`;
+  if (n >= 1_000) {
+    const k = Math.round(n / 1_000);
+    return k >= 1_000 ? `${sign}${symbol}1M` : `${sign}${symbol}${k}K`;
+  }
   return `${sign}${symbol}${Math.round(n)}`;
 }
 
-/** Short form for narrow cells — `£52.0m`, `£450k`. Full precision (see
- *  `formatCurrency`) is unbreakable text and overflows a flex cell. */
+/** Short form for lists, cards and headers. The same as `formatCompact`;
+ *  full figures (`formatCurrency`) are for agreed terms and the ledger. */
 export function formatCompactCurrency(value: number | null | undefined): string {
-  if (value == null) return "—";
-  return compact("£", value);
+  return formatCompact(value);
 }
 
 /** A headline amount in a sentence: "£2.6B", "£232.5M", "£609K". */
 export function formatCompact(value: number | null | undefined): string {
   if (value == null) return "—";
-  const n = Math.abs(value);
-  const sign = value < 0 ? "-" : "";
-  if (n >= 1_000_000_000) return `${sign}£${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `${sign}£${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${sign}£${Math.round(n / 1_000)}K`;
-  return `${sign}£${Math.round(n)}`;
+  return formatCompactIn("£", value);
 }
 
 export function formatWage(value: number | null | undefined): string {
@@ -44,7 +45,7 @@ export function formatWage(value: number | null | undefined): string {
   return "£" + Math.round(value).toLocaleString("en-GB") + "/wk";
 }
 
-/** "≈ €21.1m" for a £ amount, in the currency the user picked, or "" when
+/** "≈ €21.1M" for a £ amount, in the currency the user picked, or "" when
  *  they picked pounds, the rates haven't loaded, or there's no amount. */
 export function formatEstimate(
   value: number | string | null | undefined,
@@ -55,7 +56,7 @@ export function formatEstimate(
   const rate = rates?.[currency];
   const symbol = ESTIMATE_SYMBOLS[currency];
   if (!rate || !symbol) return "";
-  return "≈ " + compact(symbol, Number(value) * rate);
+  return "≈ " + formatCompactIn(symbol, Number(value) * rate);
 }
 
 // ── Dates ─────────────────────────────────────────────────────────────────────

@@ -8,11 +8,11 @@ const signal = (fair: number, reference?: number) =>
 
 describe("playerPrice", () => {
   it("uses the asking price when there is one", () => {
-    expect(playerPrice(player(), signal(20_000_000, 7_400_000))).toEqual({ amount: 7_400_000, basis: "asking", text: "£7.4m" });
+    expect(playerPrice(player(), signal(20_000_000, 7_400_000))).toEqual({ amount: 7_400_000, basis: "asking", text: "£7.4M" });
   });
 
   it("falls back to the model", () => {
-    expect(playerPrice(player(), signal(12_000_000))).toEqual({ amount: 12_000_000, basis: "model", text: "£12.0m" });
+    expect(playerPrice(player(), signal(12_000_000))).toEqual({ amount: 12_000_000, basis: "model", text: "£12M" });
   });
 
   it("knows nothing without either", () => {

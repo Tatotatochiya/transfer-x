@@ -8,7 +8,7 @@ import Pagination from "../../components/ui/Pagination";
 import Spinner from "../../components/ui/Spinner";
 import EmptyState from "../../components/ui/EmptyState";
 import ClubLink from "../../components/ui/ClubLink";
-import { formatCurrency, formatDate } from "../../lib/utils";
+import { formatCompact, formatDate } from "../../lib/utils";
 import { positionVariant } from "../../lib/badges";
 import type { PlayerPosition } from "../../types/enums";
 import PlayerLink from "../../components/ui/PlayerLink";
@@ -85,7 +85,7 @@ function TransferRow({ t }: { t: TransferActivity }) {
         </div>
       </td>
       <td className="px-4 py-3 text-right font-semibold text-text tabular-nums">
-        {formatCurrency(t.agreed_fee)}
+        {formatCompact(t.agreed_fee)}
       </td>
       <td className="px-4 py-3">
         <Badge variant={t.is_auction_deal ? "warning" : "neutral"}>
@@ -238,7 +238,7 @@ function TopTransferRow({ t, rank }: { t: TransferActivity; rank: number }) {
         </div>
       </div>
       <span className="text-sm font-semibold text-text tabular-nums shrink-0">
-        {formatCurrency(t.agreed_fee)}
+        {formatCompact(t.agreed_fee)}
       </span>
     </div>
   );
@@ -256,7 +256,7 @@ function PositionBar({ position, count, total, spend }: { position: string; coun
     <div className="py-2">
       <div className="mb-1.5 flex items-center justify-between text-xs">
         <span className="font-medium text-text-secondary">{position}</span>
-        <span className="tabular-nums text-text-muted">{count} · {formatCurrency(spend)}</span>
+        <span className="tabular-nums text-text-muted">{count} · {formatCompact(spend)}</span>
       </div>
       <div className="h-1.5 w-full rounded-full bg-border">
         <div
@@ -305,12 +305,12 @@ function AnalyticsTab() {
         <SectionHeading>Market Summary</SectionHeading>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard label="Total Transfers" value={c.total_count.toString()} />
-          <StatCard label="Total Spend" value={formatCurrency(c.total_spend)} />
-          <StatCard label="Avg Fee" value={c.avg_fee != null ? formatCurrency(c.avg_fee) : "—"} />
+          <StatCard label="Total Spend" value={formatCompact(c.total_spend)} />
+          <StatCard label="Avg Fee" value={c.avg_fee != null ? formatCompact(c.avg_fee) : "—"} />
           <StatCard
             label="Last 30 Days"
             value={c.recent_30d_count.toString()}
-            sub={formatCurrency(c.recent_30d_spend) + " spent"}
+            sub={formatCompact(c.recent_30d_spend) + " spent"}
           />
         </div>
       </section>
@@ -326,7 +326,7 @@ function AnalyticsTab() {
               <>
                 <p className="text-base font-bold text-text">{c.most_active_buyer.club.name}</p>
                 <p className="mt-0.5 text-sm text-text-muted">{c.most_active_buyer.count} purchase{c.most_active_buyer.count !== 1 ? "s" : ""}</p>
-                <p className="mt-0.5 text-xs text-text-muted">{formatCurrency(c.most_active_buyer.total_spend)} spent</p>
+                <p className="mt-0.5 text-xs text-text-muted">{formatCompact(c.most_active_buyer.total_spend)} spent</p>
               </>
             ) : <p className="text-sm text-text-muted">No data</p>}
           </div>
@@ -338,7 +338,7 @@ function AnalyticsTab() {
               <>
                 <p className="text-base font-bold text-text">{c.most_active_seller.club.name}</p>
                 <p className="mt-0.5 text-sm text-text-muted">{c.most_active_seller.count} sale{c.most_active_seller.count !== 1 ? "s" : ""}</p>
-                <p className="mt-0.5 text-xs text-text-muted">{formatCurrency(c.most_active_seller.total_spend)} earned</p>
+                <p className="mt-0.5 text-xs text-text-muted">{formatCompact(c.most_active_seller.total_spend)} earned</p>
               </>
             ) : <p className="text-sm text-text-muted">No data</p>}
           </div>
@@ -414,7 +414,7 @@ function AnalyticsTab() {
           <div className="rounded-xl bg-surface px-5 py-4 ring-1 ring-border sm:col-span-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Active Deals</p>
             <p className="mt-1.5 text-2xl font-bold text-text tabular-nums">{o.total_count}</p>
-            <p className="mt-0.5 text-xs text-text-muted">{formatCurrency(o.total_committed_fees)} in committed fees</p>
+            <p className="mt-0.5 text-xs text-text-muted">{formatCompact(o.total_committed_fees)} in committed fees</p>
           </div>
           {Object.entries(o.by_stage).length === 0 ? (
             <div className="rounded-xl bg-surface-inset px-5 py-4 ring-1 ring-border sm:col-span-3 flex items-center">

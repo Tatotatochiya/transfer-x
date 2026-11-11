@@ -16,7 +16,7 @@ import {
   playerStatusLabel,
   playerStatusVariant,
 } from "../../lib/badges";
-import { formatCurrency, getApiError } from "../../lib/utils";
+import { formatCompact, formatCurrency, getApiError } from "../../lib/utils";
 import { askAboutPath } from "../../lib/ask";
 import { playerSituation } from "../../lib/playerSituation";
 import TransferHeader from "../../components/transfer/TransferHeader";
@@ -313,7 +313,7 @@ function OffersPanel({ book, onOpen }: { book: OrderBook; onOpen: () => void }) 
                 {/* An anonymous buyer arrives already masked from the server. */}
                 <span className="min-w-0 truncate text-text-secondary">{e.club?.name ?? "An undisclosed club"}</span>
                 <span className="shrink-0 font-bold tabular-nums text-text">
-                  {fee != null ? formatCurrency(fee) : "—"}{loan && <span className="ml-1 text-xs font-normal text-text-muted">loan</span>}
+                  {fee != null ? formatCompact(fee) : "—"}{loan && <span className="ml-1 text-xs font-normal text-text-muted">loan</span>}
                 </span>
               </li>
             );
@@ -568,7 +568,7 @@ export default function PlayerMarketDetailPage() {
     hasReleaseClause: player.active_contract?.release_clause != null,
     myOffer: myOffer && (myOffer.status === "SENT" || myOffer.status === "COUNTERED") ? {
       id: myOffer.id,
-      amount: offerHeadline(myOffer),
+      amount: offerHeadline(myOffer, formatCompact),
       otherName: myOffer.to_club?.name ?? clubName ?? "his club",
       isMyTurn: myOffer.last_actor_club_id != null && myOffer.last_actor_club_id !== myClub?.id,
     } : null,

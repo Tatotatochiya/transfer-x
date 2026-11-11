@@ -32,7 +32,7 @@ export default function DealHeader({ deal, moreMenu }: { deal: Deal; moreMenu: R
         : "Free agent"}
       routeTo={<ClubLink id={deal.buyer_club?.id} name={deal.buyer_club?.name} crestUrl={deal.buyer_club?.crest_url} />}
       lgSubExtra={deal.agent ? <>agent {deal.agent.display_name}</> : null}
-      amount={<Money value={deal.agreed_fee} />}
+      amount={<Money value={deal.agreed_fee} compact />}
       facts={
         <>
           {dealFacts(deal)}

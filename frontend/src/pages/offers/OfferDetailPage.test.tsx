@@ -99,12 +99,12 @@ describe("OfferDetailPage, answer first", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Marcus Webb" })).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Accept £4,200,000" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Counter" })).toBeInTheDocument();
-    expect(await screen.findByText("That's £600,000 under your £4,800,000 valuation.")).toBeInTheDocument();
+    expect(await screen.findByText("That's £600K under your £4.8M valuation.")).toBeInTheDocument();
   });
 
   it("below 1024px, Counter opens a sheet; a one-tap amount sets the fee and Send posts only the fee", async () => {
     renderPage();
-    await screen.findByText(/under your £4,800,000 valuation/);
+    await screen.findByText(/under your £4.8M valuation/);
     await userEvent.click(screen.getByRole("button", { name: "Counter" }));
     const sheet = screen.getByRole("dialog", { name: "Counter Meridian FC" });
     const fee = within(sheet).getByLabelText("Fee you'll accept");
@@ -189,7 +189,7 @@ describe("OfferDetailPage, answer first", () => {
     me = BUYER;
     card = { other_club: "Ashfield United", your_valuation: null, counter_suggestion: null, expires_at: null, disabled_reason: null };
     renderPage();
-    expect(await screen.findByText("Ashfield United are considering your £4,200,000 offer")).toBeInTheDocument();
+    expect(await screen.findByText("Ashfield United are considering your £4.2M offer")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Withdraw offer" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Raise your offer" }));
     const sheet = screen.getByRole("dialog", { name: "Raise your offer to Ashfield United" });
@@ -224,7 +224,7 @@ describe("OfferDetailPage, answer first", () => {
   it("a non-party sees the read-only layout", async () => {
     me = "someone-else";
     renderPage();
-    expect(await screen.findByText("Meridian FC offered £4,200,000 for Marcus Webb")).toBeInTheDocument();
+    expect(await screen.findByText("Meridian FC offered £4.2M for Marcus Webb")).toBeInTheDocument();
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
     expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "More ⋯" })).not.toBeInTheDocument();
@@ -237,7 +237,7 @@ describe("OfferDetailPage, answer first", () => {
       last_actor_club_id: null });
     card = { other_club: "an undisclosed Premier League club", your_valuation: null, counter_suggestion: null, expires_at: null, disabled_reason: null };
     const { container } = renderPage();
-    expect(await screen.findByText("An undisclosed Premier League club bid £4,200,000 for Marcus Webb")).toBeInTheDocument();
+    expect(await screen.findByText("An undisclosed Premier League club bid £4.2M for Marcus Webb")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Counter" }));
     expect(screen.getByRole("dialog", { name: "Counter an undisclosed Premier League club" })).toBeInTheDocument();
     expect(container.textContent + document.body.textContent).not.toMatch(/Meridian/);

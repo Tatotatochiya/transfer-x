@@ -26,7 +26,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const shortDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
-/** "was £20m, your offer": a term's value before the latest counter or raise. */
+/** "was £20M, your offer": a term's value before the latest counter or raise. */
 function Was({ card, term, format }: {
   card: LiteOfferCard; term: "fee" | "wage_weekly" | "wage_split_pct" | "contract_years";
   format: (v: number) => string;

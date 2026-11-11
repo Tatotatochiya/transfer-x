@@ -10,7 +10,7 @@ import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/Resp
 import Spinner from "../../components/ui/Spinner";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useToast } from "../../context/ToastContext";
-import { formatCurrency, formatWage, getApiError } from "../../lib/utils";
+import { formatCompact, formatCurrency, formatWage, getApiError } from "../../lib/utils";
 import { isLoan } from "../../lib/offerTerms";
 import PlayerLink from "../../components/ui/PlayerLink";
 
@@ -24,9 +24,11 @@ interface FinanceSectionProps {
   committed: number;
   spent?: number;
   formatFn: (v: number) => string;
+  /** The hero figure and its total: compact. The breakdown rows stay full. */
+  heroFn: (v: number) => string;
 }
 
-function FinanceSection({ title, total, remaining, reserved, committed, spent, formatFn }: FinanceSectionProps) {
+function FinanceSection({ title, total, remaining, reserved, committed, spent, formatFn, heroFn }: FinanceSectionProps) {
   const pct = (v: number) => (total > 0 ? Math.min((v / total) * 100, 100) : 0);
   const legend = [
     ...(spent !== undefined ? [{ label: "Spent", value: spent, swatch: "bg-text" }] : []),
@@ -37,8 +39,8 @@ function FinanceSection({ title, total, remaining, reserved, committed, spent, f
   return (
     <Card>
       <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">{title}</p>
-      <p className="mt-2 text-[34px] font-bold text-text tabular-nums">{formatFn(remaining)}</p>
-      <p className="text-[13px] text-text-muted">remaining of {formatFn(total)}</p>
+      <p className="mt-2 text-[34px] font-bold text-text tabular-nums">{heroFn(remaining)}</p>
+      <p className="text-[13px] text-text-muted">left of {heroFn(total)}</p>
 
       <div className="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-border-quiet">
         {spent !== undefined && <div className="h-full bg-text" style={{ width: `${pct(spent)}%` }} />}
@@ -292,6 +294,7 @@ export default function FinancePage() {
               committed={Number(finance.transfer_committed)}
               spent={Number(finance.transfer_spent)}
               formatFn={formatCurrency}
+              heroFn={formatCompact}
             />
             <FinanceSection
               title="Wage Budget (weekly)"
@@ -300,6 +303,7 @@ export default function FinancePage() {
               reserved={Number(finance.wage_reserved_weekly)}
               committed={Number(finance.wage_committed_weekly)}
               formatFn={formatWage}
+              heroFn={(v) => `${formatCompact(v)}/wk`}
             />
           </div>
 

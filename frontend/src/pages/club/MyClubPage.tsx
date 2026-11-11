@@ -20,7 +20,7 @@ import SquadStatsPanel from "../../components/clubs/SquadStatsPanel";
 import FixturesPanel from "../../components/fixtures/FixturesPanel";
 import VerifiedBadge from "../../components/verification/VerifiedBadge";
 import RequestVerificationPanel from "../../components/verification/RequestVerificationPanel";
-import { formatCompactCurrency, formatCurrency, getApiError } from "../../lib/utils";
+import { formatCompact, formatCompactCurrency, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
@@ -476,7 +476,7 @@ export default function MyClubPage() {
                         { label: "Contracts < 12mo", value: String(contractsUnder12mo), warn: contractsUnder12mo > 0 },
                         { label: "Listed", value: String(openListings.size) },
                         { label: "Average age", value: averageAge != null ? averageAge.toFixed(1) : "—" },
-                        { label: "Wage room", value: club.finance ? formatCurrency(Number(club.finance.wage_remaining_weekly)) : "—", unit: club.finance ? "/wk" : undefined },
+                        { label: "Wage room", value: club.finance ? formatCompact(Number(club.finance.wage_remaining_weekly)) : "—", unit: club.finance ? "/wk" : undefined },
                       ]}
                     />
                   </div>

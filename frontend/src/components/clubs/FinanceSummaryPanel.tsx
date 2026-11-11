@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { ClubFinance } from "../../types/api";
-import { formatCurrency, formatWage } from "../../lib/utils";
+import { formatCompact, formatWage } from "../../lib/utils";
 import Money from "../ui/Money";
 
 function MiniBar({ used, total }: { used: number; total: number }) {
@@ -33,12 +33,12 @@ export default function FinanceSummaryPanel({ finance }: { finance: ClubFinance 
           <div className="flex items-baseline justify-between">
             <span className="text-xs text-text-muted">Transfer budget</span>
             <span className="text-sm font-semibold text-text tabular-nums">
-              <Money value={finance.transfer_remaining} />
+              <Money value={finance.transfer_remaining} compact />
             </span>
           </div>
           <MiniBar used={transferSpent} total={finance.transfer_budget_total} />
           <p className="mt-1 text-xs text-text-muted">
-            of {formatCurrency(finance.transfer_budget_total)} total
+            of {formatCompact(finance.transfer_budget_total)} total
           </p>
         </div>
         <div>

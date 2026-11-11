@@ -1,4 +1,5 @@
 import type { NLParsedFilters } from "../../types/api";
+import { formatCompact } from "../../lib/utils";
 
 /**
  * How the AI player search read a description: the quoted interpretation and
@@ -17,7 +18,7 @@ export function FilterChips({ filters }: { filters: NLParsedFilters }) {
   if (filters.nationalities?.length) chips.push(filters.nationalities.join(" / "));
   if (filters.open_to_offers) chips.push("listed");
   if (filters.buyable) chips.push("buyable on TransferX");
-  const m = (v: number) => (v >= 1e6 ? `£${+(v / 1e6).toFixed(1)}m` : `£${Math.round(v / 1e3)}k`);
+  const m = formatCompact;
   if (filters.max_value === 0) chips.push("free");
   else if (filters.min_value != null && filters.max_value != null) chips.push(`${m(filters.min_value)}–${m(filters.max_value)}`);
   else if (filters.max_value != null) chips.push(`under ${m(filters.max_value)}`);

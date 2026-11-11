@@ -1,6 +1,6 @@
 import type { ActiveDealStub, FairValueSignal, PlayerDetail } from "../../types/api";
 import Card from "../ui/Card";
-import { formatCurrency } from "../../lib/utils";
+import { formatCompact } from "../../lib/utils";
 
 type SquadPlayer = { active_contract?: PlayerDetail["active_contract"] } & {
   id: string; position: string | null; age: number | null; market_value?: number | null;
@@ -53,7 +53,7 @@ function ContractCliff({ players, valueOf }: { players: SquadPlayer[]; valueOf: 
               {w.label} · <span className="text-text-muted">{w.count}</span>
             </span>
             <span className="shrink-0 font-semibold text-text" title="Model value of the players whose contracts end in this window">
-              {w.valueAtRisk > 0 ? formatCurrency(w.valueAtRisk) : "—"}
+              {w.valueAtRisk > 0 ? formatCompact(w.valueAtRisk) : "—"}
             </span>
           </div>
         ))}
@@ -77,7 +77,7 @@ function WageBillByPosition({ players }: { players: SquadPlayer[] }) {
           <div key={p.pos}>
             <div className="flex items-center justify-between text-[13px]">
               <span className="text-text">{p.pos}</span>
-              <span className="font-semibold text-text">{formatCurrency(p.total)}</span>
+              <span className="font-semibold text-text">{formatCompact(p.total)}</span>
             </div>
             <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-border-quiet">
               <div className="h-full bg-accent-soft" style={{ width: `${(p.total / max) * 100}%` }} />

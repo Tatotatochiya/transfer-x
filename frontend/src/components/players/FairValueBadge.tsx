@@ -1,6 +1,6 @@
 import type { FairValueSignal } from "../../types/api";
 import type { ValuationBand } from "../../types/enums";
-import { formatDate } from "../../lib/utils";
+import { formatCompact, formatDate } from "../../lib/utils";
 import ValuationBreakdownPopover from "./ValuationBreakdownPopover";
 
 interface Props {
@@ -29,9 +29,7 @@ export const BAND_COLOUR: Record<ValuationBand, string> = {
 };
 
 function compactMoney(value: number): string {
-  const n = Number(value);
-  if (n >= 1_000_000) return `£${(n / 1_000_000).toFixed(1)}m`;
-  return `£${Math.round(n / 1_000)}k`;
+  return formatCompact(Number(value));
 }
 
 function signedPct(pct: number): string {

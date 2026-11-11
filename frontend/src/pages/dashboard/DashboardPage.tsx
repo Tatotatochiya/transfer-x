@@ -22,7 +22,7 @@ import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/Resp
 import Spinner from "../../components/ui/Spinner";
 import TransferWindowBanner from "../../components/transfers/TransferWindowBanner";
 import DeadlineBanner from "../../components/deadline/DeadlineBanner";
-import { formatCurrency, formatDate } from "../../lib/utils";
+import { formatCompact, formatDate } from "../../lib/utils";
 import { useAuth } from "../../hooks/useAuth";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { ScoutReportPanel } from "../../components/ai/ScoutReportPanel";
@@ -77,14 +77,14 @@ function StandingFiguresTier({ myClub, squadCount, squadNote, windowStatus }: {
     <div className="mb-[18px] grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
       <FigureCard
         label="Transfer budget free"
-        value={<Money value={transferFree} stacked />}
-        note={`of ${formatCurrency(transferTotal)}`}
+        value={<Money value={transferFree} compact stacked />}
+        note={`of ${formatCompact(transferTotal)}`}
         bar={{ pct: transferTotal > 0 ? (transferFree / transferTotal) * 100 : 0, colour: "bg-success" }}
       />
       <FigureCard
         label="Wage room / wk"
-        value={formatCurrency(wageFree)}
-        note={`of ${formatCurrency(wageTotal)}`}
+        value={formatCompact(wageFree)}
+        note={`of ${formatCompact(wageTotal)}`}
         bar={{ pct: wageTotal > 0 ? (wageFree / wageTotal) * 100 : 0, colour: "bg-accent" }}
       />
       <FigureCard label="Window closes in" value={windowLabel} note={myClub.league_name ?? undefined} />
@@ -117,7 +117,7 @@ function CompletedTransfersTable({ deals, total }: { deals: Deal[]; total: numbe
     ) },
     { key: "from", header: "From", priority: 4, render: (r) => r.from ? <ClubLink id={r.from.id} name={r.from.name} /> : <span className="text-text-muted">Free agent</span> },
     { key: "to", header: "To", priority: 3, render: (r) => r.to ? <ClubLink id={r.to.id} name={r.to.name} /> : "—" },
-    { key: "fee", header: "Fee", priority: 2, className: "text-right", render: (r) => <span className="font-bold text-text">{formatCurrency(r.fee)}</span> },
+    { key: "fee", header: "Fee", priority: 2, className: "text-right", render: (r) => <span className="font-bold text-text">{formatCompact(r.fee)}</span> },
     { key: "completed", header: "Completed", priority: 5, className: "text-right", render: (r) => <span className="text-text-muted text-xs">{r.completedAt ? formatDate(r.completedAt) : "—"}</span> },
   ];
 
@@ -142,7 +142,7 @@ function CompletedTransfersTable({ deals, total }: { deals: Deal[]; total: numbe
           <div className="px-4 py-3">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-xs text-text-muted">{r.position}</span>}</span>
-              <span className="text-sm font-bold text-text">{formatCurrency(r.fee)}</span>
+              <span className="text-sm font-bold text-text">{formatCompact(r.fee)}</span>
             </div>
             <p className="mt-0.5 text-xs text-text-muted">
               {r.from ? r.from.name : "Free agent"} → {r.to ? r.to.name : "—"}
@@ -290,7 +290,7 @@ export default function DashboardPage() {
   const listingRows = sales.slice(0, 3).map((s) => ({
     key: s.id, onClick: () => navigate(`/sales/${s.id}`),
     name: s.player?.name ?? "—", player: { id: s.player?.id, photoUrl: s.player?.photo_url }, sub: s.deadline ? `Offers by ${formatDate(s.deadline)}` : "Open to offers",
-    value: s.asking_price != null ? formatCurrency(s.asking_price) : "—",
+    value: s.asking_price != null ? formatCompact(s.asking_price) : "—",
     // A listing is never anyone's move: its offers are, and show as offers.
     move: "neither" as WhoseMove,
   }));
@@ -298,13 +298,13 @@ export default function DashboardPage() {
     key: o.id, onClick: () => navigate(`/offers/${o.id}`),
     name: o.player?.name ?? "—", player: { id: o.player?.id, photoUrl: o.player?.photo_url },
     sub: o.from_club_id === myClubId ? `to ${o.to_club?.name ?? "—"}` : `from ${buyerLabel(o, "—")}`,
-    value: offerHeadline(o),
+    value: offerHeadline(o, formatCompact),
     move: offerWhoseMove(o, myClubId),
   }));
   const dealRows = deals.slice(0, 3).map((d) => ({
     key: d.id, onClick: () => navigate(`/deals/${d.id}`),
     name: d.player?.name ?? "—", player: { id: d.player?.id, photoUrl: d.player?.photo_url }, sub: d.stage.replace(/_/g, " ").toLowerCase(),
-    value: formatCurrency(d.agreed_fee), move: dealWhoseMove(d, myClubId),
+    value: formatCompact(d.agreed_fee), move: dealWhoseMove(d, myClubId),
   }));
 
   // ── Tier 4 ──
@@ -316,7 +316,7 @@ export default function DashboardPage() {
   const shortlistRows = (shortlistHits ?? []).slice(0, 5).map((h) => ({
     key: `${h.player_id}-${h.sale_id}`, onClick: () => navigate(`/sales/${h.sale_id}`),
     label: h.player_name, sub: h.shortlist_name,
-    value: h.asking_price != null ? formatCurrency(h.asking_price) : "TBD", valueColour: "text-warning-text",
+    value: h.asking_price != null ? formatCompact(h.asking_price) : "TBD", valueColour: "text-warning-text",
   }));
   // A player about to leave for nothing is the moment to sell or loan him, so
   // the list action sits on the row rather than a page away.
