@@ -178,7 +178,7 @@ export function Done({ title, body, links }: { title: string; body: string; link
             key={l.to}
             to={l.to}
             className={`flex min-h-[3.5rem] items-center justify-center rounded-xl px-6 text-[1.0625rem] font-bold no-underline ${
-              i === 0 ? "bg-accent text-white" : "text-text ring-1 ring-border hover:ring-accent"
+              i === 0 ? "bg-accent text-on-accent" : "text-text ring-1 ring-border hover:ring-accent"
             }`}
           >
             {l.label}
@@ -190,7 +190,7 @@ export function Done({ title, body, links }: { title: string; body: string; link
 }
 
 export const primaryBtn =
-  "min-h-[4rem] flex-1 rounded-xl bg-accent px-6 text-[1.125rem] font-bold text-white hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+  "min-h-[4rem] flex-1 rounded-xl bg-accent px-6 text-[1.125rem] font-bold text-on-accent hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 export const secondaryBtn =
   "min-h-[4rem] rounded-xl px-6 text-[1.125rem] font-bold text-text ring-1 ring-border hover:ring-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50";
 export const dangerBtn =

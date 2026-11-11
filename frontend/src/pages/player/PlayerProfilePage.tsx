@@ -242,7 +242,7 @@ export default function PlayerProfilePage() {
 
           {dirty && (
             <Button
-              variant="primary-success"
+              variant="primary"
               className="w-full"
               loading={saving}
               onClick={handleSave}

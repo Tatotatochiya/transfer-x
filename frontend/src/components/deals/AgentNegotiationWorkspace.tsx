@@ -81,7 +81,7 @@ export default function AgentNegotiationWorkspace({
         <AgreementChip label="Club" status={negotiation?.club_agreement ?? "PENDING"} />
       </div>
 
-      <div className="rounded-xl bg-role-agent-bg px-5 py-4 ring-1 ring-role-agent-text/20">
+      <div className="rounded-xl bg-surface-inset px-5 py-4 ring-1 ring-border">
         <p className="mb-3 text-xs font-bold uppercase tracking-wider text-role-agent-text">
           Club side — Commission
         </p>

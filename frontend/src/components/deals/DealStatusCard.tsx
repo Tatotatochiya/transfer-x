@@ -189,7 +189,7 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
     const cls = `w-full ${danger ? "text-danger-text-alt" : ""}`;
     if (a.kind === "open-profile") {
       return (
-        <Link to="/player/profile" className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white no-underline shadow-sm hover:bg-accent-hover">
+        <Link to="/player/profile" className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent no-underline shadow-sm hover:bg-accent-hover">
           {a.label}
         </Link>
       );

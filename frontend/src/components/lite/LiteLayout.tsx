@@ -48,7 +48,7 @@ export default function LiteLayout({ children }: { children: React.ReactNode }) 
       <DemoControl />
       <header className="flex h-[4.5rem] items-center justify-between border-b border-border bg-surface px-4 sm:px-8">
         <Link to="/lite" className="flex min-w-0 items-center gap-3 no-underline">
-          <span className="flex h-[2.125rem] w-[2.125rem] shrink-0 items-center justify-center rounded-[9px] bg-accent text-white">
+          <span className="flex h-[2.125rem] w-[2.125rem] shrink-0 items-center justify-center rounded-[9px] bg-accent text-on-accent">
             <Icon name="bolt" className="h-5 w-5" />
           </span>
           <span className="text-[1.125rem] font-extrabold text-text">TransferX</span>

@@ -53,7 +53,7 @@ export default function SaleCard({ sale }: SaleCardProps) {
             {saleTypeLabel(sale.sale_type)}
           </Badge>
           {availabilityLabel(sale.availability) && (
-            <Badge variant={sale.status === "OPEN" ? "info" : "neutral"}>{availabilityLabel(sale.availability)}</Badge>
+            <Badge variant="neutral">{availabilityLabel(sale.availability)}</Badge>
           )}
           <Badge variant={saleStatusVariant(sale.status)}>{saleStatusLabel(sale.status)}</Badge>
         </div>

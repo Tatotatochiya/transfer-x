@@ -71,7 +71,7 @@ export default function LiteOffersPage() {
                     </span>
                     {due && <span className="mt-1 block text-[1rem] font-semibold text-warning-text">{due}</span>}
                   </span>
-                  <span className="flex min-h-[3.25rem] items-center rounded-xl bg-accent px-6 text-[1.0625rem] font-bold text-white">
+                  <span className="flex min-h-[3.25rem] items-center rounded-xl bg-accent px-6 text-[1.0625rem] font-bold text-on-accent">
                     Open →
                   </span>
                 </Link>

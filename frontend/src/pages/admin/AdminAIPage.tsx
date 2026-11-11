@@ -115,7 +115,7 @@ function StatCard({
   return (
     <div className="rounded-xl bg-surface px-4 py-3 ring-1 ring-border">
       <p className="text-xs text-text-muted">{label}</p>
-      <p className={`mt-1 text-xl font-bold ${highlight ? "text-role-agent-text" : "text-text"}`}>
+      <p className={`mt-1 text-xl font-bold ${highlight ? "text-ai-text" : "text-text"}`}>
         {value}
       </p>
     </div>
@@ -192,14 +192,14 @@ function PromptRow({
             value={editing ? draft : prompt.content}
             onChange={(e) => { setDraft(e.target.value); setEditing(true); }}
             rows={8}
-            className="w-full rounded-lg bg-surface-inset px-3 py-2 font-mono text-xs text-text-secondary ring-1 ring-input-border focus:outline-none focus:ring-role-agent-text/50 resize-y"
+            className="w-full rounded-lg bg-surface-inset px-3 py-2 font-mono text-xs text-text-secondary ring-1 ring-input-border focus:outline-none focus:ring-ai-ring resize-y"
           />
           {editing && (
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-lg bg-role-agent-text/15 px-3 py-1.5 text-xs font-semibold text-role-agent-text ring-1 ring-role-agent-text/30 hover:bg-role-agent-text/25 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-ai-bg px-3 py-1.5 text-xs font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 disabled:opacity-50 transition-colors"
               >
                 {saving ? "Saving…" : "Save Override"}
               </button>

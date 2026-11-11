@@ -46,9 +46,10 @@ function count(path: string, src: string): Counts {
     // D7: overlays (bg-ink/N, not a listed hue), progress fills (data-progress)
     // and focus rings drawn from accent keep their opacity.
     if (line.includes("data-progress")) continue;
-    const tints = line.match(/(?:[\w-]+:)*(?:bg|ring|border)-(?:success|warning-fill|danger|accent|text-muted|role-agent-text)\/\d+/g) ?? [];
+    const tints = line.match(/(?:[\w-]+:)*(?:bg|ring|border)-(?:success|warning-fill|danger|accent|text-muted|role-agent-text)\/(?:\d+|\[[\d.]+\])/g) ?? [];
     add("tint", tints.filter((t) => !/^(focus|focus-visible|focus-within):ring-accent\//.test(t)).length);
-    if (/\bbg-accent\b(?![-/])/.test(line) && /\btext-white\b/.test(line)) add("white-on-accent", 1);
+    // Both in one class string (a ternary's other branch may be bg-success text-white).
+    if (/\bbg-accent(?![-/\w])[^"`\n]*\btext-white\b|\btext-white\b[^"`\n]*\bbg-accent(?![-/\w])/.test(line)) add("white-on-accent", 1);
   }
   if (!LITE.test(path)) add("extrabold", (code.match(/\bfont-(extrabold|black)\b/g) ?? []).length);
   return out;

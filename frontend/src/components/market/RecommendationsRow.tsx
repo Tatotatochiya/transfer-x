@@ -16,7 +16,7 @@ export default function RecommendationsRow({ clubName, onOpen, expanded, variant
         type="button"
         onClick={onOpen}
         aria-expanded={expanded}
-        className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-sm font-semibold text-role-agent-text hover:bg-role-agent-text/10"
+        className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-lg px-2 text-sm font-semibold text-ai-text hover:brightness-95"
       >
         <span aria-hidden>✦</span> Picks for your squad gaps <span aria-hidden>{expanded ? "⌃" : "›"}</span>
       </button>
@@ -27,13 +27,13 @@ export default function RecommendationsRow({ clubName, onOpen, expanded, variant
       type="button"
       onClick={onOpen}
       aria-haspopup="dialog"
-      className="flex min-h-[60px] w-full items-center gap-3 bg-role-agent-text/5 px-3.5 py-2 text-left ring-1 ring-inset ring-role-agent-text/20 hover:bg-role-agent-text/10"
+      className="flex min-h-[60px] w-full items-center gap-3 bg-ai-bg px-3.5 py-2 text-left ring-1 ring-inset ring-ai-ring hover:brightness-95"
     >
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-semibold text-role-agent-text"><span aria-hidden>✦</span> Picks for your squad gaps</span>
+        <span className="block text-[15px] font-semibold text-ai-text"><span aria-hidden>✦</span> Picks for your squad gaps</span>
         {clubName && <span className="block truncate text-sm text-text-muted">Recommended for {clubName}</span>}
       </span>
-      <span aria-hidden className="text-lg text-role-agent-text">›</span>
+      <span aria-hidden className="text-lg text-ai-text">›</span>
     </button>
   );
 }

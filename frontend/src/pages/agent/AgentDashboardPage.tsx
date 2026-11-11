@@ -68,7 +68,7 @@ function ClientCard({ client }: { client: RepresentedPlayerItem }) {
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs shrink-0">
-            {client.exclusive && <Badge variant="info">Exclusive</Badge>}
+            {client.exclusive && <Badge variant="neutral">Exclusive</Badge>}
             {client.end_date && <span className="text-text-muted">Until {formatDate(client.end_date)}</span>}
             <button
               onClick={handleRevoke}
@@ -219,7 +219,7 @@ export default function AgentDashboardPage() {
             <div className="mt-4 flex justify-center gap-3">
               <Link
                 to="/players/market"
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover transition-colors"
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover transition-colors"
               >
                 Browse players
               </Link>

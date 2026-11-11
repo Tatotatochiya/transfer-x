@@ -46,7 +46,7 @@ export default function DealProgress({ deal, negotiation }: { deal: Deal; negoti
                 <span
                   aria-hidden
                   className={`mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[13px] font-bold ${
-                    states[i] === "done" ? "bg-success text-white" : states[i] === "now" ? "bg-accent text-white" : "bg-surface ring-2 ring-input-border"
+                    states[i] === "done" ? "bg-success text-white" : states[i] === "now" ? "bg-accent text-on-accent" : "bg-surface ring-2 ring-input-border"
                   }`}
                 >
                   {states[i] === "done" ? "✓" : ""}

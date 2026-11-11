@@ -34,10 +34,10 @@ export function AIPanel({
   className?: string;
 }) {
   return (
-    <div className={`rounded-xl bg-surface p-4 ring-1 ring-role-agent-text/25 ${className}`}>
+    <div className={`rounded-xl bg-surface p-4 ring-1 ring-ai-ring ${className}`}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-semibold text-text">
-          <span className="text-role-agent-text">✦</span> {title}
+          <span className="text-ai-text">✦</span> {title}
         </p>
         {action}
       </div>
@@ -52,7 +52,7 @@ function AskButton({ onClick, label, loading }: { onClick: () => void; label: st
       type="button"
       onClick={onClick}
       disabled={loading}
-      className="shrink-0 rounded-lg bg-role-agent-text/10 px-3 py-1.5 text-xs font-semibold text-role-agent-text ring-1 ring-role-agent-text/30 hover:bg-role-agent-text/20 disabled:opacity-50 transition-colors"
+      className="shrink-0 rounded-lg bg-ai-bg px-3 py-1.5 text-xs font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 disabled:opacity-50 transition-colors"
     >
       {loading ? <Spinner size="sm" /> : label}
     </button>
@@ -93,7 +93,7 @@ export function TermsWarnings({ warnings, title = "Check these terms" }: { warni
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-semibold text-text-muted">
-        <span className="text-role-agent-text">✦</span> {title}
+        <span className="text-ai-text">✦</span> {title}
       </p>
       {warnings.map((w) => (
         <p key={w.code} className={`rounded-lg px-3 py-2 text-[13px] leading-snug ring-1 ${SEVERITY_CLASS[w.severity]}`}>
@@ -183,7 +183,7 @@ export function OfferAdvisor({
                 <button
                   type="button"
                   onClick={() => onUseTerms(data.suggested_terms!)}
-                  className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-hover transition-colors"
+                  className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-on-accent hover:bg-accent-hover transition-colors"
                 >
                   Use these terms in a counter
                 </button>

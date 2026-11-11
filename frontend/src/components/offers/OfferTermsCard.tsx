@@ -150,7 +150,7 @@ export function OfferAdvice({ offer, canCounter, onUseTerms }: {
         className="flex min-h-16 w-full items-center justify-between gap-3 px-4 text-left"
       >
         <span>
-          <span className="block text-[15px] font-semibold text-text"><span className="text-role-agent-text" aria-hidden>✦</span> Advice on this offer</span>
+          <span className="block text-[15px] font-semibold text-text"><span className="text-ai-text" aria-hidden>✦</span> Advice on this offer</span>
           <span className="block text-sm text-text-muted">A suggested next move, and where the negotiation stands</span>
         </span>
         <span aria-hidden className={`text-text-muted transition-transform ${open ? "rotate-90" : ""}`}>›</span>

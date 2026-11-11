@@ -195,7 +195,7 @@ export default function TeamPage() {
                         Joined {formatDateTime(member.created_at)}
                       </p>
                     </div>
-                    {member.is_lite_contact && <Badge variant="info">Team contact</Badge>}
+                    {member.is_lite_contact && <Badge variant="neutral">Team contact</Badge>}
                     <Badge variant={ROLE_INFO[member.role].badge}>
                       {ROLE_INFO[member.role].label}
                     </Badge>

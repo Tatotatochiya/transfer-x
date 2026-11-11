@@ -57,7 +57,7 @@ export function PlayerFitCard({ playerId }: PlayerFitCardProps) {
           <span className="text-sm font-semibold text-text">AI Fit Score</span>
           <button
             onClick={() => setEnabled(true)}
-            className="rounded-lg bg-role-agent-text/15 px-2.5 py-1 text-xs font-semibold text-role-agent-text ring-1 ring-role-agent-text/30 hover:bg-role-agent-text/25 transition-colors"
+            className="rounded-lg bg-ai-bg px-2.5 py-1 text-xs font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 transition-colors"
           >
             ✦ Analyse
           </button>

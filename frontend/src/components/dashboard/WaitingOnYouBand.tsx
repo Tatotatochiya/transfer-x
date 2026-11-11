@@ -86,7 +86,7 @@ export default function WaitingOnYouBand({
             </div>
             <button
               onClick={item.onClick}
-              className="inline-flex w-full min-h-12 items-center justify-center whitespace-nowrap rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover transition-colors sm:w-auto sm:min-h-0"
+              className="inline-flex w-full min-h-12 items-center justify-center whitespace-nowrap rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover transition-colors sm:w-auto sm:min-h-0"
             >
               {item.actionLabel}
             </button>

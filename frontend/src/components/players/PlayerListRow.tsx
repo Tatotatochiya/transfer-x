@@ -40,7 +40,7 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
   }
 
   const displayStatus = (player.current_club || player.world_team || player.team_name)
-    ? { variant: "info" as const, label: "Contracted" }
+    ? { variant: "neutral" as const, label: "Contracted" }
     : { variant: playerStatusVariant(player.status), label: playerStatusLabel(player.status) };
 
   return (
@@ -159,7 +159,7 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
           {canAct && (
             <button
               onClick={() => navigate(`/players/market/${player.id}`)}
-              className="rounded-lg bg-accent px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-accent-hover transition-colors"
+              className="rounded-lg bg-accent px-3.5 py-1.5 text-xs font-semibold text-on-accent hover:bg-accent-hover transition-colors"
             >
               Make offer
             </button>

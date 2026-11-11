@@ -48,7 +48,7 @@ export default function ClubInfoPanel({
             <span>🔖</span>
             Role
           </span>
-          <Badge variant={club.role === "SELLER" ? "warning" : club.role === "BUYER" ? "info" : "success"}>
+          <Badge variant={club.role === "SELLER" ? "warning" : club.role === "BUYER" ? "neutral" : "success"}>
             {ROLE_LABEL[club.role] ?? club.role}
           </Badge>
         </div>

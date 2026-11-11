@@ -17,7 +17,7 @@ import { useToast } from "../../context/ToastContext";
 import { formatCurrency, formatDateTime, getApiError } from "../../lib/utils";
 import PlayerLink from "../../components/ui/PlayerLink";
 
-const STATUS_BADGE: Record<ApprovalStatus, { label: string; variant: "info" | "success" | "danger" | "neutral" | "warning" }> = {
+const STATUS_BADGE: Record<ApprovalStatus, { label: string; variant: "success" | "danger" | "neutral" | "warning" }> = {
   PENDING:           { label: "Pending",  variant: "warning" },
   APPROVED_EXECUTED: { label: "Approved", variant: "success" },
   APPROVED_FAILED:   { label: "Approved — failed", variant: "danger" },

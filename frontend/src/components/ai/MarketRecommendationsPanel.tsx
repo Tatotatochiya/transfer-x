@@ -38,7 +38,7 @@ export function MarketRecommendationsPanel({
   );
 
   return (
-    <div className="mb-4 rounded-xl bg-surface ring-1 ring-role-agent-text/20">
+    <div className="mb-4 rounded-xl bg-surface ring-1 ring-ai-ring">
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-text">✦ Recommended for You</span>
@@ -50,7 +50,7 @@ export function MarketRecommendationsPanel({
           {!enabled ? (
             <button
               onClick={() => setEnabled(true)}
-              className="rounded-lg bg-role-agent-text/15 px-3 py-1 text-xs font-semibold text-role-agent-text ring-1 ring-role-agent-text/30 hover:bg-role-agent-text/25 transition-colors"
+              className="rounded-lg bg-ai-bg px-3 py-1 text-xs font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 transition-colors"
             >
               Generate
             </button>
@@ -95,7 +95,7 @@ export function MarketRecommendationsPanel({
                     <div className="mb-0.5 flex items-center gap-2">
                       <Link
                         to={`/players/market/${rec.player_id}`}
-                        className="truncate text-sm font-semibold text-text hover:text-role-agent-text transition-colors"
+                        className="truncate text-sm font-semibold text-text hover:text-ai-text transition-colors"
                       >
                         {rec.name}
                       </Link>

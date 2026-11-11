@@ -12,18 +12,16 @@ import {
 } from "./badges";
 
 describe("positionVariant", () => {
-  it("GK → warning (amber)", () => expect(positionVariant("GK")).toBe("warning"));
-  it("DEF → info (blue)",    () => expect(positionVariant("DEF")).toBe("info"));
-  it("MID → success (emerald)", () => expect(positionVariant("MID")).toBe("success"));
-  it("FWD → danger (red)",   () => expect(positionVariant("FWD")).toBe("danger"));
+  it.each(["GK", "DEF", "MID", "FWD"] as const)("%s → neutral (a category, not a status)", (p) =>
+    expect(positionVariant(p)).toBe("neutral"));
 });
 
 describe("playerStatusVariant", () => {
   it("FREE_AGENT → success", () => expect(playerStatusVariant("FREE_AGENT")).toBe("success"));
-  it("CONTRACTED → info",    () => expect(playerStatusVariant("CONTRACTED")).toBe("info"));
+  it("CONTRACTED → neutral",    () => expect(playerStatusVariant("CONTRACTED")).toBe("neutral"));
   // ADR 0003: EXTERNAL must never get the green "available" styling — that
   // pairing is what made ~7.8k contracted professionals look signable.
-  it("EXTERNAL → info, never success", () => expect(playerStatusVariant("EXTERNAL")).toBe("info"));
+  it("EXTERNAL → neutral, never success", () => expect(playerStatusVariant("EXTERNAL")).toBe("neutral"));
 });
 
 describe("playerStatusLabel", () => {
@@ -39,7 +37,7 @@ describe("saleTypeLabel", () => {
 });
 
 describe("offerStatusVariant", () => {
-  it("SENT → info",      () => expect(offerStatusVariant("SENT")).toBe("info"));
+  it("SENT → neutral",      () => expect(offerStatusVariant("SENT")).toBe("neutral"));
   it("ACCEPTED → success", () => expect(offerStatusVariant("ACCEPTED")).toBe("success"));
   it("REJECTED → danger", () => expect(offerStatusVariant("REJECTED")).toBe("danger"));
   it("COUNTERED → warning", () => expect(offerStatusVariant("COUNTERED")).toBe("warning"));
@@ -47,7 +45,7 @@ describe("offerStatusVariant", () => {
 });
 
 describe("dealStatusVariant", () => {
-  it("IN_PROGRESS → info",           () => expect(dealStatusVariant("IN_PROGRESS")).toBe("info"));
+  it("IN_PROGRESS → neutral",           () => expect(dealStatusVariant("IN_PROGRESS")).toBe("neutral"));
   it("COMPLETED → success",          () => expect(dealStatusVariant("COMPLETED")).toBe("success"));
   it("COLLAPSED → danger",           () => expect(dealStatusVariant("COLLAPSED")).toBe("danger"));
   it("PENDING_COMPLETION → warning", () => expect(dealStatusVariant("PENDING_COMPLETION")).toBe("warning"));
@@ -75,7 +73,7 @@ describe("dealTypeLabel", () => {
 
 describe("offerOutcome", () => {
   it("no deal yet → the offer's own status", () => {
-    expect(offerOutcome("SENT", null)).toEqual({ label: "Sent", variant: "info" });
+    expect(offerOutcome("SENT", null)).toEqual({ label: "Sent", variant: "neutral" });
   });
 
   // The defect this exists to prevent: an accepted offer whose deal later
@@ -98,6 +96,6 @@ describe("offerOutcome", () => {
 
   it("deal live → the stage, not the acceptance", () => {
     const out = offerOutcome("ACCEPTED", { status: "IN_PROGRESS", stage: "PAPERWORK" });
-    expect(out).toEqual({ label: "Paperwork", variant: "info", note: "deal in progress" });
+    expect(out).toEqual({ label: "Paperwork", variant: "neutral", note: "deal in progress" });
   });
 });

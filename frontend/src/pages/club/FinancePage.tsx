@@ -29,9 +29,9 @@ interface FinanceSectionProps {
 function FinanceSection({ title, total, remaining, reserved, committed, spent, formatFn }: FinanceSectionProps) {
   const pct = (v: number) => (total > 0 ? Math.min((v / total) * 100, 100) : 0);
   const legend = [
-    ...(spent !== undefined ? [{ label: "Spent", value: spent, swatch: "bg-text-secondary" }] : []),
-    { label: "Committed", value: committed, swatch: "bg-accent-soft" },
-    { label: "Reserved", value: reserved, swatch: "bg-warning-fill" },
+    ...(spent !== undefined ? [{ label: "Spent", value: spent, swatch: "bg-text" }] : []),
+    { label: "Committed", value: committed, swatch: "bg-text-secondary" },
+    { label: "Reserved", value: reserved, swatch: "bg-text-muted" },
   ];
 
   return (
@@ -41,9 +41,9 @@ function FinanceSection({ title, total, remaining, reserved, committed, spent, f
       <p className="text-[13px] text-text-muted">remaining of {formatFn(total)}</p>
 
       <div className="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-border-quiet">
-        {spent !== undefined && <div className="h-full bg-text-secondary" style={{ width: `${pct(spent)}%` }} />}
-        <div className="h-full bg-accent-soft" style={{ width: `${pct(committed)}%` }} />
-        <div className="h-full bg-warning-fill" style={{ width: `${pct(reserved)}%` }} />
+        {spent !== undefined && <div className="h-full bg-text" style={{ width: `${pct(spent)}%` }} />}
+        <div className="h-full bg-text-secondary" style={{ width: `${pct(committed)}%` }} />
+        <div className="h-full bg-text-muted" style={{ width: `${pct(reserved)}%` }} />
       </div>
 
       <div className="mt-4 space-y-2 border-t border-rule pt-4">

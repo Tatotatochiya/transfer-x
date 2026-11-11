@@ -355,7 +355,7 @@ export default function AskPage() {
                   <p className="text-[15px] leading-relaxed text-text">{t.result.answer}</p>
                   {t.result.proposal && (
                     <button type="button" onClick={() => navigate(t.result!.proposal!.card_path)}
-                      className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-hover">
+                      className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-hover">
                       Check and send →
                     </button>
                   )}
@@ -402,7 +402,7 @@ export default function AskPage() {
           className="min-w-0 flex-1 rounded-xl bg-surface px-4 py-3 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
         />
         <button type="submit" disabled={text.trim().length < 3 || ask.isPending}
-          className="rounded-xl bg-accent px-5 text-sm font-semibold text-white disabled:opacity-50">
+          className="rounded-xl bg-accent px-5 text-sm font-semibold text-on-accent disabled:opacity-50">
           {ask.isPending ? "…" : "Ask"}
         </button>
       </form>

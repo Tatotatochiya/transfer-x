@@ -16,6 +16,7 @@ interface Marker {
 /**
  * The markers on the price track (§5.8): their first and latest fee, the
  * seller's own valuation (seller only: it is confidential), and my latest.
+ * In ink only, theirs hollow and mine filled: the labels say who's who.
  * A marker that repeats another's amount is dropped, keeping the later one.
  */
 export function standingMarkers(rounds: OfferRound[], side: "buyer" | "seller", valuation: number | null): Marker[] {
@@ -23,14 +24,14 @@ export function standingMarkers(rounds: OfferRound[], side: "buyer" | "seller", 
   const mine = rounds.filter((r) => r.side === "me" && r.fee != null);
   const list: Marker[] = [];
   if (theirs.length) {
-    list.push({ key: "first", label: "Their first", value: theirs[0].fee!, dot: "bg-surface ring-2 ring-danger", text: "text-text" });
-    list.push({ key: "theirs", label: "Their offer", value: theirs[theirs.length - 1].fee!, dot: "bg-danger", text: "text-danger-text" });
+    list.push({ key: "first", label: "Their first", value: theirs[0].fee!, dot: "bg-surface ring-2 ring-text-muted", text: "text-text-secondary" });
+    list.push({ key: "theirs", label: "Their offer", value: theirs[theirs.length - 1].fee!, dot: "bg-surface ring-2 ring-text-secondary", text: "text-text-secondary" });
   }
   if (side === "seller" && valuation != null) {
-    list.push({ key: "valuation", label: "Your valuation", value: valuation, dot: "bg-accent", text: "text-accent-active" });
+    list.push({ key: "valuation", label: "Your valuation", value: valuation, dot: "bg-text-secondary", text: "text-text" });
   }
   if (mine.length) {
-    list.push({ key: "mine", label: side === "seller" ? "Your ask" : "Your offer", value: mine[mine.length - 1].fee!, dot: "bg-surface ring-2 ring-accent", text: "text-text" });
+    list.push({ key: "mine", label: side === "seller" ? "Your ask" : "Your offer", value: mine[mine.length - 1].fee!, dot: "bg-text", text: "text-text" });
   }
   return list.filter((m, i) => !list.slice(i + 1).some((later) => later.value === m.value));
 }
@@ -51,7 +52,7 @@ function Track({ markers }: { markers: Marker[] }) {
       <div className="absolute inset-x-0 top-[39px] h-1.5 rounded-full bg-border-quiet" />
       {theirs && near && (
         <div
-          className="absolute top-[39px] h-1.5 bg-danger-ring"
+          className="absolute top-[39px] h-1.5 bg-border"
           style={{ left: `${Math.min(pos(theirs.value), pos(near.value))}%`, width: `${Math.abs(pos(near.value) - pos(theirs.value))}%` }}
         />
       )}

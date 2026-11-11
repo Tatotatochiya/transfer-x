@@ -38,7 +38,7 @@ const COLUMN_HEADER: Record<StageKey, string> = {
 };
 
 const COLUMN_CARD: Record<StageKey, string> = {
-  AGENT_NEGOTIATION: "ring-role-agent-text/20 bg-role-agent-text/[0.04]",
+  AGENT_NEGOTIATION: "ring-border bg-surface-inset",
   PERSONAL_TERMS:    "ring-warning-fill/20 bg-warning-fill/[0.04]",
   PAPERWORK:         "ring-accent/20 bg-accent/[0.04]",
   CONFIRMED:         "ring-success/20 bg-success/[0.04]",

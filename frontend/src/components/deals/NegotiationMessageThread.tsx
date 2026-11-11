@@ -87,7 +87,7 @@ export default function NegotiationMessageThread({
         <button
           type="submit"
           disabled={mutation.isPending || !body.trim()}
-          className="min-h-11 lg:min-h-0 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+          className="min-h-11 lg:min-h-0 rounded-lg bg-accent px-3 py-1.5 text-[13px] font-semibold text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
         >
           Send
         </button>

@@ -114,14 +114,14 @@ export default function LiteApprovalPage() {
             <p className="text-[1.125rem] text-text-secondary">Waiting for the owner or sporting director to decide.</p>
           ) : mode === "answer" ? (
             <div className="flex flex-wrap gap-3">
-              <button type="button" className={`${btn} bg-accent text-white`} onClick={() => setMode("approve")}>Approve</button>
+              <button type="button" className={`${btn} bg-accent text-on-accent`} onClick={() => setMode("approve")}>Approve</button>
               <button type="button" className={`${btn} text-text ring-1 ring-border`} onClick={() => setMode("decline")}>Decline</button>
             </div>
           ) : mode === "approve" ? (
             <div className="flex flex-col gap-3">
               <p className="text-[1.125rem] text-text">This carries it out now, in your club&rsquo;s name. There&rsquo;s no undo.</p>
               <div className="flex flex-wrap gap-3">
-                <button type="button" disabled={busy} className={`${btn} bg-accent text-white disabled:opacity-60`} onClick={() => approve.mutate()}>
+                <button type="button" disabled={busy} className={`${btn} bg-accent text-on-accent disabled:opacity-60`} onClick={() => approve.mutate()}>
                   {approve.isPending ? "Approving…" : "Yes, approve"}
                 </button>
                 <button type="button" className={`${btn} text-text`} onClick={() => setMode("answer")}>Back</button>

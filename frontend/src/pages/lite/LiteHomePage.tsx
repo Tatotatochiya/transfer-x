@@ -38,11 +38,11 @@ function Tile({ tile }: { tile: LiteTile }) {
   const disabled = !!tile.disabled_reason;
   const quiet = tile.key === "offers" && !tile.badge;
   const look =
-    tile.style === "accent" ? "bg-accent text-white ring-0"
-    : tile.style === "ai" ? "bg-role-agent-text/10 text-text ring-2 ring-role-agent-text/30"
+    tile.style === "accent" ? "bg-accent text-on-accent ring-0"
+    : tile.style === "ai" ? "bg-ai-bg text-text ring-2 ring-ai-ring"
     : tile.style === "offers" && !quiet ? "bg-surface text-text ring-2 ring-danger-border"
     : "bg-surface text-text ring-1 ring-border";
-  const sub = tile.style === "accent" ? "text-white/85" : "text-text-secondary";
+  const sub = tile.style === "accent" ? "text-on-accent/85" : "text-text-secondary";
   return (
     <button
       type="button"
@@ -52,9 +52,9 @@ function Tile({ tile }: { tile: LiteTile }) {
     >
       <span className="flex items-start justify-between gap-3">
         {tile.style === "ai" ? (
-          <span className="text-[2.25rem] leading-none text-role-agent-text">✦</span>
+          <span className="text-[2.25rem] leading-none text-ai-text">✦</span>
         ) : (
-          <Icon name={TILE_ICON[tile.key] ?? "bolt"} className={`h-10 w-10 ${tile.style === "accent" ? "text-white" : quiet ? "text-text-muted" : "text-accent"}`} />
+          <Icon name={TILE_ICON[tile.key] ?? "bolt"} className={`h-10 w-10 ${tile.style === "accent" ? "text-on-accent" : quiet ? "text-text-muted" : "text-accent"}`} />
         )}
         {tile.badge && (
           <span className="rounded-full bg-danger px-3 py-1 text-[1.125rem] font-extrabold text-white">{tile.badge}</span>
@@ -94,7 +94,7 @@ export default function LiteHomePage() {
         <p className="mt-2 text-[1.25rem] text-text-secondary sm:text-[1.375rem]">{situation(home)}</p>
         {home.briefing_headline && (
           <p className="mt-2 text-[1.125rem] text-text-muted">
-            <span className="text-role-agent-text">✦</span> {home.briefing_headline}
+            <span className="text-ai-text">✦</span> {home.briefing_headline}
           </p>
         )}
       </div>
@@ -112,7 +112,7 @@ export default function LiteHomePage() {
           </span>
           <Link
             to={home.resume.href}
-            className="flex min-h-[3.375rem] items-center rounded-xl bg-accent px-6 text-[1.0625rem] font-bold text-white no-underline"
+            className="flex min-h-[3.375rem] items-center rounded-xl bg-accent px-6 text-[1.0625rem] font-bold text-on-accent no-underline"
           >
             Continue
           </Link>

@@ -119,7 +119,7 @@ function TabBar({
     >
       {/* sliding underline */}
       <span
-        className="absolute bottom-0 h-0.5 rounded-full bg-success transition-all duration-200"
+        className="absolute bottom-0 h-0.5 rounded-full bg-accent transition-all duration-200"
         style={inkStyle}
       />
       {tabs.map((t) => (
@@ -127,14 +127,14 @@ function TabBar({
           key={t.id}
           ref={t.id === active ? activeRef : undefined}
           onClick={() => onChange(t.id)}
-          className={`px-3 py-2 text-sm font-medium transition-colors ${
+          className={`px-3 py-2 text-body transition-colors ${
             t.id === active
-              ? "text-text"
-              : "text-text-muted hover:text-text-secondary"
+              ? "font-semibold text-text"
+              : "font-medium text-text-secondary hover:text-text"
           }`}
         >
           {t.label}
-          {t.count && <span className="ml-1.5 text-[11px] font-semibold text-text-muted">{t.count}</span>}
+          {t.count && <span className="ml-1.5 text-caption font-semibold text-text-muted">{t.count}</span>}
         </button>
       ))}
     </div>
@@ -624,7 +624,7 @@ export default function PlayerMarketDetailPage() {
               {player.is_verified_player && <VerifiedBadge />}
               {player.position && <Badge variant={positionVariant(player.position)}>{player.position}</Badge>}
               {isContracted ? (
-                <Badge variant="info">Contracted</Badge>
+                <Badge variant="neutral">Contracted</Badge>
               ) : (
                 <Badge variant={playerStatusVariant(player.status)}>{playerStatusLabel(player.status)}</Badge>
               )}

@@ -90,14 +90,14 @@ function PlayerRow({ p }: { p: LiteSearchResult }) {
               queryClient.invalidateQueries({ queryKey: ["lite", "home"] });
               navigate(`/lite/bid?player_id=${p.player_id}`);
             }}
-            className={`${rowBtn} bg-accent text-white`}
+            className={`${rowBtn} bg-accent text-on-accent`}
           >
             Make an offer
           </button>
         ) : p.state === "offer_in" && p.offer_id ? (
           <Link to={`/lite/offers/${p.offer_id}`} className={plainBtn}>See your offer</Link>
         ) : p.state === "free_agent" ? (
-          <Link to={`/players/market/${p.player_id}`} className={`${rowBtn} bg-accent text-white`}>See how to sign him</Link>
+          <Link to={`/players/market/${p.player_id}`} className={`${rowBtn} bg-accent text-on-accent`}>See how to sign him</Link>
         ) : p.state === "outside" ? (
           <AskTeamButton
             subject={{ type: "player", id: p.player_id }}

@@ -173,7 +173,7 @@ export default function AdminDemoPage() {
           {data.clubs.map((c) => (
             <div key={c.id} className="flex flex-wrap items-center gap-3 px-5 py-2.5 text-sm">
               <span className="min-w-0 flex-1 text-text">{c.name}</span>
-              {c.house_club && <Badge variant="info">House club</Badge>}
+              {c.house_club && <Badge variant="neutral">House club</Badge>}
               {c.in_use && !c.house_club && <span className="text-xs text-text-muted">In use: people sign in to it</span>}
               {c.house_club && (
                 <select

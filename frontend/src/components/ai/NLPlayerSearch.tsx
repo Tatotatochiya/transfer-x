@@ -32,7 +32,7 @@ export function FilterChips({ filters }: { filters: NLParsedFilters }) {
       {chips.map((c) => (
         <span
           key={c}
-          className="rounded-md bg-role-agent-text/10 px-2 py-0.5 text-xs font-medium text-role-agent-text ring-1 ring-role-agent-text/20"
+          className="rounded-md bg-ai-bg px-2 py-0.5 text-xs font-medium text-ai-text ring-1 ring-ai-ring"
         >
           {c}
         </span>

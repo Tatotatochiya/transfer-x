@@ -358,7 +358,7 @@ export default function CounterForm({
         type="button"
         onClick={suggest.onClick}
         disabled={suggest.loading}
-        className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-[15px] font-semibold text-role-agent-text ring-1 ring-border hover:bg-surface-inset disabled:opacity-60 lg:min-h-9 lg:text-sm"
+        className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-[15px] font-semibold text-ai-text ring-1 ring-border hover:bg-surface-inset disabled:opacity-60 lg:min-h-9 lg:text-sm"
       >
         <span aria-hidden>✦</span> {suggest.loading ? "Thinking…" : "Suggest a counter"}
       </button>
@@ -371,7 +371,7 @@ export default function CounterForm({
       <TermsWarnings warnings={check?.warnings} />
       {prefill && (
         <p className="text-sm text-text-muted">
-          <span className="text-role-agent-text">✦</span> Pre-filled from the advisor's suggestion — review before you send.
+          <span className="text-ai-text">✦</span> Pre-filled from the advisor's suggestion — review before you send.
         </p>
       )}
       {error && <p role="alert" className="text-sm text-danger-text">{error}</p>}

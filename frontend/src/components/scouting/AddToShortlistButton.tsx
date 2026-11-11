@@ -211,7 +211,7 @@ export default function AddToShortlistButton({ playerId, size = "default", label
                       <button
                         type="submit"
                         disabled={busy || (!orphan && !newName.trim())}
-                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
+                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50"
                       >
                         {busy ? "Adding…" : orphan ? "Try adding again" : "Create and add"}
                       </button>

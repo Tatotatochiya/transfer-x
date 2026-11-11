@@ -62,7 +62,7 @@ function Row({ item, lite }: { item: DeadlineItem; lite: boolean }) {
         )}
         <Link
           to={lite ? liteLink(item) : item.link}
-          className={`flex items-center rounded-xl font-bold no-underline ${mine ? "bg-accent text-white" : "text-text ring-1 ring-border hover:ring-accent"} ${
+          className={`flex items-center rounded-xl font-bold no-underline ${mine ? "bg-accent text-on-accent" : "text-text ring-1 ring-border hover:ring-accent"} ${
             lite ? "min-h-[3.25rem] px-5 text-[1.0625rem]" : "min-h-11 px-3 text-sm lg:min-h-0 lg:py-1.5"}`}
         >
           {mine ? "Do it now" : "Open"}

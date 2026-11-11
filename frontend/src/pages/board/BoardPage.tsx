@@ -61,8 +61,9 @@ function readSide(): Side {
 }
 
 const SIDE_STYLE: Record<BoardCard["side"], { label: string; tag: string; bar: string }> = {
-  BUYING: { label: "Buying", tag: "bg-accent-bg text-accent", bar: "bg-accent" },
-  SELLING: { label: "Selling", tag: "bg-warning-bg text-warning-text", bar: "bg-warning-fill" },
+  // Categories, so neutral: the label says which (TOKENS.md colour roles).
+  BUYING: { label: "Buying", tag: "bg-surface-inset text-text-secondary", bar: "bg-text-secondary" },
+  SELLING: { label: "Selling", tag: "bg-surface-inset text-text-secondary", bar: "bg-text-secondary" },
 };
 
 function SideTag({ side }: { side: BoardCard["side"] }) {

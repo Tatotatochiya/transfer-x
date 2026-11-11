@@ -88,7 +88,7 @@ function TransferRow({ t }: { t: TransferActivity }) {
         {formatCurrency(t.agreed_fee)}
       </td>
       <td className="px-4 py-3">
-        <Badge variant={t.is_auction_deal ? "warning" : "info"}>
+        <Badge variant={t.is_auction_deal ? "warning" : "neutral"}>
           {t.is_auction_deal ? "Auction" : "Offer"}
         </Badge>
       </td>

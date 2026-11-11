@@ -83,7 +83,7 @@ export default function MarketSearch({
           <button
             type="submit"
             disabled={!query.trim() || describePending}
-            className="min-h-9 shrink-0 rounded-lg bg-role-agent-text/15 px-3 text-sm font-semibold text-role-agent-text disabled:opacity-40"
+            className="min-h-9 shrink-0 rounded-lg bg-ai-bg px-3 text-sm font-semibold text-ai-text disabled:opacity-40"
           >
             Search
           </button>
@@ -94,7 +94,7 @@ export default function MarketSearch({
             aria-pressed={describe}
             onClick={toggle}
             className={`min-h-9 shrink-0 rounded-lg px-2.5 text-sm font-semibold transition-colors ${
-              describe ? "bg-role-agent-bg text-role-agent-text ring-1 ring-role-agent-text/40" : "text-role-agent-text hover:bg-role-agent-text/10"
+              describe ? "bg-ai-bg text-ai-text ring-1 ring-ai-ring" : "text-ai-text hover:brightness-95"
             }`}
           >
             ✦ Describe

@@ -73,7 +73,7 @@ export default function MarketToolbar({ filters, onSort, activeCount, view, onVi
           </svg>
           Filters
           {activeCount > 0 && (
-            <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-bold text-white">
+            <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-bold text-on-accent">
               {activeCount}
               <span className="sr-only"> active</span>
             </span>

@@ -1,11 +1,10 @@
 import Spinner from "./Spinner";
 
-export type ButtonVariant = "primary" | "primary-success" | "secondary" | "danger" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:         "bg-accent hover:bg-accent-hover text-on-accent font-semibold shadow-sm",
-  "primary-success": "bg-success hover:bg-success-text-alt text-white font-semibold shadow-sm",
   secondary:       "bg-surface hover:bg-surface-inset text-text-secondary font-semibold ring-1 ring-input-border",
   danger:          "bg-surface hover:bg-danger-bg text-danger-text-alt font-semibold ring-1 ring-danger-border",
   ghost:           "text-text-muted hover:text-text hover:bg-surface-inset font-semibold",

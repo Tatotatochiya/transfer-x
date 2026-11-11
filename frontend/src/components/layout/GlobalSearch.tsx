@@ -145,7 +145,7 @@ export default function GlobalSearch() {
               disabled={ask.isPending}
               className="flex w-full items-center gap-3 border-b border-rule px-4 py-3 text-left hover:bg-surface-inset transition-colors"
             >
-              <span className="text-role-agent-text">✦</span>
+              <span className="text-ai-text">✦</span>
               <span className="min-w-0 flex-1 truncate text-sm text-text">
                 {ask.isPending ? "Asking…" : <>Ask TransferX: <span className="font-medium">“{query.trim()}”</span></>}
               </span>
@@ -157,13 +157,13 @@ export default function GlobalSearch() {
           )}
           {ask.data && (
             <div className="border-b border-rule px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-role-agent-text">✦ Answer</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ai-text">✦ Answer</p>
               <p className="mt-1 text-sm leading-snug text-text">{ask.data.answer}</p>
               {ask.data.proposal && (
                 // Checked on the server; opens the form filled in. Nothing is sent from here.
                 <button
                   onClick={() => go(ask.data!.proposal!.card_path)}
-                  className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-hover"
+                  className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-on-accent hover:bg-accent-hover"
                 >
                   Check and send →
                 </button>

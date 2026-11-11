@@ -124,9 +124,9 @@ export default function LiteAskPage() {
       <h1 className="text-[2rem] font-extrabold tracking-[-0.02em] text-text sm:text-[2.375rem]">Ask anything</h1>
       <form
         onSubmit={(e) => { e.preventDefault(); send(text); }}
-        className="flex min-h-[4.25rem] flex-wrap items-center gap-3 rounded-[18px] bg-surface px-4 py-2 ring-2 ring-role-agent-text/30"
+        className="flex min-h-[4.25rem] flex-wrap items-center gap-3 rounded-[18px] bg-surface px-4 py-2 ring-2 ring-ai-ring"
       >
-        <span className="text-[1.5rem] text-role-agent-text" aria-hidden="true">✦</span>
+        <span className="text-[1.5rem] text-ai-text" aria-hidden="true">✦</span>
         <input
           value={text}
           onChange={(e) => {
@@ -143,7 +143,7 @@ export default function LiteAskPage() {
             onClick={toggleVoice}
             aria-pressed={listening}
             className={`flex min-h-[3.25rem] items-center gap-2 rounded-xl px-4 text-[1.0625rem] font-bold ${
-              listening ? "bg-role-agent-text text-white" : "bg-role-agent-text/10 text-role-agent-text"
+              listening ? "bg-ai-text text-ai-bg" : "bg-ai-bg text-ai-text"
             }`}
           >
             {listening ? (
@@ -156,7 +156,7 @@ export default function LiteAskPage() {
         <button
           type="submit"
           disabled={text.trim().length < 3 || ask.isPending}
-          className="min-h-[3.25rem] rounded-xl bg-role-agent-text px-6 text-[1.0625rem] font-bold text-white disabled:opacity-50"
+          className="min-h-[3.25rem] rounded-xl bg-ai-text px-6 text-[1.0625rem] font-bold text-ai-bg disabled:opacity-50"
         >
           Ask
         </button>
@@ -171,7 +171,7 @@ export default function LiteAskPage() {
                 key={s}
                 type="button"
                 onClick={() => send(s)}
-                className="min-h-[4.75rem] rounded-[16px] bg-surface px-5 text-left text-[1.25rem] font-semibold text-text ring-1 ring-border hover:ring-2 hover:ring-role-agent-text/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="min-h-[4.75rem] rounded-[16px] bg-surface px-5 text-left text-[1.25rem] font-semibold text-text ring-1 ring-border hover:ring-2 hover:ring-ai-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 {s}
               </button>
@@ -209,7 +209,7 @@ export default function LiteAskPage() {
                     <button
                       type="button"
                       onClick={() => navigate(turn.proposal!.card_path)}
-                      className="mt-3 min-h-[3.25rem] rounded-[13px] bg-accent px-5 text-[1.0625rem] font-bold text-white"
+                      className="mt-3 min-h-[3.25rem] rounded-[13px] bg-accent px-5 text-[1.0625rem] font-bold text-on-accent"
                     >
                       Check and confirm →
                     </button>
@@ -224,7 +224,7 @@ export default function LiteAskPage() {
                         type="button"
                         onClick={() => navigate(l.path)}
                         className={`min-h-[3.25rem] rounded-[13px] px-5 text-[1.0625rem] font-bold ${
-                          j === 0 && !turn.proposal ? "bg-accent text-white" : "bg-surface text-text ring-1 ring-border hover:ring-accent"
+                          j === 0 && !turn.proposal ? "bg-accent text-on-accent" : "bg-surface text-text ring-1 ring-border hover:ring-accent"
                         }`}
                       >
                         {l.label} →
@@ -238,7 +238,7 @@ export default function LiteAskPage() {
                     verb="Send to"
                     sendNow
                     draft={turn.question}
-                    className="mt-3 min-h-[3.25rem] rounded-[13px] bg-accent px-5 text-[1.0625rem] font-bold text-white"
+                    className="mt-3 min-h-[3.25rem] rounded-[13px] bg-accent px-5 text-[1.0625rem] font-bold text-on-accent"
                   />
                 )}
                 {!turn.error && !turn.fallback && turn.answer && (

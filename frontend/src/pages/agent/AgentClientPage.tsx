@@ -23,7 +23,7 @@ const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {
 const CLIENT_STATUS_COLORS: Record<ClientStatus, string> = {
   ACTIVE:             "bg-success/15 text-success-text ring-success/30",
   SEEKING_MOVE:       "bg-accent/15 text-accent ring-accent/30",
-  LOAN_AVAILABLE:     "bg-role-agent-bg text-role-agent-text ring-role-agent-text/30",
+  LOAN_AVAILABLE:     "bg-surface-inset text-text-secondary ring-border",
   CONTRACT_EXTENSION: "bg-warning-fill/15 text-warning-text ring-warning-fill/30",
   UNAVAILABLE:        "bg-text-muted/15 text-text-muted ring-text-muted/30",
 };

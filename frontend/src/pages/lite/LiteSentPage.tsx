@@ -42,7 +42,7 @@ function Stepper({ steps }: { steps: ProgressStep[] }) {
       {steps.map((s, i) => {
         const last = i === steps.length - 1;
         const node =
-          s.state === "done" ? "bg-accent text-white"
+          s.state === "done" ? "bg-accent text-on-accent"
             : s.state === "current" ? "bg-surface ring-[3px] ring-accent"
               : s.state === "ended" ? "bg-danger-bg text-danger-text ring-2 ring-danger-border"
                 : "bg-surface ring-2 ring-border";
@@ -199,7 +199,7 @@ export default function LiteSentPage() {
             </p>
           </section>
         )}
-        <Link to="/lite" className="flex min-h-[3.75rem] items-center justify-center rounded-xl bg-accent px-6 text-[1.125rem] font-bold text-white no-underline">
+        <Link to="/lite" className="flex min-h-[3.75rem] items-center justify-center rounded-xl bg-accent px-6 text-[1.125rem] font-bold text-on-accent no-underline">
           Back to home
         </Link>
         {dealId ? (

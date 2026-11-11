@@ -36,7 +36,7 @@ export function DraftButton({
         }
         disabled={draft.isPending}
         title={current.trim() ? "Turn what you've typed into a message" : "Write a first draft from this deal's facts"}
-        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-role-agent-text ring-1 ring-role-agent-text/30 hover:bg-role-agent-text/10 disabled:opacity-50"
+        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 disabled:opacity-50"
       >
         ✦ {draft.isPending ? "Drafting…" : current.trim() ? "Polish with AI" : "Draft with AI"}
       </button>

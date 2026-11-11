@@ -25,7 +25,7 @@ function AssessmentRow({ a }: { a: ShortlistPlayerAssessment }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-text">{a.name}</span>
           {a.addresses_gap && (
-            <span className="rounded-md bg-role-agent-text/10 px-1.5 py-0.5 text-[13px] font-semibold text-role-agent-text ring-1 ring-role-agent-text/20">
+            <span className="rounded-md bg-ai-bg px-1.5 py-0.5 text-[13px] font-semibold text-ai-text ring-1 ring-ai-ring">
               fills gap
             </span>
           )}
@@ -51,14 +51,14 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
 
   if (!enabled) {
     return (
-      <div className="mb-6 flex items-center justify-between rounded-xl bg-surface px-4 py-3 ring-1 ring-role-agent-text/20">
+      <div className="mb-6 flex items-center justify-between rounded-xl bg-surface px-4 py-3 ring-1 ring-ai-ring">
         <div>
           <p className="text-sm font-semibold text-text">✦ AI Shortlist Review</p>
           <p className="text-xs text-text-muted">Get an AI assessment of your {itemCount} scouted player{itemCount !== 1 ? "s" : ""}</p>
         </div>
         <button
           onClick={() => setEnabled(true)}
-          className="shrink-0 rounded-lg bg-role-agent-text/15 px-3 py-1.5 text-xs font-semibold text-role-agent-text ring-1 ring-role-agent-text/30 hover:bg-role-agent-text/25 transition-colors"
+          className="shrink-0 rounded-lg bg-ai-bg px-3 py-1.5 text-xs font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 transition-colors"
         >
           Generate
         </button>
@@ -67,7 +67,7 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
   }
 
   return (
-    <div className="mb-6 rounded-xl bg-surface ring-1 ring-role-agent-text/20 overflow-hidden">
+    <div className="mb-6 rounded-xl bg-surface ring-1 ring-ai-ring overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-rule">
         <p className="text-sm font-semibold text-text">✦ AI Shortlist Review</p>
@@ -114,14 +114,14 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
             <div className="flex flex-wrap gap-6 px-4 py-3">
               {data.top_picks.length > 0 && (
                 <div>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-widest text-role-agent-text">
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-widest text-ai-text">
                     Top picks
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {data.top_picks.map((name) => (
                       <span
                         key={name}
-                        className="rounded-md bg-role-agent-text/10 px-2 py-0.5 text-xs font-medium text-role-agent-text ring-1 ring-role-agent-text/20"
+                        className="rounded-md bg-ai-bg px-2 py-0.5 text-xs font-medium text-ai-text ring-1 ring-ai-ring"
                       >
                         {name}
                       </span>

@@ -162,7 +162,7 @@ export default function PushSoftAsk() {
                   type="button"
                   onClick={turnOn}
                   disabled={busy}
-                  className="mt-1 h-12 w-full rounded-xl bg-accent text-[15px] font-semibold text-white disabled:opacity-60"
+                  className="mt-1 h-12 w-full rounded-xl bg-accent text-[15px] font-semibold text-on-accent disabled:opacity-60"
                 >
                   Turn on notifications
                 </button>

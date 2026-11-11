@@ -3,10 +3,10 @@ import type { RecommendedProfile } from "../../types/api";
 import Badge from "../ui/Badge";
 import Spinner from "../ui/Spinner";
 
-const priorityVariant: Record<string, "danger" | "warning" | "info"> = {
+const priorityVariant: Record<string, "danger" | "warning" | "neutral"> = {
   high: "danger",
   medium: "warning",
-  low: "info",
+  low: "neutral",
 };
 
 export function ScoutReportPanel() {
@@ -27,7 +27,7 @@ export function ScoutReportPanel() {
         <button
           onClick={() => start(isDone)}
           disabled={isStreaming}
-          className="flex items-center gap-1.5 rounded-lg bg-role-agent-text/15 px-3 py-1.5 text-xs font-semibold text-role-agent-text ring-1 ring-role-agent-text/30 hover:bg-role-agent-text/25 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-ai-bg px-3 py-1.5 text-xs font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 disabled:opacity-50 transition-colors"
         >
           {isStreaming ? <Spinner size="sm" /> : <span>✦</span>}
           {isDone ? "Refresh" : "Generate"}
@@ -44,7 +44,7 @@ export function ScoutReportPanel() {
       {/* Streaming: show live text */}
       {isStreaming && (
         <div className="px-5 py-4">
-          <div className="flex items-center gap-2 mb-3 text-xs text-role-agent-text">
+          <div className="flex items-center gap-2 mb-3 text-xs text-ai-text">
             <Spinner size="sm" />
             Analysing squad…
           </div>

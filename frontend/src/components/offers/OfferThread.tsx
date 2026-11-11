@@ -76,7 +76,7 @@ function MessageBubble({
       <div
         className={`max-w-xs rounded-2xl px-4 py-2.5 text-sm ${
           isMine
-            ? "bg-success text-white"
+            ? "bg-accent-bg text-text"
             : "bg-surface-inset text-text"
         }`}
       >
@@ -87,7 +87,7 @@ function MessageBubble({
           </p>
         )}
         <p>{msg.body}</p>
-        <p className={`mt-1 text-right text-[13px] ${isMine ? "text-white/70" : "text-text-muted"}`}>
+        <p className={`mt-1 text-right text-[13px] ${"text-text-muted"}`}>
           {formatDateTime(msg.created_at)}
         </p>
       </div>

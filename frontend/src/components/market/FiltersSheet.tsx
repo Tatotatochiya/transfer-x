@@ -80,7 +80,7 @@ export default function FiltersSheet({ open, onClose, filters, onApply, saved }:
         <button
           type="button"
           onClick={() => { onApply(draft); onClose(); }}
-          className="min-h-12 w-full rounded-xl bg-accent text-base font-semibold text-white hover:bg-accent-hover"
+          className="min-h-12 w-full rounded-xl bg-accent text-base font-semibold text-on-accent hover:bg-accent-hover"
         >
           <span aria-live="polite">{settled ? `Show ${count.toLocaleString("en-GB")} player${count === 1 ? "" : "s"}` : "Show players"}</span>
         </button>

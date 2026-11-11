@@ -222,15 +222,15 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
           completed transfers, and whether to open him to loans. Advice only:
           "Use" fills the fields below, which the club still reviews. */}
       {playerId && (
-        <div className="rounded-xl bg-surface p-3.5 ring-1 ring-role-agent-text/25">
+        <div className="rounded-xl bg-surface p-3.5 ring-1 ring-ai-ring">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-text"><span className="text-role-agent-text">✦</span> Pricing assistant</p>
+            <p className="text-sm font-semibold text-text"><span className="text-ai-text">✦</span> Pricing assistant</p>
             {!advice && (
               <button
                 type="button"
                 onClick={() => setAdviceAsked(true)}
                 disabled={adviceLoading}
-                className="rounded-lg bg-role-agent-text/10 px-3 py-1.5 text-xs font-semibold text-role-agent-text ring-1 ring-role-agent-text/30 hover:bg-role-agent-text/20 disabled:opacity-50"
+                className="rounded-lg bg-ai-bg px-3 py-1.5 text-xs font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 disabled:opacity-50"
               >
                 {adviceLoading ? <Spinner size="sm" /> : "Suggest a price"}
               </button>

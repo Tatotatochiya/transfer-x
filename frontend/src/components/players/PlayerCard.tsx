@@ -94,7 +94,7 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           {/* Status */}
           {(player.current_club || player.world_team || player.team_name) ? (
-            <Badge variant="info" className="!text-[13px] !px-1.5 !py-0">Contracted</Badge>
+            <Badge variant="neutral" className="!text-[13px] !px-1.5 !py-0">Contracted</Badge>
           ) : (
             <Badge variant={playerStatusVariant(player.status)} className="!text-[13px] !px-1.5 !py-0">
               {playerStatusLabel(player.status)}

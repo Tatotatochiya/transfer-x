@@ -72,7 +72,7 @@ export default function AskTeamButton({
             <button
               type="submit"
               disabled={!text.trim() || ask.isPending}
-              className="min-h-[3.25rem] w-full rounded-[13px] bg-accent text-[1.0625rem] font-bold text-white disabled:opacity-50"
+              className="min-h-[3.25rem] w-full rounded-[13px] bg-accent text-[1.0625rem] font-bold text-on-accent disabled:opacity-50"
             >
               {ask.isPending ? "Sending…" : "Send"}
             </button>

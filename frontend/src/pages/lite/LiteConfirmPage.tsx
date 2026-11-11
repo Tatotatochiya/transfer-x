@@ -100,21 +100,21 @@ export default function LiteConfirmPage() {
               <div className="mt-6">
                 <p className="text-[1.125rem] text-text">{STATE_TEXT[view.state]}</p>
                 <Link to={signedIn ? `/lite/offers/${view.card.offer_id}` : `/login?next=${encodeURIComponent(`/lite/offers/${view.card.offer_id}`)}`}
-                  className="mt-4 inline-flex min-h-[3.25rem] items-center rounded-[13px] bg-accent px-5 text-[1.0625rem] font-bold text-white no-underline">
+                  className="mt-4 inline-flex min-h-[3.25rem] items-center rounded-[13px] bg-accent px-5 text-[1.0625rem] font-bold text-on-accent no-underline">
                   See it in TransferX
                 </Link>
               </div>
             ) : view.needs_sign_in && !signedIn ? (
               <div className="mt-6">
                 <p className="text-[1.0625rem] text-text-secondary">To answer, sign in with the account this email was sent to.</p>
-                <Link to={signIn} className="mt-3 inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[14px] bg-accent text-[1.125rem] font-bold text-white no-underline">
+                <Link to={signIn} className="mt-3 inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[14px] bg-accent text-[1.125rem] font-bold text-on-accent no-underline">
                   Sign in to {view.label.toLowerCase()}
                 </Link>
               </div>
             ) : (
               <div className="mt-6">
                 <button type="button" onClick={() => confirm.mutate()} disabled={confirm.isPending}
-                  className="min-h-[3.5rem] w-full rounded-[14px] bg-accent text-[1.125rem] font-bold text-white disabled:opacity-60">
+                  className="min-h-[3.5rem] w-full rounded-[14px] bg-accent text-[1.125rem] font-bold text-on-accent disabled:opacity-60">
                   {confirm.isPending ? "Sending…" : `Confirm: ${view.label}`}
                 </button>
                 <p className="mt-2 text-[0.9375rem] text-text-muted">You can undo for 10 seconds after confirming.</p>
