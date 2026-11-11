@@ -68,7 +68,7 @@ const SIDE_STYLE: Record<BoardCard["side"], { label: string; tag: string; bar: s
 
 function SideTag({ side }: { side: BoardCard["side"] }) {
   return (
-    <span className={`mr-1 inline-block rounded px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.04em] ${SIDE_STYLE[side].tag}`}>
+    <span className={`mr-1 inline-block rounded px-1.5 py-px text-caption font-semibold ${SIDE_STYLE[side].tag}`}>
       {SIDE_STYLE[side].label}
     </span>
   );
@@ -86,33 +86,33 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
       aria-label={`${card.player_name}: ${card.detail}`}
       onClick={() => onOpen(card)}
       onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(card); } }}
-      className={`w-full cursor-pointer rounded-xl bg-surface p-3 text-left ring-1 transition-colors hover:ring-accent/50 focus-visible:outline-2 focus-visible:outline-accent ${
-        yours ? "ring-accent/40" : "ring-border"
+      className={`w-full cursor-pointer rounded-xl bg-surface p-3 text-left ring-1 transition-colors hover:ring-accent-ring focus-visible:outline-2 focus-visible:outline-accent ${
+        yours ? "ring-accent-ring" : "ring-border"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-text">
+        <p className="flex min-w-0 items-center gap-1.5 text-body font-semibold text-text">
           <PlayerLink id={card.player_id} name={card.player_name} photoUrl={card.player_photo_url ?? null} size="md" />
-          {card.player_position && <span className="shrink-0 text-xs font-normal text-text-muted">{card.player_position}</span>}
+          {card.player_position && <span className="shrink-0 text-caption font-normal text-text-muted">{card.player_position}</span>}
         </p>
         {yours && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Your move" />}
       </div>
       {(card.counterparty || showSide) && (
-        <p className="mt-0.5 truncate text-xs text-text-muted">
+        <p className="mt-0.5 truncate text-caption text-text-muted">
           {showSide && <SideTag side={card.side} />}
           {showSide && card.counterparty && " "}
           {card.counterparty && (card.side === "BUYING" ? `from ${card.counterparty}` : `to ${card.counterparty}`)}
         </p>
       )}
       {card.amount != null && (
-        <p className="mt-1.5 text-sm font-bold tabular-nums text-text">
+        <p className="mt-1.5 text-body font-bold tabular-nums text-text">
           {formatCompactCurrency(Number(card.amount))}
           <Estimate value={card.amount} />
         </p>
       )}
-      <p className={`mt-1 text-xs ${yours ? "font-semibold text-accent" : "text-text-secondary"}`}>{card.detail}</p>
+      <p className={`mt-1 text-caption ${yours ? "font-semibold text-accent" : "text-text-secondary"}`}>{card.detail}</p>
       {(left || card.others > 0) && (
-        <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-text-muted">
+        <p className="mt-1 flex flex-wrap gap-x-2 text-caption text-text-muted">
           {left && <span className={left.urgent ? "font-semibold text-danger-text" : ""}>{left.text}</span>}
           {card.others > 0 && <span>+{card.others} more</span>}
         </p>
@@ -137,9 +137,9 @@ function CardDetail({ card, onClose }: { card: BoardCard; onClose: () => void })
     <Modal open onClose={onClose} title={card.player_name} size="lg">
       <div className="space-y-4 px-6 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm">
+          <div className="text-small">
             <PlayerLink id={card.player_id} name={card.player_name} photoUrl={card.player_photo_url ?? null} size="lg"
-              className="mb-2 text-base font-semibold text-text" />
+              className="mb-2 text-body font-semibold text-text" />
             <p className="text-text-secondary">
               {card.side === "BUYING" ? "Buying" : "Selling"}
               {card.counterparty && (card.side === "BUYING" ? ` from ${card.counterparty}` : ` to ${card.counterparty}`)}
@@ -156,11 +156,11 @@ function CardDetail({ card, onClose }: { card: BoardCard; onClose: () => void })
         </div>
         {context ? (
           <div className="border-t border-rule-faint pt-4">
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.06em] text-text-muted">Conversation</h3>
+            <h3 className="mb-3 text-section font-bold text-text">Conversation</h3>
             <ConversationPanel context={context} compact />
           </div>
         ) : (
-          <p className="text-sm text-text-muted">Conversations start with an enquiry or an offer.</p>
+          <p className="text-small text-text-muted">Conversations start with an enquiry or an offer.</p>
         )}
       </div>
     </Modal>
@@ -179,14 +179,14 @@ function Columns({ columns, pick, showSide, onOpen }: {
         const cards = col.cards.filter(pick);
         return (
           <section key={col.key} aria-label={col.label} className="w-[260px] shrink-0 snap-start lg:w-auto lg:min-w-0 lg:flex-1">
-            <h3 className="mb-2 flex items-baseline justify-between px-1 text-xs font-bold uppercase tracking-[0.06em] text-text-muted">
+            <h3 className="mb-2 flex items-baseline justify-between px-1 text-section font-bold text-text">
               {col.label}
               <span className="tabular-nums">{cards.length}</span>
             </h3>
             <div className="flex flex-col gap-2">
               {cards.map((c) => <Card key={c.key} card={c} showSide={showSide} onOpen={onOpen} />)}
               {cards.length === 0 && (
-                <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-text-muted">None</p>
+                <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-caption text-text-muted">None</p>
               )}
             </div>
           </section>
@@ -237,7 +237,7 @@ export default function BoardPage() {
                 role="radio"
                 aria-checked={side === s}
                 onClick={() => setSide(s)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium ${side === s ? "bg-surface text-text shadow-sm" : "text-text-secondary"}`}
+                className={`rounded-md px-3 py-1.5 text-body font-medium ${side === s ? "bg-surface text-text shadow-sm" : "text-text-secondary"}`}
               >
                 {s === "BOTH" ? "Both" : s === "BUYING" ? "Buying" : "Selling"}
               </button>
@@ -254,7 +254,7 @@ export default function BoardPage() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Find a player or club on the board"
           aria-label="Find a player or club on the board"
-          className="mb-4 w-full max-w-sm rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+          className="mb-4 w-full max-w-sm rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
         />
       )}
 
@@ -277,18 +277,18 @@ export default function BoardPage() {
           {side === "BOTH" && total > 0
             ? (["BUYING", "SELLING"] as const).map((lane) => (
               <section key={lane} aria-label={SIDE_STYLE[lane].label} className="mb-5">
-                <h2 className="mb-2 flex items-center gap-2 text-sm font-bold text-text">
+                <h2 className="mb-2 flex items-center gap-2 text-body font-bold text-text">
                   <span className={`h-4 w-1 rounded-full ${SIDE_STYLE[lane].bar}`} aria-hidden />
                   {SIDE_STYLE[lane].label}
-                  <span className="text-xs font-semibold tabular-nums text-text-muted">
+                  <span className="text-caption font-semibold tabular-nums text-text-muted">
                     {lane === "BUYING" ? data.counts.buying : data.counts.selling}
                   </span>
-                  <span className="text-xs font-normal text-text-muted">
+                  <span className="text-caption font-normal text-text-muted">
                     {lane === "BUYING" ? "· players you're signing" : "· your players, to other clubs"}
                   </span>
                 </h2>
                 {(lane === "BUYING" ? data.counts.buying : data.counts.selling) === 0 ? (
-                  <p className="rounded-xl border border-dashed border-border px-3 py-3 text-xs text-text-muted">
+                  <p className="rounded-xl border border-dashed border-border px-3 py-3 text-caption text-text-muted">
                     {lane === "BUYING" ? "Nothing you're buying at the moment." : "Nothing you're selling at the moment."}
                   </p>
                 ) : <Columns columns={data.columns} pick={(c) => c.side === lane && matches(c)} showSide={false} onOpen={setOpened} />}
@@ -302,11 +302,11 @@ export default function BoardPage() {
                 type="button"
                 onClick={() => setShowClosed((v) => !v)}
                 aria-expanded={showClosed}
-                className="text-sm font-semibold text-text-secondary hover:text-text"
+                className="text-body font-semibold text-text-secondary hover:text-text"
               >
                 Closed ({data.closed.length}) {showClosed ? "▾" : "▸"}
               </button>
-              <button type="button" onClick={() => navigate("/board/history")} className="ml-4 text-sm font-semibold text-accent hover:underline">
+              <button type="button" onClick={() => navigate("/board/history")} className="ml-4 text-body font-semibold text-accent hover:underline">
                 Full history →
               </button>
               {showClosed && (

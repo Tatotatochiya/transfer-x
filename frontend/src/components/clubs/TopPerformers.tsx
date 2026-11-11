@@ -19,7 +19,7 @@ export default function TopPerformers({
 
   return (
     <div className="mb-6 rounded-xl bg-surface px-5 py-4 ring-1 ring-border">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Top Form</p>
+      <p className="mb-3 text-caption font-semibold text-text-secondary">Top form</p>
       <div className="flex flex-wrap gap-3">
         {ranked.map((p) => (
           <Link
@@ -27,8 +27,8 @@ export default function TopPerformers({
             to={`/players/market/${p.id}`}
             className="flex items-center gap-2 rounded-lg hover:bg-surface-inset px-2 py-1 transition-colors"
           >
-            <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-7 w-7 text-[11px]" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
-            <span className="text-sm font-medium text-text hover:text-accent transition-colors">
+            <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-7 w-7 text-caption" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
+            <span className="text-body font-medium text-text hover:text-accent transition-colors">
               {p.name}
             </span>
             <FormBadge score={formScores[p.id].score} trend={formScores[p.id].trend} />

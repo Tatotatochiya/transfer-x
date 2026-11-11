@@ -30,14 +30,14 @@ function TopPerformers({
 
   return (
     <div className="mb-6 rounded-xl bg-surface px-5 py-4 ring-1 ring-border">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
-        Top Form
+      <p className="mb-3 text-caption font-semibold text-text-secondary">
+        Top form
       </p>
       <div className="flex flex-wrap gap-2">
         {ranked.map((p) => (
           <Link key={p.id} to={`/players/market/${p.id}`} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-surface-inset transition-colors group">
-            <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-7 w-7 text-[11px]" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
-            <span className="text-sm font-medium text-text group-hover:text-accent transition-colors">{p.name}</span>
+            <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-7 w-7 text-caption" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
+            <span className="text-body font-medium text-text group-hover:text-accent transition-colors">{p.name}</span>
             <FormBadge score={formScores[p.id].score} trend={formScores[p.id].trend} />
           </Link>
         ))}
@@ -108,8 +108,8 @@ function SquadStatsPanel({ players }: { players: Player[] }) {
           { label: "Avg Rating", value: avgRating ?? "—" },
         ].map((m) => (
           <div key={m.label} className="rounded-xl bg-surface-inset px-4 py-3 text-center">
-            <p className="text-2xl font-bold text-text tabular-nums">{m.value}</p>
-            <p className="mt-1 text-xs text-text-muted">{m.label}</p>
+            <p className="text-headline sm:text-title font-bold text-text tabular-nums">{m.value}</p>
+            <p className="mt-1 text-caption text-text-muted">{m.label}</p>
           </div>
         ))}
       </div>
@@ -118,17 +118,17 @@ function SquadStatsPanel({ players }: { players: Player[] }) {
         {/* Top scorers */}
         {topScorers.length > 0 && (
           <div className="rounded-xl bg-surface-quiet px-4 py-3 ring-1 ring-border">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">Top Scorers</p>
+            <p className="mb-2 text-caption font-semibold text-text-secondary">Top scorers</p>
             {topScorers.map(({ player, goals }, i) => (
               <Link
                 key={player.id}
                 to={`/players/market/${player.id}`}
                 className="flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-surface-inset transition-colors group"
               >
-                <span className="w-4 shrink-0 text-xs font-bold text-text-muted tabular-nums">{i + 1}</span>
-                <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-7 w-7 text-[11px]" colorClass="bg-surface-inset text-text-muted" className={player.photo_url ? "ring-1 ring-border" : ""} />
-                <span className="flex-1 truncate text-sm text-text-secondary group-hover:text-accent transition-colors">{player.name}</span>
-                <span className="shrink-0 text-sm font-bold text-success-text tabular-nums">{goals}g</span>
+                <span className="w-4 shrink-0 text-caption font-bold text-text-muted tabular-nums">{i + 1}</span>
+                <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-7 w-7 text-caption" colorClass="bg-surface-inset text-text-muted" className={player.photo_url ? "ring-1 ring-border" : ""} />
+                <span className="flex-1 truncate text-small text-text-secondary group-hover:text-accent transition-colors">{player.name}</span>
+                <span className="shrink-0 text-body font-bold text-success-text tabular-nums">{goals}g</span>
               </Link>
             ))}
           </div>
@@ -137,17 +137,17 @@ function SquadStatsPanel({ players }: { players: Player[] }) {
         {/* Top assisters */}
         {topAssisters.length > 0 && (
           <div className="rounded-xl bg-surface-quiet px-4 py-3 ring-1 ring-border">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">Top Assisters</p>
+            <p className="mb-2 text-caption font-semibold text-text-secondary">Top assisters</p>
             {topAssisters.map(({ player, assists }, i) => (
               <Link
                 key={player.id}
                 to={`/players/market/${player.id}`}
                 className="flex items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-surface-inset transition-colors group"
               >
-                <span className="w-4 shrink-0 text-xs font-bold text-text-muted tabular-nums">{i + 1}</span>
-                <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-7 w-7 text-[11px]" colorClass="bg-surface-inset text-text-muted" className={player.photo_url ? "ring-1 ring-border" : ""} />
-                <span className="flex-1 truncate text-sm text-text-secondary group-hover:text-accent transition-colors">{player.name}</span>
-                <span className="shrink-0 text-sm font-bold text-accent tabular-nums">{assists}a</span>
+                <span className="w-4 shrink-0 text-caption font-bold text-text-muted tabular-nums">{i + 1}</span>
+                <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-7 w-7 text-caption" colorClass="bg-surface-inset text-text-muted" className={player.photo_url ? "ring-1 ring-border" : ""} />
+                <span className="flex-1 truncate text-small text-text-secondary group-hover:text-accent transition-colors">{player.name}</span>
+                <span className="shrink-0 text-body font-bold text-accent tabular-nums">{assists}a</span>
               </Link>
             ))}
           </div>
@@ -257,7 +257,7 @@ export default function WorldTeamDetailPage() {
 
   if (isError || !team) {
     return (
-      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-small text-danger-text ring-1 ring-danger-border">
         Team not found.{" "}
         <button onClick={() => navigate(-1)} className="underline">Go back</button>
       </div>
@@ -274,7 +274,7 @@ export default function WorldTeamDetailPage() {
     <div>
       <button
         onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
+        className="mb-6 flex items-center gap-1.5 text-body text-text-muted hover:text-text transition-colors"
       >
         ← Back
       </button>
@@ -285,17 +285,17 @@ export default function WorldTeamDetailPage() {
           src={team.crest_url}
           name={team.name}
           kind="club"
-          sizeClass="h-20 w-20 text-3xl"
+          sizeClass="h-20 w-20 text-display-sm sm:text-display"
           colorClass="bg-surface-inset text-text-muted ring-1 ring-border"
-          className="rounded-2xl font-black"
+          className="rounded-2xl font-bold"
           loading="eager"
         />
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-text">{team.name}</h1>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-text-muted">
+              <h1 className="text-display-sm sm:text-display font-bold text-text">{team.name}</h1>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-small text-text-muted">
                 {team.country && <span>{team.country}</span>}
                 {team.league_name && (
                   <>
@@ -324,19 +324,19 @@ export default function WorldTeamDetailPage() {
                 <button
                   disabled={claimMutation.isPending}
                   onClick={() => { setClaimError(null); claimMutation.mutate(id); }}
-                  className="flex items-center gap-2 rounded-lg bg-success/15 px-4 py-2 text-sm font-semibold text-success-text ring-1 ring-success/30 hover:bg-success/25 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-lg bg-success-bg px-4 py-2 text-body font-semibold text-success-text ring-1 ring-success-ring hover:brightness-95 transition-colors disabled:opacity-50"
                 >
                   {claimMutation.isPending ? "Registering…" : "Register as my club"}
                 </button>
                 {claimError && (
-                  <p className="mt-1.5 text-xs text-danger-text">{claimError}</p>
+                  <p className="mt-1.5 text-caption text-danger-text">{claimError}</p>
                 )}
               </div>
             )}
 
             {/* Already has a club — can't claim */}
             {isAuthenticated && myClub && (
-              <span className="shrink-0 rounded-lg bg-surface-inset px-3 py-2 text-xs text-text-muted ring-1 ring-border">
+              <span className="shrink-0 rounded-lg bg-surface-inset px-3 py-2 text-caption text-text-muted ring-1 ring-border">
                 Your club: {myClub.name}
               </span>
             )}
@@ -350,9 +350,9 @@ export default function WorldTeamDetailPage() {
           <button
             key={t.value}
             onClick={() => setTab(t.value)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-4 py-2 text-body font-medium transition-colors ${
               tab === t.value
-                ? "bg-accent/15 text-accent ring-1 ring-accent/30"
+                ? "bg-accent-bg text-accent ring-1 ring-accent-ring"
                 : "bg-surface-inset text-text-muted hover:text-text"
             }`}
           >
@@ -391,17 +391,17 @@ export default function WorldTeamDetailPage() {
               <button
                 disabled={page === 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="rounded-lg bg-surface-inset px-3 py-1.5 text-sm text-text-muted hover:text-text disabled:opacity-30 transition-colors"
+                className="rounded-lg bg-surface-inset px-3 py-1.5 text-body text-text-muted hover:text-text disabled:opacity-30 transition-colors"
               >
                 ← Prev
               </button>
-              <span className="px-3 py-1.5 text-sm text-text-muted">
+              <span className="px-3 py-1.5 text-small text-text-muted">
                 {page} / {Math.ceil(squadData.total / 50)}
               </span>
               <button
                 disabled={page * 50 >= squadData.total}
                 onClick={() => setPage((p) => p + 1)}
-                className="rounded-lg bg-surface-inset px-3 py-1.5 text-sm text-text-muted hover:text-text disabled:opacity-30 transition-colors"
+                className="rounded-lg bg-surface-inset px-3 py-1.5 text-small text-text-muted hover:text-text disabled:opacity-30 transition-colors"
               >
                 Next →
               </button>

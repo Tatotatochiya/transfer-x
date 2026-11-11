@@ -56,7 +56,7 @@ export default function AskAboutPlayerModal({
         className="space-y-4 px-6 py-5"
         onSubmit={(e) => { e.preventDefault(); setError(null); mutation.mutate(); }}
       >
-        <p className="text-[13px] text-text-muted">
+        <p className="text-caption text-text-muted">
           An enquiry commits you to nothing — no budget is reserved and no offer is made. When you're both ready,
           make an offer from the thread.
         </p>
@@ -66,7 +66,7 @@ export default function AskAboutPlayerModal({
           rows={4}
           maxLength={2000}
           required
-          className="w-full resize-none rounded-lg bg-surface px-3 py-2.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+          className="w-full resize-none rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
         />
         <label className="flex cursor-pointer items-start gap-2.5">
           <input
@@ -75,11 +75,11 @@ export default function AskAboutPlayerModal({
             onChange={(e) => setAnonymous(e.target.checked)}
             className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
           />
-          <span className="text-[13px] text-text-secondary">
+          <span className="text-caption text-text-secondary">
             <span className="font-semibold">Ask anonymously</span> — {ownerName} sees only your league.
           </span>
         </label>
-        {error && <p className="text-sm text-danger-text">{error}</p>}
+        {error && <p className="text-body text-danger-text">{error}</p>}
         <div className="flex gap-3">
           <Button type="submit" variant="primary" size="md" loading={mutation.isPending}>Send enquiry</Button>
           <Button type="button" variant="ghost" size="md" onClick={onClose}>Cancel</Button>

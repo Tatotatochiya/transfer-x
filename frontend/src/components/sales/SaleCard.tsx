@@ -43,7 +43,7 @@ export default function SaleCard({ sale }: SaleCardProps) {
           {/* His photo and name link to his profile; the rest of the card opens the listing. */}
           <PlayerLink id={sale.player?.id ?? sale.player_id} name={sale.player?.name} fallback="Unknown Player"
             photoUrl={sale.player?.photo_url ?? null} size="lg" className="max-w-full font-semibold text-text" />
-          <p className="mt-0.5 truncate pl-14 text-xs text-text-muted">
+          <p className="mt-0.5 truncate pl-14 text-caption text-text-muted">
             <ClubLink id={sale.seller_club?.id} name={sale.seller_club?.name} />
             {sale.player?.position ? ` · ${sale.player.position}` : ""}
           </p>
@@ -60,7 +60,7 @@ export default function SaleCard({ sale }: SaleCardProps) {
       </div>
 
       {/* Price + deadline */}
-      <div className="mt-3 flex items-center justify-between text-sm">
+      <div className="mt-3 flex items-center justify-between text-small">
         <span className="font-semibold text-text">
           {sale.asking_price
             ? formatCompact(sale.asking_price)
@@ -69,7 +69,7 @@ export default function SaleCard({ sale }: SaleCardProps) {
             : "Open to offers"}
         </span>
         {deadline && (
-          <span className={`text-xs font-medium ${deadlineColour}`}>
+          <span className={`text-caption font-medium ${deadlineColour}`}>
             {deadline.state === "expired" ? "Expired" : deadline.label}
           </span>
         )}

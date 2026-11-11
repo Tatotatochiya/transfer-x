@@ -165,10 +165,10 @@ export default function AdminAnalyticsPage() {
         <div className="flex justify-center py-10"><Spinner size="lg" /></div>
       ) : overview ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-6">
-          <StatCard label="Page Views Today" value={overview.page_views_today} sub={`${overview.page_views_7d.toLocaleString()} last 7d`} />
-          <StatCard label="Sessions Today" value={overview.unique_sessions_today} sub={`${overview.unique_sessions_7d.toLocaleString()} last 7d`} />
-          <StatCard label="DAU Today" value={overview.dau_today} sub={`Avg ${overview.dau_7d} / day last 7d`} />
-          <StatCard label="Total Events Today" value={overview.total_events_today} sub={`${overview.total_events_7d.toLocaleString()} last 7d`} />
+          <StatCard label="Page views today" value={overview.page_views_today} sub={`${overview.page_views_7d.toLocaleString()} last 7d`} />
+          <StatCard label="Sessions today" value={overview.unique_sessions_today} sub={`${overview.unique_sessions_7d.toLocaleString()} last 7d`} />
+          <StatCard label="DAU today" value={overview.dau_today} sub={`Avg ${overview.dau_7d} / day last 7d`} />
+          <StatCard label="Total events today" value={overview.total_events_today} sub={`${overview.total_events_7d.toLocaleString()} last 7d`} />
         </div>
       ) : null}
 

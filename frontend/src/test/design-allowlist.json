@@ -24,11 +24,6 @@
   "size": 7,
   "tint": 1
  },
- "src/components/agent/IntelligenceFeed.tsx": {
-  "size": 7,
-  "uppercase": 2,
-  "tint": 1
- },
  "src/components/ai/AskAboutButton.tsx": {
   "size": 2
  },
@@ -62,43 +57,9 @@
  "src/components/auth/NameFields.tsx": {
   "size": 3
  },
- "src/components/clubs/ClubInfoPanel.tsx": {
-  "size": 4,
-  "uppercase": 1
- },
- "src/components/clubs/FinanceSummaryPanel.tsx": {
-  "size": 8,
-  "uppercase": 1
- },
- "src/components/clubs/SquadRail.tsx": {
-  "size": 7
- },
- "src/components/clubs/SquadStatsPanel.tsx": {
-  "size": 13
- },
- "src/components/clubs/TopPerformers.tsx": {
-  "size": 3,
-  "uppercase": 1
- },
  "src/components/conversation/ConversationPanel.tsx": {
   "size": 15,
   "tint": 3
- },
- "src/components/dashboard/FigureCard.tsx": {
-  "size": 3
- },
- "src/components/dashboard/ReferencePanel.tsx": {
-  "size": 6
- },
- "src/components/dashboard/WaitingOnYouBand.tsx": {
-  "size": 11
- },
- "src/components/dashboard/WorkingPanel.tsx": {
-  "size": 6
- },
- "src/components/deadline/DeadlineBanner.tsx": {
-  "size": 6,
-  "extrabold": 1
  },
  "src/components/demo/DemoControl.tsx": {
   "size": 10,
@@ -107,13 +68,6 @@
  "src/components/demo/DemoOfferControls.tsx": {
   "size": 2,
   "tint": 2
- },
- "src/components/enquiries/AskAboutPlayerModal.tsx": {
-  "size": 4
- },
- "src/components/ErrorBoundary.tsx": {
-  "size": 4,
-  "tint": 3
  },
  "src/components/fixtures/FixturesPanel.tsx": {
   "size": 13,
@@ -165,37 +119,6 @@
  },
  "src/components/notifications/PushSoftAsk.tsx": {
   "size": 7
- },
- "src/components/OnboardingChecklist.tsx": {
-  "size": 5,
-  "tint": 4
- },
- "src/components/sales/BuyerOrderBook.tsx": {
-  "size": 15,
-  "uppercase": 3,
-  "tint": 6
- },
- "src/components/sales/ListPlayerModal.tsx": {
-  "size": 17
- },
- "src/components/sales/SaleCard.tsx": {
-  "size": 3
- },
- "src/components/sales/SellerOrderBook.tsx": {
-  "size": 17,
-  "uppercase": 1,
-  "tint": 12
- },
- "src/components/scouting/AddToShortlistButton.tsx": {
-  "size": 14,
-  "uppercase": 1
- },
- "src/components/verification/RequestVerificationPanel.tsx": {
-  "size": 8
- },
- "src/components/verification/VerifiedBadge.tsx": {
-  "size": 1,
-  "tint": 2
  },
  "src/context/ConfirmContext.tsx": {
   "size": 5
@@ -356,43 +279,6 @@
   "size": 14,
   "uppercase": 1
  },
- "src/pages/board/BoardHistoryPage.tsx": {
-  "size": 11
- },
- "src/pages/board/BoardPage.tsx": {
-  "size": 21,
-  "uppercase": 3,
-  "tint": 2
- },
- "src/pages/club/ApprovalsPage.tsx": {
-  "size": 19
- },
- "src/pages/club/FinancePage.tsx": {
-  "size": 14,
-  "uppercase": 1
- },
- "src/pages/club/MyClubPage.tsx": {
-  "size": 16,
-  "tint": 2
- },
- "src/pages/club/SquadCheckPage.tsx": {
-  "size": 14
- },
- "src/pages/club/TeamPage.tsx": {
-  "size": 22,
-  "uppercase": 2,
-  "tint": 2
- },
- "src/pages/dashboard/DashboardPage.tsx": {
-  "size": 11
- },
- "src/pages/deadline/DeadlinePage.tsx": {
-  "size": 22,
-  "extrabold": 3
- },
- "src/pages/enquiries/EnquiryDetailPage.tsx": {
-  "size": 5
- },
  "src/pages/lite/LiteApprovalPage.tsx": {
   "size": 9
  },
@@ -432,25 +318,5 @@
   "size": 20,
   "uppercase": 2,
   "tint": 12
- },
- "src/pages/scouting/ShortlistDetailPage.tsx": {
-  "size": 24,
-  "uppercase": 1,
-  "tint": 4
- },
- "src/pages/scouting/ShortlistListPage.tsx": {
-  "size": 9,
-  "uppercase": 1
- },
- "src/pages/transfers/TransferActivityPage.tsx": {
-  "size": 47,
-  "uppercase": 10,
-  "tint": 6
- },
- "src/pages/world/WorldTeamDetailPage.tsx": {
-  "size": 27,
-  "uppercase": 3,
-  "tint": 5,
-  "extrabold": 1
  }
 }

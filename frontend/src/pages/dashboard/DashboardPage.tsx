@@ -74,7 +74,7 @@ function StandingFiguresTier({ myClub, squadCount, squadNote, windowStatus }: {
     : "Closed";
 
   return (
-    <div className="mb-[18px] grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
+    <div className="mb-[18px] grid grid-cols-2 gap-3.5 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]">
       <FigureCard
         label="Transfer budget free"
         value={<Money value={transferFree} compact stacked />}
@@ -113,12 +113,12 @@ function CompletedTransfersTable({ deals, total }: { deals: Deal[]; total: numbe
 
   const columns: ResponsiveColumn<CompletedRow>[] = [
     { key: "player", header: "Player", priority: 1, render: (r) => (
-      <span className="inline-flex items-center gap-2 font-medium text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-xs text-text-muted">{r.position}</span>}</span>
+      <span className="inline-flex items-center gap-2 font-medium text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-caption text-text-muted">{r.position}</span>}</span>
     ) },
     { key: "from", header: "From", priority: 4, render: (r) => r.from ? <ClubLink id={r.from.id} name={r.from.name} /> : <span className="text-text-muted">Free agent</span> },
     { key: "to", header: "To", priority: 3, render: (r) => r.to ? <ClubLink id={r.to.id} name={r.to.name} /> : "—" },
     { key: "fee", header: "Fee", priority: 2, className: "text-right", render: (r) => <span className="font-bold text-text">{formatCompact(r.fee)}</span> },
-    { key: "completed", header: "Completed", priority: 5, className: "text-right", render: (r) => <span className="text-text-muted text-xs">{r.completedAt ? formatDate(r.completedAt) : "—"}</span> },
+    { key: "completed", header: "Completed", priority: 5, className: "text-right", render: (r) => <span className="text-text-muted text-caption">{r.completedAt ? formatDate(r.completedAt) : "—"}</span> },
   ];
 
   if (rows.length === 0) return null;
@@ -126,9 +126,9 @@ function CompletedTransfersTable({ deals, total }: { deals: Deal[]; total: numbe
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-text">Completed transfers</h2>
+        <h2 className="text-section font-bold text-text">Completed transfers</h2>
         {total > rows.length && (
-          <button onClick={() => navigate("/board")} className="text-xs font-semibold text-accent hover:text-accent-hover">
+          <button onClick={() => navigate("/board")} className="text-caption font-semibold text-accent hover:text-accent-hover">
             View all {total} →
           </button>
         )}
@@ -141,13 +141,13 @@ function CompletedTransfersTable({ deals, total }: { deals: Deal[]; total: numbe
         renderCard={(r) => (
           <div className="px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-xs text-text-muted">{r.position}</span>}</span>
-              <span className="text-sm font-bold text-text">{formatCompact(r.fee)}</span>
+              <span className="inline-flex items-center gap-1.5 text-body font-semibold text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-caption text-text-muted">{r.position}</span>}</span>
+              <span className="text-body font-bold text-text">{formatCompact(r.fee)}</span>
             </div>
-            <p className="mt-0.5 text-xs text-text-muted">
+            <p className="mt-0.5 text-caption text-text-muted">
               {r.from ? r.from.name : "Free agent"} → {r.to ? r.to.name : "—"}
             </p>
-            {r.completedAt && <p className="mt-0.5 text-xs text-text-muted">{formatDate(r.completedAt)}</p>}
+            {r.completedAt && <p className="mt-0.5 text-caption text-text-muted">{formatDate(r.completedAt)}</p>}
           </div>
         )}
       />
@@ -247,7 +247,7 @@ export default function DashboardPage() {
   if (!myClub) {
     return (
       <Card tier={4}>
-        <p className="text-sm text-text-muted">No club profile found. Contact TransferX staff.</p>
+        <p className="text-small text-text-muted">No club profile found. Contact TransferX staff.</p>
       </Card>
     );
   }
@@ -348,7 +348,7 @@ export default function DashboardPage() {
       {!isApprover && myPendingApprovals.length > 0 && (
         <button
           onClick={() => navigate("/club/approvals")}
-          className="mb-[18px] block text-sm text-text-muted hover:text-text-secondary transition-colors"
+          className="mb-[18px] block text-body text-text-muted hover:text-text-secondary transition-colors"
         >
           {myPendingApprovals.length} of your request{myPendingApprovals.length === 1 ? "" : "s"} {myPendingApprovals.length === 1 ? "is" : "are"} awaiting approval →
         </button>

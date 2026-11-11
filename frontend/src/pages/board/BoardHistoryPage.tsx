@@ -59,14 +59,14 @@ export default function BoardHistoryPage() {
     }).then((r) => r.data),
   });
   const pages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
-  const select = "rounded-lg bg-surface px-2.5 py-1.5 text-sm text-text ring-1 ring-input-border";
+  const select = "rounded-lg bg-surface px-2.5 py-1.5 text-small text-text ring-1 ring-input-border";
 
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader
         title="Transfer history"
         subtitle="Completed transfers, and everything that ended without one."
-        actions={<Link to="/board" className="text-sm font-semibold text-accent">← Transfers board</Link>}
+        actions={<Link to="/board" className="text-body font-semibold text-accent">← Transfers board</Link>}
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <input
@@ -75,7 +75,7 @@ export default function BoardHistoryPage() {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search a player or club"
           aria-label="Search a player or club"
-          className="min-w-0 flex-1 basis-56 rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+          className="min-w-0 flex-1 basis-56 rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
         />
         <select aria-label="Buying or selling" value={side} onChange={(e) => set({ side: e.target.value === "BOTH" ? "" : e.target.value })} className={select}>
           <option value="BOTH">Buying and selling</option>
@@ -97,7 +97,7 @@ export default function BoardHistoryPage() {
         <EmptyState title="Nothing here" body={params.get("q") || outcome || side !== "BOTH" ? "Nothing matches these filters." : "Finished transfers and ones that ended will be listed here."} />
       ) : (
         <>
-          <p className="mb-2 text-xs text-text-muted">{data.total} {data.total === 1 ? "item" : "items"}</p>
+          <p className="mb-2 text-caption text-text-muted">{data.total} {data.total === 1 ? "item" : "items"}</p>
           <div className="divide-y divide-rule-faint rounded-xl bg-surface ring-1 ring-border">
             {data.items.map((c) => (
               <div
@@ -109,25 +109,25 @@ export default function BoardHistoryPage() {
                 className="flex w-full cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left hover:bg-surface-inset"
               >
                 <span className="min-w-0 flex-1 basis-48">
-                  <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-text">
+                  <span className="flex min-w-0 items-center gap-1.5 text-body font-semibold text-text">
                     <PlayerLink id={c.player_id} name={c.player_name} photoUrl={c.player_photo_url ?? null} size="md" />
-                    {c.player_position && <span className="shrink-0 text-xs font-normal text-text-muted">{c.player_position}</span>}
+                    {c.player_position && <span className="shrink-0 text-caption font-normal text-text-muted">{c.player_position}</span>}
                   </span>
-                  <span className="block truncate text-xs text-text-muted">
+                  <span className="block truncate text-caption text-text-muted">
                     {c.side === "BUYING" ? "Buying" : "Selling"}
                     {c.counterparty && (c.side === "BUYING" ? ` from ${c.counterparty}` : ` to ${c.counterparty}`)}
                   </span>
                 </span>
-                <span className={`text-xs font-semibold ${c.column === "done" ? "text-success-text" : "text-text-secondary"}`}>{c.detail}</span>
-                <span className="w-20 text-right text-sm font-bold tabular-nums text-text">
+                <span className={`text-caption font-semibold ${c.column === "done" ? "text-success-text" : "text-text-secondary"}`}>{c.detail}</span>
+                <span className="w-20 text-right text-body font-bold tabular-nums text-text">
                   {c.amount != null ? formatCompactCurrency(Number(c.amount)) : "—"}
                 </span>
-                <span className="w-24 text-right text-xs text-text-muted">{c.updated_at ? formatDate(c.updated_at) : ""}</span>
+                <span className="w-24 text-right text-caption text-text-muted">{c.updated_at ? formatDate(c.updated_at) : ""}</span>
               </div>
             ))}
           </div>
           {pages > 1 && (
-            <div className="mt-4 flex items-center justify-between text-sm">
+            <div className="mt-4 flex items-center justify-between text-small">
               <button type="button" disabled={page <= 1} onClick={() => set({ page: String(page - 1) })}
                 className="font-semibold text-accent disabled:text-text-muted">← Newer</button>
               <span className="text-text-muted">Page {page} of {pages}</span>

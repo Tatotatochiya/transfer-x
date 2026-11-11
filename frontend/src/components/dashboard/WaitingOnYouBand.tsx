@@ -55,7 +55,7 @@ export default function WaitingOnYouBand({
   const shown = sorted.slice(0, 5);
 
   if (shown.length === 0) {
-    return <p className="mb-[18px] text-sm text-text-secondary">{emptyText}</p>;
+    return <p className="mb-[18px] text-body text-text-secondary">{emptyText}</p>;
   }
 
   return (
@@ -63,30 +63,30 @@ export default function WaitingOnYouBand({
       <div className="flex items-center justify-between border-b border-danger-border bg-danger-bg px-4 py-3 rounded-t-xl sm:px-5">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-danger" />
-          <span className="text-[13px] font-bold text-danger-heading">{heading} — {items.length}</span>
+          <span className="text-caption font-bold text-danger-heading">{heading} — {items.length}</span>
         </div>
-        <span className="text-xs text-text-muted">Sorted by deadline</span>
+        <span className="text-caption text-text-muted">Sorted by deadline</span>
       </div>
       <div>
         {shown.map((item) => (
           <div key={item.key} className="flex flex-wrap items-center gap-4 border-b border-rule px-4 py-4 last:border-b-0 sm:px-5 sm:py-3.5">
             <div className="flex-1 basis-full sm:basis-[300px]">
-              <p className="text-[17px] font-bold text-text sm:text-[15px] sm:font-semibold">
+              <p className="text-section font-bold text-text sm:font-semibold">
                 {item.player ? <PlayerLink id={item.player.id} name={item.title} photoUrl={item.player.photoUrl} size="md" /> : item.title}
               </p>
-              <p className="line-clamp-2 text-[13px] text-text-muted sm:line-clamp-none">{item.description}</p>
+              <p className="line-clamp-2 text-caption text-text-muted sm:line-clamp-none">{item.description}</p>
             </div>
             <div className="basis-[130px] shrink">
-              <p className="text-[11px] text-text-muted">Amount</p>
-              <p className="text-base font-bold text-text">{item.amount != null ? formatCompact(item.amount) : "—"}</p>
+              <p className="text-caption text-text-muted">Amount</p>
+              <p className="text-body font-bold text-text">{item.amount != null ? formatCompact(item.amount) : "—"}</p>
             </div>
             <div className="basis-[130px] shrink">
-              <p className="text-[11px] text-text-muted">Deadline</p>
+              <p className="text-caption text-text-muted">Deadline</p>
               <DeadlineValue deadline={item.deadline} />
             </div>
             <button
               onClick={item.onClick}
-              className="inline-flex w-full min-h-12 items-center justify-center whitespace-nowrap rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-hover transition-colors sm:w-auto sm:min-h-0"
+              className="inline-flex w-full min-h-12 items-center justify-center whitespace-nowrap rounded-lg bg-accent px-4 py-2 text-body font-semibold text-on-accent hover:bg-accent-hover transition-colors sm:w-auto sm:min-h-0"
             >
               {item.actionLabel}
             </button>
@@ -95,7 +95,7 @@ export default function WaitingOnYouBand({
       </div>
       {items.length > 5 && (
         <div className="border-t border-rule px-4 py-2.5 sm:px-5">
-          <button className="text-xs font-semibold text-accent hover:text-accent-hover">
+          <button className="text-caption font-semibold text-accent hover:text-accent-hover">
             View all {items.length} →
           </button>
         </div>

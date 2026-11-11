@@ -36,10 +36,10 @@ export default function AdminAIPage() {
         ) : usage ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatCard label="Total Requests" value={usage.total_requests} />
-              <StatCard label="Prompt Tokens" value={usage.total_prompt_tokens.toLocaleString()} />
-              <StatCard label="Completion Tokens" value={usage.total_completion_tokens.toLocaleString()} />
-              <StatCard label="Est. Cost (USD)" value={`$${usage.total_cost_usd.toFixed(4)}`} highlight />
+              <StatCard label="Total requests" value={usage.total_requests} />
+              <StatCard label="Prompt tokens" value={usage.total_prompt_tokens.toLocaleString()} />
+              <StatCard label="Completion tokens" value={usage.total_completion_tokens.toLocaleString()} />
+              <StatCard label="Est. cost (USD)" value={`$${usage.total_cost_usd.toFixed(4)}`} highlight />
             </div>
 
             {Object.keys(usage.by_endpoint).length > 0 && (

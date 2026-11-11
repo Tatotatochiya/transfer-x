@@ -380,27 +380,27 @@ export default function AdminDashboardPage() {
 
       {/* Row 1 — entity counts */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Total Users"   value={stats.total_users}   onClick={() => navigate("/admin/users")} />
-        <StatCard label="Total Clubs"   value={stats.total_clubs}   onClick={() => navigate("/admin/clubs")} />
-        <StatCard label="Total Players" value={stats.total_players} onClick={() => navigate("/admin/players")} />
+        <StatCard label="Total users"   value={stats.total_users}   onClick={() => navigate("/admin/users")} />
+        <StatCard label="Total clubs"   value={stats.total_clubs}   onClick={() => navigate("/admin/clubs")} />
+        <StatCard label="Total players" value={stats.total_players} onClick={() => navigate("/admin/players")} />
       </div>
 
       {/* Row 2 — live transaction counts */}
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
-          label="Active Sales"
+          label="Active sales"
           value={stats.active_sales}
           accent={stats.active_sales > 0 ? "text-success-text" : "text-text"}
           onClick={() => navigate("/admin/sales")}
         />
         <StatCard
-          label="Open Offers"
+          label="Open offers"
           value={stats.open_offers}
           accent={stats.open_offers > 0 ? "text-accent" : "text-text"}
           onClick={() => navigate("/admin/offers")}
         />
         <StatCard
-          label="Active Deals"
+          label="Active deals"
           value={stats.active_deals}
           accent={stats.active_deals > 0 ? "text-warning-text" : "text-text"}
           sub={`${stats.deals_by_stage["CONFIRMED"] ?? 0} ready to execute`}

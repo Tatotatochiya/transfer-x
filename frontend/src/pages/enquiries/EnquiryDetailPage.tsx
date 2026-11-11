@@ -42,7 +42,7 @@ export default function EnquiryDetailPage() {
   });
 
   if (isLoading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
-  if (isError || !e) return <p className="text-sm text-danger-text">Enquiry not found.</p>;
+  if (isError || !e) return <p className="text-body text-danger-text">Enquiry not found.</p>;
 
   const other = e.role === "owning" ? e.asking_club : e.owning_club;
   const open = e.status === "OPEN";
@@ -50,13 +50,13 @@ export default function EnquiryDetailPage() {
 
   return (
     <div className="max-w-2xl">
-      <button onClick={() => navigate("/board")} className="mb-6 text-sm text-text-muted hover:text-text">
+      <button onClick={() => navigate("/board")} className="mb-6 text-body text-text-muted hover:text-text">
         ← Transfers
       </button>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-text"><PlayerLink id={e.player_id} name={e.player_name ?? "Player"} photoUrl={e.player_photo_url ?? null} size="lg" /></h1>
-          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-text-muted">
+          <h1 className="text-title-sm sm:text-title font-bold text-text"><PlayerLink id={e.player_id} name={e.player_name ?? "Player"} photoUrl={e.player_photo_url ?? null} size="lg" /></h1>
+          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-small text-text-muted">
             {e.role === "owning" ? (
               <><ClubLink id={other.id} name={other.name} crestUrl={other.id ? other.crest_url ?? null : undefined} /> is asking about your player</>
             ) : (
@@ -92,7 +92,7 @@ export default function EnquiryDetailPage() {
           then any offer and deal that follow it. */}
       <div className="rounded-xl bg-surface p-5 ring-1 ring-border">
         <ConversationPanel context={{ enquiryId: e.id }} placeholder="Write a reply…" />
-        {!open && <p className="mt-3 border-t border-rule-faint pt-3 text-[13px] text-text-muted">This enquiry is closed.</p>}
+        {!open && <p className="mt-3 border-t border-rule-faint pt-3 text-caption text-text-muted">This enquiry is closed.</p>}
       </div>
     </div>
   );

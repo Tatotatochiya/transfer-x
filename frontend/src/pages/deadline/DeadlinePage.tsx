@@ -20,7 +20,7 @@ function Countdown({ closesAt, lite }: { closesAt: string; lite: boolean }) {
   const c = useDeadlineCountdown(closesAt);
   const colour = c.state === "danger" || c.state === "expired" ? "text-danger-text" : c.state === "warning" ? "text-warning-text" : "text-text";
   return (
-    <span className={`font-extrabold tabular-nums ${colour} ${lite ? "text-[2rem] sm:text-[2.5rem]" : "text-2xl"}`}>
+    <span className={`font-bold tabular-nums ${colour} ${lite ? "text-display-sm sm:text-display sm:text-display" : "text-headline sm:text-title"}`}>
       {c.state === "expired" ? "Closed" : c.label}
     </span>
   );
@@ -38,32 +38,32 @@ function Row({ item, lite }: { item: DeadlineItem; lite: boolean }) {
     <li className={`flex flex-wrap items-center gap-x-4 gap-y-2 bg-surface ring-1 ${mine ? "ring-2 ring-accent" : "ring-border"} ${
       lite ? "rounded-[20px] px-5 py-4" : "rounded-xl px-4 py-3"}`}>
       <div className="min-w-0 flex-1 basis-56">
-        <p className={`font-extrabold text-text ${lite ? "text-[1.25rem]" : "text-sm"}`}>
+        <p className={`font-bold text-text ${lite ? "text-headline" : "text-body"}`}>
           {item.player_name}
-          <span className={`ml-2 font-semibold text-text-muted ${lite ? "text-[1rem]" : "text-xs"}`}>
+          <span className={`ml-2 font-semibold text-text-muted ${lite ? "text-body" : "text-caption"}`}>
             {item.side === "BUYING" ? "Buying" : "Selling"}
             {item.counterparty ? (item.side === "BUYING" ? ` from ${item.counterparty}` : ` to ${item.counterparty}`) : ""}
             {item.amount != null ? ` · ${formatCompactCurrency(item.amount)}` : ""}
           </span>
         </p>
-        <p className={`text-text-secondary ${lite ? "text-[1.0625rem]" : "text-sm"}`}>
+        <p className={`text-text-secondary ${lite ? "text-section" : "text-body"}`}>
           {item.stage}{item.next_step ? ` · next: ${item.next_step.label}` : ""}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {who && (
           <span className={`rounded-full px-2.5 py-0.5 font-semibold ${mine ? "bg-accent-bg text-accent" : "bg-surface-inset text-text-secondary"} ${
-            lite ? "text-[0.9375rem]" : "text-xs"}`}>{who}</span>
+            lite ? "text-body" : "text-caption"}`}>{who}</span>
         )}
         {item.at_risk && (
-          <span className={`rounded-full bg-danger-bg px-2.5 py-0.5 font-semibold text-danger-text ${lite ? "text-[0.9375rem]" : "text-xs"}`}>
+          <span className={`rounded-full bg-danger-bg px-2.5 py-0.5 font-semibold text-danger-text ${lite ? "text-body" : "text-caption"}`}>
             At risk · {item.steps_left} step{item.steps_left === 1 ? "" : "s"} left
           </span>
         )}
         <Link
           to={lite ? liteLink(item) : item.link}
           className={`flex items-center rounded-xl font-bold no-underline ${mine ? "bg-accent text-on-accent" : "text-text ring-1 ring-border hover:ring-accent"} ${
-            lite ? "min-h-[3.25rem] px-5 text-[1.0625rem]" : "min-h-11 px-3 text-sm lg:min-h-0 lg:py-1.5"}`}
+            lite ? "min-h-[3.25rem] px-5 text-section" : "min-h-11 px-3 text-body lg:min-h-0 lg:py-1.5"}`}
         >
           {mine ? "Do it now" : "Open"}
         </Link>
@@ -74,8 +74,8 @@ function Row({ item, lite }: { item: DeadlineItem; lite: boolean }) {
 
 export default function DeadlinePage({ lite = false }: { lite?: boolean }) {
   const { data, isLoading, isError } = useDeadline();
-  const h1 = lite ? "text-[2rem] sm:text-[2.375rem]" : "text-2xl";
-  const body = lite ? "text-[1.125rem]" : "text-sm";
+  const h1 = lite ? "text-display-sm sm:text-display" : "text-headline sm:text-title";
+  const body = lite ? "text-section" : "text-small";
 
   if (isLoading) return <div className="flex justify-center py-16"><Spinner size="lg" /></div>;
   if (isError || !data) return <p className={`${body} text-danger-text`}>We couldn&rsquo;t load deadline day. Try again in a moment.</p>;
@@ -85,7 +85,7 @@ export default function DeadlinePage({ lite = false }: { lite?: boolean }) {
     <div className={`flex flex-col ${lite ? "gap-6" : "gap-4"}`}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className={`font-extrabold tracking-[-0.02em] text-text ${h1}`}>Deadline day</h1>
+          <h1 className={`font-bold tracking-[-0.02em] text-text ${h1}`}>Deadline day</h1>
           <p className={`text-text-secondary ${body}`}>
             {w.state === "open" && w.closes_at
               ? `${w.name ?? "The window"} closes ${formatDateTime(w.closes_at)}.`
@@ -117,7 +117,7 @@ export default function DeadlinePage({ lite = false }: { lite?: boolean }) {
       )}
 
       {w.state === "open" && (
-        <p className={`text-text-muted ${lite ? "text-[0.9375rem]" : "text-xs"}`}>
+        <p className={`text-text-muted ${lite ? "text-body" : "text-caption"}`}>
           &ldquo;At risk&rdquo; is a rough guide: fewer than {data.hours_per_step} hours left for each step still to do
           (agreeing the fee, personal terms, paperwork, signing). It shows what to chase, not what will fail.
         </p>
