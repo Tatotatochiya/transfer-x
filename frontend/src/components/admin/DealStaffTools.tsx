@@ -48,7 +48,7 @@ export default function DealStaffTools({ deal }: { deal: Deal }) {
   const open = deal.status === "IN_PROGRESS" || deal.status === "PENDING_COMPLETION";
   if (!open) {
     return (
-      <div className="rounded-xl bg-surface-inset px-4 py-3 text-sm text-text-muted ring-1 ring-border">
+      <div className="rounded-xl bg-surface-inset px-4 py-3 text-small text-text-muted ring-1 ring-border">
         Staff tools: this deal is {deal.status.toLowerCase().replace("_", " ")}, so there&rsquo;s nothing to change.
       </div>
     );
@@ -69,13 +69,13 @@ export default function DealStaffTools({ deal }: { deal: Deal }) {
   const awaitingCompletion = deal.status === "PENDING_COMPLETION";
 
   return (
-    <section aria-label="Staff tools" className="rounded-xl bg-surface p-4 ring-1 ring-warning-fill/40">
-      <p className="text-xs font-semibold uppercase tracking-wider text-warning-text">Staff tools</p>
-      <p className="mt-1 text-sm text-text-secondary">
+    <section aria-label="Staff tools" className="rounded-xl bg-surface p-4 ring-1 ring-warning-ring">
+      <p className="text-caption font-semibold text-warning-text">Staff tools</p>
+      <p className="mt-1 text-body text-text-secondary">
         For a deal that has stuck. Each step follows the deal&rsquo;s own rules and needs a reason.
       </p>
 
-      <div className="mt-3 flex flex-col gap-3 text-sm">
+      <div className="mt-3 flex flex-col gap-3 text-small">
         {deal.stage !== "PAPERWORK" && deal.stage !== "CONFIRMED" && (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-text">Move the deal on a stage</span>
@@ -131,7 +131,7 @@ export default function DealStaffTools({ deal }: { deal: Deal }) {
                 aria-label="New completion deadline"
                 value={until}
                 onChange={(e) => setUntil(e.target.value)}
-                className="rounded-lg bg-surface px-2 py-1.5 text-sm text-text ring-1 ring-input-border"
+                className="rounded-lg bg-surface px-2 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border"
               />
               <Button size="sm" variant="secondary" disabled={run.isPending || !until}
                 onClick={() => act("deadline", "Move the completion deadline", `The new deadline is ${new Date(until).toLocaleString("en-GB")}.`,

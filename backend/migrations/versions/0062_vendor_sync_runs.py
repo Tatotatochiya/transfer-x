@@ -16,6 +16,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # The reference snapshot (backend/seeds/transferx_reference_20260808.dump)
+    # was taken at 0059 with this table already present, so a database
+    # restored from it would fail here. Same shape either way: skip it.
+    if sa.inspect(op.get_bind()).has_table("vendor_sync_runs"):
+        return
     op.create_table(
         "vendor_sync_runs",
         sa.Column("id", sa.Uuid(as_uuid=True), primary_key=True),

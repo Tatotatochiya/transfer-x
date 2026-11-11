@@ -16,6 +16,7 @@ interface Marker {
 /**
  * The markers on the price track (§5.8): their first and latest fee, the
  * seller's own valuation (seller only: it is confidential), and my latest.
+ * In ink only, theirs hollow and mine filled: the labels say who's who.
  * A marker that repeats another's amount is dropped, keeping the later one.
  */
 export function standingMarkers(rounds: OfferRound[], side: "buyer" | "seller", valuation: number | null): Marker[] {
@@ -23,14 +24,14 @@ export function standingMarkers(rounds: OfferRound[], side: "buyer" | "seller", 
   const mine = rounds.filter((r) => r.side === "me" && r.fee != null);
   const list: Marker[] = [];
   if (theirs.length) {
-    list.push({ key: "first", label: "Their first", value: theirs[0].fee!, dot: "bg-surface ring-2 ring-danger", text: "text-text" });
-    list.push({ key: "theirs", label: "Their offer", value: theirs[theirs.length - 1].fee!, dot: "bg-danger", text: "text-danger-text" });
+    list.push({ key: "first", label: "Their first", value: theirs[0].fee!, dot: "bg-surface ring-2 ring-text-muted", text: "text-text-secondary" });
+    list.push({ key: "theirs", label: "Their offer", value: theirs[theirs.length - 1].fee!, dot: "bg-surface ring-2 ring-text-secondary", text: "text-text-secondary" });
   }
   if (side === "seller" && valuation != null) {
-    list.push({ key: "valuation", label: "Your valuation", value: valuation, dot: "bg-accent", text: "text-accent-active" });
+    list.push({ key: "valuation", label: "Your valuation", value: valuation, dot: "bg-text-secondary", text: "text-text" });
   }
   if (mine.length) {
-    list.push({ key: "mine", label: side === "seller" ? "Your ask" : "Your offer", value: mine[mine.length - 1].fee!, dot: "bg-surface ring-2 ring-accent", text: "text-text" });
+    list.push({ key: "mine", label: side === "seller" ? "Your ask" : "Your offer", value: mine[mine.length - 1].fee!, dot: "bg-text", text: "text-text" });
   }
   return list.filter((m, i) => !list.slice(i + 1).some((later) => later.value === m.value));
 }
@@ -51,7 +52,7 @@ function Track({ markers }: { markers: Marker[] }) {
       <div className="absolute inset-x-0 top-[39px] h-1.5 rounded-full bg-border-quiet" />
       {theirs && near && (
         <div
-          className="absolute top-[39px] h-1.5 bg-danger-ring"
+          className="absolute top-[39px] h-1.5 bg-border"
           style={{ left: `${Math.min(pos(theirs.value), pos(near.value))}%`, width: `${Math.abs(pos(near.value) - pos(theirs.value))}%` }}
         />
       )}
@@ -68,8 +69,8 @@ function Track({ markers }: { markers: Marker[] }) {
               className={`absolute whitespace-nowrap ${align} ${above ? "top-0" : "top-[52px]"}`}
               style={end ? { [end]: 0 } : { left: `${p}%` }}
             >
-              <span className={`block text-[13px] font-bold leading-tight ${m.text}`}>{formatCurrency(m.value)}</span>
-              <span className="block text-xs leading-tight text-text-muted">{m.label}</span>
+              <span className={`block text-caption font-bold leading-tight ${m.text}`}>{formatCurrency(m.value)}</span>
+              <span className="block text-small leading-tight text-text-muted">{m.label}</span>
             </span>
           </div>
         );
@@ -90,11 +91,11 @@ export function RoundsList({ offer, rounds, other }: { offer: Offer; rounds: Off
       {[...rounds].reverse().map((r, i) => (
         <li key={`${r.at}-${i}`} className="flex items-start justify-between gap-3 py-2.5">
           <div className="min-w-0">
-            <p className="text-[15px] font-semibold text-text">{who(r)} {VERB[r.kind]}</p>
-            <p className="text-[13px] text-text-muted">{formatDate(r.at)}</p>
-            {i === 0 && r.kind !== "SENT" && summary && <p className="mt-0.5 text-sm text-text-secondary">{summary}</p>}
+            <p className="text-body font-semibold text-text">{who(r)} {VERB[r.kind]}</p>
+            <p className="text-small text-text-muted">{formatDate(r.at)}</p>
+            {i === 0 && r.kind !== "SENT" && summary && <p className="mt-0.5 text-body text-text-secondary">{summary}</p>}
           </div>
-          {r.fee != null && !isLoan(offer) && <p className="shrink-0 text-[15px] font-bold text-text">{formatCurrency(r.fee)}</p>}
+          {r.fee != null && !isLoan(offer) && <p className="shrink-0 text-body font-bold text-text">{formatCurrency(r.fee)}</p>}
         </li>
       ))}
     </ol>
@@ -130,8 +131,8 @@ export default function OfferStanding({ offer, myClubId, side, other, card, desk
     return (
       <section aria-label="Where it stands" className="flex items-center gap-6 rounded-xl bg-surface px-4 py-3.5 ring-1 ring-border">
         <div className="w-[150px] shrink-0">
-          <p className="text-[15px] font-semibold text-text">Where it stands</p>
-          <p className="text-sm text-text-muted">
+          <p className="text-body font-semibold text-text">Where it stands</p>
+          <p className="text-small text-text-muted">
             Round {n} ·{" "}
             <button type="button" onClick={onShowHistory} className="font-semibold text-accent hover:underline">all rounds</button>
           </p>
@@ -144,8 +145,8 @@ export default function OfferStanding({ offer, myClubId, side, other, card, desk
   return (
     <section aria-label="Where it stands" className="rounded-xl bg-surface px-4 py-3.5 ring-1 ring-border">
       <div className="flex items-baseline justify-between">
-        <p className="text-[15px] font-semibold text-text">Where it stands</p>
-        <p className="text-sm text-text-muted">Round {n}</p>
+        <p className="text-body font-semibold text-text">Where it stands</p>
+        <p className="text-small text-text-muted">Round {n}</p>
       </div>
       {track && <div className="mt-1">{track}</div>}
       <button
@@ -153,7 +154,7 @@ export default function OfferStanding({ offer, myClubId, side, other, card, desk
         aria-expanded={roundsOpen}
         aria-controls="offer-rounds"
         onClick={onToggleRounds}
-        className="min-h-11 text-[15px] font-semibold text-accent"
+        className="min-h-11 text-body font-semibold text-accent"
       >
         {roundsOpen ? "Hide rounds" : `Show all ${n} round${n === 1 ? "" : "s"}`}
       </button>

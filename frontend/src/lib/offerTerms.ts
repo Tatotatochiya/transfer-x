@@ -20,14 +20,16 @@ export function isLoan(o: { deal_type?: string | null }): boolean {
 /**
  * The one figure a list row shows. Never "TBD": a missing fee is a deliberate
  * term (the offer form makes "no fee" an explicit choice), not an open question.
+ * Full figures by default (terms, forms, order books where bids sit close);
+ * pass formatCompact for headers, status cards and list rows.
  */
-export function offerHeadline(o: OfferMoney | OrderBookEntry): string {
+export function offerHeadline(o: OfferMoney | OrderBookEntry, format: (v: number) => string = formatCurrency): string {
   if (isLoan(o)) {
     const fee = num(o.loan_fee);
-    return fee ? `${formatCurrency(fee)} loan fee` : "No loan fee";
+    return fee ? `${format(fee)} loan fee` : "No loan fee";
   }
   const fee = num(o.fee_amount);
-  return fee != null ? formatCurrency(fee) : "No fee";
+  return fee != null ? format(fee) : "No fee";
 }
 
 /** Share of the player's wage the borrowing club pays, as a whole percentage. */

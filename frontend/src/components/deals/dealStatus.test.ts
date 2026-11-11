@@ -71,7 +71,7 @@ describe("getDealStatus: finished deals", () => {
     const unpaid = getDealStatus(deal({ status: "COMPLETED", stage: "COMPLETED", completed_at: "2026-11-09T10:00:00Z",
       instalments: [inst(true, "2026-11-09"), inst(false, "2027-01-15")] as Deal["instalments"] }), viewer());
     expect(unpaid).toMatchObject({ tone: "done", headline: "Bram Wouters is a Meridian FC player" });
-    expect(unpaid.body).toBe("Next instalment: £1,800,000 due 15 Jan 2027.");
+    expect(unpaid.body).toBe("Next instalment: £1.8M due 15 Jan 2027.");
     expect(unpaid.secondary).toMatchObject({ kind: "show-schedule" });
     const paid = getDealStatus(deal({ status: "COMPLETED", stage: "COMPLETED", instalments: [inst(true, "2026-11-09")] as Deal["instalments"] }), viewer({ side: "seller" }));
     expect(paid.body).toBe("All instalments are paid.");
@@ -254,7 +254,7 @@ describe("getDealStatus: agreement", () => {
   it("a club moves it on to personal terms (D8)", () => {
     const v = getDealStatus(deal(), viewer());
     expect(v.primary).toEqual({ kind: "advance", label: "Move on to personal terms" });
-    expect(v.body).toBe("Both clubs agreed £5,400,000. Either club can move it on; Bram Wouters then has to agree his personal terms.");
+    expect(v.body).toBe("Both clubs agreed £5.4M. Either club can move it on; Bram Wouters then has to agree his personal terms.");
   });
 
   it("with no selling club, the buyer moves it on", () => {
@@ -287,7 +287,7 @@ describe("dealStages", () => {
 
   it("notes what each stage agreed", () => {
     const d = deal({ stage: "PAPERWORK", agreed_wage_weekly: 38_000, agent_commission_pct: 0.06, agent });
-    expect(stageNote(d, null, "AGREEMENT", "done")).toBe("Clubs agreed £5,400,000");
+    expect(stageNote(d, null, "AGREEMENT", "done")).toBe("Clubs agreed £5.4M");
     expect(stageNote(d, null, "AGENT_NEGOTIATION", "done")).toBe("Agent agreed 6.0%");
     expect(stageNote(d, null, "PERSONAL_TERMS", "done")).toBe("Bram agreed £38,000/wk");
     expect(stageNote(d, null, "PAPERWORK", "now")).toBe("Paperwork 0 of 4");

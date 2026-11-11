@@ -44,7 +44,7 @@ export default function DemoOfferControls({ offerId }: { offerId: string }) {
   if (!data?.in_demo || !data.house_move || !data.actions?.length) return null;
   const amount = Number(fee) > 0 ? Math.round(Number(fee) * 1_000_000) : undefined;
   return (
-    <div role="region" aria-label="Demo controls" className="mb-4 rounded-xl bg-warning-fill/10 px-4 py-3 text-sm ring-1 ring-warning-fill/30">
+    <div role="region" aria-label="Demo controls" className="mb-4 rounded-xl bg-warning-bg px-4 py-3 text-small ring-1 ring-warning-ring">
       <p className="font-semibold text-text">Demo: make {data.house_club} answer now</p>
       <p className="mt-0.5 text-text-secondary">Instead of waiting for its rules. Reset undoes it like everything else.</p>
       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -59,7 +59,7 @@ export default function DemoOfferControls({ offerId }: { offerId: string }) {
                 onChange={(e) => setFee(e.target.value)}
                 placeholder="£m"
                 aria-label="Counter fee in millions of pounds"
-                className="w-20 rounded-lg bg-surface px-2 py-1 text-sm text-text ring-1 ring-input-border"
+                className="w-20 rounded-lg bg-surface px-2 py-1 text-input lg:text-body text-text ring-1 ring-input-border"
               />
               <button
                 type="button"

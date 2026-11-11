@@ -9,9 +9,9 @@ interface MetricProps {
 
 export default function Metric({ label, value, valueNode, className = "" }: MetricProps) {
   return (
-    <div className={`flex items-center justify-between text-sm ${className}`}>
+    <div className={`flex items-center justify-between text-small ${className}`}>
       <span className="text-text-muted">{label}</span>
-      <span className="font-semibold text-text">{valueNode ?? value}</span>
+      <span className="font-semibold tabular-nums text-text">{valueNode ?? value}</span>
     </div>
   );
 }

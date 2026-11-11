@@ -1,6 +1,6 @@
 ---
 title: "Responsive Behaviour"
-last_updated: 2026-11-09
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Design Owner"
 ---
@@ -170,15 +170,16 @@ Minimum 44×44px for anything tappable, below 1024px. This affects:
 
 ## Typography on small screens
 
-Do **not** scale type down. The only changes:
+Do **not** scale type down. Every role is the same size on every device, except:
 
-| Role | Desktop | Mobile |
+| Role | Below 640px | From 640px |
 |---|---|---|
-| Page title | 24px | 20px |
-| Tier-2 figure value | 28px | 24px |
-| Section heading | 18px | 17px |
+| Title (page `h1`) | 22px | 24px |
+| Display (hero figure) | 28px | 32px |
+| Inputs | 16px below 1024px | 15px from 1024px |
 
-Everything else stays. Body copy is 14px on every device.
+Body is 15px on every device (it was 14px). Never pair a phone size with a smaller desktop size
+(`text-body lg:text-small`). See [`TOKENS.md`](./TOKENS.md) "Typography".
 
 ## Page padding
 

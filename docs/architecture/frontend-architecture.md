@@ -1,6 +1,6 @@
 ---
 title: "Frontend Architecture"
-last_updated: 2026-10-11
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Technical Owner"
 ---
@@ -74,7 +74,7 @@ Lite (`pages/lite/`, `LiteLayout`) is a big-type interface for directors: decide
 
 ## Styling
 
-Tailwind CSS v4, with the design tokens defined as CSS variables in `index.css`, light and dark. The rules (four tiers, "whose move", type sizes, touch targets, responsive patterns) are in [`../design-system/`](../design-system/README.md).
+Tailwind CSS v4, with the design tokens defined as CSS variables in `index.css`, light and dark, and the type roles (`text-caption` … `text-display`, the `eyebrow` utility, Lite's `text-lite-*`) in a static `@theme` block there. Components use roles and colour tokens only; `src/test/designSystem.test.ts` enforces it. The rules (four tiers, "whose move", type sizes, touch targets, responsive patterns) are in [`../design-system/`](../design-system/README.md).
 
 ## Related documents
 

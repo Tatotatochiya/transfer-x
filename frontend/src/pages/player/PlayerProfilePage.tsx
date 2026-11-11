@@ -36,9 +36,9 @@ function VisibilitySelector({
           type="button"
           onClick={() => onChange(opt.value)}
           title={opt.description}
-          className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium ring-1 transition-all ${
+          className={`flex-1 rounded-lg px-3 py-2 text-caption font-medium ring-1 transition-all ${
             value === opt.value
-              ? "bg-accent/15 ring-accent text-accent"
+              ? "bg-accent-bg ring-accent text-accent"
               : "bg-surface-inset ring-input-border text-text-muted hover:text-text hover:ring-accent"
           }`}
         >
@@ -81,21 +81,21 @@ function MandateRow({
     <div className="flex items-start justify-between gap-4 py-3 border-b border-rule-faint last:border-0">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-text">Agent representation</span>
+          <span className="text-body font-medium text-text">Agent representation</span>
           {mandate.exclusive && <Badge variant="success">Exclusive</Badge>}
         </div>
-        <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-text-muted">
+        <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-small text-text-muted">
           {mandate.start_date && <span>From {mandate.start_date}</span>}
           {mandate.end_date   && <span>Until {mandate.end_date}</span>}
           {mandate.territory  && <span>Territory: {mandate.territory}</span>}
           <span>Since {new Date(mandate.created_at).toLocaleDateString()}</span>
         </div>
-        {error && <p className="mt-1 text-xs text-danger-text">{error}</p>}
+        {error && <p className="mt-1 text-small text-danger-text">{error}</p>}
       </div>
       <button
         onClick={handleRevoke}
         disabled={revoking}
-        className="shrink-0 rounded-lg bg-danger/10 px-3 py-1.5 text-xs font-medium text-danger-text ring-1 ring-danger/30 hover:bg-danger/20 transition-colors disabled:opacity-50"
+        className="shrink-0 rounded-lg bg-danger-bg px-3 py-1.5 text-caption font-medium text-danger-text ring-1 ring-danger-ring hover:brightness-95 transition-colors disabled:opacity-50"
       >
         {revoking ? "Revoking…" : "Revoke"}
       </button>
@@ -199,20 +199,20 @@ export default function PlayerProfilePage() {
 
       {/* Visibility & open-to-offers controls */}
       <Card>
-        <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">
+        <p className="mb-4 text-caption font-semibold text-text-secondary">
           Profile settings
         </p>
 
         <div className="space-y-4">
           <div>
-            <p className="mb-2 text-sm font-medium text-text-secondary">Visibility</p>
+            <p className="mb-2 text-body font-medium text-text-secondary">Visibility</p>
             <VisibilitySelector value={visibility} onChange={handleVisibilityChange} />
           </div>
 
           {player.current_club ? (
             <div>
-              <p className="text-sm font-medium text-text-secondary">Available for transfer</p>
-              <p className="text-xs text-text-muted">
+              <p className="text-body font-medium text-text-secondary">Available for transfer</p>
+              <p className="text-small text-text-muted">
                 {player.open_to_offers
                   ? `Yes — ${player.current_club.name} has listed you.`
                   : `Not listed. ${player.current_club.name} makes you available by listing you.`}
@@ -221,14 +221,14 @@ export default function PlayerProfilePage() {
           ) : (
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-text-secondary">Open to offers</p>
-              <p className="text-xs text-text-muted">Clubs can express interest in signing you</p>
+              <p className="text-body font-medium text-text-secondary">Open to offers</p>
+              <p className="text-small text-text-muted">Clubs can express interest in signing you</p>
             </div>
             <button
               type="button"
               onClick={() => handleOTOChange(!openToOffers)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                openToOffers ? "bg-success" : "bg-border"
+                openToOffers ? "bg-accent" : "bg-border"
               }`}
             >
               <span
@@ -242,7 +242,7 @@ export default function PlayerProfilePage() {
 
           {dirty && (
             <Button
-              variant="primary-success"
+              variant="primary"
               className="w-full"
               loading={saving}
               onClick={handleSave}
@@ -257,13 +257,13 @@ export default function PlayerProfilePage() {
 
       {/* Personal terms consent (TRA-74) */}
       {dealInPersonalTerms && personalTerms && personalTerms.player_consent === "PENDING" && (
-        <div className="mt-6 rounded-xl bg-warning-bg ring-1 ring-warning-fill/25 px-5 py-5">
-          <p className="text-sm font-semibold text-warning-text mb-1">Personal terms require your consent</p>
-          <p className="text-xs text-warning-text-alt mb-4">
+        <div className="mt-6 rounded-xl bg-warning-bg ring-1 ring-warning-ring px-5 py-5">
+          <p className="text-body font-semibold text-warning-text mb-1">Personal terms require your consent</p>
+          <p className="text-small text-warning-text-alt mb-4">
             Your agent has proposed the following contract terms to join{" "}
             <span className="font-semibold text-warning-text">{personalTerms.buyer_club_name}</span>. Review and respond.
           </p>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mb-5">
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-small mb-5">
             {personalTerms.wage_weekly != null && (
               <><dt className="text-text-muted">Weekly wage</dt><dd className="text-text font-semibold">{formatWage(personalTerms.wage_weekly)}</dd></>
             )}
@@ -278,30 +278,30 @@ export default function PlayerProfilePage() {
             <button
               onClick={() => consentMutation.mutate("AGREED")}
               disabled={consentMutation.isPending}
-              className="flex-1 rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white hover:bg-success-text-alt transition-colors disabled:opacity-50"
+              className="flex-1 rounded-lg bg-accent px-4 py-2 text-body font-semibold text-on-accent hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
               {consentMutation.isPending ? "…" : "Accept terms"}
             </button>
             <button
               onClick={() => consentMutation.mutate("DECLINED")}
               disabled={consentMutation.isPending}
-              className="flex-1 rounded-lg bg-danger/15 px-4 py-2 text-sm font-semibold text-danger-text ring-1 ring-danger/30 hover:bg-danger/25 transition-colors disabled:opacity-50"
+              className="flex-1 rounded-lg bg-danger-bg px-4 py-2 text-body font-semibold text-danger-text ring-1 ring-danger-ring hover:brightness-95 transition-colors disabled:opacity-50"
             >
               Decline
             </button>
           </div>
           {consentMutation.isError && (
-            <p className="mt-2 text-xs text-danger-text">Failed to respond. Please try again.</p>
+            <p className="mt-2 text-small text-danger-text">Failed to respond. Please try again.</p>
           )}
         </div>
       )}
 
       {/* Personal terms accepted/declined status (read-only) */}
       {dealInPersonalTerms && personalTerms && personalTerms.player_consent !== "PENDING" && (
-        <div className={`mt-6 rounded-xl px-5 py-4 text-sm ring-1 ${
+        <div className={`mt-6 rounded-xl px-5 py-4 text-small ring-1 ${
           personalTerms.player_consent === "AGREED"
-            ? "bg-success/10 text-success-text-alt ring-success/20"
-            : "bg-danger/10 text-danger-text-alt ring-danger/20"
+            ? "bg-success-bg text-success-text-alt ring-success-ring"
+            : "bg-danger-bg text-danger-text-alt ring-danger-ring"
         }`}>
           <p className="font-semibold">
             Personal terms {personalTerms.player_consent === "AGREED" ? "accepted" : "declined"} — {personalTerms.buyer_club_name}
@@ -312,12 +312,12 @@ export default function PlayerProfilePage() {
       {/* Representation */}
       <div className="mt-6">
         <Card>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
+          <p className="mb-2 text-caption font-semibold text-text-secondary">
             Representation
           </p>
 
           {mandates.length === 0 ? (
-            <p className="text-sm text-text-muted py-2">
+            <p className="text-small text-text-muted py-2">
               No active agent representation.
             </p>
           ) : (

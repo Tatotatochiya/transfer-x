@@ -6,8 +6,8 @@ const TONE: Record<StatusCardTone, { ring: string; overline: string }> = {
   you: { ring: "ring-danger-ring", overline: "text-danger-text" },
   wait: { ring: "ring-border", overline: "text-text-secondary" },
   info: { ring: "ring-border", overline: "text-text-muted" },
-  hold: { ring: "ring-warning-fill/40", overline: "text-warning-text" },
-  done: { ring: "ring-success/30", overline: "text-success-text" },
+  hold: { ring: "ring-warning-ring", overline: "text-warning-text" },
+  done: { ring: "ring-success-ring", overline: "text-success-text" },
   collapsed: { ring: "ring-danger-border", overline: "text-danger-text-alt" },
   closed: { ring: "ring-border", overline: "text-text-muted" },
 };
@@ -52,15 +52,15 @@ export default function StatusCardShell({
     <StatusCardFrame labelledBy={headlineId} ring={t.ring}>
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:gap-5 lg:flex-nowrap lg:items-center lg:gap-7">
         <div className="min-w-0 sm:flex-[1_1_360px] lg:flex-1">
-          <p className={`text-xs font-bold uppercase tracking-[0.05em] ${overlineClassName ?? t.overline}`}>
+          <p className={`eyebrow ${overlineClassName ?? t.overline}`}>
             {overline}
             {meta && (
-              <span className={`text-[13px] font-semibold normal-case tracking-normal ${overlineClassName ?? "text-text-secondary"}`}>
+              <span className={`text-caption font-semibold normal-case tracking-normal ${overlineClassName ?? "text-text-secondary"}`}>
                 {" · "}{meta}
               </span>
             )}
           </p>
-          <h2 id={headlineId} tabIndex={-1} className="mt-1.5 text-[19px] font-bold leading-snug text-text focus:outline-none lg:text-xl">
+          <h2 id={headlineId} tabIndex={-1} className="mt-1.5 text-headline font-bold text-text focus:outline-none">
             {headline}
           </h2>
           {body}

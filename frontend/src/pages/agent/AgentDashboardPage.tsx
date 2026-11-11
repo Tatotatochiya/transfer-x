@@ -59,21 +59,21 @@ function ClientCard({ client }: { client: RepresentedPlayerItem }) {
       <Card hover>
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-text">{client.player_name}</p>
-            <div className="mt-0.5 flex items-center gap-2 text-xs">
+            <p className="text-body font-semibold text-text">{client.player_name}</p>
+            <div className="mt-0.5 flex items-center gap-2 text-caption">
               {client.player_position && <span className="text-text-muted">{client.player_position}</span>}
               <span className={CLIENT_STATUS_COLOUR[client.client_status] ?? "text-text-muted"}>
                 · {CLIENT_STATUS_LABEL[client.client_status] ?? client.client_status}
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs shrink-0">
-            {client.exclusive && <Badge variant="info">Exclusive</Badge>}
+          <div className="flex items-center gap-2 text-caption shrink-0">
+            {client.exclusive && <Badge variant="neutral">Exclusive</Badge>}
             {client.end_date && <span className="text-text-muted">Until {formatDate(client.end_date)}</span>}
             <button
               onClick={handleRevoke}
               disabled={revoking}
-              className="rounded-lg bg-danger-bg px-2.5 py-1 text-xs font-medium text-danger-text ring-1 ring-danger-border hover:bg-danger/15 transition-colors disabled:opacity-50"
+              className="rounded-lg bg-danger-bg px-2.5 py-1 text-caption font-medium text-danger-text ring-1 ring-danger-border hover:brightness-95 transition-colors disabled:opacity-50"
             >
               {revoking ? "…" : "Revoke"}
             </button>
@@ -191,7 +191,7 @@ export default function AgentDashboardPage() {
 
       <WaitingOnYouBand items={waitingItems} />
 
-      <div className="mb-[18px] grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
+      <div className="mb-[18px] grid grid-cols-2 gap-3.5 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]">
         <FigureCard label="Active deals" value={String(pipeline?.deals_in_progress ?? 0)} />
         <FigureCard label="Completed (90d)" value={String(pipeline?.deals_completed_this_window ?? 0)} />
         <FigureCard
@@ -214,18 +214,18 @@ export default function AgentDashboardPage() {
       <div>
         {clients.length === 0 ? (
           <Card tier={4} className="text-center py-10">
-            <p className="text-sm font-medium text-text">No represented players yet</p>
-            <p className="mt-1 text-sm text-text-muted">Browse the market or import your existing roster.</p>
+            <p className="text-body font-medium text-text">No represented players yet</p>
+            <p className="mt-1 text-small text-text-muted">Browse the market or import your existing roster.</p>
             <div className="mt-4 flex justify-center gap-3">
               <Link
                 to="/players/market"
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover transition-colors"
+                className="rounded-lg bg-accent px-4 py-2 text-body font-semibold text-on-accent hover:bg-accent-hover transition-colors"
               >
                 Browse players
               </Link>
               <button
                 onClick={() => navigate("/agent/roster/import")}
-                className="rounded-lg bg-surface-inset px-4 py-2 text-sm font-semibold text-text ring-1 ring-border hover:ring-input-border transition-colors"
+                className="rounded-lg bg-surface-inset px-4 py-2 text-body font-semibold text-text ring-1 ring-border hover:ring-input-border transition-colors"
               >
                 Import roster
               </button>
@@ -234,12 +234,12 @@ export default function AgentDashboardPage() {
         ) : (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+              <p className="text-caption font-semibold text-text-secondary">
                 {clients.length} active mandate{clients.length !== 1 ? "s" : ""}
               </p>
               <button
                 onClick={() => navigate("/agent/roster/import")}
-                className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+                className="text-small text-text-muted hover:text-text-secondary transition-colors"
               >
                 + Import more
               </button>

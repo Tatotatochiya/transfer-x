@@ -42,25 +42,25 @@ function Stepper({ steps }: { steps: ProgressStep[] }) {
       {steps.map((s, i) => {
         const last = i === steps.length - 1;
         const node =
-          s.state === "done" ? "bg-accent text-white"
+          s.state === "done" ? "bg-accent text-on-accent"
             : s.state === "current" ? "bg-surface ring-[3px] ring-accent"
               : s.state === "ended" ? "bg-danger-bg text-danger-text ring-2 ring-danger-border"
                 : "bg-surface ring-2 ring-border";
         return (
           <li key={i} className="flex gap-4" aria-current={s.state === "current" ? "step" : undefined}>
             <div className="flex flex-col items-center">
-              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-extrabold ${node}`}>
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lite-caption font-extrabold ${node}`}>
                 {s.state === "done" ? "✓" : s.state === "current" ? <span className="h-2.5 w-2.5 rounded-full bg-accent" /> : s.state === "ended" ? "!" : null}
               </span>
               {!last && <span className={`w-[3px] flex-1 min-h-6 ${s.state === "done" ? "bg-accent" : "bg-border"}`} />}
             </div>
             <div className={`pb-6 ${last ? "pb-0" : ""}`}>
-              <p className={`text-[1.125rem] leading-8 ${
+              <p className={`text-lite-body leading-8 ${
                 s.state === "current" ? "font-bold text-text" : s.state === "future" ? "text-text-muted" : s.state === "ended" ? "font-semibold text-danger-text" : "text-text"
               }`}>
                 {s.label}
               </p>
-              {s.hint && <p className="text-[1rem] text-text-secondary">{s.hint}</p>}
+              {s.hint && <p className="text-lite-caption text-text-secondary">{s.hint}</p>}
             </div>
           </li>
         );
@@ -88,12 +88,12 @@ function UndoBar({ executeAt, onUndo, busy }: { executeAt: string; onUndo: () =>
       }`}
     >
       <div className="flex items-center justify-between gap-4 px-5 py-3.5">
-        <span className="text-[1.125rem] font-semibold">Sent. Changed your mind?</span>
+        <span className="text-lite-body font-semibold">Sent. Changed your mind?</span>
         <button
           type="button"
           onClick={onUndo}
           disabled={busy || gone}
-          className="min-h-[3.25rem] shrink-0 rounded-xl bg-white px-5 text-[1.0625rem] font-extrabold text-ink disabled:opacity-60"
+          className="min-h-[3.25rem] shrink-0 rounded-xl bg-white px-5 text-lite-body font-extrabold text-ink disabled:opacity-60"
         >
           Undo · {seconds}s
         </button>
@@ -143,8 +143,8 @@ export default function LiteSentPage() {
   if (cancelled) {
     return (
       <div className="flex flex-col items-start gap-4 rounded-3xl bg-surface px-6 py-8 ring-1 ring-border sm:px-8" role="status">
-        <h1 className="text-[1.75rem] font-extrabold text-text sm:text-[2.25rem]">Cancelled. Nothing was sent.</h1>
-        <p className="text-[1.1875rem] text-text-secondary">Taking you back to the card…</p>
+        <h1 className="text-lite-title font-extrabold text-text sm:text-lite-title-lg">Cancelled. Nothing was sent.</h1>
+        <p className="text-lite-section text-text-secondary">Taking you back to the card…</p>
       </div>
     );
   }
@@ -152,9 +152,9 @@ export default function LiteSentPage() {
   if (error || !data) {
     return (
       <div className="flex flex-col items-start gap-4">
-        <h1 className="text-[1.75rem] font-extrabold text-text">We couldn't find that</h1>
-        <p className="text-[1.25rem] text-text-secondary">{getApiError(error, "It may belong to someone else.")}</p>
-        <Link to="/lite" className="text-[1.125rem] font-bold text-accent">Back to home</Link>
+        <h1 className="text-lite-title font-extrabold text-text">We couldn't find that</h1>
+        <p className="text-lite-section text-text-secondary">{getApiError(error, "It may belong to someone else.")}</p>
+        <Link to="/lite" className="text-lite-body font-bold text-accent">Back to home</Link>
       </div>
     );
   }
@@ -170,16 +170,16 @@ export default function LiteSentPage() {
         <header className="flex flex-col items-start gap-4">
           <span
             aria-hidden="true"
-            className={`flex h-16 w-16 items-center justify-center rounded-full text-[2rem] font-extrabold ${failed ? "bg-danger-bg text-danger-text" : "bg-success-text/10 text-success-text"}`}
+            className={`flex h-16 w-16 items-center justify-center rounded-full text-lite-title font-extrabold ${failed ? "bg-danger-bg text-danger-text" : "bg-success-bg text-success-text"}`}
           >
             {failed ? "!" : "✓"}
           </span>
-          <h1 className="text-[1.75rem] font-extrabold tracking-[-0.02em] text-text sm:text-[2.25rem]">{data.progress.title}</h1>
-          <p className="text-[1.1875rem] text-text-secondary">{data.progress.subline}</p>
+          <h1 className="text-lite-title font-extrabold tracking-[-0.02em] text-text sm:text-lite-title-lg">{data.progress.title}</h1>
+          <p className="text-lite-section text-text-secondary">{data.progress.subline}</p>
         </header>
 
         <section className="rounded-3xl bg-surface px-6 py-6 ring-1 ring-border sm:px-8">
-          <h2 className="mb-5 text-[1.25rem] font-bold text-text">Where this deal is</h2>
+          <h2 className="mb-5 text-lite-section font-bold text-text">Where this deal is</h2>
           <Stepper steps={data.progress.steps} />
         </section>
       </div>
@@ -187,33 +187,33 @@ export default function LiteSentPage() {
       <aside className="flex flex-col gap-4">
         {money && (
           <section className="rounded-3xl bg-surface px-6 py-5 ring-1 ring-border">
-            <p className="text-[1rem] font-semibold text-text-secondary">Your transfer budget</p>
-            <p className="mt-1 text-[1.75rem] font-extrabold text-text">
-              {liteMoney(money.transfer_remaining)} <span className="text-[1.0625rem] font-semibold text-text-muted">of {liteMoney(money.transfer_budget)}</span>
+            <p className="text-lite-caption font-semibold text-text-secondary">Your transfer budget</p>
+            <p className="mt-1 text-lite-title font-extrabold text-text">
+              {liteMoney(money.transfer_remaining)} <span className="text-lite-body font-semibold text-text-muted">of {liteMoney(money.transfer_budget)}</span>
             </p>
             <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-inset">
               <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(0, Math.min(100, (money.transfer_remaining / Math.max(1, money.transfer_budget)) * 100))}%` }} />
             </div>
-            <p className="mt-3 text-[0.9375rem] text-text-muted">
+            <p className="mt-3 text-lite-caption text-text-muted">
               {data.status === "HELD" ? "Nothing is held until it's sent." : "Money held for an offer is released if it's turned down or withdrawn."}
             </p>
           </section>
         )}
-        <Link to="/lite" className="flex min-h-[3.75rem] items-center justify-center rounded-xl bg-accent px-6 text-[1.125rem] font-bold text-white no-underline">
+        <Link to="/lite" className="flex min-h-[3.75rem] items-center justify-center rounded-xl bg-accent px-6 text-lite-body font-bold text-on-accent no-underline">
           Back to home
         </Link>
         {dealId ? (
-          <Link to={`/deals/${dealId}`} className="flex min-h-[3.5rem] items-center justify-center rounded-xl px-6 text-[1.0625rem] font-bold text-text no-underline ring-1 ring-border hover:ring-accent">
+          <Link to={`/deals/${dealId}`} className="flex min-h-[3.5rem] items-center justify-center rounded-xl px-6 text-lite-body font-bold text-text no-underline ring-1 ring-border hover:ring-accent">
             Open the deal
           </Link>
         ) : offerId && data.status === "EXECUTED" ? (
-          <Link to={`/offers/${offerId}`} className="flex min-h-[3.5rem] items-center justify-center rounded-xl px-6 text-[1.0625rem] font-bold text-text no-underline ring-1 ring-border hover:ring-accent">
+          <Link to={`/offers/${offerId}`} className="flex min-h-[3.5rem] items-center justify-center rounded-xl px-6 text-lite-body font-bold text-text no-underline ring-1 ring-border hover:ring-accent">
             See the full offer
           </Link>
         ) : failed ? (
           <button type="button" className={textBtn} onClick={() => navigate(back)}>Back to the card</button>
         ) : null}
-        {undo.isError && <p className="text-[1rem] text-danger-text">{getApiError(undo.error, "Too late to undo.")}</p>}
+        {undo.isError && <p className="text-lite-caption text-danger-text">{getApiError(undo.error, "Too late to undo.")}</p>}
       </aside>
 
       {data.status === "HELD" && <UndoBar executeAt={data.execute_at} onUndo={() => undo.mutate()} busy={undo.isPending} />}

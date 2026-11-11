@@ -16,9 +16,9 @@ const SEVERITY_VARIANT: Record<string, "danger" | "warning" | "info"> = {
 };
 
 const SEVERITY_BG: Record<string, string> = {
-  critical: "bg-danger/10 ring-danger/20",
-  warning:  "bg-warning-fill/10 ring-warning-fill/20",
-  info:     "bg-accent/10 ring-accent/20",
+  critical: "bg-danger-bg ring-danger-ring",
+  warning:  "bg-warning-bg ring-warning-ring",
+  info:     "bg-accent-bg ring-accent-ring",
 };
 
 const CATEGORY_LINK: Record<string, (id: string) => string> = {
@@ -42,14 +42,14 @@ function IssueCard({ issue }: { issue: HealthIssue }) {
             {issue.severity}
           </Badge>
           <div>
-            <p className="text-sm font-medium text-text">{issue.message}</p>
-            <p className="mt-0.5 text-xs text-text-muted capitalize">{issue.category}</p>
+            <p className="text-body font-medium text-text">{issue.message}</p>
+            <p className="mt-0.5 text-small text-text-muted capitalize">{issue.category}</p>
           </div>
         </div>
         {issue.details.length > 0 && (
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="shrink-0 text-xs text-text-muted hover:text-text transition-colors"
+            className="shrink-0 text-small text-text-muted hover:text-text transition-colors"
           >
             {expanded ? "Hide" : `Show ${issue.count}`}
           </button>
@@ -60,11 +60,11 @@ function IssueCard({ issue }: { issue: HealthIssue }) {
         <div className="mt-3 space-y-1.5 border-t border-rule pt-3">
           {issue.details.map((d) => (
             <div key={d.id} className="flex items-center justify-between">
-              <p className="text-xs text-text-secondary">{d.label}</p>
+              <p className="text-small text-text-secondary">{d.label}</p>
               {linkFn && (
                 <Link
                   to={linkFn(d.id)}
-                  className="text-xs text-accent hover:text-accent-hover transition-colors"
+                  className="text-small text-accent hover:text-accent-hover transition-colors"
                 >
                   Open →
                 </Link>
@@ -102,11 +102,11 @@ function RequestsSection() {
   const max = Math.max(1, ...data.hours.map((h) => h.count));
   const table = (title: string, rows: RequestHealth["slowest"], metric: (r: RequestHealth["slowest"][number]) => string) => (
     <div className="min-w-0 flex-1 rounded-xl bg-surface ring-1 ring-border">
-      <h3 className="border-b border-rule px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-text-muted">{title}</h3>
-      {rows.length === 0 ? <p className="px-4 py-3 text-xs text-text-muted">None</p> : (
+      <h3 className="border-b border-rule px-4 py-2 text-section font-bold text-text">{title}</h3>
+      {rows.length === 0 ? <p className="px-4 py-3 text-small text-text-muted">None</p> : (
         <ul className="divide-y divide-rule-faint">
           {rows.slice(0, 6).map((r) => (
-            <li key={`${r.method} ${r.route}`} className="flex items-center justify-between gap-3 px-4 py-1.5 text-xs">
+            <li key={`${r.method} ${r.route}`} className="flex items-center justify-between gap-3 px-4 py-1.5 text-small">
               <span className="min-w-0 truncate font-mono text-text" title={`${r.method} ${r.route}`}>{r.method} {r.route}</span>
               <span className="shrink-0 tabular-nums text-text-secondary">{metric(r)}</span>
             </li>
@@ -117,8 +117,8 @@ function RequestsSection() {
   );
   return (
     <section className="mb-6">
-      <h2 className="mb-1 text-sm font-semibold text-text">Requests, last 24 hours</h2>
-      <p className="mb-2 text-xs text-text-muted">
+      <h2 className="mb-1 text-body font-semibold text-text">Requests, last 24 hours</h2>
+      <p className="mb-2 text-small text-text-muted">
         {data.total.toLocaleString("en-GB")} requests · {data.errors.toLocaleString("en-GB")} server errors ({(data.error_rate * 100).toFixed(1)}%)
       </p>
       <div className="mb-3 rounded-xl bg-surface p-4 ring-1 ring-border">
@@ -126,7 +126,7 @@ function RequestsSection() {
           {data.hours.map((h) => (
             <div key={h.hour} className="flex h-full flex-1 flex-col justify-end" title={`${new Date(h.hour).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}: ${h.count} requests, ${h.errors} errors`}>
               {h.errors > 0 && <div className="w-full rounded-t-sm bg-danger" style={{ height: `${(h.errors / max) * 100}%` }} />}
-              <div className={`w-full bg-accent/60 ${h.errors ? "" : "rounded-t-sm"}`} style={{ height: `${((h.count - h.errors) / max) * 100}%` }} />
+              <div className={`w-full bg-text-muted ${h.errors ? "" : "rounded-t-sm"}`} style={{ height: `${((h.count - h.errors) / max) * 100}%` }} />
             </div>
           ))}
         </div>
@@ -156,12 +156,12 @@ export default function AdminHealthPage() {
     <div>
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-text">System Health</h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <h1 className="text-title-sm sm:text-title font-bold text-text">System Health</h1>
+          <p className="mt-1 text-small text-text-muted">
             Services, scheduled jobs, and data integrity checks across deals, sales and contracts
           </p>
           {dataUpdatedAt > 0 && (
-            <p className="mt-0.5 text-xs text-text-muted">
+            <p className="mt-0.5 text-small text-text-muted">
               Last checked {formatDateTime(new Date(dataUpdatedAt).toISOString())}
             </p>
           )}
@@ -179,7 +179,7 @@ export default function AdminHealthPage() {
       {isLoading ? (
         <div className="flex justify-center py-20"><Spinner size="lg" /></div>
       ) : !data ? (
-        <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+        <div className="rounded-xl bg-danger-bg px-5 py-4 text-small text-danger-text ring-1 ring-danger-border">
           Failed to load health report.
         </div>
       ) : (
@@ -187,16 +187,16 @@ export default function AdminHealthPage() {
           {/* Services: what the platform depends on */}
           {data.services && data.services.length > 0 && (
             <section className="mb-6">
-              <h2 className="mb-2 text-sm font-semibold text-text">Services</h2>
+              <h2 className="mb-2 text-body font-semibold text-text">Services</h2>
               <div className="divide-y divide-rule-faint rounded-xl bg-surface ring-1 ring-border">
                 {data.services.map((s) => (
                   <div key={s.key} className="flex items-start gap-3 px-5 py-3">
                     <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${s.ok ? "bg-success" : "bg-warning-fill"}`} />
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-text">
+                      <p className="text-body font-semibold text-text">
                         {s.label} <span className="sr-only">{s.ok ? "working" : "needs attention"}</span>
                       </p>
-                      <p className="text-xs text-text-muted">{s.detail}</p>
+                      <p className="text-small text-text-muted">{s.detail}</p>
                     </div>
                   </div>
                 ))}
@@ -209,16 +209,16 @@ export default function AdminHealthPage() {
           {/* Scheduled jobs */}
           {data.jobs && data.jobs.length > 0 && (
             <section className="mb-6">
-              <h2 className="mb-1 text-sm font-semibold text-text">Scheduled jobs in the web app</h2>
-              <p className="mb-2 text-xs text-text-muted">
+              <h2 className="mb-1 text-body font-semibold text-text">Scheduled jobs in the web app</h2>
+              <p className="mb-2 text-small text-text-muted">
                 Last runs are kept across restarts. The data refresh, run history and logs are on{" "}
                 <Link to="/admin/jobs" className="font-semibold text-accent hover:underline">Jobs</Link>; grouped errors on{" "}
                 <Link to="/admin/errors" className="font-semibold text-accent hover:underline">Errors</Link>.
               </p>
               <div className="overflow-x-auto rounded-xl bg-surface ring-1 ring-border">
-                <table className="w-full min-w-[640px] text-sm">
+                <table className="w-full min-w-[640px] text-small">
                   <thead>
-                    <tr className="border-b border-rule text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                    <tr className="border-b border-rule text-left text-caption font-semibold text-text-secondary">
                       <th className="px-4 py-2">Job</th><th className="px-4 py-2">Every</th>
                       <th className="px-4 py-2">Last run</th><th className="px-4 py-2">Next run</th>
                     </tr>
@@ -244,16 +244,16 @@ export default function AdminHealthPage() {
             </section>
           )}
 
-          <h2 className="mb-2 text-sm font-semibold text-text">Data integrity</h2>
+          <h2 className="mb-2 text-body font-semibold text-text">Data integrity</h2>
           {/* Summary banner */}
           {data.healthy ? (
-            <div className="mb-6 rounded-xl bg-success/10 ring-1 ring-success/20 px-6 py-4 flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success/20 text-success-text font-bold">
+            <div className="mb-6 rounded-xl bg-success-bg ring-1 ring-success-ring px-6 py-4 flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success-bg text-success-text font-bold">
                 ✓
               </div>
               <div>
-                <p className="text-sm font-semibold text-success-text">All checks passed</p>
-                <p className="mt-0.5 text-xs text-text-muted">No data integrity issues detected</p>
+                <p className="text-body font-semibold text-success-text">All checks passed</p>
+                <p className="mt-0.5 text-small text-text-muted">No data integrity issues detected</p>
               </div>
             </div>
           ) : (
@@ -264,8 +264,8 @@ export default function AdminHealthPage() {
                 { label: "Info",     count: infos.length,    variant: "info" as const,      color: "text-accent"      },
               ].map(({ label, count, color }) => (
                 <div key={label} className="rounded-xl bg-surface ring-1 ring-border px-5 py-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">{label}</p>
-                  <p className={`mt-1 text-3xl font-bold ${color}`}>{count}</p>
+                  <p className="text-caption font-semibold text-text-secondary">{label}</p>
+                  <p className={`mt-1 text-display-sm sm:text-display font-bold ${color}`}>{count}</p>
                 </div>
               ))}
             </div>

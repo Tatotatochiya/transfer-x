@@ -1,6 +1,6 @@
 ---
 title: "Screen Specifications"
-last_updated: 2026-11-09
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Design Owner"
 ---
@@ -11,6 +11,15 @@ Layout and component detail per screen. Values not stated here are in `TOKENS.md
 behaviour not stated here is in `RESPONSIVE.md`.
 
 Copy given in quotes is the exact wording to use. These are the screens as designed in the August 2026 redesign; later changes (the board replacing the classic list pages, the compact sidebar and squad table) are in their own specs under `feature_spec/`.
+
+> **Type sizes in this file are historical.** Every size is now a role from
+> [`TOKENS.md`](./TOKENS.md) "Typography": 11–13px → Caption (13), 14px secondary lines and
+> cells → Small, 14–16px reading text, rows and buttons → Body (15), 17–18px headings → Section,
+> 19–20px → Headline, page titles → Title, hero figures → Display. Uppercase labels are
+> sentence-case Captions; column headers and status overlines are `eyebrow`. Colours named
+> here for positions, chart series and Buying/Selling markers are now neutral (TOKENS.md
+> "Colour roles").
+
 
 ---
 

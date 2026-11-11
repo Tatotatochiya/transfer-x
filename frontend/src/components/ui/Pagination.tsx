@@ -13,7 +13,7 @@ export default function Pagination({ page, total, pageSize, onChange }: Paginati
   const end = Math.min(page * pageSize, total);
 
   return (
-    <div className="flex items-center justify-between pt-4 text-sm">
+    <div className="flex items-center justify-between pt-4 text-small">
       <span className="text-text-muted">
         {start}–{end} of {total}
       </span>

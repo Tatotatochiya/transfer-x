@@ -1,6 +1,6 @@
 import type { ActiveDealStub, FairValueSignal, PlayerDetail } from "../../types/api";
 import Card from "../ui/Card";
-import { formatCurrency } from "../../lib/utils";
+import { formatCompact } from "../../lib/utils";
 
 type SquadPlayer = { active_contract?: PlayerDetail["active_contract"] } & {
   id: string; position: string | null; age: number | null; market_value?: number | null;
@@ -46,14 +46,14 @@ function ContractCliff({ players, valueOf }: { players: SquadPlayer[]; valueOf: 
   return (
     <Card tier={4} noPadding>
       <div className="flex flex-col gap-2 px-[18px] py-[13px]">
-        <p className="text-[13px] font-semibold text-text-secondary">Contract cliff</p>
+        <p className="text-caption font-semibold text-text-secondary">Contract cliff</p>
         {windows.map((w) => (
-          <div key={w.label} className="flex items-center justify-between gap-2 whitespace-nowrap text-[13px]">
+          <div key={w.label} className="flex items-center justify-between gap-2 whitespace-nowrap text-small">
             <span className="min-w-0 truncate text-text">
               {w.label} · <span className="text-text-muted">{w.count}</span>
             </span>
             <span className="shrink-0 font-semibold text-text" title="Model value of the players whose contracts end in this window">
-              {w.valueAtRisk > 0 ? formatCurrency(w.valueAtRisk) : "—"}
+              {w.valueAtRisk > 0 ? formatCompact(w.valueAtRisk) : "—"}
             </span>
           </div>
         ))}
@@ -72,12 +72,12 @@ function WageBillByPosition({ players }: { players: SquadPlayer[] }) {
   return (
     <Card tier={4} noPadding>
       <div className="flex flex-col gap-2 px-[18px] py-[13px]">
-        <p className="text-[13px] font-semibold text-text-secondary">Wage bill by position</p>
+        <p className="text-caption font-semibold text-text-secondary">Wage bill by position</p>
         {byPos.map((p) => (
           <div key={p.pos}>
-            <div className="flex items-center justify-between text-[13px]">
+            <div className="flex items-center justify-between text-small">
               <span className="text-text">{p.pos}</span>
-              <span className="font-semibold text-text">{formatCurrency(p.total)}</span>
+              <span className="font-semibold text-text">{formatCompact(p.total)}</span>
             </div>
             <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-border-quiet">
               <div className="h-full bg-accent-soft" style={{ width: `${(p.total / max) * 100}%` }} />
@@ -97,14 +97,14 @@ function AgeProfile({ players }: { players: SquadPlayer[] }) {
   return (
     <Card tier={4} noPadding>
       <div className="flex flex-col gap-2 px-[18px] py-[13px]">
-        <p className="text-[13px] font-semibold text-text-secondary">Age profile</p>
+        <p className="text-caption font-semibold text-text-secondary">Age profile</p>
         {bands.map((b) => (
           <div key={b.label} className="flex items-center gap-2.5">
-            <span className="w-16 shrink-0 text-[11px] text-text-muted">{b.label}</span>
+            <span className="w-16 shrink-0 text-small text-text-muted">{b.label}</span>
             <div className="h-4 flex-1 overflow-hidden rounded bg-border-quiet">
               <div className="h-full bg-accent" style={{ width: `${(b.count / max) * 100}%` }} />
             </div>
-            <span className="w-4 shrink-0 text-right text-[11px] text-text-muted">{b.count}</span>
+            <span className="w-4 shrink-0 text-right text-small text-text-muted">{b.count}</span>
           </div>
         ))}
       </div>

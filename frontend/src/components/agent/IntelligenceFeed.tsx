@@ -26,12 +26,12 @@ function AlertRow({ alert }: { alert: ClientAlert }) {
         <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${ALERT_SEVERITY_DOT[alert.severity]}`} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+            <span className="text-caption font-semibold text-text-secondary">
               {ALERT_TYPE_LABELS[alert.alert_type]}
             </span>
-            <span className="shrink-0 text-[11px] text-text-muted">{formatDateTime(alert.created_at)}</span>
+            <span className="shrink-0 text-small text-text-muted">{formatDateTime(alert.created_at)}</span>
           </div>
-          <p className="mt-0.5 text-sm text-text-secondary">{alert.message}</p>
+          <p className="mt-0.5 text-body text-text-secondary">{alert.message}</p>
         </div>
       </div>
     </Link>
@@ -54,8 +54,8 @@ export default function IntelligenceFeed() {
   if (alerts.length === 0) {
     return (
       <div className="rounded-xl bg-surface px-5 py-8 text-center ring-1 ring-border">
-        <p className="text-sm font-medium text-text">No alerts yet</p>
-        <p className="mt-1 text-xs text-text-muted">
+        <p className="text-body font-medium text-text">No alerts yet</p>
+        <p className="mt-1 text-small text-text-muted">
           Contract-expiry windows, valuation moves, and club interest will show up here.
         </p>
       </div>
@@ -65,11 +65,11 @@ export default function IntelligenceFeed() {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-          Client Intelligence
+        <p className="text-caption font-semibold text-text-secondary">
+          Client intelligence
         </p>
         {unreadCount > 0 && (
-          <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[13px] font-bold text-accent">
+          <span className="rounded-full bg-accent-bg px-2 py-0.5 text-caption font-bold text-accent">
             {unreadCount} new
           </span>
         )}

@@ -47,14 +47,14 @@ export default function YourDataCard() {
       navigate("/login", { replace: true });
     },
   });
-  const input = "w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
+  const input = "w-full rounded-lg bg-surface px-3 py-2 text-small text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
 
   return (
     <Card className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-text">Download your data</p>
-          <p className="mt-0.5 text-xs text-text-muted">
+          <p className="text-body font-medium text-text">Download your data</p>
+          <p className="mt-0.5 text-small text-text-muted">
             Your account, preferences, devices, notifications, activity and messages, as a JSON file.
           </p>
         </div>
@@ -64,30 +64,30 @@ export default function YourDataCard() {
       </div>
 
       <div className="border-t border-rule-faint pt-5">
-        <p className="text-sm font-medium text-text">Close your account</p>
-        <p className="mt-0.5 text-xs text-text-muted">
+        <p className="text-body font-medium text-text">Close your account</p>
+        <p className="mt-0.5 text-small text-text-muted">
           Your name, email and settings are erased and you're signed out everywhere. The audit trail, deal
           comments and messages stay, so the records others rely on still make sense, but without your name.
         </p>
         {!closing ? (
           <Button variant="danger" className="mt-3" onClick={() => setClosing(true)}>Close my account…</Button>
         ) : closeCheck && !closeCheck.can_close ? (
-          <p className="mt-3 rounded-lg bg-surface-inset px-3 py-2 text-sm text-text-secondary">{closeCheck.reason}</p>
+          <p className="mt-3 rounded-lg bg-surface-inset px-3 py-2 text-body text-text-secondary">{closeCheck.reason}</p>
         ) : (
           <form
             className="mt-3 grid gap-3 sm:grid-cols-2"
             onSubmit={(e) => { e.preventDefault(); close.mutate(); }}
           >
-            <label className="text-xs text-text-secondary">
+            <label className="text-caption text-text-secondary">
               Your password
               <input type="password" autoComplete="current-password" required value={password}
                 onChange={(e) => setPassword(e.target.value)} className={`${input} mt-1`} />
             </label>
-            <label className="text-xs text-text-secondary">
+            <label className="text-caption text-text-secondary">
               Type DELETE to confirm
               <input required value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className={`${input} mt-1`} />
             </label>
-            {close.isError && <p className="text-sm text-danger-text sm:col-span-2">{getApiError(close.error)}</p>}
+            {close.isError && <p className="text-body text-danger-text sm:col-span-2">{getApiError(close.error)}</p>}
             <div className="flex gap-2 sm:col-span-2">
               <Button type="submit" variant="danger"
                 disabled={!password || confirmText.trim().toUpperCase() !== "DELETE" || close.isPending}>

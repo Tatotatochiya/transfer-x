@@ -38,12 +38,12 @@ function CreateForm({ onDone }: { onDone: () => void }) {
 
   return (
     <Card>
-      <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">
-        New Shortlist
+      <p className="mb-4 text-caption font-semibold text-text-secondary">
+        New shortlist
       </p>
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+          <label className="mb-1.5 block text-small font-semibold text-text-secondary">
             Name
           </label>
           <input
@@ -52,11 +52,11 @@ function CreateForm({ onDone }: { onDone: () => void }) {
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Summer targets"
             autoFocus
-            className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+            className="w-full rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-semibold text-text-secondary">
+          <label className="mb-1.5 block text-small font-semibold text-text-secondary">
             Description <span className="text-text-muted font-normal">(optional)</span>
           </label>
           <input
@@ -64,10 +64,10 @@ function CreateForm({ onDone }: { onDone: () => void }) {
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
             placeholder="What's this list for?"
-            className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+            className="w-full rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
           />
         </div>
-        {error && <p className="text-sm text-danger-text">{error}</p>}
+        {error && <p className="text-body text-danger-text">{error}</p>}
         <div className="flex gap-2 pt-1">
           <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}>
             Create
@@ -152,17 +152,17 @@ export default function ShortlistListPage() {
                       deleteMutation.mutate(sl.id);
                     }
                   }}
-                  className="shrink-0 text-xs text-text-muted hover:text-danger-text transition-colors"
+                  className="shrink-0 text-small text-text-muted hover:text-danger-text transition-colors"
                 >
                   Delete
                 </button>
               </div>
               {sl.description && (
-                <p className="mt-1 text-xs text-text-muted line-clamp-2">
+                <p className="mt-1 text-small text-text-muted line-clamp-2">
                   {sl.description}
                 </p>
               )}
-              <div className="mt-3 flex items-center gap-3 text-xs text-text-muted">
+              <div className="mt-3 flex items-center gap-3 text-small text-text-muted">
                 <span>{sl.item_count} player{sl.item_count !== 1 ? "s" : ""}</span>
                 <span>·</span>
                 <span>{formatDate(sl.updated_at)}</span>

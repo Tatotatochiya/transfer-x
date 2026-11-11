@@ -1,6 +1,6 @@
 ---
 title: "Changelog"
-last_updated: 2026-11-09
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -25,6 +25,8 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **`STARTER.md`**: a new developer's path from a fresh clone to a running app with real players, all 20 Premier League clubs and demo deals, no API keys needed: `.env`, restoring the reference snapshot, the setup scripts, demo sign-ins, optional API-Football backfills and troubleshooting. `.env.example` now lists every setting in `config.py`, grouped and explained (the unused auction anti-sniping settings are gone from it).
+- **A type scale and one meaning per colour** ([`type-and-colour`](./feature_spec/type-and-colour/README.md)). Seven text roles (Caption 13, Small 14, Body 15, Section 17, Headline 20, Title 24/22, Display 32/28) and Lite's own scale one step up replace 41 ad-hoc sizes; nothing renders under 13px, pages show at most six sizes, headings are sentence case, and uppercase is only the `eyebrow` overline. Inputs are 16px below 1024px. `src/test/designSystem.test.ts` fails on raw sizes, opacity tints, stray uppercase and white text on accent, and checks token contrast in both themes (`npm run check:design`).
 - **Unread count on Messages** (deal and offer pages). How far each person has read a transfer's conversation is now stored (`conversation_reads`, migration `0110`); `GET /conversation` returns `unread` and `POST /conversation/read` marks it read. The Messages tab and the desktop rail show a badge, cleared when the messages are shown. Someone who has never opened a conversation counts only its last 14 days.
 - **Price filter in pounds** on Browse Players ("Price (£ millions)", `min_price`/`max_price` on `GET /players/market`): what he would cost here by the Cheapest sort's rule (free agent, else asking price, else fee model).
 - **A collapsed deal keeps its reason.** The collapse dialog's optional reason ("Both clubs will see this") is stored on the audit event, shown on the timeline, and the status card says "{Club} called it off: “reason”" (`collapse_reason`, `collapsed_by_club_id` on the deal).
@@ -249,6 +251,9 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Colours mean one thing.** Positions, account roles, contract state, deal stages, stat groups and chart series are neutral; blue is only for what you can tap (switches that are on included); red is "needs you", errors and destructive actions; violet is only the AI (✦ buttons, advice, fit scores, AI search), no longer shared with the Agent badge. Tints come from tokens, not opacity.
+- **Dark mode's accent is blue**, like light mode's (it was emerald, the same family as "done" green), with dark text on primary buttons.
+- **One compact money format**: "£52M", "£21.5M", "£450K", "£2.6B" (was "£52.0m", "£450k") in headers, status cards, tiles, lists, the board and Lite. Full figures stay on terms cards, forms, accept confirmations, order books and the Finance breakdown and ledger. Finance's hero reads "£232.5M left of £260M".
 - **Player page: View your offer.** When your club already has an open offer for a player, his page's blue button is "View your offer" instead of "Make an offer" (which only led to a page saying you had one), with a sentence saying where it stands: "Your £X offer is with {club}." or "{club} countered at £X. It's your move." Offer a pre-contract stays beside it in the last six months of his contract. Below 1024px the page also leaves room for the compare tray above the bottom bar, and the testers' Start demo button sits above the bar.
 - **Offer page: the buyer's ranking without a click.** The buyer's tab names their place among the open offers ("Ranking · 2nd of 4", "Leading", "Only offer"; the place alone on phones), and a waiting buyer's status card opens with it ("You're 2nd of 4 offers."). Ranked by fee, as the order book already showed the buyer; nothing new is revealed.
 - **One blue button: the top bar and the player page** ([spec](./feature_spec/player-actions/README.md)). The top bar's "Buy a player" / "Sell a player" (still on every page, as decided 2026-10-29) are now quiet navigation, "Find players" / "Sell a player" ("Players" / "Sell" on phones), never blue. The player page has one blue button chosen by his situation, with plain labels (Make an offer, Ask his club or Ask {parent club}, Sign him, Offer a pre-contract, Sign in to make an offer). Compare, "✦ Ask TransferX about him", View {club} and the release clause ("Pay the release clause (£X)…", same confirm) move to a More menu. Below 1024px the actions are pinned in a bottom bar. A blocked action is a sentence, not a disabled button; a deal in progress gives its two clubs "View the deal". Every action, endpoint and confirmation is unchanged.
@@ -343,6 +348,8 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **The reference snapshot migrates again.** `backend/seeds/transferx_reference_20260808.dump` records revision `0059` but already holds `vendor_sync_runs`, so `alembic upgrade head` on a restored snapshot stopped at `0062`; that migration now skips a table that exists.
+- **`scripts/seed_demo.py` runs again.** Its model imports had fallen behind (`deal_attachments` and eight other modules), so it failed before creating anything; it now imports every module `migrations/env.py` does.
 - **Player cards no longer overlap on laptops.** The Browse Players grid uses auto-fill columns at least 220px wide instead of counting the window's breakpoints, which ignored the sidebar and filter rail (three ~165px columns at 1280px). (`PlayerMarketPage.tsx`)
 - **A player photo or club crest that fails to load shows initials,** everywhere, instead of a broken image or its alt text. One `FallbackImage` component now draws every photo and crest. (`components/ui/FallbackImage.tsx`)
 - **Demo listings were open to real clubs' offers.** Only bids were refused on a listing a tester's demo had made; an offer against it from a club outside the demo went through and would have been lost on reset. Offers are now refused the same way ("This listing is part of someone's demo").

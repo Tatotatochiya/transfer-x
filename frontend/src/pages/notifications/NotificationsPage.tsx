@@ -179,10 +179,10 @@ function NotificationRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className={`text-xs font-semibold ${colour}`}>
+          <span className={`text-caption font-semibold ${colour}`}>
             {TYPE_LABELS[notification.type] ?? notification.type}
           </span>
-          <span className="text-[13px] text-text-muted">
+          <span className="text-small text-text-muted">
             {formatDateTime(notification.created_at)}
           </span>
         </div>
@@ -190,14 +190,14 @@ function NotificationRow({
             the plain message. */}
         {notification.title ? (
           <>
-            <p className="mt-0.5 text-sm font-medium text-text">{notification.title}</p>
-            {notification.body && <p className="text-sm text-text-secondary">{notification.body}</p>}
+            <p className="mt-0.5 text-body font-medium text-text">{notification.title}</p>
+            {notification.body && <p className="text-body text-text-secondary">{notification.body}</p>}
           </>
         ) : (
-          <p className="mt-0.5 text-sm text-text-secondary">{notification.message}</p>
+          <p className="mt-0.5 text-body text-text-secondary">{notification.message}</p>
         )}
         {(notification.player || notification.club) && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-medium text-text">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption font-medium text-text">
             {notification.player && (
               <PlayerLink id={notification.player.id} name={notification.player.name} photoUrl={notification.player.image_url} />
             )}
@@ -265,7 +265,7 @@ export default function NotificationsPage() {
           <div className="flex items-center gap-2">
             <Link
               to="/account#notifications"
-              className="text-sm text-text-muted hover:text-text transition-colors"
+              className="text-body text-text-muted hover:text-text transition-colors"
             >
               Preferences
             </Link>

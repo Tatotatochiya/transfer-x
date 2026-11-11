@@ -82,9 +82,9 @@ function shortenUA(ua: string | null): string {
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <div className="rounded-xl bg-surface ring-1 ring-border px-5 py-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">{label}</p>
-      <p className="mt-1.5 text-2xl font-bold text-text">{typeof value === "number" ? value.toLocaleString() : value}</p>
-      {sub && <p className="mt-0.5 text-xs text-text-muted">{sub}</p>}
+      <p className="text-caption font-semibold text-text-secondary">{label}</p>
+      <p className="mt-1.5 text-headline sm:text-title font-bold text-text">{typeof value === "number" ? value.toLocaleString() : value}</p>
+      {sub && <p className="mt-0.5 text-small text-text-muted">{sub}</p>}
     </div>
   );
 }
@@ -95,20 +95,20 @@ function TrendChart({ data }: { data: DailyCount[] }) {
   const max = Math.max(...data.map((d) => d.page_views), 1);
   return (
     <div className="rounded-xl bg-surface ring-1 ring-border px-5 py-4">
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+      <p className="mb-3 text-caption font-semibold text-text-secondary">
         Daily Page Views (last {data.length} days)
       </p>
       <div className="flex items-end gap-0.5 h-16">
         {data.map((d) => (
           <div
             key={d.date}
-            className="flex-1 min-w-0 rounded-sm bg-success/60 hover:bg-success transition-colors"
+            className="flex-1 min-w-0 rounded-sm bg-text-muted hover:bg-text-secondary transition-colors"
             style={{ height: `${(d.page_views / max) * 100}%` }}
             title={`${d.date}: ${d.page_views} views, ${d.unique_sessions} sessions`}
           />
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[13px] text-text-muted">
+      <div className="mt-1 flex justify-between text-small text-text-muted">
         <span>{data[0]?.date}</span>
         <span>{data[data.length - 1]?.date}</span>
       </div>
@@ -156,8 +156,8 @@ export default function AdminAnalyticsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-text">Analytics</h1>
-        <p className="mt-1 text-sm text-text-muted">Usage stats — page views, sessions, time on page, user activity</p>
+        <h1 className="text-title-sm sm:text-title font-bold text-text">Analytics</h1>
+        <p className="mt-1 text-small text-text-muted">Usage stats — page views, sessions, time on page, user activity</p>
       </div>
 
       {/* Overview cards */}
@@ -165,10 +165,10 @@ export default function AdminAnalyticsPage() {
         <div className="flex justify-center py-10"><Spinner size="lg" /></div>
       ) : overview ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-6">
-          <StatCard label="Page Views Today" value={overview.page_views_today} sub={`${overview.page_views_7d.toLocaleString()} last 7d`} />
-          <StatCard label="Sessions Today" value={overview.unique_sessions_today} sub={`${overview.unique_sessions_7d.toLocaleString()} last 7d`} />
-          <StatCard label="DAU Today" value={overview.dau_today} sub={`Avg ${overview.dau_7d} / day last 7d`} />
-          <StatCard label="Total Events Today" value={overview.total_events_today} sub={`${overview.total_events_7d.toLocaleString()} last 7d`} />
+          <StatCard label="Page views today" value={overview.page_views_today} sub={`${overview.page_views_7d.toLocaleString()} last 7d`} />
+          <StatCard label="Sessions today" value={overview.unique_sessions_today} sub={`${overview.unique_sessions_7d.toLocaleString()} last 7d`} />
+          <StatCard label="DAU today" value={overview.dau_today} sub={`Avg ${overview.dau_7d} / day last 7d`} />
+          <StatCard label="Total events today" value={overview.total_events_today} sub={`${overview.total_events_7d.toLocaleString()} last 7d`} />
         </div>
       ) : null}
 
@@ -185,7 +185,7 @@ export default function AdminAnalyticsPage() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+            className={`px-4 py-2 text-body font-medium capitalize transition-colors border-b-2 -mb-px ${
               activeTab === tab
                 ? "border-success text-success-text"
                 : "border-transparent text-text-muted hover:text-text-secondary"
@@ -200,14 +200,14 @@ export default function AdminAnalyticsPage() {
       {activeTab === "pages" && (
         <div>
           <div className="mb-3 flex items-center gap-3">
-            <p className="text-sm text-text-muted">Last</p>
+            <p className="text-small text-text-muted">Last</p>
             {[7, 14, 30].map((d) => (
               <button
                 key={d}
                 onClick={() => setPagesDays(d)}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-md px-3 py-1 text-caption font-medium transition-colors ${
                   pagesDays === d
-                    ? "bg-success/20 text-success-text ring-1 ring-success/30"
+                    ? "bg-success-bg text-success-text ring-1 ring-success-ring"
                     : "text-text-muted hover:text-text-secondary"
                 }`}
               >
@@ -220,19 +220,19 @@ export default function AdminAnalyticsPage() {
             <div className="flex justify-center py-10"><Spinner /></div>
           ) : (
             <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
-              <table className="w-full text-sm">
+              <table className="w-full text-small">
                 <thead>
                   <tr className="border-b border-rule">
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">Path</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Views</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Sessions</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Avg Time</th>
+                    <th className="eyebrow px-4 py-3 text-left text-text-secondary">Path</th>
+                    <th className="eyebrow px-4 py-3 text-right text-text-secondary">Views</th>
+                    <th className="eyebrow px-4 py-3 text-right text-text-secondary">Sessions</th>
+                    <th className="eyebrow px-4 py-3 text-right text-text-secondary">Avg time</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(topPages ?? []).map((p, i) => (
                     <tr key={p.path} className={i % 2 === 0 ? "" : "bg-surface-inset"}>
-                      <td className="px-4 py-2.5 font-mono text-xs text-text-secondary">{p.path}</td>
+                      <td className="px-4 py-2.5 font-mono text-caption text-text-secondary">{p.path}</td>
                       <td className="px-4 py-2.5 text-right text-text">{p.views.toLocaleString()}</td>
                       <td className="px-4 py-2.5 text-right text-text-muted">{p.unique_sessions.toLocaleString()}</td>
                       <td className="px-4 py-2.5 text-right text-text-muted">{fmtDuration(p.avg_duration_ms)}</td>
@@ -240,7 +240,7 @@ export default function AdminAnalyticsPage() {
                   ))}
                   {(topPages ?? []).length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-text-muted">No data yet</td>
+                      <td colSpan={4} className="px-4 py-8 text-center text-small text-text-muted">No data yet</td>
                     </tr>
                   )}
                 </tbody>
@@ -254,14 +254,14 @@ export default function AdminAnalyticsPage() {
       {activeTab === "users" && (
         <div>
           <div className="mb-3 flex items-center gap-3">
-            <p className="text-sm text-text-muted">Last</p>
+            <p className="text-small text-text-muted">Last</p>
             {[7, 14, 30].map((d) => (
               <button
                 key={d}
                 onClick={() => setUsersDays(d)}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-md px-3 py-1 text-caption font-medium transition-colors ${
                   usersDays === d
-                    ? "bg-success/20 text-success-text ring-1 ring-success/30"
+                    ? "bg-success-bg text-success-text ring-1 ring-success-ring"
                     : "text-text-muted hover:text-text-secondary"
                 }`}
               >
@@ -274,13 +274,13 @@ export default function AdminAnalyticsPage() {
             <div className="flex justify-center py-10"><Spinner /></div>
           ) : (
             <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
-              <table className="w-full text-sm">
+              <table className="w-full text-small">
                 <thead>
                   <tr className="border-b border-rule">
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">User</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Page Views</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Sessions</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Last Seen</th>
+                    <th className="eyebrow px-4 py-3 text-left text-text-secondary">User</th>
+                    <th className="eyebrow px-4 py-3 text-right text-text-secondary">Page views</th>
+                    <th className="eyebrow px-4 py-3 text-right text-text-secondary">Sessions</th>
+                    <th className="eyebrow px-4 py-3 text-right text-text-secondary">Last seen</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -294,7 +294,7 @@ export default function AdminAnalyticsPage() {
                   ))}
                   {(userActivity ?? []).length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-text-muted">No logged-in user activity yet</td>
+                      <td colSpan={4} className="px-4 py-8 text-center text-small text-text-muted">No logged-in user activity yet</td>
                     </tr>
                   )}
                 </tbody>
@@ -311,35 +311,35 @@ export default function AdminAnalyticsPage() {
             <div className="flex justify-center py-10"><Spinner /></div>
           ) : (
             <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
-              <table className="w-full text-sm">
+              <table className="w-full text-small">
                 <thead>
                   <tr className="border-b border-rule">
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">Session</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">User</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">IP</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">Browser</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Pages</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Last Seen</th>
+                    <th className="eyebrow px-4 py-3 text-left text-text-secondary">Session</th>
+                    <th className="eyebrow px-4 py-3 text-left text-text-secondary">User</th>
+                    <th className="eyebrow px-4 py-3 text-left text-text-secondary">IP</th>
+                    <th className="eyebrow px-4 py-3 text-left text-text-secondary">Browser</th>
+                    <th className="eyebrow px-4 py-3 text-right text-text-secondary">Pages</th>
+                    <th className="eyebrow px-4 py-3 text-right text-text-secondary">Last seen</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(sessions ?? []).map((s, i) => (
                     <tr key={s.session_id} className={i % 2 === 0 ? "" : "bg-surface-inset"}>
-                      <td className="px-4 py-2.5 font-mono text-[11px] text-text-muted">
+                      <td className="px-4 py-2.5 font-mono text-caption text-text-muted">
                         {s.session_id.slice(0, 8)}…
                       </td>
                       <td className="px-4 py-2.5 text-text-secondary">
                         {s.email ?? <span className="text-text-muted">anon</span>}
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-text-muted">{s.ip_address ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-xs text-text-muted">{shortenUA(s.user_agent)}</td>
+                      <td className="px-4 py-2.5 font-mono text-caption text-text-muted">{s.ip_address ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-caption text-text-muted">{shortenUA(s.user_agent)}</td>
                       <td className="px-4 py-2.5 text-right text-text">{s.pages_visited}</td>
                       <td className="px-4 py-2.5 text-right text-text-muted">{fmtDate(s.last_seen)}</td>
                     </tr>
                   ))}
                   {(sessions ?? []).length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-sm text-text-muted">No sessions recorded yet</td>
+                      <td colSpan={6} className="px-4 py-8 text-center text-small text-text-muted">No sessions recorded yet</td>
                     </tr>
                   )}
                 </tbody>

@@ -2,7 +2,7 @@ import { useFxStore } from "../../store/fx";
 import { usePreferencesStore } from "../../store/preferences";
 import { formatCompactCurrency, formatCurrency, formatEstimate } from "../../lib/utils";
 
-/** A £ amount, with "≈ €21.1m" after it when the user asked for estimates in
+/** A £ amount, with "≈ €21.1M" after it when the user asked for estimates in
  *  another currency (Account settings). The £ figure is what's agreed. */
 export default function Money({
   value,
@@ -29,7 +29,7 @@ export default function Money({
   );
 }
 
-/** Just the "≈ €21.1m" part, for a £ figure written elsewhere. */
+/** Just the "≈ €21.1M" part, for a £ figure written elsewhere. */
 export function Estimate({ value, stacked = false }: { value: number | string | null | undefined; stacked?: boolean }) {
   const currency = usePreferencesStore((s) => s.currency);
   const rates = useFxStore((s) => s.rates);
@@ -41,7 +41,7 @@ export function Estimate({ value, stacked = false }: { value: number | string | 
   return (
     <span
       className={stacked
-        ? "block text-sm font-normal tracking-normal text-text-muted"
+        ? "block text-small font-normal tracking-normal text-text-muted"
         : "ml-1 whitespace-nowrap text-[0.8em] font-normal text-text-muted"}
       title={`Estimate at ${basis}. Amounts are agreed in pounds.`}
     >

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { ClubFinance } from "../../types/api";
-import { formatCurrency, formatWage } from "../../lib/utils";
+import { formatCompact, formatWage } from "../../lib/utils";
 import Money from "../ui/Money";
 
 function MiniBar({ used, total }: { used: number; total: number }) {
@@ -20,10 +20,10 @@ export default function FinanceSummaryPanel({ finance }: { finance: ClubFinance 
   return (
     <div className="rounded-xl bg-surface ring-1 ring-border px-5 py-4">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Finances</p>
+        <p className="text-caption font-semibold text-text-secondary">Finances</p>
         <Link
           to="/club/finance"
-          className="text-xs text-text-muted hover:text-accent transition-colors"
+          className="text-small text-text-muted hover:text-accent transition-colors"
         >
           Full view →
         </Link>
@@ -31,25 +31,25 @@ export default function FinanceSummaryPanel({ finance }: { finance: ClubFinance 
       <div className="space-y-4">
         <div>
           <div className="flex items-baseline justify-between">
-            <span className="text-xs text-text-muted">Transfer budget</span>
-            <span className="text-sm font-semibold text-text tabular-nums">
-              <Money value={finance.transfer_remaining} />
+            <span className="text-small text-text-muted">Transfer budget</span>
+            <span className="text-body font-semibold text-text tabular-nums">
+              <Money value={finance.transfer_remaining} compact />
             </span>
           </div>
           <MiniBar used={transferSpent} total={finance.transfer_budget_total} />
-          <p className="mt-1 text-xs text-text-muted">
-            of {formatCurrency(finance.transfer_budget_total)} total
+          <p className="mt-1 text-small text-text-muted">
+            of {formatCompact(finance.transfer_budget_total)} total
           </p>
         </div>
         <div>
           <div className="flex items-baseline justify-between">
-            <span className="text-xs text-text-muted">Wage budget / wk</span>
-            <span className="text-sm font-semibold text-text tabular-nums">
+            <span className="text-small text-text-muted">Wage budget / wk</span>
+            <span className="text-body font-semibold text-text tabular-nums">
               {formatWage(finance.wage_remaining_weekly)}
             </span>
           </div>
           <MiniBar used={wageSpent} total={finance.wage_budget_total_weekly} />
-          <p className="mt-1 text-xs text-text-muted">
+          <p className="mt-1 text-small text-text-muted">
             of {formatWage(finance.wage_budget_total_weekly)} total
           </p>
         </div>

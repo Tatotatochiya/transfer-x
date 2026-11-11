@@ -76,13 +76,13 @@ export default function AdminOffersPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text">Offers</h1>
-          <p className="mt-1 text-sm text-text-muted">{data ? `${data.total} total` : ""}</p>
+          <h1 className="text-title-sm sm:text-title font-bold text-text">Offers</h1>
+          <p className="mt-1 text-small text-text-muted">{data ? `${data.total} total` : ""}</p>
         </div>
         <select
           value={status}
           onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+          className="rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
         >
           <option value="">All statuses</option>
           {OFFER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -94,7 +94,7 @@ export default function AdminOffersPage() {
       </div>
 
       {withdrawMutation.isError && (
-        <div className="mb-4 rounded-lg bg-danger-bg px-4 py-2 text-xs text-danger-text ring-1 ring-danger-border">
+        <div className="mb-4 rounded-lg bg-danger-bg px-4 py-2 text-caption text-danger-text ring-1 ring-danger-border">
           {getApiError(withdrawMutation.error, "Withdraw failed.")}
         </div>
       )}
@@ -104,9 +104,9 @@ export default function AdminOffersPage() {
       {data && (
         <>
           <div className="overflow-x-auto rounded-xl ring-1 ring-border">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-small">
               <thead>
-                <tr className="border-b border-rule bg-surface-header text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
+                <tr className="border-b border-rule bg-surface-header text-left text-caption font-semibold text-text-secondary">
                   <th className="px-4 py-3">Player</th>
                   <th className="px-4 py-3">From</th>
                   <th className="px-4 py-3">To</th>
@@ -124,9 +124,9 @@ export default function AdminOffersPage() {
                     className="cursor-pointer bg-surface hover:bg-surface-inset transition-colors"
                   >
                     <td className="px-4 py-3 font-medium text-text">{o.player?.name ?? "—"}</td>
-                    <td className="px-4 py-3 text-xs text-text-muted">{o.from_club?.name ?? "—"}</td>
-                    <td className="px-4 py-3 text-xs text-text-muted">{o.to_club?.name ?? "—"}</td>
-                    <td className="px-4 py-3 text-text-secondary text-xs">
+                    <td className="px-4 py-3 text-caption text-text-muted">{o.from_club?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-caption text-text-muted">{o.to_club?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-text-secondary text-caption">
                       {offerHeadline(o)}
                     </td>
                     <td className="px-4 py-3">
@@ -134,13 +134,13 @@ export default function AdminOffersPage() {
                         {o.status}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-xs text-text-muted">{formatDate(o.last_action_at)}</td>
+                    <td className="px-4 py-3 text-caption text-text-muted">{formatDate(o.last_action_at)}</td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       {!TERMINAL.has(o.status) && (
                         <button
                           disabled={withdrawMutation.isPending}
                           onClick={() => forceWithdraw(o.id)}
-                          className="rounded bg-danger/10 px-2 py-1 text-xs text-danger-text hover:bg-danger/20 transition-colors disabled:opacity-40"
+                          className="rounded bg-danger-bg px-2 py-1 text-caption text-danger-text hover:brightness-95 transition-colors disabled:opacity-40"
                         >
                           Force withdraw
                         </button>

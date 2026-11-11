@@ -106,7 +106,7 @@ export default function AdminDemoPage() {
   }
 
   if (isLoading) return <div className="flex justify-center py-12"><Spinner size="lg" /></div>;
-  if (isError || !data) return <p className="text-sm text-danger-text">Couldn&rsquo;t load demo mode. Try again in a moment.</p>;
+  if (isError || !data) return <p className="text-body text-danger-text">Couldn&rsquo;t load demo mode. Try again in a moment.</p>;
 
   return (
     <div className="space-y-6">
@@ -115,20 +115,20 @@ export default function AdminDemoPage() {
         subtitle="Testers try TransferX on real data against clubs TransferX plays, then put everything back."
       />
       {!data.enabled && (
-        <p className="rounded-xl bg-warning-fill/10 px-4 py-3 text-sm text-text ring-1 ring-warning-fill/30">
+        <p className="rounded-xl bg-warning-bg px-4 py-3 text-body text-text ring-1 ring-warning-ring">
           Demo mode is off on this server (<code>DEMO_ENABLED</code>). Nobody can start a demo, and nothing is journaled.
         </p>
       )}
 
       <Card noPadding>
-        <p className="border-b border-rule px-5 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Demo runs</p>
+        <p className="border-b border-rule px-5 py-3 text-caption font-semibold text-text-secondary">Demo runs</p>
         {data.runs.length === 0 ? (
-          <p className="px-5 py-6 text-sm text-text-muted">No demos yet.</p>
+          <p className="px-5 py-6 text-small text-text-muted">No demos yet.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-small">
               <thead>
-                <tr className="text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
+                <tr className="text-left text-caption font-semibold text-text-secondary">
                   <th className="px-5 py-2">Tester</th><th className="px-5 py-2">Started</th>
                   <th className="px-5 py-2">Changes</th><th className="px-5 py-2">Status</th><th className="px-5 py-2" />
                 </tr>
@@ -144,7 +144,7 @@ export default function AdminDemoPage() {
                         {r.status === "ACTIVE" ? "Running" : r.status === "RESET" ? "Reset" : "Kept"}
                       </Badge>
                       {r.report?.skipped?.length ? (
-                        <details className="mt-1 text-xs text-text-muted">
+                        <details className="mt-1 text-caption text-text-muted">
                           <summary>{r.report.skipped.length} left as they were</summary>
                           <ul className="mt-1 list-disc pl-4">
                             {r.report.skipped.map((s, i) => <li key={i}>{s.table}: {s.why}</li>)}
@@ -166,21 +166,21 @@ export default function AdminDemoPage() {
       </Card>
 
       <Card noPadding>
-        <p className="border-b border-rule px-5 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
+        <p className="border-b border-rule px-5 py-3 text-caption font-semibold text-text-secondary">
           House clubs · clubs TransferX plays in demos
         </p>
         <div className="divide-y divide-rule-faint">
           {data.clubs.map((c) => (
-            <div key={c.id} className="flex flex-wrap items-center gap-3 px-5 py-2.5 text-sm">
+            <div key={c.id} className="flex flex-wrap items-center gap-3 px-5 py-2.5 text-small">
               <span className="min-w-0 flex-1 text-text">{c.name}</span>
-              {c.house_club && <Badge variant="info">House club</Badge>}
-              {c.in_use && !c.house_club && <span className="text-xs text-text-muted">In use: people sign in to it</span>}
+              {c.house_club && <Badge variant="neutral">House club</Badge>}
+              {c.in_use && !c.house_club && <span className="text-small text-text-muted">In use: people sign in to it</span>}
               {c.house_club && (
                 <select
                   aria-label={`${c.name} personality`}
                   value={c.personality ?? "fair"}
                   onChange={(e) => toggleHouse(c, e.target.value)}
-                  className="rounded-lg bg-surface px-2 py-1 text-sm text-text ring-1 ring-input-border"
+                  className="rounded-lg bg-surface px-2 py-1 text-input lg:text-body text-text ring-1 ring-input-border"
                 >
                   {Object.entries(PERSONALITY).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                 </select>
@@ -200,9 +200,9 @@ export default function AdminDemoPage() {
       </Card>
 
       <Card>
-        <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Testers</p>
-        <p className="mt-1 text-sm text-text-secondary">TransferX staff can always start a demo. Add anyone else here.</p>
-        <ul className="mt-3 space-y-1 text-sm">
+        <p className="text-caption font-semibold text-text-secondary">Testers</p>
+        <p className="mt-1 text-body text-text-secondary">TransferX staff can always start a demo. Add anyone else here.</p>
+        <ul className="mt-3 space-y-1 text-small">
           {data.testers.length === 0 && <li className="text-text-muted">No testers yet.</li>}
           {data.testers.map((t) => (
             <li key={t.id} className="flex items-center gap-3">
@@ -218,7 +218,7 @@ export default function AdminDemoPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Their sign-in email"
             aria-label="Tester's email"
-            className="min-w-0 flex-1 rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border placeholder:text-text-muted"
+            className="min-w-0 flex-1 rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border placeholder:text-text-muted"
           />
           <Button variant="secondary" size="sm" disabled={!email.trim() || setTester.isPending} onClick={addTester}>Add tester</Button>
         </div>

@@ -32,8 +32,8 @@ import FallbackImage from "../../components/ui/FallbackImage";
 function FigureCard({ label, value, valueColour }: { label: string; value: ReactNode; valueColour?: string }) {
   return (
     <div className="rounded-xl bg-surface ring-1 ring-border px-4 py-3">
-      <p className="text-xs font-semibold text-text-secondary">{label}</p>
-      <p className={`mt-1 text-xl font-bold ${valueColour ?? "text-text"}`}>{value}</p>
+      <p className="text-caption font-semibold text-text-secondary">{label}</p>
+      <p className={`mt-1 text-headline font-bold ${valueColour ?? "text-text"}`}>{value}</p>
     </div>
   );
 }
@@ -68,11 +68,11 @@ function ResolutionNote({ sale, onOpenDeal }: { sale: Sale; onOpenDeal: (dealId:
 
   return (
     <div className="rounded-xl bg-surface-quiet px-4 py-3 ring-1 ring-border">
-      <p className="text-sm text-text-secondary">{body}</p>
+      <p className="text-body text-text-secondary">{body}</p>
       {deal && (
         <button
           onClick={() => onOpenDeal(deal.id)}
-          className="mt-1 text-xs font-semibold text-accent hover:underline"
+          className="mt-1 text-small font-semibold text-accent hover:underline"
         >
           View the deal →
         </button>
@@ -121,7 +121,7 @@ export default function SaleDetailPage() {
 
   if (isError || !sale) {
     return (
-      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-small text-danger-text ring-1 ring-danger-border">
         Listing not found.{" "}
         <button onClick={() => navigate(-1)} className="underline">Go back</button>
       </div>
@@ -140,7 +140,7 @@ export default function SaleDetailPage() {
     <div className="space-y-4">
       {/* Player header */}
       <div className="flex items-center gap-3">
-        <FallbackImage src={sale.player?.photo_url} name={sale.player?.name ?? "?"} sizeClass="h-11 w-11 text-base" colorClass="bg-surface-inset text-text-muted" />
+        <FallbackImage src={sale.player?.photo_url} name={sale.player?.name ?? "?"} sizeClass="h-11 w-11 text-body" colorClass="bg-surface-inset text-text-muted" />
         <div className="min-w-0">
           <PlayerLink id={sale.player_id} name={sale.player?.name} fallback="Unknown" className="block truncate font-semibold text-text" />
           <div className="flex items-center gap-2 mt-0.5">
@@ -162,7 +162,7 @@ export default function SaleDetailPage() {
         {sale.seller_club && (
           <button
             onClick={() => navigate(`/clubs/${sale.seller_club_id}`)}
-            className="ml-auto shrink-0 text-xs text-text-muted hover:text-text transition-colors"
+            className="ml-auto shrink-0 text-small text-text-muted hover:text-text transition-colors"
           >
             {sale.seller_club.name}
           </button>
@@ -194,12 +194,12 @@ export default function SaleDetailPage() {
             <FairValueBadge signal={sale.fair_value_signal} />
           </div>
         ) : (
-          <p className="text-xs text-text-muted">No model valuation — insufficient recent data.</p>
+          <p className="text-small text-text-muted">No model valuation — insufficient recent data.</p>
         )
       )}
 
       {sale.notes && (
-        <p className="text-xs text-text-secondary border-t border-rule pt-3">{sale.notes}</p>
+        <p className="text-small text-text-secondary border-t border-rule pt-3">{sale.notes}</p>
       )}
 
       {/* Seller actions */}
@@ -218,7 +218,7 @@ export default function SaleDetailPage() {
             Withdraw listing
           </Button>
           {withdrawMutation.isError && (
-            <p className="mt-2 text-xs text-danger-text">{getApiError(withdrawMutation.error, "Failed to withdraw.")}</p>
+            <p className="mt-2 text-small text-danger-text">{getApiError(withdrawMutation.error, "Failed to withdraw.")}</p>
           )}
         </div>
       )}
@@ -234,7 +234,7 @@ export default function SaleDetailPage() {
 
       {sale.sale_type === "OPEN_TO_OFFERS" && isSeller && (
         <div className="border-t border-rule pt-3">
-          <p className="text-sm text-text-muted">Select an offer from the order book to view details.</p>
+          <p className="text-small text-text-muted">Select an offer from the order book to view details.</p>
         </div>
       )}
 
@@ -242,7 +242,7 @@ export default function SaleDetailPage() {
       {sale.sale_type === "FIXED_PRICE" && (
         <div className="border-t border-rule pt-3">
           {sale.asking_price != null && (
-            <p className="text-2xl font-bold text-text mb-3"><Money value={sale.asking_price} stacked /></p>
+            <p className="text-headline sm:text-title font-bold text-text mb-3"><Money value={sale.asking_price} stacked /></p>
           )}
           {isAuthenticated && canMarketWrite ? (
             <Button variant="primary" onClick={() => navigate(`/offers/new?player_id=${sale.player_id}&sale_id=${sale.id}`)}>
@@ -255,7 +255,7 @@ export default function SaleDetailPage() {
       )}
 
       {(sale.sale_type === "OPEN_TO_OFFERS" || sale.sale_type === "FIXED_PRICE") && !isAuthenticated && isOpen && (
-        <p className="text-sm text-text-secondary">
+        <p className="text-body text-text-secondary">
           <button onClick={() => navigate("/login")} className="text-accent hover:underline">Sign in</button>{" "}to make an offer.
         </p>
       )}
@@ -270,7 +270,7 @@ export default function SaleDetailPage() {
     <div>
       <button
         onClick={() => navigate(-1)}
-        className="mb-4 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
+        className="mb-4 flex items-center gap-1.5 text-body text-text-muted hover:text-text transition-colors"
       >
         ← Back to listings
       </button>
@@ -282,7 +282,7 @@ export default function SaleDetailPage() {
               <button
                 key={section}
                 onClick={() => setMobileSection(section)}
-                className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
+                className={`flex-1 py-2.5 text-body font-semibold transition-colors ${
                   mobileSection === section
                     ? "text-accent border-b-2 border-accent"
                     : "text-text-muted border-b-2 border-transparent"

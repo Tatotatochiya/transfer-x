@@ -1,6 +1,6 @@
 ---
 title: "Documentation Home"
-last_updated: 2026-10-11
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -11,7 +11,7 @@ owner: "TODO — assign a Documentation Owner"
 
 This is the root of TransferX's documentation system. It explains how the documentation is organized, the conventions every document follows, and where new information should go as the project grows.
 
-This file describes the *system*, not the product. For the product itself, start at **[PRODUCT_SPEC.md](./PRODUCT_SPEC.md)**.
+This file describes the *system*, not the product. For the product itself, start at **[PRODUCT_SPEC.md](./PRODUCT_SPEC.md)**. To get it running on your machine, follow **[STARTER.md](../STARTER.md)**.
 
 ## Scope
 

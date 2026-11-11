@@ -20,7 +20,7 @@ import SquadStatsPanel from "../../components/clubs/SquadStatsPanel";
 import FixturesPanel from "../../components/fixtures/FixturesPanel";
 import VerifiedBadge from "../../components/verification/VerifiedBadge";
 import RequestVerificationPanel from "../../components/verification/RequestVerificationPanel";
-import { formatCompactCurrency, formatCurrency, getApiError } from "../../lib/utils";
+import { formatCompact, formatCompactCurrency, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
@@ -49,10 +49,10 @@ function FigureStrip({ figures }: { figures: Figure[] }) {
             i === 3 ? "shadow-[inset_1px_0_0_var(--color-rule),inset_0_1px_0_var(--color-rule)] sm:shadow-[inset_1px_0_0_var(--color-rule)]" : "",
           ].join(" ")}`}
         >
-          <p className="whitespace-nowrap text-xs font-semibold text-text-secondary">{f.label}</p>
-          <p className={`whitespace-nowrap text-xl font-bold tabular-nums ${f.warn ? "text-warning-text" : "text-text"}`}>
+          <p className="whitespace-nowrap text-caption font-semibold text-text-secondary">{f.label}</p>
+          <p className={`whitespace-nowrap text-headline font-bold tabular-nums ${f.warn ? "text-warning-text" : "text-text"}`}>
             {f.value}
-            {f.unit && <span className="text-[13px] font-normal text-text-muted"> {f.unit}</span>}
+            {f.unit && <span className="text-small font-normal text-text-muted"> {f.unit}</span>}
           </p>
         </div>
       ))}
@@ -324,11 +324,11 @@ export default function MyClubPage() {
           squeezing it behind them. */}
       <div className="mb-6 flex flex-wrap items-start gap-5">
         <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-surface-inset overflow-hidden ring-1 ring-border">
-          <FallbackImage src={club.crest_url} name={club.name} kind="club" sizeClass="h-full w-full text-3xl" colorClass="text-text-muted" loading="eager" />
+          <FallbackImage src={club.crest_url} name={club.name} kind="club" sizeClass="h-full w-full text-display-sm sm:text-display" colorClass="text-text-muted" loading="eager" />
         </div>
         <div className="min-w-0 flex-[1_1_200px]">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold leading-[1.35] text-text">{club.name}</h1>
+            <h1 className="text-title-sm sm:text-title font-bold leading-[1.35] text-text">{club.name}</h1>
             <Badge variant="neutral">{club.role}</Badge>
             {club.verified && <VerifiedBadge />}
             {isStaff && (
@@ -337,16 +337,16 @@ export default function MyClubPage() {
               </Badge>
             )}
           </div>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="mt-1 text-small text-text-muted">
             {[club.league_name, club.city, club.country].filter(Boolean).join(" · ") || "—"}
           </p>
           {squadData && (
-            <p className="mt-1 text-xs text-text-muted">
+            <p className="mt-1 text-small text-text-muted">
               {squadData.total} player{squadData.total !== 1 ? "s" : ""} in squad
             </p>
           )}
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2 whitespace-nowrap">
+        <div className="flex min-w-0 flex-wrap gap-2 whitespace-nowrap sm:shrink-0">
           {/* Buying and selling first: they're what the club is here to do. */}
           {canMarketWrite && (
             <>
@@ -379,7 +379,7 @@ export default function MyClubPage() {
       {/* ── Inline edit form ── */}
       {editing && (
         <div className="mb-6 rounded-xl bg-surface-inset ring-1 ring-border px-6 py-5">
-          <p className="mb-4 text-sm font-semibold text-text">Edit Club Profile</p>
+          <p className="mb-4 text-body font-semibold text-text">Edit Club Profile</p>
           <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
               { label: "Club name",  value: name,     set: setName,     placeholder: "e.g. Arsenal FC" },
@@ -389,18 +389,18 @@ export default function MyClubPage() {
               { label: "Crest URL",  value: crestUrl, set: setCrestUrl, placeholder: "https://..." },
             ].map(({ label, value, set, placeholder }) => (
               <div key={label}>
-                <label className="mb-1.5 block text-xs font-medium text-text-muted">{label}</label>
+                <label className="mb-1.5 block text-caption font-medium text-text-muted">{label}</label>
                 <input
                   type="text"
                   value={value}
                   onChange={(e) => set(e.target.value)}
                   placeholder={placeholder}
-                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                 />
               </div>
             ))}
             <div className="sm:col-span-2 lg:col-span-3">
-              {formError && <p className="mb-3 text-sm text-danger-text">{formError}</p>}
+              {formError && <p className="mb-3 text-body text-danger-text">{formError}</p>}
               <div className="flex gap-3">
                 <Button type="submit" variant="primary" size="sm" loading={updateMutation.isPending}>
                   Save changes
@@ -426,18 +426,18 @@ export default function MyClubPage() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                className={`rounded-lg px-4 py-1.5 text-body font-medium transition-colors ${
                   tab === t.id ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
                 }`}
               >
                 {t.label}
                 {t.id === "squad" && squadData && (
-                  <span className="ml-1.5 rounded-full bg-surface-inset px-1.5 py-0.5 text-xs text-text-secondary">
+                  <span className="ml-1.5 rounded-full bg-surface-inset px-1.5 py-0.5 text-caption text-text-secondary">
                     {squadData.total}
                   </span>
                 )}
                 {t.id === "listings" && salesData && salesData.total > 0 && (
-                  <span className="ml-1.5 rounded-full bg-accent-bg px-1.5 py-0.5 text-xs text-accent-active">
+                  <span className="ml-1.5 rounded-full bg-accent-bg px-1.5 py-0.5 text-caption text-accent-active">
                     {salesData.total}
                   </span>
                 )}
@@ -449,7 +449,7 @@ export default function MyClubPage() {
           {tab === "squad" && (
             <>
               {(squadCheck?.needs_attention ?? 0) > 0 && (
-                <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-warning-fill/15 px-4 py-3 text-sm text-warning-text ring-1 ring-warning-fill/30">
+                <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-warning-bg px-4 py-3 text-small text-warning-text ring-1 ring-warning-ring">
                   <p className="flex-1">
                     {squadCheck!.without_contract > 0
                       ? `${squadCheck!.without_contract} player${squadCheck!.without_contract === 1 ? " has" : "s have"} no contract on TransferX.`
@@ -476,7 +476,7 @@ export default function MyClubPage() {
                         { label: "Contracts < 12mo", value: String(contractsUnder12mo), warn: contractsUnder12mo > 0 },
                         { label: "Listed", value: String(openListings.size) },
                         { label: "Average age", value: averageAge != null ? averageAge.toFixed(1) : "—" },
-                        { label: "Wage room", value: club.finance ? formatCurrency(Number(club.finance.wage_remaining_weekly)) : "—", unit: club.finance ? "/wk" : undefined },
+                        { label: "Wage room", value: club.finance ? formatCompact(Number(club.finance.wage_remaining_weekly)) : "—", unit: club.finance ? "/wk" : undefined },
                       ]}
                     />
                   </div>
@@ -549,7 +549,7 @@ export default function MyClubPage() {
               ) : (
                 <>
                   <div className="mb-4 flex items-center justify-between">
-                    <p className="text-sm text-text-muted">
+                    <p className="text-small text-text-muted">
                       {salesData.total} active listing{salesData.total !== 1 ? "s" : ""}
                     </p>
                     <div className="flex gap-2">

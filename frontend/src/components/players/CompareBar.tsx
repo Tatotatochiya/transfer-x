@@ -14,8 +14,8 @@ function PlayerSlot({ id, onRemove }: { id: string; onRemove: () => void }) {
 
   return (
     <div className="flex items-center gap-2 rounded-lg bg-white/10 px-2.5 py-1.5 ring-1 ring-white/15">
-      <FallbackImage src={player?.photo_url} name={player?.name ?? "?"} sizeClass="h-6 w-6 text-[10px]" colorClass="bg-white/15 text-white/80" />
-      <span className="max-w-[100px] truncate text-xs font-medium text-white">
+      <FallbackImage src={player?.photo_url} name={player?.name ?? "?"} sizeClass="h-6 w-6 text-caption" colorClass="bg-white/15 text-white/80" />
+      <span className="max-w-[100px] truncate text-caption font-medium text-white">
         {player?.name ?? "…"}
       </span>
       <button
@@ -42,14 +42,14 @@ export default function CompareBar() {
     // below 1024px, so this sits above it rather than over it.
     <div className="fixed bottom-[var(--action-bar-h,0px)] left-0 right-0 z-50 flex items-center justify-center px-4 pb-4 pointer-events-none">
       <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-ink px-9 py-3.5 shadow-2xl">
-        <span className="text-xs font-semibold text-white/60 shrink-0">Comparing</span>
+        <span className="text-caption font-semibold text-white/60 shrink-0">Comparing</span>
 
         <div className="flex items-center gap-2">
           {compareIds.map((id) => (
             <PlayerSlot key={id} id={id} onRemove={() => toggle(id)} />
           ))}
           {compareIds.length === 1 && (
-            <div className="flex h-9 w-28 items-center justify-center rounded-lg border-2 border-dashed border-white/20 text-xs text-white/40">
+            <div className="flex h-9 w-28 items-center justify-center rounded-lg border-2 border-dashed border-white/20 text-caption text-white/40">
               + add player
             </div>
           )}
@@ -58,7 +58,7 @@ export default function CompareBar() {
         {compareIds.length === 2 && (
           <button
             onClick={() => navigate(`/compare?a=${compareIds[0]}&b=${compareIds[1]}`)}
-            className="shrink-0 rounded-lg bg-white px-3.5 py-1.5 text-xs font-bold text-ink hover:bg-white/90 transition-colors"
+            className="shrink-0 rounded-lg bg-white px-3.5 py-1.5 text-caption font-bold text-ink hover:bg-white/90 transition-colors"
           >
             Compare 2 players →
           </button>

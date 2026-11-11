@@ -22,9 +22,9 @@ function StatCard({
         onClick ? "cursor-pointer hover:ring-input-border transition-all" : ""
       }`}
     >
-      <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">{label}</p>
-      <p className={`mt-2 text-3xl font-bold ${accent}`}>{value.toLocaleString()}</p>
-      {sub && <p className="mt-1 text-xs text-text-muted">{sub}</p>}
+      <p className="text-caption font-semibold text-text-secondary">{label}</p>
+      <p className={`mt-2 text-display-sm sm:text-display font-bold ${accent}`}>{value.toLocaleString()}</p>
+      {sub && <p className="mt-1 text-small text-text-muted">{sub}</p>}
     </div>
   );
 }
@@ -51,16 +51,16 @@ function RealWorldMovesCard() {
   return (
     <Link
       to="/admin/real-world-moves"
-      className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-warning-fill/10 px-6 py-4 no-underline ring-1 ring-warning-fill/30 hover:ring-warning-fill/60"
+      className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-warning-bg px-6 py-4 no-underline ring-1 ring-warning-ring hover:ring-warning-ring"
     >
-      <span className="text-sm font-semibold text-text">
+      <span className="text-body font-semibold text-text">
         {n} real-world move{n === 1 ? "" : "s"} to review
       </span>
-      <span className="text-sm text-text-secondary">
+      <span className="text-small text-text-secondary">
         {[held && `${held} holding a deal`, behind && `${behind} playing on after a TransferX move`].filter(Boolean).join(" · ")
           || "Players API-Football has at another club than TransferX does"}
       </span>
-      <span className="ml-auto text-sm font-semibold text-accent">Review →</span>
+      <span className="ml-auto text-body font-semibold text-accent">Review →</span>
     </Link>
   );
 }
@@ -77,8 +77,8 @@ function PipelineBar({ byStage }: { byStage: Record<string, number> }) {
 
   return (
     <div className="rounded-xl bg-surface ring-1 ring-border px-6 py-5">
-      <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">
-        Active Deals by Stage
+      <p className="mb-4 text-caption font-semibold text-text-secondary">
+        Active deals by stage
       </p>
       <div className="flex gap-4">
         {stages.map(({ key, label, color }) => {
@@ -87,8 +87,8 @@ function PipelineBar({ byStage }: { byStage: Record<string, number> }) {
           return (
             <div key={key} className="flex-1">
               <div className="mb-1.5 flex items-end justify-between">
-                <span className="text-xs text-text-muted">{label}</span>
-                <span className="text-lg font-bold text-text">{count}</span>
+                <span className="text-small text-text-muted">{label}</span>
+                <span className="text-section font-bold text-text">{count}</span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-border">
                 <div
@@ -133,8 +133,8 @@ function NeedsAttentionPanel({ byStage }: { byStage: Record<string, number> }) {
 
   if (stalled.length === 0 && confirmedCount === 0) {
     return (
-      <div className="rounded-xl bg-success/10 ring-1 ring-success/20 px-6 py-4">
-        <p className="text-sm font-semibold text-success-text">All clear — no items need attention</p>
+      <div className="rounded-xl bg-success-bg ring-1 ring-success-ring px-6 py-4">
+        <p className="text-body font-semibold text-success-text">All clear — no items need attention</p>
       </div>
     );
   }
@@ -142,20 +142,20 @@ function NeedsAttentionPanel({ byStage }: { byStage: Record<string, number> }) {
   return (
     <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
       <div className="border-b border-rule px-6 py-3">
-        <p className="text-sm font-semibold text-warning-text">Needs Attention</p>
+        <p className="text-body font-semibold text-warning-text">Needs Attention</p>
       </div>
       <div className="divide-y divide-rule-faint">
         {confirmedCount > 0 && (
           <div className="flex items-center justify-between px-6 py-3">
             <div>
-              <p className="text-sm text-text">
+              <p className="text-body text-text">
                 {confirmedCount} deal{confirmedCount !== 1 ? "s" : ""} ready to execute
               </p>
-              <p className="mt-0.5 text-xs text-text-muted">Waiting for final transfer execution</p>
+              <p className="mt-0.5 text-small text-text-muted">Waiting for final transfer execution</p>
             </div>
             <button
               onClick={() => navigate("/admin/deals")}
-              className="text-xs text-success-text hover:text-success-text-alt transition-colors"
+              className="text-small text-success-text hover:text-success-text-alt transition-colors"
             >
               View →
             </button>
@@ -166,17 +166,17 @@ function NeedsAttentionPanel({ byStage }: { byStage: Record<string, number> }) {
           return (
             <div key={d.id} className="flex items-center justify-between px-6 py-3">
               <div>
-                <p className="text-sm text-text">
+                <p className="text-body text-text">
                   {d.player?.name ?? "Unknown"} — stuck in{" "}
                   <span className="text-warning-text">{d.stage}</span>
                 </p>
-                <p className="mt-0.5 text-xs text-text-muted">
+                <p className="mt-0.5 text-small text-text-muted">
                   {d.buyer_club?.name ?? "?"} ↔ {d.seller_club?.name ?? "?"} · {ageDays}d without update
                 </p>
               </div>
               <Link
                 to={`/deals/${d.id}`}
-                className="text-xs text-accent hover:text-accent-hover transition-colors"
+                className="text-small text-accent hover:text-accent-hover transition-colors"
               >
                 Open →
               </Link>
@@ -214,13 +214,13 @@ function ActivityFeed() {
   return (
     <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
       <div className="border-b border-rule px-6 py-3">
-        <p className="text-sm font-semibold text-text">Recent Activity</p>
-        <p className="mt-0.5 text-xs text-text-muted">Last 30 days</p>
+        <p className="text-body font-semibold text-text">Recent Activity</p>
+        <p className="mt-0.5 text-small text-text-muted">Last 30 days</p>
       </div>
       {isLoading ? (
         <div className="flex justify-center py-8"><Spinner /></div>
       ) : items.length === 0 ? (
-        <p className="px-6 py-8 text-center text-sm text-text-muted">No recent activity</p>
+        <p className="px-6 py-8 text-center text-small text-text-muted">No recent activity</p>
       ) : (
         <div className="divide-y divide-rule-faint max-h-96 overflow-y-auto">
           {items.map((item, i) => {
@@ -228,12 +228,12 @@ function ActivityFeed() {
             const icon = EVENT_ICONS[item.event_type] ?? "·";
             const content = (
               <div className="flex items-start gap-3 px-6 py-3">
-                <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${dot}`}>
+                <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-caption font-bold text-white ${dot}`}>
                   {icon}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-text-secondary">{item.message}</p>
-                  <p className="mt-0.5 text-xs text-text-muted">{formatDateTime(item.occurred_at)}</p>
+                  <p className="text-body text-text-secondary">{item.message}</p>
+                  <p className="mt-0.5 text-small text-text-muted">{formatDateTime(item.occurred_at)}</p>
                 </div>
               </div>
             );
@@ -279,10 +279,10 @@ function BroadcastPanel() {
         className="w-full flex items-center justify-between px-6 py-4 text-left"
       >
         <div>
-          <p className="text-sm font-semibold text-text">Broadcast Notification</p>
-          <p className="mt-0.5 text-xs text-text-muted">Send a system message to all active users</p>
+          <p className="text-body font-semibold text-text">Broadcast Notification</p>
+          <p className="mt-0.5 text-small text-text-muted">Send a system message to all active users</p>
         </div>
-        <span className="text-text-muted text-sm">{open ? "▲" : "▼"}</span>
+        <span className="text-text-muted text-small">{open ? "▲" : "▼"}</span>
       </button>
 
       {open && (
@@ -300,24 +300,24 @@ function BroadcastPanel() {
             className="space-y-3"
           >
             <div>
-              <label className="mb-1 block text-xs text-text-muted">Message</label>
+              <label className="mb-1 block text-caption text-text-muted">Message</label>
               <textarea
                 required
                 rows={3}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="e.g. Scheduled maintenance tonight at 10pm UTC"
-                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill resize-none"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill resize-none"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-text-muted">Link <span className="text-text-muted">(optional)</span></label>
+              <label className="mb-1 block text-caption text-text-muted">Link <span className="text-text-muted">(optional)</span></label>
               <input
                 type="text"
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
                 placeholder="/transfers (a TransferX page)"
-                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
             <div className="flex items-center gap-3">
@@ -331,12 +331,12 @@ function BroadcastPanel() {
                 Send to all users
               </Button>
               {mutation.isSuccess && (
-                <p className="text-xs text-success-text">
+                <p className="text-small text-success-text">
                   Sent to {(mutation.data as { recipients: number }).recipients} users.
                 </p>
               )}
               {mutation.isError && (
-                <p className="text-xs text-danger-text">{getApiError(mutation.error, "Failed to send.")}</p>
+                <p className="text-small text-danger-text">{getApiError(mutation.error, "Failed to send.")}</p>
               )}
             </div>
           </form>
@@ -363,7 +363,7 @@ export default function AdminDashboardPage() {
 
   if (isError || !stats) {
     return (
-      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-small text-danger-text ring-1 ring-danger-border">
         Failed to load system stats.
       </div>
     );
@@ -372,35 +372,35 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-text">Admin Dashboard</h1>
-        <p className="mt-1 text-sm text-text-muted">System overview — refreshes every 30s</p>
+        <h1 className="text-title-sm sm:text-title font-bold text-text">Admin Dashboard</h1>
+        <p className="mt-1 text-small text-text-muted">System overview — refreshes every 30s</p>
       </div>
 
       <RealWorldMovesCard />
 
       {/* Row 1 — entity counts */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Total Users"   value={stats.total_users}   onClick={() => navigate("/admin/users")} />
-        <StatCard label="Total Clubs"   value={stats.total_clubs}   onClick={() => navigate("/admin/clubs")} />
-        <StatCard label="Total Players" value={stats.total_players} onClick={() => navigate("/admin/players")} />
+        <StatCard label="Total users"   value={stats.total_users}   onClick={() => navigate("/admin/users")} />
+        <StatCard label="Total clubs"   value={stats.total_clubs}   onClick={() => navigate("/admin/clubs")} />
+        <StatCard label="Total players" value={stats.total_players} onClick={() => navigate("/admin/players")} />
       </div>
 
       {/* Row 2 — live transaction counts */}
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
-          label="Active Sales"
+          label="Active sales"
           value={stats.active_sales}
           accent={stats.active_sales > 0 ? "text-success-text" : "text-text"}
           onClick={() => navigate("/admin/sales")}
         />
         <StatCard
-          label="Open Offers"
+          label="Open offers"
           value={stats.open_offers}
           accent={stats.open_offers > 0 ? "text-accent" : "text-text"}
           onClick={() => navigate("/admin/offers")}
         />
         <StatCard
-          label="Active Deals"
+          label="Active deals"
           value={stats.active_deals}
           accent={stats.active_deals > 0 ? "text-warning-text" : "text-text"}
           sub={`${stats.deals_by_stage["CONFIRMED"] ?? 0} ready to execute`}
@@ -421,8 +421,8 @@ export default function AdminDashboardPage() {
           <BroadcastPanel />
           {/* Quick actions */}
           <div className="rounded-xl bg-surface ring-1 ring-border px-6 py-5">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">
-              Quick Actions
+            <p className="mb-4 text-caption font-semibold text-text-secondary">
+              Quick actions
             </p>
             <div className="flex flex-wrap gap-2">
               {[
@@ -435,7 +435,7 @@ export default function AdminDashboardPage() {
                 <button
                   key={to}
                   onClick={() => navigate(to)}
-                  className="rounded-lg bg-surface-inset px-3 py-1.5 text-sm text-text-secondary ring-1 ring-input-border hover:bg-border hover:text-text transition-colors"
+                  className="rounded-lg bg-surface-inset px-3 py-1.5 text-body text-text-secondary ring-1 ring-input-border hover:bg-border hover:text-text transition-colors"
                 >
                   {label}
                 </button>

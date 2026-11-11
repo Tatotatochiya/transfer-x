@@ -26,7 +26,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const shortDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
-/** "was £20m, your offer": a term's value before the latest counter or raise. */
+/** "was £20M, your offer": a term's value before the latest counter or raise. */
 function Was({ card, term, format }: {
   card: LiteOfferCard; term: "fee" | "wage_weekly" | "wage_split_pct" | "contract_years";
   format: (v: number) => string;
@@ -36,7 +36,7 @@ function Was({ card, term, format }: {
   const v = change.was[term];
   const whose = change.by === "them" ? "your offer" : `${card.other_club}'s offer`;
   return (
-    <span className="ml-2 text-[0.9375rem] font-normal text-text-muted">
+    <span className="ml-2 text-lite-caption font-normal text-text-muted">
       (was {v == null ? "not set" : format(v)}, {whose})
     </span>
   );
@@ -84,8 +84,8 @@ export default function LiteOfferCardPage() {
   if (error || !card) {
     return (
       <div className="flex flex-col items-start gap-5">
-        <h1 className="text-[1.75rem] font-extrabold text-text">We couldn't open this offer</h1>
-        <p className="text-[1.25rem] text-text-secondary">{getApiError(error, "It may have been withdrawn.")}</p>
+        <h1 className="text-lite-title font-extrabold text-text">We couldn't open this offer</h1>
+        <p className="text-lite-section text-text-secondary">{getApiError(error, "It may have been withdrawn.")}</p>
         <Link to="/lite/offers" className={`${secondaryBtn} flex items-center no-underline`}>Back to offers</Link>
       </div>
     );
@@ -131,13 +131,13 @@ export default function LiteOfferCardPage() {
       <DemoOfferControls offerId={card.offer_id} />
       {fromPush && <WaitingHeader kind="offer" id={card.offer_id} />}
       {fromPush && !open && (
-        <div role="status" className="rounded-2xl bg-warning-bg px-5 py-4 text-[1.0625rem] text-text ring-1 ring-border">
+        <div role="status" className="rounded-2xl bg-warning-bg px-5 py-4 text-lite-body text-text ring-1 ring-border">
           This has changed since we told you: the offer has been {card.status.toLowerCase()}.{" "}
           <Link to={`/offers/${card.offer_id}`} className="font-bold text-accent">See what happened</Link>
         </div>
       )}
       {fromPush && open && left && (
-        <p className={`text-[0.8125rem] font-bold uppercase tracking-wider ${left.urgent ? "text-danger-text" : "text-text-muted"}`}>
+        <p className={`text-lite-caption font-semibold ${left.urgent ? "text-danger-text" : "text-text-secondary"}`}>
           {card.side === "seller" ? "Offer received" : "Reply to your offer"} · {left.text}
         </p>
       )}
@@ -197,19 +197,19 @@ export default function LiteOfferCardPage() {
         )}
         <Notes warnings={check.data?.warnings} />
         {card.disabled_reason && (
-          <p className="rounded-xl bg-surface-inset px-4 py-3 text-[1.0625rem] text-text-secondary">{card.disabled_reason}</p>
+          <p className="rounded-xl bg-surface-inset px-4 py-3 text-lite-body text-text-secondary">{card.disabled_reason}</p>
         )}
         {mode === "accept" && (
-          <p className="rounded-xl bg-accent-bg px-4 py-3 text-[1.0625rem] text-text">
+          <p className="rounded-xl bg-accent-bg px-4 py-3 text-lite-body text-text">
             Accept {liteMoney(card.fee)} for {player}? This agrees the fee with {other}; the medical and personal terms come next.
           </p>
         )}
         {mode === "reject" && (
-          <p className="rounded-xl bg-danger-bg px-4 py-3 text-[1.0625rem] text-danger-text">
+          <p className="rounded-xl bg-danger-bg px-4 py-3 text-lite-body text-danger-text">
             Say no to {other}? The offer closes and they are told. They can make a new one.
           </p>
         )}
-        {sendError && <p role="alert" className="rounded-xl bg-danger-bg px-4 py-3 text-[1.0625rem] text-danger-text">{sendError}</p>}
+        {sendError && <p role="alert" className="rounded-xl bg-danger-bg px-4 py-3 text-lite-body text-danger-text">{sendError}</p>}
 
         {!card.disabled_reason && (
           <div className="mt-auto flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -257,7 +257,7 @@ export default function LiteOfferCardPage() {
             )}
           </div>
         )}
-        {open && card.your_move && <p className="text-[0.9375rem] text-text-muted">You can undo for 10 seconds after sending.</p>}
+        {open && card.your_move && <p className="text-lite-caption text-text-muted">You can undo for 10 seconds after sending.</p>}
         {mode === "answer" && (
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" className={`${textBtn} self-start`} onClick={() => navigate("/lite/offers")}>Back to offers</button>

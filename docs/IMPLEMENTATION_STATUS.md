@@ -44,7 +44,7 @@ Rewritten on 2026-10-11 from the code, the CHANGELOG and read-only checks of the
 | Monitoring and admin | Built | 2026-10-17 | Admin panel with every change audited and a reason; staff tools for a stuck deal (move on, record paperwork or the medical, move the completion deadline, complete, collapse; each with a reason both clubs see); audit log page; read-only "view as this club"; Admin Jobs (runs, steps, live logs, Run refresh now), Errors (grouped issues from API, worker and browsers), Health (services, requests, jobs, integrity). Slack alerts once the webhook is set |
 | Accounts and privacy | Built | 2026-10-11 | Sign-in by email or username; sessions and signed-in devices with "sign out everywhere"; password reset links; GDPR export and account deletion; invitation-only accounts |
 | Money display | Built | 2026-10-04 | Amounts in pounds; a chosen EUR or USD adds an estimate at the ECB rate |
-| Frontend | Built | 2026-10-11 | The design system ([`design-system/`](./design-system/README.md)) across every screen, light and dark, responsive to 375px; compact sidebar and squad table; `tsc -b` at 0 errors; browser errors reported to Admin → Errors |
+| Frontend | Built | 2026-11-11 | The design system ([`design-system/`](./design-system/README.md)) across every screen, light and dark, responsive to 375px; one type scale (seven roles, 13px floor) and colour roles, enforced by `designSystem.test.ts` with an empty allowlist ([`type-and-colour`](./feature_spec/type-and-colour/README.md)); compact sidebar and squad table; `tsc -b` at 0 errors; browser errors reported to Admin → Errors |
 | Demo data | Built | 2026-10-11 | 20 Premier League clubs, agents for every contracted player, deals at every stage (`seed_demo.py`, phase 1), mock contract end dates. Railway checked by read-only queries: every repair script applied |
 | Demo mode | Built | 2026-11-04 | Demo runs with a change journal and reset (with the "changed since" safety check), house clubs (unused clubs only), play-as tabs, Admin → Demo, 14-day auto-reset; an open run's deals and test transfers (`deals.is_test`, marked in Admin → Deals) are left out of valuations, comparable transfers and Recent Transfers. Off unless `DEMO_ENABLED` ([spec](./feature_spec/demo-mode.md)). House clubs answer offers and do their side of a deal on their own, by personality, straight away or after a few minutes. They also bid for players a tester lists and buy them through to completion, and sometimes bid as rivals when the tester buys. A tester can make a house club accept, counter or reject now from the offer page. |
 | Deployment | Built | 2026-10-11 | Railway (`backend`, `frontend`, `Postgres`, `stats-worker`), deploying `main` automatically, at migration `0100`. A demo environment, not production ([operations](./operations/environments-and-deployment.md)) |
@@ -89,8 +89,8 @@ Each item was checked against the code on 2026-10-11 unless it says otherwise.
 
 As of 2026-11-11:
 
-- **Backend:** 938 passed (full suite, SQLite; last run 2026-11-09, no backend change since).
-- **Frontend:** vitest 474 passed (64 files).
+- **Backend:** 938 passed (full suite, SQLite; run 2026-11-11 after the `0062` and `seed_demo.py` fixes).
+- **Frontend:** vitest 480 passed (65 files), including the design-system guard and contrast tests.
 - **Lint:** not run; the repo has no eslint.
 
 - **Type check:** `tsc -b` has 0 errors.

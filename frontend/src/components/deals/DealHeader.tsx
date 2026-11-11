@@ -32,12 +32,12 @@ export default function DealHeader({ deal, moreMenu }: { deal: Deal; moreMenu: R
         : "Free agent"}
       routeTo={<ClubLink id={deal.buyer_club?.id} name={deal.buyer_club?.name} crestUrl={deal.buyer_club?.crest_url} />}
       lgSubExtra={deal.agent ? <>agent {deal.agent.display_name}</> : null}
-      amount={<Money value={deal.agreed_fee} />}
+      amount={<Money value={deal.agreed_fee} compact />}
       facts={
         <>
           {dealFacts(deal)}
           {deal.is_auction_deal && (
-            <span className="ml-2 inline-flex rounded-full bg-text-muted/15 px-2.5 py-0.5 text-[13px] font-semibold text-text-secondary ring-1 ring-text-muted/30">
+            <span className="ml-2 inline-flex rounded-full bg-surface-inset px-2.5 py-0.5 text-caption font-semibold text-text-secondary ring-1 ring-border">
               Auction deal
             </span>
           )}

@@ -72,7 +72,7 @@ export default function FiltersSheet({ open, onClose, filters, onApply, saved }:
       title="Filters"
       closeLabel="Close without applying"
       headerAction={
-        <button type="button" onClick={() => setDraft(clearFilters(draft))} className="min-h-11 shrink-0 px-2 text-[15px] font-semibold text-accent hover:text-accent-hover">
+        <button type="button" onClick={() => setDraft(clearFilters(draft))} className="min-h-11 shrink-0 px-2 text-body font-semibold text-accent hover:text-accent-hover">
           Clear all
         </button>
       }
@@ -80,7 +80,7 @@ export default function FiltersSheet({ open, onClose, filters, onApply, saved }:
         <button
           type="button"
           onClick={() => { onApply(draft); onClose(); }}
-          className="min-h-12 w-full rounded-xl bg-accent text-base font-semibold text-white hover:bg-accent-hover"
+          className="min-h-12 w-full rounded-xl bg-accent text-body font-semibold text-on-accent hover:bg-accent-hover"
         >
           <span aria-live="polite">{settled ? `Show ${count.toLocaleString("en-GB")} player${count === 1 ? "" : "s"}` : "Show players"}</span>
         </button>
@@ -103,7 +103,7 @@ export default function FiltersSheet({ open, onClose, filters, onApply, saved }:
         )}
         <PlayerFilters layout="sheet" filters={draft} onChange={setDraft} />
         <div>
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Club</p>
+          <p className="mb-1.5 text-caption font-semibold text-text-secondary">Club</p>
           <ClubSearchField layout="sheet" filters={draft} onChange={setDraft} />
         </div>
       </div>

@@ -76,14 +76,14 @@ export default function MarketSearch({
           value={describe ? query : name}
           onChange={(e) => (describe ? setQuery(e.target.value) : setName(e.target.value))}
           placeholder={describe ? 'Describe a player, e.g. "young left-back with good form"' : canDescribe ? "Name, or describe a player" : "Search by name"}
-          className="min-w-0 flex-1 bg-transparent text-base text-text placeholder-text-muted focus:outline-none lg:text-sm [&::-webkit-search-cancel-button]:hidden"
+          className="min-w-0 flex-1 bg-transparent text-input lg:text-body text-text placeholder-text-muted focus:outline-none [&::-webkit-search-cancel-button]:hidden"
         />
         {describe && describePending && <Spinner size="sm" />}
         {describe && (
           <button
             type="submit"
             disabled={!query.trim() || describePending}
-            className="min-h-9 shrink-0 rounded-lg bg-role-agent-text/15 px-3 text-sm font-semibold text-role-agent-text disabled:opacity-40"
+            className="min-h-9 shrink-0 rounded-lg bg-ai-bg px-3 text-body font-semibold text-ai-text disabled:opacity-40"
           >
             Search
           </button>
@@ -93,8 +93,8 @@ export default function MarketSearch({
             type="button"
             aria-pressed={describe}
             onClick={toggle}
-            className={`min-h-9 shrink-0 rounded-lg px-2.5 text-sm font-semibold transition-colors ${
-              describe ? "bg-role-agent-bg text-role-agent-text ring-1 ring-role-agent-text/40" : "text-role-agent-text hover:bg-role-agent-text/10"
+            className={`min-h-9 shrink-0 rounded-lg px-2.5 text-body font-semibold transition-colors ${
+              describe ? "bg-ai-bg text-ai-text ring-1 ring-ai-ring" : "text-ai-text hover:brightness-95"
             }`}
           >
             ✦ Describe

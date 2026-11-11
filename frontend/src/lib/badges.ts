@@ -12,15 +12,9 @@ import type {
 } from "../types/enums";
 import type { AlertSeverity, AlertType } from "../types/api";
 
+/** Positions are categories, so neutral: never a status colour (TOKENS.md). */
 export function positionVariant(_pos: PlayerPosition): BadgeVariant {
-  // GK amber, DEF blue, MID emerald, FWD red
-  const map: Record<PlayerPosition, BadgeVariant> = {
-    GK:  "warning",
-    DEF: "info",
-    MID: "success",
-    FWD: "danger",
-  };
-  return map[_pos];
+  return "neutral";
 }
 
 // EXTERNAL reads as "Contracted" to a buyer — the actionable fact is identical
@@ -29,8 +23,8 @@ export function positionVariant(_pos: PlayerPosition): BadgeVariant {
 // combination is exactly what made ~7.8k contracted professionals look
 // available. See ADR 0003.
 const PLAYER_STATUS_VARIANT: Record<PlayerStatus, BadgeVariant> = {
-  CONTRACTED: "info",
-  EXTERNAL:   "info",
+  CONTRACTED: "neutral",
+  EXTERNAL:   "neutral",
   FREE_AGENT: "success",
 };
 
@@ -41,7 +35,7 @@ const PLAYER_STATUS_LABEL: Record<PlayerStatus, string> = {
 };
 
 export function playerStatusVariant(s: PlayerStatus): BadgeVariant {
-  return PLAYER_STATUS_VARIANT[s] ?? "info";
+  return PLAYER_STATUS_VARIANT[s] ?? "neutral";
 }
 
 export function playerStatusLabel(s: PlayerStatus): string {
@@ -51,7 +45,7 @@ export function playerStatusLabel(s: PlayerStatus): string {
 export function saleTypeVariant(t: SaleType): BadgeVariant {
   const map: Record<SaleType, BadgeVariant> = {
     AUCTION:        "warning",
-    OPEN_TO_OFFERS: "info",
+    OPEN_TO_OFFERS: "neutral",
     FIXED_PRICE:    "neutral",
   };
   return map[t];
@@ -97,7 +91,7 @@ export function saleStatusLabel(s: SaleStatus): string {
 export function offerStatusVariant(s: OfferStatus): BadgeVariant {
   const map: Record<OfferStatus, BadgeVariant> = {
     DRAFT:     "neutral",
-    SENT:      "info",
+    SENT:      "neutral",
     COUNTERED: "warning",
     ACCEPTED:  "success",
     REJECTED:  "danger",
@@ -148,14 +142,14 @@ export function offerOutcome(
   // IN_PROGRESS / PENDING_COMPLETION — the live stage is the useful fact
   return {
     label: deal.stage ? dealStageLabel(deal.stage as DealStage) : "In progress",
-    variant: "info",
+    variant: "neutral",
     note: "deal in progress",
   };
 }
 
 export function dealStatusVariant(s: DealStatus): BadgeVariant {
   const map: Record<DealStatus, BadgeVariant> = {
-    IN_PROGRESS:        "info",
+    IN_PROGRESS:        "neutral",
     PENDING_COMPLETION: "warning",
     COMPLETED:          "success",
     COLLAPSED:          "danger",
@@ -188,9 +182,9 @@ export function dealTypeLabel(t: DealType): string {
 // ── TRA-134/135: client-roster alerts ─────────────────────────────────────────
 
 export const ALERT_SEVERITY_COLORS: Record<AlertSeverity, string> = {
-  RED:   "bg-danger/15 text-danger-text ring-danger/30",
-  AMBER: "bg-warning-fill/15 text-warning-text ring-warning-fill/30",
-  GREEN: "bg-success/15 text-success-text ring-success/30",
+  RED:   "bg-danger-bg text-danger-text ring-danger-ring",
+  AMBER: "bg-warning-bg text-warning-text ring-warning-ring",
+  GREEN: "bg-success-bg text-success-text ring-success-ring",
 };
 
 export const ALERT_SEVERITY_DOT: Record<AlertSeverity, string> = {

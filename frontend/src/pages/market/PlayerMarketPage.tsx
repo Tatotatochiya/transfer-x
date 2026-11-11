@@ -354,7 +354,7 @@ export default function PlayerMarketPage() {
       {isLoading && <div className="flex justify-center py-16"><Spinner size="lg" /></div>}
 
       {isError && (
-        <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+        <div className="rounded-xl bg-danger-bg px-5 py-4 text-small text-danger-text ring-1 ring-danger-border">
           Failed to load players. Please try again.
         </div>
       )}
@@ -422,12 +422,12 @@ export default function PlayerMarketPage() {
                   type="button"
                   onClick={loadMore}
                   disabled={infinite.isFetchingNextPage}
-                  className="min-h-12 w-full rounded-xl bg-surface text-base font-semibold text-text ring-1 ring-inset ring-input-border hover:ring-accent disabled:opacity-60"
+                  className="min-h-12 w-full rounded-xl bg-surface text-body font-semibold text-text ring-1 ring-inset ring-input-border hover:ring-accent disabled:opacity-60"
                 >
                   {infinite.isFetchingNextPage ? "Loading…" : `Show ${Math.min(pageSize, total - players.length)} more`}
                 </button>
               )}
-              <p className="text-sm text-text-muted">Showing {players.length.toLocaleString("en-GB")} of {total.toLocaleString("en-GB")}</p>
+              <p className="text-small text-text-muted">Showing {players.length.toLocaleString("en-GB")} of {total.toLocaleString("en-GB")}</p>
             </div>
           )}
         </>
@@ -483,7 +483,7 @@ export default function PlayerMarketPage() {
               subtitle={myClub ? `Recommended for ${myClub.name}` : undefined}
               closeLabel="Close"
               footer={
-                <button type="button" onClick={() => setRecsOpen(false)} className="min-h-12 w-full rounded-xl bg-surface text-base font-semibold text-text ring-1 ring-inset ring-input-border">
+                <button type="button" onClick={() => setRecsOpen(false)} className="min-h-12 w-full rounded-xl bg-surface text-body font-semibold text-text ring-1 ring-inset ring-input-border">
                   Back to players
                 </button>
               }
@@ -568,13 +568,13 @@ function GridItem({ children, after, index, rowRefs }: {
 /** The AI search's results in place of the list (browse-players-focus §5.7). */
 function DescribeResults({ nl, onBack }: { nl: ReturnType<typeof useNLPlayerSearch>; onBack: () => void }) {
   const back = (
-    <button type="button" onClick={onBack} className="min-h-11 text-[15px] font-semibold text-accent hover:text-accent-hover">
+    <button type="button" onClick={onBack} className="min-h-11 text-body font-semibold text-accent hover:text-accent-hover">
       ← Back to all players
     </button>
   );
   if (nl.isPending) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-text-muted">
+      <div className="flex items-center gap-2 py-8 text-small text-text-muted">
         <Spinner size="sm" /> Reading your description and searching…
       </div>
     );
@@ -582,7 +582,7 @@ function DescribeResults({ nl, onBack }: { nl: ReturnType<typeof useNLPlayerSear
   if (nl.error) {
     return (
       <div className="space-y-2">
-        <p className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
+        <p className="rounded-xl bg-danger-bg px-4 py-3 text-body text-danger-text ring-1 ring-danger-border">
           {(nl.error as { response?: { data?: { detail?: string } } }).response?.data?.detail ?? "Search failed. Please try again."}
         </p>
         {back}
@@ -593,7 +593,7 @@ function DescribeResults({ nl, onBack }: { nl: ReturnType<typeof useNLPlayerSear
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
-        <p className="text-sm font-semibold text-text-secondary">Interpreted as:</p>
+        <p className="text-body font-semibold text-text-secondary">Interpreted as:</p>
         <FilterChips filters={data.filters} />
       </div>
       {data.players.length === 0 ? (
@@ -604,7 +604,7 @@ function DescribeResults({ nl, onBack }: { nl: ReturnType<typeof useNLPlayerSear
         </ul>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-text-muted">{data.total} player{data.total === 1 ? "" : "s"} found</p>
+        <p className="text-small text-text-muted">{data.total} player{data.total === 1 ? "" : "s"} found</p>
         {back}
       </div>
     </div>

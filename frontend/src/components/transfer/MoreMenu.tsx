@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent";
-const ITEM = `flex min-h-12 w-full items-center rounded-lg px-2.5 text-left text-[15px] text-text no-underline hover:bg-surface-inset lg:min-h-10 lg:text-sm ${FOCUS}`;
+const ITEM = `flex min-h-12 w-full items-center rounded-lg px-2.5 text-left text-body text-text no-underline hover:bg-surface-inset lg:min-h-10 ${FOCUS}`;
 
 export interface MoreMenuItem {
   label: string;
@@ -15,7 +15,7 @@ export interface MoreMenuItem {
   checked?: boolean;
 }
 
-const TRIGGER = "min-h-11 rounded-lg bg-surface px-3.5 text-[15px] font-semibold text-text-secondary ring-1 ring-inset ring-input-border hover:text-text lg:min-h-10 lg:text-sm";
+const TRIGGER = "min-h-11 rounded-lg bg-surface px-3.5 text-body font-semibold text-text-secondary ring-1 ring-inset ring-input-border hover:text-text lg:min-h-10";
 
 /**
  * A transfer page's secondary actions (deal-room-focus §5.7,

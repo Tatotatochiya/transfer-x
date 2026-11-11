@@ -43,27 +43,27 @@ function CommentRow({
   const isMine = comment.author_user_id === user?.id;
   return (
     <div className="mt-3">
-      <div className={`rounded-[10px] px-3 py-2 text-sm ${isMine ? "bg-accent-bg" : "bg-page"}`}>
+      <div className={`rounded-[10px] px-3 py-2 text-small ${isMine ? "bg-accent-bg" : "bg-page"}`}>
         <div className="mb-0.5 flex items-center justify-between gap-2">
-          <span className="text-[13px] font-bold text-text-secondary">{comment.author_label ?? "Unknown"}</span>
-          <span className="text-[13px] text-text-muted">{formatDateTime(comment.created_at)}</span>
+          <span className="text-caption font-bold text-text-secondary">{comment.author_label ?? "Unknown"}</span>
+          <span className="text-small text-text-muted">{formatDateTime(comment.created_at)}</span>
         </div>
-        <p className="whitespace-pre-wrap break-words text-[13px] leading-normal text-text">{comment.body}</p>
+        <p className="whitespace-pre-wrap break-words text-body text-text">{comment.body}</p>
         <button
           type="button"
           onClick={() => onReply(comment)}
-          className="-ml-1 mt-1 inline-flex min-h-11 lg:min-h-0 items-center px-1 text-[13px] text-text-muted transition-colors hover:text-text-secondary"
+          className="-ml-1 mt-1 inline-flex min-h-11 lg:min-h-0 items-center px-1 text-small text-text-muted transition-colors hover:text-text-secondary"
         >
           Reply
         </button>
       </div>
       {replies.map((r) => (
-        <div key={r.id} className="ml-6 mt-2 rounded-[10px] bg-surface-inset px-3 py-2 text-sm">
+        <div key={r.id} className="ml-6 mt-2 rounded-[10px] bg-surface-inset px-3 py-2 text-small">
           <div className="mb-0.5 flex items-center justify-between gap-2">
-            <span className="text-[13px] font-bold text-text-secondary">{r.author_label ?? "Unknown"}</span>
-            <span className="text-[13px] text-text-muted">{formatDateTime(r.created_at)}</span>
+            <span className="text-caption font-bold text-text-secondary">{r.author_label ?? "Unknown"}</span>
+            <span className="text-small text-text-muted">{formatDateTime(r.created_at)}</span>
           </div>
-          <p className="whitespace-pre-wrap break-words text-[13px] leading-normal text-text">{r.body}</p>
+          <p className="whitespace-pre-wrap break-words text-body text-text">{r.body}</p>
         </div>
       ))}
     </div>
@@ -139,7 +139,7 @@ function CommentThread({
       {isLoading ? (
         <div className="flex justify-center py-8"><Spinner size="md" /></div>
       ) : topLevel.length === 0 ? (
-        <p className="py-6 text-center text-sm italic text-text-muted">No messages yet.</p>
+        <p className="py-6 text-center text-small italic text-text-muted">No messages yet.</p>
       ) : (
         <div className="max-h-80 overflow-y-auto pr-1">
           {topLevel.map((c) => (
@@ -151,7 +151,7 @@ function CommentThread({
       {canWrite && (
         <form onSubmit={handleSubmit} className="mt-4 border-t border-rule pt-3">
           {replyTo && (
-            <div className="mb-2 flex items-center justify-between rounded-lg bg-surface-inset px-3 py-1.5 text-[13px] text-text-muted">
+            <div className="mb-2 flex items-center justify-between rounded-lg bg-surface-inset px-3 py-1.5 text-caption text-text-muted">
               <span>Replying to <span className="text-text-secondary">{replyTo.author_label}</span></span>
               <button type="button" aria-label="Stop replying" onClick={() => setReplyTo(null)} className="-mr-2 flex h-11 w-11 items-center justify-center text-text-muted hover:text-text lg:h-7 lg:w-7">✕</button>
             </div>
@@ -161,17 +161,17 @@ function CommentThread({
             onChange={(e) => setBody(e.target.value)}
             rows={2}
             placeholder={`Write to ${channelLabel}…`}
-            className="w-full resize-none rounded-lg bg-surface px-3 py-2 text-base text-text placeholder-text-muted lg:text-sm ring-1 ring-input-border focus:outline-none focus:ring-accent"
+            className="w-full resize-none rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
           />
           {participants.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span className="self-center text-[13px] text-text-muted">Mention:</span>
+              <span className="self-center text-small text-text-muted">Mention:</span>
               {participants.map((p) => (
                 <button
                   key={p.user_id}
                   type="button"
                   onClick={() => toggleMention(p)}
-                  className={`inline-flex min-h-11 lg:min-h-0 items-center rounded-full px-2.5 py-0.5 text-[13px] font-medium ring-1 transition-colors ${
+                  className={`inline-flex min-h-11 lg:min-h-0 items-center rounded-full px-2.5 py-0.5 text-caption font-medium ring-1 transition-colors ${
                     mentions.some((m) => m.user_id === p.user_id)
                       ? "bg-accent-bg text-accent-active ring-accent"
                       : "bg-surface-inset text-text-muted ring-input-border hover:text-text"
@@ -252,7 +252,7 @@ function DocumentsTab({
       {isLoading ? (
         <div className="flex justify-center py-8"><Spinner size="md" /></div>
       ) : attachments.length === 0 ? (
-        <p className="py-6 text-center text-sm italic text-text-muted">No documents yet.</p>
+        <p className="py-6 text-center text-small italic text-text-muted">No documents yet.</p>
       ) : (
         <div className="space-y-1.5">
           {attachments.map((a) => (
@@ -262,15 +262,15 @@ function DocumentsTab({
               className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-surface-inset"
             >
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1.5 truncate text-[13px] font-medium text-text">
+                <p className="flex items-center gap-1.5 truncate text-small font-medium text-text">
                   {a.filename}
                   {a.audience !== "SHARED" && (
-                    <span className="shrink-0 rounded-full bg-warning-bg px-1.5 py-0.5 text-[13px] font-semibold text-warning-text">
+                    <span className="shrink-0 rounded-full bg-warning-bg px-1.5 py-0.5 text-caption font-semibold text-warning-text">
                       Private
                     </span>
                   )}
                 </p>
-                <p className="text-[13px] text-text-muted">
+                <p className="text-small text-text-muted">
                   {formatFileSize(a.size_bytes)} · {a.uploaded_by_label ?? "Unknown"} · {formatDateTime(a.created_at)}
                 </p>
               </div>
@@ -283,7 +283,7 @@ function DocumentsTab({
       {canWrite && (
         <div className="mt-4">
           {privateAudience && (
-            <div className="mb-2 flex w-fit gap-1 rounded-lg bg-surface-inset p-0.5 text-[13px]">
+            <div className="mb-2 flex w-fit gap-1 rounded-lg bg-surface-inset p-0.5 text-caption">
               <button
                 type="button"
                 onClick={() => setAudience("SHARED")}
@@ -304,7 +304,7 @@ function DocumentsTab({
               </button>
             </div>
           )}
-          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-input-border px-4 py-3 text-[13px] text-text-muted transition-colors hover:border-accent hover:text-text">
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-input-border px-4 py-3 text-caption text-text-muted transition-colors hover:border-accent hover:text-text">
             {uploading ? "Uploading…" : "+ Upload file (PDF, DOC, JPG, PNG — max 10MB)"}
             <input
               type="file"
@@ -368,7 +368,7 @@ export function DealMessages({
             <button
               key={c.key}
               onClick={() => setChannel(c.key)}
-              className={`min-h-11 flex-1 py-2.5 text-sm font-semibold transition-colors ${
+              className={`min-h-11 flex-1 py-2.5 text-body font-semibold transition-colors ${
                 activeChannel === c.key
                   ? "text-accent border-b-2 border-accent"
                   : "text-text-muted border-b-2 border-transparent hover:text-text"
@@ -381,7 +381,7 @@ export function DealMessages({
       )}
 
       {activeChannel === "CLUB_ONLY" && (
-        <div className="bg-warning-bg px-5 py-2.5 text-[13px] text-warning-text">
+        <div className="bg-warning-bg px-5 py-2.5 text-caption text-warning-text">
           Private to {myClubName ?? "your club"} — {theirClubName ?? "the counterparty"} and the agent cannot see this channel.
         </div>
       )}

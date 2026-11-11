@@ -40,12 +40,12 @@ function DefaultCard<T>({
     >
       {primary && (
         <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-semibold text-text">{primary.render(row)}</span>
-          {secondary && <span className="text-sm font-bold text-text shrink-0">{secondary.render(row)}</span>}
+          <span className="text-body font-semibold text-text">{primary.render(row)}</span>
+          {secondary && <span className="text-body font-bold tabular-nums text-text shrink-0">{secondary.render(row)}</span>}
         </div>
       )}
       {rest.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-text-muted">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-small text-text-muted">
           {rest.map((col) => (
             <span key={col.key}>{col.render(row)}</span>
           ))}
@@ -96,13 +96,13 @@ export default function ResponsiveTable<T>({
 
       {/* Tablet/desktop: real table */}
       <div className="hidden sm:block overflow-x-auto rounded-xl ring-1 ring-border">
-        <table className="min-w-full text-sm">
+        <table className="min-w-full text-small">
           <thead>
             <tr className="border-b border-rule bg-surface-header">
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted ${col.className ?? ""}`}
+                  className={`px-4 py-3 text-left eyebrow text-text-secondary ${col.className ?? ""}`}
                 >
                   {col.header}
                 </th>

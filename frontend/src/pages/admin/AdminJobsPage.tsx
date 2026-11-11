@@ -126,7 +126,7 @@ function RunLog({ runId }: { runId: string }) {
           aria-label="Log level"
           value={level}
           onChange={(e) => setLevel(e.target.value as "" | "WARNING" | "ERROR")}
-          className="rounded-lg bg-surface px-2 py-1 text-xs ring-1 ring-input-border"
+          className="rounded-lg bg-surface px-2 py-1 text-caption ring-1 ring-input-border"
         >
           <option value="">All lines</option>
           <option value="WARNING">Warnings and errors</option>
@@ -138,11 +138,11 @@ function RunLog({ runId }: { runId: string }) {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search the log"
           aria-label="Search the log"
-          className="min-w-0 flex-1 rounded-lg bg-surface px-2 py-1 text-xs ring-1 ring-input-border"
+          className="min-w-0 flex-1 rounded-lg bg-surface px-2 py-1 text-caption ring-1 ring-input-border"
         />
-        {running && <span className="text-xs font-semibold text-accent">● Live</span>}
+        {running && <span className="text-caption font-semibold text-accent">● Live</span>}
       </div>
-      <div className="max-h-80 overflow-y-auto rounded-lg bg-surface-inset p-2 font-mono text-[11px] leading-relaxed">
+      <div className="max-h-80 overflow-y-auto rounded-lg bg-surface-inset p-2 font-mono text-caption leading-relaxed">
         {loading ? (
           <Spinner size="sm" />
         ) : lines.length === 0 ? (
@@ -176,39 +176,39 @@ function RunDetailModal({ runId, onClose }: { runId: string; onClose: () => void
         <div className="flex justify-center py-10"><Spinner /></div>
       ) : (
         <div className="space-y-4 px-6 py-5">
-          <div className="flex flex-wrap items-center gap-3 text-sm">
+          <div className="flex flex-wrap items-center gap-3 text-small">
             <StatusBadge status={data.status} />
             <span className="text-text-muted">{data.trigger} · {data.service} · {duration(data.duration_ms)}</span>
           </div>
           {data.error && (
-            <p className="rounded-lg bg-danger-bg px-3 py-2 text-xs text-danger-text ring-1 ring-danger-border">{data.error}</p>
+            <p className="rounded-lg bg-danger-bg px-3 py-2 text-caption text-danger-text ring-1 ring-danger-border">{data.error}</p>
           )}
           {summary.length > 0 && (
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-small sm:grid-cols-3">
               {summary.map(([k, v]) => (
                 <div key={k}>
-                  <dt className="text-xs text-text-muted">{SUMMARY_LABELS[k]}</dt>
+                  <dt className="text-caption text-text-muted">{SUMMARY_LABELS[k]}</dt>
                   <dd className="font-semibold tabular-nums text-text">{typeof v === "number" ? v.toLocaleString("en-GB") : String(v)}</dd>
                 </div>
               ))}
             </dl>
           )}
-          {moved.length > 0 && <p className="text-xs text-text-secondary">New season: {moved.join(", ")}</p>}
+          {moved.length > 0 && <p className="text-small text-text-secondary">New season: {moved.join(", ")}</p>}
           {failures.length > 0 && (
             <div>
-              <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.06em] text-text-muted">Not done</h3>
-              <ul className="list-disc pl-5 text-xs text-warning-text">{failures.map((f) => <li key={f}>{f}</li>)}</ul>
+              <h3 className="mb-1 text-section font-bold text-text">Not done</h3>
+              <ul className="list-disc pl-5 text-caption text-warning-text">{failures.map((f) => <li key={f}>{f}</li>)}</ul>
             </div>
           )}
           {data.steps.length > 0 && (
             <div>
-              <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.06em] text-text-muted">Steps</h3>
+              <h3 className="mb-1 text-section font-bold text-text">Steps</h3>
               <div className="divide-y divide-rule-faint rounded-lg ring-1 ring-border">
                 {data.steps.map((s) => (
-                  <div key={s.id} className="flex items-center justify-between gap-3 px-3 py-1.5 text-sm">
+                  <div key={s.id} className="flex items-center justify-between gap-3 px-3 py-1.5 text-small">
                     <span className="text-text">{s.job.replace(/^.*\./, "")}</span>
                     <span className="flex items-center gap-3">
-                      <span className="text-xs text-text-muted">{duration(s.duration_ms)}</span>
+                      <span className="text-small text-text-muted">{duration(s.duration_ms)}</span>
                       <StatusBadge status={s.status} />
                     </span>
                   </div>
@@ -217,9 +217,9 @@ function RunDetailModal({ runId, onClose }: { runId: string; onClose: () => void
             </div>
           )}
           <div>
-            <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.06em] text-text-muted">Log</h3>
+            <h3 className="mb-1 text-section font-bold text-text">Log</h3>
             {data.log_lines === 0 && data.status !== "running" ? (
-              <p className="text-xs text-text-muted">This run kept no log.</p>
+              <p className="text-small text-text-muted">This run kept no log.</p>
             ) : (
               <RunLog runId={runId} />
             )}
@@ -260,8 +260,8 @@ export default function AdminJobsPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-text">Jobs</h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <h1 className="text-title-sm sm:text-title font-bold text-text">Jobs</h1>
+          <p className="mt-1 text-small text-text-muted">
             Scheduled work in the stats-worker and the web app: when each runs, what's running now, and what each run did.
           </p>
         </div>
@@ -274,12 +274,12 @@ export default function AdminJobsPage() {
         <>
           {overview.data.running.length > 0 && (
             <section className="mb-6">
-              <h2 className="mb-2 text-sm font-semibold text-text">Running now</h2>
+              <h2 className="mb-2 text-body font-semibold text-text">Running now</h2>
               <div className="divide-y divide-rule-faint rounded-xl bg-surface ring-1 ring-border">
                 {overview.data.running.map((r, i) => (
-                  <div key={r.id ?? `${r.job}-${i}`} className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
+                  <div key={r.id ?? `${r.job}-${i}`} className="flex items-center justify-between gap-3 px-5 py-2.5 text-small">
                     <span className="text-text">{r.label ?? r.job}</span>
-                    <span className="flex items-center gap-3 text-xs text-text-muted">
+                    <span className="flex items-center gap-3 text-small text-text-muted">
                       {r.status === "lost" ? "stopped reporting" : `for ${since(r.started_at)}`}
                       {r.id && <button type="button" onClick={() => setOpened(r.id)} className="font-semibold text-accent hover:underline">Open</button>}
                     </span>
@@ -290,11 +290,11 @@ export default function AdminJobsPage() {
           )}
 
           <section className="mb-6">
-            <h2 className="mb-2 text-sm font-semibold text-text">Scheduled</h2>
+            <h2 className="mb-2 text-body font-semibold text-text">Scheduled</h2>
             <div className="overflow-x-auto rounded-xl bg-surface ring-1 ring-border">
-              <table className="w-full min-w-[760px] text-sm">
+              <table className="w-full min-w-[760px] text-small">
                 <thead>
-                  <tr className="border-b border-rule text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                  <tr className="border-b border-rule text-left text-caption font-semibold text-text-secondary">
                     <th className="px-4 py-2">Job</th><th className="px-4 py-2">Runs in</th><th className="px-4 py-2">Schedule</th>
                     <th className="px-4 py-2">Last run</th><th className="px-4 py-2">Next run</th>
                   </tr>
@@ -305,7 +305,7 @@ export default function AdminJobsPage() {
                       <td className="px-4 py-2 text-text">
                         {j.label}
                         {j.overdue_since && (
-                          <p className="text-xs font-semibold text-danger-text">Didn't run at {formatDateTime(j.overdue_since)}</p>
+                          <p className="text-caption font-semibold text-danger-text">Didn't run at {formatDateTime(j.overdue_since)}</p>
                         )}
                       </td>
                       <td className="px-4 py-2 text-text-muted">{j.where}</td>
@@ -314,7 +314,7 @@ export default function AdminJobsPage() {
                         {j.running ? <StatusBadge status="running" /> : j.last_run_at ? (
                           <span className="flex items-center gap-2" title={j.last_error ?? undefined}>
                             <StatusBadge status={j.last_status} />
-                            <span className="text-xs text-text-muted">{formatDateTime(j.last_run_at)}</span>
+                            <span className="text-small text-text-muted">{formatDateTime(j.last_run_at)}</span>
                           </span>
                         ) : <span className="text-text-muted">Not yet</span>}
                       </td>
@@ -330,15 +330,15 @@ export default function AdminJobsPage() {
 
       <section>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-text">Recent runs</h2>
+          <h2 className="text-body font-semibold text-text">Recent runs</h2>
           <div className="flex gap-2">
             <select aria-label="Job" value={job} onChange={(e) => setJob(e.target.value)}
-              className="rounded-lg bg-surface px-2 py-1 text-xs ring-1 ring-input-border">
+              className="rounded-lg bg-surface px-2 py-1 text-caption ring-1 ring-input-border">
               <option value="">All jobs</option>
               {(runs.data?.jobs ?? []).map((j) => <option key={j} value={j}>{j}</option>)}
             </select>
             <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)}
-              className="rounded-lg bg-surface px-2 py-1 text-xs ring-1 ring-input-border">
+              className="rounded-lg bg-surface px-2 py-1 text-caption ring-1 ring-input-border">
               <option value="">Any status</option>
               {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
@@ -348,11 +348,11 @@ export default function AdminJobsPage() {
           {runs.isLoading ? (
             <div className="flex justify-center py-8"><Spinner /></div>
           ) : !runs.data?.items.length ? (
-            <p className="px-5 py-6 text-sm text-text-muted">No runs recorded yet.</p>
+            <p className="px-5 py-6 text-small text-text-muted">No runs recorded yet.</p>
           ) : (
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full min-w-[720px] text-small">
               <thead>
-                <tr className="border-b border-rule text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                <tr className="border-b border-rule text-left text-caption font-semibold text-text-secondary">
                   <th className="px-4 py-2">Job</th><th className="px-4 py-2">Started</th><th className="px-4 py-2">Took</th>
                   <th className="px-4 py-2">Trigger</th><th className="px-4 py-2">Status</th><th className="px-4 py-2" />
                 </tr>
@@ -366,7 +366,7 @@ export default function AdminJobsPage() {
                     <td className="px-4 py-2 text-text-muted">{r.trigger}</td>
                     <td className="px-4 py-2"><StatusBadge status={r.status} /></td>
                     <td className="px-4 py-2 text-right">
-                      <button type="button" onClick={() => setOpened(r.id)} className="text-xs font-semibold text-accent hover:underline">
+                      <button type="button" onClick={() => setOpened(r.id)} className="text-small font-semibold text-accent hover:underline">
                         Details
                       </button>
                     </td>
@@ -381,7 +381,7 @@ export default function AdminJobsPage() {
       {opened && <RunDetailModal runId={opened} onClose={() => setOpened(null)} />}
 
       <Modal open={confirmRefresh} onClose={() => setConfirmRefresh(false)} title="Run the data refresh now?" size="sm">
-        <div className="space-y-3 px-6 py-5 text-sm">
+        <div className="space-y-3 px-6 py-5 text-small">
           <p className="text-text-secondary">
             Fetches current-season stats, injuries and recent match ratings from API-Football, then updates form.
             It takes a few minutes and uses a few hundred API requests. The scheduled runs carry on as normal.
@@ -390,7 +390,7 @@ export default function AdminJobsPage() {
             <input type="checkbox" checked={withValuations} onChange={(e) => setWithValuations(e.target.checked)} />
             Also recompute valuations (normally after the 22:00 run)
           </label>
-          {refresh.isError && <p className="text-xs text-danger-text">{getApiError(refresh.error, "Couldn't start the refresh.")}</p>}
+          {refresh.isError && <p className="text-small text-danger-text">{getApiError(refresh.error, "Couldn't start the refresh.")}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" size="sm" onClick={() => setConfirmRefresh(false)}>Cancel</Button>
             <Button size="sm" loading={refresh.isPending} onClick={() => refresh.mutate()}>Start refresh</Button>

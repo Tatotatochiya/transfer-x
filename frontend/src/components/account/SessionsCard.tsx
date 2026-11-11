@@ -48,11 +48,11 @@ export default function SessionsCard() {
         (sessions ?? []).map((s) => (
           <div key={s.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-text">
+              <p className="text-body font-medium text-text">
                 {s.device}
                 {s.current && <Badge variant="success" className="ml-2">This device</Badge>}
               </p>
-              <p className="mt-0.5 text-xs text-text-muted">
+              <p className="mt-0.5 text-small text-text-muted">
                 Signed in {formatDateTime(s.signed_in_at)} · last used {formatDateTime(s.last_used_at)}
               </p>
             </div>

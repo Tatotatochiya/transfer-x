@@ -1,6 +1,6 @@
 ---
 title: "Design Rules"
-last_updated: 2026-10-12
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Design Owner"
 ---
@@ -25,8 +25,10 @@ Tailwind v4 is CSS-first: tokens live in `@theme` in `src/index.css`. There is n
    / Neither. The value comes from the API, not from component logic.
 4. **`#667085` is the lightest colour any text may be.** No exceptions for captions, labels or
    timestamps.
-5. **Minimum type size is 11px, and only for uppercase overlines.** Body copy never goes below
-   13px. If content does not fit, remove content — never shrink type.
+5. **Type comes from the seven roles, and 13px is the floor.** `text-caption` (13) … `text-display`
+   (32), never a raw size; body text is 15px. Headings are sentence case; `uppercase` only through
+   `eyebrow`. If content does not fit, remove content or let it wrap — never shrink type. See
+   [`TOKENS.md`](./TOKENS.md) "Typography".
 6. **44×44px minimum touch target below 1024px.**
 7. **Tables become stacked cards below 640px**, via the shared `ResponsiveTable`. Never a
    horizontal scroll on a phone.
@@ -34,12 +36,16 @@ Tailwind v4 is CSS-first: tokens live in `@theme` in `src/index.css`. There is n
 9. **Focus rings stay.** `outline: 2px solid var(--color-accent); outline-offset: 2px`.
 10. **Colour is never the only carrier of meaning.** Every coloured state has a text label.
 11. **AI controls look like AI.** Anything that asks the assistant (a button, a link, a panel
-    heading) carries the ✦ mark in the assistant colour (`role-agent-text`); a button has its
-    light fill (`/10`) and ring (`/30`). Use `components/ai/AskAboutButton` for "Ask about this"
-    rather than restyling a plain button.
+    heading) carries the ✦ mark in the AI colour (`ai-text`); a button has `bg-ai-bg` and
+    `ring-ai-ring` (or `Badge variant="ai"`). Use `components/ai/AskAboutButton` for "Ask about
+    this" rather than restyling a plain button. Violet is only for the AI.
+12. **Each colour means one thing** (TOKENS.md "Colour roles"). Blue only for what you can tap,
+    red for "needs you", errors and destructive actions, green for done, amber for caution.
+    Categories (positions, roles, stages, chart series) are neutral. Tints come from tokens
+    (`bg-success-bg`), not opacity (`bg-success/15`), and text on accent is `text-on-accent`.
 
 ## Before finishing a UI change
 
-- `npx tsc -b` reports no errors, and vitest passes.
+- `npx tsc -b` reports no errors, and vitest passes (it includes the design guard, `npm run check:design`).
 - The touched routes render at 375px, 768px and 1280px, in a real browser.
 - No new console errors or React key warnings.

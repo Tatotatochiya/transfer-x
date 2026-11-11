@@ -49,9 +49,9 @@ describe("FairValueBadge", () => {
         signal={makeSignal({ divergence: divergence("ABOVE", 20.3) })}
       />
     );
-    expect(screen.getByText(/Asking £80\.0m/)).toBeInTheDocument();
-    expect(screen.getByText(/Model £66\.5m/)).toBeInTheDocument();
-    expect(screen.getByText(/range £56\.6m–£76\.5m/)).toBeInTheDocument();
+    expect(screen.getByText(/Asking £80M/)).toBeInTheDocument();
+    expect(screen.getByText(/Model £66\.5M/)).toBeInTheDocument();
+    expect(screen.getByText(/range £56\.6M–£76\.5M/)).toBeInTheDocument();
     expect(screen.getByText(/\+20% above model/)).toBeInTheDocument();
     expect(screen.getByText(/HIGH confidence/)).toBeInTheDocument();
   });
@@ -63,14 +63,14 @@ describe("FairValueBadge", () => {
         referenceLabel="Agreed fee"
       />
     );
-    expect(screen.getByText(/Agreed fee £80\.0m/)).toBeInTheDocument();
+    expect(screen.getByText(/Agreed fee £80M/)).toBeInTheDocument();
   });
 
   it("omits reference and divergence when divergence is null", () => {
     render(<FairValueBadge signal={makeSignal()} />);
     expect(screen.queryByText(/Asking/)).not.toBeInTheDocument();
     expect(screen.queryByText(/above model|below model|in line/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/Model £66\.5m/)).toBeInTheDocument();
+    expect(screen.getByText(/Model £66\.5M/)).toBeInTheDocument();
   });
 
   const bandCases: Array<[ValuationBand, number, RegExp, string]> = [
@@ -108,7 +108,7 @@ describe("FairValueBadge", () => {
         compact
       />
     );
-    expect(screen.getByText(/Model £66\.5m/)).toBeInTheDocument();
+    expect(screen.getByText(/Model £66\.5M/)).toBeInTheDocument();
     expect(screen.getByText(/\+20%/)).toBeInTheDocument();
     // compact pill never shows the range
     expect(screen.queryByText(/range/)).not.toBeInTheDocument();
@@ -116,7 +116,7 @@ describe("FairValueBadge", () => {
 
   it("compact without divergence shows just the model value", () => {
     render(<FairValueBadge signal={makeSignal()} compact />);
-    expect(screen.getByText(/Model £66\.5m/)).toBeInTheDocument();
+    expect(screen.getByText(/Model £66\.5M/)).toBeInTheDocument();
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
   });
 

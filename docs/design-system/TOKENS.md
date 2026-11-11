@@ -1,6 +1,6 @@
 ---
 title: "Design Tokens"
-last_updated: 2026-10-11
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Design Owner"
 ---
@@ -17,6 +17,35 @@ inconsistency. The oklch values are recorded only so future colours can be deriv
 perceptual scale.
 
 ## Colour
+
+### Colour roles
+
+Each colour means one thing. Categories (positions, contract state, account roles, deal type,
+pipeline stages, chart series) are always neutral; their label carries the meaning.
+
+| Role | Tokens | Use for | Never for |
+|---|---|---|---|
+| **Ink** | `text`, `text-secondary`, `text-muted` | All reading text. `text-muted` is the lightest text allowed | Text lighter than muted |
+| **Interactive** | `accent`, `accent-hover`, `accent-active`, `accent-bg`, `accent-bg-strong`, `accent-ring`, `on-accent` | Buttons, links, selected tabs, chips and segments, switches that are on, focus | Statuses, positions, chart series, "your side" of a comparison |
+| **Needs you** | `danger-*` | Your move, overdue, errors, destructive confirms | Positions, the other club's figures |
+| **Caution** | `warning-*` | Deadlines close, on hold, budget nearly used, low form | Goalkeepers |
+| **Done** | `success`, `success-text`, `success-dot`, `success-bg`, `success-ring` | Completed, passed, signed, good form | Midfielders, switches being on |
+| **AI** | `ai-text`, `ai-bg`, `ai-ring` | Everything TransferX's AI writes or suggests (✦ buttons, advice, fit scores, AI search) | The Agent account badge |
+| **Neutral** | `surface-inset`, `text-secondary`, `border` | Categories and plain facts | — |
+
+**Tints come from tokens**, never opacity on a solid colour: `bg-success-bg`, `ring-warning-ring`,
+`bg-accent-bg`, `ring-accent-ring`, `bg-danger-bg`, `ring-danger-ring`, `bg-ai-bg`. Opacity stays
+only for overlays (`bg-ink/40`), progress fills and focus rings drawn from accent. Text on an
+accent fill is `text-on-accent` (white in light mode, `#0b1220` in dark).
+
+New tokens (light / dark): `--success-bg` `#e7f4ec`/`#0f2a1a`, `--success-ring` `#b7dfc4`/`#1f5132`,
+`--warning-ring` `#efd9a8`/`#5a4413`, `--accent-ring` `#c7dafa`/`#284a7a`, `--ai-text`
+`#5b2d9e`/`#c4a5f5`, `--ai-bg` `#f5f0fd`/`#241a3d`, `--ai-ring` `#ddcdf5`/`#45316e`, `--on-accent`
+`#ffffff`/`#0b1220`. The dark accent is blue (`#5b9bf8`), like light mode's; it was emerald.
+
+Contrast: `designSystem.test.ts` checks every text/background pair above (text on surfaces,
+accent links, on-accent on accent, each status text on its tint, AI, positions) reaches 4.5:1 in
+both themes.
 
 ### Surfaces
 
@@ -97,14 +126,9 @@ acceptable for non-text elements only (an inactive dot, a disabled progress trac
 
 ### Position colours (squad and player rows)
 
-| Position | Text | Avatar background |
-|---|---|---|
-| GK | `#7a4a00` | `#faf0dd` |
-| DEF | `#1050ac` | `#e2ecfb` |
-| MID | `#005a1c` | `#e0f0e6` |
-| FWD | `#9b1e22` | `#fbe6e3` |
-
-Position colour is decoration on an already-labelled element. Never the only carrier of meaning.
+Positions are categories: every position uses `--pos-*` tokens that are neutral (`#344054` on
+`#eef0f3`; dark `#cbd5e1` on `#1e293b`). The letters (GK, DEF, MID, FWD) carry the meaning. Account
+roles (`--role-club-*`, `--role-agent-*`) are neutral the same way.
 
 ## Neutral dark
 
@@ -113,30 +137,48 @@ active filter chip. There is **no dark sidebar and no black header band** in Boa
 
 ## Typography
 
-Inter, already loaded. Weights 400 / 500 / 600 / 700 only — no 800.
+Inter. Seven text roles, defined once in `index.css` (`@theme`, the same in both themes). Components
+use the role utilities only, never `text-sm` or `text-[15px]`; `src/test/designSystem.test.ts` fails
+on raw sizes.
 
-| Role | Size | Weight | Letter-spacing | Colour |
+| Role | Utility | Size / line | Weight | Use |
 |---|---|---|---|---|
-| Page title | 24px | 700 | -0.01em | text |
-| Page subtitle | 13px | 400 | — | muted |
-| Tier-2 figure value | 28px | 700 | -0.01em | text |
-| Section heading | 18px | 700 | — | text |
-| Card title | 14px | 700 | — | text |
-| Tier-1 row title | 15–16px | 600–700 | — | text |
-| Body / table cell | 14px | 400 | — | secondary |
-| Row value (money) | 14–17px | 700 | — | text |
-| Label above a value | 11px | 400 | — | muted |
-| Overline (uppercase) | 11px | 600 | 0.04em | muted |
-| Metadata / caption | 12–13px | 400 | — | muted |
-| Button label | 14px | 600 | — | — |
-| Chip / pill | 13px | 600 | — | — |
+| Display | `text-display-sm sm:text-display` | 28 → 32 / 34–38 | 700, `-0.01em`, `tabular-nums` | One hero figure per card at most (Finance budgets) |
+| Title | `text-title-sm sm:text-title` | 22 → 24 / 28–30 | 700, `-0.01em` | The page `h1` |
+| Headline | `text-headline` | 20 / 28 | 700 | The one sentence that matters: status card headlines, empty-state titles, dialog and sheet titles |
+| Section | `text-section` | 17 / 24 | 700 | Every card and section heading, sentence case |
+| Body | `text-body` | 15 / 24 | 400 (strong 600) | Reading text, list rows, buttons, tabs, segmented controls |
+| Small | `text-small` | 14 / 20 | 400 (strong 600) | Secondary lines, meta under a name, table cells, `Metric` rows |
+| Caption | `text-caption` | 13 / 18 | 400 (labels 600) | Field labels above values, timestamps, badges, counts, chart labels |
+| Eyebrow | `eyebrow` | 13, caps, `0.04em` | 700 | Status overlines and table column headers only |
 
-**Minimum text size anywhere is 11px, and 11px is only for uppercase overlines and labels sitting
-directly above a large value.** Body copy never goes below 13px. This is a deliberate constraint
-for the 35+ audience — do not shrink type to fit content; drop content instead.
+Inputs are `text-input lg:text-body`: 16px below 1024px (iOS zooms inputs under 16px), 15px from
+1024px. Text with no size class inherits Body from `body`.
 
-Line-height: 1.5 for body copy and descriptions, 1.35 for multi-line headings, default for single
-lines. Add `text-wrap: pretty` to any paragraph over one line.
+**13px is the floor, everywhere** (badges, counts, timestamps, column headers and chart labels
+included). There is no 11px. Do not shrink type to fit content; drop content or let it wrap.
+
+**Figures** inside cards and tiles (not a hero): Headline on phones, Title from 640px,
+`tabular-nums`. A page shows at most six sizes (Display counts only where a card has a hero
+figure).
+
+**Case.** Headings and labels are sentence case ("Transfer budget", not "Transfer Budget").
+`uppercase` is only ever the `eyebrow` utility.
+
+**Weights.** 400 for reading, 600 for labels, values and buttons, 700 for headings and figures.
+500 only for navigation and inactive tab labels. 800 is Lite only (home greeting, tile titles).
+
+**Lite** has its own scale one step up: `text-lite-caption` 16, `text-lite-body` 18,
+`text-lite-section` 20, `text-lite-headline` 24, `text-lite-title` 32, `text-lite-title-lg` 40
+(titles from 640px), `text-lite-display` 36 (figures). Nothing in Lite is under 16px.
+
+Paragraphs over one line get `text-wrap: pretty`; wide reading paragraphs `max-w-[68ch]`.
+
+**Money.** One compact format (`formatCompact`): "£52M", "£21.5M", "£450K", "£2.6B" in headers,
+status cards, tiles, list rows, the board, notifications and Lite. Full figures
+(`formatCurrency`, "£21,500,000") only where terms are agreed: terms cards, the counter, raise and
+new-offer forms, accept confirmations, order books (bids sit close together), the Finance
+breakdown and ledger, exports.
 
 ## Spacing
 
@@ -184,13 +226,12 @@ No blurs above 2px anywhere. No coloured glows.
 
 | Variant | Background | Text | Border |
 |---|---|---|---|
-| Primary | `#215fbc` | `#ffffff` | none |
-| Primary success | `#007b2a` | `#ffffff` | none |
+| Primary | `#215fbc` | `on-accent` (`#ffffff`) | none |
 | Secondary | `#ffffff` | `#344054` | `1px solid #d0d5dd` |
 | Destructive | `#ffffff` | `#9b1e22` | `1px solid #f0d3d3` |
 | Ghost | transparent | `#667085` | none |
 
-Padding `10px 18px`, radius 8px, 14px/600 label, `white-space: nowrap`.
+Padding `10px 18px`, radius 8px, Body (15px)/600 label (`sm`: Small), `white-space: nowrap`.
 Hover: primary → `#1050ac`; secondary → background `#f9fafb`.
 Focus: `outline: 2px solid #215fbc; outline-offset: 2px`. Never remove the focus ring.
 
@@ -200,7 +241,7 @@ Focus: `outline: 2px solid #215fbc; outline-offset: 2px`. Never remove the focus
 
 Track `#eaecf0`, height 6px (inline) or 10px (finance), radius half the height.
 Segments sit in a flex row and are painted in order, no gaps between them.
-Finance bars use: spent `#475467`, committed `#407ede`, reserved `#d29923`, free = the track.
+Finance bars are ink: spent `text`, committed `text-secondary`, reserved `text-muted`, free = the track. Never accent.
 
 ## Motion
 

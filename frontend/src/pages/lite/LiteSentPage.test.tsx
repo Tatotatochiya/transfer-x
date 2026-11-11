@@ -13,7 +13,7 @@ const held = (over: Partial<HeldActionView> = {}): HeldActionView => ({
   id: "a1", kind: "bid", status: "HELD", execute_at: new Date(Date.now() + 8000).toISOString(),
   result: null, error: null,
   progress: {
-    title: "Bid sent to Brentwell Town", subline: "£8m for Ellis Varga.", seconds_left: 8,
+    title: "Bid sent to Brentwell Town", subline: "£8M for Ellis Varga.", seconds_left: 8,
     steps: [
       { label: "You approved it", state: "done", hint: null },
       { label: "Bid sent", state: "current", hint: "Sending in 8 seconds" },

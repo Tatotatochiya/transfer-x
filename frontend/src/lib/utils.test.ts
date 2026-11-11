@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   formatCurrency,
+  formatCompact,
   formatCompactCurrency,
+  formatCompactIn,
   formatWage,
   formatDate,
   formatDeadline,
@@ -33,26 +35,43 @@ describe("formatCurrency", () => {
 
 describe("formatCompactCurrency", () => {
   it("shortens millions to one decimal place", () => {
-    expect(formatCompactCurrency(52_000_000)).toBe("£52.0m");
-    expect(formatCompactCurrency(66_500_000)).toBe("£66.5m");
+    expect(formatCompactCurrency(52_000_000)).toBe("£52M");
+    expect(formatCompactCurrency(66_500_000)).toBe("£66.5M");
   });
 
   it("shortens thousands to a whole number", () => {
-    expect(formatCompactCurrency(450_000)).toBe("£450k");
+    expect(formatCompactCurrency(450_000)).toBe("£450K");
   });
 
-  it("leaves values under a thousand alone rather than showing £0k", () => {
+  it("leaves values under a thousand alone rather than showing £0K", () => {
     expect(formatCompactCurrency(750)).toBe("£750");
     expect(formatCompactCurrency(0)).toBe("£0");
   });
 
   it("keeps the sign on negatives", () => {
-    expect(formatCompactCurrency(-2_500_000)).toBe("-£2.5m");
+    expect(formatCompactCurrency(-2_500_000)).toBe("-£2.5M");
   });
 
   it("returns — for null and undefined", () => {
     expect(formatCompactCurrency(null)).toBe("—");
     expect(formatCompactCurrency(undefined)).toBe("—");
+  });
+});
+
+describe("formatCompact: the one compact format", () => {
+  it("drops a trailing .0, keeps one decimal otherwise, and goes to billions", () => {
+    expect(formatCompact(21_500_000)).toBe("£21.5M");
+    expect(formatCompact(52_000_000)).toBe("£52M");
+    expect(formatCompact(2_600_000_000)).toBe("£2.6B");
+  });
+
+  it("is what formatCompactCurrency returns, and works in other currencies", () => {
+    expect(formatCompactCurrency(232_500_000)).toBe(formatCompact(232_500_000));
+    expect(formatCompactIn("€", 18_000_000)).toBe("€18M");
+  });
+
+  it("rounds 999,600 up to £1M, not £1000K", () => {
+    expect(formatCompact(999_600)).toBe("£1M");
   });
 });
 

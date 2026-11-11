@@ -48,7 +48,7 @@ describe("Season ledger", () => {
     expect(screen.getByText("Copa del Rey")).toBeInTheDocument(); // current season expanded
     expect(screen.getByText("G+A/90")).toBeInTheDocument();
     expect(screen.getByText("LOAN")).toBeInTheDocument();
-    expect(screen.getByText("Sev")).toBeInTheDocument(); // last-5 chip (shown in capitals by CSS)
+    expect(screen.getByText("SEV")).toBeInTheDocument(); // last-5 chip
 
     await userEvent.click(screen.getByRole("tab", { name: "Passing" }));
     expect(set).toBe("passing");

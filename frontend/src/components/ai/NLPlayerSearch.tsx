@@ -1,4 +1,5 @@
 import type { NLParsedFilters } from "../../types/api";
+import { formatCompact } from "../../lib/utils";
 
 /**
  * How the AI player search read a description: the quoted interpretation and
@@ -17,7 +18,7 @@ export function FilterChips({ filters }: { filters: NLParsedFilters }) {
   if (filters.nationalities?.length) chips.push(filters.nationalities.join(" / "));
   if (filters.open_to_offers) chips.push("listed");
   if (filters.buyable) chips.push("buyable on TransferX");
-  const m = (v: number) => (v >= 1e6 ? `£${+(v / 1e6).toFixed(1)}m` : `£${Math.round(v / 1e3)}k`);
+  const m = formatCompact;
   if (filters.max_value === 0) chips.push("free");
   else if (filters.min_value != null && filters.max_value != null) chips.push(`${m(filters.min_value)}–${m(filters.max_value)}`);
   else if (filters.max_value != null) chips.push(`under ${m(filters.max_value)}`);
@@ -28,11 +29,11 @@ export function FilterChips({ filters }: { filters: NLParsedFilters }) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-xs text-text-muted italic">"{filters.interpreted_as}"</span>
+      <span className="text-small text-text-muted italic">"{filters.interpreted_as}"</span>
       {chips.map((c) => (
         <span
           key={c}
-          className="rounded-md bg-role-agent-text/10 px-2 py-0.5 text-xs font-medium text-role-agent-text ring-1 ring-role-agent-text/20"
+          className="rounded-md bg-ai-bg px-2 py-0.5 text-caption font-medium text-ai-text ring-1 ring-ai-ring"
         >
           {c}
         </span>

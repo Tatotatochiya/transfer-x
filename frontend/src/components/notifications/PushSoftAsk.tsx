@@ -141,20 +141,20 @@ export default function PushSoftAsk() {
             className="flex w-full flex-col gap-3 rounded-t-[26px] bg-surface px-5 pb-[26px] pt-[22px] shadow-xl"
           >
             <span aria-hidden className="mx-auto -mt-2.5 mb-1 h-[5px] w-10 rounded-full bg-border" />
-            <h2 id="push-ask-title" className="text-xl font-bold text-text">Get offers on this phone</h2>
+            <h2 id="push-ask-title" className="text-headline font-bold text-text">Get offers on this phone</h2>
             {blocked ? (
               <>
-                <p className="text-sm leading-normal text-text-secondary">
+                <p className="text-body leading-normal text-text-secondary">
                   Notifications are blocked for TransferX. Turn them on in your phone's Settings, then come back.
                 </p>
-                <button type="button" onClick={close} className="h-12 w-full rounded-xl bg-surface-inset text-[15px] font-semibold text-text">
+                <button type="button" onClick={close} className="h-12 w-full rounded-xl bg-surface-inset text-body font-semibold text-text">
                   Close
                 </button>
               </>
             ) : (
               <>
-                <p className="text-sm leading-normal text-text-secondary">{askBody(trigger)}</p>
-                <ul className="space-y-1 text-sm text-text">
+                <p className="text-body leading-normal text-text-secondary">{askBody(trigger)}</p>
+                <ul className="space-y-1 text-small text-text">
                   <li>• Offers and approvals: straight away</li>
                   <li>• Everything else: one morning summary</li>
                 </ul>
@@ -162,11 +162,11 @@ export default function PushSoftAsk() {
                   type="button"
                   onClick={turnOn}
                   disabled={busy}
-                  className="mt-1 h-12 w-full rounded-xl bg-accent text-[15px] font-semibold text-white disabled:opacity-60"
+                  className="mt-1 h-12 w-full rounded-xl bg-accent text-body font-semibold text-on-accent disabled:opacity-60"
                 >
                   Turn on notifications
                 </button>
-                <button type="button" onClick={notNow} className="h-11 w-full text-[15px] font-semibold text-text-secondary">
+                <button type="button" onClick={notNow} className="h-11 w-full text-body font-semibold text-text-secondary">
                   Not now
                 </button>
               </>

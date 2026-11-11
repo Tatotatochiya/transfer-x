@@ -70,21 +70,21 @@ export default function LiteConfirmPage() {
   return (
     <div className="min-h-screen bg-page px-4 py-10">
       <div className="mx-auto max-w-lg">
-        <p className="mb-6 text-lg font-extrabold text-text">TransferX</p>
+        <p className="mb-6 text-lite-body font-extrabold text-text">TransferX</p>
         {isLoading ? (
           <div className="flex justify-center py-16"><Spinner size="lg" /></div>
         ) : error || !view ? (
           <div className="rounded-[20px] bg-surface p-6 ring-1 ring-border">
-            <p className="text-[1.25rem] text-text">{getApiError(error, "This link isn't valid.")}</p>
-            <Link to="/login" className="mt-4 inline-block text-[1.0625rem] font-bold text-accent">Open TransferX →</Link>
+            <p className="text-lite-section text-text">{getApiError(error, "This link isn't valid.")}</p>
+            <Link to="/login" className="mt-4 inline-block text-lite-body font-bold text-accent">Open TransferX →</Link>
           </div>
         ) : (
           <div className="rounded-[20px] bg-surface p-6 ring-1 ring-border">
-            <p className="text-[0.9375rem] font-semibold text-text-muted">
+            <p className="text-lite-caption font-semibold text-text-muted">
               {view.card.other_club ?? "A club"} · {view.card.deal_type === "LOAN" ? "loan" : "transfer"} offer
             </p>
-            <h1 className="mt-1 text-[1.75rem] font-extrabold leading-tight text-text">{view.card.player_name ?? "Your player"}</h1>
-            <dl className="mt-4 space-y-2 text-[1.125rem]">
+            <h1 className="mt-1 text-lite-title font-extrabold leading-tight text-text">{view.card.player_name ?? "Your player"}</h1>
+            <dl className="mt-4 space-y-2 text-lite-body">
               {view.card.fee != null && (
                 <div className="flex justify-between"><dt className="text-text-secondary">Their offer</dt><dd className="font-bold text-text">{liteMoney(view.card.fee)}</dd></div>
               )}
@@ -98,26 +98,26 @@ export default function LiteConfirmPage() {
 
             {view.state !== "ready" ? (
               <div className="mt-6">
-                <p className="text-[1.125rem] text-text">{STATE_TEXT[view.state]}</p>
+                <p className="text-lite-body text-text">{STATE_TEXT[view.state]}</p>
                 <Link to={signedIn ? `/lite/offers/${view.card.offer_id}` : `/login?next=${encodeURIComponent(`/lite/offers/${view.card.offer_id}`)}`}
-                  className="mt-4 inline-flex min-h-[3.25rem] items-center rounded-[13px] bg-accent px-5 text-[1.0625rem] font-bold text-white no-underline">
+                  className="mt-4 inline-flex min-h-[3.25rem] items-center rounded-[13px] bg-accent px-5 text-lite-body font-bold text-on-accent no-underline">
                   See it in TransferX
                 </Link>
               </div>
             ) : view.needs_sign_in && !signedIn ? (
               <div className="mt-6">
-                <p className="text-[1.0625rem] text-text-secondary">To answer, sign in with the account this email was sent to.</p>
-                <Link to={signIn} className="mt-3 inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[14px] bg-accent text-[1.125rem] font-bold text-white no-underline">
+                <p className="text-lite-body text-text-secondary">To answer, sign in with the account this email was sent to.</p>
+                <Link to={signIn} className="mt-3 inline-flex min-h-[3.5rem] w-full items-center justify-center rounded-[14px] bg-accent text-lite-body font-bold text-on-accent no-underline">
                   Sign in to {view.label.toLowerCase()}
                 </Link>
               </div>
             ) : (
               <div className="mt-6">
                 <button type="button" onClick={() => confirm.mutate()} disabled={confirm.isPending}
-                  className="min-h-[3.5rem] w-full rounded-[14px] bg-accent text-[1.125rem] font-bold text-white disabled:opacity-60">
+                  className="min-h-[3.5rem] w-full rounded-[14px] bg-accent text-lite-body font-bold text-on-accent disabled:opacity-60">
                   {confirm.isPending ? "Sending…" : `Confirm: ${view.label}`}
                 </button>
-                <p className="mt-2 text-[0.9375rem] text-text-muted">You can undo for 10 seconds after confirming.</p>
+                <p className="mt-2 text-lite-caption text-text-muted">You can undo for 10 seconds after confirming.</p>
                 {confirm.isError && <p className="mt-2 text-danger-text">{getApiError(confirm.error)}</p>}
               </div>
             )}

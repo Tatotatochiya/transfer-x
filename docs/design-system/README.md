@@ -1,6 +1,6 @@
 ---
 title: "Design System"
-last_updated: 2026-10-11
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Design Owner"
 ---
@@ -67,12 +67,13 @@ Decided during and after the redesign:
 - **Squad minimums** default to 2 GK, 4 DEF, 4 MID and 3 FWD.
 - **Plain naming:** "Dashboard", not "War Room".
 - **Freshness stamps** must reflect how the data is actually refreshed (polling, focus refetch or WebSocket).
+- **One type scale, one meaning per colour** (2026-11-11, [`type-and-colour`](../feature_spec/type-and-colour/README.md)): seven roles with a 13px floor and 15px body; positions and other categories are neutral; violet is only the AI; the dark accent is blue. A test enforces both.
 
 ## Documents
 
 | File | What it covers |
 |---|---|
-| [`RULES.md`](./RULES.md) | The ten non-negotiables (tokens only, type floor, touch targets, focus rings …) |
-| [`TOKENS.md`](./TOKENS.md) | Every colour, type size, spacing, radius and shadow. The tokens live in `frontend/src/index.css`, light and dark |
+| [`RULES.md`](./RULES.md) | The twelve non-negotiables (tokens only, type roles and the 13px floor, colour meanings, touch targets, focus rings …) |
+| [`TOKENS.md`](./TOKENS.md) | Every colour and colour role, the type roles, money format, spacing, radius and shadow. The tokens live in `frontend/src/index.css`, light and dark |
 | [`RESPONSIVE.md`](./RESPONSIVE.md) | Breakpoints and the mobile and tablet rules |
 | [`SCREENS.md`](./SCREENS.md) | Per-screen layout as designed. Screens added since (the board, Lite, Ask) follow the same rules |

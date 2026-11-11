@@ -20,20 +20,20 @@ export default function Input({ label, error, wrapperClassName = "", id, ...prop
   return (
     <div className={wrapperClassName}>
       {label && (
-        <label htmlFor={inputId} className="mb-1.5 block text-sm font-semibold text-text-secondary">
+        <label htmlFor={inputId} className="mb-1.5 block text-small font-semibold text-text-secondary">
           {label}
         </label>
       )}
       <input
         id={inputId}
         {...props}
-        className={`w-full rounded-lg border bg-surface px-3 py-2.5 text-sm text-text placeholder:text-text-muted transition-colors focus:outline-none focus:ring-2 ${
+        className={`w-full rounded-lg border bg-surface px-3 py-2.5 text-input text-text lg:text-body placeholder:text-text-muted transition-colors focus:outline-none focus:ring-2 ${
           error
-            ? "border-danger focus:border-danger focus:ring-danger/20"
+            ? "border-danger focus:border-danger focus:ring-danger-ring"
             : "border-input-border focus:border-accent focus:ring-accent/20"
         }`}
       />
-      {error && <p className="mt-1 text-xs text-danger-text-alt">{error}</p>}
+      {error && <p className="mt-1 text-caption text-danger-text-alt">{error}</p>}
     </div>
   );
 }

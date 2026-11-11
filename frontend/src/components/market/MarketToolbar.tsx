@@ -22,7 +22,7 @@ export function sortLabel(f: Pick<PlayerFilterState, "sort_by" | "sort_dir">, sh
     ?? `${f.sort_by.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase())}`;
 }
 
-const BUTTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-surface px-3 text-[15px] font-semibold text-text ring-1 ring-inset ring-input-border hover:ring-accent lg:min-h-11 lg:text-sm";
+const BUTTON = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-surface px-3 text-body font-semibold text-text ring-1 ring-inset ring-input-border hover:ring-accent lg:min-h-11";
 
 export function SortMenu({ filters, onSort, className = "" }: {
   filters: PlayerFilterState;
@@ -73,7 +73,7 @@ export default function MarketToolbar({ filters, onSort, activeCount, view, onVi
           </svg>
           Filters
           {activeCount > 0 && (
-            <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-bold text-white">
+            <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-caption font-bold text-on-accent">
               {activeCount}
               <span className="sr-only"> active</span>
             </span>

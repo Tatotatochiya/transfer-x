@@ -17,13 +17,13 @@ export default function AskAboutButton({
   className?: string;
 }) {
   const sizing = size === "sm"
-    ? "min-h-11 lg:min-h-0 px-3 py-1.5 text-xs"
-    : "min-h-11 lg:min-h-0 px-[18px] py-2.5 text-sm";
+    ? "min-h-11 lg:min-h-0 px-3 py-1.5 text-caption"
+    : "min-h-11 lg:min-h-0 px-[18px] py-2.5 text-small";
   return (
     <Link
       to={askAboutPath(about, id, name)}
       title={`Ask TransferX about ${name || `this ${about}`}`}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-lg bg-role-agent-text/10 font-semibold text-role-agent-text no-underline ring-1 ring-role-agent-text/30 transition-colors hover:bg-role-agent-text/20 ${sizing} ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg bg-ai-bg font-semibold text-ai-text no-underline ring-1 ring-ai-ring transition-colors hover:brightness-95 ${sizing} ${className}`}
     >
       <span aria-hidden>✦</span> Ask about this
     </Link>

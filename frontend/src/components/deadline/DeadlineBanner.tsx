@@ -20,10 +20,10 @@ export default function DeadlineBanner({ lite = false }: { lite?: boolean }) {
       }`}
     >
       <span className="min-w-0 flex-1">
-        <span className={`block font-extrabold text-danger-text ${lite ? "text-[1.25rem]" : "text-sm"}`}>
+        <span className={`block font-bold text-danger-text ${lite ? "text-headline" : "text-small"}`}>
           Deadline day: the window closes in {left}
         </span>
-        <span className={`block text-text-secondary ${lite ? "text-[1.0625rem]" : "text-sm"}`}>
+        <span className={`block text-text-secondary ${lite ? "text-section" : "text-small"}`}>
           {open} transfer{open === 1 ? "" : "s"} still open
           {mine ? `, ${mine} waiting on you` : ""}
           {risky ? `, ${risky} at risk` : ""}.
@@ -32,7 +32,7 @@ export default function DeadlineBanner({ lite = false }: { lite?: boolean }) {
       <Link
         to="/deadline"
         className={`flex items-center rounded-xl bg-danger font-bold text-white no-underline ${
-          lite ? "min-h-[3.25rem] px-6 text-[1.0625rem]" : "min-h-11 px-4 text-sm lg:min-h-0 lg:py-2"
+          lite ? "min-h-[3.25rem] px-6 text-section" : "min-h-11 px-4 text-body lg:min-h-0 lg:py-2"
         }`}
       >
         Open deadline day

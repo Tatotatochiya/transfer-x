@@ -86,7 +86,7 @@ function signIn(user_type: "CLUB" | "AGENT" | "PLAYER" | null) {
     : { accessToken: null, user: null } as never);
 }
 
-const primaries = () => document.querySelectorAll(".bg-accent.text-white");
+const primaries = () => document.querySelectorAll(".bg-accent.text-on-accent");
 const bar = () => screen.queryByRole("region", { name: /^Actions for/ });
 
 async function openMore() {
@@ -245,7 +245,7 @@ describe("PlayerMarketDetailPage actions", () => {
     renderPage();
     const view = await screen.findByRole("link", { name: "View your offer" });
     expect(view).toHaveAttribute("href", "/offers/o7");
-    expect(screen.getByText("Chelsea countered at £34,000,000. It's your move.")).toBeInTheDocument();
+    expect(screen.getByText("Chelsea countered at £34M. It's your move.")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Make an offer" })).toBeNull();
     expect(primaries()).toHaveLength(1);
   });

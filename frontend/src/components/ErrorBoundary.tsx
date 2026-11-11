@@ -25,12 +25,12 @@ export default class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex min-h-screen items-center justify-center bg-page p-6">
           <div className="max-w-md w-full rounded-xl bg-surface ring-1 ring-border px-8 py-10 text-center">
-            <p className="text-4xl font-bold text-text-muted">Oops</p>
-            <p className="mt-3 text-base font-semibold text-text">Something went wrong</p>
-            <p className="mt-2 text-sm text-text-muted break-words">{this.state.message}</p>
+            <p className="text-display-sm sm:text-display font-bold text-text-muted">Oops</p>
+            <p className="mt-3 text-body font-semibold text-text">Something went wrong</p>
+            <p className="mt-2 text-small text-text-muted break-words">{this.state.message}</p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-6 rounded-lg bg-accent/10 px-4 py-2 text-sm font-medium text-accent ring-1 ring-accent/20 hover:bg-accent/20 transition-colors"
+              className="mt-6 rounded-lg bg-accent-bg px-4 py-2 text-body font-medium text-accent ring-1 ring-accent-ring hover:bg-accent-bg-strong transition-colors"
             >
               Reload page
             </button>

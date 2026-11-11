@@ -47,42 +47,42 @@ function ImportPanel({
       className="space-y-3"
     >
       <div>
-        <label className="mb-1 block text-xs text-text-muted">Assign to User (UUID)</label>
+        <label className="mb-1 block text-caption text-text-muted">Assign to User (UUID)</label>
         <input
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
           placeholder="paste user UUID…"
           required
-          className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+          className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1 block text-xs text-text-muted">Role</label>
+          <label className="mb-1 block text-caption text-text-muted">Role</label>
           <select
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+            className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
           >
             {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs text-text-muted">Transfer budget (£)</label>
+          <label className="mb-1 block text-caption text-text-muted">Transfer budget (£)</label>
           <input
             type="number"
             value={transfer}
             onChange={(e) => setTransfer(e.target.value)}
-            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+            className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-text-muted">Weekly wage budget (£)</label>
+          <label className="mb-1 block text-caption text-text-muted">Weekly wage budget (£)</label>
           <input
             type="number"
             value={wage}
             onChange={(e) => setWage(e.target.value)}
-            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+            className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
           />
         </div>
       </div>
@@ -91,7 +91,7 @@ function ImportPanel({
           Import as Club
         </Button>
         {importClub.isError && (
-          <p className="text-xs text-danger-text">{getApiError(importClub.error, "Import failed.")}</p>
+          <p className="text-small text-danger-text">{getApiError(importClub.error, "Import failed.")}</p>
         )}
       </div>
     </form>
@@ -121,14 +121,14 @@ function SquadImportRow({
   if (importSquad.isSuccess) {
     const { imported, skipped } = importSquad.data;
     return (
-      <div className="rounded-lg bg-success/10 px-4 py-3 ring-1 ring-success/20">
-        <p className="text-sm font-semibold text-success-text">
+      <div className="rounded-lg bg-success-bg px-4 py-3 ring-1 ring-success-ring">
+        <p className="text-body font-semibold text-success-text">
           Squad imported: {imported} player{imported !== 1 ? "s" : ""} assigned
           {skipped > 0 && `, ${skipped} skipped (already at another club)`}
         </p>
         <button
           onClick={() => navigate(`/admin/clubs/${club.id}`)}
-          className="mt-1 text-xs text-success-text-alt hover:text-success-text transition-colors"
+          className="mt-1 text-small text-success-text-alt hover:text-success-text transition-colors"
         >
           View club →
         </button>
@@ -140,10 +140,10 @@ function SquadImportRow({
     <div className="rounded-lg bg-surface-inset px-4 py-3 ring-1 ring-border">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-text">
+          <p className="text-body font-medium text-text">
             Club created: <span className="text-success-text">{club.name}</span>
           </p>
-          <p className="mt-0.5 text-xs text-text-muted">
+          <p className="mt-0.5 text-small text-text-muted">
             Optionally bulk-assign this team's players to the new club
           </p>
         </div>
@@ -158,14 +158,14 @@ function SquadImportRow({
           </Button>
           <button
             onClick={() => navigate(`/admin/clubs/${club.id}`)}
-            className="text-xs text-text-muted hover:text-text transition-colors"
+            className="text-small text-text-muted hover:text-text transition-colors"
           >
             Skip →
           </button>
         </div>
       </div>
       {importSquad.isError && (
-        <p className="mt-2 text-xs text-danger-text">{getApiError(importSquad.error, "Import failed.")}</p>
+        <p className="mt-2 text-small text-danger-text">{getApiError(importSquad.error, "Import failed.")}</p>
       )}
     </div>
   );
@@ -198,8 +198,8 @@ export default function AdminWorldImportPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-text">World Import</h1>
-        <p className="mt-1 text-sm text-text-muted">
+        <h1 className="text-title-sm sm:text-title font-bold text-text">World Import</h1>
+        <p className="mt-1 text-small text-text-muted">
           Promote a world team and its players into TransferX
         </p>
       </div>
@@ -213,7 +213,7 @@ export default function AdminWorldImportPage() {
               placeholder="Search teams…"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="flex-1 rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+              className="flex-1 rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
             />
           </div>
 
@@ -226,18 +226,18 @@ export default function AdminWorldImportPage() {
                   <button
                     key={team.id}
                     onClick={() => selectTeam(team)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm border-b border-rule-faint last:border-0 transition-colors ${
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left text-body border-b border-rule-faint last:border-0 transition-colors ${
                       selected?.id === team.id
-                        ? "bg-warning-fill/10 ring-inset ring-1 ring-warning-fill/20"
+                        ? "bg-warning-bg ring-inset ring-1 ring-warning-ring"
                         : "bg-surface hover:bg-surface-inset"
                     }`}
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inset overflow-hidden">
-                      <FallbackImage src={team.crest_url} name={team.name} kind="club" sizeClass="h-full w-full text-xs" colorClass="text-text-muted" />
+                      <FallbackImage src={team.crest_url} name={team.name} kind="club" sizeClass="h-full w-full text-caption" colorClass="text-text-muted" />
                     </div>
                     <div className="min-w-0">
                       <p className="font-medium text-text truncate">{team.name}</p>
-                      <p className="text-xs text-text-muted truncate">
+                      <p className="text-small text-text-muted truncate">
                         {[team.league_name, team.country].filter(Boolean).join(" · ") || "—"}
                       </p>
                     </div>
@@ -258,18 +258,18 @@ export default function AdminWorldImportPage() {
         <div>
           {!selected ? (
             <div className="flex h-48 items-center justify-center rounded-xl ring-1 ring-border">
-              <p className="text-sm text-text-muted">Select a team to import</p>
+              <p className="text-small text-text-muted">Select a team to import</p>
             </div>
           ) : (
             <div className="rounded-xl bg-surface ring-1 ring-border p-5 space-y-5">
               {/* Team header */}
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-inset overflow-hidden">
-                  <FallbackImage src={selected.crest_url} name={selected.name} kind="club" sizeClass="h-full w-full text-sm" colorClass="text-text-muted" />
+                  <FallbackImage src={selected.crest_url} name={selected.name} kind="club" sizeClass="h-full w-full text-small" colorClass="text-text-muted" />
                 </div>
                 <div>
                   <p className="font-semibold text-text">{selected.name}</p>
-                  <p className="text-xs text-text-muted">
+                  <p className="text-small text-text-muted">
                     {[selected.league_name, selected.country].filter(Boolean).join(" · ") || "—"}
                   </p>
                 </div>
@@ -284,8 +284,8 @@ export default function AdminWorldImportPage() {
               {!importedClub && (
                 <>
                   <div className="border-t border-rule pt-4">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      Import as Club
+                    <p className="mb-3 text-caption font-semibold text-text-secondary">
+                      Import as club
                     </p>
                     <ImportPanel
                       team={selected}

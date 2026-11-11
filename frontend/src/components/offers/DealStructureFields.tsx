@@ -6,7 +6,7 @@ import { formatCurrency } from "../../lib/utils";
 /**
  * The payment schedule, add-ons and sell-on of a permanent offer.
  *
- * These are what decide a deal's real value ("£40m + £10m add-ons, over three
+ * These are what decide a deal's real value ("£40M + £10M add-ons, over three
  * years, 15% sell-on"), and they used to be set in the deal room only after
  * the seller had accepted — by either club alone. They are proposed and
  * countered here instead, then copied onto the deal at acceptance.
@@ -79,7 +79,7 @@ const CLAUSE_TYPES: { value: ClauseType; label: string }[] = [
 ];
 
 const INPUT =
-  "w-full rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors";
+  "w-full rounded-lg bg-surface px-3 py-2 text-small text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors";
 
 export default function DealStructureFields({
   value,
@@ -102,9 +102,9 @@ export default function DealStructureFields({
     <div className={bare ? "space-y-5" : "mt-4 space-y-5"}>
       {/* Payment schedule */}
       <div>
-        <p className="mb-1.5 text-[13px] font-semibold text-text-secondary">Payment</p>
+        <p className="mb-1.5 text-caption font-semibold text-text-secondary">Payment</p>
         {value.instalments.length === 0 ? (
-          <p className="text-[13px] text-text-muted">The whole fee is paid on completion.</p>
+          <p className="text-small text-text-muted">The whole fee is paid on completion.</p>
         ) : (
           <div className="space-y-2">
             {value.instalments.map((row, i) => (
@@ -130,14 +130,14 @@ export default function DealStructureFields({
                 <button
                   type="button"
                   onClick={() => set({ instalments: value.instalments.filter((_, j) => j !== i) })}
-                  className="min-h-11 px-2 text-sm text-text-muted hover:text-danger-text lg:min-h-0"
+                  className="min-h-11 px-2 text-body text-text-muted hover:text-danger-text lg:min-h-0"
                   aria-label={`Remove payment ${i + 1}`}
                 >
                   ✕
                 </button>
               </div>
             ))}
-            <p className="text-[13px] text-text-muted">
+            <p className="text-small text-text-muted">
               {formatCurrency(scheduled)} of {fee != null ? formatCurrency(fee) : "the fee"} scheduled
             </p>
           </div>
@@ -145,7 +145,7 @@ export default function DealStructureFields({
         <button
           type="button"
           onClick={() => set({ instalments: [...value.instalments, { due_date: "", amount: "" }] })}
-          className="mt-2 text-[13px] font-semibold text-accent hover:underline"
+          className="mt-2 text-small font-semibold text-accent hover:underline"
         >
           {value.instalments.length === 0 ? "Pay in instalments" : "+ Add a payment"}
         </button>
@@ -153,9 +153,9 @@ export default function DealStructureFields({
 
       {/* Add-ons */}
       <div>
-        <p className="mb-1.5 text-[13px] font-semibold text-text-secondary">Add-ons</p>
+        <p className="mb-1.5 text-caption font-semibold text-text-secondary">Add-ons</p>
         {value.clauses.length === 0 && (
-          <p className="text-[13px] text-text-muted">None. Add-ons are paid only if their trigger is met.</p>
+          <p className="text-small text-text-muted">None. Add-ons are paid only if their trigger is met.</p>
         )}
         <div className="space-y-3">
           {value.clauses.map((c, i) => {
@@ -197,7 +197,7 @@ export default function DealStructureFields({
                   <button
                     type="button"
                     onClick={() => set({ clauses: value.clauses.filter((_, j) => j !== i) })}
-                    className="min-h-11 px-2 text-sm text-text-muted hover:text-danger-text lg:min-h-0"
+                    className="min-h-11 px-2 text-body text-text-muted hover:text-danger-text lg:min-h-0"
                     aria-label="Remove add-on"
                   >
                     ✕
@@ -212,7 +212,7 @@ export default function DealStructureFields({
           onClick={() => set({
             clauses: [...value.clauses, { clause_type: "APPEARANCES", trigger_description: "", amount: "", cap: "" }],
           })}
-          className="mt-2 text-[13px] font-semibold text-accent hover:underline"
+          className="mt-2 text-small font-semibold text-accent hover:underline"
         >
           + Add an add-on
         </button>
@@ -220,7 +220,7 @@ export default function DealStructureFields({
 
       {/* Sell-on */}
       <div>
-        <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
+        <label className="mb-1.5 block text-caption font-semibold text-text-secondary">
           Sell-on <span className="font-normal text-text-muted">(optional)</span>
         </label>
         <div className="relative max-w-[160px]">
@@ -234,9 +234,9 @@ export default function DealStructureFields({
             placeholder="e.g. 15"
             className={`${INPUT} pr-8`}
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-muted">%</span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-small text-text-muted">%</span>
         </div>
-        <p className="mt-1 text-[13px] text-text-muted">
+        <p className="mt-1 text-small text-text-muted">
           The share of a future fee his current club receives if you sell him on.
         </p>
       </div>
@@ -247,7 +247,7 @@ export default function DealStructureFields({
 
   return (
     <details open={used} className="rounded-lg bg-surface-inset px-4 py-3 ring-1 ring-border">
-      <summary className="cursor-pointer text-sm font-semibold text-text-secondary">
+      <summary className="cursor-pointer text-body font-semibold text-text-secondary">
         Payment schedule, add-ons &amp; sell-on{" "}
         <span className="font-normal text-text-muted">(optional)</span>
       </summary>

@@ -34,7 +34,7 @@ export default function SegmentedControl({ items, active, onChange, size = "md",
     refs.current[next]?.focus();
   }
 
-  const sizing = size === "sm" ? "min-h-9 text-sm" : "min-h-12 text-[15px]";
+  const sizing = size === "sm" ? "min-h-9 text-small" : "min-h-12 text-body";
   return (
     <div role="tablist" aria-label={ariaLabel} className="grid grid-flow-col auto-cols-fr gap-1 rounded-xl bg-border-quiet p-1">
       {items.map((item, i) => {
@@ -60,7 +60,7 @@ export default function SegmentedControl({ items, active, onChange, size = "md",
           >
             {item.label}
             {!!item.badge && item.badge > 0 && (
-              <span aria-hidden className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 align-[1px] text-[13px] font-bold leading-none text-white">
+              <span aria-hidden className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 align-[1px] text-caption font-bold leading-none text-on-accent">
                 {item.badge > 99 ? "99+" : item.badge}
               </span>
             )}

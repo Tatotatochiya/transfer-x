@@ -16,9 +16,9 @@ interface PlayerLinkProps {
 }
 
 const PHOTO: Record<"sm" | "md" | "lg", { box: string; text: string; gap: string }> = {
-  sm: { box: "h-5 w-5", text: "text-[11px]", gap: "gap-1.5" },
-  md: { box: "h-8 w-8", text: "text-sm", gap: "gap-2" },
-  lg: { box: "h-11 w-11", text: "text-base", gap: "gap-3" },
+  sm: { box: "h-5 w-5", text: "text-caption", gap: "gap-1.5" },
+  md: { box: "h-8 w-8", text: "text-caption", gap: "gap-2" },
+  lg: { box: "h-11 w-11", text: "text-body", gap: "gap-3" },
 };
 
 /**

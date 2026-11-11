@@ -69,12 +69,12 @@ export default function AppShell({ children }: AppShellProps) {
         >
           <Icon name={mobileOpen ? "x" : "menu"} />
         </button>
-        <span className="hidden text-base font-bold text-text shrink-0 min-[400px]:inline">TransferX</span>
+        <span className="hidden text-body font-bold text-text shrink-0 min-[400px]:inline">TransferX</span>
         {isAuthenticated && yourMoveCount > 0 && (
           <span
             aria-label={`${yourMoveCount} waiting on you`}
             title={`${yourMoveCount} waiting on you`}
-            className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-danger-bg-badge px-1.5 text-[11px] font-bold text-danger-heading"
+            className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-danger-bg-badge px-1.5 text-caption font-bold text-danger-heading"
           >
             {yourMoveCount > 99 ? "99+" : yourMoveCount}
           </span>

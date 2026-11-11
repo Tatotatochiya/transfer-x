@@ -39,7 +39,7 @@ export default function ClubLink({
 
   const content = showCrestSlot ? (
     <>
-      <FallbackImage src={crestUrl} name={name} kind="club" sizeClass="h-4 w-4 text-[9px]" colorClass="bg-surface-inset text-text-muted" />
+      <FallbackImage src={crestUrl} name={name} kind="club" sizeClass="h-4 w-4" colorClass="bg-surface-inset text-text-muted" />
       <span className="truncate">{name}</span>
     </>
   ) : (

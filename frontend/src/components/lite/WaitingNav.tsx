@@ -35,14 +35,14 @@ export function WaitingHeader({ kind, id }: { kind: DashboardItem["kind"]; id: s
   return (
     <div className="flex items-center justify-between gap-3">
       {prevHref ? (
-        <Link to={prevHref} className="text-[1.0625rem] font-semibold text-text-secondary no-underline">‹ Previous</Link>
+        <Link to={prevHref} className="text-lite-body font-semibold text-text-secondary no-underline">‹ Previous</Link>
       ) : (
-        <Link to="/lite" className="text-[1.0625rem] font-semibold text-text-secondary no-underline">‹ Home</Link>
+        <Link to="/lite" className="text-lite-body font-semibold text-text-secondary no-underline">‹ Home</Link>
       )}
-      <span className="text-[1rem] font-semibold text-text-secondary">
+      <span className="text-lite-caption font-semibold text-text-secondary">
         Waiting on you{index >= 0 ? ` · ${index + 1} of ${total}` : ` · ${total}`}
       </span>
-      {nextHref ? <Link to={nextHref} className="text-[1.0625rem] font-bold text-accent no-underline">Next ›</Link> : <span />}
+      {nextHref ? <Link to={nextHref} className="text-lite-body font-bold text-accent no-underline">Next ›</Link> : <span />}
     </div>
   );
 }

@@ -16,9 +16,9 @@ export default function FigureCard({
 }) {
   return (
     <Card tier={2}>
-      <p className="text-xs font-semibold text-text-secondary">{label}</p>
-      <p className="mt-1.5 text-[28px] font-bold tracking-[-0.01em] text-text">{value}</p>
-      {note && <p className="mt-[3px] text-xs text-text-muted">{note}</p>}
+      <p className="text-caption font-semibold text-text-secondary">{label}</p>
+      <p className="mt-1.5 text-headline font-bold tabular-nums tracking-[-0.01em] text-text sm:text-title">{value}</p>
+      {note && <p className="mt-[3px] text-small text-text-muted">{note}</p>}
       {bar && (
         <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-border-quiet">
           <div className={bar.colour} style={{ width: `${bar.pct}%`, height: "100%" }} />

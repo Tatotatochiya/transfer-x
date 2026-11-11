@@ -63,15 +63,15 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent-bg">
             <Icon name="bolt" className="h-7 w-7 text-accent" />
           </div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-accent">TransferX</p>
-          <h1 className="mt-2 text-2xl font-semibold text-text">Sign in</h1>
-          <p className="mt-1 text-sm text-text-muted">Welcome back. Please enter your credentials.</p>
+          <p className="text-caption font-semibold text-accent">TransferX</p>
+          <h1 className="mt-2 text-title-sm sm:text-title font-semibold text-text">Sign in</h1>
+          <p className="mt-1 text-small text-text-muted">Welcome back. Please enter your credentials.</p>
         </div>
 
         {/* Card */}
         <div className="rounded-xl bg-surface p-8 ring-1 ring-border">
           {error && (
-            <div className="mb-4 rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
+            <div className="mb-4 rounded-lg bg-danger-bg px-4 py-3 text-small text-danger-text ring-1 ring-danger-border">
               {error}
             </div>
           )}
@@ -79,7 +79,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               {/* A username is the part of the email before the "@". */}
-              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-text-secondary">
+              <label htmlFor="email" className="mb-1.5 block text-small font-medium text-text-secondary">
                 Email or username
               </label>
               <input
@@ -91,13 +91,13 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                className="w-full rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                 placeholder="you@club.com or you"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-text-secondary">
+              <label htmlFor="password" className="mb-1.5 block text-small font-medium text-text-secondary">
                 Password
               </label>
               <input
@@ -107,7 +107,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+                className="w-full rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                 placeholder="••••••••"
               />
             </div>
@@ -124,7 +124,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-sm text-text-muted">
+        <p className="mt-6 text-center text-small text-text-muted">
           New to TransferX?{" "}
           <Link to="/register" className="text-accent hover:underline">
             Create an account

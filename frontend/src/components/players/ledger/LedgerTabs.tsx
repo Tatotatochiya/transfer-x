@@ -79,7 +79,7 @@ export function OverviewLedger({ ledger, statSet, onStatSet }: {
               role="tab"
               aria-selected={statSet === k}
               onClick={() => onStatSet(k)}
-              className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+              className={`rounded-md px-2.5 py-1 text-caption font-semibold transition-colors ${
                 statSet === k ? "bg-surface text-text shadow-sm ring-1 ring-border" : "text-text-muted hover:text-text"
               }`}
             >
@@ -87,7 +87,7 @@ export function OverviewLedger({ ledger, statSet, onStatSet }: {
             </button>
           ))}
         </div>
-        <span className="text-xs text-text-muted">Apps (starts) · per 90 where noted · tap a season for competitions</span>
+        <span className="text-small text-text-muted">Apps (starts) · per 90 where noted · tap a season for competitions</span>
       </div>
       <SeasonLedger
         headers={set.headers} template={OVERVIEW_TEMPLATE} rows={rows} expanded={expanded} onToggle={toggle} highlightLast
@@ -104,7 +104,7 @@ function Internationals({ seasons, set }: { seasons: LedgerSeason[]; set: (typeo
   const [expanded, toggle] = useExpanded([]);
   return (
     <details className="rounded-lg ring-1 ring-border">
-      <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-text-secondary">
+      <summary className="cursor-pointer px-3 py-2 text-body font-semibold text-text-secondary">
         International ({seasons.reduce((a, s) => a + s.totals.apps, 0)} apps)
       </summary>
       <div className="px-1 pb-2">
@@ -126,14 +126,14 @@ export function FormStrip({ form }: { form: PlayerLedger["form"] }) {
   return (
     <div className="flex flex-wrap items-center gap-4 rounded-lg bg-surface-inset px-3 py-2.5 ring-1 ring-border">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">Form score</p>
-        <p className="text-xs text-text-muted">Last 5 games</p>
+        <p className="text-caption font-semibold text-text-secondary">Form score</p>
+        <p className="text-small text-text-muted">Last 5 games</p>
       </div>
       {form.score != null && (
         <p className="tabular-nums">
-          <span className="text-xl font-extrabold text-success-text">{Math.round(form.score)}</span>
+          <span className="text-headline font-bold text-success-text">{Math.round(form.score)}</span>
           {trend != null && trend !== 0 && (
-            <span className={`ml-1.5 text-[13px] font-semibold ${trend > 0 ? "text-success-text" : "text-danger-text"}`}>
+            <span className={`ml-1.5 text-caption font-semibold ${trend > 0 ? "text-success-text" : "text-danger-text"}`}>
               {trend > 0 ? "▲" : "▼"} {Math.abs(Math.round(trend))}
             </span>
           )}
@@ -147,12 +147,12 @@ export function FormStrip({ form }: { form: PlayerLedger["form"] }) {
               title={`${g.opponent ?? "?"}${g.competition ? ` · ${g.competition}` : ""}${g.date ? ` · ${new Date(g.date).toLocaleDateString("en-GB")}` : ""}${g.minutes != null ? ` · ${g.minutes} min` : ""}`}
               className="rounded-md bg-surface px-2 py-1 text-center ring-1 ring-border"
             >
-              <span className={`block text-[13px] font-bold tabular-nums ${
+              <span className={`block text-caption font-bold tabular-nums ${
                 g.rating == null ? "text-text-muted" : g.rating >= 7.5 ? "text-success-text" : g.rating >= 7 ? "text-text" : "text-warning-text"
               }`}>
                 {g.rating == null ? "—" : g.rating.toFixed(1)}
               </span>
-              <span className="block text-[10px] uppercase text-text-muted">{(g.opponent ?? "?").replace(/[^A-Za-z]/g, "").slice(0, 3)}</span>
+              <span className="block text-small text-text-muted">{(g.opponent ?? "?").replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase()}</span>
             </li>
           ))}
         </ul>
@@ -186,7 +186,7 @@ export function CareerLedger({ ledger }: { ledger: PlayerLedger }) {
         <>
           {moves.map(({ t, i }) => <TransferRow key={i} move={t} />)}
           {earlier.length > 0 && (
-            <p className="border-b border-rule-faint bg-surface-inset/60 py-1 pl-[30px] text-[11px] font-bold uppercase tracking-[0.05em] text-text-muted">
+            <p className="border-b border-rule-faint bg-surface-inset/60 py-1 pl-[30px] eyebrow text-text-secondary">
               Earlier moves
             </p>
           )}
@@ -213,11 +213,11 @@ function TransferRow({ move }: { move: PlayerLedger["transfers"][number] }) {
   const loan = (move.type ?? "").toLowerCase() === "loan";
   const known = move.fee && move.fee.toLowerCase() !== "n/a";
   return (
-    <div className="flex flex-wrap items-center gap-2.5 border-b border-rule-faint bg-surface-inset/60 py-1.5 pl-[30px] pr-2.5 text-xs text-text-secondary">
+    <div className="flex flex-wrap items-center gap-2.5 border-b border-rule-faint bg-surface-inset/60 py-1.5 pl-[30px] pr-2.5 text-small text-text-secondary">
       <span className="w-[62px] font-bold tabular-nums text-text">
         {move.date ? new Date(move.date).toLocaleDateString("en-GB", { month: "short", year: "numeric" }) : "—"}
       </span>
-      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${loan ? "bg-warning-bg text-warning-text" : "bg-accent-bg text-accent"}`}>
+      <span className={`rounded-full px-2 py-0.5 text-caption font-semibold ${loan ? "bg-warning-bg text-warning-text" : "bg-accent-bg text-accent"}`}>
         {loan ? "Loan" : "Transfer"}
       </span>
       <span className="min-w-0 truncate">
@@ -241,7 +241,7 @@ export function InjuriesLedger({ ledger }: { ledger: PlayerLedger }) {
   // Open the latest season with an injury that cost games.
   const firstHurt = seasons.find((s) => periods.some((p) => p.season === s.season && p.games_missed > 0));
   const [expanded, toggle] = useExpanded(firstHurt ? [rowId(firstHurt)] : []);
-  if (!injuries) return <p className="text-sm text-text-muted">Sign in to see his injury record.</p>;
+  if (!injuries) return <p className="text-small text-text-muted">Sign in to see his injury record.</p>;
 
   // One season can have two rows (a mid-season move); injuries go on the first.
   const seen = new Set<string>();
@@ -297,7 +297,7 @@ export function InjuriesLedger({ ledger }: { ledger: PlayerLedger }) {
         }}
         empty="No club seasons on record yet."
       />
-      <p className="text-xs text-text-muted">
+      <p className="text-small text-text-muted">
         Availability is the share of his clubs&rsquo; matches he wasn&rsquo;t missing through injury, where the match count is known.
         From API-Football&rsquo;s public injury records; this isn&rsquo;t medical data.
       </p>
@@ -308,9 +308,9 @@ export function InjuriesLedger({ ledger }: { ledger: PlayerLedger }) {
 function Tile({ label, value, sub, danger }: { label: string; value: string; sub: string; danger?: boolean }) {
   return (
     <div className="bg-surface px-3 py-2.5">
-      <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">{label}</p>
-      <p className={`text-[17px] font-bold tabular-nums ${danger ? "text-danger-text" : "text-text"}`}>{value}</p>
-      <p className="truncate text-xs text-text-muted">{sub}</p>
+      <p className="text-caption font-semibold text-text-secondary">{label}</p>
+      <p className={`text-section font-bold tabular-nums ${danger ? "text-danger-text" : "text-text"}`}>{value}</p>
+      <p className="truncate text-small text-text-muted">{sub}</p>
     </div>
   );
 }
@@ -325,7 +325,7 @@ function AvailCell({ pct }: { pct: number }) {
 
 function InjuryPill({ injury }: { injury: LedgerInjury }) {
   return (
-    <span className={`inline-block max-w-full truncate rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+    <span className={`inline-block max-w-full truncate rounded-full px-2 py-0.5 text-caption font-semibold ${
       injury.severe ? "bg-danger-bg text-danger-text" : "bg-warning-bg text-warning-text"
     }`}>
       {injury.type ?? "Injury"}

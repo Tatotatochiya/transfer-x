@@ -1,6 +1,6 @@
 ---
 title: "Database Migrations"
-last_updated: 2026-10-11
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Technical Owner"
 ---
@@ -51,6 +51,7 @@ Write `upgrade()` and `downgrade()` by hand, following the existing files. Autog
 - **Tests don't use migrations.** The test suite builds the schema with `Base.metadata.create_all` on SQLite. A migration that drifts from the models passes the tests and then fails on Postgres, so run `alembic upgrade head` locally before shipping.
 - **SQLite vs Postgres.** SQLite drops time zones and has no row locks. Compare datetimes timezone-aware, and use `select_for_update(of=…)` with nullable joins.
 - **Enums.** A new value in a Postgres enum needs `ALTER TYPE … ADD VALUE` in its own migration step.
+- **The reference snapshot is at `0059`.** `backend/seeds/transferx_reference_20260808.dump` records revision `0059` but already contains `vendor_sync_runs` (from `0062`), so `0062` skips creating that table when it exists. Restoring the snapshot and running `alembic upgrade head` reaches head; see [`STARTER.md`](../../STARTER.md). New migrations run after `0059` on a restored snapshot too, so they must not collide with anything the snapshot holds; today that is only `vendor_sync_runs`.
 - **Railway history.** Railway once had `0059`–`0061` from a force-pushed branch; matching placeholder migrations keep the chain the same in both places. Don't renumber existing migrations.
 
 ## Related documents

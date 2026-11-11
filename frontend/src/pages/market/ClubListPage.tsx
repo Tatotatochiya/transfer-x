@@ -73,26 +73,26 @@ export default function ClubListPage() {
           placeholder="Search clubs…"
           value={search}
           onChange={(e) => handleFilter("search", e.target.value)}
-          className="rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors w-48"
+          className="rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors w-48"
         />
         <input
           type="text"
           placeholder="Country…"
           value={country}
           onChange={(e) => handleFilter("country", e.target.value)}
-          className="rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors w-36"
+          className="rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors w-36"
         />
         <input
           type="text"
           placeholder="League…"
           value={league}
           onChange={(e) => handleFilter("league", e.target.value)}
-          className="rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors w-40"
+          className="rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors w-40"
         />
         <select
           value={sort}
           onChange={(e) => { setSort(e.target.value); setPage(1); }}
-          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
+          className="rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
         >
           {SORT_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -107,7 +107,7 @@ export default function ClubListPage() {
       )}
 
       {isError && (
-        <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+        <div className="rounded-xl bg-danger-bg px-5 py-4 text-small text-danger-text ring-1 ring-danger-border">
           Failed to load clubs.
         </div>
       )}
@@ -118,7 +118,7 @@ export default function ClubListPage() {
 
       {data && data.items.length > 0 && (
         <>
-          <p className="mb-4 text-xs text-text-muted">{data.total} club{data.total !== 1 ? "s" : ""}</p>
+          <p className="mb-4 text-small text-text-muted">{data.total} club{data.total !== 1 ? "s" : ""}</p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {data.items.map((club) => (
               <div
@@ -128,7 +128,7 @@ export default function ClubListPage() {
                 className="cursor-pointer rounded-xl bg-surface ring-1 ring-border hover:ring-input-border hover:-translate-y-0.5 transition-all duration-200 px-5 py-4"
               >
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-surface-inset overflow-hidden">
-                  <FallbackImage src={club.crest_url} name={club.name} kind="club" sizeClass="h-full w-full text-xl" colorClass="text-text-muted" />
+                  <FallbackImage src={club.crest_url} name={club.name} kind="club" sizeClass="h-full w-full text-headline" colorClass="text-text-muted" />
                 </div>
                 <p className="flex items-center gap-1 font-semibold text-text truncate">
                   <span className="truncate">{club.name}</span>
@@ -136,7 +136,7 @@ export default function ClubListPage() {
                     <Icon name="check" className="h-3.5 w-3.5 shrink-0 text-accent" />
                   )}
                 </p>
-                <p className="mt-0.5 text-xs text-text-muted truncate">
+                <p className="mt-0.5 text-small text-text-muted truncate">
                   {[club.league_name, club.country].filter(Boolean).join(" · ") || "—"}
                 </p>
               </div>

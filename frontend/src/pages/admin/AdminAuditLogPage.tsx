@@ -52,14 +52,14 @@ function Details({ row }: { row: AuditRow }) {
   const { admin_action: _a, reason: _r, ...rest } = row.payload ?? {};
   const changes = rest.changes as Record<string, [unknown, unknown]> | undefined;
   return (
-    <div className="space-y-1 text-xs text-text-secondary">
+    <div className="space-y-1 text-small text-text-secondary">
       {changes && Object.entries(changes).map(([field, [from, to]]) => (
         <div key={field}>
           <span className="font-semibold text-text">{field.replace(/_/g, " ")}</span>: {String(from ?? "—")} → {String(to ?? "—")}
         </div>
       ))}
       {Object.keys(rest).filter((k) => k !== "changes").length > 0 && (
-        <pre className="max-w-xl overflow-x-auto whitespace-pre-wrap rounded bg-surface-inset p-2 font-mono text-[11px]">
+        <pre className="max-w-xl overflow-x-auto whitespace-pre-wrap rounded bg-surface-inset p-2 font-mono text-caption">
           {JSON.stringify(Object.fromEntries(Object.entries(rest).filter(([k]) => k !== "changes")), null, 2)}
         </pre>
       )}
@@ -131,12 +131,12 @@ export default function AdminAuditLogPage() {
   const columns: ResponsiveColumn<AuditRow>[] = [
     {
       key: "when", header: "When", priority: 3,
-      render: (r) => <span className="whitespace-nowrap text-xs text-text-muted">{formatDateTime(r.created_at)}</span>,
+      render: (r) => <span className="whitespace-nowrap text-small text-text-muted">{formatDateTime(r.created_at)}</span>,
     },
     {
       key: "who", header: "Who", priority: 2,
       render: (r) => (
-        <span className="text-xs">
+        <span className="text-caption">
           <span className="font-medium text-text">{r.actor_name ?? r.actor_email ?? (r.actor_user_id ? "Deleted user" : "System")}</span>
           {r.by_staff && <Badge variant="warning" className="ml-1.5">Staff</Badge>}
         </span>
@@ -146,8 +146,8 @@ export default function AdminAuditLogPage() {
       key: "what", header: "What", priority: 1,
       render: (r) => (
         <div className="min-w-0">
-          <p className="text-sm font-medium text-text">{r.description ?? actionLabel(r.action)}</p>
-          <p className="text-xs text-text-muted">
+          <p className="text-body font-medium text-text">{r.description ?? actionLabel(r.action)}</p>
+          <p className="text-small text-text-muted">
             {actionLabel(r.action)}
             {r.link ? <> · <Link to={r.link} className="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>Open {r.entity_type.toLowerCase()}</Link></> : <> · {r.entity_type.toLowerCase()}</>}
           </p>
@@ -157,7 +157,7 @@ export default function AdminAuditLogPage() {
     },
     {
       key: "reason", header: "Reason", priority: 4,
-      render: (r) => r.reason ? <span className="text-sm text-text-secondary">{r.reason}</span> : <span className="text-text-muted">—</span>,
+      render: (r) => r.reason ? <span className="text-small text-text-secondary">{r.reason}</span> : <span className="text-text-muted">—</span>,
     },
   ];
 
@@ -165,8 +165,8 @@ export default function AdminAuditLogPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-text">Audit log</h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <h1 className="text-title-sm sm:text-title font-bold text-text">Audit log</h1>
+          <p className="mt-1 text-small text-text-muted">
             {data ? `${data.total.toLocaleString("en-GB")} ${data.total === 1 ? "event" : "events"}` : ""}
             {" · "}Who changed what, when, and why. Click a row for the details.
           </p>
@@ -175,8 +175,8 @@ export default function AdminAuditLogPage() {
           <Button variant="secondary" size="sm" onClick={exportExcel} loading={exporting} disabled={!data || data.total === 0}>
             Export to Excel
           </Button>
-          {exportError && <span className="text-xs text-danger-text">{exportError}</span>}
-          {data && data.total > 50_000 && <span className="text-xs text-text-muted">Exports the newest 50,000</span>}
+          {exportError && <span className="text-caption text-danger-text">{exportError}</span>}
+          {data && data.total > 50_000 && <span className="text-small text-text-muted">Exports the newest 50,000</span>}
         </div>
       </div>
 
@@ -192,7 +192,7 @@ export default function AdminAuditLogPage() {
           aria-label="Action"
           value={action}
           onChange={(e) => reset(setAction)(e.target.value)}
-          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+          className="rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
         >
           <option value="">All actions</option>
           {actions.map((a) => <option key={a} value={a}>{actionLabel(a)}{a.startsWith("admin.") ? " (staff)" : ""}</option>)}
@@ -201,12 +201,12 @@ export default function AdminAuditLogPage() {
           aria-label="Entity type"
           value={entityType}
           onChange={(e) => reset(setEntityType)(e.target.value)}
-          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+          className="rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
         >
           <option value="">Everything</option>
           {(facets?.entity_types ?? []).map((t) => <option key={t} value={t}>{t.replace(/_/g, " ").toLowerCase()}</option>)}
         </select>
-        <label className="flex items-center gap-2 text-sm text-text-secondary">
+        <label className="flex items-center gap-2 text-small text-text-secondary">
           <input type="checkbox" checked={staffOnly} onChange={(e) => { setStaffOnly(e.target.checked); setAction(""); setPage(1); }} />
           Staff actions only
         </label>

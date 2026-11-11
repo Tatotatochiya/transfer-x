@@ -89,33 +89,33 @@ const PlayerRow = forwardRef<HTMLAnchorElement, { row: PlayerRowData }>(function
         <FallbackImage
           src={row.photoUrl}
           name={row.name}
-          sizeClass="h-10 w-10 text-sm"
+          sizeClass="h-10 w-10 text-small"
           colorClass={row.position ? POS_AVATAR[row.position] : "bg-surface-inset text-text-muted"}
         />
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-base font-semibold text-text">{row.name}</span>
+            <span className="truncate text-body font-semibold text-text">{row.name}</span>
             {row.position && (
-              <span className={`shrink-0 rounded px-1.5 py-px text-[11px] font-bold ${POS_AVATAR[row.position]}`}>{row.position}</span>
+              <span className={`shrink-0 rounded px-1.5 py-px text-caption font-bold ${POS_AVATAR[row.position]}`}>{row.position}</span>
             )}
           </span>
-          <span className="flex min-w-0 items-center gap-1.5 text-sm text-text-muted">
+          <span className="flex min-w-0 items-center gap-1.5 text-small text-text-muted">
             <span className="truncate">{meta}</span>
             {row.listed && (
-              <span className="shrink-0 rounded-full bg-success/15 px-1.5 text-[12px] font-semibold text-success-text">Listed</span>
+              <span className="shrink-0 rounded-full bg-success-bg px-1.5 text-caption font-semibold text-success-text">Listed</span>
             )}
           </span>
           {row.why && row.why.length > 0 && (
-            <span className="block truncate text-[13px] text-text-muted">{row.why.join(" · ")}</span>
+            <span className="block truncate text-small text-text-muted">{row.why.join(" · ")}</span>
           )}
         </span>
         <span className="shrink-0 text-right">
-          <span className="block text-[15px] font-bold tabular-nums text-text">
+          <span className="block text-body font-bold tabular-nums text-text">
             {row.price.text}
-            {row.price.basis === "model" && <span className="ml-1 text-[12px] font-medium text-text-muted">model</span>}
+            {row.price.basis === "model" && <span className="ml-1 text-small font-medium text-text-muted">model</span>}
           </span>
           {row.form != null && (
-            <span className={`block text-[13px] font-semibold tabular-nums ${formText(row.form)}`}>Form {Math.round(row.form)}</span>
+            <span className={`block text-caption font-semibold tabular-nums ${formText(row.form)}`}>Form {Math.round(row.form)}</span>
           )}
         </span>
       </Link>

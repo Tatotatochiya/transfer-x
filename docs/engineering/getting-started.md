@@ -1,6 +1,6 @@
 ---
 title: "Getting Started"
-last_updated: 2026-10-11
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Technical Lead"
 ---
@@ -9,7 +9,7 @@ owner: "TODO — assign a Technical Lead"
 
 ## Purpose
 
-How to get TransferX running locally. The step-by-step commands are maintained once, in the repository root `README.md`, and linked from here rather than duplicated — see [Rationale](#rationale).
+How to get TransferX running locally. The step-by-step commands are maintained once, in [`STARTER.md`](../../STARTER.md) at the repository root, and linked from here rather than duplicated — see [Rationale](#rationale).
 
 ## Scope
 
@@ -25,9 +25,11 @@ Out of scope: production deployment (see [`../operations/environments-and-deploy
 
 ## Quick start
 
-See the repository root [`README.md`](../../README.md) for exact, current commands (Docker Compose for the full stack, or running backend/frontend independently).
-
-The root `README.md` is the authority for setup commands; this page only summarises. It was refreshed on 2026-10-11, including first accounts, the demo seed, and the frontend being a built image (UI changes need `docker compose build frontend`).
+Follow [`STARTER.md`](../../STARTER.md): `.env` from `.env.example`, restoring the reference
+snapshot (`backend/seeds/transferx_reference_20260808.dump`) into the empty database, starting the
+stack (the API migrates on start), onboarding the Premier League clubs, the demo deals, a staff
+account, the optional API-Football backfills, everyday commands and troubleshooting. The root
+`README.md` keeps a short version and links there.
 
 ## Services
 
@@ -43,10 +45,11 @@ The data refresh doesn't run on its own locally. Run it with `docker compose exe
 
 ## Rationale
 
-Setup commands are exactly the kind of fact that goes stale fast if written in two places. Keeping them in one file (the root `README.md`, which is also what a new contributor finds first when they open the repository) and linking to it satisfies this documentation set's goal of avoiding duplicate information.
+Setup commands are exactly the kind of fact that goes stale fast if written in two places. Keeping them in one file (`STARTER.md` at the repository root, beside the `README.md` a new contributor opens first) and linking to it satisfies this documentation set's goal of avoiding duplicate information.
 
 ## Related documents
 
-- [`../../README.md`](../../README.md) — repository root README with exact setup commands
+- [`../../STARTER.md`](../../STARTER.md) — exact setup commands, demo data and troubleshooting
+- [`../../README.md`](../../README.md) — repository overview
 - [`../architecture/system-overview.md`](../architecture/system-overview.md) — what these services are and how they relate
 - [`coding-standards.md`](./coding-standards.md) — conventions to follow once your environment is running

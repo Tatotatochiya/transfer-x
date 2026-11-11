@@ -27,7 +27,7 @@ export default function DealTimeline({ dealId }: { dealId: string }) {
     return <Spinner size="sm" />;
   }
   if (events.length === 0) {
-    return <p className="text-sm text-text-muted">No activity yet.</p>;
+    return <p className="text-small text-text-muted">No activity yet.</p>;
   }
 
   return (
@@ -41,8 +41,8 @@ export default function DealTimeline({ dealId }: { dealId: string }) {
             <div className={`mt-1 h-3 w-3 shrink-0 rounded-full ring-2 ring-surface ${dotClass[AUDIT_DOT[ev.action] ?? "accent"]}`} />
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
-                <span className="text-sm font-medium text-text">{ev.description ?? ev.action}</span>
-                <span className="text-[13px] text-text-muted shrink-0">
+                <span className="text-body font-medium text-text">{ev.description ?? ev.action}</span>
+                <span className="text-small text-text-muted shrink-0">
                   {new Date(ev.created_at).toLocaleString("en-GB", {
                     day: "numeric", month: "short", year: "numeric",
                     hour: "2-digit", minute: "2-digit",
@@ -50,7 +50,7 @@ export default function DealTimeline({ dealId }: { dealId: string }) {
                 </span>
               </div>
               {ev.actor_label && (
-                <p className="mt-0.5 text-[13px] text-text-muted">{ev.actor_label}</p>
+                <p className="mt-0.5 text-small text-text-muted">{ev.actor_label}</p>
               )}
             </div>
           </div>

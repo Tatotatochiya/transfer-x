@@ -20,7 +20,7 @@ Out of scope: system/module design (see [`../architecture/`](../architecture/REA
 
 | Document | Purpose |
 |---|---|
-| [`getting-started.md`](./getting-started.md) | Local environment setup |
+| [`getting-started.md`](./getting-started.md) | Local environment setup (steps in the root [`STARTER.md`](../../STARTER.md)) |
 | [`coding-standards.md`](./coding-standards.md) | Conventions and style |
 | [`testing-strategy.md`](./testing-strategy.md) | How testing works and what's covered |
 | [`database-migrations.md`](./database-migrations.md) | Alembic migration workflow |

@@ -51,8 +51,8 @@ function DisclosureRow({ id, title, sub, open, onToggle, children }: {
         className="flex min-h-16 w-full items-center justify-between gap-3 px-4 text-left"
       >
         <span>
-          <span className="block text-base font-semibold text-text">{title}</span>
-          <span className="block text-sm text-text-muted">{sub}</span>
+          <span className="block text-body font-semibold text-text">{title}</span>
+          <span className="block text-small text-text-muted">{sub}</span>
         </span>
         <span aria-hidden className="text-text-muted">{open ? "⌃" : "⌄"}</span>
       </button>
@@ -129,7 +129,7 @@ export default function DealDetailPage() {
   }
   if (isError || !deal) {
     return (
-      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-small text-danger-text ring-1 ring-danger-border">
         Deal not found.{" "}
         <button onClick={() => navigate(-1)} className="underline">Go back</button>
       </div>
@@ -275,11 +275,11 @@ export default function DealDetailPage() {
             ) : mainTab === "activity" ? (
               <div className="space-y-6 rounded-xl bg-surface p-5 ring-1 ring-border">
                 <section>
-                  <h3 className="mb-2 text-base font-bold text-text">Notes</h3>
+                  <h3 className="mb-2 text-body font-bold text-text">Notes</h3>
                   {notes}
                 </section>
                 <section>
-                  <h3 className="mb-3 text-base font-bold text-text">Activity</h3>
+                  <h3 className="mb-3 text-body font-bold text-text">Activity</h3>
                   <DealTimeline dealId={deal.id} />
                 </section>
               </div>

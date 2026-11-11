@@ -47,7 +47,7 @@ describe("LiteApprovalPage", () => {
     renderPage();
     expect(await screen.findByText("Bid on Ellis Varga — £6,000,000")).toBeInTheDocument();
     expect(screen.getByText("Mia Lopez")).toBeInTheDocument();
-    expect(screen.getByText("£12m")).toBeInTheDocument();
+    expect(screen.getByText("£12M")).toBeInTheDocument();
     expect(screen.getByText(/5 hours left|4 hours left/)).toBeInTheDocument();
     expect(screen.getByText("Waiting on you · 1 of 2")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Next ›" })).toHaveAttribute("href", "/lite/offers/o2?from=push");

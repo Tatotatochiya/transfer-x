@@ -71,7 +71,7 @@ function ConfirmForm({ p, onDone, onCancel }: { p: SquadCheckPlayer; onDone: (ro
       }).then((r) => r.data),
     onSuccess: onDone,
   });
-  const input = "w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
+  const input = "w-full rounded-lg bg-surface px-3 py-2 text-small text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
   const ready = end && Number(wage) > 0;
 
   return (
@@ -79,23 +79,23 @@ function ConfirmForm({ p, onDone, onCancel }: { p: SquadCheckPlayer; onDone: (ro
       className="mt-3 grid gap-3 sm:grid-cols-4"
       onSubmit={(e) => { e.preventDefault(); if (ready) save.mutate(); }}
     >
-      <label className="text-xs text-text-secondary">
+      <label className="text-caption text-text-secondary">
         Contract starts <span className="text-text-muted">(optional)</span>
         <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className={`${input} mt-1`} />
       </label>
-      <label className="text-xs text-text-secondary">
+      <label className="text-caption text-text-secondary">
         Contract ends
         <input type="date" required value={end} onChange={(e) => setEnd(e.target.value)} className={`${input} mt-1`} />
       </label>
-      <label className="text-xs text-text-secondary">
+      <label className="text-caption text-text-secondary">
         Wage a week (£)
         <CurrencyInput required value={wage} onChange={setWage} className={`${input} mt-1`} />
       </label>
-      <label className="text-xs text-text-secondary">
+      <label className="text-caption text-text-secondary">
         Your valuation (£) <span className="text-text-muted">(optional)</span>
         <CurrencyInput value={valuation} onChange={setValuation} className={`${input} mt-1`} />
       </label>
-      {save.isError && <p className="text-sm text-danger-text sm:col-span-4">{getApiError(save.error)}</p>}
+      {save.isError && <p className="text-body text-danger-text sm:col-span-4">{getApiError(save.error)}</p>}
       <div className="flex gap-2 sm:col-span-4">
         <Button type="submit" disabled={!ready || save.isPending}>
           {save.isPending ? "Saving…" : c ? "Confirm" : "Create contract and confirm"}
@@ -117,11 +117,11 @@ function Row({ p, canConfirm }: { p: SquadCheckPlayer; canConfirm: boolean }) {
     <div className="px-5 py-3.5">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-text">
+          <p className="truncate text-body font-semibold text-text">
             {p.name}
-            {p.position && <span className="ml-2 text-xs font-normal text-text-muted">{p.position}</span>}
+            {p.position && <span className="ml-2 text-small font-normal text-text-muted">{p.position}</span>}
           </p>
-          <p className="mt-0.5 text-xs text-text-muted">
+          <p className="mt-0.5 text-small text-text-muted">
             {c
               ? <>Until {c.end_date ? formatDate(c.end_date) : "—"} · {formatWage(num(c.wage_weekly))} · valued {c.club_valuation != null ? formatCurrency(num(c.club_valuation)) : "—"}</>
               : "No contract on TransferX"}
@@ -141,7 +141,7 @@ function Row({ p, canConfirm }: { p: SquadCheckPlayer; canConfirm: boolean }) {
         )}
       </div>
       {c?.confirmed_at && (
-        <p className="mt-1 text-xs text-text-muted">
+        <p className="mt-1 text-small text-text-muted">
           Confirmed {formatDate(c.confirmed_at)}{c.confirmed_by ? ` by ${c.confirmed_by}` : ""}
         </p>
       )}
@@ -184,21 +184,21 @@ export default function SquadCheckPage() {
         <>
           <Card className="mb-4">
             <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-              <p className="text-2xl font-bold text-text">{data.confirmed} of {data.total} confirmed</p>
+              <p className="text-headline sm:text-title font-bold text-text">{data.confirmed} of {data.total} confirmed</p>
               {data.without_contract > 0 && (
-                <p className="text-sm font-semibold text-danger-text">
+                <p className="text-body font-semibold text-danger-text">
                   {data.without_contract} without a contract
                 </p>
               )}
               {data.needs_attention > 0 && (
-                <p className="text-sm text-text-muted">{data.needs_attention} need a date or wage</p>
+                <p className="text-small text-text-muted">{data.needs_attention} need a date or wage</p>
               )}
             </div>
             <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-border-quiet">
               <div className="h-full bg-success" style={{ width: `${(data.confirmed / data.total) * 100}%` }} />
             </div>
             {!canConfirm && (
-              <p className="mt-3 text-xs text-text-muted">The owner or sporting director confirms contracts.</p>
+              <p className="mt-3 text-small text-text-muted">The owner or sporting director confirms contracts.</p>
             )}
           </Card>
           <Card noPadding className="divide-y divide-rule-faint">

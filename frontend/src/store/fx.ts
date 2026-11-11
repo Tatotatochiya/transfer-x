@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 import { API_BASE_URL } from "../lib/api";
 
-/** Daily rates for the "≈ €21.0m" estimates next to £ amounts. Display only:
+/** Daily rates for the "≈ €21M" estimates next to £ amounts. Display only:
  *  every amount is stored and agreed in pounds (backend app/fx/service.py). */
 interface FxState {
   rates: Record<string, number> | null;

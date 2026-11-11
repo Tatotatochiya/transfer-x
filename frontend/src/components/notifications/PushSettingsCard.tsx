@@ -41,7 +41,7 @@ function ModeControl({ value, onChange, label }: { value: PushMode; onChange: (m
           role="radio"
           aria-checked={value === m.value}
           onClick={() => onChange(m.value)}
-          className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+          className={`rounded-md px-2.5 py-1 text-caption font-medium transition-colors ${
             value === m.value ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text-secondary"
           }`}
         >
@@ -63,7 +63,7 @@ function TimeInput({ value, onCommit, label }: { value: string; onCommit: (v: st
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => { if (/^\d\d:\d\d$/.test(draft) && draft !== hhmm(value)) onCommit(draft); }}
-      className="w-[6.5rem] rounded-md bg-surface px-2 py-1 text-sm tabular-nums text-text ring-1 ring-inset ring-input-border focus:outline-none focus:ring-accent"
+      className="w-[6.5rem] rounded-md bg-surface px-2 py-1 text-input lg:text-body tabular-nums text-text ring-1 ring-inset ring-input-border focus:outline-none focus:ring-accent"
     />
   );
 }
@@ -94,14 +94,14 @@ function ThisDevice({ state, onTurnOn, busy, device, onTest, onTurnOff, onShowGu
   onTurnOff: () => void;
 }) {
   if (state === "unsupported") {
-    return <p className="text-sm text-text-secondary">This browser can't show notifications. You'll still get email.</p>;
+    return <p className="text-body text-text-secondary">This browser can't show notifications. You'll still get email.</p>;
   }
   if (state === "not-configured") {
-    return <p className="text-sm text-text-secondary">Phone notifications aren't switched on for TransferX yet. You'll still get email.</p>;
+    return <p className="text-body text-text-secondary">Phone notifications aren't switched on for TransferX yet. You'll still get email.</p>;
   }
   if (state === "needs-install") {
     return (
-      <div className="space-y-2 text-sm text-text-secondary">
+      <div className="space-y-2 text-small text-text-secondary">
         <p className="font-semibold text-text">Add TransferX to your Home Screen first</p>
         <p>On iPhone and iPad, notifications only work in the TransferX app opened from the Home Screen.</p>
         <Button variant="primary" size="sm" onClick={onShowGuide}>Show me how</Button>
@@ -110,7 +110,7 @@ function ThisDevice({ state, onTurnOn, busy, device, onTest, onTurnOff, onShowGu
   }
   if (state === "denied") {
     return (
-      <p className="text-sm text-text-secondary">
+      <p className="text-body text-text-secondary">
         <span className="font-semibold text-danger-text">Blocked.</span> Notifications are blocked for TransferX.
         Turn them on in your browser's or phone's settings, then come back.
       </p>
@@ -120,8 +120,8 @@ function ThisDevice({ state, onTurnOn, busy, device, onTest, onTurnOff, onShowGu
     return (
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-text">{device?.label ?? "This device"}</p>
-          <p className="text-xs font-semibold text-success-text">On</p>
+          <p className="text-body font-semibold text-text">{device?.label ?? "This device"}</p>
+          <p className="text-caption font-semibold text-success-text">On</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" size="sm" onClick={onTest}>Send a test notification</Button>
@@ -134,8 +134,8 @@ function ThisDevice({ state, onTurnOn, busy, device, onTest, onTurnOff, onShowGu
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-sm text-text">Get offers and approvals on this device as they happen.</p>
-        <p className="text-xs text-text-muted">Off</p>
+        <p className="text-body text-text">Get offers and approvals on this device as they happen.</p>
+        <p className="text-small text-text-muted">Off</p>
       </div>
       <Button variant="primary" size="sm" onClick={onTurnOn} loading={busy}>Turn on notifications</Button>
     </div>
@@ -230,8 +230,8 @@ export default function PushSettingsCard() {
             <div className="flex min-w-0 flex-[1_1_16rem] gap-2.5">
               <Dot className="bg-danger" />
               <div>
-                <p className="text-sm font-semibold text-text">Your move</p>
-                <p className="text-xs text-text-muted">Offers, counters and approvals that need you. {MODE_SUMMARY[prefs.push_your_move]}.</p>
+                <p className="text-body font-semibold text-text">Your move</p>
+                <p className="text-small text-text-muted">Offers, counters and approvals that need you. {MODE_SUMMARY[prefs.push_your_move]}.</p>
               </div>
             </div>
             <ModeControl label="Your move" value={prefs.push_your_move} onChange={(m) => save({ push_your_move: m })} />
@@ -240,8 +240,8 @@ export default function PushSettingsCard() {
             <div className="flex min-w-0 flex-[1_1_16rem] gap-2.5">
               <Dot className="bg-warning-fill" />
               <div>
-                <p className="text-sm font-semibold text-text">Heads-up</p>
-                <p className="text-xs text-text-muted">Answers to your offers, messages, offers expiring. {MODE_SUMMARY[prefs.push_heads_up]}.</p>
+                <p className="text-body font-semibold text-text">Heads-up</p>
+                <p className="text-small text-text-muted">Answers to your offers, messages, offers expiring. {MODE_SUMMARY[prefs.push_heads_up]}.</p>
               </div>
             </div>
             <ModeControl label="Heads-up" value={prefs.push_heads_up} onChange={(m) => save({ push_heads_up: m })} />
@@ -250,8 +250,8 @@ export default function PushSettingsCard() {
             <div className="flex min-w-0 flex-[1_1_16rem] gap-2.5">
               <Dot className="bg-text-muted" />
               <div>
-                <p className="text-sm font-semibold text-text">FYI, and a morning summary</p>
-                <p className="text-xs text-text-muted">
+                <p className="text-body font-semibold text-text">FYI, and a morning summary</p>
+                <p className="text-small text-text-muted">
                   Completed deals, loans and the like stay in the app. One push each morning says what's waiting on you, only when something is.
                 </p>
               </div>
@@ -271,8 +271,8 @@ export default function PushSettingsCard() {
           </Row>
           <Row>
             <div className="min-w-0 flex-[1_1_16rem]">
-              <p className="text-sm font-semibold text-text">Quiet hours</p>
-              <p className="text-xs text-text-muted">
+              <p className="text-body font-semibold text-text">Quiet hours</p>
+              <p className="text-small text-text-muted">
                 Held until morning. Something of yours with a deadline before then still comes through.
               </p>
             </div>
@@ -280,7 +280,7 @@ export default function PushSettingsCard() {
               {prefs.quiet_hours_enabled && (
                 <>
                   <TimeInput key={`s${prefs.quiet_start}`} label="Quiet hours start" value={prefs.quiet_start} onCommit={(v) => save({ quiet_start: v })} />
-                  <span className="text-sm text-text-muted">to</span>
+                  <span className="text-small text-text-muted">to</span>
                   <TimeInput key={`e${prefs.quiet_end}`} label="Quiet hours end" value={prefs.quiet_end} onCommit={(v) => save({ quiet_end: v })} />
                 </>
               )}
@@ -294,8 +294,8 @@ export default function PushSettingsCard() {
           </Row>
           <Row>
             <div className="min-w-0 flex-[1_1_16rem]">
-              <p className="text-sm font-semibold text-text">Hide amounts on the lock screen</p>
-              <p className="text-xs text-text-muted">
+              <p className="text-body font-semibold text-text">Hide amounts on the lock screen</p>
+              <p className="text-small text-text-muted">
                 Pushes say only what happened, such as "New offer received". No figures, clubs or players until you open TransferX.
               </p>
             </div>
@@ -306,19 +306,19 @@ export default function PushSettingsCard() {
               label="Hide amounts on the lock screen"
             />
           </Row>
-          <p className="px-5 py-2.5 text-xs text-text-muted">Times are in {prefs.timezone.replace(/_/g, " ")}.</p>
+          <p className="px-5 py-2.5 text-small text-text-muted">Times are in {prefs.timezone.replace(/_/g, " ")}.</p>
         </>
       )}
 
       {others.length > 0 && (
         <div className="px-5 py-3.5">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">Other devices</p>
+          <p className="mb-2 text-caption font-semibold text-text-secondary">Other devices</p>
           <ul className="space-y-2">
             {others.map((d) => (
               <li key={d.id} className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm text-text">{d.label}</p>
-                  <p className="text-xs text-text-muted">
+                  <p className="truncate text-body text-text">{d.label}</p>
+                  <p className="text-small text-text-muted">
                     Added {new Date(d.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
                 </div>

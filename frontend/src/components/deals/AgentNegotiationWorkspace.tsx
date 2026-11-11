@@ -12,11 +12,11 @@ import { formatCurrency, getApiError } from "../../lib/utils";
 
 function AgreementChip({ label, status }: { label: string; status: string }) {
   const color =
-    status === "AGREED"   ? "bg-success/15 text-success-text ring-success/30" :
-    status === "DECLINED" ? "bg-danger/15 text-danger-text ring-danger/30"     :
+    status === "AGREED"   ? "bg-success-bg text-success-text ring-success-ring" :
+    status === "DECLINED" ? "bg-danger-bg text-danger-text ring-danger-ring"     :
                              "bg-surface-inset text-text-muted ring-border";
   return (
-    <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${color}`}>
+    <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-caption font-semibold ring-1 ${color}`}>
       {label}: {status === "AGREED" ? "agreed" : status === "DECLINED" ? "declined" : "waiting"}
     </span>
   );
@@ -75,51 +75,51 @@ export default function AgentNegotiationWorkspace({
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-role-agent-text">
-          Negotiation Workspace
+        <p className="text-caption font-semibold text-role-agent-text">
+          Negotiation workspace
         </p>
         <AgreementChip label="Club" status={negotiation?.club_agreement ?? "PENDING"} />
       </div>
 
-      <div className="rounded-xl bg-role-agent-bg px-5 py-4 ring-1 ring-role-agent-text/20">
-        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-role-agent-text">
-          Club side — Commission
+      <div className="rounded-xl bg-surface-inset px-5 py-4 ring-1 ring-border">
+        <p className="mb-3 text-caption font-semibold text-role-agent-text">
+          Club side — commission
         </p>
         {editing ? (
           <div className="space-y-2">
-            <label className="block text-xs text-text-muted">Commission % <span className="text-text-muted/70">(decimal, e.g. 0.05 = 5%)</span></label>
+            <label className="block text-caption text-text-muted">Commission % <span className="text-text-muted/70">(decimal, e.g. 0.05 = 5%)</span></label>
             <input
               type="number" step="0.001"
               value={draft.commission_pct}
               onChange={(e) => setDraft((d) => ({ ...d, commission_pct: e.target.value }))}
-              className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+              className="w-full rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             />
-            <label className="block text-xs text-text-muted pt-1">Commission amount (€)</label>
+            <label className="block text-caption text-text-muted pt-1">Commission amount (€)</label>
             <CurrencyInput
               value={draft.commission_amount}
               onChange={(v) => setDraft((d) => ({ ...d, commission_amount: v }))}
-              className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+              className="w-full rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             />
-            <label className="block text-xs text-text-muted pt-1">Paid by</label>
+            <label className="block text-caption text-text-muted pt-1">Paid by</label>
             <select
               value={draft.commission_payer}
               onChange={(e) => setDraft((d) => ({ ...d, commission_payer: e.target.value }))}
-              className="w-full rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+              className="w-full rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             >
               <option value="BUYER">Buying club</option>
               <option value="SELLER">Selling club</option>
               <option value="PLAYER">Player</option>
             </select>
-            <label className="block text-xs text-text-muted pt-1">Additional conditions</label>
+            <label className="block text-caption text-text-muted pt-1">Additional conditions</label>
             <textarea
               rows={2}
               value={draft.additional_conditions}
               onChange={(e) => setDraft((d) => ({ ...d, additional_conditions: e.target.value }))}
-              className="w-full resize-none rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+              className="w-full resize-none rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             />
           </div>
         ) : (
-          <dl className="space-y-1.5 text-sm">
+          <dl className="space-y-1.5 text-small">
             {negotiation?.commission_pct != null && (
               <><dt className="text-text-muted">Commission</dt><dd className="text-text">{(negotiation.commission_pct * 100).toFixed(2)}%</dd></>
             )}
@@ -130,18 +130,18 @@ export default function AgentNegotiationWorkspace({
               <><dt className="text-text-muted">Paid by</dt><dd className="text-text capitalize">{negotiation.commission_payer.toLowerCase()}</dd></>
             )}
             {negotiation?.additional_conditions && (
-              <><dt className="text-text-muted">Conditions</dt><dd className="text-text text-xs">{negotiation.additional_conditions}</dd></>
+              <><dt className="text-text-muted">Conditions</dt><dd className="text-text text-small">{negotiation.additional_conditions}</dd></>
             )}
             {!negotiation?.commission_pct && !negotiation?.commission_amount && (
-              <p className="text-xs text-text-muted italic">No commission terms set yet.</p>
+              <p className="text-small text-text-muted italic">No commission terms set yet.</p>
             )}
           </dl>
         )}
         <div className="mt-3">
           {clubAgreed ? (
-            <span className="text-xs font-semibold text-success-text">✓ Club has agreed</span>
+            <span className="text-caption font-semibold text-success-text">✓ Club has agreed</span>
           ) : (
-            <span className="text-xs text-text-muted">Awaiting club agreement</span>
+            <span className="text-small text-text-muted">Awaiting club agreement</span>
           )}
         </div>
         {negotiation && (

@@ -1,13 +1,17 @@
 export type BadgeVariant =
-  | "success" | "warning" | "danger" | "neutral" | "info"
+  | "success" | "warning" | "danger" | "neutral" | "ai"
+  /** @deprecated An alias of `neutral`: blue is only for things you can tap. */
+  | "info"
   | "move-your" | "move-their" | "move-neither";
 
 const variantClasses: Record<BadgeVariant, string> = {
-  success: "bg-success/15 text-success-text ring-success/30",
-  warning: "bg-warning-fill/15 text-warning-text ring-warning-fill/30",
-  danger:  "bg-danger/15 text-danger-text ring-danger/30",
-  info:    "bg-accent/15 text-accent ring-accent/30",
-  neutral: "bg-text-muted/15 text-text-muted ring-text-muted/30",
+  success: "bg-success-bg text-success-text ring-success-ring",
+  warning: "bg-warning-bg text-warning-text ring-warning-ring",
+  danger:  "bg-danger-bg text-danger-text ring-danger-ring",
+  neutral: "bg-surface-inset text-text-secondary ring-border",
+  info:    "bg-surface-inset text-text-secondary ring-border",
+  // Everything TransferX's AI writes or suggests.
+  ai:      "bg-ai-bg text-ai-text ring-ai-ring",
   // "Whose move" states (docs/design-system/README.md) — plain
   // coloured text, no pill background/ring, per SCREENS.md's row treatment.
   "move-your":     "text-danger-text font-semibold",
@@ -15,7 +19,7 @@ const variantClasses: Record<BadgeVariant, string> = {
   "move-neither":  "text-text-muted font-semibold",
 };
 
-const PILL_VARIANTS = new Set<BadgeVariant>(["success", "warning", "danger", "info", "neutral"]);
+const PILL_VARIANTS = new Set<BadgeVariant>(["success", "warning", "danger", "info", "neutral", "ai"]);
 
 interface BadgeProps {
   variant?: BadgeVariant;
@@ -27,8 +31,8 @@ export default function Badge({ variant = "neutral", children, className = "" }:
   const pill = PILL_VARIANTS.has(variant);
   return (
     <span
-      className={`inline-flex items-center text-xs ${
-        pill ? "rounded-full px-2.5 py-0.5 font-semibold ring-1" : ""
+      className={`inline-flex items-center text-caption ${
+        pill ? "rounded-full px-2 py-0.5 font-semibold ring-1" : ""
       } ${variantClasses[variant]} ${className}`}
     >
       {children}

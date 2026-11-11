@@ -1,6 +1,6 @@
 ---
 title: "Feature Specs"
-last_updated: 2026-11-09
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -44,6 +44,7 @@ Statuses verified against the code and `CHANGELOG.md` on 2026-10-11. Once a spec
 
 | Spec | Implemented |
 |---|---|
+| [`type-and-colour/`](./type-and-colour/README.md): seven text roles with a 13px floor, one meaning per colour, one compact money format, and the guard test | 2026-11-11 |
 | [`player-actions/`](./player-actions/README.md): one blue button, the top bar as navigation and the player page's actions by situation | 2026-11-10 |
 | [`browse-players-focus/`](./browse-players-focus/README.md): Browse Players, players first (search, toolbar, chips, filters sheet, phone rows), plus server sort, image fallbacks and the grid fix | 2026-11-09 |
 | [`offer-room-focus/`](./offer-room-focus/README.md): the offer page, answer first (status card, counter sheet, where it stands, Raise your offer) | 2026-11-09 |

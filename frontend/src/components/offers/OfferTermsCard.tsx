@@ -24,18 +24,18 @@ function TermRow({ row, change, open, onToggle }: {
   const id = `offer-term-${row.label.toLowerCase().replace(/\W+/g, "-")}`;
   return (
     <div className="border-t border-rule py-3">
-      <dt className="text-[15px] text-text-secondary">{row.label}</dt>
+      <dt className="text-body text-text-secondary">{row.label}</dt>
       <dd className="mt-0.5">
-        <span className="text-base font-semibold text-text">{row.value}</span>
+        <span className="text-body font-semibold text-text">{row.value}</span>
         {change && (
-          <span className="block text-[13px] font-semibold text-accent-active">
+          <span className="block text-caption font-semibold text-accent-active">
             {change.was === "None" ? "New" : `Changed · was ${change.was}`}
           </span>
         )}
         {row.detail && (
           <>
             <button type="button" aria-expanded={open} aria-controls={id} onClick={onToggle}
-              className="block min-h-11 text-sm font-semibold text-accent lg:min-h-8">
+              className="block min-h-11 text-body font-semibold text-accent lg:min-h-8">
               {open ? "Hide" : "Show"}
             </button>
             {open && <div id={id}>{row.detail}</div>}
@@ -66,7 +66,7 @@ export default function OfferTermsCard({ offer, heading }: { offer: Offer; headi
       label: "Payment", keys: ["Payment"],
       value: instalments.length === 0 ? "On completion" : `${instalments.length} instalments`,
       detail: instalments.length > 0 && (
-        <ul className="text-sm text-text-secondary">
+        <ul className="text-small text-text-secondary">
           {instalments.map((i, n) => (
             <li key={n} className="flex justify-between gap-3 py-0.5"><span>{formatDate(i.due_date)}</span><span>{formatCurrency(Number(i.amount))}</span></li>
           ))}
@@ -77,7 +77,7 @@ export default function OfferTermsCard({ offer, heading }: { offer: Offer; headi
       rows.push({
         label: "Add-ons", keys: ["Add-ons"], value: `${clauses.length} add-on${clauses.length === 1 ? "" : "s"}`,
         detail: (
-          <ul className="text-sm text-text-secondary">
+          <ul className="text-small text-text-secondary">
             {clauses.map((c, n) => (
               <li key={n} className="py-0.5">
                 {c.trigger_description}: {formatCurrency(Number(c.amount))}{c.cap != null ? ` (cap ${formatCurrency(Number(c.cap))})` : ""}
@@ -109,19 +109,19 @@ export default function OfferTermsCard({ offer, heading }: { offer: Offer; headi
   const clause = isLoan(offer) ? purchaseClause(offer) : null;
   return (
     <section aria-labelledby="offer-terms-heading" className="rounded-xl bg-surface p-4 ring-1 ring-border sm:p-5">
-      <h3 id="offer-terms-heading" className="text-[17px] font-bold text-text">{heading}</h3>
+      <h3 id="offer-terms-heading" className="text-section font-bold text-text">{heading}</h3>
       <dl className="mt-2 grid sm:grid-cols-2 sm:gap-x-8">
         {rows.map((r) => (
           <TermRow key={r.label} row={r} change={changeFor(r.keys)} open={open.has(r.label)} onToggle={() => toggle(r.label)} />
         ))}
       </dl>
       {isLoan(offer) && offer.obligation_to_buy && clause && (
-        <p className="mt-3 rounded-lg bg-warning-bg px-3 py-2 text-sm text-warning-text ring-1 ring-warning-fill/25">
+        <p className="mt-3 rounded-lg bg-warning-bg px-3 py-2 text-body text-warning-text ring-1 ring-warning-ring">
           Binding: when the loan ends he transfers permanently at {formatCurrency(Number(offer.option_to_buy))}
           {offer.obligation_conditions ? ", if the conditions above are met" : ""}.
         </p>
       )}
-      <p className="mt-3 border-t border-rule pt-3 text-sm text-text-muted">
+      <p className="mt-3 border-t border-rule pt-3 text-small text-text-muted">
         Offer made {formatDate(offer.created_at)} · changed {formatDatePref(offer.last_action_at)}
       </p>
     </section>
@@ -150,8 +150,8 @@ export function OfferAdvice({ offer, canCounter, onUseTerms }: {
         className="flex min-h-16 w-full items-center justify-between gap-3 px-4 text-left"
       >
         <span>
-          <span className="block text-[15px] font-semibold text-text"><span className="text-role-agent-text" aria-hidden>✦</span> Advice on this offer</span>
-          <span className="block text-sm text-text-muted">A suggested next move, and where the negotiation stands</span>
+          <span className="block text-body font-semibold text-text"><span className="text-ai-text" aria-hidden>✦</span> Advice on this offer</span>
+          <span className="block text-small text-text-muted">A suggested next move, and where the negotiation stands</span>
         </span>
         <span aria-hidden className={`text-text-muted transition-transform ${open ? "rotate-90" : ""}`}>›</span>
       </button>

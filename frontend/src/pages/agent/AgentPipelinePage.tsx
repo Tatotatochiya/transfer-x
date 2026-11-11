@@ -14,7 +14,7 @@ import type {
 } from "../../types/api";
 import Spinner from "../../components/ui/Spinner";
 import PageHeader from "../../components/ui/PageHeader";
-import { formatCurrency } from "../../lib/utils";
+import { formatCompact } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
 
 // ── Stage config ──────────────────────────────────────────────────────────────
@@ -29,19 +29,21 @@ const PIPELINE_STAGES = [
 
 type StageKey = typeof PIPELINE_STAGES[number]["key"];
 
+// Stages are categories, so the columns are neutral: the headings say which.
+// Only a completed deal is "done" green.
 const COLUMN_HEADER: Record<StageKey, string> = {
-  AGENT_NEGOTIATION: "text-role-agent-text",
-  PERSONAL_TERMS:    "text-warning-text",
-  PAPERWORK:         "text-accent",
-  CONFIRMED:         "text-success-text",
-  COMPLETED:         "text-text-muted",
+  AGENT_NEGOTIATION: "text-text-secondary",
+  PERSONAL_TERMS:    "text-text-secondary",
+  PAPERWORK:         "text-text-secondary",
+  CONFIRMED:         "text-text-secondary",
+  COMPLETED:         "text-success-text",
 };
 
 const COLUMN_CARD: Record<StageKey, string> = {
-  AGENT_NEGOTIATION: "ring-role-agent-text/20 bg-role-agent-text/[0.04]",
-  PERSONAL_TERMS:    "ring-warning-fill/20 bg-warning-fill/[0.04]",
-  PAPERWORK:         "ring-accent/20 bg-accent/[0.04]",
-  CONFIRMED:         "ring-success/20 bg-success/[0.04]",
+  AGENT_NEGOTIATION: "ring-border bg-surface",
+  PERSONAL_TERMS:    "ring-border bg-surface",
+  PAPERWORK:         "ring-border bg-surface",
+  CONFIRMED:         "ring-border bg-surface",
   COMPLETED:         "ring-border bg-surface",
 };
 
@@ -64,7 +66,7 @@ function CardLink({ to, children }: { to: string; children: ReactNode }) {
 
 function DealParties({ item, className = "" }: { item: PipelineDealItem; className?: string }) {
   return (
-    <p className={`flex min-w-0 items-center gap-1.5 text-xs text-text-muted ${className}`}>
+    <p className={`flex min-w-0 items-center gap-1.5 text-small text-text-muted ${className}`}>
       <ClubLink id={item.seller_club_id} name={item.seller_club_name} crestUrl={item.seller_club_crest ?? null} fallback="?" />
       <span aria-hidden="true">→</span>
       <ClubLink id={item.buyer_club_id} name={item.buyer_club_name} crestUrl={item.buyer_club_crest ?? null} fallback="?" />
@@ -78,34 +80,34 @@ function DealCard({ item, stageKey }: { item: PipelineDealItem; stageKey: StageK
   return (
     <CardLink to={`/deals/${item.deal_id}`}>
       <div
-        className={`rounded-xl px-4 py-3 ring-1 transition-all hover:ring-success/30 ${
+        className={`rounded-xl px-4 py-3 ring-1 transition-all hover:ring-success-ring ${
           item.action_required
-            ? "ring-danger/40 bg-danger/[0.04]"
+            ? "ring-danger-ring bg-danger-bg"
             : COLUMN_CARD[stageKey]
         }`}
       >
         <div className="flex items-start justify-between gap-2 mb-1.5">
-          <p className="flex items-center gap-1.5 text-sm font-semibold text-text truncate">
+          <p className="flex items-center gap-1.5 text-body font-semibold text-text truncate">
             <PlayerLink id={item.player_id} name={item.player_name} className="truncate" />
             {item.has_unread_messages && (
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" title="New messages" />
             )}
           </p>
           {item.action_required && (
-            <span className="shrink-0 rounded-full bg-danger/20 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-danger-text">
+            <span className="shrink-0 rounded-full bg-danger-bg px-1.5 py-0.5 text-caption font-semibold text-danger-text">
               Action needed
             </span>
           )}
         </div>
         <DealParties item={item} />
         {item.agreed_fee != null && (
-          <p className="mt-1.5 text-xs font-semibold text-text tabular-nums">
-            {formatCurrency(item.agreed_fee)}
+          <p className="mt-1.5 text-caption font-semibold text-text tabular-nums">
+            {formatCompact(item.agreed_fee)}
           </p>
         )}
         {item.commission_amount != null && (
-          <p className="text-[13px] text-success-text tabular-nums mt-0.5">
-            Commission: {formatCurrency(item.commission_amount)}
+          <p className="text-caption text-success-text tabular-nums mt-0.5">
+            Commission: {formatCompact(item.commission_amount)}
           </p>
         )}
       </div>
@@ -116,10 +118,14 @@ function DealCard({ item, stageKey }: { item: PipelineDealItem; stageKey: StageK
 // ── Commission status config ───────────────────────────────────────────────────
 
 const COMMISSION_STATUS_COLORS: Record<CommissionStatus, string> = {
-  PENDING:   "bg-text-muted/15 text-text-muted",
-  CONFIRMED: "bg-success/15 text-success-text",
-  INVOICED:  "bg-warning-fill/15 text-warning-text",
-  PAID:      "bg-accent/15 text-accent",
+  PENDING:   "bg-surface-inset text-text-secondary",
+  CONFIRMED: "bg-surface-inset text-text-secondary",
+  INVOICED:  "bg-warning-bg text-warning-text",
+  PAID:      "bg-success-bg text-success-text",
+};
+
+const COMMISSION_STATUS_LABEL: Record<CommissionStatus, string> = {
+  PENDING: "Pending", CONFIRMED: "Confirmed", INVOICED: "Invoiced", PAID: "Paid",
 };
 
 const NEXT_STATUS: Partial<Record<CommissionStatus, CommissionStatus>> = {
@@ -147,25 +153,25 @@ function CommissionRow({
   return (
     <tr className="border-t border-rule-faint hover:bg-surface-inset">
       <td className="px-4 py-3">
-        <Link to={`/deals/${commission.deal_id}`} className="text-sm font-medium text-text hover:text-accent transition-colors">
+        <Link to={`/deals/${commission.deal_id}`} className="text-body font-medium text-text hover:text-accent transition-colors">
           {commission.deal_id.slice(0, 8)}…
         </Link>
       </td>
-      <td className="px-4 py-3 text-right text-sm font-semibold text-text tabular-nums">
-        {formatCurrency(commission.amount)}
+      <td className="px-4 py-3 text-right text-small font-semibold text-text tabular-nums">
+        {formatCompact(commission.amount)}
       </td>
-      <td className="px-4 py-3 text-right text-xs text-text-muted tabular-nums">
+      <td className="px-4 py-3 text-right text-caption text-text-muted tabular-nums">
         {commission.pct != null ? `${(commission.pct * 100).toFixed(2)}%` : "—"}
       </td>
-      <td className="px-4 py-3 text-xs text-text-muted">
+      <td className="px-4 py-3 text-caption text-text-muted">
         {commission.payer ?? "—"}
       </td>
-      <td className="px-4 py-3 text-xs text-text-muted">
+      <td className="px-4 py-3 text-caption text-text-muted">
         {commission.window_label ?? "—"}
       </td>
       <td className="px-4 py-3">
-        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${COMMISSION_STATUS_COLORS[commission.status]}`}>
-          {commission.status}
+        <span className={`rounded-full px-2 py-0.5 text-caption font-semibold ${COMMISSION_STATUS_COLORS[commission.status]}`}>
+          {COMMISSION_STATUS_LABEL[commission.status]}
         </span>
       </td>
       <td className="px-4 py-3 text-right">
@@ -173,7 +179,7 @@ function CommissionRow({
           <button
             onClick={() => onAdvance(commission.id, next)}
             disabled={advancing}
-            className="rounded-lg bg-surface-inset px-2.5 py-1 text-[13px] font-medium text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-40"
+            className="rounded-lg bg-surface-inset px-2.5 py-1 text-caption font-medium text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-40"
           >
             {NEXT_STATUS_LABEL[commission.status]}
           </button>
@@ -227,44 +233,44 @@ function CommissionsTab() {
       {/* Summary cards */}
       <div className="mb-6 grid grid-cols-3 gap-3">
         <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
-          <p className="text-2xl font-bold text-success-text tabular-nums break-words">
-            {summary ? formatCurrency(summary.earned) : "—"}
+          <p className="text-headline sm:text-title font-bold text-success-text tabular-nums break-words">
+            {summary ? formatCompact(summary.earned) : "—"}
           </p>
-          <p className="mt-0.5 text-xs text-text-muted">Earned (paid)</p>
+          <p className="mt-0.5 text-small text-text-muted">Earned (paid)</p>
         </div>
         <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
-          <p className="text-2xl font-bold text-warning-text tabular-nums break-words">
-            {summary ? formatCurrency(summary.outstanding) : "—"}
+          <p className="text-headline sm:text-title font-bold text-warning-text tabular-nums break-words">
+            {summary ? formatCompact(summary.outstanding) : "—"}
           </p>
-          <p className="mt-0.5 text-xs text-text-muted">Outstanding (invoiced)</p>
+          <p className="mt-0.5 text-small text-text-muted">Outstanding (invoiced)</p>
         </div>
         <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
-          <p className="text-2xl font-bold text-text tabular-nums break-words">
-            {summary ? formatCurrency(summary.pipeline) : "—"}
+          <p className="text-headline sm:text-title font-bold text-text tabular-nums break-words">
+            {summary ? formatCompact(summary.pipeline) : "—"}
           </p>
-          <p className="mt-0.5 text-xs text-text-muted">Pipeline (pending)</p>
+          <p className="mt-0.5 text-small text-text-muted">Pipeline (pending)</p>
         </div>
       </div>
 
       {commissions.length === 0 ? (
         <div className="rounded-xl bg-surface px-5 py-12 text-center ring-1 ring-border">
-          <p className="text-sm font-medium text-text">No commissions yet</p>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="text-body font-medium text-text">No commissions yet</p>
+          <p className="mt-1 text-small text-text-muted">
             Commission records appear when agent negotiation terms are agreed.
           </p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl ring-1 ring-border">
-          <table className="w-full text-sm">
+          <table className="w-full text-small">
             <thead className="bg-surface-header">
               <tr>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">Deal</th>
-                <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Amount</th>
-                <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">%</th>
-                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Payer</th>
-                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Window</th>
-                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Status</th>
-                <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">Action</th>
+                <th className="eyebrow px-4 py-2.5 text-left text-text-secondary">Deal</th>
+                <th className="eyebrow px-4 py-2.5 text-right text-text-secondary">Amount</th>
+                <th className="eyebrow px-4 py-2.5 text-right text-text-secondary">%</th>
+                <th className="eyebrow px-4 py-2.5 text-text-secondary">Payer</th>
+                <th className="eyebrow px-4 py-2.5 text-text-secondary">Window</th>
+                <th className="eyebrow px-4 py-2.5 text-text-secondary">Status</th>
+                <th className="eyebrow px-4 py-2.5 text-right text-text-secondary">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -320,7 +326,7 @@ export default function AgentPipelinePage() {
           <div className="flex shrink-0 items-center gap-1 rounded-lg bg-surface-inset p-1 ring-1 ring-border">
             <button
               onClick={() => setView("kanban")}
-              className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded px-3 py-1.5 text-caption font-medium transition-colors ${
                 view === "kanban" ? "bg-surface text-text" : "text-text-muted hover:text-text"
               }`}
             >
@@ -328,7 +334,7 @@ export default function AgentPipelinePage() {
             </button>
             <button
               onClick={() => setView("list")}
-              className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded px-3 py-1.5 text-caption font-medium transition-colors ${
                 view === "list" ? "bg-surface text-text" : "text-text-muted hover:text-text"
               }`}
             >
@@ -344,7 +350,7 @@ export default function AgentPipelinePage() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+            className={`px-4 py-2 text-body font-medium capitalize transition-colors border-b-2 -mb-px ${
               tab === t
                 ? "border-accent text-text"
                 : "border-transparent text-text-muted hover:text-text"
@@ -364,32 +370,32 @@ export default function AgentPipelinePage() {
       {pipeline && (
         <div className="mb-6 grid grid-cols-3 gap-3">
           <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
-            <p className="text-2xl font-bold text-text tabular-nums">
+            <p className="text-headline sm:text-title font-bold text-text tabular-nums">
               {pipeline.deals_in_progress}
             </p>
-            <p className="mt-0.5 text-xs text-text-muted">Active deals</p>
+            <p className="mt-0.5 text-small text-text-muted">Active deals</p>
           </div>
           <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
-            <p className="text-2xl font-bold text-text tabular-nums">
+            <p className="text-headline sm:text-title font-bold text-text tabular-nums">
               {pipeline.deals_completed_this_window}
             </p>
-            <p className="mt-0.5 text-xs text-text-muted">Completed (90 days)</p>
+            <p className="mt-0.5 text-small text-text-muted">Completed (90 days)</p>
           </div>
           <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
-            <p className="text-2xl font-bold text-success-text tabular-nums break-words">
+            <p className="text-headline sm:text-title font-bold text-success-text tabular-nums break-words">
               {pipeline.total_commission_pipeline > 0
-                ? formatCurrency(pipeline.total_commission_pipeline)
+                ? formatCompact(pipeline.total_commission_pipeline)
                 : "—"}
             </p>
-            <p className="mt-0.5 text-xs text-text-muted">Commission pipeline</p>
+            <p className="mt-0.5 text-small text-text-muted">Commission pipeline</p>
           </div>
         </div>
       )}
 
       {items.length === 0 ? (
         <div className="rounded-xl bg-surface px-5 py-12 text-center ring-1 ring-border">
-          <p className="text-sm font-medium text-text">No active deals</p>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="text-body font-medium text-text">No active deals</p>
+          <p className="mt-1 text-small text-text-muted">
             Deals for your clients will appear here once clubs make offers.
           </p>
         </div>
@@ -402,11 +408,11 @@ export default function AgentPipelinePage() {
               return (
                 <div key={key}>
                   <div className="mb-2 flex items-center justify-between">
-                    <p className={`text-[11px] font-bold uppercase tracking-wider ${COLUMN_HEADER[key]}`}>
+                    <p className={`text-caption font-semibold ${COLUMN_HEADER[key]}`}>
                       {label}
                     </p>
                     {colItems.length > 0 && (
-                      <span className="rounded-full bg-text-muted/15 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-text-muted">
+                      <span className="rounded-full bg-surface-inset px-1.5 py-0.5 text-caption font-bold tabular-nums text-text-muted">
                         {colItems.length}
                       </span>
                     )}
@@ -414,7 +420,7 @@ export default function AgentPipelinePage() {
                   <div className="space-y-2">
                     {colItems.length === 0 ? (
                       <div className="rounded-xl border border-dashed border-border px-3 py-5 text-center">
-                        <p className="text-[13px] text-text-muted">—</p>
+                        <p className="text-small text-text-muted">—</p>
                       </div>
                     ) : (
                       colItems.map((item) => (
@@ -433,23 +439,23 @@ export default function AgentPipelinePage() {
           {items.map((item) => (
             <CardLink key={item.deal_id} to={`/deals/${item.deal_id}`}>
               <div
-                className={`rounded-xl px-4 py-3 ring-1 transition-all hover:ring-success/30 ${
+                className={`rounded-xl px-4 py-3 ring-1 transition-all hover:ring-success-ring ${
                   item.action_required
-                    ? "bg-danger/[0.04] ring-danger/20"
+                    ? "bg-danger-bg ring-danger-ring"
                     : "bg-surface ring-border"
                 }`}
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-text">
+                      <p className="truncate text-body font-semibold text-text">
                         <PlayerLink id={item.player_id} name={item.player_name} />
                       </p>
                       {item.has_unread_messages && (
                         <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" title="New messages" />
                       )}
                       {item.action_required && (
-                        <span className="shrink-0 rounded-full bg-danger/20 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-danger-text">
+                        <span className="shrink-0 rounded-full bg-danger-bg px-1.5 py-0.5 text-caption font-semibold text-danger-text">
                           Action needed
                         </span>
                       )}
@@ -457,12 +463,12 @@ export default function AgentPipelinePage() {
                     <DealParties item={item} className="mt-0.5" />
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-xs font-medium text-text-muted">
+                    <p className="text-small font-medium text-text-muted">
                       {item.stage.replace(/_/g, " ")}
                     </p>
                     {item.agreed_fee != null && (
-                      <p className="mt-0.5 text-sm font-semibold text-text tabular-nums">
-                        {formatCurrency(item.agreed_fee)}
+                      <p className="mt-0.5 text-body font-semibold text-text tabular-nums">
+                        {formatCompact(item.agreed_fee)}
                       </p>
                     )}
                   </div>

@@ -33,7 +33,7 @@ const listing = {
            open_deal: { id: "d1", stage: "PAPERWORK", status: "IN_PROGRESS", buyer_club_id: "c", buyer_club: "Chelsea", seller_club_id: "l" } }),
     move({ player_id: "rice", name: "D. Rice", kind: "playing", registered_club: "Liverpool", real_club: "Arsenal",
            moved_on: null, fee: null, case: "behind_transferx",
-           apply_blocked: "TransferX moved him from Arsenal on 30 Sep 2026 for £45m. Moving him back would undo a paid transfer.",
+           apply_blocked: "TransferX moved him from Arsenal on 30 Sep 2026 for £45M. Moving him back would undo a paid transfer.",
            transferx_move: { from_club: "Arsenal", on: "2026-09-30", fee: 45_000_000, deal_id: "d0" } }),
   ],
 };

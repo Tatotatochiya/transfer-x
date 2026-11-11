@@ -4,7 +4,7 @@ import { buyerLabel } from "../../lib/buyerIdentity";
 import { offerStatusLabel } from "../../lib/badges";
 import { lastChange, type TermChange } from "../../lib/offerChanges";
 import { isLoan, loanPeriod, offerHeadline } from "../../lib/offerTerms";
-import { formatCurrency, formatDate } from "../../lib/utils";
+import { formatCompact, formatCurrency, formatDate } from "../../lib/utils";
 
 /**
  * What the offer page's status card says, for every state and viewer
@@ -113,13 +113,14 @@ export function acceptMessage(offer: Offer): string {
   return lines.join(" ");
 }
 
-function loanPurchaseSentence(offer: Offer, buyer: string): string | null {
+/** Full figures in the accept confirmation; compact on the status card. */
+function loanPurchaseSentence(offer: Offer, buyer: string, format: (v: number) => string = formatCurrency): string | null {
   if (offer.obligation_to_buy && offer.option_to_buy != null) {
-    return `This includes an obligation: he transfers permanently for ${formatCurrency(Number(offer.option_to_buy))} when the loan ends` +
+    return `This includes an obligation: he transfers permanently for ${format(Number(offer.option_to_buy))} when the loan ends` +
       (offer.obligation_conditions ? `, conditional on: ${offer.obligation_conditions}.` : ".");
   }
   if (offer.option_to_buy != null) {
-    return `${cap(buyer)} may buy him for ${formatCurrency(Number(offer.option_to_buy))} during the loan.`;
+    return `${cap(buyer)} may buy him for ${format(Number(offer.option_to_buy))} during the loan.`;
   }
   return null;
 }
@@ -143,7 +144,7 @@ export function getOfferStatus(offer: Offer, viewer: OfferViewer): OfferStatusVi
   const P = offer.player?.name ?? "the player";
   const other = otherName(offer, side, card);
   const Other = cap(other);
-  const amount = offerHeadline(offer);
+  const amount = offerHeadline(offer, formatCompact);
   const loan = isLoan(offer);
   const closedBody = "The terms and conversation stay here as the record.";
   const base = { changes: [] as TermChange[] };
@@ -231,14 +232,14 @@ export function getOfferStatus(offer: Offer, viewer: OfferViewer): OfferStatusVi
     if (!loan && mark != null && offer.fee_amount != null) {
       const fee = Number(offer.fee_amount);
       body.push(fee < mark
-        ? `That's ${formatCurrency(mark - fee)} under your ${formatCurrency(mark)} ${word}.`
-        : `That's at or above your ${formatCurrency(mark)} ${word}.`);
+        ? `That's ${formatCompact(mark - fee)} under your ${formatCompact(mark)} ${word}.`
+        : `That's at or above your ${formatCompact(mark)} ${word}.`);
     }
     if (loan) {
       const purchase = offer.obligation_to_buy && offer.option_to_buy != null
-        ? `If you accept, he transfers permanently for ${formatCurrency(Number(offer.option_to_buy))} when the loan ends` +
+        ? `If you accept, he transfers permanently for ${formatCompact(Number(offer.option_to_buy))} when the loan ends` +
           (offer.obligation_conditions ? `, conditional on: ${offer.obligation_conditions}.` : ".")
-        : loanPurchaseSentence(offer, other);
+        : loanPurchaseSentence(offer, other, formatCompact);
       if (purchase) body.push(purchase);
     }
 

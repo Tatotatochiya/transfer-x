@@ -10,9 +10,9 @@ import { isLoan, offerHeadline } from "../../lib/offerTerms";
 import { formatCurrency, getApiError } from "../../lib/utils";
 import { cap } from "./offerStatus";
 
-const LABEL = "mb-1 block text-[15px] font-semibold text-text lg:text-sm";
-const INPUT = "w-full min-h-12 lg:min-h-10 rounded-lg bg-surface px-3 py-2 text-[15px] text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent lg:text-sm";
-const BIG = "w-full min-h-14 lg:min-h-12 rounded-lg bg-surface px-3 py-2 text-[22px] font-bold text-text ring-2 ring-accent focus:outline-none lg:text-lg";
+const LABEL = "mb-1 block text-body font-semibold text-text";
+const INPUT = "w-full min-h-12 lg:min-h-10 rounded-lg bg-surface px-3 py-2 text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent";
+const BIG = "w-full min-h-14 lg:min-h-12 rounded-lg bg-surface px-3 py-2 text-headline sm:text-title font-bold text-text ring-2 ring-accent focus:outline-none";
 
 /**
  * The buyer raising their own pending offer while they wait (offer-room-focus
@@ -81,7 +81,7 @@ export default function RaiseOfferForm({ offer, other, layout, improve, onDone, 
       <div>
         <label htmlFor={`${formId}-amount`} className={LABEL}>{loan ? "New loan fee" : "New fee"}</label>
         <CurrencyInput id={`${formId}-amount`} data-autofocus value={amount} onChange={setAmount} className={BIG} />
-        <p className="mt-1 text-sm text-text-muted">Now {offerHeadline(offer)}.</p>
+        <p className="mt-1 text-small text-text-muted">Now {offerHeadline(offer)}.</p>
       </div>
       {!loan && (
         <div className="max-w-xs">
@@ -89,7 +89,7 @@ export default function RaiseOfferForm({ offer, other, layout, improve, onDone, 
           <CurrencyInput id={`${formId}-wage`} value={wage} onChange={setWage} className={INPUT} />
         </div>
       )}
-      {error && <p role="alert" className="text-sm text-danger-text">{error}</p>}
+      {error && <p role="alert" className="text-body text-danger-text">{error}</p>}
     </form>
   );
 
@@ -105,7 +105,7 @@ export default function RaiseOfferForm({ offer, other, layout, improve, onDone, 
   }
   return (
     <>
-      <h2 id="offer-status-headline" tabIndex={-1} className="text-xl font-bold text-text focus:outline-none">{title}</h2>
+      <h2 id="offer-status-headline" tabIndex={-1} className="text-headline font-bold text-text focus:outline-none">{title}</h2>
       <div className="mt-4 max-w-xl">{form}</div>
       <div className="mt-4 flex items-center gap-3 border-t border-rule pt-3.5">
         {send}

@@ -22,33 +22,35 @@ Overwritten at the end of each session by the [`session-lifecycle`](../.claude/s
 
 ## Latest Session Summary
 
-## Session Summary — 2026-11-11 (your offer, your ranking)
+## Session Summary — 2026-11-11 (type and colour)
 
 **Completed work:**
-- PR #68 (one blue button) merged.
-- Audit of the three merged specs (offer page, Browse Players, player actions) against `main`: every file and behaviour each asked for is built, and every departure is in its Review revisions or Deviations. Gaps found were docs, one test and one layout issue, all fixed here.
-- Branch `offer-state-and-ranking`, not pushed yet:
-  - Player page: "View your offer" instead of "Make an offer" when the club has one open, with a sentence saying whose move it is (player-actions R7).
-  - Offer page: the buyer's ranking in the tab name ("Ranking · 2nd of 4"; the place alone on phones) and in the waiting status card (offer-room-focus R11).
-  - Player page leaves room for the compare tray above the bottom bar; the testers' Start demo button sits above the bar (R8).
-  - New test for the status card's "and n more changes"; `IMPLEMENTATION_STATUS.md` brought up to date (player page, test totals).
-- Tests: frontend 64 files, 474 passing. No backend change.
+- Built [`type-and-colour`](./feature_spec/type-and-colour/README.md) on branch `type-and-colour` (15 commits, not yet pushed): type roles and colour tokens in `index.css`; shared components; colour meanings (AI violet, neutral categories, blue only for tappable, `primary-success` removed, `text-on-accent`); one compact money format; the sweep of every area including Lite and admin; blue dark-mode accent; a second pass so Caption is only for labels.
+- `frontend/src/test/designSystem.test.ts`: banned classes with a ratchet allowlist (now empty) and contrast pairs in both themes. `npm run check:design`.
+- Measured with `measure-type.mjs`'s `measure()` over CDP: 0% under 13px and ≤ 6 sizes on every measured route at 390 and 1280.
+- Docs: TOKENS.md (typography, colour roles, money), RESPONSIVE.md, SCREENS.md note, CHANGELOG, feature_spec index, IMPLEMENTATION_STATUS.
+- `STARTER.md` (new, repo root): fresh clone to running app with the reference snapshot, Premier League clubs and demo deals; `.env.example` rewritten to cover every setting. README, getting-started, docs home, PRODUCT_SPEC, RULES, coding standards, testing strategy, frontend architecture and database migrations brought up to date.
+- Checked on a scratch database (`tx_starter_check`, dropped afterwards): restore, `alembic upgrade head`, onboarding, demo seed and account scripts. That found two bugs, both fixed: migration `0062` collided with the snapshot's `vendor_sync_runs`, and `seed_demo.py` was missing model imports.
+- Tests: backend 938 passed, frontend 480 passed (65 files), `tsc -b` clean.
 
 **Important decisions:**
-- "Offer a pre-contract" stays beside "View your offer": the server allows it, and it closes every open offer, ours included.
-- An offer captured for internal approval isn't an offer yet, so the page still reads "Make an offer".
+- Q1 default taken: dark accent is blue with dark text on it. Q2: admin swept in the same PR.
+- Caption (13px) is for labels, badges, counts and timestamps; sentences and meta lines are Small (14). Deviations are listed in the spec's §15.
 
 **Outstanding work:**
-- Push `offer-state-and-ranking` and open its PR.
-- Not checked: a real iPhone (sheets with the keyboard open), 200% zoom, a ranking with several offers on screen (tests cover it).
-- Production: correct the club with a ~£50M weekly wage budget (staff).
+- Push `type-and-colour` and open the PR (waiting for the user's go-ahead). It also carries `STARTER.md` and the two setup fixes.
+- `STARTER.md` hasn't been followed on a truly fresh clone (a new machine or `docker compose down -v`); the steps were checked on a scratch database beside the existing one.
+- The reference snapshot is from 2026-08-08: new demo accounts and data since then come only from the scripts. A fresh snapshot would shorten the starter.
+- Not checked: the Deal room (no local deal with a signed-in party), 768px, 200% zoom, a real iPhone, Lite offer card.
+- Most text is 14px rather than 15px on Dashboard, Player, Offer, Account and Make an offer.
+- Production: one club's weekly wage budget of about £50M needs a staff correction (carried over).
 
 **Risks:**
-- No eslint in the repo, so lint never runs.
-- Ranks are by fee only (the order book's rule): equal fees share a place, and a loan with no fee has no rank.
+- Large visual change across every page: wraps or clipping in tight rows that the by-hand pass didn't reach. Positions lost their colours (fallback in the spec's §13).
+- Dark-mode users see the accent change from green to blue.
 
 **Recommended next task:**
-- Registration checklist: split the single "registration" paperwork step into the league's real items.
+- Review and merge the type-and-colour PR, check the Deal room and Lite offer card by hand, then the registration checklist.
 
 ## Related documents
 

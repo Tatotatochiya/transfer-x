@@ -17,7 +17,7 @@ import { useToast } from "../../context/ToastContext";
 import { formatCurrency, formatDateTime, getApiError } from "../../lib/utils";
 import PlayerLink from "../../components/ui/PlayerLink";
 
-const STATUS_BADGE: Record<ApprovalStatus, { label: string; variant: "info" | "success" | "danger" | "neutral" | "warning" }> = {
+const STATUS_BADGE: Record<ApprovalStatus, { label: string; variant: "success" | "danger" | "neutral" | "warning" }> = {
   PENDING:           { label: "Pending",  variant: "warning" },
   APPROVED_EXECUTED: { label: "Approved", variant: "success" },
   APPROVED_FAILED:   { label: "Approved — failed", variant: "danger" },
@@ -55,22 +55,22 @@ function DecisionRow({
         <div className="flex-1 basis-[260px]">
           {approval.player_id && approval.player_name && (
             <PlayerLink id={approval.player_id} name={approval.player_name} photoUrl={approval.player_photo_url ?? null}
-              size="md" className="mb-1 text-sm font-semibold text-text" />
+              size="md" className="mb-1 text-body font-semibold text-text" />
           )}
-          <p className="text-base font-bold text-text">{approval.summary ?? approval.action_type.replace(/_/g, " ")}</p>
-          <p className="text-[13px] text-text-secondary">
+          <p className="text-body font-bold text-text">{approval.summary ?? approval.action_type.replace(/_/g, " ")}</p>
+          <p className="text-small text-text-secondary">
             {approval.requested_by_name ?? approval.requested_by_email ?? "Unknown requester"} · {elapsed(approval.created_at)}
             {approval.expires_at && ` · expires ${formatDateTime(approval.expires_at)}`}
           </p>
         </div>
         <div className="basis-[150px] shrink">
-          <p className="text-[11px] text-text-muted">Amount</p>
-          <p className="text-[17px] font-bold text-text">{formatCurrency(approval.amount)}</p>
+          <p className="text-small text-text-muted">Amount</p>
+          <p className="text-section font-bold text-text">{formatCurrency(approval.amount)}</p>
         </div>
         {budgetAfter != null && (
           <div className="basis-[150px] shrink">
-            <p className="text-[11px] text-text-muted">Budget after</p>
-            <p className="text-[17px] font-bold text-success-text">{formatCurrency(budgetAfter)}</p>
+            <p className="text-small text-text-muted">Budget after</p>
+            <p className="text-section font-bold text-success-text">{formatCurrency(budgetAfter)}</p>
           </div>
         )}
         <div className="flex shrink-0 gap-2">
@@ -85,7 +85,7 @@ function DecisionRow({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Reason (optional)"
-            className="min-w-0 flex-1 rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
+            className="min-w-0 flex-1 rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent"
           />
           <Button variant="danger" size="sm" loading={isRejectPending} onClick={() => onReject(reason || null)}>Confirm reject</Button>
           <Button variant="ghost" size="sm" onClick={() => setShowRejectForm(false)}>Cancel</Button>
@@ -195,7 +195,7 @@ export default function ApprovalsPage() {
     { key: "requester", header: "Requested by", priority: 3, render: (a) => <span className="text-text-muted">{a.requested_by_name ?? a.requested_by_email ?? "—"}</span> },
     { key: "amount", header: "Amount", priority: 2, className: "text-right", render: (a) => <span className="font-bold text-text">{formatCurrency(a.amount)}</span> },
     { key: "outcome", header: "Outcome", priority: 4, render: (a) => <Badge variant={STATUS_BADGE[a.status].variant}>{STATUS_BADGE[a.status].label}</Badge> },
-    { key: "decided", header: "Decided", priority: 5, className: "text-right", render: (a) => <span className="text-xs text-text-muted">{a.decided_at ? formatDateTime(a.decided_at) : "—"}</span> },
+    { key: "decided", header: "Decided", priority: 5, className: "text-right", render: (a) => <span className="text-small text-text-muted">{a.decided_at ? formatDateTime(a.decided_at) : "—"}</span> },
   ];
 
   return (
@@ -206,7 +206,7 @@ export default function ApprovalsPage() {
       />
 
       {can("TEAM_MANAGE") && (
-        <p className="mb-5 text-[13px] text-text-secondary">
+        <p className="mb-5 text-small text-text-secondary">
           {policy?.approval_threshold != null
             ? <>Manager actions at or above <span className="font-semibold text-text">{formatCurrency(policy.approval_threshold)}</span> require your approval. Change this on the Finance page.</>
             : "No approval threshold is set — manager actions execute directly. Set one on the Finance page."}
@@ -218,7 +218,7 @@ export default function ApprovalsPage() {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-4 py-1.5 text-body font-medium transition-colors ${
               filter === f ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
             }`}
           >
@@ -243,7 +243,7 @@ export default function ApprovalsPage() {
               <div className="flex items-center justify-between border-b border-danger-border bg-danger-bg px-5 py-3 rounded-t-xl">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-danger" />
-                  <span className="text-[13px] font-bold text-danger-heading">Waiting on your decision — {pending.length}</span>
+                  <span className="text-caption font-bold text-danger-heading">Waiting on your decision — {pending.length}</span>
                 </div>
               </div>
               <div>
@@ -273,10 +273,10 @@ export default function ApprovalsPage() {
                 <Card key={a.id}>
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="flex-1 basis-[240px]">
-                      <p className="text-sm font-semibold text-text">{a.summary ?? a.action_type.replace(/_/g, " ")}</p>
-                      <p className="text-xs text-text-muted">{elapsed(a.created_at)} · expires {formatDateTime(a.expires_at)}</p>
+                      <p className="text-body font-semibold text-text">{a.summary ?? a.action_type.replace(/_/g, " ")}</p>
+                      <p className="text-small text-text-muted">{elapsed(a.created_at)} · expires {formatDateTime(a.expires_at)}</p>
                     </div>
-                    <span className="text-sm font-bold text-text">{formatCurrency(a.amount)}</span>
+                    <span className="text-body font-bold text-text">{formatCurrency(a.amount)}</span>
                     <Badge variant="warning">Pending</Badge>
                     {a.requested_by_user_id === user?.id && (
                       <Button variant="ghost" size="sm" loading={cancelMutation.isPending} onClick={() => cancelMutation.mutate(a.id)}>
@@ -291,7 +291,7 @@ export default function ApprovalsPage() {
 
           {decided.length > 0 && (
             <div>
-              {filter === "PENDING" ? null : <h2 className="mb-3 text-sm font-bold text-text">Decided</h2>}
+              {filter === "PENDING" ? null : <h2 className="mb-3 text-body font-bold text-text">Decided</h2>}
               <ResponsiveTable
                 columns={decidedColumns}
                 rows={decided}
@@ -299,12 +299,12 @@ export default function ApprovalsPage() {
                 renderCard={(a) => (
                   <div className="px-4 py-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-text">{a.summary ?? a.action_type.replace(/_/g, " ")}</span>
-                      <span className="text-sm font-bold text-text">{formatCurrency(a.amount)}</span>
+                      <span className="text-body font-semibold text-text">{a.summary ?? a.action_type.replace(/_/g, " ")}</span>
+                      <span className="text-body font-bold text-text">{formatCurrency(a.amount)}</span>
                     </div>
                     <div className="mt-1 flex items-center justify-between">
                       <Badge variant={STATUS_BADGE[a.status].variant}>{STATUS_BADGE[a.status].label}</Badge>
-                      <span className="text-xs text-text-muted">{a.decided_at ? formatDateTime(a.decided_at) : "—"}</span>
+                      <span className="text-small text-text-muted">{a.decided_at ? formatDateTime(a.decided_at) : "—"}</span>
                     </div>
                   </div>
                 )}

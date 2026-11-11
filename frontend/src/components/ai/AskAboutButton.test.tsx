@@ -9,7 +9,7 @@ describe("AskAboutButton", () => {
     const link = screen.getByRole("link", { name: /Ask about this/ });
     expect(link).toHaveAttribute("href", "/ask?about=offer&id=o1&name=M.+Senesi");
     expect(link).toHaveTextContent("✦");
-    expect(link.className).toContain("text-role-agent-text");
+    expect(link.className).toContain("text-ai-text");
     expect(link).toHaveAttribute("title", "Ask TransferX about M. Senesi");
   });
 });

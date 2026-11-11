@@ -18,9 +18,9 @@ export default function ReferencePanel({ title, linkTo, linkLabel, rows }: {
   return (
     <Card tier={4} noPadding>
       <div className="flex items-center justify-between px-[18px] py-[13px]">
-        <p className="text-[13px] font-semibold text-text-secondary">{title}</p>
+        <p className="text-caption font-semibold text-text-secondary">{title}</p>
         {linkTo && (
-          <button onClick={() => navigate(linkTo)} className="text-xs text-text-muted hover:text-text-secondary">
+          <button onClick={() => navigate(linkTo)} className="text-small text-text-muted hover:text-text-secondary">
             {linkLabel}
           </button>
         )}
@@ -29,15 +29,15 @@ export default function ReferencePanel({ title, linkTo, linkLabel, rows }: {
         {rows.map((row) => (
           <div key={row.key} onClick={row.onClick} className="flex items-center justify-between py-[9px] cursor-pointer">
             <div className="min-w-0">
-              <p className="truncate text-[13px] text-text">{row.label}</p>
-              <p className="truncate text-[11px] text-text-muted">{row.sub}</p>
+              <p className="truncate text-small text-text">{row.label}</p>
+              <p className="truncate text-small text-text-muted">{row.sub}</p>
             </div>
             <div className="flex shrink-0 items-center gap-3">
-              <span className={`text-[13px] font-semibold ${row.valueColour}`}>{row.value}</span>
+              <span className={`text-caption font-semibold ${row.valueColour}`}>{row.value}</span>
               {row.action && (
                 <button
                   onClick={(e) => { e.stopPropagation(); row.action!.onClick(); }}
-                  className="min-h-11 rounded-lg bg-surface px-3 text-[13px] font-semibold text-accent ring-1 ring-border hover:ring-accent lg:min-h-0 lg:py-1"
+                  className="min-h-11 rounded-lg bg-surface px-3 text-caption font-semibold text-accent ring-1 ring-border hover:ring-accent lg:min-h-0 lg:py-1"
                 >
                   {row.action.label}
                 </button>

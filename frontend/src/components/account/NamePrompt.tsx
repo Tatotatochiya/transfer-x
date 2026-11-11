@@ -20,7 +20,7 @@ export default function NamePrompt() {
   }
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-accent/10 px-4 py-3 text-sm text-text ring-1 ring-accent/20">
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-accent-bg px-4 py-3 text-small text-text ring-1 ring-accent-ring">
       <p className="flex-1">Add your name so your team and the audit trail show who did what.</p>
       <Link to="/account#name" className="font-semibold text-accent hover:underline">Add your name</Link>
       <button type="button" onClick={dismiss} className="text-text-muted hover:text-text">Not now</button>

@@ -21,10 +21,11 @@ describe("ClubLink", () => {
     expect(img).toHaveAttribute("src", "https://example.com/arsenal.png");
   });
 
-  it("renders an initials fallback when crestUrl is explicitly null", () => {
-    renderWithProviders(<ClubLink id="c1" name="Arsenal FC" crestUrl={null} />);
+  it("renders a plain crest slot when crestUrl is explicitly null (too small for 13px initials)", () => {
+    const { container } = renderWithProviders(<ClubLink id="c1" name="Arsenal FC" crestUrl={null} />);
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
-    expect(screen.getByText("AF")).toBeInTheDocument();
+    expect(screen.queryByText("AF")).not.toBeInTheDocument();
+    expect(container.querySelector("a > span.bg-border")).toBeInTheDocument();
   });
 
   it("routes to /clubs/{id} when id is given", () => {

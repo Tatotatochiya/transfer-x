@@ -3,10 +3,10 @@ import type { RecommendedProfile } from "../../types/api";
 import Badge from "../ui/Badge";
 import Spinner from "../ui/Spinner";
 
-const priorityVariant: Record<string, "danger" | "warning" | "info"> = {
+const priorityVariant: Record<string, "danger" | "warning" | "neutral"> = {
   high: "danger",
   medium: "warning",
-  low: "info",
+  low: "neutral",
 };
 
 export function ScoutReportPanel() {
@@ -21,13 +21,13 @@ export function ScoutReportPanel() {
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-rule">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-text">AI Scout Report</span>
+          <span className="text-body font-semibold text-text">AI Scout Report</span>
           {result?.cached && <Badge variant="neutral">cached</Badge>}
         </div>
         <button
           onClick={() => start(isDone)}
           disabled={isStreaming}
-          className="flex items-center gap-1.5 rounded-lg bg-role-agent-text/15 px-3 py-1.5 text-xs font-semibold text-role-agent-text ring-1 ring-role-agent-text/30 hover:bg-role-agent-text/25 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-ai-bg px-3 py-1.5 text-caption font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 disabled:opacity-50 transition-colors"
         >
           {isStreaming ? <Spinner size="sm" /> : <span>✦</span>}
           {isDone ? "Refresh" : "Generate"}
@@ -36,7 +36,7 @@ export function ScoutReportPanel() {
 
       {/* Idle state */}
       {isIdle && (
-        <p className="px-5 py-6 text-sm text-text-muted">
+        <p className="px-5 py-6 text-small text-text-muted">
           Generate an AI-powered analysis of your squad's gaps, risks, and transfer needs.
         </p>
       )}
@@ -44,12 +44,12 @@ export function ScoutReportPanel() {
       {/* Streaming: show live text */}
       {isStreaming && (
         <div className="px-5 py-4">
-          <div className="flex items-center gap-2 mb-3 text-xs text-role-agent-text">
+          <div className="flex items-center gap-2 mb-3 text-caption text-ai-text">
             <Spinner size="sm" />
             Analysing squad…
           </div>
           {streamText && (
-            <pre className="text-xs text-text-muted whitespace-pre-wrap font-mono leading-relaxed max-h-48 overflow-y-auto">
+            <pre className="text-caption text-text-muted whitespace-pre-wrap font-mono leading-relaxed max-h-48 overflow-y-auto">
               {streamText}
               <span className="animate-pulse">▌</span>
             </pre>
@@ -59,14 +59,14 @@ export function ScoutReportPanel() {
 
       {/* Error */}
       {error && (
-        <p className="px-5 py-4 text-sm text-danger-text">{error}</p>
+        <p className="px-5 py-4 text-body text-danger-text">{error}</p>
       )}
 
       {/* Done: structured report */}
       {isDone && result && (
         <div className="divide-y divide-rule-faint">
           <div className="px-5 py-4">
-            <p className="text-sm text-text-secondary leading-relaxed">{result.summary}</p>
+            <p className="text-body text-text-secondary leading-relaxed">{result.summary}</p>
           </div>
 
           {result.positional_gaps.length > 0 && (
@@ -91,7 +91,7 @@ export function ScoutReportPanel() {
             <ReportSection title="Recommended Transfer Profiles" icon="🎯">
               <ul className="mt-2 space-y-2">
                 {result.recommended_profiles.map((p: RecommendedProfile, i: number) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
+                  <li key={i} className="flex items-start gap-2 text-body">
                     <Badge variant={priorityVariant[p.priority] ?? "neutral"}>{p.priority}</Badge>
                     <span className="text-text-secondary">
                       <span className="font-medium text-text">{p.position}</span> age {p.age_range} —{" "}
@@ -119,7 +119,7 @@ function ReportSection({
 }) {
   return (
     <div className="px-5 py-3">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
+      <p className="mb-1 text-caption font-semibold text-text-secondary">
         {icon} {title}
       </p>
       {children}
@@ -131,7 +131,7 @@ function BulletList({ items, colour }: { items: string[]; colour: string }) {
   return (
     <ul className="space-y-1">
       {items.map((item, i) => (
-        <li key={i} className={`text-sm ${colour}`}>
+        <li key={i} className={`text-body ${colour}`}>
           · {item}
         </li>
       ))}
