@@ -122,4 +122,23 @@ describe("playerSituation: extras", () => {
     const done = { ...deal(ME, "chelsea"), status: "COMPLETED" } as ActiveDealStub;
     expect(playerSituation(input({ activeDeal: done })).row).toBe(12);
   });
+
+  it("our open offer: View your offer, with whose move it is", () => {
+    const waiting = playerSituation(input({ myOffer: { id: "o7", amount: "£30M", otherName: "Chelsea", isMyTurn: false } }));
+    expect(waiting.primary).toEqual({ key: "view-offer", label: "View your offer", to: "/offers/o7" });
+    expect(waiting.secondary?.label).toBe("Ask his club");
+    expect(waiting.note).toEqual({ tone: "neutral", text: "Your £30M offer is with Chelsea." });
+    const ours = playerSituation(input({ myOffer: { id: "o7", amount: "£34M", otherName: "Chelsea", isMyTurn: true } }));
+    expect(ours.note).toEqual({ tone: "info", text: "Chelsea countered at £34M. It's your move." });
+  });
+
+  it("our open offer in the pre-contract window keeps the pre-contract beside it", () => {
+    const s = playerSituation(input({
+      inPreContractWindow: true, contractEndDate: "2027-06-30",
+      myOffer: { id: "o7", amount: "£30M", otherName: "Chelsea", isMyTurn: false },
+    }));
+    expect(s.primary?.key).toBe("view-offer");
+    expect(s.secondary?.key).toBe("pre-contract");
+  });
 });
+
