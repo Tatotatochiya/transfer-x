@@ -50,7 +50,7 @@ function DealActions({
         <button
           disabled={isPending}
           onClick={(e) => { e.stopPropagation(); onAdvance(deal.id); }}
-          className="rounded bg-accent/10 px-2 py-1 text-xs text-accent hover:bg-accent/20 transition-colors disabled:opacity-40"
+          className="rounded bg-accent-bg px-2 py-1 text-caption text-accent hover:bg-accent-bg-strong transition-colors disabled:opacity-40"
         >
           Advance
         </button>
@@ -58,7 +58,7 @@ function DealActions({
       <button
         disabled={isPending}
         onClick={(e) => { e.stopPropagation(); onComplete(deal.id); }}
-        className="rounded bg-success/10 px-2 py-1 text-xs text-success-text hover:bg-success/20 transition-colors disabled:opacity-40"
+        className="rounded bg-success-bg px-2 py-1 text-caption text-success-text hover:brightness-95 transition-colors disabled:opacity-40"
         title="Force complete"
       >
         Complete
@@ -66,7 +66,7 @@ function DealActions({
       <button
         disabled={isPending}
         onClick={(e) => { e.stopPropagation(); onCollapse(deal.id); }}
-        className="rounded bg-danger/10 px-2 py-1 text-xs text-danger-text hover:bg-danger/20 transition-colors disabled:opacity-40"
+        className="rounded bg-danger-bg px-2 py-1 text-caption text-danger-text hover:brightness-95 transition-colors disabled:opacity-40"
       >
         Collapse
       </button>
@@ -101,29 +101,29 @@ function PipelineCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-text">
+          <p className="truncate text-body font-semibold text-text">
             {deal.player?.name ?? "Unknown"}
             {deal.player?.position && (
-              <span className="ml-1.5 text-xs font-normal text-text-muted">{deal.player.position}</span>
+              <span className="ml-1.5 text-caption font-normal text-text-muted">{deal.player.position}</span>
             )}
           </p>
-          <p className="mt-0.5 text-xs text-text-muted">
+          <p className="mt-0.5 text-caption text-text-muted">
             {deal.buyer_club?.name ?? "?"} ← {deal.seller_club?.name ?? "?"}
           </p>
         </div>
-        <p className="shrink-0 text-sm font-semibold text-text-secondary">{formatCurrency(deal.agreed_fee)}</p>
+        <p className="shrink-0 text-body font-semibold text-text-secondary">{formatCurrency(deal.agreed_fee)}</p>
       </div>
 
       <div className="flex items-center gap-2">
         <Badge variant={STATUS_VARIANT[deal.status] ?? "neutral"}>{deal.status.replace("_", " ")}</Badge>
         {isStale && (
-          <span className="rounded-full bg-warning-fill/15 px-2 py-0.5 text-[13px] font-semibold text-warning-text ring-1 ring-warning-fill/30">
+          <span className="rounded-full bg-warning-bg px-2 py-0.5 text-caption font-semibold text-warning-text ring-1 ring-warning-ring">
             {ageDays}d stale
           </span>
         )}
       </div>
 
-      <p className="text-xs text-text-muted">{formatDate(deal.created_at)}</p>
+      <p className="text-caption text-text-muted">{formatDate(deal.created_at)}</p>
 
       <div onClick={(e) => e.preventDefault()}>
         <DealActions
@@ -141,9 +141,9 @@ function PipelineCard({
 // ── Pipeline view ─────────────────────────────────────────────────────────────
 
 const PIPELINE_STAGES = [
-  { key: "AGREEMENT", label: "Agreement",          color: "text-warning-text", border: "border-warning-fill/30" },
-  { key: "PAPERWORK", label: "Paperwork",          color: "text-accent",       border: "border-accent/30"       },
-  { key: "CONFIRMED", label: "Ready to Execute",   color: "text-success-text", border: "border-success/30"      },
+  { key: "AGREEMENT", label: "Agreement",          color: "text-warning-text", border: "border-warning-ring" },
+  { key: "PAPERWORK", label: "Paperwork",          color: "text-accent",       border: "border-accent-ring"       },
+  { key: "CONFIRMED", label: "Ready to Execute",   color: "text-success-text", border: "border-success-ring"      },
 ];
 
 function PipelineView({
@@ -174,14 +174,14 @@ function PipelineView({
       {PIPELINE_STAGES.map(({ key, label, color, border }) => (
         <div key={key} className={`rounded-xl bg-surface ring-1 ring-border overflow-hidden`}>
           <div className={`border-b ${border} px-4 py-3 flex items-center justify-between`}>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${color}`}>{label}</p>
-            <span className="rounded-full bg-surface-inset px-2 py-0.5 text-xs font-bold text-text">
+            <p className={`text-caption font-semibold ${color}`}>{label}</p>
+            <span className="rounded-full bg-surface-inset px-2 py-0.5 text-caption font-bold text-text">
               {byStage[key].length}
             </span>
           </div>
           <div className="p-3 space-y-3 min-h-[200px]">
             {byStage[key].length === 0 ? (
-              <p className="py-8 text-center text-xs text-text-muted">No deals in this stage</p>
+              <p className="py-8 text-center text-caption text-text-muted">No deals in this stage</p>
             ) : (
               byStage[key].map((d) => (
                 <PipelineCard
@@ -290,9 +290,9 @@ export default function AdminDealsPage() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-text">Deals</h1>
+          <h1 className="text-title-sm sm:text-title font-bold text-text">Deals</h1>
           {view === "table" && data && (
-            <p className="mt-1 text-sm text-text-muted">{data.total} total</p>
+            <p className="mt-1 text-small text-text-muted">{data.total} total</p>
           )}
         </div>
         <div className="flex items-center gap-3">
@@ -302,7 +302,7 @@ export default function AdminDealsPage() {
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                className={`rounded-md px-3 py-1.5 text-caption font-medium capitalize transition-colors ${
                   view === v ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text-secondary"
                 }`}
               >
@@ -315,7 +315,7 @@ export default function AdminDealsPage() {
             <select
               value={status}
               onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-              className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+              className="rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
             >
               <option value="">All statuses</option>
               {DEAL_STATUSES.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
@@ -332,7 +332,7 @@ export default function AdminDealsPage() {
 
       {/* Error banners */}
       {(advanceMutation.isError || completeMutation.isError || collapseMutation.isError) && (
-        <div className="mb-4 rounded-lg bg-danger-bg px-4 py-2 text-xs text-danger-text ring-1 ring-danger-border">
+        <div className="mb-4 rounded-lg bg-danger-bg px-4 py-2 text-caption text-danger-text ring-1 ring-danger-border">
           {getApiError(advanceMutation.error ?? completeMutation.error ?? collapseMutation.error, "Action failed.")}
         </div>
       )}
@@ -354,9 +354,9 @@ export default function AdminDealsPage() {
           {data && (
             <>
               <div className="overflow-x-auto rounded-xl ring-1 ring-border">
-                <table className="min-w-full text-sm">
+                <table className="min-w-full text-small">
                   <thead>
-                    <tr className="border-b border-rule bg-surface-header text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
+                    <tr className="border-b border-rule bg-surface-header text-left text-caption font-semibold text-text-secondary">
                       <th className="px-4 py-3">Player</th>
                       <th className="px-4 py-3">Buyer</th>
                       <th className="px-4 py-3">Seller</th>
@@ -377,11 +377,11 @@ export default function AdminDealsPage() {
                         <td className="px-4 py-3 font-medium text-text">
                           {d.player?.name ?? "—"}
                           {d.player?.position && (
-                            <span className="ml-1.5 text-xs text-text-muted">{d.player.position}</span>
+                            <span className="ml-1.5 text-caption text-text-muted">{d.player.position}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-xs text-text-muted">{d.buyer_club?.name ?? "—"}</td>
-                        <td className="px-4 py-3 text-xs text-text-muted">{d.seller_club?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-caption text-text-muted">{d.buyer_club?.name ?? "—"}</td>
+                        <td className="px-4 py-3 text-caption text-text-muted">{d.seller_club?.name ?? "—"}</td>
                         <td className="px-4 py-3 text-text-secondary">{formatCurrency(d.agreed_fee)}</td>
                         <td className="px-4 py-3">
                           <Badge variant={STATUS_VARIANT[d.status] ?? "neutral"}>
@@ -392,7 +392,7 @@ export default function AdminDealsPage() {
                         <td className="px-4 py-3">
                           <Badge variant={STAGE_VARIANT[d.stage] ?? "neutral"}>{d.stage}</Badge>
                         </td>
-                        <td className="px-4 py-3 text-xs text-text-muted">{formatDate(d.created_at)}</td>
+                        <td className="px-4 py-3 text-caption text-text-muted">{formatDate(d.created_at)}</td>
                         <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <DealActions
                             deal={d}
@@ -405,7 +405,7 @@ export default function AdminDealsPage() {
                             <button
                               disabled={isPending}
                               onClick={() => markTest(d)}
-                              className="rounded bg-surface-inset px-2 py-1 text-xs text-text-secondary hover:text-text transition-colors disabled:opacity-40"
+                              className="rounded bg-surface-inset px-2 py-1 text-caption text-text-secondary hover:text-text transition-colors disabled:opacity-40"
                             >
                               {d.is_test ? "Not a test" : "Mark as test"}
                             </button>

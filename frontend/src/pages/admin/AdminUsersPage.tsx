@@ -45,7 +45,7 @@ function CopyUuid({ id }: { id: string }) {
     <button
       onClick={copy}
       title={id}
-      className={`font-mono text-xs transition-colors ${copied ? "text-success-text" : "text-text-muted"}`}
+      className={`font-mono text-caption transition-colors ${copied ? "text-success-text" : "text-text-muted"}`}
     >
       {copied ? "Copied!" : `${id.slice(0, 8)}…`}
     </button>
@@ -87,21 +87,21 @@ function ResetLinkButton({ user }: { user: AdminUser }) {
   return (
     <>
       <button onClick={start} disabled={mutation.isPending}
-        className="text-xs text-text-muted hover:text-warning-text transition-colors disabled:opacity-40">
+        className="text-caption text-text-muted hover:text-warning-text transition-colors disabled:opacity-40">
         Reset link
       </button>
-      {mutation.isError && <span className="ml-2 text-xs text-danger-text">{getApiError(mutation.error, "Failed")}</span>}
+      {mutation.isError && <span className="ml-2 text-caption text-danger-text">{getApiError(mutation.error, "Failed")}</span>}
       <Modal open={link !== null} onClose={close} size="sm">
         {link && (
           <div className="p-6">
-            <h3 className="mb-2 text-base font-bold text-text">Reset link for {user.email}</h3>
-            <p className="text-sm text-text-secondary">
+            <h3 className="mb-2 text-body font-bold text-text">Reset link for {user.email}</h3>
+            <p className="text-body text-text-secondary">
               {link.emailed
                 ? "We've emailed it to them. You can also copy it and send it another way."
                 : "Email isn't set up, so send them this link yourself."}{" "}
               It works once, until {formatDateTime(link.expires_at)}.
             </p>
-            <div className="mt-3 break-all rounded-lg bg-surface-inset px-3 py-2 font-mono text-xs text-text">{link.url}</div>
+            <div className="mt-3 break-all rounded-lg bg-surface-inset px-3 py-2 font-mono text-caption text-text">{link.url}</div>
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="secondary" size="sm" onClick={() => { navigator.clipboard?.writeText(link.url); setCopied(true); }}>
                 {copied ? "Copied" : "Copy link"}
@@ -122,7 +122,7 @@ function WhoCell({ user: u }: { user: AdminUser }) {
   const role = u.role ? u.role.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) : null;
   const detail = u.club_name ? `${u.club_name}${role ? ` · ${role}` : ""}` : u.profile_label;
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
+    <span className="flex min-w-0 flex-wrap items-center gap-1.5 text-caption">
       {u.is_superuser && !u.club_name ? (
         <Badge variant="warning">TransferX staff</Badge>
       ) : (
@@ -223,7 +223,7 @@ export default function AdminUsersPage() {
         <span className="font-medium text-text">
           {u.full_name ?? u.email}
           {u.id === me?.id && <Badge variant="warning" className="ml-2">You</Badge>}
-          {u.full_name && <span className="block text-xs font-normal text-text-muted">{u.email}</span>}
+          {u.full_name && <span className="block text-caption font-normal text-text-muted">{u.email}</span>}
           {u.deleted_at && <Badge variant="neutral" className="ml-2">Account closed</Badge>}
         </span>
       ),
@@ -255,7 +255,7 @@ export default function AdminUsersPage() {
     {
       key: "active_at", header: "Last active", priority: 4,
       render: (u) => (
-        <span className="text-xs text-text-muted" title={`Joined ${formatDate(u.created_at)}`}>
+        <span className="text-caption text-text-muted" title={`Joined ${formatDate(u.created_at)}`}>
           {u.last_active_at ? formatDateTime(u.last_active_at) : "Never"}
         </span>
       ),
@@ -275,7 +275,7 @@ export default function AdminUsersPage() {
           <button
             onClick={() => handleDeleteUser(u.id, u.email)}
             disabled={deleteMutation.isPending}
-            className="rounded bg-danger-bg px-2 py-1 text-xs text-danger-text hover:bg-danger-bg-badge transition-colors disabled:opacity-40"
+            className="rounded bg-danger-bg px-2 py-1 text-caption text-danger-text hover:bg-danger-bg-badge transition-colors disabled:opacity-40"
           >
             Delete
           </button>
@@ -287,8 +287,8 @@ export default function AdminUsersPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text">Users</h1>
-          <p className="mt-1 text-sm text-text-muted">{data ? `${data.total} total` : ""}</p>
+          <h1 className="text-title-sm sm:text-title font-bold text-text">Users</h1>
+          <p className="mt-1 text-small text-text-muted">{data ? `${data.total} total` : ""}</p>
         </div>
         <div className="flex items-center gap-3">
           <Input
@@ -301,7 +301,7 @@ export default function AdminUsersPage() {
           {/* Accounts are created by invitation, so each arrives with its
               club, role or player record: clubs from Clubs, staff by their
               club, players by their club or agent. */}
-          <Link to="/admin/clubs" className="whitespace-nowrap text-sm font-semibold text-accent hover:underline">
+          <Link to="/admin/clubs" className="whitespace-nowrap text-body font-semibold text-accent hover:underline">
             Invite a club →
           </Link>
 
@@ -325,16 +325,16 @@ export default function AdminUsersPage() {
             renderCard={(u) => (
               <div className="px-4 py-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-text">
+                  <span className="text-body font-semibold text-text">
                     {u.full_name ?? u.email}
                     {u.id === me?.id && <Badge variant="warning" className="ml-2">You</Badge>}
                   </span>
-                  <span className="text-xs text-text-muted">
+                  <span className="text-caption text-text-muted">
                     {u.last_active_at ? `Active ${formatDateTime(u.last_active_at)}` : "Never signed in"}
                   </span>
                 </div>
                 <WhoCell user={u} />
-                <div className="flex items-center gap-4 text-xs text-text-muted">
+                <div className="flex items-center gap-4 text-caption text-text-muted">
                   <label className="flex items-center gap-1.5">
                     Active
                     <ToggleSwitch
@@ -361,7 +361,7 @@ export default function AdminUsersPage() {
                     <button
                       onClick={() => handleDeleteUser(u.id, u.email)}
                       disabled={deleteMutation.isPending}
-                      className="rounded bg-danger-bg px-2 py-1 text-xs text-danger-text disabled:opacity-40"
+                      className="rounded bg-danger-bg px-2 py-1 text-caption text-danger-text disabled:opacity-40"
                     >
                       Delete
                     </button>
@@ -372,10 +372,10 @@ export default function AdminUsersPage() {
           />
 
           {toggleMutation.isError && (
-            <p className="mt-3 text-xs text-danger-text">{getApiError(toggleMutation.error, "Update failed.")}</p>
+            <p className="mt-3 text-caption text-danger-text">{getApiError(toggleMutation.error, "Update failed.")}</p>
           )}
           {deleteMutation.isError && (
-            <p className="mt-3 text-xs text-danger-text">{getApiError(deleteMutation.error, "Delete failed.")}</p>
+            <p className="mt-3 text-caption text-danger-text">{getApiError(deleteMutation.error, "Delete failed.")}</p>
           )}
 
           <Pagination page={data.page} total={data.total} pageSize={data.page_size} onChange={setPage} />

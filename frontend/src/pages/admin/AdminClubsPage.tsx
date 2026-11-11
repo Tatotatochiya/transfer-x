@@ -51,13 +51,13 @@ function WorldTeamPicker({
 
   return (
     <div ref={ref} className="relative">
-      <label className="mb-1 block text-xs text-text-muted">Search world team to prefill</label>
+      <label className="mb-1 block text-caption text-text-muted">Search world team to prefill</label>
       <input
         value={q}
         onChange={(e) => { setQ(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
         placeholder="e.g. Arsenal, Chelsea…"
-        className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+        className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
       />
       {open && data && data.items.length > 0 && (
         <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl bg-surface ring-1 ring-border shadow-xl overflow-hidden">
@@ -66,14 +66,14 @@ function WorldTeamPicker({
               key={team.id}
               type="button"
               onClick={() => { onSelect(team); setQ(""); setOpen(false); }}
-              className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-surface-inset transition-colors"
+              className="flex w-full items-center gap-3 px-3 py-2 text-left text-body hover:bg-surface-inset transition-colors"
             >
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-inset overflow-hidden">
-                <FallbackImage src={team.crest_url} name={team.name} kind="club" sizeClass="h-full w-full text-xs" colorClass="text-text-muted" />
+                <FallbackImage src={team.crest_url} name={team.name} kind="club" sizeClass="h-full w-full text-caption" colorClass="text-text-muted" />
               </div>
               <div>
                 <p className="font-medium text-text">{team.name}</p>
-                <p className="text-xs text-text-muted">
+                <p className="text-caption text-text-muted">
                   {[team.league_name, team.country].filter(Boolean).join(" · ") || "—"}
                 </p>
               </div>
@@ -142,18 +142,18 @@ function CreateClubPanel({ onCreated }: { onCreated: (club: AdminClubDetail) => 
       ) : (
         <div className="flex items-center gap-3 rounded-lg bg-surface-inset px-3 py-2 ring-1 ring-border">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface overflow-hidden">
-            <FallbackImage src={prefilled.crest_url} name={prefilled.name} kind="club" sizeClass="h-full w-full text-xs" colorClass="text-text-muted" />
+            <FallbackImage src={prefilled.crest_url} name={prefilled.name} kind="club" sizeClass="h-full w-full text-caption" colorClass="text-text-muted" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-text truncate">{prefilled.name}</p>
-            <p className="text-xs text-text-muted">
+            <p className="text-body font-medium text-text truncate">{prefilled.name}</p>
+            <p className="text-caption text-text-muted">
               {[prefilled.league_name, prefilled.country].filter(Boolean).join(" · ") || "—"}
             </p>
           </div>
           <button
             type="button"
             onClick={clearPrefill}
-            className="text-xs text-text-muted hover:text-text transition-colors shrink-0"
+            className="text-caption text-text-muted hover:text-text transition-colors shrink-0"
           >
             ✕ Clear
           </button>
@@ -163,37 +163,37 @@ function CreateClubPanel({ onCreated }: { onCreated: (club: AdminClubDetail) => 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {/* User ID — always manual */}
         <div>
-          <label className="mb-1 block text-xs text-text-muted">User ID (UUID)</label>
+          <label className="mb-1 block text-caption text-text-muted">User ID (UUID)</label>
           <input
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
             placeholder="paste user UUID…"
             required
-            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+            className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
           />
         </div>
 
         {/* Name — only shown when not prefilled */}
         {!prefilled && (
           <div>
-            <label className="mb-1 block text-xs text-text-muted">Club name</label>
+            <label className="mb-1 block text-caption text-text-muted">Club name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Arsenal FC"
               required
-              className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+              className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
             />
           </div>
         )}
 
         {/* Role */}
         <div>
-          <label className="mb-1 block text-xs text-text-muted">Role</label>
+          <label className="mb-1 block text-caption text-text-muted">Role</label>
           <select
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+            className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
           >
             {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
@@ -203,21 +203,21 @@ function CreateClubPanel({ onCreated }: { onCreated: (club: AdminClubDetail) => 
         {!prefilled && (
           <>
             <div>
-              <label className="mb-1 block text-xs text-text-muted">Country</label>
+              <label className="mb-1 block text-caption text-text-muted">Country</label>
               <input
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
                 placeholder="e.g. England"
-                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-text-muted">League</label>
+              <label className="mb-1 block text-caption text-text-muted">League</label>
               <input
                 value={league}
                 onChange={(e) => setLeague(e.target.value)}
                 placeholder="e.g. Premier League"
-                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
           </>
@@ -225,26 +225,26 @@ function CreateClubPanel({ onCreated }: { onCreated: (club: AdminClubDetail) => 
 
         {/* Transfer budget */}
         <div>
-          <label className="mb-1 block text-xs text-text-muted">Transfer budget (£)</label>
+          <label className="mb-1 block text-caption text-text-muted">Transfer budget (£)</label>
           <input
             type="number"
             value={transfer}
             onChange={(e) => setTransfer(e.target.value)}
-            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+            className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
           />
         </div>
 
         {/* Wage budget */}
         <div>
-          <label className="mb-1 block text-xs text-text-muted">Weekly wage budget (£)</label>
+          <label className="mb-1 block text-caption text-text-muted">Weekly wage budget (£)</label>
           <input
             type="number"
             value={wage}
             onChange={(e) => setWage(e.target.value)}
-            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+            className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
           />
           {weeklyWageWarning(wage) && (
-            <p role="status" className="mt-1.5 rounded-md bg-warning-bg px-2.5 py-1.5 text-[13px] text-warning-text ring-1 ring-warning-fill/30">
+            <p role="status" className="mt-1.5 rounded-md bg-warning-bg px-2.5 py-1.5 text-caption text-warning-text ring-1 ring-warning-ring">
               {weeklyWageWarning(wage)}
             </p>
           )}
@@ -256,10 +256,10 @@ function CreateClubPanel({ onCreated }: { onCreated: (club: AdminClubDetail) => 
           Create club
         </Button>
         {mutation.isError && (
-          <p className="text-xs text-danger-text">{getApiError(mutation.error, "Create failed.")}</p>
+          <p className="text-caption text-danger-text">{getApiError(mutation.error, "Create failed.")}</p>
         )}
         {mutation.isSuccess && (
-          <p className="text-xs text-success-text">Club created.</p>
+          <p className="text-caption text-success-text">Club created.</p>
         )}
       </div>
     </form>
@@ -320,8 +320,8 @@ function ClubInvitationsPanel() {
 
   return (
     <div className="mb-6 rounded-xl bg-surface p-5 ring-1 ring-border">
-      <p className="text-sm font-bold text-text">Invite a club</p>
-      <p className="mt-0.5 text-[13px] text-text-muted">
+      <p className="text-body font-bold text-text">Invite a club</p>
+      <p className="mt-0.5 text-caption text-text-muted">
         Clubs join by invitation only. The owner gets an email with a link to set a password; accepting creates
         the club.
       </p>
@@ -330,36 +330,36 @@ function ClubInvitationsPanel() {
         onSubmit={(e) => { e.preventDefault(); invite.mutate(); }}
       >
         <label className="min-w-[200px] flex-1">
-          <span className="mb-1 block text-xs text-text-muted">Club name</span>
+          <span className="mb-1 block text-caption text-text-muted">Club name</span>
           <input
             required
             value={clubName}
             onChange={(e) => setClubName(e.target.value)}
-            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+            className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
           />
         </label>
         <label className="min-w-[220px] flex-1">
-          <span className="mb-1 block text-xs text-text-muted">Owner's email</span>
+          <span className="mb-1 block text-caption text-text-muted">Owner's email</span>
           <input
             required
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+            className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
           />
         </label>
         <Button type="submit" variant="primary" size="sm" loading={invite.isPending}>Send invitation</Button>
       </form>
-      {error && <p className="mt-2 text-sm text-danger-text">{error}</p>}
+      {error && <p className="mt-2 text-body text-danger-text">{error}</p>}
       {justSent?.accept_url && (
-        <p className="mt-3 break-all rounded-lg bg-surface-inset px-3 py-2 text-[13px] text-text-secondary ring-1 ring-border">
+        <p className="mt-3 break-all rounded-lg bg-surface-inset px-3 py-2 text-caption text-text-secondary ring-1 ring-border">
           Invitation sent to {justSent.email}. Link (shown once): <span className="font-mono">{justSent.accept_url}</span>
         </p>
       )}
       {invitations.length > 0 && (
-        <table className="mt-4 w-full text-sm">
+        <table className="mt-4 w-full text-small">
           <thead>
-            <tr className="text-left text-xs text-text-muted">
+            <tr className="text-left text-caption text-text-muted">
               <th className="py-1.5 font-semibold">Club</th>
               <th className="py-1.5 font-semibold">Owner</th>
               <th className="py-1.5 font-semibold">Sent</th>
@@ -422,8 +422,8 @@ export default function AdminClubsPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text">Clubs</h1>
-          <p className="mt-1 text-sm text-text-muted">{data ? `${data.total} total` : ""}</p>
+          <h1 className="text-title-sm sm:text-title font-bold text-text">Clubs</h1>
+          <p className="mt-1 text-small text-text-muted">{data ? `${data.total} total` : ""}</p>
         </div>
         <div className="flex items-center gap-3">
           <input
@@ -431,7 +431,7 @@ export default function AdminClubsPage() {
             placeholder="Search clubs…"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill transition-colors w-56"
+            className="rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill transition-colors w-56"
           />
           <Button variant="primary" size="sm" onClick={() => setShowCreate((v) => !v)}>
             {showCreate ? "Hide" : "Create club"}
@@ -447,7 +447,7 @@ export default function AdminClubsPage() {
 
       {showCreate && (
         <div className="mb-6 rounded-xl bg-surface ring-1 ring-border px-5 py-4">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">New club</p>
+          <p className="mb-4 text-caption font-semibold text-text-secondary">New club</p>
           <CreateClubPanel onCreated={(club) => {
             queryClient.invalidateQueries({ queryKey: ["admin", "clubs"] });
             navigate(`/admin/clubs/${club.id}`);
@@ -460,9 +460,9 @@ export default function AdminClubsPage() {
       {data && (
         <>
           <div className="overflow-x-auto rounded-xl ring-1 ring-border">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-small">
               <thead>
-                <tr className="border-b border-rule bg-surface-header text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
+                <tr className="border-b border-rule bg-surface-header text-left text-caption font-semibold text-text-secondary">
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Role</th>
                   <th className="px-4 py-3">League</th>
@@ -480,7 +480,7 @@ export default function AdminClubsPage() {
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-xs font-bold text-text-muted overflow-hidden">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-inset text-caption font-bold text-text-muted overflow-hidden">
                           <FallbackImage src={club.crest_url} name={club.name} kind="club" sizeClass="h-full w-full" colorClass="" />
                         </div>
                         <span className="font-medium text-text">{club.name}</span>
@@ -491,8 +491,8 @@ export default function AdminClubsPage() {
                     </td>
                     <td className="px-4 py-3 text-text-muted">{club.league_name ?? "—"}</td>
                     <td className="px-4 py-3 text-text-muted">{club.country ?? "—"}</td>
-                    <td className="px-4 py-3 text-xs text-text-muted">{formatDate(club.created_at)}</td>
-                    <td className="px-4 py-3 text-xs text-text-muted">{club.id.slice(0, 8)}…</td>
+                    <td className="px-4 py-3 text-caption text-text-muted">{formatDate(club.created_at)}</td>
+                    <td className="px-4 py-3 text-caption text-text-muted">{club.id.slice(0, 8)}…</td>
                   </tr>
                 ))}
               </tbody>

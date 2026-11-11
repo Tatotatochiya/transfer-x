@@ -38,8 +38,8 @@ export default function AdminLayout() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="rounded-xl bg-danger-bg px-8 py-6 text-center ring-1 ring-danger-border">
-          <p className="text-lg font-semibold text-danger-text">Staff access required</p>
-          <p className="mt-1 text-sm text-text-muted">This area is restricted to superusers.</p>
+          <p className="text-section font-semibold text-danger-text">Staff access required</p>
+          <p className="mt-1 text-small text-text-muted">This area is restricted to superusers.</p>
         </div>
       </div>
     );
@@ -62,14 +62,14 @@ export default function AdminLayout() {
             to={to}
             end={to === "/admin"}
             className={({ isActive }) =>
-              `flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+              `flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-body font-medium whitespace-nowrap transition-colors ${
                 isActive
-                  ? "bg-warning-fill/10 text-warning-text ring-1 ring-warning-fill/20"
+                  ? "bg-warning-bg text-warning-text ring-1 ring-warning-ring"
                   : "text-text-muted hover:bg-surface-inset hover:text-text"
               }`
             }
           >
-            <span className="text-xs">{icon}</span>
+            <span className="text-caption">{icon}</span>
             {label}
           </NavLink>
         ))}
@@ -77,8 +77,8 @@ export default function AdminLayout() {
 
       <aside className="hidden lg:block w-44 shrink-0">
         <div className="sticky top-6">
-          <p className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-widest text-text-muted">
-            Admin Panel
+          <p className="mb-3 px-2 text-caption font-semibold text-text-secondary">
+            Admin panel
           </p>
           <nav className="space-y-0.5">
             {NAV_LINKS.map(({ to, label, icon }) => (
@@ -87,22 +87,22 @@ export default function AdminLayout() {
                 to={to}
                 end={to === "/admin"}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  `flex items-center gap-2.5 rounded-lg px-3 py-2 text-body font-medium transition-colors ${
                     isActive
-                      ? "bg-warning-fill/10 text-warning-text ring-1 ring-warning-fill/20"
+                      ? "bg-warning-bg text-warning-text ring-1 ring-warning-ring"
                       : "text-text-muted hover:bg-surface-inset hover:text-text"
                   }`
                 }
               >
-                <span className="text-xs">{icon}</span>
+                <span className="text-caption">{icon}</span>
                 {label}
               </NavLink>
             ))}
           </nav>
 
-          <div className="mt-6 rounded-lg bg-warning-fill/10 px-3 py-2 ring-1 ring-warning-fill/20">
-            <p className="text-[11px] font-semibold text-warning-text">SUPERUSER MODE</p>
-            <p className="mt-0.5 text-[13px] text-text-muted">{user.email}</p>
+          <div className="mt-6 rounded-lg bg-warning-bg px-3 py-2 ring-1 ring-warning-ring">
+            <p className="text-caption font-semibold text-warning-text">SUPERUSER MODE</p>
+            <p className="mt-0.5 text-caption text-text-muted">{user.email}</p>
           </div>
         </div>
       </aside>

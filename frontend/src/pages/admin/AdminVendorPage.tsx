@@ -40,7 +40,7 @@ interface VendorSyncRun {
 
 function ResultBox({ data }: { data: unknown }) {
   return (
-    <pre className="mt-3 rounded-lg bg-surface-inset px-4 py-3 text-xs text-success-text overflow-x-auto ring-1 ring-border">
+    <pre className="mt-3 rounded-lg bg-surface-inset px-4 py-3 text-caption text-success-text overflow-x-auto ring-1 ring-border">
       {JSON.stringify(data, null, 2)}
     </pre>
   );
@@ -155,8 +155,8 @@ export default function AdminVendorPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-text">Vendor Sync</h1>
-        <p className="mt-1 text-sm text-text-muted">
+        <h1 className="text-title-sm sm:text-title font-bold text-text">Vendor Sync</h1>
+        <p className="mt-1 text-small text-text-muted">
           API-Football data sync controls — superuser only
         </p>
       </div>
@@ -164,10 +164,10 @@ export default function AdminVendorPage() {
       {/* Sync state */}
       <Card className="mb-6">
         <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Sync Status</p>
+          <p className="text-caption font-semibold text-text-secondary">Sync status</p>
           <button
             onClick={() => refetchStates()}
-            className="text-xs text-text-muted hover:text-text transition-colors"
+            className="text-caption text-text-muted hover:text-text transition-colors"
           >
             Refresh
           </button>
@@ -175,23 +175,23 @@ export default function AdminVendorPage() {
         {statesLoading ? (
           <div className="flex justify-center py-4"><Spinner size="sm" /></div>
         ) : !states?.length ? (
-          <p className="text-sm text-text-muted">No sync history.</p>
+          <p className="text-small text-text-muted">No sync history.</p>
         ) : (
           <div className="space-y-2">
             {states.map((s) => (
               <div key={s.vendor} className="flex items-center justify-between rounded-lg bg-surface-inset px-3 py-2">
                 <div>
-                  <span className="text-sm font-medium text-text">{s.vendor}</span>
-                  <span className={`ml-3 text-xs font-medium ${s.last_success ? "text-success-text" : s.last_success === false ? "text-danger-text" : "text-text-muted"}`}>
+                  <span className="text-body font-medium text-text">{s.vendor}</span>
+                  <span className={`ml-3 text-caption font-medium ${s.last_success ? "text-success-text" : s.last_success === false ? "text-danger-text" : "text-text-muted"}`}>
                     {s.last_success === true ? "OK" : s.last_success === false ? "FAILED" : "Never synced"}
                   </span>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-text-muted">
+                  <p className="text-caption text-text-muted">
                     {s.last_synced_at ? formatDate(s.last_synced_at) : "—"}
                   </p>
                   {s.last_error && (
-                    <p className="text-xs text-danger-text truncate max-w-xs" title={s.last_error}>
+                    <p className="text-caption text-danger-text truncate max-w-xs" title={s.last_error}>
                       {s.last_error}
                     </p>
                   )}
@@ -205,10 +205,10 @@ export default function AdminVendorPage() {
       {/* Recent sync runs — per-run breakdown */}
       <Card className="mb-6">
         <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Recent Syncs</p>
+          <p className="text-caption font-semibold text-text-secondary">Recent syncs</p>
           <button
             onClick={() => refetchRuns()}
-            className="text-xs text-text-muted hover:text-text transition-colors"
+            className="text-caption text-text-muted hover:text-text transition-colors"
           >
             Refresh
           </button>
@@ -216,7 +216,7 @@ export default function AdminVendorPage() {
         {runsLoading ? (
           <div className="flex justify-center py-4"><Spinner size="sm" /></div>
         ) : !runs?.length ? (
-          <p className="text-sm text-text-muted">No sync runs yet.</p>
+          <p className="text-small text-text-muted">No sync runs yet.</p>
         ) : (
           <div className="space-y-1">
             {runs.map((run) => (
@@ -227,39 +227,39 @@ export default function AdminVendorPage() {
                   className="w-full flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-inset px-3 py-2 text-left hover:bg-border transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className={`text-xs font-medium ${run.success ? "text-success-text" : "text-danger-text"}`}>
+                    <span className={`text-caption font-medium ${run.success ? "text-success-text" : "text-danger-text"}`}>
                       {run.success ? "OK" : "FAILED"}
                     </span>
-                    <span className="text-sm font-medium text-text shrink-0">{formatOperation(run.operation)}</span>
-                    <span className="text-xs text-text-muted truncate">{formatParams(run.operation, run.params)}</span>
+                    <span className="text-body font-medium text-text shrink-0">{formatOperation(run.operation)}</span>
+                    <span className="text-caption text-text-muted truncate">{formatParams(run.operation, run.params)}</span>
                   </div>
                   <div className="flex max-w-full flex-wrap items-center justify-end gap-x-3 gap-y-0.5 text-right">
-                    <span className="text-xs text-text-muted">{formatResult(run.operation, run.result)}</span>
-                    <span className="text-xs text-text-muted">{formatDuration(run.duration_ms)}</span>
-                    <span className="text-xs text-text-muted">{formatDate(run.started_at)}</span>
+                    <span className="text-caption text-text-muted">{formatResult(run.operation, run.result)}</span>
+                    <span className="text-caption text-text-muted">{formatDuration(run.duration_ms)}</span>
+                    <span className="text-caption text-text-muted">{formatDate(run.started_at)}</span>
                   </div>
                 </button>
                 {expandedRunId === run.id && (
                   <div className="ml-3 mt-1 mb-2 rounded-lg bg-surface-inset px-4 py-3 ring-1 ring-border">
-                    <p className="text-xs text-text-muted">
+                    <p className="text-caption text-text-muted">
                       Triggered by {run.triggered_by_email ?? "unknown"} · started {formatDate(run.started_at)} · took {formatDuration(run.duration_ms)}
                     </p>
                     {run.params && (
                       <>
-                        <p className="mb-1 mt-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Params</p>
+                        <p className="mb-1 mt-3 text-caption font-semibold text-text-secondary">Params</p>
                         <ResultBox data={run.params} />
                       </>
                     )}
                     {run.result && (
                       <>
-                        <p className="mb-1 mt-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Result</p>
+                        <p className="mb-1 mt-3 text-caption font-semibold text-text-secondary">Result</p>
                         <ResultBox data={run.result} />
                       </>
                     )}
                     {run.error && (
                       <>
-                        <p className="mb-1 mt-3 text-xs font-semibold uppercase tracking-wider text-danger-text">Error</p>
-                        <p className="whitespace-pre-wrap break-words text-xs text-danger-text">{run.error}</p>
+                        <p className="mb-1 mt-3 text-caption font-semibold text-danger-text">Error</p>
+                        <p className="whitespace-pre-wrap break-words text-caption text-danger-text">{run.error}</p>
                       </>
                     )}
                   </div>
@@ -273,10 +273,10 @@ export default function AdminVendorPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* ── Sync League ── */}
         <Card>
-          <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Sync League
+          <p className="mb-4 text-caption font-semibold text-text-secondary">
+            Sync league
           </p>
-          <p className="mb-4 text-xs text-text-muted">
+          <p className="mb-4 text-caption text-text-muted">
             Fetches all teams + players for a league/season from API-Football. Can take several minutes on large leagues.
           </p>
           <form
@@ -292,36 +292,36 @@ export default function AdminVendorPage() {
             className="space-y-3"
           >
             <div>
-              <label className="mb-1 block text-xs text-text-muted">League ID (API-Football)</label>
+              <label className="mb-1 block text-caption text-text-muted">League ID (API-Football)</label>
               <input
                 type="number"
                 value={leagueId}
                 onChange={(e) => setLeagueId(e.target.value)}
                 placeholder="e.g. 39 = Premier League"
-                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-text-muted">Season</label>
+              <label className="mb-1 block text-caption text-text-muted">Season</label>
               <input
                 type="number"
                 value={season}
                 onChange={(e) => setSeason(e.target.value)}
                 placeholder="e.g. 2024"
-                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-text-muted">Sleep between requests (ms)</label>
+              <label className="mb-1 block text-caption text-text-muted">Sleep between requests (ms)</label>
               <input
                 type="number"
                 value={sleepMs}
                 onChange={(e) => setSleepMs(e.target.value)}
-                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
             {leagueMutation.isError && (
-              <p className="text-xs text-danger-text">{getApiError(leagueMutation.error, "Sync failed.")}</p>
+              <p className="text-caption text-danger-text">{getApiError(leagueMutation.error, "Sync failed.")}</p>
             )}
             <Button type="submit" variant="primary" size="sm" loading={leagueMutation.isPending}>
               Run League Sync
@@ -332,10 +332,10 @@ export default function AdminVendorPage() {
 
         {/* ── Sync Team ── */}
         <Card>
-          <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Sync Team
+          <p className="mb-4 text-caption font-semibold text-text-secondary">
+            Sync team
           </p>
-          <p className="mb-4 text-xs text-text-muted">
+          <p className="mb-4 text-caption text-text-muted">
             Fetches stats for all players of a single team. Faster than a full league sync.
           </p>
           <form
@@ -350,27 +350,27 @@ export default function AdminVendorPage() {
             className="space-y-3"
           >
             <div>
-              <label className="mb-1 block text-xs text-text-muted">Team ID (API-Football)</label>
+              <label className="mb-1 block text-caption text-text-muted">Team ID (API-Football)</label>
               <input
                 type="number"
                 value={teamId}
                 onChange={(e) => setTeamId(e.target.value)}
                 placeholder="e.g. 33 = Man Utd"
-                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-text-muted">Season</label>
+              <label className="mb-1 block text-caption text-text-muted">Season</label>
               <input
                 type="number"
                 value={teamSeason}
                 onChange={(e) => setTeamSeason(e.target.value)}
                 placeholder="e.g. 2024"
-                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
             {teamMutation.isError && (
-              <p className="text-xs text-danger-text">{getApiError(teamMutation.error, "Sync failed.")}</p>
+              <p className="text-caption text-danger-text">{getApiError(teamMutation.error, "Sync failed.")}</p>
             )}
             <Button type="submit" variant="primary" size="sm" loading={teamMutation.isPending}>
               Run Team Sync
@@ -381,10 +381,10 @@ export default function AdminVendorPage() {
 
         {/* ── Compute Form ── */}
         <Card>
-          <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Compute Player Form
+          <p className="mb-4 text-caption font-semibold text-text-secondary">
+            Compute player form
           </p>
-          <p className="mb-4 text-xs text-text-muted">
+          <p className="mb-4 text-caption text-text-muted">
             Recalculates form scores for all players based on existing stats snapshots. No API calls made.
           </p>
           <form
@@ -399,26 +399,26 @@ export default function AdminVendorPage() {
             className="space-y-3"
           >
             <div>
-              <label className="mb-1 block text-xs text-text-muted">Season (blank = all)</label>
+              <label className="mb-1 block text-caption text-text-muted">Season (blank = all)</label>
               <input
                 type="text"
                 value={formSeason}
                 onChange={(e) => setFormSeason(e.target.value)}
                 placeholder="e.g. 2024/2025"
-                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-text-muted">Window (last N games)</label>
+              <label className="mb-1 block text-caption text-text-muted">Window (last N games)</label>
               <input
                 type="number"
                 value={windowGames}
                 onChange={(e) => setWindowGames(e.target.value)}
-                className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
               />
             </div>
             {formMutation.isError && (
-              <p className="text-xs text-danger-text">{getApiError(formMutation.error, "Compute failed.")}</p>
+              <p className="text-caption text-danger-text">{getApiError(formMutation.error, "Compute failed.")}</p>
             )}
             <Button type="submit" variant="primary" size="sm" loading={formMutation.isPending}>
               Compute Form

@@ -28,7 +28,7 @@ export default function AdminAIPage() {
 
       {/* Usage stats */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
+        <h2 className="mb-3 text-section font-bold text-text">
           Usage (current session)
         </h2>
         {usageLoading ? (
@@ -44,9 +44,9 @@ export default function AdminAIPage() {
 
             {Object.keys(usage.by_endpoint).length > 0 && (
               <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
-                <table className="w-full text-sm">
+                <table className="w-full text-small">
                   <thead>
-                    <tr className="border-b border-rule text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
+                    <tr className="border-b border-rule text-left text-caption font-semibold text-text-secondary">
                       <th className="px-4 py-2">Endpoint</th>
                       <th className="px-4 py-2 text-right">Requests</th>
                       <th className="px-4 py-2 text-right">Est. Cost</th>
@@ -55,7 +55,7 @@ export default function AdminAIPage() {
                   <tbody className="divide-y divide-rule-faint">
                     {Object.entries(usage.by_endpoint).map(([ep, stats]) => (
                       <tr key={ep}>
-                        <td className="px-4 py-2 font-mono text-xs text-text-secondary">{ep}</td>
+                        <td className="px-4 py-2 font-mono text-caption text-text-secondary">{ep}</td>
                         <td className="px-4 py-2 text-right text-text-muted">{stats.requests}</td>
                         <td className="px-4 py-2 text-right text-text-muted">${stats.cost_usd.toFixed(4)}</td>
                       </tr>
@@ -65,7 +65,7 @@ export default function AdminAIPage() {
               </div>
             )}
 
-            <p className="text-xs text-text-muted">{usage.note}</p>
+            <p className="text-caption text-text-muted">{usage.note}</p>
           </div>
         ) : null}
       </section>
@@ -75,8 +75,8 @@ export default function AdminAIPage() {
       <AskQuestionsSection />
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
-          Prompt Templates
+        <h2 className="mb-3 text-section font-bold text-text">
+          Prompt templates
         </h2>
         {promptsLoading ? (
           <Spinner size="sm" />
@@ -114,8 +114,8 @@ function StatCard({
 }) {
   return (
     <div className="rounded-xl bg-surface px-4 py-3 ring-1 ring-border">
-      <p className="text-xs text-text-muted">{label}</p>
-      <p className={`mt-1 text-xl font-bold ${highlight ? "text-ai-text" : "text-text"}`}>
+      <p className="text-caption text-text-muted">{label}</p>
+      <p className={`mt-1 text-headline font-bold ${highlight ? "text-ai-text" : "text-text"}`}>
         {value}
       </p>
     </div>
@@ -160,7 +160,7 @@ function PromptRow({
     <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-sm text-text">{prompt.key}</span>
+          <span className="font-mono text-small text-text">{prompt.key}</span>
           {prompt.is_overridden && <Badge variant="warning">overridden</Badge>}
         </div>
         <div className="flex items-center gap-2">
@@ -168,7 +168,7 @@ function PromptRow({
             <button
               onClick={handleReset}
               disabled={saving}
-              className="text-xs text-text-muted hover:text-danger-text transition-colors"
+              className="text-caption text-text-muted hover:text-danger-text transition-colors"
             >
               Reset
             </button>
@@ -179,7 +179,7 @@ function PromptRow({
               setDraft(prompt.content);
               setEditing(false);
             }}
-            className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+            className="text-caption text-text-muted hover:text-text-secondary transition-colors"
           >
             {expanded ? "Hide" : "Edit"}
           </button>
@@ -192,20 +192,20 @@ function PromptRow({
             value={editing ? draft : prompt.content}
             onChange={(e) => { setDraft(e.target.value); setEditing(true); }}
             rows={8}
-            className="w-full rounded-lg bg-surface-inset px-3 py-2 font-mono text-xs text-text-secondary ring-1 ring-input-border focus:outline-none focus:ring-ai-ring resize-y"
+            className="w-full rounded-lg bg-surface-inset px-3 py-2 font-mono text-caption text-text-secondary ring-1 ring-input-border focus:outline-none focus:ring-ai-ring resize-y"
           />
           {editing && (
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-lg bg-ai-bg px-3 py-1.5 text-xs font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-ai-bg px-3 py-1.5 text-caption font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 disabled:opacity-50 transition-colors"
               >
                 {saving ? "Saving…" : "Save Override"}
               </button>
               <button
                 onClick={() => { setDraft(prompt.content); setEditing(false); }}
-                className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+                className="text-caption text-text-muted hover:text-text-secondary transition-colors"
               >
                 Cancel
               </button>
@@ -226,12 +226,12 @@ function SuggestionsSection() {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Suggestions: used or ignored</h2>
+        <h2 className="text-section font-bold text-text">Suggestions: used or ignored</h2>
         <select
           value={days}
           onChange={(e) => setDays(Number(e.target.value))}
           aria-label="Period"
-          className="rounded-lg bg-surface px-2 py-1 text-sm text-text ring-1 ring-input-border"
+          className="rounded-lg bg-surface px-2 py-1 text-input lg:text-body text-text ring-1 ring-input-border"
         >
           <option value={7}>Last 7 days</option>
           <option value={30}>Last 30 days</option>
@@ -242,9 +242,9 @@ function SuggestionsSection() {
         <Spinner size="sm" />
       ) : (
         <div className="overflow-x-auto rounded-xl bg-surface ring-1 ring-border">
-          <table className="w-full text-sm">
+          <table className="w-full text-small">
             <thead>
-              <tr className="border-b border-rule text-left text-xs uppercase tracking-wide text-text-muted">
+              <tr className="border-b border-rule text-left text-caption text-text-secondary font-semibold">
                 <th className="px-4 py-2 font-semibold">Feature</th>
                 <th className="px-4 py-2 text-right font-semibold">Shown</th>
                 <th className="px-4 py-2 text-right font-semibold">Used</th>
@@ -261,14 +261,14 @@ function SuggestionsSection() {
                   <td className="px-4 py-2 text-right tabular-nums font-semibold text-text">
                     {f.used_pct == null ? "—" : `${f.used_pct}%`}
                   </td>
-                  <td className={`px-4 py-2 text-xs font-semibold ${
+                  <td className={`px-4 py-2 text-caption font-semibold ${
                     f.verdict === "Consider removing" ? "text-danger-text" : f.verdict === "Review" ? "text-warning-text" : f.verdict === "Keep" ? "text-success-text" : "text-text-muted"
                   }`}>{f.verdict ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="border-t border-rule-faint px-4 py-2 text-xs text-text-muted">
+          <p className="border-t border-rule-faint px-4 py-2 text-caption text-text-muted">
             Shown once per person, feature and subject a day. A draft counts as used when the message sent is mostly the draft.
             Verdict: under 30 shown is not enough to judge; then 25% used or more is Keep, 10–24% Review, under 10% Consider removing.
           </p>
@@ -293,22 +293,22 @@ function AskQuestionsSection() {
   });
   return (
     <section>
-      <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-text-muted">Questions Ask couldn&rsquo;t answer</h2>
+      <h2 className="mb-1 text-section font-bold text-text">Questions Ask couldn&rsquo;t answer</h2>
       {data && (
-        <p className="mb-3 text-xs text-text-muted">
+        <p className="mb-3 text-caption text-text-muted">
           {data.fallbacks} of {data.total} questions so far. They show what to build next.
         </p>
       )}
       {isLoading ? (
         <Spinner size="sm" />
       ) : !data?.questions.length ? (
-        <p className="text-sm text-text-muted">None yet.</p>
+        <p className="text-small text-text-muted">None yet.</p>
       ) : (
         <ul className="divide-y divide-rule-faint rounded-xl bg-surface ring-1 ring-border">
           {data.questions.map((q, i) => (
-            <li key={i} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
+            <li key={i} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-body">
               <span className="text-text">{q.question}</span>
-              <span className="text-xs text-text-muted">
+              <span className="text-caption text-text-muted">
                 {q.lite ? "Lite" : "Full app"} · {q.input === "voice" ? "spoken" : "typed"} · {new Date(q.created_at).toLocaleDateString("en-GB")}
               </span>
             </li>

@@ -97,7 +97,7 @@ export default function AdminPlayerDetailPage() {
 
   if (isLoading) return <div className="flex justify-center py-12"><Spinner size="lg" /></div>;
   if (!player) return (
-    <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+    <div className="rounded-xl bg-danger-bg px-5 py-4 text-small text-danger-text ring-1 ring-danger-border">
       Player not found.{" "}
       <button onClick={() => navigate("/admin/players")} className="underline">Back</button>
     </div>
@@ -107,16 +107,16 @@ export default function AdminPlayerDetailPage() {
     <div>
       <button
         onClick={() => navigate("/admin/players")}
-        className="mb-6 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
+        className="mb-6 flex items-center gap-1.5 text-body text-text-muted hover:text-text transition-colors"
       >
         ← Back to players
       </button>
 
       <div className="mb-6 flex items-center gap-3">
-        <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-12 w-12 text-lg" colorClass="bg-surface-inset text-text-muted" className={player.photo_url ? "ring-1 ring-border" : ""} />
+        <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-12 w-12 text-section" colorClass="bg-surface-inset text-text-muted" className={player.photo_url ? "ring-1 ring-border" : ""} />
         <div>
-          <h1 className="text-2xl font-bold text-text">{player.name}</h1>
-          <p className="text-xs text-text-muted">ID: {player.id}</p>
+          <h1 className="text-title-sm sm:text-title font-bold text-text">{player.name}</h1>
+          <p className="text-caption text-text-muted">ID: {player.id}</p>
         </div>
       </div>
 
@@ -124,7 +124,7 @@ export default function AdminPlayerDetailPage() {
         {/* ── Profile card ── */}
         <Card>
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Player Profile</p>
+            <p className="text-caption font-semibold text-text-secondary">Player profile</p>
             {!editing && <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>Edit</Button>}
           </div>
 
@@ -146,7 +146,7 @@ export default function AdminPlayerDetailPage() {
                 </Badge>
               } />
               <Metric label="Visibility"  value={
-                <span className={`text-xs font-medium ${VIS_STYLE[player.visibility] ?? ""}`}>
+                <span className={`text-caption font-medium ${VIS_STYLE[player.visibility] ?? ""}`}>
                   {player.visibility}
                 </span>
               } />
@@ -166,21 +166,21 @@ export default function AdminPlayerDetailPage() {
                 { label: "Photo URL",   val: fPhotoUrl,    set: setFPhotoUrl    },
               ].map(({ label, val, set }) => (
                 <div key={label}>
-                  <label className="mb-1 block text-xs text-text-muted">{label}</label>
+                  <label className="mb-1 block text-caption text-text-muted">{label}</label>
                   <input
                     value={val}
                     onChange={(e) => set(e.target.value)}
-                    className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                    className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
                   />
                 </div>
               ))}
               <div>
-                <label className="mb-1 block text-xs text-text-muted">Age</label>
+                <label className="mb-1 block text-caption text-text-muted">Age</label>
                 <input
                   type="number"
                   value={fAge}
                   onChange={(e) => setFAge(e.target.value)}
-                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
                 />
               </div>
               {[
@@ -189,11 +189,11 @@ export default function AdminPlayerDetailPage() {
                 { label: "Status",     val: fStatus,     set: setFStatus,     options: ["", ...STATUSES]     },
               ].map(({ label, val, set, options }) => (
                 <div key={label}>
-                  <label className="mb-1 block text-xs text-text-muted">{label}</label>
+                  <label className="mb-1 block text-caption text-text-muted">{label}</label>
                   <select
                     value={val}
                     onChange={(e) => set(e.target.value)}
-                    className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+                    className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
                   >
                     {options.map((o) => <option key={o} value={o}>{o || `— keep current —`}</option>)}
                   </select>
@@ -208,19 +208,19 @@ export default function AdminPlayerDetailPage() {
                   onChange={(e) => setFOpenToOffers(e.target.checked)}
                   className="rounded accent-warning-fill"
                 />
-                <label htmlFor="oto" className="text-sm text-text-secondary">Open to offers</label>
+                <label htmlFor="oto" className="text-small text-text-secondary">Open to offers</label>
               </div>
 
               <div className="border-t border-rule pt-3">
-                <label className="mb-1 block text-xs text-text-muted">Reassign to club (ID)</label>
+                <label className="mb-1 block text-caption text-text-muted">Reassign to club (ID)</label>
                 <input
                   value={fClubId}
                   onChange={(e) => { setFClubId(e.target.value); setFClearClub(false); }}
                   placeholder="paste club UUID…"
                   disabled={fClearClub}
-                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill disabled:opacity-40"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill disabled:opacity-40"
                 />
-                <label className="mt-2 flex items-center gap-2 text-xs text-text-muted">
+                <label className="mt-2 flex items-center gap-2 text-caption text-text-muted">
                   <input
                     type="checkbox"
                     checked={fClearClub}
@@ -232,7 +232,7 @@ export default function AdminPlayerDetailPage() {
               </div>
 
               {mutation.isError && (
-                <p className="text-xs text-danger-text">{getApiError(mutation.error, "Save failed.")}</p>
+                <p className="text-caption text-danger-text">{getApiError(mutation.error, "Save failed.")}</p>
               )}
               <div className="flex gap-2">
                 <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}>Save</Button>
@@ -252,13 +252,13 @@ export default function AdminPlayerDetailPage() {
 
         {/* ── Contract info ── */}
         <Card>
-          <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-text-muted">Contracts</p>
+          <p className="mb-4 text-caption font-semibold text-text-secondary">Contracts</p>
           {(!player.contracts || player.contracts.length === 0) ? (
-            <p className="text-sm text-text-muted">No contracts on record.</p>
+            <p className="text-small text-text-muted">No contracts on record.</p>
           ) : (
             <div className="space-y-2">
               {player.contracts.map((c: { id: string; club_id: string; start_date?: string; end_date?: string; wage_weekly?: number; is_active: boolean }) => (
-                <div key={c.id} className="rounded-lg bg-surface-inset px-3 py-2 text-xs">
+                <div key={c.id} className="rounded-lg bg-surface-inset px-3 py-2 text-caption">
                   <div className="flex items-center justify-between">
                     <span className="text-text-secondary">Club: {c.club_id.slice(0, 8)}…</span>
                     <Badge variant={c.is_active ? "success" : "neutral"}>{c.is_active ? "Active" : "Inactive"}</Badge>

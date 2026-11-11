@@ -176,10 +176,10 @@ export default function AdminRealWorldMovesPage() {
       {isLoading ? (
         <div className="flex justify-center py-12"><Spinner size="lg" /></div>
       ) : isError || !data ? (
-        <p className="text-sm text-danger-text">Couldn&rsquo;t load the check. Try again in a moment.</p>
+        <p className="text-body text-danger-text">Couldn&rsquo;t load the check. Try again in a moment.</p>
       ) : (
         <>
-          <p className="mb-4 text-sm text-text-secondary">
+          <p className="mb-4 text-body text-text-secondary">
             {data.mismatches.length} of {data.checked} contracted players moved in the {data.season}/{String((Number(data.season) + 1) % 100).padStart(2, "0")} season
             {" · "}{data.counts.to_transferx_club} to another TransferX club
             {data.counts.in_deal ? ` · ${data.counts.in_deal} holding a deal` : ""}
@@ -193,7 +193,7 @@ export default function AdminRealWorldMovesPage() {
                   key={k}
                   type="button"
                   onClick={() => setKind(k)}
-                  className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-body font-medium transition-colors ${
                     kind === k ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
                   }`}
                 >
@@ -205,7 +205,7 @@ export default function AdminRealWorldMovesPage() {
               value={club}
               onChange={(e) => setClub(e.target.value)}
               aria-label="TransferX club"
-              className="rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border"
+              className="rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border"
             >
               <option value="">All clubs</option>
               {clubs.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -216,7 +216,7 @@ export default function AdminRealWorldMovesPage() {
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search players"
               aria-label="Search players"
-              className="rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border placeholder:text-text-muted"
+              className="rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border placeholder:text-text-muted"
             />
             <Button
               variant="primary"
@@ -232,14 +232,14 @@ export default function AdminRealWorldMovesPage() {
 
           {rows.length === 0 ? (
             <div className="rounded-xl bg-surface px-5 py-12 text-center ring-1 ring-border">
-              <p className="text-sm font-medium text-text">No moves</p>
-              <p className="mt-1 text-sm text-text-muted">Every registration in this filter matches API-Football.</p>
+              <p className="text-body font-medium text-text">No moves</p>
+              <p className="mt-1 text-small text-text-muted">Every registration in this filter matches API-Football.</p>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl ring-1 ring-border">
-              <table className="min-w-full text-sm">
+              <table className="min-w-full text-small">
                 <thead>
-                  <tr className="border-b border-rule bg-surface-header text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
+                  <tr className="border-b border-rule bg-surface-header text-left text-caption font-semibold text-text-secondary">
                     <th className="w-10 px-4 py-3">
                       <input
                         type="checkbox"
@@ -271,15 +271,15 @@ export default function AdminRealWorldMovesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Link to={`/players/market/${m.player_id}`} className="font-medium text-text hover:text-accent">{m.name}</Link>
-                        {m.position && <span className="ml-2 text-xs text-text-muted">{m.position}</span>}
+                        {m.position && <span className="ml-2 text-caption text-text-muted">{m.position}</span>}
                       </td>
                       <td className="px-4 py-3 text-text">{m.registered_club ?? "—"}</td>
                       <td className="px-4 py-3">
                         <span className="flex items-center gap-2 text-text">
-                          {m.real_club_logo && <FallbackImage src={m.real_club_logo} name={m.real_club ?? "?"} kind="club" sizeClass="h-5 w-5 text-[9px]" colorClass="bg-surface-inset text-text-muted" />}
+                          {m.real_club_logo && <FallbackImage src={m.real_club_logo} name={m.real_club ?? "?"} kind="club" sizeClass="h-5 w-5 text-caption" colorClass="bg-surface-inset text-text-muted" />}
                           {m.real_club ?? "—"}
                         </span>
-                        {m.real_club_on_transferx_id && <span className="text-xs text-text-muted">on TransferX</span>}
+                        {m.real_club_on_transferx_id && <span className="text-caption text-text-muted">on TransferX</span>}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={KIND_VARIANT[m.kind]}>{MOVE_KIND_LABEL[m.kind]}</Badge>
@@ -287,13 +287,13 @@ export default function AdminRealWorldMovesPage() {
                           {m.moved_on ? formatDate(m.moved_on) : "No transfer on record"}{m.fee ? ` · ${m.fee}` : ""}
                         </span>
                         {m.case === "behind_transferx" && m.transferx_move && (
-                          <p className="mt-1 text-xs text-warning-text">
+                          <p className="mt-1 text-caption text-warning-text">
                             TransferX moved him from {m.transferx_move.from_club ?? "his old club"} on {formatDate(m.transferx_move.on)}.
                             Staff only: the clubs aren&rsquo;t told.
                           </p>
                         )}
                         {m.open_deal && m.case === "moved" && (
-                          <p className="mt-1 text-xs text-warning-text">
+                          <p className="mt-1 text-caption text-warning-text">
                             <Link to={`/deals/${m.open_deal.id}`} className="font-medium underline">
                               In a deal with {m.open_deal.buyer_club ?? "another club"}
                             </Link>
@@ -317,7 +317,7 @@ export default function AdminRealWorldMovesPage() {
                             {m.case === "behind_transferx" || m.open_deal ? "Confirm registration" : "Dismiss"}
                           </Button>
                         </div>
-                        {m.apply_blocked && <p className="mt-1 max-w-[260px] text-xs text-text-muted">{m.apply_blocked}</p>}
+                        {m.apply_blocked && <p className="mt-1 max-w-[260px] text-caption text-text-muted">{m.apply_blocked}</p>}
                       </td>
                     </tr>
                   ))}

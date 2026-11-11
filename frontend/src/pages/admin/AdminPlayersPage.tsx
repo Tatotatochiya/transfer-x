@@ -59,8 +59,8 @@ export default function AdminPlayersPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-text">Players</h1>
-        <p className="mt-1 text-sm text-text-muted">
+        <h1 className="text-title-sm sm:text-title font-bold text-text">Players</h1>
+        <p className="mt-1 text-small text-text-muted">
           All players — no visibility filter {data ? `· ${data.total} total` : ""}
         </p>
       </div>
@@ -72,12 +72,12 @@ export default function AdminPlayersPage() {
           placeholder="Search name…"
           value={search}
           onChange={(e) => handleFilter("search", e.target.value)}
-          className="rounded-lg bg-surface px-3 py-2 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill w-48"
+          className="rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-warning-fill w-48"
         />
         <select
           value={position}
           onChange={(e) => handleFilter("position", e.target.value)}
-          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+          className="rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
         >
           <option value="">All positions</option>
           {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -85,7 +85,7 @@ export default function AdminPlayersPage() {
         <select
           value={status}
           onChange={(e) => handleFilter("status", e.target.value)}
-          className="rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
+          className="rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill"
         >
           <option value="">All statuses</option>
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -101,9 +101,9 @@ export default function AdminPlayersPage() {
       {data && (
         <>
           <div className="overflow-x-auto rounded-xl ring-1 ring-border">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-small">
               <thead>
-                <tr className="border-b border-rule bg-surface-header text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
+                <tr className="border-b border-rule bg-surface-header text-left text-caption font-semibold text-text-secondary">
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Pos</th>
                   <th className="px-4 py-3">Status</th>
@@ -136,10 +136,10 @@ export default function AdminPlayersPage() {
                           : "Contracted"}
                       </Badge>
                     </td>
-                    <td className={`px-4 py-3 text-xs font-medium ${VISIBILITY_STYLE[p.visibility] ?? "text-text-muted"}`}>
+                    <td className={`px-4 py-3 text-caption font-medium ${VISIBILITY_STYLE[p.visibility] ?? "text-text-muted"}`}>
                       {p.visibility}
                     </td>
-                    <td className="px-4 py-3 text-xs">
+                    <td className="px-4 py-3 text-caption">
                       {p.current_club ? (
                         <span className="font-medium text-text">{p.current_club.name}</span>
                       ) : p.world_team ? (

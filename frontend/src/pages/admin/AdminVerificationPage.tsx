@@ -61,15 +61,15 @@ function RequestRow({ req }: { req: VerificationRequest }) {
         {req.evidence_ref ? (
           <span className="break-all">{req.evidence_ref}</span>
         ) : "—"}
-        {req.notes && <p className="mt-1 text-xs text-text-muted">{req.notes}</p>}
+        {req.notes && <p className="mt-1 text-caption text-text-muted">{req.notes}</p>}
       </td>
       <td className="px-4 py-3">
         <Badge variant={STATUS_VARIANT[req.status]}>{req.status}</Badge>
         {req.status !== "PENDING" && req.review_notes && (
-          <p className="mt-1 text-xs text-text-muted">{req.review_notes}</p>
+          <p className="mt-1 text-caption text-text-muted">{req.review_notes}</p>
         )}
       </td>
-      <td className="px-4 py-3 text-xs text-text-muted">{formatDate(req.created_at)}</td>
+      <td className="px-4 py-3 text-caption text-text-muted">{formatDate(req.created_at)}</td>
       <td className="px-4 py-3">
         {req.status === "PENDING" && (
           rejecting ? (
@@ -79,7 +79,7 @@ function RequestRow({ req }: { req: VerificationRequest }) {
                 value={reviewNotes}
                 onChange={(e) => setReviewNotes(e.target.value)}
                 placeholder="Reason (optional)"
-                className="rounded-lg bg-surface px-2 py-1.5 text-xs text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-danger"
+                className="rounded-lg bg-surface px-2 py-1.5 text-caption text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-danger"
               />
               <div className="flex gap-2">
                 <Button variant="danger" size="sm" loading={rejectMutation.isPending} onClick={() => rejectMutation.mutate()}>
@@ -128,7 +128,7 @@ export default function AdminVerificationPage() {
           <button
             key={t.value}
             onClick={() => setTab(t.value)}
-            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-4 py-1.5 text-body font-medium transition-colors ${
               tab === t.value ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
             }`}
           >
@@ -141,14 +141,14 @@ export default function AdminVerificationPage() {
         <div className="flex justify-center py-12"><Spinner size="lg" /></div>
       ) : requests.length === 0 ? (
         <div className="rounded-xl bg-surface px-5 py-12 text-center ring-1 ring-border">
-          <p className="text-sm font-medium text-text">No requests</p>
-          <p className="mt-1 text-sm text-text-muted">Nothing to review in this filter.</p>
+          <p className="text-body font-medium text-text">No requests</p>
+          <p className="mt-1 text-small text-text-muted">Nothing to review in this filter.</p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl ring-1 ring-border">
-          <table className="min-w-full text-sm">
+          <table className="min-w-full text-small">
             <thead>
-              <tr className="border-b border-rule bg-surface-header text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
+              <tr className="border-b border-rule bg-surface-header text-left text-caption font-semibold text-text-secondary">
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Entity</th>
                 <th className="px-4 py-3">Requested by</th>
