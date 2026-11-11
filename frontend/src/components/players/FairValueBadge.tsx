@@ -53,7 +53,7 @@ export default function FairValueBadge({ signal, referenceLabel, compact = false
   if (compact) {
     return (
       <span
-        className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[13px] font-semibold tabular-nums ring-1 ${
+        className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-caption font-semibold tabular-nums ring-1 ${
           low
             ? "bg-surface-inset text-text-muted ring-border"
             : "bg-surface-inset text-text-secondary ring-input-border"
@@ -72,7 +72,7 @@ export default function FairValueBadge({ signal, referenceLabel, compact = false
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tabular-nums ${
+      className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-caption tabular-nums ${
         low ? "opacity-70" : ""
       }`}
     >
@@ -97,7 +97,7 @@ export default function FairValueBadge({ signal, referenceLabel, compact = false
         </>
       )}
       <span
-        className={`rounded-full px-1.5 py-0.5 text-[13px] font-semibold ring-1 ${
+        className={`rounded-full px-1.5 py-0.5 text-caption font-semibold ring-1 ${
           low
             ? "bg-surface-inset text-text-muted ring-border"
             : "bg-surface-inset text-text-muted ring-input-border"

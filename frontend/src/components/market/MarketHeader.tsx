@@ -6,7 +6,7 @@ export function BudgetLine({ club, className = "" }: { club?: Club | null; class
   const f = club?.finance;
   if (!f) return null;
   return (
-    <p className={`text-sm text-text-secondary ${className}`}>
+    <p className={`text-body text-text-secondary ${className}`}>
       <span className="font-semibold text-text">{formatCompact(Number(f.transfer_remaining))}</span> to spend
       {" · "}
       <span className="font-semibold text-text">{formatCompact(Number(f.wage_remaining_weekly))}</span> a week in wages
@@ -28,15 +28,15 @@ export default function MarketHeader({ total, club, subtitle }: {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
       <div className="flex min-w-0 items-baseline gap-3">
-        <h1 className="text-[22px] font-bold tracking-[-0.01em] text-text lg:text-2xl">Browse players</h1>
+        <h1 className="text-title-sm sm:text-title font-bold tracking-[-0.01em] text-text lg:text-title">Browse players</h1>
         {total != null && (
-          <span className="shrink-0 text-sm text-text-muted" aria-live="polite">
+          <span className="shrink-0 text-small text-text-muted" aria-live="polite">
             {total.toLocaleString("en-GB")} player{total === 1 ? "" : "s"}
           </span>
         )}
       </div>
       <BudgetLine club={club} />
-      {subtitle && <p className="w-full text-sm text-text-muted">{subtitle}</p>}
+      {subtitle && <p className="w-full text-small text-text-muted">{subtitle}</p>}
     </div>
   );
 }

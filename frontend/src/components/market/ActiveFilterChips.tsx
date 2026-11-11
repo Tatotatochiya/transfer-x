@@ -96,17 +96,17 @@ export default function ActiveFilterChips({ filters, onChange, trailing }: {
           type="button"
           aria-label={`Remove filter ${c.label}`}
           onClick={() => onChange(c.remove(filters))}
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-accent-bg pl-3 pr-2.5 text-sm font-semibold text-accent-active hover:ring-1 hover:ring-accent"
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-accent-bg pl-3 pr-2.5 text-body font-semibold text-accent-active hover:ring-1 hover:ring-accent"
         >
           {c.label}
-          <span aria-hidden className="text-base leading-none">×</span>
+          <span aria-hidden className="text-body leading-none">×</span>
         </button>
       ))}
       {canClear && (
         <button
           type="button"
           onClick={() => onChange(cleared)}
-          className="inline-flex h-9 shrink-0 items-center px-2 text-sm font-semibold text-text-secondary hover:text-text"
+          className="inline-flex h-9 shrink-0 items-center px-2 text-body font-semibold text-text-secondary hover:text-text"
         >
           Clear
         </button>

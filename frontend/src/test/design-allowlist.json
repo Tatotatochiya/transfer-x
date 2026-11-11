@@ -152,25 +152,6 @@
  "src/components/lite/WaitingNav.tsx": {
   "size": 4
  },
- "src/components/market/ActiveFilterChips.tsx": {
-  "size": 3
- },
- "src/components/market/FiltersSheet.tsx": {
-  "size": 3,
-  "uppercase": 1
- },
- "src/components/market/MarketHeader.tsx": {
-  "size": 5
- },
- "src/components/market/MarketSearch.tsx": {
-  "size": 4
- },
- "src/components/market/MarketToolbar.tsx": {
-  "size": 3
- },
- "src/components/market/RecommendationsRow.tsx": {
-  "size": 4
- },
  "src/components/notifications/InstallGuide.tsx": {
   "size": 7
  },
@@ -188,88 +169,6 @@
  "src/components/OnboardingChecklist.tsx": {
   "size": 5,
   "tint": 4
- },
- "src/components/players/CareerHistoryPanel.tsx": {
-  "size": 11,
-  "uppercase": 1,
-  "tint": 4
- },
- "src/components/players/CompareBar.tsx": {
-  "size": 5
- },
- "src/components/players/FairValueBadge.tsx": {
-  "size": 3
- },
- "src/components/players/FormBadge.tsx": {
-  "size": 2,
-  "tint": 8
- },
- "src/components/players/InjuryHistoryPanel.tsx": {
-  "size": 9,
-  "tint": 12
- },
- "src/components/players/ledger/FactsStrip.tsx": {
-  "size": 10,
-  "uppercase": 2,
-  "tint": 2
- },
- "src/components/players/ledger/LedgerTabs.tsx": {
-  "size": 18,
-  "uppercase": 4,
-  "extrabold": 1
- },
- "src/components/players/ledger/SeasonLedger.tsx": {
-  "size": 8,
-  "uppercase": 1
- },
- "src/components/players/LoansPanel.tsx": {
-  "size": 23
- },
- "src/components/players/PlayerAccountCard.tsx": {
-  "size": 8,
-  "uppercase": 1,
-  "tint": 1
- },
- "src/components/players/PlayerActionNote.tsx": {
-  "size": 1
- },
- "src/components/players/PlayerCard.tsx": {
-  "size": 9,
-  "tint": 2,
-  "extrabold": 1
- },
- "src/components/players/PlayerFilters.tsx": {
-  "size": 21,
-  "uppercase": 6
- },
- "src/components/players/PlayerListRow.tsx": {
-  "size": 18,
-  "tint": 3
- },
- "src/components/players/PlayerRow.tsx": {
-  "size": 9,
-  "tint": 1
- },
- "src/components/players/RealWorldMoveBanner.tsx": {
-  "size": 3,
-  "tint": 2
- },
- "src/components/players/SquadTable.tsx": {
-  "size": 13,
-  "uppercase": 1
- },
- "src/components/players/StatsPanel.tsx": {
-  "size": 15,
-  "uppercase": 2,
-  "tint": 22
- },
- "src/components/players/ValuationBreakdownPopover.tsx": {
-  "size": 7,
-  "uppercase": 2
- },
- "src/components/players/ViewSwitcher.tsx": {
-  "size": 27,
-  "uppercase": 1
  },
  "src/components/sales/BuyerOrderBook.tsx": {
   "size": 15,
@@ -290,10 +189,6 @@
  "src/components/scouting/AddToShortlistButton.tsx": {
   "size": 14,
   "uppercase": 1
- },
- "src/components/transfers/TransferWindowBanner.tsx": {
-  "size": 5,
-  "tint": 2
  },
  "src/components/verification/RequestVerificationPanel.tsx": {
   "size": 8
@@ -530,28 +425,6 @@
  "src/pages/lite/LiteSentPage.tsx": {
   "size": 24
  },
- "src/pages/market/ClubDetailPage.tsx": {
-  "size": 9,
-  "tint": 1
- },
- "src/pages/market/ClubListPage.tsx": {
-  "size": 8
- },
- "src/pages/market/PlayerMarketDetailPage.tsx": {
-  "size": 32,
-  "uppercase": 1,
-  "tint": 8
- },
- "src/pages/market/PlayerMarketPage.tsx": {
-  "size": 9
- },
- "src/pages/market/SaleDetailPage.tsx": {
-  "size": 15
- },
- "src/pages/market/SaleListPage.tsx": {
-  "size": 2,
-  "tint": 1
- },
  "src/pages/notifications/NotificationsPage.tsx": {
   "size": 7
  },
@@ -559,11 +432,6 @@
   "size": 20,
   "uppercase": 2,
   "tint": 12
- },
- "src/pages/players/PlayerComparePage.tsx": {
-  "size": 14,
-  "uppercase": 1,
-  "extrabold": 1
  },
  "src/pages/scouting/ShortlistDetailPage.tsx": {
   "size": 24,

@@ -164,18 +164,18 @@ function PlayerRow({
     <div
       role="row"
       style={{ gridTemplateColumns: cols }}
-      className={`grid items-center gap-x-3 px-4 text-[13px] tabular-nums whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-rule-faint)] transition-colors duration-150 hover:bg-surface-inset ${ROW_HEIGHT[density]}`}
+      className={`grid items-center gap-x-3 px-4 text-caption tabular-nums whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-rule-faint)] transition-colors duration-150 hover:bg-surface-inset ${ROW_HEIGHT[density]}`}
     >
       {/* Player */}
       <div role="cell" className="flex min-w-0 items-center gap-2.5">
         <FallbackImage
           src={player.photo_url}
           name={player.name}
-          sizeClass="h-[26px] w-[26px] text-[11px]"
+          sizeClass="h-[26px] w-[26px] text-caption"
           colorClass={player.position ? POSITION_COLOUR[player.position] : "bg-surface-inset text-text-muted"}
           className={player.photo_url ? "ring-1 ring-border" : ""}
         />
-        <PlayerLink id={player.id} name={player.name} title={player.name} className="min-w-0 truncate text-sm font-semibold text-text" />
+        <PlayerLink id={player.id} name={player.name} title={player.name} className="min-w-0 truncate text-body font-semibold text-text" />
         {meta && <span className="shrink-0 text-text-muted">{meta}</span>}
       </div>
 
@@ -218,7 +218,7 @@ function PlayerRow({
                 onBlur={commitValuation}
                 onKeyDown={(e) => { if (e.key === "Enter") commitValuation(); if (e.key === "Escape") setEditingValuation(false); }}
                 placeholder={market != null ? formatCompactCurrency(market) : "e.g. 18m"}
-                className="w-16 rounded-md bg-surface px-1.5 py-[3px] text-right text-[13px] text-text ring-1 ring-inset ring-accent focus:outline-none"
+                className="w-16 rounded-md bg-surface px-1.5 py-[3px] text-right text-caption text-text ring-1 ring-inset ring-accent focus:outline-none"
               />
             ) : (
               <>
@@ -312,7 +312,7 @@ function PlayerRow({
                 type="button"
                 title={`Sell ${player.name}: list him for sale`}
                 onClick={() => onList({ id: player.id, name: player.name })}
-                className="rounded-lg bg-surface px-2.5 py-[3px] text-[13px] font-semibold text-text-secondary ring-1 ring-inset ring-input-border hover:bg-surface-inset disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-surface px-2.5 py-[3px] text-caption font-semibold text-text-secondary ring-1 ring-inset ring-input-border hover:bg-surface-inset disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Sell
               </button>
@@ -353,8 +353,8 @@ function PositionBand({ label, min, total }: { label: string; min: number; total
   const covered = total >= min;
   return (
     <div role="row" className="flex min-h-8 items-center gap-2.5 whitespace-nowrap bg-surface-quiet px-4 shadow-[inset_0_-1px_0_var(--color-rule)]">
-      <span className="text-[13px] font-bold text-text">{label}</span>
-      <span className={`text-[13px] font-semibold ${covered ? "text-success-text" : "text-danger-text"}`}>
+      <span className="text-caption font-bold text-text">{label}</span>
+      <span className={`text-caption font-semibold ${covered ? "text-success-text" : "text-danger-text"}`}>
         {total} of {min} minimum — {covered ? "covered" : "priority gap"}
       </span>
     </div>
@@ -389,7 +389,7 @@ export default function SquadTable({
   const isInPlay = (p: SquadPlayer) => listed.has(p.id) || !!inPlay?.has(p.id) || p.active_deal?.status === "IN_PROGRESS";
 
   if (players.length === 0) {
-    return <p className="py-8 text-center text-sm text-text-muted">No players in squad.</p>;
+    return <p className="py-8 text-center text-small text-text-muted">No players in squad.</p>;
   }
 
   const counts = {
@@ -446,7 +446,7 @@ export default function SquadTable({
               key={c.key}
               onClick={() => setChip(c.key)}
               aria-pressed={chip === c.key}
-              className={`whitespace-nowrap rounded-[20px] px-3 py-[5px] text-[13px] font-semibold transition-colors ${
+              className={`whitespace-nowrap rounded-[20px] px-3 py-[5px] text-caption font-semibold transition-colors ${
                 chip === c.key ? "bg-ink text-white" : "bg-surface text-text-secondary ring-1 ring-inset ring-input-border hover:ring-accent"
               }`}
             >
@@ -455,7 +455,7 @@ export default function SquadTable({
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <span className="whitespace-nowrap text-[13px] text-text-muted">Sorted by contract risk</span>
+          <span className="whitespace-nowrap text-caption text-text-muted">Sorted by contract risk</span>
           {onDensityChange && (
             <div role="group" aria-label="Row height" className="flex rounded-lg bg-surface-inset p-0.5">
               {(["compact", "comfortable"] as const).map((d) => (
@@ -464,7 +464,7 @@ export default function SquadTable({
                   type="button"
                   aria-pressed={density === d}
                   onClick={() => onDensityChange(d)}
-                  className={`rounded-md px-2 py-0.5 text-xs font-semibold capitalize transition-colors ${
+                  className={`rounded-md px-2 py-0.5 text-caption font-semibold capitalize transition-colors ${
                     density === d ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
                   }`}
                 >
@@ -481,7 +481,7 @@ export default function SquadTable({
           <div
             role="row"
             style={{ gridTemplateColumns: cols }}
-            className="grid h-[34px] items-center gap-x-3 bg-surface-header px-4 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-muted shadow-[inset_0_-1px_0_var(--color-rule)]"
+            className="grid h-[34px] items-center gap-x-3 bg-surface-header px-4 eyebrow text-text-secondary shadow-[inset_0_-1px_0_var(--color-rule)]"
           >
             {headers.map((h, i) => (
               <span key={h} role="columnheader" className={i >= rightFrom ? "text-right" : ""}>{h}</span>
@@ -492,7 +492,7 @@ export default function SquadTable({
             <div key={g.key} role="rowgroup">
               <PositionBand label={g.label} min={g.min} total={g.total} />
               {g.players.length === 0 ? (
-                <div role="row" className={`flex items-center px-4 text-[13px] text-text-muted shadow-[inset_0_-1px_0_var(--color-rule-faint)] ${ROW_HEIGHT[density]}`}>
+                <div role="row" className={`flex items-center px-4 text-caption text-text-muted shadow-[inset_0_-1px_0_var(--color-rule-faint)] ${ROW_HEIGHT[density]}`}>
                   {g.total === 0 ? `No ${g.label.toLowerCase()} in the squad.` : `No ${g.label.toLowerCase()} match this filter.`}
                 </div>
               ) : (

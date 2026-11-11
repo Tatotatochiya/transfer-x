@@ -4,11 +4,11 @@ import type { PlayerInjury } from "../../types/api";
 import Spinner from "../ui/Spinner";
 
 const INJURY_SEVERITY: Record<string, { cls: string; label: string }> = {
-  default: { cls: "bg-warning-fill/10 text-warning-text ring-warning-fill/20", label: "" },
-  muscle:  { cls: "bg-warning-fill/10 text-warning-text ring-warning-fill/20", label: "" },
-  knee:    { cls: "bg-danger/10 text-danger-text ring-danger/20", label: "" },
-  ankle:   { cls: "bg-danger/10 text-danger-text ring-danger/20", label: "" },
-  hamstring: { cls: "bg-warning-fill/10 text-warning-text ring-warning-fill/20", label: "" },
+  default: { cls: "bg-warning-bg text-warning-text ring-warning-ring", label: "" },
+  muscle:  { cls: "bg-warning-bg text-warning-text ring-warning-ring", label: "" },
+  knee:    { cls: "bg-danger-bg text-danger-text ring-danger-ring", label: "" },
+  ankle:   { cls: "bg-danger-bg text-danger-text ring-danger-ring", label: "" },
+  hamstring: { cls: "bg-warning-bg text-warning-text ring-warning-ring", label: "" },
 };
 
 function injuryStyle(type: string | null) {
@@ -31,25 +31,25 @@ function InjuryRow({ inj }: { inj: PlayerInjury }) {
     <div className="grid grid-cols-[56px_1fr] gap-3 py-3 border-b border-rule-faint last:border-0">
       {/* Date */}
       <div className="text-right">
-        {year && <p className="text-sm font-bold text-text tabular-nums">{year}</p>}
-        {month && <p className="text-[11px] text-text-muted">{month}</p>}
+        {year && <p className="text-body font-bold text-text tabular-nums">{year}</p>}
+        {month && <p className="text-caption text-text-muted">{month}</p>}
       </div>
 
       {/* Injury detail */}
       <div className="min-w-0 space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
           {inj.injury_type && (
-            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${style.cls}`}>
+            <span className={`rounded-full px-2 py-0.5 text-caption font-semibold ring-1 ${style.cls}`}>
               {inj.injury_type}
             </span>
           )}
           {inj.games_absent != null && (
-            <span className="text-xs text-text-muted">
+            <span className="text-caption text-text-muted">
               {inj.games_absent} game{inj.games_absent !== 1 ? "s" : ""} missed
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-text-muted">
+        <div className="flex items-center gap-2 text-caption text-text-muted">
           {inj.league_name && <span>{inj.league_name}</span>}
           {inj.league_name && inj.season && <span>·</span>}
           {inj.season && <span>Season {inj.season}</span>}
@@ -77,7 +77,7 @@ export default function InjuryHistoryPanel({ playerId }: Props) {
 
   if (isError) {
     return (
-      <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
+      <div className="rounded-xl bg-danger-bg px-4 py-3 text-small text-danger-text ring-1 ring-danger-border">
         Could not load injury history.
       </div>
     );
@@ -85,7 +85,7 @@ export default function InjuryHistoryPanel({ playerId }: Props) {
 
   if (!injuries || injuries.length === 0) {
     return (
-      <div className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success-text ring-1 ring-success/20">
+      <div className="rounded-xl bg-success-bg px-4 py-3 text-small text-success-text ring-1 ring-success-ring">
         No injury history on record.
       </div>
     );
@@ -96,9 +96,9 @@ export default function InjuryHistoryPanel({ playerId }: Props) {
   return (
     <div>
       <div className="mb-3 flex items-center gap-3">
-        <span className="text-xs text-text-muted">{injuries.length} recorded</span>
+        <span className="text-caption text-text-muted">{injuries.length} recorded</span>
         {totalGames > 0 && (
-          <span className="text-xs text-text-muted">· {totalGames} games missed total</span>
+          <span className="text-caption text-text-muted">· {totalGames} games missed total</span>
         )}
       </div>
       {injuries.map((inj, i) => (

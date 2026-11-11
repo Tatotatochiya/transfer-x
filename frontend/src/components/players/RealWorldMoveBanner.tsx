@@ -15,13 +15,13 @@ import FallbackImage from "../ui/FallbackImage";
 export default function RealWorldMoveBanner({ move, isMyPlayer }: { move: RealWorldMove; isMyPlayer: boolean }) {
   const { isSuperuser: isStaff } = useAuth();
   return (
-    <div role="note" className="mb-3 flex items-start gap-3 rounded-[14px] bg-warning-fill/10 px-4 py-3 ring-1 ring-warning-fill/30">
+    <div role="note" className="mb-3 flex items-start gap-3 rounded-[14px] bg-warning-bg px-4 py-3 ring-1 ring-warning-ring">
       {move.real_club_logo ? (
-        <FallbackImage src={move.real_club_logo} name={move.real_club ?? "?"} kind="club" sizeClass="h-8 w-8 text-xs" colorClass="bg-surface-inset text-text-muted" className="mt-0.5" />
+        <FallbackImage src={move.real_club_logo} name={move.real_club ?? "?"} kind="club" sizeClass="h-8 w-8 text-caption" colorClass="bg-surface-inset text-text-muted" className="mt-0.5" />
       ) : (
-        <span aria-hidden className="mt-0.5 text-lg">⇄</span>
+        <span aria-hidden className="mt-0.5 text-section">⇄</span>
       )}
-      <div className="min-w-0 text-sm">
+      <div className="min-w-0 text-small">
         {move.case === "behind_transferx" && move.transferx_move ? (
           // Only TransferX staff are sent this case (players/real_world.for_viewer).
           <>

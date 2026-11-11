@@ -36,17 +36,17 @@ describe("FormBadge", () => {
 
   it("applies success colour for score >= 75", () => {
     const { container } = render(<FormBadge score={80} />);
-    expect(container.firstChild).toHaveClass("bg-success/20");
+    expect(container.firstChild).toHaveClass("bg-success-bg");
   });
 
   it("applies warning colour for score 35–54", () => {
     const { container } = render(<FormBadge score={45} />);
-    expect(container.firstChild).toHaveClass("bg-warning-fill/20");
+    expect(container.firstChild).toHaveClass("bg-warning-bg");
   });
 
   it("applies danger colour for score < 35", () => {
     const { container } = render(<FormBadge score={20} />);
-    expect(container.firstChild).toHaveClass("bg-danger/20");
+    expect(container.firstChild).toHaveClass("bg-danger-bg");
   });
 
   it("renders md size with larger padding", () => {

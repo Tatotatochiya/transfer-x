@@ -51,23 +51,23 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
       <div className="flex items-start gap-3">
         {/* Avatar */}
         <div className="shrink-0">
-          <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-12 w-12 text-lg" colorClass={avatarBg} className="font-black ring-1 ring-border" />
+          <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-12 w-12 text-section" colorClass={avatarBg} className="font-bold ring-1 ring-border" />
         </div>
 
         {/* Info */}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-1">
-            <p className="truncate text-sm font-semibold text-text group-hover:text-accent transition-colors leading-tight">
+            <p className="truncate text-body font-semibold text-text group-hover:text-accent transition-colors leading-tight">
               {player.name}
             </p>
             {player.position && (
-              <Badge variant={positionVariant(player.position)} className="shrink-0 !text-[11px] !px-1.5 !py-0">
+              <Badge variant={positionVariant(player.position)} className="shrink-0 !text-caption !px-1.5 !py-0">
                 {player.position}
               </Badge>
             )}
           </div>
 
-          <p className="mt-0.5 truncate text-xs text-text-muted">
+          <p className="mt-0.5 truncate text-caption text-text-muted">
             <ClubLink
               id={player.current_club?.id}
               worldTeamId={player.world_team?.id}
@@ -77,7 +77,7 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
           </p>
 
           {(player.age || player.nationality) && (
-            <p className="mt-0.5 text-xs text-text-muted truncate">
+            <p className="mt-0.5 text-caption text-text-muted truncate">
               {[player.age ? `${player.age}y` : null, player.nationality]
                 .filter(Boolean)
                 .join(" · ")}
@@ -94,16 +94,16 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           {/* Status */}
           {(player.current_club || player.world_team || player.team_name) ? (
-            <Badge variant="neutral" className="!text-[13px] !px-1.5 !py-0">Contracted</Badge>
+            <Badge variant="neutral" className="!text-caption !px-1.5 !py-0">Contracted</Badge>
           ) : (
-            <Badge variant={playerStatusVariant(player.status)} className="!text-[13px] !px-1.5 !py-0">
+            <Badge variant={playerStatusVariant(player.status)} className="!text-caption !px-1.5 !py-0">
               {playerStatusLabel(player.status)}
             </Badge>
           )}
 
           {/* Market value chip */}
           {player.market_value != null && (
-            <span className="text-[13px] font-semibold text-accent tabular-nums">
+            <span className="text-caption font-semibold text-accent tabular-nums">
               {new Intl.NumberFormat("en-GB", {
                 style: "currency",
                 currency: player.market_value_currency ?? "EUR",
@@ -118,9 +118,9 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
 
           {/* Listed — open_to_offers now means he has an open listing. */}
           {player.open_to_offers && (
-            <span className="flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 ring-1 ring-success/30">
+            <span className="flex items-center gap-0.5 rounded-full bg-success-bg px-1.5 py-0.5 ring-1 ring-success-ring">
               <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[13px] font-semibold text-success-text">Listed</span>
+              <span className="text-caption font-semibold text-success-text">Listed</span>
             </span>
           )}
         </div>

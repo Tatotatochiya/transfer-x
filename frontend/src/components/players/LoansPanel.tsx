@@ -93,7 +93,7 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
     const theirs = side === "parent" ? loan.loanee_obligation_answer : loan.parent_obligation_answer;
     const word = (a: string | null) => (a === "MET" ? "met" : a === "NOT_MET" ? "not met" : "not answered");
     return (
-      <span className="flex flex-wrap items-center gap-1.5 text-[13px]">
+      <span className="flex flex-wrap items-center gap-1.5 text-caption">
         <span className="text-text-muted">
           Conditions met? You: <span className="text-text">{word(mine)}</span> · They:{" "}
           <span className="text-text">{word(theirs)}</span>
@@ -134,7 +134,7 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
     if (loan.option_to_buy == null) return null;
     return (
       <span
-        className="rounded-full bg-surface-inset px-2 py-0.5 text-[13px] font-semibold text-text-secondary ring-1 ring-input-border"
+        className="rounded-full bg-surface-inset px-2 py-0.5 text-caption font-semibold text-text-secondary ring-1 ring-input-border"
         title={
           loan.obligation_to_buy
             ? `Must be bought for ${formatCurrency(loan.option_to_buy)} when the loan ends` +
@@ -154,7 +154,7 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
   return (
     <div className="mt-6 space-y-6">
       {error && (
-        <p className="rounded-lg bg-danger-bg px-3 py-2 text-[13px] text-danger-text ring-1 ring-danger-border">
+        <p className="rounded-lg bg-danger-bg px-3 py-2 text-caption text-danger-text ring-1 ring-danger-border">
           {error}
         </p>
       )}
@@ -162,8 +162,8 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
       {out.length > 0 && (
         <div>
           <div className="mb-2.5 flex items-baseline justify-between">
-            <h3 className="text-sm font-semibold text-text">Out on loan</h3>
-            <span className="text-[13px] text-text-muted">
+            <h3 className="text-body font-semibold text-text">Out on loan</h3>
+            <span className="text-caption text-text-muted">
               {out.length} {out.length === 1 ? "player" : "players"}
             </span>
           </div>
@@ -175,23 +175,23 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
               >
                 <div className="flex-1 basis-[180px] min-w-0">
                   <PlayerLink id={loan.player_id} name={loan.player?.name ?? "Player"} photoUrl={loan.player?.photo_url ?? null}
-                    size="md" className="text-[15px] font-semibold text-text" />
-                  <p className="text-[13px] text-text-muted">
+                    size="md" className="text-body font-semibold text-text" />
+                  <p className="text-caption text-text-muted">
                     at {loan.loanee_club?.name ?? "another club"}
                   </p>
                 </div>
 
                 <div className="basis-[130px] shrink">
-                  <p className="text-[11px] text-text-muted">Returns</p>
-                  <p className="text-sm font-semibold text-text">{returnDate(loan)}</p>
+                  <p className="text-caption text-text-muted">Returns</p>
+                  <p className="text-body font-semibold text-text">{returnDate(loan)}</p>
                 </div>
 
                 {/* What this loan is still costing us. The parent keeps paying
                     whatever share it did not hand over, so a 100% split shows
                     a dash rather than a misleading £0. */}
                 <div className="basis-[120px] shrink">
-                  <p className="text-[11px] text-text-muted">They pay</p>
-                  <p className="text-sm font-semibold text-text tabular-nums">
+                  <p className="text-caption text-text-muted">They pay</p>
+                  <p className="text-body font-semibold text-text tabular-nums">
                     {loan.loanee_wage_share > 0
                       ? `${formatCurrency(loan.loanee_wage_share)}/wk`
                       : "—"}
@@ -209,7 +209,7 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
                   {loan.conversion_deal_id ? (
                     <Link
                       to={`/deals/${loan.conversion_deal_id}`}
-                      className="text-[13px] font-semibold text-accent no-underline hover:underline"
+                      className="text-caption font-semibold text-accent no-underline hover:underline"
                     >
                       Being bought →
                     </Link>
@@ -251,8 +251,8 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
       {incoming.length > 0 && (
         <div>
           <div className="mb-2.5 flex items-baseline justify-between">
-            <h3 className="text-sm font-semibold text-text">On loan to us</h3>
-            <span className="text-[13px] text-text-muted">
+            <h3 className="text-body font-semibold text-text">On loan to us</h3>
+            <span className="text-caption text-text-muted">
               {incoming.length} {incoming.length === 1 ? "player" : "players"}
             </span>
           </div>
@@ -264,20 +264,20 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
               >
                 <div className="flex-1 basis-[180px] min-w-0">
                   <PlayerLink id={loan.player_id} name={loan.player?.name ?? "Player"} photoUrl={loan.player?.photo_url ?? null}
-                    size="md" className="text-[15px] font-semibold text-text" />
-                  <p className="text-[13px] text-text-muted">
+                    size="md" className="text-body font-semibold text-text" />
+                  <p className="text-caption text-text-muted">
                     from {loan.parent_club?.name ?? "another club"}
                   </p>
                 </div>
 
                 <div className="basis-[130px] shrink">
-                  <p className="text-[11px] text-text-muted">Goes back</p>
-                  <p className="text-sm font-semibold text-text">{returnDate(loan)}</p>
+                  <p className="text-caption text-text-muted">Goes back</p>
+                  <p className="text-body font-semibold text-text">{returnDate(loan)}</p>
                 </div>
 
                 <div className="basis-[120px] shrink">
-                  <p className="text-[11px] text-text-muted">We pay</p>
-                  <p className="text-sm font-semibold text-text tabular-nums">
+                  <p className="text-caption text-text-muted">We pay</p>
+                  <p className="text-body font-semibold text-text tabular-nums">
                     {loan.loanee_wage_share > 0
                       ? `${formatCurrency(loan.loanee_wage_share)}/wk`
                       : "—"}
@@ -290,7 +290,7 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
                   {loan.conversion_deal_id ? (
                     <Link
                       to={`/deals/${loan.conversion_deal_id}`}
-                      className="text-[13px] font-semibold text-accent no-underline hover:underline"
+                      className="text-caption font-semibold text-accent no-underline hover:underline"
                     >
                       Purchase in progress →
                     </Link>
@@ -331,13 +331,13 @@ export default function LoansPanel({ canAct }: { canAct: boolean }) {
                   {loan.obligation_to_buy && !loan.conversion_deal_id && (
                     loan.obligation_conditions ? (
                       <span className="flex flex-col gap-1">
-                        <span className="text-[13px] text-text-muted">
+                        <span className="text-caption text-text-muted">
                           The purchase starts at the end date only if both clubs confirm the conditions were met
                         </span>
                         <ObligationAnswers loan={loan} side="loanee" />
                       </span>
                     ) : (
-                      <span className="text-[13px] text-text-muted">Purchase starts at the end date</span>
+                      <span className="text-caption text-text-muted">Purchase starts at the end date</span>
                     )
                   )}
                 </div>

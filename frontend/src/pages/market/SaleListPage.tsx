@@ -40,9 +40,9 @@ export default function SaleListPage() {
         <button
           aria-pressed={forLoan}
           onClick={() => { setForLoan((v) => !v); setPage(1); }}
-          className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
+          className={`rounded-lg px-3 py-1.5 text-body transition-colors ${
             forLoan
-              ? "bg-accent-bg text-accent-active ring-1 ring-accent/40"
+              ? "bg-accent-bg text-accent-active ring-1 ring-accent-ring"
               : "bg-surface-inset text-text-muted hover:text-text"
           }`}
         >
@@ -53,7 +53,7 @@ export default function SaleListPage() {
       {isLoading && <ListSkeleton count={8} />}
 
       {isError && (
-        <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+        <div className="rounded-xl bg-danger-bg px-5 py-4 text-small text-danger-text ring-1 ring-danger-border">
           Failed to load listings. Please try again.
         </div>
       )}

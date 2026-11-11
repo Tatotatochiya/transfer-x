@@ -107,23 +107,23 @@ export default function PlayerAccountCard({
 
   return (
     <Card>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">Player account</p>
+      <p className="mb-2 text-caption font-semibold text-text-secondary">Player account</p>
       {data.has_account ? (
-        <p className="text-sm text-text">
+        <p className="text-body text-text">
           {playerName} has a TransferX account and accepts his own personal terms.
         </p>
       ) : pending ? (
-        <div className="space-y-2 text-sm">
+        <div className="space-y-2 text-small">
           <p className="text-text">
             Invited <span className="font-medium">{inv!.email}</span> — expires {formatDate(inv!.expires_at)}.
           </p>
           {link && (
-            <div className="rounded-lg bg-accent-bg px-3 py-2 ring-1 ring-accent/20">
-              <p className="text-xs text-text-secondary">
+            <div className="rounded-lg bg-accent-bg px-3 py-2 ring-1 ring-accent-ring">
+              <p className="text-caption text-text-secondary">
                 Shown once — also emailed to him. Share it only with the player.
               </p>
               <div className="mt-1.5 flex items-center gap-2">
-                <input readOnly value={link} className="min-w-0 flex-1 rounded bg-surface px-2 py-1 text-xs text-text ring-1 ring-border" />
+                <input readOnly value={link} className="min-w-0 flex-1 rounded bg-surface px-2 py-1 text-caption text-text ring-1 ring-border" />
                 <Button
                   size="sm"
                   variant="secondary"
@@ -145,7 +145,7 @@ export default function PlayerAccountCard({
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-sm text-text-muted">{NO_ACCOUNT_TEXT[inviter](playerName)}</p>
+          <p className="text-small text-text-muted">{NO_ACCOUNT_TEXT[inviter](playerName)}</p>
           {canInvite && (
             <form
               onSubmit={(e) => {
@@ -160,14 +160,14 @@ export default function PlayerAccountCard({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="player@email.com"
-                className="min-w-0 flex-1 rounded-lg bg-surface px-3 py-1.5 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+                className="min-w-0 flex-1 rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
               />
               <Button type="submit" size="sm" variant="secondary" loading={invite.isPending}>
                 Invite
               </Button>
             </form>
           )}
-          {invite.isError && <p className="text-xs text-danger-text">{getApiError(invite.error, "Could not send the invitation.")}</p>}
+          {invite.isError && <p className="text-caption text-danger-text">{getApiError(invite.error, "Could not send the invitation.")}</p>}
         </div>
       )}
     </Card>

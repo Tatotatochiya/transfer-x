@@ -24,12 +24,12 @@ export default function TransferWindowBanner() {
   if (windowStatus.is_open && windowStatus.current_window) {
     const w = windowStatus.current_window;
     return (
-      <div className="mb-6 flex items-center justify-between rounded-xl bg-success/10 px-5 py-3 ring-1 ring-success/20">
+      <div className="mb-6 flex items-center justify-between rounded-xl bg-success-bg px-5 py-3 ring-1 ring-success-ring">
         <div className="flex items-center gap-3">
           <span className="h-2 w-2 rounded-full bg-success animate-pulse shrink-0" />
           <div>
-            <span className="text-sm font-semibold text-success-text">{w.name}</span>
-            <span className="ml-2 text-sm text-success-text-alt">is open</span>
+            <span className="text-body font-semibold text-success-text">{w.name}</span>
+            <span className="ml-2 text-small text-success-text-alt">is open</span>
           </div>
         </div>
         <WindowCountdown closesAt={w.closes_at} />
@@ -43,17 +43,17 @@ export default function TransferWindowBanner() {
     <div className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-xl bg-surface-inset px-5 py-3 ring-1 ring-border">
       <div className="flex items-center gap-3">
         <span className="h-2 w-2 rounded-full bg-text-muted shrink-0" />
-        <span className="text-sm text-text-secondary">
+        <span className="text-small text-text-secondary">
           <span className="font-semibold text-text">The transfer window is closed.</span>{" "}
           You can still make offers and agree deals. They complete when it opens.
         </span>
       </div>
       {next ? (
-        <span className="text-xs text-text-muted">
+        <span className="text-caption text-text-muted">
           Next: <span className="text-text">{next.name}</span> opens {formatDate(next.opens_at)}
         </span>
       ) : (
-        <span className="text-xs text-text-muted">No date set for the next one</span>
+        <span className="text-caption text-text-muted">No date set for the next one</span>
       )}
     </div>
   );

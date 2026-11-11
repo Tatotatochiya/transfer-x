@@ -103,7 +103,7 @@ export default function ClubDetailPage() {
 
   if (isError || !club) {
     return (
-      <div className="rounded-xl bg-danger-bg px-5 py-4 text-sm text-danger-text ring-1 ring-danger-border">
+      <div className="rounded-xl bg-danger-bg px-5 py-4 text-small text-danger-text ring-1 ring-danger-border">
         Club not found.{" "}
         <button onClick={() => navigate(-1)} className="underline">Go back</button>
       </div>
@@ -134,7 +134,7 @@ export default function ClubDetailPage() {
       {/* Back */}
       <button
         onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
+        className="mb-6 flex items-center gap-1.5 text-body text-text-muted hover:text-text transition-colors"
       >
         ← Back
       </button>
@@ -142,14 +142,14 @@ export default function ClubDetailPage() {
       {/* ── Header ── */}
       <div className="mb-6 flex items-start gap-5">
         <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-surface-inset overflow-hidden ring-1 ring-border">
-          <FallbackImage src={club.crest_url} name={club.name} kind="club" sizeClass="h-full w-full text-3xl" colorClass="text-text-muted" />
+          <FallbackImage src={club.crest_url} name={club.name} kind="club" sizeClass="h-full w-full text-display-sm sm:text-display" colorClass="text-text-muted" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-text">{club.name}</h1>
+            <h1 className="text-title-sm sm:text-title font-bold text-text">{club.name}</h1>
             {club.verified && <VerifiedBadge />}
           </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-muted">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-text-muted">
             {club.league_name && <span>{club.league_name}</span>}
             {club.city && (
               <>
@@ -165,7 +165,7 @@ export default function ClubDetailPage() {
             )}
           </div>
           {squadData && (
-            <p className="mt-1 text-xs text-text-muted">
+            <p className="mt-1 text-caption text-text-muted">
               {squadData.total} player{squadData.total !== 1 ? "s" : ""} in squad
             </p>
           )}
@@ -182,18 +182,18 @@ export default function ClubDetailPage() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                className={`rounded-lg px-4 py-1.5 text-body font-medium transition-colors ${
                   tab === t.id ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
                 }`}
               >
                 {t.label}
                 {t.id === "squad" && squadData && (
-                  <span className="ml-1.5 rounded-full bg-surface px-1.5 py-0.5 text-xs text-text-secondary">
+                  <span className="ml-1.5 rounded-full bg-surface px-1.5 py-0.5 text-caption text-text-secondary">
                     {squadData.total}
                   </span>
                 )}
                 {t.id === "listings" && (listingsCount ?? 0) > 0 && (
-                  <span className="ml-1.5 rounded-full bg-success/15 px-1.5 py-0.5 text-xs text-success-text">
+                  <span className="ml-1.5 rounded-full bg-success-bg px-1.5 py-0.5 text-caption text-success-text">
                     {listingsCount}
                   </span>
                 )}

@@ -33,9 +33,9 @@ function timeLeft(iso: string): string {
 function Cell({ label, value, sub, valueClass = "text-text" }: { label: string; value: ReactNode; sub?: ReactNode; valueClass?: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5 px-3.5 py-2.5 shadow-[-1px_0_0_var(--color-rule-faint)]">
-      <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">{label}</span>
-      <span className={`truncate text-[15px] font-bold tabular-nums ${valueClass}`}>{value}</span>
-      {sub != null && <span className="truncate text-xs text-text-muted">{sub}</span>}
+      <span className="text-caption font-semibold text-text-secondary">{label}</span>
+      <span className={`truncate text-body font-bold tabular-nums ${valueClass}`}>{value}</span>
+      {sub != null && <span className="truncate text-caption text-text-muted">{sub}</span>}
     </div>
   );
 }
@@ -89,7 +89,7 @@ export default function FactsStrip({
         valueClass={wage != null ? "text-success-text" : "text-text"} sub={wageSub} />
       {isMyPlayer ? (
         <div className="flex min-w-0 flex-col gap-0.5 px-3.5 py-2.5 shadow-[-1px_0_0_var(--color-rule-faint)]">
-          <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">Club valuation</span>
+          <span className="text-caption font-semibold text-text-secondary">Club valuation</span>
           {editing ? (
             <form className="flex items-center gap-1" onSubmit={(e) => { e.preventDefault(); save(); }}>
               <input
@@ -99,10 +99,10 @@ export default function FactsStrip({
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Escape") setEditing(false); }}
                 placeholder="e.g. 22m"
-                className="w-20 rounded-md bg-surface-inset px-2 py-0.5 text-sm tabular-nums text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+                className="w-20 rounded-md bg-surface-inset px-2 py-0.5 text-input lg:text-body tabular-nums text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
               />
-              <span className="text-xs text-text-muted">m</span>
-              <button type="submit" disabled={valuationPending} className="text-xs font-semibold text-accent">Save</button>
+              <span className="text-caption text-text-muted">m</span>
+              <button type="submit" disabled={valuationPending} className="text-caption font-semibold text-accent">Save</button>
             </form>
           ) : (
             <button
@@ -114,15 +114,15 @@ export default function FactsStrip({
               disabled={!contract}
               title={contract ? "Edit your valuation" : "Record his contract first"}
               className={contract?.club_valuation != null
-                ? "truncate text-left text-[15px] font-bold tabular-nums text-text hover:text-accent disabled:cursor-default disabled:hover:text-text"
-                : "self-start rounded-md bg-accent-bg px-2 py-0.5 text-[13px] font-semibold text-accent ring-1 ring-accent/30 hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-60"}
+                ? "truncate text-left text-body font-bold tabular-nums text-text hover:text-accent disabled:cursor-default disabled:hover:text-text"
+                : "self-start rounded-md bg-accent-bg px-2 py-0.5 text-caption font-semibold text-accent ring-1 ring-accent-ring hover:bg-accent-bg-strong disabled:cursor-not-allowed disabled:opacity-60"}
             >
               {contract?.club_valuation != null
                 ? <>{formatCurrency(contract.club_valuation)} <span aria-hidden="true">✎</span></>
                 : "Set valuation"}
             </button>
           )}
-          <span className="truncate text-xs text-text-muted">
+          <span className="truncate text-caption text-text-muted">
             {contract ? "Only your club sees this" : "Needs his contract on record"}
           </span>
         </div>

@@ -99,23 +99,23 @@ export default function ViewSwitcher({
   }
 
   const activeView = views.find((v) => v.id === activeViewId) ?? null;
-  const rowText = sheet ? "min-h-11 text-[15px]" : "py-1.5 text-[13px]";
-  const iconBtn = sheet ? "flex h-11 w-11 items-center justify-center text-sm" : "p-0.5 text-xs";
+  const rowText = sheet ? "min-h-11 text-body" : "py-1.5 text-caption";
+  const iconBtn = sheet ? "flex h-11 w-11 items-center justify-center text-small" : "p-0.5 text-caption";
 
   return (
     <div>
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Saved views</p>
+      <p className="mb-1.5 text-caption font-semibold text-text-secondary">Saved views</p>
 
       {sheet && (
         <button
           type="button"
           aria-expanded={listOpen}
           onClick={() => setListOpen((o) => !o)}
-          className="flex min-h-12 w-full items-center justify-between gap-2 rounded-lg bg-surface px-3 text-left text-base text-text ring-1 ring-input-border"
+          className="flex min-h-12 w-full items-center justify-between gap-2 rounded-lg bg-surface px-3 text-left text-body text-text ring-1 ring-input-border"
         >
           <span className="truncate">
             {activeView ? activeView.name : "All players"}
-            {isModified && <span className="ml-1.5 text-sm text-warning-text">(changed)</span>}
+            {isModified && <span className="ml-1.5 text-small text-warning-text">(changed)</span>}
           </span>
           <span aria-hidden className={`text-text-muted transition-transform ${listOpen ? "rotate-180" : ""}`}>⌄</span>
         </button>
@@ -145,10 +145,10 @@ export default function ViewSwitcher({
                   autoFocus
                   value={renameValue}
                   onChange={(e) => setRenameValue(e.target.value)}
-                  className="min-w-0 flex-1 rounded-md bg-surface-inset px-2 py-1 text-xs text-text ring-1 ring-accent focus:outline-none"
+                  className="min-w-0 flex-1 rounded-md bg-surface-inset px-2 py-1 text-caption text-text ring-1 ring-accent focus:outline-none"
                 />
-                <button type="submit" disabled={saving} className="shrink-0 text-xs text-success-text hover:text-success px-1">✓</button>
-                <button type="button" onClick={() => setRenamingId(null)} className="shrink-0 text-xs text-text-muted hover:text-text px-1">✕</button>
+                <button type="submit" disabled={saving} className="shrink-0 text-caption text-success-text hover:text-success px-1">✓</button>
+                <button type="button" onClick={() => setRenamingId(null)} className="shrink-0 text-caption text-text-muted hover:text-text px-1">✕</button>
               </form>
             );
           }
@@ -156,9 +156,9 @@ export default function ViewSwitcher({
           if (isConfirmDelete) {
             return (
               <div key={view.id} className="flex items-center gap-1.5 rounded-md bg-danger-bg px-2 py-1.5">
-                <span className="flex-1 text-xs text-danger-text truncate">Delete "{view.name}"?</span>
-                <button onClick={() => handleDelete(view.id)} disabled={saving} className="shrink-0 text-xs font-semibold text-danger-text hover:text-danger px-1">Yes</button>
-                <button onClick={() => setConfirmDeleteId(null)} className="shrink-0 text-xs text-text-muted hover:text-text px-1">No</button>
+                <span className="flex-1 text-caption text-danger-text truncate">Delete "{view.name}"?</span>
+                <button onClick={() => handleDelete(view.id)} disabled={saving} className="shrink-0 text-caption font-semibold text-danger-text hover:text-danger px-1">Yes</button>
+                <button onClick={() => setConfirmDeleteId(null)} className="shrink-0 text-caption text-text-muted hover:text-text px-1">No</button>
               </div>
             );
           }
@@ -219,16 +219,16 @@ export default function ViewSwitcher({
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="View name…"
-            className="min-w-0 flex-1 rounded-md bg-surface-inset px-2 py-1 text-xs text-text placeholder-text-muted ring-1 ring-accent focus:outline-none"
+            className="min-w-0 flex-1 rounded-md bg-surface-inset px-2 py-1 text-caption text-text placeholder-text-muted ring-1 ring-accent focus:outline-none"
           />
           <button
             type="submit"
             disabled={saving || !newName.trim()}
-            className="shrink-0 rounded-md bg-accent-bg px-2 py-1 text-xs font-semibold text-accent-active hover:bg-accent-bg/70 disabled:opacity-50 transition-colors"
+            className="shrink-0 rounded-md bg-accent-bg px-2 py-1 text-caption font-semibold text-accent-active hover:bg-accent-bg/70 disabled:opacity-50 transition-colors"
           >
             Save
           </button>
-          <button type="button" onClick={() => { setShowNewForm(false); setNewName(""); }} className="shrink-0 text-xs text-text-muted hover:text-text transition-colors">
+          <button type="button" onClick={() => { setShowNewForm(false); setNewName(""); }} className="shrink-0 text-caption text-text-muted hover:text-text transition-colors">
             Cancel
           </button>
         </form>
@@ -236,7 +236,7 @@ export default function ViewSwitcher({
         <button
           type="button"
           onClick={() => setShowNewForm(true)}
-          className={`mt-1.5 flex items-center gap-1 text-text-muted hover:text-text transition-colors ${sheet ? "min-h-11 text-sm font-semibold" : "text-xs"}`}
+          className={`mt-1.5 flex items-center gap-1 text-text-muted hover:text-text transition-colors ${sheet ? "min-h-11 text-body font-semibold" : "text-caption"}`}
         >
           <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -248,13 +248,13 @@ export default function ViewSwitcher({
       {/* Unsaved changes */}
       {isModified && activeView && !showSaveAsNew && (
         <div className="mt-2 rounded-lg bg-warning-bg px-2.5 py-2">
-          <p className="text-xs text-warning-text">Unsaved changes to <span className="font-semibold">"{activeView.name}"</span></p>
+          <p className="text-caption text-warning-text">Unsaved changes to <span className="font-semibold">"{activeView.name}"</span></p>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <button onClick={handleSaveToView} disabled={saving} className="text-xs font-semibold text-warning-text hover:opacity-80 disabled:opacity-50">Update</button>
-            <span className="text-text-muted text-xs">·</span>
-            <button onClick={() => setShowSaveAsNew(true)} className="text-xs text-text-muted hover:text-text">Save as new</button>
-            <span className="text-text-muted text-xs">·</span>
-            <button onClick={() => onSelect(activeViewId)} className="text-xs text-text-muted hover:text-text">Discard</button>
+            <button onClick={handleSaveToView} disabled={saving} className="text-caption font-semibold text-warning-text hover:opacity-80 disabled:opacity-50">Update</button>
+            <span className="text-text-muted text-caption">·</span>
+            <button onClick={() => setShowSaveAsNew(true)} className="text-caption text-text-muted hover:text-text">Save as new</button>
+            <span className="text-text-muted text-caption">·</span>
+            <button onClick={() => onSelect(activeViewId)} className="text-caption text-text-muted hover:text-text">Discard</button>
           </div>
         </div>
       )}
@@ -266,10 +266,10 @@ export default function ViewSwitcher({
             value={saveAsNewName}
             onChange={(e) => setSaveAsNewName(e.target.value)}
             placeholder="New view name…"
-            className="min-w-0 flex-1 bg-transparent text-xs text-text placeholder-text-muted focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-caption text-text placeholder-text-muted focus:outline-none"
           />
-          <button type="submit" disabled={saving || !saveAsNewName.trim()} className="shrink-0 text-xs font-semibold text-accent hover:text-accent-hover disabled:opacity-50">Save</button>
-          <button type="button" onClick={() => { setShowSaveAsNew(false); setSaveAsNewName(""); }} className="shrink-0 text-xs text-text-muted hover:text-text">Cancel</button>
+          <button type="submit" disabled={saving || !saveAsNewName.trim()} className="shrink-0 text-caption font-semibold text-accent hover:text-accent-hover disabled:opacity-50">Save</button>
+          <button type="button" onClick={() => { setShowSaveAsNew(false); setSaveAsNewName(""); }} className="shrink-0 text-caption text-text-muted hover:text-text">Cancel</button>
         </form>
       )}
     </div>

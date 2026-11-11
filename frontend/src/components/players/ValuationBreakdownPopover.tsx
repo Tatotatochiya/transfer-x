@@ -9,7 +9,7 @@ function DriverRows({ drivers }: { drivers: ValuationDriver[] }) {
   return (
     <div className="space-y-1.5">
       {shown.map((d) => (
-        <div key={d.key} className="flex items-center justify-between gap-2 text-xs" title={d.detail}>
+        <div key={d.key} className="flex items-center justify-between gap-2 text-caption" title={d.detail}>
           <span className="text-text-muted truncate">{d.label}</span>
           <span className="shrink-0 tabular-nums text-text-secondary">
             {d.factor != null && (
@@ -78,24 +78,24 @@ export default function ValuationBreakdownPopover({ signal }: { signal: FairValu
         <div className="absolute right-0 top-6 z-50 w-72 rounded-xl bg-surface p-4 shadow-xl ring-1 ring-border">
           {valueDrivers.length > 0 && (
             <>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
+              <p className="mb-2 text-caption font-semibold text-text-secondary">
                 How the value builds
               </p>
               <DriverRows drivers={valueDrivers} />
               {signal.comparables_used != null && signal.comparables_used > 0 && (
-                <p className="mt-1.5 text-[11px] text-text-muted">
+                <p className="mt-1.5 text-caption text-text-muted">
                   Checked against {signal.comparables_used} comparable transfers
                 </p>
               )}
               <div className="my-3 border-t border-rule" />
             </>
           )}
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
+          <p className="mb-2 text-caption font-semibold text-text-secondary">
             {valueDrivers.length > 0 ? "Performance score drivers" : "Top drivers"}
           </p>
           <div className="space-y-1.5">
             {topDrivers.map((row) => (
-              <div key={row.label} className="flex items-center justify-between gap-2 text-xs">
+              <div key={row.label} className="flex items-center justify-between gap-2 text-caption">
                 <span className="text-text-muted truncate">{row.label}</span>
                 <span className="shrink-0 tabular-nums text-text-secondary">
                   {row.value} <span className="text-text-muted">·</span>{" "}
@@ -105,13 +105,13 @@ export default function ValuationBreakdownPopover({ signal }: { signal: FairValu
             ))}
           </div>
 
-          <div className="mt-3 space-y-1 border-t border-rule pt-2.5 text-xs text-text-muted">
+          <div className="mt-3 space-y-1 border-t border-rule pt-2.5 text-caption text-text-muted">
             <p>{ageLine(signal)}</p>
             <p>League tier {signal.league_tier}</p>
             <p>{confidenceLine(signal)}</p>
           </div>
 
-          <p className="mt-3 border-t border-rule pt-2.5 text-[13px] leading-relaxed text-text-muted">
+          <p className="mt-3 border-t border-rule pt-2.5 text-caption leading-relaxed text-text-muted">
             Model {signal.model_version} · as of {formatDate(signal.as_of)} ·{" "}
             Model estimate — not an official valuation.
           </p>

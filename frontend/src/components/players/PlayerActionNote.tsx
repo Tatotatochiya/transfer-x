@@ -8,7 +8,7 @@ export default function PlayerActionNote({ note }: { note: PlayerSituation["note
   if (!note) return null;
   return (
     <p
-      className={`rounded-xl px-4 py-3 text-[15px] leading-normal ${
+      className={`rounded-xl px-4 py-3 text-body leading-normal ${
         note.tone === "info" ? "bg-accent-bg text-accent-active" : "bg-surface-inset text-text-secondary"
       }`}
     >

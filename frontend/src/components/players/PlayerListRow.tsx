@@ -48,19 +48,19 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
       onMouseEnter={prefetch}
       onClick={() => navigate(`/players/market/${player.id}`)}
       className={`cursor-pointer rounded-[14px] bg-surface ring-1 px-5 py-4 transition-all hover:ring-accent ${
-        bargain ? "ring-success/25" : "ring-border"
+        bargain ? "ring-success-ring" : "ring-border"
       }`}
     >
       <div className="flex flex-wrap items-center gap-5">
         {/* Avatar + identity */}
         <div className="flex flex-1 basis-[200px] items-center gap-3 min-w-0">
-          <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-11 w-11 text-sm" colorClass="bg-surface-inset text-text-muted" className="ring-1 ring-border" />
+          <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-11 w-11 text-small" colorClass="bg-surface-inset text-text-muted" className="ring-1 ring-border" />
           <div className="min-w-0">
-            <p className="flex items-center gap-1.5 truncate text-base font-semibold text-text">
+            <p className="flex items-center gap-1.5 truncate text-body font-semibold text-text">
               {player.name}
-              {player.position && <Badge variant={positionVariant(player.position)} className="!text-[11px]">{player.position}</Badge>}
+              {player.position && <Badge variant={positionVariant(player.position)} className="!text-caption">{player.position}</Badge>}
             </p>
-            <p className="truncate text-[13px] text-text-muted">
+            <p className="truncate text-caption text-text-muted">
               <ClubLink id={player.current_club?.id} worldTeamId={player.world_team?.id} name={player.current_club?.name ?? player.world_team?.name ?? player.team_name} fallback="Free Agent" />
               {(player.age || player.nationality) && ` · ${[player.age ? `${player.age}y` : null, player.nationality].filter(Boolean).join(" · ")}`}
             </p>
@@ -88,17 +88,17 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
             D5's copy rule by saying "fair value" instead of "model"). */}
         <div className="basis-[170px] shrink">
           <div className="flex items-baseline gap-x-1.5">
-            <span className="w-[46px] shrink-0 text-[13px] text-text-muted">model</span>
+            <span className="w-[46px] shrink-0 text-caption text-text-muted">model</span>
             {fairValueSignal ? (
               <span
-                className={`tabular-nums ${asking == null ? "text-sm font-semibold text-text" : "text-[13px] text-text-secondary"}`}
+                className={`tabular-nums ${asking == null ? "text-body font-semibold text-text" : "text-caption text-text-secondary"}`}
                 title={`${formatCurrency(fairValueSignal.fair_value)} · ${fairValueSignal.confidence.toLowerCase()} confidence · range ${formatCompactCurrency(fairValueSignal.fair_value_low)}–${formatCompactCurrency(fairValueSignal.fair_value_high)}`}
               >
                 {formatCompactCurrency(fairValueSignal.fair_value)}
               </span>
             ) : (
               <span
-                className="text-[13px] text-text-muted"
+                className="text-caption text-text-muted"
                 title="No model valuation. The model needs a position, vendor stats and 450+ minutes played, and never estimates without them."
               >
                 —
@@ -108,8 +108,8 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
 
           {fairValueSignal?.last_transfer && (
             <div className="flex items-baseline gap-x-1.5" title={`Last transfer: ${fairValueSignal.last_transfer.from ?? "?"} → ${fairValueSignal.last_transfer.to ?? "?"}${fairValueSignal.last_transfer.fee_display ? ` (${fairValueSignal.last_transfer.fee_display})` : ""}`}>
-              <span className="w-[46px] shrink-0 text-[13px] text-text-muted">last fee</span>
-              <span className="text-[13px] tabular-nums text-text-secondary">
+              <span className="w-[46px] shrink-0 text-caption text-text-muted">last fee</span>
+              <span className="text-caption tabular-nums text-text-secondary">
                 {formatCompactCurrency(fairValueSignal.last_transfer.fee_gbp)}
                 <span className="ml-1 text-text-muted">{new Date(fairValueSignal.last_transfer.date).getFullYear()}</span>
               </span>
@@ -118,11 +118,11 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
 
           {asking != null && (
             <div className="flex flex-wrap items-baseline gap-x-1.5">
-              <span className="w-[46px] shrink-0 text-[13px] text-text-muted">asking</span>
-              <span className="text-sm font-semibold text-text tabular-nums">{formatCompactCurrency(asking)}</span>
+              <span className="w-[46px] shrink-0 text-caption text-text-muted">asking</span>
+              <span className="text-body font-semibold text-text tabular-nums">{formatCompactCurrency(asking)}</span>
               {divergence && (
                 <span
-                  className={`text-[13px] font-semibold tabular-nums ${BAND_COLOUR[divergence.band]}`}
+                  className={`text-caption font-semibold tabular-nums ${BAND_COLOUR[divergence.band]}`}
                   title={`${BAND_PHRASE[divergence.band]} — the asking price is ${Math.abs(Math.round(divergence.pct))}% ${divergence.pct >= 0 ? "above" : "below"} the model`}
                 >
                   {divergence.pct >= 0 ? "▲" : "▼"} {Math.abs(Math.round(divergence.pct))}%
@@ -134,22 +134,22 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
 
         {/* Form */}
         <div className="shrink-0 basis-[96px]">
-          {formScore != null ? <FormBadge score={formScore} trend={formTrend} /> : <span className="text-xs text-text-muted">—</span>}
+          {formScore != null ? <FormBadge score={formScore} trend={formTrend} /> : <span className="text-caption text-text-muted">—</span>}
         </div>
 
         {/* Wage */}
         <div className="shrink-0 basis-[110px]">
-          <p className="text-[11px] text-text-muted">Wage / wk</p>
-          <p className="text-sm font-semibold text-text">{player.wage_weekly != null ? formatCurrency(player.wage_weekly) : "—"}</p>
+          <p className="text-caption text-text-muted">Wage / wk</p>
+          <p className="text-body font-semibold text-text">{player.wage_weekly != null ? formatCurrency(player.wage_weekly) : "—"}</p>
         </div>
 
         {/* Status */}
         <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
           <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
           {player.open_to_offers && (
-            <span className="flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 ring-1 ring-success/30" title="Listed by his club">
+            <span className="flex items-center gap-0.5 rounded-full bg-success-bg px-1.5 py-0.5 ring-1 ring-success-ring" title="Listed by his club">
               <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[13px] font-semibold text-success-text">Listed</span>
+              <span className="text-caption font-semibold text-success-text">Listed</span>
             </span>
           )}
         </div>
@@ -159,7 +159,7 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
           {canAct && (
             <button
               onClick={() => navigate(`/players/market/${player.id}`)}
-              className="rounded-lg bg-accent px-3.5 py-1.5 text-xs font-semibold text-on-accent hover:bg-accent-hover transition-colors"
+              className="rounded-lg bg-accent px-3.5 py-1.5 text-caption font-semibold text-on-accent hover:bg-accent-hover transition-colors"
             >
               Make offer
             </button>

@@ -61,8 +61,8 @@ const POSITIONS: PlayerPosition[] = ["GK", "DEF", "MID", "FWD"];
 // The sheet below 1024px grows every control to a 44–48px touch target, in
 // 16px text so iOS doesn't zoom into a focused field.
 const FIELD = {
-  rail: "flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg bg-surface px-[11px] py-[9px] text-sm ring-1 ring-input-border focus-within:ring-accent transition-colors",
-  sheet: "flex min-h-12 min-w-0 flex-1 items-center justify-between gap-2 rounded-lg bg-surface px-3 text-base ring-1 ring-input-border focus-within:ring-accent transition-colors",
+  rail: "flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg bg-surface px-[11px] py-[9px] text-small ring-1 ring-input-border focus-within:ring-accent transition-colors",
+  sheet: "flex min-h-12 min-w-0 flex-1 items-center justify-between gap-2 rounded-lg bg-surface px-3 text-body ring-1 ring-input-border focus-within:ring-accent transition-colors",
 };
 const inputCls = "w-full bg-transparent text-text placeholder-text-muted focus:outline-none";
 const numInputCls = `${inputCls} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`;
@@ -131,9 +131,9 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
           the first thing a buying club needs to know, and most of the market
           plays for clubs that are not on TransferX. */}
       <label className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 ${sheet ? "" : "lg:min-h-0"}`}>
-        <span className="text-sm text-text-secondary">
+        <span className="text-small text-text-secondary">
           Buyable on TransferX only
-          <span className="block text-[13px] text-text-muted">
+          <span className="block text-caption text-text-muted">
             Clubs on TransferX, and free agents
           </span>
         </span>
@@ -151,7 +151,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
 
       {/* Position */}
       <div>
-        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Position</p>
+        <p className="mb-1.5 text-caption font-semibold text-text-secondary">Position</p>
         <div className="flex gap-1.5">
           {POSITIONS.map((pos) => {
             const active = filters.position === pos;
@@ -161,7 +161,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
                 type="button"
                 aria-pressed={active}
                 onClick={() => set("position", active ? "" : pos)}
-                className={`flex-1 rounded-lg px-2 font-bold ring-1 transition-colors ${sheet ? "min-h-11 text-sm" : "py-1.5 text-xs"} ${
+                className={`flex-1 rounded-lg px-2 font-bold ring-1 transition-colors ${sheet ? "min-h-11 text-body" : "py-1.5 text-caption"} ${
                   active ? "bg-accent-bg text-accent-active ring-accent" : "bg-surface text-text-muted ring-input-border hover:ring-accent"
                 }`}
               >
@@ -174,49 +174,49 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
 
       {/* What he would cost here: the asking price, else the fee model (the Cheapest sort's rule). */}
       <div>
-        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Price (£ millions)</p>
+        <p className="mb-1.5 text-caption font-semibold text-text-secondary">Price (£ millions)</p>
         <div className="flex items-center gap-1.5">
           <div className={fieldCls}><input type="number" min={0} placeholder="Min" aria-label="Minimum price, £ millions" value={filters.min_price} onChange={(e) => set("min_price", e.target.value)} className={numInputCls} /></div>
-          <span className="text-text-muted text-xs shrink-0">–</span>
+          <span className="text-text-muted text-caption shrink-0">–</span>
           <div className={fieldCls}><input type="number" min={0} placeholder="Max" aria-label="Maximum price, £ millions" value={filters.max_price} onChange={(e) => set("max_price", e.target.value)} className={numInputCls} /></div>
         </div>
       </div>
 
       {/* The outside market estimate, stored in euros; not the asking price. */}
       <div>
-        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Market value (€ millions)</p>
+        <p className="mb-1.5 text-caption font-semibold text-text-secondary">Market value (€ millions)</p>
         <div className="flex items-center gap-1.5">
           <div className={fieldCls}><input type="number" min={0} placeholder="Min" aria-label="Minimum market value, € millions" value={filters.min_value} onChange={(e) => set("min_value", e.target.value)} className={numInputCls} /></div>
-          <span className="text-text-muted text-xs shrink-0">–</span>
+          <span className="text-text-muted text-caption shrink-0">–</span>
           <div className={fieldCls}><input type="number" min={0} placeholder="Max" aria-label="Maximum market value, € millions" value={filters.max_value} onChange={(e) => set("max_value", e.target.value)} className={numInputCls} /></div>
         </div>
       </div>
 
       {/* Age */}
       <div>
-        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Age</p>
+        <p className="mb-1.5 text-caption font-semibold text-text-secondary">Age</p>
         <div className="flex items-center gap-1.5">
           <div className={fieldCls}><input type="number" min={14} max={50} placeholder="Min age" value={filters.min_age} onChange={(e) => set("min_age", e.target.value)} className={numInputCls} /></div>
-          <span className="text-text-muted text-xs shrink-0">–</span>
+          <span className="text-text-muted text-caption shrink-0">–</span>
           <div className={fieldCls}><input type="number" min={14} max={50} placeholder="Max age" value={filters.max_age} onChange={(e) => set("max_age", e.target.value)} className={numInputCls} /></div>
         </div>
       </div>
 
       {/* Contract ends within */}
       <div>
-        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Contract ends within</p>
+        <p className="mb-1.5 text-caption font-semibold text-text-secondary">Contract ends within</p>
         <div className={fieldCls}>
           <input type="number" min={1} max={36} placeholder="Any" value={filters.contract_expiry_months} onChange={(e) => set("contract_expiry_months", e.target.value)} className={numInputCls} />
-          <span className="shrink-0 text-[11px] text-text-muted">months</span>
+          <span className="shrink-0 text-caption text-text-muted">months</span>
         </div>
       </div>
 
       {/* Form score */}
       <div>
-        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Form score</p>
+        <p className="mb-1.5 text-caption font-semibold text-text-secondary">Form score</p>
         <div className={fieldCls}>
           <input type="number" min={0} max={100} placeholder="Min" value={filters.min_form_score} onChange={(e) => set("min_form_score", e.target.value)} className={numInputCls} />
-          <span className="shrink-0 text-[11px] text-text-muted">and above</span>
+          <span className="shrink-0 text-caption text-text-muted">and above</span>
         </div>
       </div>
 
@@ -225,7 +225,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
         type="button"
         aria-expanded={moreOpen}
         onClick={() => setMoreOpen((o) => !o)}
-        className={`flex w-full items-center justify-between font-semibold text-text-muted hover:text-text transition-colors ${sheet ? "min-h-11 text-sm" : "text-xs"}`}
+        className={`flex w-full items-center justify-between font-semibold text-text-muted hover:text-text transition-colors ${sheet ? "min-h-11 text-body" : "text-caption"}`}
       >
         <span>More filters{moreCount > 0 ? ` (${moreCount})` : ""}</span>
         <svg className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -244,7 +244,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
             </select>
           </div>
           <label className={`flex items-center justify-between rounded-lg bg-surface ring-1 ring-input-border cursor-pointer ${sheet ? "min-h-12 px-3" : "px-[11px] py-[9px]"}`}>
-            <span className="text-sm text-text-secondary">Listed only</span>
+            <span className="text-small text-text-secondary">Listed only</span>
             <div
               onClick={(e) => { e.preventDefault(); set("open_to_offers", !filters.open_to_offers); }}
               className={`relative h-4 w-8 shrink-0 rounded-full transition-colors ${filters.open_to_offers ? "bg-success" : "bg-border"}`}
@@ -267,7 +267,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
         <button
           type="button"
           onClick={() => onChange({ ...DEFAULT_PLAYER_FILTERS, search: filters.search, sort_by: filters.sort_by, sort_dir: filters.sort_dir })}
-          className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+          className="text-caption text-text-muted hover:text-text-secondary transition-colors"
         >
           Clear all filters
         </button>

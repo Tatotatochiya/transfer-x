@@ -27,13 +27,11 @@ interface Props {
 
 type StatBoxAccent = "emerald" | "blue" | "amber" | "slate" | "red" | "violet";
 
+// Stat groups are categories, so every accent is neutral (TOKENS.md colour
+// roles); the labels carry the meaning. The prop stays for callers.
+const NEUTRAL_BOX = { bg: "bg-surface-inset ring-border", value: "text-text" };
 const accentCls: Record<StatBoxAccent, { bg: string; value: string }> = {
-  emerald: { bg: "bg-success/10 ring-success/20",             value: "text-success-text" },
-  blue:    { bg: "bg-accent/10 ring-accent/20",                value: "text-accent" },
-  amber:   { bg: "bg-warning-fill/10 ring-warning-fill/20",    value: "text-warning-text" },
-  slate:   { bg: "bg-surface-inset ring-border",               value: "text-text" },
-  red:     { bg: "bg-danger/10 ring-danger/20",                value: "text-danger-text" },
-  violet:  { bg: "bg-role-agent-text/10 ring-role-agent-text/20", value: "text-role-agent-text" },
+  emerald: NEUTRAL_BOX, blue: NEUTRAL_BOX, amber: NEUTRAL_BOX, slate: NEUTRAL_BOX, red: NEUTRAL_BOX, violet: NEUTRAL_BOX,
 };
 
 function StatBox({
@@ -50,11 +48,11 @@ function StatBox({
   const cls = accentCls[accent];
   return (
     <div className={`flex flex-col items-center rounded-xl px-3 py-3 min-w-0 ring-1 ${cls.bg}`}>
-      <span className={`text-2xl font-bold tabular-nums leading-none ${cls.value}`}>
+      <span className={`text-headline sm:text-title font-bold tabular-nums leading-none ${cls.value}`}>
         {value != null && value !== "" ? value : <span className="text-text-muted">—</span>}
       </span>
-      {sub && <span className="mt-0.5 text-[13px] text-text-muted">{sub}</span>}
-      <span className="mt-1 text-[13px] text-text-muted text-center leading-tight">{label}</span>
+      {sub && <span className="mt-0.5 text-caption text-text-muted">{sub}</span>}
+      <span className="mt-1 text-caption text-text-muted text-center leading-tight">{label}</span>
     </div>
   );
 }
@@ -71,21 +69,17 @@ function StatRow({
   if (value == null) return null;
   return (
     <div className="flex items-center justify-between py-1.5 border-b border-rule-faint last:border-0">
-      <span className="text-sm text-text-muted">{label}</span>
-      <span className={`text-sm font-semibold tabular-nums ${highlight ?? "text-text"}`}>{value}</span>
+      <span className="text-small text-text-muted">{label}</span>
+      <span className={`text-body font-semibold tabular-nums ${highlight ?? "text-text"}`}>{value}</span>
     </div>
   );
 }
 
 type SectionTheme = "default" | "emerald" | "blue" | "red" | "amber" | "violet";
 
+const NEUTRAL_SECTION = { wrapper: "bg-surface-inset ring-border", bar: "bg-text-muted", title: "text-text-secondary" };
 const sectionThemeCls: Record<SectionTheme, { wrapper: string; bar: string; title: string }> = {
-  default: { wrapper: "bg-surface-inset ring-border",              bar: "bg-text-muted",       title: "text-text-muted" },
-  emerald: { wrapper: "bg-success/[0.07] ring-success/20",         bar: "bg-success",          title: "text-success-text" },
-  blue:    { wrapper: "bg-accent/[0.07] ring-accent/20",           bar: "bg-accent",           title: "text-accent" },
-  red:     { wrapper: "bg-danger/[0.07] ring-danger/20",           bar: "bg-danger",           title: "text-danger-text" },
-  amber:   { wrapper: "bg-warning-fill/[0.07] ring-warning-fill/20", bar: "bg-warning-fill",   title: "text-warning-text" },
-  violet:  { wrapper: "bg-role-agent-text/[0.07] ring-role-agent-text/20", bar: "bg-role-agent-text", title: "text-role-agent-text" },
+  default: NEUTRAL_SECTION, emerald: NEUTRAL_SECTION, blue: NEUTRAL_SECTION, red: NEUTRAL_SECTION, amber: NEUTRAL_SECTION, violet: NEUTRAL_SECTION,
 };
 
 function Section({
@@ -102,7 +96,7 @@ function Section({
     <div className={`rounded-xl px-4 py-3 ring-1 ${cls.wrapper}`}>
       <div className="mb-2.5 flex items-center gap-2">
         <span className={`h-2.5 w-2.5 rounded-sm ${cls.bar}`} />
-        <p className={`text-[11px] font-bold uppercase tracking-wider ${cls.title}`}>{title}</p>
+        <p className={`text-caption font-semibold ${cls.title}`}>{title}</p>
       </div>
       {children}
     </div>
@@ -137,7 +131,7 @@ function CoreGrid({ s }: { s: PlayerStats }) {
       {/* Starter / sub usage bar */}
       {s.appearances > 0 && (s.lineups != null || s.substitutes_in != null) && (
         <div className="rounded-xl bg-surface-inset px-4 py-2.5 ring-1 ring-border">
-          <div className="flex items-center justify-between text-[11px] text-text-muted mb-1.5">
+          <div className="flex items-center justify-between text-caption text-text-muted mb-1.5">
             <span>Usage</span>
             <span className="tabular-nums">
               {s.lineups ?? 0} starts · {s.substitutes_in ?? 0} sub appearances · {s.substitutes_bench ?? 0} on bench
@@ -152,7 +146,7 @@ function CoreGrid({ s }: { s: PlayerStats }) {
             </div>
           )}
           {starterPct != null && (
-            <div className="mt-1 flex justify-between text-[13px] text-text-muted">
+            <div className="mt-1 flex justify-between text-caption text-text-muted">
               <span>Starter {starterPct}%</span>
               <span>Sub {100 - starterPct}%</span>
             </div>
@@ -198,12 +192,12 @@ function MIDStats({ s }: { s: PlayerStats }) {
   const dribblePct = pct(s.dribbles_success, s.dribbles_attempts);
   return (
     <div className="space-y-3">
-      <Section title="Passing & Creativity" theme="emerald">
+      <Section title="Passing & creativity" theme="emerald">
         <StatRow label="Key Passes"    value={s.key_passes}     highlight="text-success-text" />
         <StatRow label="Pass Accuracy" value={s.pass_accuracy != null ? `${s.pass_accuracy}%` : null} highlight="text-success-text" />
         <StatRow label="Dribbles"      value={dribblePct ? `${s.dribbles_success}/${s.dribbles_attempts} (${dribblePct})` : s.dribbles_success} />
       </Section>
-      <Section title="Defending & Discipline" theme="blue">
+      <Section title="Defending & discipline" theme="blue">
         <StatRow label="Tackles"          value={s.tackles_total}   highlight="text-accent" />
         <StatRow label="Interceptions"    value={s.interceptions}   highlight="text-accent" />
         <StatRow label="Yellow Cards"     value={s.yellow_cards}    highlight="text-warning-text" />
@@ -249,8 +243,8 @@ function FormBlock({ form }: { form: PlayerForm }) {
   return (
     <div className="flex items-center justify-between rounded-xl bg-surface-inset px-5 py-4 ring-1 ring-border">
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-text-muted">Form Score</p>
-        <p className="mt-0.5 text-xs text-text-muted">Last {form.games_considered} games</p>
+        <p className="text-caption font-semibold text-text-secondary">Form score</p>
+        <p className="mt-0.5 text-caption text-text-muted">Last {form.games_considered} games</p>
       </div>
       <div className="flex items-center gap-3">
         <div className="hidden sm:block w-28 overflow-hidden rounded-full bg-border h-2">
@@ -283,7 +277,7 @@ export default function StatsPanel({ stats, form }: Props) {
 
   if (!primary && !form) {
     return (
-      <div className="rounded-xl bg-surface-inset px-5 py-4 text-sm text-text-muted ring-1 ring-border">
+      <div className="rounded-xl bg-surface-inset px-5 py-4 text-small text-text-muted ring-1 ring-border">
         No performance data available yet.
       </div>
     );
@@ -302,9 +296,9 @@ export default function StatsPanel({ stats, form }: Props) {
               <button
                 key={s.id}
                 onClick={() => setSelectedIdx(i)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium ring-1 transition-colors ${
+                className={`rounded-lg px-3 py-1.5 text-caption font-medium ring-1 transition-colors ${
                   i === selectedIdx
-                    ? "bg-accent/15 text-accent ring-accent/30"
+                    ? "bg-accent-bg text-accent ring-accent-ring"
                     : "bg-surface-inset text-text-muted ring-border hover:text-text"
                 }`}
               >
@@ -317,13 +311,13 @@ export default function StatsPanel({ stats, form }: Props) {
 
       {/* Season / team header when single record */}
       {primary && sorted.length === 1 && (
-        <div className="flex items-center justify-between text-xs text-text-muted">
+        <div className="flex items-center justify-between text-caption text-text-muted">
           <div className="flex items-center gap-2">
             <span className="font-medium text-text-muted">
               {primary.league_id ? (LEAGUE_NAMES[primary.league_id] ?? primary.team_name ?? "—") : (primary.team_name ?? "—")}
             </span>
             {primary.position_played && (
-              <span className="rounded-full bg-surface-inset px-2 py-0.5 text-[11px] font-bold text-text-secondary">
+              <span className="rounded-full bg-surface-inset px-2 py-0.5 text-caption font-bold text-text-secondary">
                 {primary.position_played}
               </span>
             )}
@@ -337,7 +331,7 @@ export default function StatsPanel({ stats, form }: Props) {
 
       {/* Minutes */}
       {primary?.minutes != null && (
-        <p className="text-right text-xs text-text-muted">
+        <p className="text-right text-caption text-text-muted">
           {primary.minutes.toLocaleString()} minutes played
         </p>
       )}
