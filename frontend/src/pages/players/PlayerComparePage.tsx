@@ -52,7 +52,7 @@ function PlayerHeader({ player, form }: { player: PlayerDetail; form: PlayerForm
       <div>
         <p className="text-body font-bold text-text">{player.name}</p>
         {club && (
-          <p className="mt-0.5 flex items-center justify-center gap-1 text-caption text-text-muted">
+          <p className="mt-0.5 flex items-center justify-center gap-1 text-small text-text-muted">
             {crest && <FallbackImage src={crest} name={club} kind="club" sizeClass="h-3.5 w-3.5 text-caption" colorClass="bg-surface-inset text-text-muted" />}
             <ClubLink
               id={player.current_club?.id}
@@ -64,8 +64,8 @@ function PlayerHeader({ player, form }: { player: PlayerDetail; form: PlayerForm
       </div>
       <div className="flex flex-wrap justify-center gap-1">
         {player.position && <Badge variant={positionVariant(player.position)}>{player.position}</Badge>}
-        {player.age && <span className="text-caption text-text-muted">{player.age}y</span>}
-        {player.nationality && <span className="text-caption text-text-muted">{player.nationality}</span>}
+        {player.age && <span className="text-small text-text-muted">{player.age}y</span>}
+        {player.nationality && <span className="text-small text-text-muted">{player.nationality}</span>}
         {form && <FormBadge score={Number(form.form_score)} trend={form.trend != null ? Number(form.trend) : null} />}
       </div>
     </div>
@@ -215,7 +215,7 @@ export default function PlayerComparePage() {
         </table>
       </div>
 
-      <p className="mt-3 text-caption text-text-muted text-center">
+      <p className="mt-3 text-small text-text-muted text-center">
         Green values indicate the better stat. Stats from highest-appearance season.
       </p>
     </div>

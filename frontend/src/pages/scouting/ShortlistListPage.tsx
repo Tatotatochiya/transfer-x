@@ -152,17 +152,17 @@ export default function ShortlistListPage() {
                       deleteMutation.mutate(sl.id);
                     }
                   }}
-                  className="shrink-0 text-caption text-text-muted hover:text-danger-text transition-colors"
+                  className="shrink-0 text-small text-text-muted hover:text-danger-text transition-colors"
                 >
                   Delete
                 </button>
               </div>
               {sl.description && (
-                <p className="mt-1 text-caption text-text-muted line-clamp-2">
+                <p className="mt-1 text-small text-text-muted line-clamp-2">
                   {sl.description}
                 </p>
               )}
-              <div className="mt-3 flex items-center gap-3 text-caption text-text-muted">
+              <div className="mt-3 flex items-center gap-3 text-small text-text-muted">
                 <span>{sl.item_count} player{sl.item_count !== 1 ? "s" : ""}</span>
                 <span>·</span>
                 <span>{formatDate(sl.updated_at)}</span>

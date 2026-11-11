@@ -198,7 +198,7 @@ function AnswerChart({ block }: { block: ChartBlock }) {
       <div className="space-y-2.5">
         {block.rows.map((r, i) => (
           <div key={i} className="grid grid-cols-[minmax(0,9rem)_1fr] items-center gap-3">
-            <span className="truncate text-caption text-text-secondary" title={String(r[block.x] ?? "")}>{String(r[block.x] ?? "—")}</span>
+            <span className="truncate text-small text-text-secondary" title={String(r[block.x] ?? "")}>{String(r[block.x] ?? "—")}</span>
             <div className="space-y-1">
               {block.y.map((y, j) => {
                 const v = Number(r[y]) || 0;

@@ -52,7 +52,7 @@ function FigureStrip({ figures }: { figures: Figure[] }) {
           <p className="whitespace-nowrap text-caption font-semibold text-text-secondary">{f.label}</p>
           <p className={`whitespace-nowrap text-headline font-bold tabular-nums ${f.warn ? "text-warning-text" : "text-text"}`}>
             {f.value}
-            {f.unit && <span className="text-caption font-normal text-text-muted"> {f.unit}</span>}
+            {f.unit && <span className="text-small font-normal text-text-muted"> {f.unit}</span>}
           </p>
         </div>
       ))}
@@ -341,7 +341,7 @@ export default function MyClubPage() {
             {[club.league_name, club.city, club.country].filter(Boolean).join(" · ") || "—"}
           </p>
           {squadData && (
-            <p className="mt-1 text-caption text-text-muted">
+            <p className="mt-1 text-small text-text-muted">
               {squadData.total} player{squadData.total !== 1 ? "s" : ""} in squad
             </p>
           )}

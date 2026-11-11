@@ -156,7 +156,7 @@ export default function RegisterPage() {
             {actorType === "CLUB" ? (
               <div className="rounded-lg bg-surface-inset px-4 py-4 ring-1 ring-border">
                 <p className="text-body font-semibold text-text">Clubs join TransferX by invitation</p>
-                <p className="mt-1 text-caption text-text-muted">
+                <p className="mt-1 text-small text-text-muted">
                   Every club on TransferX is invited and verified by our team, so the club you deal with is
                   the club it says it is. Contact TransferX to be invited; if you already have been, use
                   the link in your invitation email.
@@ -168,7 +168,7 @@ export default function RegisterPage() {
                  by searching for a name. */
               <div className="rounded-lg bg-surface-inset px-4 py-4 ring-1 ring-border">
                 <p className="text-body font-semibold text-text">Players join by invitation from their club</p>
-                <p className="mt-1 text-caption text-text-muted">
+                <p className="mt-1 text-small text-text-muted">
                   Your account lets you review and accept the personal terms clubs offer you, so it is set up
                   by the club you play for. Ask your club to invite you, then use the link in your invitation
                   email. Your agent can also accept terms on your behalf.

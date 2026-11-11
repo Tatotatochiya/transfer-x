@@ -150,7 +150,7 @@ export default function AgentProfilePage() {
             />
           </div>
 
-          <div className="pt-2 border-t border-rule text-caption text-text-muted">
+          <div className="pt-2 border-t border-rule text-small text-text-muted">
             Member since {new Date(profile.created_at).toLocaleDateString()}
             {profile.verified && " · Verified agent"}
           </div>

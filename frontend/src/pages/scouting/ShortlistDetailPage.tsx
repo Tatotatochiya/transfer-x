@@ -139,7 +139,7 @@ function AddPlayerForm({
                   <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-7 w-7 text-caption" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-body font-medium text-text">{p.name}</p>
-                    <p className="text-caption text-text-muted truncate">
+                    <p className="text-small text-text-muted truncate">
                       {p.current_club?.name ?? p.team_name ?? "Free Agent"}
                     </p>
                   </div>
@@ -178,7 +178,7 @@ function AddPlayerForm({
           </div>
         </div>
 
-        {error && <p className="text-caption text-danger-text">{error}</p>}
+        {error && <p className="text-small text-danger-text">{error}</p>}
         <div className="flex gap-2">
           <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}
             disabled={!selectedId}>
@@ -335,7 +335,7 @@ function ShortlistItemsTable({
         <span className="text-text-muted">—</span>
       ) },
     { key: "status", header: "Status", priority: 4, render: (item) => (
-      <span className="text-caption text-text-muted">{statusLabel(item)}</span>
+      <span className="text-small text-text-muted">{statusLabel(item)}</span>
     ) },
     { key: "value", header: "Market Value", priority: 2, className: "text-right", render: (item) => (
       <span className="text-body font-semibold text-text-secondary tabular-nums">
@@ -350,12 +350,12 @@ function ShortlistItemsTable({
       </span>
     ) },
     { key: "notes", header: "Notes", priority: 6, render: (item) => (
-      <span className="text-caption text-text-muted max-w-[200px] truncate block">{item.notes ?? "—"}</span>
+      <span className="text-small text-text-muted max-w-[200px] truncate block">{item.notes ?? "—"}</span>
     ) },
     { key: "actions", header: "", className: "text-right", render: (item) => (
       <button
         onClick={(e) => { e.stopPropagation(); onRemove(item); }}
-        className="text-caption text-text-muted hover:text-danger-text transition-colors"
+        className="text-small text-text-muted hover:text-danger-text transition-colors"
       >
         Remove
       </button>
@@ -380,7 +380,7 @@ function ShortlistItemsTable({
               {item.priority}
             </span>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-caption text-text-muted">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-small text-text-muted">
             {item.player?.position && (
               <Badge variant={positionVariant(item.player.position as PlayerPosition)}>
                 {item.player.position}
@@ -389,10 +389,10 @@ function ShortlistItemsTable({
             <span>{statusLabel(item)}</span>
             {item.player?.market_value != null && <span>{marketValue(item.player.market_value, item.player.market_value_currency)}</span>}
           </div>
-          {item.notes && <p className="mt-1 text-caption text-text-muted truncate">{item.notes}</p>}
+          {item.notes && <p className="mt-1 text-small text-text-muted truncate">{item.notes}</p>}
           <button
             onClick={() => onRemove(item)}
-            className="mt-2 text-caption text-text-muted hover:text-danger-text transition-colors"
+            className="mt-2 text-small text-text-muted hover:text-danger-text transition-colors"
           >
             Remove
           </button>

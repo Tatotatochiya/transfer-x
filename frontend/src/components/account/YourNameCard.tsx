@@ -30,7 +30,7 @@ export default function YourNameCard() {
         className="space-y-3"
       >
         <NameFields first={first} last={last} onFirst={setFirst} onLast={setLast} />
-        <p className="text-caption text-text-muted">
+        <p className="text-small text-text-muted">
           Your team, approvals and the audit trail show your name. Other clubs see only your club.
         </p>
         {save.isError && <p className="text-body text-danger-text">{getApiError(save.error)}</p>}

@@ -20,7 +20,7 @@ export default function ReferencePanel({ title, linkTo, linkLabel, rows }: {
       <div className="flex items-center justify-between px-[18px] py-[13px]">
         <p className="text-caption font-semibold text-text-secondary">{title}</p>
         {linkTo && (
-          <button onClick={() => navigate(linkTo)} className="text-caption text-text-muted hover:text-text-secondary">
+          <button onClick={() => navigate(linkTo)} className="text-small text-text-muted hover:text-text-secondary">
             {linkLabel}
           </button>
         )}
@@ -29,8 +29,8 @@ export default function ReferencePanel({ title, linkTo, linkLabel, rows }: {
         {rows.map((row) => (
           <div key={row.key} onClick={row.onClick} className="flex items-center justify-between py-[9px] cursor-pointer">
             <div className="min-w-0">
-              <p className="truncate text-caption text-text">{row.label}</p>
-              <p className="truncate text-caption text-text-muted">{row.sub}</p>
+              <p className="truncate text-small text-text">{row.label}</p>
+              <p className="truncate text-small text-text-muted">{row.sub}</p>
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <span className={`text-caption font-semibold ${row.valueColour}`}>{row.value}</span>

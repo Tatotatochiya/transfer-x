@@ -42,7 +42,7 @@ export function DraftButton({
       </button>
       {draft.isError && <span className="text-caption text-danger-text">{getApiError(draft.error, "No draft this time.")}</span>}
       {draft.isSuccess && !draft.isPending && (
-        <span className="text-caption text-text-muted">Draft ready: check it, edit it, then send.</span>
+        <span className="text-small text-text-muted">Draft ready: check it, edit it, then send.</span>
       )}
     </span>
   );

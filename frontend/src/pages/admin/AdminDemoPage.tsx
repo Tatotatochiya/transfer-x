@@ -174,7 +174,7 @@ export default function AdminDemoPage() {
             <div key={c.id} className="flex flex-wrap items-center gap-3 px-5 py-2.5 text-small">
               <span className="min-w-0 flex-1 text-text">{c.name}</span>
               {c.house_club && <Badge variant="neutral">House club</Badge>}
-              {c.in_use && !c.house_club && <span className="text-caption text-text-muted">In use: people sign in to it</span>}
+              {c.in_use && !c.house_club && <span className="text-small text-text-muted">In use: people sign in to it</span>}
               {c.house_club && (
                 <select
                   aria-label={`${c.name} personality`}

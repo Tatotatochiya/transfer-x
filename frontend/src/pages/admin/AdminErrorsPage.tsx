@@ -64,7 +64,7 @@ function IssueModal({ id, onClose }: { id: string; onClose: () => void }) {
       ) : (
         <div className="space-y-4 px-6 py-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-caption text-text-muted">
+            <p className="text-small text-text-muted">
               {SERVICE_LABEL[data.service]} · {data.logger} · {data.count.toLocaleString("en-GB")} times ·
               first {formatDateTime(data.first_seen)} · last {formatDateTime(data.last_seen)}
             </p>
@@ -80,7 +80,7 @@ function IssueModal({ id, onClose }: { id: string; onClose: () => void }) {
               )}
             </div>
           </div>
-          <p className="text-caption text-text-muted">
+          <p className="text-small text-text-muted">
             A resolved issue that happens again reopens. Ignored issues are still counted, but never alert.
           </p>
           <div className="space-y-3">
@@ -94,7 +94,7 @@ function IssueModal({ id, onClose }: { id: string; onClose: () => void }) {
                       : "no request"}
                   </span>
                 </div>
-                <p className="whitespace-pre-wrap break-words px-3 py-2 text-caption text-text">{e.message}</p>
+                <p className="whitespace-pre-wrap break-words px-3 py-2 text-small text-text">{e.message}</p>
                 {e.traceback && (
                   <details className="px-3 pb-2">
                     <summary className="cursor-pointer text-caption font-semibold text-accent">Traceback</summary>
@@ -189,12 +189,12 @@ export default function AdminErrorsPage() {
                     <button type="button" className="block w-full truncate text-left font-semibold text-text hover:underline" title={i.title}>
                       {i.title}
                     </button>
-                    <span className="text-caption text-text-muted">{i.logger}</span>
+                    <span className="text-small text-text-muted">{i.logger}</span>
                   </td>
                   <td className="px-4 py-2">
                     <span className="flex items-center gap-1.5">
                       <Badge variant={i.level === "WARNING" ? "warning" : "danger"}>{i.level === "WARNING" ? "Warning" : "Error"}</Badge>
-                      <span className="text-caption text-text-muted">{SERVICE_LABEL[i.service]}</span>
+                      <span className="text-small text-text-muted">{SERVICE_LABEL[i.service]}</span>
                     </span>
                   </td>
                   <td className="px-4 py-2"><Sparkline values={i.last_24h} /></td>

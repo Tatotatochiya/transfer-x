@@ -43,13 +43,13 @@ function IssueCard({ issue }: { issue: HealthIssue }) {
           </Badge>
           <div>
             <p className="text-body font-medium text-text">{issue.message}</p>
-            <p className="mt-0.5 text-caption text-text-muted capitalize">{issue.category}</p>
+            <p className="mt-0.5 text-small text-text-muted capitalize">{issue.category}</p>
           </div>
         </div>
         {issue.details.length > 0 && (
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="shrink-0 text-caption text-text-muted hover:text-text transition-colors"
+            className="shrink-0 text-small text-text-muted hover:text-text transition-colors"
           >
             {expanded ? "Hide" : `Show ${issue.count}`}
           </button>
@@ -60,11 +60,11 @@ function IssueCard({ issue }: { issue: HealthIssue }) {
         <div className="mt-3 space-y-1.5 border-t border-rule pt-3">
           {issue.details.map((d) => (
             <div key={d.id} className="flex items-center justify-between">
-              <p className="text-caption text-text-secondary">{d.label}</p>
+              <p className="text-small text-text-secondary">{d.label}</p>
               {linkFn && (
                 <Link
                   to={linkFn(d.id)}
-                  className="text-caption text-accent hover:text-accent-hover transition-colors"
+                  className="text-small text-accent hover:text-accent-hover transition-colors"
                 >
                   Open →
                 </Link>
@@ -103,10 +103,10 @@ function RequestsSection() {
   const table = (title: string, rows: RequestHealth["slowest"], metric: (r: RequestHealth["slowest"][number]) => string) => (
     <div className="min-w-0 flex-1 rounded-xl bg-surface ring-1 ring-border">
       <h3 className="border-b border-rule px-4 py-2 text-section font-bold text-text">{title}</h3>
-      {rows.length === 0 ? <p className="px-4 py-3 text-caption text-text-muted">None</p> : (
+      {rows.length === 0 ? <p className="px-4 py-3 text-small text-text-muted">None</p> : (
         <ul className="divide-y divide-rule-faint">
           {rows.slice(0, 6).map((r) => (
-            <li key={`${r.method} ${r.route}`} className="flex items-center justify-between gap-3 px-4 py-1.5 text-caption">
+            <li key={`${r.method} ${r.route}`} className="flex items-center justify-between gap-3 px-4 py-1.5 text-small">
               <span className="min-w-0 truncate font-mono text-text" title={`${r.method} ${r.route}`}>{r.method} {r.route}</span>
               <span className="shrink-0 tabular-nums text-text-secondary">{metric(r)}</span>
             </li>
@@ -118,7 +118,7 @@ function RequestsSection() {
   return (
     <section className="mb-6">
       <h2 className="mb-1 text-body font-semibold text-text">Requests, last 24 hours</h2>
-      <p className="mb-2 text-caption text-text-muted">
+      <p className="mb-2 text-small text-text-muted">
         {data.total.toLocaleString("en-GB")} requests · {data.errors.toLocaleString("en-GB")} server errors ({(data.error_rate * 100).toFixed(1)}%)
       </p>
       <div className="mb-3 rounded-xl bg-surface p-4 ring-1 ring-border">
@@ -161,7 +161,7 @@ export default function AdminHealthPage() {
             Services, scheduled jobs, and data integrity checks across deals, sales and contracts
           </p>
           {dataUpdatedAt > 0 && (
-            <p className="mt-0.5 text-caption text-text-muted">
+            <p className="mt-0.5 text-small text-text-muted">
               Last checked {formatDateTime(new Date(dataUpdatedAt).toISOString())}
             </p>
           )}
@@ -196,7 +196,7 @@ export default function AdminHealthPage() {
                       <p className="text-body font-semibold text-text">
                         {s.label} <span className="sr-only">{s.ok ? "working" : "needs attention"}</span>
                       </p>
-                      <p className="text-caption text-text-muted">{s.detail}</p>
+                      <p className="text-small text-text-muted">{s.detail}</p>
                     </div>
                   </div>
                 ))}
@@ -210,7 +210,7 @@ export default function AdminHealthPage() {
           {data.jobs && data.jobs.length > 0 && (
             <section className="mb-6">
               <h2 className="mb-1 text-body font-semibold text-text">Scheduled jobs in the web app</h2>
-              <p className="mb-2 text-caption text-text-muted">
+              <p className="mb-2 text-small text-text-muted">
                 Last runs are kept across restarts. The data refresh, run history and logs are on{" "}
                 <Link to="/admin/jobs" className="font-semibold text-accent hover:underline">Jobs</Link>; grouped errors on{" "}
                 <Link to="/admin/errors" className="font-semibold text-accent hover:underline">Errors</Link>.
@@ -253,7 +253,7 @@ export default function AdminHealthPage() {
               </div>
               <div>
                 <p className="text-body font-semibold text-success-text">All checks passed</p>
-                <p className="mt-0.5 text-caption text-text-muted">No data integrity issues detected</p>
+                <p className="mt-0.5 text-small text-text-muted">No data integrity issues detected</p>
               </div>
             </div>
           ) : (

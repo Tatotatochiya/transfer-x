@@ -29,7 +29,7 @@ function AlertRow({ alert }: { alert: ClientAlert }) {
             <span className="text-caption font-semibold text-text-secondary">
               {ALERT_TYPE_LABELS[alert.alert_type]}
             </span>
-            <span className="shrink-0 text-caption text-text-muted">{formatDateTime(alert.created_at)}</span>
+            <span className="shrink-0 text-small text-text-muted">{formatDateTime(alert.created_at)}</span>
           </div>
           <p className="mt-0.5 text-body text-text-secondary">{alert.message}</p>
         </div>
@@ -55,7 +55,7 @@ export default function IntelligenceFeed() {
     return (
       <div className="rounded-xl bg-surface px-5 py-8 text-center ring-1 ring-border">
         <p className="text-body font-medium text-text">No alerts yet</p>
-        <p className="mt-1 text-caption text-text-muted">
+        <p className="mt-1 text-small text-text-muted">
           Contract-expiry windows, valuation moves, and club interest will show up here.
         </p>
       </div>

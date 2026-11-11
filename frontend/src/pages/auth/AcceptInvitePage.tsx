@@ -108,13 +108,13 @@ export default function AcceptInvitePage() {
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-body font-semibold text-text">{preview.club_name}</p>
-                  <p className="text-caption text-text-muted">
+                  <p className="text-small text-text-muted">
                     invites you to join as{" "}
                     <span className="font-medium text-accent">
                       {ROLE_LABELS[preview.role] ?? preview.role}
                     </span>
                   </p>
-                  <p className="mt-0.5 text-caption text-text-muted">
+                  <p className="mt-0.5 text-small text-text-muted">
                     Expires {formatDateTime(preview.expires_at)}
                   </p>
                 </div>

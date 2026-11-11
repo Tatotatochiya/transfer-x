@@ -87,7 +87,7 @@ function MessageBubble({
           </p>
         )}
         <p>{msg.body}</p>
-        <p className={`mt-1 text-right text-caption ${"text-text-muted"}`}>
+        <p className={`mt-1 text-right text-small ${"text-text-muted"}`}>
           {formatDateTime(msg.created_at)}
         </p>
       </div>
@@ -158,7 +158,7 @@ export default function OfferThread({
     <div className="space-y-3">
       {/* Thread items */}
       {items.length === 0 ? (
-        <p className="text-center text-caption text-text-muted py-4">
+        <p className="text-center text-small text-text-muted py-4">
           No messages yet.
         </p>
       ) : (
@@ -201,7 +201,7 @@ export default function OfferThread({
           </div>
         </form>
       )}
-      {error && <p className="text-caption text-danger-text">{error}</p>}
+      {error && <p className="text-small text-danger-text">{error}</p>}
     </div>
   );
 }

@@ -70,7 +70,7 @@ function Track({ markers }: { markers: Marker[] }) {
               style={end ? { [end]: 0 } : { left: `${p}%` }}
             >
               <span className={`block text-caption font-bold leading-tight ${m.text}`}>{formatCurrency(m.value)}</span>
-              <span className="block text-caption leading-tight text-text-muted">{m.label}</span>
+              <span className="block text-small leading-tight text-text-muted">{m.label}</span>
             </span>
           </div>
         );
@@ -92,7 +92,7 @@ export function RoundsList({ offer, rounds, other }: { offer: Offer; rounds: Off
         <li key={`${r.at}-${i}`} className="flex items-start justify-between gap-3 py-2.5">
           <div className="min-w-0">
             <p className="text-body font-semibold text-text">{who(r)} {VERB[r.kind]}</p>
-            <p className="text-caption text-text-muted">{formatDate(r.at)}</p>
+            <p className="text-small text-text-muted">{formatDate(r.at)}</p>
             {i === 0 && r.kind !== "SENT" && summary && <p className="mt-0.5 text-body text-text-secondary">{summary}</p>}
           </div>
           {r.fee != null && !isLoan(offer) && <p className="shrink-0 text-body font-bold text-text">{formatCurrency(r.fee)}</p>}

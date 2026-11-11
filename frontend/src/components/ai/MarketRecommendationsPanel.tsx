@@ -43,7 +43,7 @@ export function MarketRecommendationsPanel({
         <div className="flex items-center gap-2">
           <span className="text-body font-semibold text-text">✦ Recommended for You</span>
           {data && (
-            <span className="text-caption text-text-muted">{data.total_candidates} candidates scanned</span>
+            <span className="text-small text-text-muted">{data.total_candidates} candidates scanned</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -57,7 +57,7 @@ export function MarketRecommendationsPanel({
           ) : (
             <button
               onClick={() => setOpen((v) => !v)}
-              className="text-caption text-text-muted hover:text-text-secondary transition-colors"
+              className="text-small text-text-muted hover:text-text-secondary transition-colors"
             >
               {open ? "Hide" : "Show"}
             </button>
@@ -105,7 +105,7 @@ export function MarketRecommendationsPanel({
                         </Badge>
                       )}
                     </div>
-                    <p className="text-caption text-text-muted leading-relaxed">{rec.reason}</p>
+                    <p className="text-small text-text-muted leading-relaxed">{rec.reason}</p>
                   </div>
                   <div className="w-24 shrink-0">
                     <FitBar score={rec.fit_score} />

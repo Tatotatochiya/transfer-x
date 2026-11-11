@@ -43,7 +43,7 @@ export default function SaleCard({ sale }: SaleCardProps) {
           {/* His photo and name link to his profile; the rest of the card opens the listing. */}
           <PlayerLink id={sale.player?.id ?? sale.player_id} name={sale.player?.name} fallback="Unknown Player"
             photoUrl={sale.player?.photo_url ?? null} size="lg" className="max-w-full font-semibold text-text" />
-          <p className="mt-0.5 truncate pl-14 text-caption text-text-muted">
+          <p className="mt-0.5 truncate pl-14 text-small text-text-muted">
             <ClubLink id={sale.seller_club?.id} name={sale.seller_club?.name} />
             {sale.player?.position ? ` · ${sale.player.position}` : ""}
           </p>

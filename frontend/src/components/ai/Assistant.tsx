@@ -61,14 +61,14 @@ function AskButton({ onClick, label, loading }: { onClick: () => void; label: st
 
 function Loading({ text }: { text: string }) {
   return (
-    <p className="flex items-center gap-2 text-caption text-text-muted">
+    <p className="flex items-center gap-2 text-small text-text-muted">
       <Spinner size="sm" /> {text}
     </p>
   );
 }
 
 function ErrorText({ error }: { error: unknown }) {
-  return <p className="text-caption text-danger-text">{getApiError(error, "The assistant could not answer — try again.")}</p>;
+  return <p className="text-small text-danger-text">{getApiError(error, "The assistant could not answer — try again.")}</p>;
 }
 
 function Bullets({ items, className = "text-text-secondary" }: { items: string[]; className?: string }) {
@@ -147,7 +147,7 @@ export function OfferAdvisor({
       action={!data && <AskButton label="What should we do?" onClick={() => setAsked(true)} loading={isFetching} />}
     >
       {!asked && !data && (
-        <p className="text-caption text-text-muted">
+        <p className="text-small text-text-muted">
           Weighs these terms against the fee model{offer.sale_id ? ", the guide price" : ""} and your position, and suggests a next move.
         </p>
       )}
@@ -158,25 +158,25 @@ export function OfferAdvisor({
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-full px-2.5 py-0.5 text-caption font-semibold ring-1 ${rec.className}`}>{rec.label}</span>
             {data.facts.fee_vs_model_pct != null && (
-              <span className="text-caption text-text-muted">
+              <span className="text-small text-text-muted">
                 {data.facts.fee_vs_model_pct >= 0 ? "+" : ""}{Math.round(data.facts.fee_vs_model_pct)}% vs model
               </span>
             )}
             {modelRange && modelRange[0] != null && (
-              <span className="text-caption text-text-muted">
+              <span className="text-small text-text-muted">
                 model {formatCompactCurrency(modelRange[0])}–{formatCompactCurrency(modelRange[1])}
               </span>
             )}
             {data.facts.competing_offers && (
-              <span className="text-caption text-text-muted">
+              <span className="text-small text-text-muted">
                 {data.facts.competing_offers.count} other offer{data.facts.competing_offers.count === 1 ? "" : "s"}
               </span>
             )}
           </div>
-          <p className="text-caption leading-snug text-text">{data.summary}</p>
+          <p className="text-small leading-snug text-text">{data.summary}</p>
           {data.suggested_terms && (
             <div className="rounded-lg bg-accent-bg px-3 py-2.5 ring-1 ring-accent-ring">
-              <p className="text-caption text-text">
+              <p className="text-small text-text">
                 <span className="font-semibold">Suggested counter:</span> {describeTerms(data.suggested_terms)}
               </p>
               {canCounter && (
@@ -198,7 +198,7 @@ export function OfferAdvisor({
             </div>
           )}
           <TermsWarnings warnings={data.checks} title="Rule checks on the current terms" />
-          <p className="text-caption text-text-muted">
+          <p className="text-small text-text-muted">
             Advice only — figures come from TransferX's data; you decide and act.
           </p>
         </div>
@@ -224,9 +224,9 @@ export function NegotiationSummaryPanel({ offer }: { offer: Offer }) {
       {error != null && <ErrorText error={error} />}
       {data && (
         <div className="space-y-2">
-          <p className="text-caption leading-snug text-text">{data.summary}</p>
+          <p className="text-small leading-snug text-text">{data.summary}</p>
           {data.gap && (
-            <p className="text-caption"><span className="font-semibold text-text">Gap:</span> <span className="text-text-secondary">{data.gap}</span></p>
+            <p className="text-small"><span className="font-semibold text-text">Gap:</span> <span className="text-text-secondary">{data.gap}</span></p>
           )}
           <div className="grid gap-3 sm:grid-cols-2">
             {data.their_moves.length > 0 && (
@@ -255,12 +255,12 @@ export function BriefingCard() {
       className="mb-6"
       action={!data && <AskButton label="Brief me" onClick={() => setAsked(true)} loading={isFetching} />}
     >
-      {!asked && <p className="text-caption text-text-muted">A short summary of what needs you today and what changed overnight.</p>}
+      {!asked && <p className="text-small text-text-muted">A short summary of what needs you today and what changed overnight.</p>}
       {isFetching && !data && <Loading text="Preparing your briefing…" />}
       {error != null && <ErrorText error={error} />}
       {data && (
         <div className="space-y-2">
-          <p className="text-caption leading-snug text-text">{data.headline}</p>
+          <p className="text-small leading-snug text-text">{data.headline}</p>
           {data.focus && (
             <p className="rounded-lg bg-accent-bg px-3 py-2 text-caption leading-snug text-text ring-1 ring-accent-ring">
               <span className="font-semibold">Focus today:</span> {data.focus}
@@ -283,15 +283,15 @@ export function PotentialBuyersPanel({ playerId }: { playerId: string }) {
       title="Who might want him?"
       action={!data && <AskButton label="Find clubs" onClick={() => setAsked(true)} loading={isFetching} />}
     >
-      {!asked && <p className="text-caption text-text-muted">Clubs on TransferX whose squads look short in his position, from public squad information.</p>}
+      {!asked && <p className="text-small text-text-muted">Clubs on TransferX whose squads look short in his position, from public squad information.</p>}
       {isFetching && !data && <Loading text="Looking at squads…" />}
       {error != null && <ErrorText error={error} />}
       {data && (
         <div className="space-y-2">
-          {data.summary && <p className="text-caption leading-snug text-text">{data.summary}</p>}
+          {data.summary && <p className="text-small leading-snug text-text">{data.summary}</p>}
           <ul className="space-y-2">
             {data.clubs.map((c) => (
-              <li key={c.club_id} className="text-caption leading-snug">
+              <li key={c.club_id} className="text-small leading-snug">
                 <Link to={`/clubs/${c.club_id}`} className="font-semibold text-text hover:text-accent">{c.club}</Link>
                 <span className="text-text-secondary"> — {c.reason}</span>
               </li>

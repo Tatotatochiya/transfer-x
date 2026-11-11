@@ -93,12 +93,12 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
       <div className="flex items-start justify-between gap-2">
         <p className="flex min-w-0 items-center gap-1.5 text-body font-semibold text-text">
           <PlayerLink id={card.player_id} name={card.player_name} photoUrl={card.player_photo_url ?? null} size="md" />
-          {card.player_position && <span className="shrink-0 text-caption font-normal text-text-muted">{card.player_position}</span>}
+          {card.player_position && <span className="shrink-0 text-small font-normal text-text-muted">{card.player_position}</span>}
         </p>
         {yours && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Your move" />}
       </div>
       {(card.counterparty || showSide) && (
-        <p className="mt-0.5 truncate text-caption text-text-muted">
+        <p className="mt-0.5 truncate text-small text-text-muted">
           {showSide && <SideTag side={card.side} />}
           {showSide && card.counterparty && " "}
           {card.counterparty && (card.side === "BUYING" ? `from ${card.counterparty}` : `to ${card.counterparty}`)}
@@ -112,7 +112,7 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
       )}
       <p className={`mt-1 text-caption ${yours ? "font-semibold text-accent" : "text-text-secondary"}`}>{card.detail}</p>
       {(left || card.others > 0) && (
-        <p className="mt-1 flex flex-wrap gap-x-2 text-caption text-text-muted">
+        <p className="mt-1 flex flex-wrap gap-x-2 text-small text-text-muted">
           {left && <span className={left.urgent ? "font-semibold text-danger-text" : ""}>{left.text}</span>}
           {card.others > 0 && <span>+{card.others} more</span>}
         </p>
@@ -186,7 +186,7 @@ function Columns({ columns, pick, showSide, onOpen }: {
             <div className="flex flex-col gap-2">
               {cards.map((c) => <Card key={c.key} card={c} showSide={showSide} onOpen={onOpen} />)}
               {cards.length === 0 && (
-                <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-caption text-text-muted">None</p>
+                <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-small text-text-muted">None</p>
               )}
             </div>
           </section>
@@ -283,12 +283,12 @@ export default function BoardPage() {
                   <span className="text-caption font-semibold tabular-nums text-text-muted">
                     {lane === "BUYING" ? data.counts.buying : data.counts.selling}
                   </span>
-                  <span className="text-caption font-normal text-text-muted">
+                  <span className="text-small font-normal text-text-muted">
                     {lane === "BUYING" ? "· players you're signing" : "· your players, to other clubs"}
                   </span>
                 </h2>
                 {(lane === "BUYING" ? data.counts.buying : data.counts.selling) === 0 ? (
-                  <p className="rounded-xl border border-dashed border-border px-3 py-3 text-caption text-text-muted">
+                  <p className="rounded-xl border border-dashed border-border px-3 py-3 text-small text-text-muted">
                     {lane === "BUYING" ? "Nothing you're buying at the moment." : "Nothing you're selling at the moment."}
                   </p>
                 ) : <Columns columns={data.columns} pick={(c) => c.side === lane && matches(c)} showSide={false} onOpen={setOpened} />}

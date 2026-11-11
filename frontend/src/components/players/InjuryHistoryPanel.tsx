@@ -32,7 +32,7 @@ function InjuryRow({ inj }: { inj: PlayerInjury }) {
       {/* Date */}
       <div className="text-right">
         {year && <p className="text-body font-bold text-text tabular-nums">{year}</p>}
-        {month && <p className="text-caption text-text-muted">{month}</p>}
+        {month && <p className="text-small text-text-muted">{month}</p>}
       </div>
 
       {/* Injury detail */}
@@ -44,12 +44,12 @@ function InjuryRow({ inj }: { inj: PlayerInjury }) {
             </span>
           )}
           {inj.games_absent != null && (
-            <span className="text-caption text-text-muted">
+            <span className="text-small text-text-muted">
               {inj.games_absent} game{inj.games_absent !== 1 ? "s" : ""} missed
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 text-caption text-text-muted">
+        <div className="flex items-center gap-2 text-small text-text-muted">
           {inj.league_name && <span>{inj.league_name}</span>}
           {inj.league_name && inj.season && <span>·</span>}
           {inj.season && <span>Season {inj.season}</span>}
@@ -96,9 +96,9 @@ export default function InjuryHistoryPanel({ playerId }: Props) {
   return (
     <div>
       <div className="mb-3 flex items-center gap-3">
-        <span className="text-caption text-text-muted">{injuries.length} recorded</span>
+        <span className="text-small text-text-muted">{injuries.length} recorded</span>
         {totalGames > 0 && (
-          <span className="text-caption text-text-muted">· {totalGames} games missed total</span>
+          <span className="text-small text-text-muted">· {totalGames} games missed total</span>
         )}
       </div>
       {injuries.map((inj, i) => (

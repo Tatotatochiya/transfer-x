@@ -60,7 +60,7 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
               {player.name}
               {player.position && <Badge variant={positionVariant(player.position)} className="!text-caption">{player.position}</Badge>}
             </p>
-            <p className="truncate text-caption text-text-muted">
+            <p className="truncate text-small text-text-muted">
               <ClubLink id={player.current_club?.id} worldTeamId={player.world_team?.id} name={player.current_club?.name ?? player.world_team?.name ?? player.team_name} fallback="Free Agent" />
               {(player.age || player.nationality) && ` · ${[player.age ? `${player.age}y` : null, player.nationality].filter(Boolean).join(" · ")}`}
             </p>
@@ -88,7 +88,7 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
             D5's copy rule by saying "fair value" instead of "model"). */}
         <div className="basis-[170px] shrink">
           <div className="flex items-baseline gap-x-1.5">
-            <span className="w-[46px] shrink-0 text-caption text-text-muted">model</span>
+            <span className="w-[46px] shrink-0 text-small text-text-muted">model</span>
             {fairValueSignal ? (
               <span
                 className={`tabular-nums ${asking == null ? "text-body font-semibold text-text" : "text-caption text-text-secondary"}`}
@@ -98,7 +98,7 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
               </span>
             ) : (
               <span
-                className="text-caption text-text-muted"
+                className="text-small text-text-muted"
                 title="No model valuation. The model needs a position, vendor stats and 450+ minutes played, and never estimates without them."
               >
                 —
@@ -108,7 +108,7 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
 
           {fairValueSignal?.last_transfer && (
             <div className="flex items-baseline gap-x-1.5" title={`Last transfer: ${fairValueSignal.last_transfer.from ?? "?"} → ${fairValueSignal.last_transfer.to ?? "?"}${fairValueSignal.last_transfer.fee_display ? ` (${fairValueSignal.last_transfer.fee_display})` : ""}`}>
-              <span className="w-[46px] shrink-0 text-caption text-text-muted">last fee</span>
+              <span className="w-[46px] shrink-0 text-small text-text-muted">last fee</span>
               <span className="text-caption tabular-nums text-text-secondary">
                 {formatCompactCurrency(fairValueSignal.last_transfer.fee_gbp)}
                 <span className="ml-1 text-text-muted">{new Date(fairValueSignal.last_transfer.date).getFullYear()}</span>
@@ -118,7 +118,7 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
 
           {asking != null && (
             <div className="flex flex-wrap items-baseline gap-x-1.5">
-              <span className="w-[46px] shrink-0 text-caption text-text-muted">asking</span>
+              <span className="w-[46px] shrink-0 text-small text-text-muted">asking</span>
               <span className="text-body font-semibold text-text tabular-nums">{formatCompactCurrency(asking)}</span>
               {divergence && (
                 <span
@@ -134,12 +134,12 @@ export default function PlayerListRow({ player, formScore, formTrend, fairValueS
 
         {/* Form */}
         <div className="shrink-0 basis-[96px]">
-          {formScore != null ? <FormBadge score={formScore} trend={formTrend} /> : <span className="text-caption text-text-muted">—</span>}
+          {formScore != null ? <FormBadge score={formScore} trend={formTrend} /> : <span className="text-small text-text-muted">—</span>}
         </div>
 
         {/* Wage */}
         <div className="shrink-0 basis-[110px]">
-          <p className="text-caption text-text-muted">Wage / wk</p>
+          <p className="text-small text-text-muted">Wage / wk</p>
           <p className="text-body font-semibold text-text">{player.wage_weekly != null ? formatCurrency(player.wage_weekly) : "—"}</p>
         </div>
 

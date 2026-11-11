@@ -54,7 +54,7 @@ export default function YourDataCard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-body font-medium text-text">Download your data</p>
-          <p className="mt-0.5 text-caption text-text-muted">
+          <p className="mt-0.5 text-small text-text-muted">
             Your account, preferences, devices, notifications, activity and messages, as a JSON file.
           </p>
         </div>
@@ -65,7 +65,7 @@ export default function YourDataCard() {
 
       <div className="border-t border-rule-faint pt-5">
         <p className="text-body font-medium text-text">Close your account</p>
-        <p className="mt-0.5 text-caption text-text-muted">
+        <p className="mt-0.5 text-small text-text-muted">
           Your name, email and settings are erased and you're signed out everywhere. The audit trail, deal
           comments and messages stay, so the records others rely on still make sense, but without your name.
         </p>

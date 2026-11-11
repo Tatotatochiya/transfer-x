@@ -84,7 +84,7 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
     <div className="rounded-xl bg-surface ring-1 ring-border px-5 py-4">
       <p className="text-caption font-semibold text-text-secondary">{label}</p>
       <p className="mt-1.5 text-headline sm:text-title font-bold text-text">{typeof value === "number" ? value.toLocaleString() : value}</p>
-      {sub && <p className="mt-0.5 text-caption text-text-muted">{sub}</p>}
+      {sub && <p className="mt-0.5 text-small text-text-muted">{sub}</p>}
     </div>
   );
 }
@@ -108,7 +108,7 @@ function TrendChart({ data }: { data: DailyCount[] }) {
           />
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-caption text-text-muted">
+      <div className="mt-1 flex justify-between text-small text-text-muted">
         <span>{data[0]?.date}</span>
         <span>{data[data.length - 1]?.date}</span>
       </div>

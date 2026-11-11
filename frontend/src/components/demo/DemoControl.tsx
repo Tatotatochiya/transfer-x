@@ -156,7 +156,7 @@ function DemoPill() {
               </button>
             ))}
           </div>
-          <p className="mt-1 text-caption text-text-muted">
+          <p className="mt-1 text-small text-text-muted">
             They answer your offers by their valuation, bid for players you list, and do their side of each deal. Sometimes another club bids against you. Each move says &ldquo;Automated (demo)&rdquo;.
           </p>
           <p className="mt-3 text-caption font-semibold text-text-secondary">Or play the other side yourself</p>

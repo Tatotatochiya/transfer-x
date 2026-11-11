@@ -394,7 +394,7 @@ function AccountMenu({ onLogout }: { onLogout: () => void }) {
         <span className="min-w-0 flex-1">
           <span className="block truncate text-caption font-semibold text-text">{name}</span>
           <span className="flex min-w-0 items-center gap-1.5">
-            {subLine && <span className="truncate text-caption text-text-muted">{subLine}</span>}
+            {subLine && <span className="truncate text-small text-text-muted">{subLine}</span>}
             {identity.isSuperuser && (
               <span className="shrink-0 rounded px-1.5 py-px text-caption font-semibold bg-danger-bg text-danger-text">
                 Staff

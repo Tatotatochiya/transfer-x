@@ -43,11 +43,11 @@ export default function ObligationDecisionsPanel() {
       <p className="text-body font-semibold text-warning-text">
         Conditional obligations awaiting a decision ({loans.length})
       </p>
-      <p className="mt-0.5 text-caption text-warning-text/80">
+      <p className="mt-0.5 text-small text-warning-text/80">
         These loans have ended, and the clubs have not both confirmed whether the obligation&rsquo;s conditions were
         met. Your decision is final: met starts the purchase, not met returns the player.
       </p>
-      {error && <p className="mt-2 text-caption text-danger-text">{error}</p>}
+      {error && <p className="mt-2 text-small text-danger-text">{error}</p>}
       <ul className="mt-3 space-y-3">
         {loans.map((loan) => (
           <li key={loan.id} className="rounded-lg bg-surface px-4 py-3 ring-1 ring-border">
@@ -55,8 +55,8 @@ export default function ObligationDecisionsPanel() {
               <span className="font-semibold">{loan.player?.name ?? "Player"}</span> — {loan.parent_club?.name} → {loan.loanee_club?.name},
               ended {formatDate(loan.end_date)}, obligation {formatCurrency(loan.option_to_buy)}
             </p>
-            <p className="mt-0.5 text-caption text-text-secondary">Conditions: {loan.obligation_conditions}</p>
-            <p className="mt-0.5 text-caption text-text-muted">
+            <p className="mt-0.5 text-small text-text-secondary">Conditions: {loan.obligation_conditions}</p>
+            <p className="mt-0.5 text-small text-text-muted">
               {loan.parent_club?.name}: {WORD[loan.parent_obligation_answer ?? ""] ?? "no answer"} ·{" "}
               {loan.loanee_club?.name}: {WORD[loan.loanee_obligation_answer ?? ""] ?? "no answer"}
             </p>

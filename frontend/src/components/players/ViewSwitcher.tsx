@@ -147,8 +147,8 @@ export default function ViewSwitcher({
                   onChange={(e) => setRenameValue(e.target.value)}
                   className="min-w-0 flex-1 rounded-md bg-surface-inset px-2 py-1 text-caption text-text ring-1 ring-accent focus:outline-none"
                 />
-                <button type="submit" disabled={saving} className="shrink-0 text-caption text-success-text hover:text-success px-1">✓</button>
-                <button type="button" onClick={() => setRenamingId(null)} className="shrink-0 text-caption text-text-muted hover:text-text px-1">✕</button>
+                <button type="submit" disabled={saving} className="shrink-0 text-small text-success-text hover:text-success px-1">✓</button>
+                <button type="button" onClick={() => setRenamingId(null)} className="shrink-0 text-small text-text-muted hover:text-text px-1">✕</button>
               </form>
             );
           }
@@ -157,8 +157,8 @@ export default function ViewSwitcher({
             return (
               <div key={view.id} className="flex items-center gap-1.5 rounded-md bg-danger-bg px-2 py-1.5">
                 <span className="flex-1 text-caption text-danger-text truncate">Delete "{view.name}"?</span>
-                <button onClick={() => handleDelete(view.id)} disabled={saving} className="shrink-0 text-caption font-semibold text-danger-text hover:text-danger px-1">Yes</button>
-                <button onClick={() => setConfirmDeleteId(null)} className="shrink-0 text-caption text-text-muted hover:text-text px-1">No</button>
+                <button onClick={() => handleDelete(view.id)} disabled={saving} className="shrink-0 text-small font-semibold text-danger-text hover:text-danger px-1">Yes</button>
+                <button onClick={() => setConfirmDeleteId(null)} className="shrink-0 text-small text-text-muted hover:text-text px-1">No</button>
               </div>
             );
           }
@@ -228,7 +228,7 @@ export default function ViewSwitcher({
           >
             Save
           </button>
-          <button type="button" onClick={() => { setShowNewForm(false); setNewName(""); }} className="shrink-0 text-caption text-text-muted hover:text-text transition-colors">
+          <button type="button" onClick={() => { setShowNewForm(false); setNewName(""); }} className="shrink-0 text-small text-text-muted hover:text-text transition-colors">
             Cancel
           </button>
         </form>
@@ -236,7 +236,7 @@ export default function ViewSwitcher({
         <button
           type="button"
           onClick={() => setShowNewForm(true)}
-          className={`mt-1.5 flex items-center gap-1 text-text-muted hover:text-text transition-colors ${sheet ? "min-h-11 text-body font-semibold" : "text-caption"}`}
+          className={`mt-1.5 flex items-center gap-1 text-text-muted hover:text-text transition-colors ${sheet ? "min-h-11 text-body font-semibold" : "text-small"}`}
         >
           <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -248,13 +248,13 @@ export default function ViewSwitcher({
       {/* Unsaved changes */}
       {isModified && activeView && !showSaveAsNew && (
         <div className="mt-2 rounded-lg bg-warning-bg px-2.5 py-2">
-          <p className="text-caption text-warning-text">Unsaved changes to <span className="font-semibold">"{activeView.name}"</span></p>
+          <p className="text-small text-warning-text">Unsaved changes to <span className="font-semibold">"{activeView.name}"</span></p>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <button onClick={handleSaveToView} disabled={saving} className="text-caption font-semibold text-warning-text hover:opacity-80 disabled:opacity-50">Update</button>
-            <span className="text-text-muted text-caption">·</span>
-            <button onClick={() => setShowSaveAsNew(true)} className="text-caption text-text-muted hover:text-text">Save as new</button>
-            <span className="text-text-muted text-caption">·</span>
-            <button onClick={() => onSelect(activeViewId)} className="text-caption text-text-muted hover:text-text">Discard</button>
+            <button onClick={handleSaveToView} disabled={saving} className="text-small font-semibold text-warning-text hover:opacity-80 disabled:opacity-50">Update</button>
+            <span className="text-text-muted text-small">·</span>
+            <button onClick={() => setShowSaveAsNew(true)} className="text-small text-text-muted hover:text-text">Save as new</button>
+            <span className="text-text-muted text-small">·</span>
+            <button onClick={() => onSelect(activeViewId)} className="text-small text-text-muted hover:text-text">Discard</button>
           </div>
         </div>
       )}
@@ -268,8 +268,8 @@ export default function ViewSwitcher({
             placeholder="New view name…"
             className="min-w-0 flex-1 bg-transparent text-caption text-text placeholder-text-muted focus:outline-none"
           />
-          <button type="submit" disabled={saving || !saveAsNewName.trim()} className="shrink-0 text-caption font-semibold text-accent hover:text-accent-hover disabled:opacity-50">Save</button>
-          <button type="button" onClick={() => { setShowSaveAsNew(false); setSaveAsNewName(""); }} className="shrink-0 text-caption text-text-muted hover:text-text">Cancel</button>
+          <button type="submit" disabled={saving || !saveAsNewName.trim()} className="shrink-0 text-small font-semibold text-accent hover:text-accent-hover disabled:opacity-50">Save</button>
+          <button type="button" onClick={() => { setShowSaveAsNew(false); setSaveAsNewName(""); }} className="shrink-0 text-small text-text-muted hover:text-text">Cancel</button>
         </form>
       )}
     </div>

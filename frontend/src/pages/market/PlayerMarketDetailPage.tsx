@@ -48,12 +48,12 @@ function DealBanner({ deal }: { deal: ActiveDealStub }) {
         <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-warning-bg text-warning-text font-bold text-caption">!</div>
         <div>
           <p className="text-body font-semibold text-warning-text">Transfer in progress</p>
-          <p className="mt-0.5 text-caption text-text-muted">
+          <p className="mt-0.5 text-small text-text-muted">
             {deal.buyer_club && deal.seller_club
               ? `${deal.seller_club.name} → ${deal.buyer_club.name} · Stage: ${deal.stage ?? "—"}`
               : "A deal for this player is currently being processed."}
           </p>
-          <p className="mt-1 text-caption text-text-muted">
+          <p className="mt-1 text-small text-text-muted">
             New offers and sale listings are not permitted while a deal is active.
           </p>
         </div>
@@ -67,7 +67,7 @@ function DealBanner({ deal }: { deal: ActiveDealStub }) {
       <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success-bg text-success-text font-bold text-caption">✓</div>
       <div>
         <p className="text-body font-semibold text-success-text">Recently transferred</p>
-        <p className="mt-0.5 text-caption text-text-muted">
+        <p className="mt-0.5 text-small text-text-muted">
           {deal.buyer_club && deal.seller_club
             ? `${deal.buyer_club.name} signed this player from ${deal.seller_club.name}`
             : "This player was recently transferred."}
@@ -213,7 +213,7 @@ function AgentRepresentationCard({ playerId }: { playerId: string }) {
                 ) : (
                   <>Represented by <span className="font-semibold text-text">{m.agent_name}</span> ({m.agency_name})</>
                 )}
-                <span className="block text-caption text-text-muted">
+                <span className="block text-small text-text-muted">
                   {m.exclusive ? "Exclusive mandate" : "Non-exclusive"}
                   {m.end_date && ` · until ${new Date(m.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`}
                   {m.territory && ` · ${m.territory}`}
@@ -222,7 +222,7 @@ function AgentRepresentationCard({ playerId }: { playerId: string }) {
               {m.is_mine && (
                 <button
                   onClick={() => handleRevoke(m.id)}
-                  className="shrink-0 text-caption text-danger-text hover:text-danger-text-alt transition-colors"
+                  className="shrink-0 text-small text-danger-text hover:text-danger-text-alt transition-colors"
                 >
                   Revoke
                 </button>
@@ -233,7 +233,7 @@ function AgentRepresentationCard({ playerId }: { playerId: string }) {
       )}
 
       {mandates.some((m) => m.is_mine) ? null : mandates.some((m) => m.exclusive && !m.is_mine) ? (
-        <p className="text-caption text-text-muted">
+        <p className="text-small text-text-muted">
           Another agent holds an exclusive mandate, so you can&rsquo;t represent him while it runs.
         </p>
       ) : success ? (
@@ -258,16 +258,16 @@ function AgentRepresentationCard({ playerId }: { playerId: string }) {
           </label>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <p className="text-caption text-text-muted mb-1">Start date</p>
+              <p className="text-small text-text-muted mb-1">Start date</p>
               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={INPUT} />
             </div>
             <div>
-              <p className="text-caption text-text-muted mb-1">End date</p>
+              <p className="text-small text-text-muted mb-1">End date</p>
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={INPUT} />
             </div>
           </div>
           <div>
-            <p className="text-caption text-text-muted mb-1">Territory (optional)</p>
+            <p className="text-small text-text-muted mb-1">Territory (optional)</p>
             <input
               type="text"
               value={territory}
@@ -299,21 +299,21 @@ function OffersPanel({ book, onOpen }: { book: OrderBook; onOpen: () => void }) 
     <div className="rounded-xl bg-surface px-3.5 py-3 ring-1 ring-border">
       <div className="mb-1 flex items-center justify-between">
         <p className="text-body font-semibold text-text">Offers</p>
-        <button onClick={onOpen} className="text-caption font-semibold text-accent hover:underline">Open inbox →</button>
+        <button onClick={onOpen} className="text-small font-semibold text-accent hover:underline">Open inbox →</button>
       </div>
       {active.length === 0 ? (
-        <p className="text-caption text-text-muted">No active offers.</p>
+        <p className="text-small text-text-muted">No active offers.</p>
       ) : (
         <ul>
           {active.map((e) => {
             const loan = e.deal_type === "LOAN";
             const fee = loan ? e.loan_fee : e.fee_amount;
             return (
-              <li key={e.id} className="flex items-center justify-between gap-2 border-t border-rule-faint py-1.5 text-caption first:border-t-0">
+              <li key={e.id} className="flex items-center justify-between gap-2 border-t border-rule-faint py-1.5 text-small first:border-t-0">
                 {/* An anonymous buyer arrives already masked from the server. */}
                 <span className="min-w-0 truncate text-text-secondary">{e.club?.name ?? "An undisclosed club"}</span>
                 <span className="shrink-0 font-bold tabular-nums text-text">
-                  {fee != null ? formatCompact(fee) : "—"}{loan && <span className="ml-1 text-caption font-normal text-text-muted">loan</span>}
+                  {fee != null ? formatCompact(fee) : "—"}{loan && <span className="ml-1 text-small font-normal text-text-muted">loan</span>}
                 </span>
               </li>
             );
@@ -645,7 +645,7 @@ export default function PlayerMarketDetailPage() {
               )}
             </div>
             {metaItems.length > 0 && (
-              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-text-secondary">
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-text-secondary">
                 {metaItems.map((m, i) => (
                   <span key={i} className="flex items-center gap-2">{i > 0 && <span aria-hidden="true" className="text-text-muted">·</span>}{m}</span>
                 ))}
@@ -655,7 +655,7 @@ export default function PlayerMarketDetailPage() {
                 goes to: the club shown above holds his registration, but
                 the parent club owns him and is the one who can sell. */}
             {player.active_loan && (
-              <p className="text-caption text-accent">
+              <p className="text-small text-accent">
                 On loan at {player.active_loan.loanee_club?.name ?? "another club"} until{" "}
                 {new Date(player.active_loan.end_date).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
                 {player.active_loan.parent_club?.name && (

@@ -104,7 +104,7 @@ export default function DealStructureFields({
       <div>
         <p className="mb-1.5 text-caption font-semibold text-text-secondary">Payment</p>
         {value.instalments.length === 0 ? (
-          <p className="text-caption text-text-muted">The whole fee is paid on completion.</p>
+          <p className="text-small text-text-muted">The whole fee is paid on completion.</p>
         ) : (
           <div className="space-y-2">
             {value.instalments.map((row, i) => (
@@ -137,7 +137,7 @@ export default function DealStructureFields({
                 </button>
               </div>
             ))}
-            <p className="text-caption text-text-muted">
+            <p className="text-small text-text-muted">
               {formatCurrency(scheduled)} of {fee != null ? formatCurrency(fee) : "the fee"} scheduled
             </p>
           </div>
@@ -145,7 +145,7 @@ export default function DealStructureFields({
         <button
           type="button"
           onClick={() => set({ instalments: [...value.instalments, { due_date: "", amount: "" }] })}
-          className="mt-2 text-caption font-semibold text-accent hover:underline"
+          className="mt-2 text-small font-semibold text-accent hover:underline"
         >
           {value.instalments.length === 0 ? "Pay in instalments" : "+ Add a payment"}
         </button>
@@ -155,7 +155,7 @@ export default function DealStructureFields({
       <div>
         <p className="mb-1.5 text-caption font-semibold text-text-secondary">Add-ons</p>
         {value.clauses.length === 0 && (
-          <p className="text-caption text-text-muted">None. Add-ons are paid only if their trigger is met.</p>
+          <p className="text-small text-text-muted">None. Add-ons are paid only if their trigger is met.</p>
         )}
         <div className="space-y-3">
           {value.clauses.map((c, i) => {
@@ -212,7 +212,7 @@ export default function DealStructureFields({
           onClick={() => set({
             clauses: [...value.clauses, { clause_type: "APPEARANCES", trigger_description: "", amount: "", cap: "" }],
           })}
-          className="mt-2 text-caption font-semibold text-accent hover:underline"
+          className="mt-2 text-small font-semibold text-accent hover:underline"
         >
           + Add an add-on
         </button>
@@ -236,7 +236,7 @@ export default function DealStructureFields({
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-small text-text-muted">%</span>
         </div>
-        <p className="mt-1 text-caption text-text-muted">
+        <p className="mt-1 text-small text-text-muted">
           The share of a future fee his current club receives if you sell him on.
         </p>
       </div>

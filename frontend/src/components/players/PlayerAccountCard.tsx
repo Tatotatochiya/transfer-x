@@ -119,7 +119,7 @@ export default function PlayerAccountCard({
           </p>
           {link && (
             <div className="rounded-lg bg-accent-bg px-3 py-2 ring-1 ring-accent-ring">
-              <p className="text-caption text-text-secondary">
+              <p className="text-small text-text-secondary">
                 Shown once — also emailed to him. Share it only with the player.
               </p>
               <div className="mt-1.5 flex items-center gap-2">
@@ -167,7 +167,7 @@ export default function PlayerAccountCard({
               </Button>
             </form>
           )}
-          {invite.isError && <p className="text-caption text-danger-text">{getApiError(invite.error, "Could not send the invitation.")}</p>}
+          {invite.isError && <p className="text-small text-danger-text">{getApiError(invite.error, "Could not send the invitation.")}</p>}
         </div>
       )}
     </Card>

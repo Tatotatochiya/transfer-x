@@ -183,10 +183,10 @@ export default function GlobalSearch() {
               )}
               <div className="mt-2 flex items-center gap-3">
                 {/* Tables, follow-ups and export live on the Ask page. */}
-                <button onClick={() => go(`/ask?q=${encodeURIComponent(debouncedQ)}`)} className="text-caption font-semibold text-accent hover:underline">
+                <button onClick={() => go(`/ask?q=${encodeURIComponent(debouncedQ)}`)} className="text-small font-semibold text-accent hover:underline">
                   Open in Ask TransferX →
                 </button>
-                <button onClick={() => ask.reset()} className="text-caption text-text-muted hover:text-text">Ask something else</button>
+                <button onClick={() => ask.reset()} className="text-small text-text-muted hover:text-text">Ask something else</button>
               </div>
             </div>
           )}
@@ -212,7 +212,7 @@ export default function GlobalSearch() {
                   <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-8 w-8 text-caption" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-body font-medium text-text">{p.name}</p>
-                    <p className="text-caption text-text-muted truncate">
+                    <p className="text-small text-text-muted truncate">
                       {p.current_club?.name ?? p.world_team?.name ?? p.team_name ?? "Free Agent"}
                     </p>
                   </div>
@@ -239,7 +239,7 @@ export default function GlobalSearch() {
                   <FallbackImage src={c.crest_url} name={c.name} kind="club" sizeClass="h-8 w-8 text-small" colorClass="bg-surface-inset text-text-muted" />
                   <div className="min-w-0">
                     <p className="truncate text-body font-medium text-text">{c.name}</p>
-                    <p className="text-caption text-text-muted truncate">
+                    <p className="text-small text-text-muted truncate">
                       {[c.league_name, c.country].filter(Boolean).join(" · ")}
                     </p>
                   </div>

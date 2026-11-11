@@ -29,9 +29,9 @@ function AssessmentRow({ a }: { a: ShortlistPlayerAssessment }) {
               fills gap
             </span>
           )}
-          <span className="text-caption text-text-muted">{p.label}</span>
+          <span className="text-small text-text-muted">{p.label}</span>
         </div>
-        <p className="mt-0.5 text-caption text-text-muted leading-snug">{a.reason}</p>
+        <p className="mt-0.5 text-small text-text-muted leading-snug">{a.reason}</p>
       </div>
     </li>
   );
@@ -54,7 +54,7 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
       <div className="mb-6 flex items-center justify-between rounded-xl bg-surface px-4 py-3 ring-1 ring-ai-ring">
         <div>
           <p className="text-body font-semibold text-text">✦ AI Shortlist Review</p>
-          <p className="text-caption text-text-muted">Get an AI assessment of your {itemCount} scouted player{itemCount !== 1 ? "s" : ""}</p>
+          <p className="text-small text-text-muted">Get an AI assessment of your {itemCount} scouted player{itemCount !== 1 ? "s" : ""}</p>
         </div>
         <button
           onClick={() => setEnabled(true)}
@@ -75,7 +75,7 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
           {data && !isFetching && (
             <button
               onClick={() => { setForceRefresh(true); setEnabled(true); }}
-              className="text-caption text-text-muted hover:text-text-secondary transition-colors"
+              className="text-small text-text-muted hover:text-text-secondary transition-colors"
             >
               Refresh
             </button>
@@ -96,7 +96,7 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
       )}
 
       {error && !isFetching && (
-        <p className="px-4 py-3 text-caption text-danger-text">
+        <p className="px-4 py-3 text-small text-danger-text">
           {(error as { response?: { data?: { detail?: string } } }).response?.data?.detail ??
             "Review failed. Please try again."}
         </p>
@@ -106,7 +106,7 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
         <div className="divide-y divide-rule-faint">
           {/* Summary */}
           <div className="px-4 py-3">
-            <p className="text-caption leading-relaxed text-text-muted">{data.summary}</p>
+            <p className="text-small leading-relaxed text-text-muted">{data.summary}</p>
           </div>
 
           {/* Top picks + missing positions */}

@@ -89,7 +89,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   placeholder={pending.options.placeholder ?? "Recorded in the audit log"}
                   className="w-full resize-none rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-inset ring-input-border focus:outline-none focus:ring-accent"
                 />
-                <span className="mt-1 block text-caption text-text-muted">Recorded in the audit log, with your name.</span>
+                <span className="mt-1 block text-small text-text-muted">Recorded in the audit log, with your name.</span>
               </label>
             )}
             <div className="mt-5 flex justify-end gap-3">

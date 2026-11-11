@@ -141,7 +141,7 @@ export default function SellerOrderBook({ saleId, playerId, isOpen, selectedId }
                 {entry.status}
               </span>
               {isOpen && (
-                <span className="text-caption text-text-muted group-hover:text-text-secondary transition-colors">
+                <span className="text-small text-text-muted group-hover:text-text-secondary transition-colors">
                   View →
                 </span>
               )}
@@ -166,7 +166,7 @@ export default function SellerOrderBook({ saleId, playerId, isOpen, selectedId }
                     <div className="h-5 w-5 rounded bg-surface-inset flex items-center justify-center shrink-0 text-caption font-bold text-text-muted">
                       {entry.club?.name?.[0]?.toUpperCase() ?? "?"}
                     </div>
-                    <span className="truncate text-caption text-text-muted">{entry.club?.name ?? "Unknown"}</span>
+                    <span className="truncate text-small text-text-muted">{entry.club?.name ?? "Unknown"}</span>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-caption text-text-muted tabular-nums">

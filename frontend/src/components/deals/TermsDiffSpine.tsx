@@ -103,7 +103,7 @@ export default function TermsDiffSpine({ dealId, isBuyer }: { dealId: string; is
         <p className="text-body font-bold text-text">
           Terms — version {latest.version_number} proposed by {latest.changed_by_label ?? "the deal"}
         </p>
-        <p className="mt-0.5 text-caption text-text-muted">
+        <p className="mt-0.5 text-small text-text-muted">
           {diff.changes.length} term{diff.changes.length === 1 ? "" : "s"} changed
           {unchangedCount > 0 && ` · ${unchangedCount} unchanged`}
           {" · sent "}{formatDate(latest.created_at)}
@@ -131,7 +131,7 @@ export default function TermsDiffSpine({ dealId, isBuyer }: { dealId: string; is
       </div>
       {netDelta !== 0 && (
         <div className="border-t border-rule px-5 py-3">
-          <p className="text-caption text-text-muted">
+          <p className="text-small text-text-muted">
             Net change against version {latest.version_number - 1}:{" "}
             <span className={netDelta < 0 ? "text-danger-text font-semibold" : "text-success-text font-semibold"}>
               {netDelta < 0 ? "−" : "+"}{formatCurrency(Math.abs(netDelta))}

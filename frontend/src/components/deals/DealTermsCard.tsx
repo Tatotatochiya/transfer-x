@@ -11,7 +11,7 @@ function Row({ label, value, note, span }: { label: string; value: ReactNode; no
       <span className="text-body text-text-secondary">{label}</span>
       <div className="min-w-0 text-right">
         <div className="text-body font-semibold text-text">{value}</div>
-        {note && <div className="mt-0.5 text-caption text-text-muted">{note}</div>}
+        {note && <div className="mt-0.5 text-small text-text-muted">{note}</div>}
       </div>
     </div>
   );
@@ -167,11 +167,11 @@ export default function DealTermsCard({
               <li key={c.id} className="flex items-center justify-between gap-3 rounded-lg bg-surface-inset px-3 py-2.5">
                 <div className="min-w-0">
                   <p className="text-body font-semibold capitalize text-text-secondary">{c.clause_type.toLowerCase()}</p>
-                  <p className="truncate text-caption text-text-muted">{c.trigger_description}</p>
+                  <p className="truncate text-small text-text-muted">{c.trigger_description}</p>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-body font-semibold text-text">{formatCurrency(c.amount)}</p>
-                  {c.cap != null && <p className="text-caption text-text-muted">cap {formatCurrency(c.cap)}</p>}
+                  {c.cap != null && <p className="text-small text-text-muted">cap {formatCurrency(c.cap)}</p>}
                 </div>
                 <span className={`shrink-0 rounded px-1.5 py-0.5 text-caption font-semibold ${
                   c.status === "PAID" ? "bg-success-bg text-success-text"

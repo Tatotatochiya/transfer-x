@@ -116,7 +116,7 @@ export default function AdminPlayerDetailPage() {
         <FallbackImage src={player.photo_url} name={player.name} sizeClass="h-12 w-12 text-section" colorClass="bg-surface-inset text-text-muted" className={player.photo_url ? "ring-1 ring-border" : ""} />
         <div>
           <h1 className="text-title-sm sm:text-title font-bold text-text">{player.name}</h1>
-          <p className="text-caption text-text-muted">ID: {player.id}</p>
+          <p className="text-small text-text-muted">ID: {player.id}</p>
         </div>
       </div>
 
@@ -232,7 +232,7 @@ export default function AdminPlayerDetailPage() {
               </div>
 
               {mutation.isError && (
-                <p className="text-caption text-danger-text">{getApiError(mutation.error, "Save failed.")}</p>
+                <p className="text-small text-danger-text">{getApiError(mutation.error, "Save failed.")}</p>
               )}
               <div className="flex gap-2">
                 <Button type="submit" variant="primary" size="sm" loading={mutation.isPending}>Save</Button>

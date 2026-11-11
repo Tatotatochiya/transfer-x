@@ -67,7 +67,7 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
             )}
           </div>
 
-          <p className="mt-0.5 truncate text-caption text-text-muted">
+          <p className="mt-0.5 truncate text-small text-text-muted">
             <ClubLink
               id={player.current_club?.id}
               worldTeamId={player.world_team?.id}
@@ -77,7 +77,7 @@ export default function PlayerCard({ player, formScore, formTrend, fairValueSign
           </p>
 
           {(player.age || player.nationality) && (
-            <p className="mt-0.5 text-caption text-text-muted truncate">
+            <p className="mt-0.5 text-small text-text-muted truncate">
               {[player.age ? `${player.age}y` : null, player.nationality]
                 .filter(Boolean)
                 .join(" · ")}

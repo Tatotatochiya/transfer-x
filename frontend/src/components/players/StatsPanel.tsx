@@ -51,8 +51,8 @@ function StatBox({
       <span className={`text-headline sm:text-title font-bold tabular-nums leading-none ${cls.value}`}>
         {value != null && value !== "" ? value : <span className="text-text-muted">—</span>}
       </span>
-      {sub && <span className="mt-0.5 text-caption text-text-muted">{sub}</span>}
-      <span className="mt-1 text-caption text-text-muted text-center leading-tight">{label}</span>
+      {sub && <span className="mt-0.5 text-small text-text-muted">{sub}</span>}
+      <span className="mt-1 text-small text-text-muted text-center leading-tight">{label}</span>
     </div>
   );
 }
@@ -131,7 +131,7 @@ function CoreGrid({ s }: { s: PlayerStats }) {
       {/* Starter / sub usage bar */}
       {s.appearances > 0 && (s.lineups != null || s.substitutes_in != null) && (
         <div className="rounded-xl bg-surface-inset px-4 py-2.5 ring-1 ring-border">
-          <div className="flex items-center justify-between text-caption text-text-muted mb-1.5">
+          <div className="flex items-center justify-between text-small text-text-muted mb-1.5">
             <span>Usage</span>
             <span className="tabular-nums">
               {s.lineups ?? 0} starts · {s.substitutes_in ?? 0} sub appearances · {s.substitutes_bench ?? 0} on bench
@@ -146,7 +146,7 @@ function CoreGrid({ s }: { s: PlayerStats }) {
             </div>
           )}
           {starterPct != null && (
-            <div className="mt-1 flex justify-between text-caption text-text-muted">
+            <div className="mt-1 flex justify-between text-small text-text-muted">
               <span>Starter {starterPct}%</span>
               <span>Sub {100 - starterPct}%</span>
             </div>
@@ -244,7 +244,7 @@ function FormBlock({ form }: { form: PlayerForm }) {
     <div className="flex items-center justify-between rounded-xl bg-surface-inset px-5 py-4 ring-1 ring-border">
       <div>
         <p className="text-caption font-semibold text-text-secondary">Form score</p>
-        <p className="mt-0.5 text-caption text-text-muted">Last {form.games_considered} games</p>
+        <p className="mt-0.5 text-small text-text-muted">Last {form.games_considered} games</p>
       </div>
       <div className="flex items-center gap-3">
         <div className="hidden sm:block w-28 overflow-hidden rounded-full bg-border h-2">
@@ -311,7 +311,7 @@ export default function StatsPanel({ stats, form }: Props) {
 
       {/* Season / team header when single record */}
       {primary && sorted.length === 1 && (
-        <div className="flex items-center justify-between text-caption text-text-muted">
+        <div className="flex items-center justify-between text-small text-text-muted">
           <div className="flex items-center gap-2">
             <span className="font-medium text-text-muted">
               {primary.league_id ? (LEAGUE_NAMES[primary.league_id] ?? primary.team_name ?? "—") : (primary.team_name ?? "—")}
@@ -331,7 +331,7 @@ export default function StatsPanel({ stats, form }: Props) {
 
       {/* Minutes */}
       {primary?.minutes != null && (
-        <p className="text-right text-caption text-text-muted">
+        <p className="text-right text-small text-text-muted">
           {primary.minutes.toLocaleString()} minutes played
         </p>
       )}

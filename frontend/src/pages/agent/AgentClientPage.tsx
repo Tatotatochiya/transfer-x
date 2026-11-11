@@ -180,7 +180,7 @@ export default function AgentClientPage() {
                   }`}>
                     {client.contract_expiry}
                     {daysUntilExpiry != null && daysUntilExpiry > 0 && (
-                      <span className="ml-1 text-caption text-text-muted">({daysUntilExpiry}d)</span>
+                      <span className="ml-1 text-small text-text-muted">({daysUntilExpiry}d)</span>
                     )}
                   </span>
                 </div>
@@ -189,7 +189,7 @@ export default function AgentClientPage() {
             <div className="mt-3 border-t border-rule pt-3">
               <Link
                 to={`/players/market/${client.player_id}`}
-                className="text-caption text-accent hover:underline"
+                className="text-small text-accent hover:underline"
               >
                 View market profile →
               </Link>
@@ -258,9 +258,9 @@ export default function AgentClientPage() {
                         <span className="text-caption font-semibold text-text-secondary">
                           {ALERT_TYPE_LABELS[alert.alert_type]}
                         </span>
-                        <span className="shrink-0 text-caption text-text-muted">{formatDateTime(alert.created_at)}</span>
+                        <span className="shrink-0 text-small text-text-muted">{formatDateTime(alert.created_at)}</span>
                       </div>
-                      <p className="mt-0.5 text-caption text-text-secondary">{alert.message}</p>
+                      <p className="mt-0.5 text-small text-text-secondary">{alert.message}</p>
                     </div>
                   </div>
                 ))}
@@ -393,9 +393,9 @@ export default function AgentClientPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-caption font-medium text-text-secondary">Contract expiry</p>
+                      <p className="text-small font-medium text-text-secondary">Contract expiry</p>
                       <div className="mt-1 flex items-center gap-1.5">
-                        <span className="text-caption text-text-muted">Alert within</span>
+                        <span className="text-small text-text-muted">Alert within</span>
                         <input
                           type="number"
                           min={1}
@@ -405,7 +405,7 @@ export default function AgentClientPage() {
                           onChange={(e) => { setAlertContractExpiryMonths(e.target.value); setDirty(true); }}
                           className="w-14 rounded bg-surface px-1.5 py-0.5 text-caption text-text ring-1 ring-input-border focus:outline-none focus:ring-accent disabled:opacity-50"
                         />
-                        <span className="text-caption text-text-muted">months of expiry</span>
+                        <span className="text-small text-text-muted">months of expiry</span>
                       </div>
                     </div>
                     <button
@@ -423,9 +423,9 @@ export default function AgentClientPage() {
 
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-caption font-medium text-text-secondary">Valuation change</p>
+                      <p className="text-small font-medium text-text-secondary">Valuation change</p>
                       <div className="mt-1 flex items-center gap-1.5">
-                        <span className="text-caption text-text-muted">Alert on moves over</span>
+                        <span className="text-small text-text-muted">Alert on moves over</span>
                         <input
                           type="number"
                           min={1}
@@ -435,7 +435,7 @@ export default function AgentClientPage() {
                           onChange={(e) => { setAlertValuationChangePct(e.target.value); setDirty(true); }}
                           className="w-14 rounded bg-surface px-1.5 py-0.5 text-caption text-text ring-1 ring-input-border focus:outline-none focus:ring-accent disabled:opacity-50"
                         />
-                        <span className="text-caption text-text-muted">%</span>
+                        <span className="text-small text-text-muted">%</span>
                       </div>
                     </div>
                     <button
@@ -452,7 +452,7 @@ export default function AgentClientPage() {
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-caption font-medium text-text-secondary">Club interest</p>
+                    <p className="text-small font-medium text-text-secondary">Club interest</p>
                     <button
                       type="button"
                       onClick={() => { setAlertClubInterestEnabled((v) => !v); setDirty(true); }}
@@ -479,7 +479,7 @@ export default function AgentClientPage() {
                 </Button>
               )}
               {saveMutation.isError && (
-                <p className="text-caption text-danger-text">Failed to save. Please try again.</p>
+                <p className="text-small text-danger-text">Failed to save. Please try again.</p>
               )}
             </div>
           </Card>

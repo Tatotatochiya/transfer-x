@@ -58,7 +58,7 @@ function Section({ id, title, subtitle, children }: { id?: string; title: string
     <div id={id} className="scroll-mt-20">
       <div className="mb-3">
         <h2 className="text-body font-semibold text-text">{title}</h2>
-        {subtitle && <p className="mt-0.5 text-caption text-text-muted">{subtitle}</p>}
+        {subtitle && <p className="mt-0.5 text-small text-text-muted">{subtitle}</p>}
       </div>
       {children}
     </div>
@@ -133,8 +133,8 @@ export default function AccountSettingsPage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-body font-semibold text-text">{user?.full_name ?? user?.email}</p>
-            {user?.full_name && <p className="truncate text-caption text-text-muted">{user.email}</p>}
-            <p className="mt-0.5 text-caption text-text-muted">
+            {user?.full_name && <p className="truncate text-small text-text-muted">{user.email}</p>}
+            <p className="mt-0.5 text-small text-text-muted">
               Member since{" "}
               {user?.created_at
                 ? new Date(user.created_at).toLocaleDateString("en-GB", {
@@ -161,7 +161,7 @@ export default function AccountSettingsPage() {
             <div className="flex items-center justify-between px-5 py-4">
               <div>
                 <p className="text-body text-text">Appearance</p>
-                <p className="mt-0.5 text-caption text-text-muted">Colour scheme used across the app</p>
+                <p className="mt-0.5 text-small text-text-muted">Colour scheme used across the app</p>
               </div>
               <SegmentedControl<Theme>
                 value={theme}
@@ -176,7 +176,7 @@ export default function AccountSettingsPage() {
             <div className="flex items-center justify-between px-5 py-4">
               <div>
                 <p className="text-body text-text">Estimates in another currency</p>
-                <p className="mt-0.5 text-caption text-text-muted">
+                <p className="mt-0.5 text-small text-text-muted">
                   Amounts are agreed in pounds. Pick a currency to see an estimate next to fees, valuations and budgets.
                 </p>
               </div>
@@ -194,7 +194,7 @@ export default function AccountSettingsPage() {
             <div className="flex items-center justify-between px-5 py-4">
               <div>
                 <p className="text-body text-text">Default market view</p>
-                <p className="mt-0.5 text-caption text-text-muted">Starting layout on the player market</p>
+                <p className="mt-0.5 text-small text-text-muted">Starting layout on the player market</p>
               </div>
               <SegmentedControl<MarketView>
                 value={defaultMarketView}
@@ -209,7 +209,7 @@ export default function AccountSettingsPage() {
             <div className="flex items-center justify-between px-5 py-4">
               <div>
                 <p className="text-body text-text">Date format</p>
-                <p className="mt-0.5 text-caption text-text-muted">How timestamps appear in activity feeds</p>
+                <p className="mt-0.5 text-small text-text-muted">How timestamps appear in activity feeds</p>
               </div>
               <SegmentedControl<DateFormat>
                 value={dateFormat}
@@ -282,7 +282,7 @@ export default function AccountSettingsPage() {
                     mismatch ? "ring-danger" : "ring-input-border"
                   }`}
                 />
-                {mismatch && <p className="mt-1 text-caption text-danger-text">Passwords do not match</p>}
+                {mismatch && <p className="mt-1 text-small text-danger-text">Passwords do not match</p>}
               </div>
 
               <div className="flex items-center gap-3 pt-1">
@@ -296,12 +296,12 @@ export default function AccountSettingsPage() {
                   Update password
                 </Button>
                 {passwordMutation.isError && (
-                  <p className="text-caption text-danger-text">
+                  <p className="text-small text-danger-text">
                     {getApiError(passwordMutation.error, "Update failed.")}
                   </p>
                 )}
                 {passwordMutation.isSuccess && (
-                  <p className="text-caption text-success-text">Password updated.</p>
+                  <p className="text-small text-success-text">Password updated.</p>
                 )}
               </div>
             </form>

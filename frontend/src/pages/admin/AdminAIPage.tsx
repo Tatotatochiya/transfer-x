@@ -65,7 +65,7 @@ export default function AdminAIPage() {
               </div>
             )}
 
-            <p className="text-caption text-text-muted">{usage.note}</p>
+            <p className="text-small text-text-muted">{usage.note}</p>
           </div>
         ) : null}
       </section>
@@ -114,7 +114,7 @@ function StatCard({
 }) {
   return (
     <div className="rounded-xl bg-surface px-4 py-3 ring-1 ring-border">
-      <p className="text-caption text-text-muted">{label}</p>
+      <p className="text-small text-text-muted">{label}</p>
       <p className={`mt-1 text-headline font-bold ${highlight ? "text-ai-text" : "text-text"}`}>
         {value}
       </p>
@@ -168,7 +168,7 @@ function PromptRow({
             <button
               onClick={handleReset}
               disabled={saving}
-              className="text-caption text-text-muted hover:text-danger-text transition-colors"
+              className="text-small text-text-muted hover:text-danger-text transition-colors"
             >
               Reset
             </button>
@@ -179,7 +179,7 @@ function PromptRow({
               setDraft(prompt.content);
               setEditing(false);
             }}
-            className="text-caption text-text-muted hover:text-text-secondary transition-colors"
+            className="text-small text-text-muted hover:text-text-secondary transition-colors"
           >
             {expanded ? "Hide" : "Edit"}
           </button>
@@ -205,7 +205,7 @@ function PromptRow({
               </button>
               <button
                 onClick={() => { setDraft(prompt.content); setEditing(false); }}
-                className="text-caption text-text-muted hover:text-text-secondary transition-colors"
+                className="text-small text-text-muted hover:text-text-secondary transition-colors"
               >
                 Cancel
               </button>
@@ -268,7 +268,7 @@ function SuggestionsSection() {
               ))}
             </tbody>
           </table>
-          <p className="border-t border-rule-faint px-4 py-2 text-caption text-text-muted">
+          <p className="border-t border-rule-faint px-4 py-2 text-small text-text-muted">
             Shown once per person, feature and subject a day. A draft counts as used when the message sent is mostly the draft.
             Verdict: under 30 shown is not enough to judge; then 25% used or more is Keep, 10–24% Review, under 10% Consider removing.
           </p>
@@ -295,7 +295,7 @@ function AskQuestionsSection() {
     <section>
       <h2 className="mb-1 text-section font-bold text-text">Questions Ask couldn&rsquo;t answer</h2>
       {data && (
-        <p className="mb-3 text-caption text-text-muted">
+        <p className="mb-3 text-small text-text-muted">
           {data.fallbacks} of {data.total} questions so far. They show what to build next.
         </p>
       )}
@@ -308,7 +308,7 @@ function AskQuestionsSection() {
           {data.questions.map((q, i) => (
             <li key={i} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-body">
               <span className="text-text">{q.question}</span>
-              <span className="text-caption text-text-muted">
+              <span className="text-small text-text-muted">
                 {q.lite ? "Lite" : "Full app"} · {q.input === "voice" ? "spoken" : "typed"} · {new Date(q.created_at).toLocaleDateString("en-GB")}
               </span>
             </li>

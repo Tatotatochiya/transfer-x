@@ -83,7 +83,7 @@ export function SeasonLedger({
                 } ${open ? "bg-surface-inset" : ""}`}
               >
                 <span className="flex items-center gap-1.5 font-semibold tabular-nums">
-                  <span className="w-2 text-caption text-text-muted" aria-hidden="true">{canExpand ? (open ? "▾" : "▸") : ""}</span>
+                  <span className="w-2 text-small text-text-muted" aria-hidden="true">{canExpand ? (open ? "▾" : "▸") : ""}</span>
                   {row.season}
                 </span>
                 <span className="min-w-0">{row.club}</span>
@@ -92,7 +92,7 @@ export function SeasonLedger({
               {open && (
                 <div className="border-b border-rule-faint bg-surface-inset/60 py-0.5 pb-1.5">
                   {row.sub!.map((s) => (
-                    <div key={s.id} style={grid} className="grid items-center gap-x-2 px-2.5 py-1 text-caption text-text-secondary">
+                    <div key={s.id} style={grid} className="grid items-center gap-x-2 px-2.5 py-1 text-small text-text-secondary">
                       <span className="pl-3.5 tabular-nums">{s.season ?? ""}</span>
                       <span className="min-w-0 truncate">{s.club}</span>
                       {s.cells.map((c, i) => <span key={i} className="text-right tabular-nums">{c}</span>)}

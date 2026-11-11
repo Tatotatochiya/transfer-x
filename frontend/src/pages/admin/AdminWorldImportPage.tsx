@@ -91,7 +91,7 @@ function ImportPanel({
           Import as Club
         </Button>
         {importClub.isError && (
-          <p className="text-caption text-danger-text">{getApiError(importClub.error, "Import failed.")}</p>
+          <p className="text-small text-danger-text">{getApiError(importClub.error, "Import failed.")}</p>
         )}
       </div>
     </form>
@@ -128,7 +128,7 @@ function SquadImportRow({
         </p>
         <button
           onClick={() => navigate(`/admin/clubs/${club.id}`)}
-          className="mt-1 text-caption text-success-text-alt hover:text-success-text transition-colors"
+          className="mt-1 text-small text-success-text-alt hover:text-success-text transition-colors"
         >
           View club →
         </button>
@@ -143,7 +143,7 @@ function SquadImportRow({
           <p className="text-body font-medium text-text">
             Club created: <span className="text-success-text">{club.name}</span>
           </p>
-          <p className="mt-0.5 text-caption text-text-muted">
+          <p className="mt-0.5 text-small text-text-muted">
             Optionally bulk-assign this team's players to the new club
           </p>
         </div>
@@ -158,14 +158,14 @@ function SquadImportRow({
           </Button>
           <button
             onClick={() => navigate(`/admin/clubs/${club.id}`)}
-            className="text-caption text-text-muted hover:text-text transition-colors"
+            className="text-small text-text-muted hover:text-text transition-colors"
           >
             Skip →
           </button>
         </div>
       </div>
       {importSquad.isError && (
-        <p className="mt-2 text-caption text-danger-text">{getApiError(importSquad.error, "Import failed.")}</p>
+        <p className="mt-2 text-small text-danger-text">{getApiError(importSquad.error, "Import failed.")}</p>
       )}
     </div>
   );
@@ -237,7 +237,7 @@ export default function AdminWorldImportPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="font-medium text-text truncate">{team.name}</p>
-                      <p className="text-caption text-text-muted truncate">
+                      <p className="text-small text-text-muted truncate">
                         {[team.league_name, team.country].filter(Boolean).join(" · ") || "—"}
                       </p>
                     </div>
@@ -269,7 +269,7 @@ export default function AdminWorldImportPage() {
                 </div>
                 <div>
                   <p className="font-semibold text-text">{selected.name}</p>
-                  <p className="text-caption text-text-muted">
+                  <p className="text-small text-text-muted">
                     {[selected.league_name, selected.country].filter(Boolean).join(" · ") || "—"}
                   </p>
                 </div>

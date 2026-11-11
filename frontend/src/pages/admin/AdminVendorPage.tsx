@@ -167,7 +167,7 @@ export default function AdminVendorPage() {
           <p className="text-caption font-semibold text-text-secondary">Sync status</p>
           <button
             onClick={() => refetchStates()}
-            className="text-caption text-text-muted hover:text-text transition-colors"
+            className="text-small text-text-muted hover:text-text transition-colors"
           >
             Refresh
           </button>
@@ -182,16 +182,16 @@ export default function AdminVendorPage() {
               <div key={s.vendor} className="flex items-center justify-between rounded-lg bg-surface-inset px-3 py-2">
                 <div>
                   <span className="text-body font-medium text-text">{s.vendor}</span>
-                  <span className={`ml-3 text-caption font-medium ${s.last_success ? "text-success-text" : s.last_success === false ? "text-danger-text" : "text-text-muted"}`}>
+                  <span className={`ml-3 text-small font-medium ${s.last_success ? "text-success-text" : s.last_success === false ? "text-danger-text" : "text-text-muted"}`}>
                     {s.last_success === true ? "OK" : s.last_success === false ? "FAILED" : "Never synced"}
                   </span>
                 </div>
                 <div className="text-right">
-                  <p className="text-caption text-text-muted">
+                  <p className="text-small text-text-muted">
                     {s.last_synced_at ? formatDate(s.last_synced_at) : "—"}
                   </p>
                   {s.last_error && (
-                    <p className="text-caption text-danger-text truncate max-w-xs" title={s.last_error}>
+                    <p className="text-small text-danger-text truncate max-w-xs" title={s.last_error}>
                       {s.last_error}
                     </p>
                   )}
@@ -208,7 +208,7 @@ export default function AdminVendorPage() {
           <p className="text-caption font-semibold text-text-secondary">Recent syncs</p>
           <button
             onClick={() => refetchRuns()}
-            className="text-caption text-text-muted hover:text-text transition-colors"
+            className="text-small text-text-muted hover:text-text transition-colors"
           >
             Refresh
           </button>
@@ -231,17 +231,17 @@ export default function AdminVendorPage() {
                       {run.success ? "OK" : "FAILED"}
                     </span>
                     <span className="text-body font-medium text-text shrink-0">{formatOperation(run.operation)}</span>
-                    <span className="text-caption text-text-muted truncate">{formatParams(run.operation, run.params)}</span>
+                    <span className="text-small text-text-muted truncate">{formatParams(run.operation, run.params)}</span>
                   </div>
                   <div className="flex max-w-full flex-wrap items-center justify-end gap-x-3 gap-y-0.5 text-right">
-                    <span className="text-caption text-text-muted">{formatResult(run.operation, run.result)}</span>
-                    <span className="text-caption text-text-muted">{formatDuration(run.duration_ms)}</span>
-                    <span className="text-caption text-text-muted">{formatDate(run.started_at)}</span>
+                    <span className="text-small text-text-muted">{formatResult(run.operation, run.result)}</span>
+                    <span className="text-small text-text-muted">{formatDuration(run.duration_ms)}</span>
+                    <span className="text-small text-text-muted">{formatDate(run.started_at)}</span>
                   </div>
                 </button>
                 {expandedRunId === run.id && (
                   <div className="ml-3 mt-1 mb-2 rounded-lg bg-surface-inset px-4 py-3 ring-1 ring-border">
-                    <p className="text-caption text-text-muted">
+                    <p className="text-small text-text-muted">
                       Triggered by {run.triggered_by_email ?? "unknown"} · started {formatDate(run.started_at)} · took {formatDuration(run.duration_ms)}
                     </p>
                     {run.params && (
@@ -259,7 +259,7 @@ export default function AdminVendorPage() {
                     {run.error && (
                       <>
                         <p className="mb-1 mt-3 text-caption font-semibold text-danger-text">Error</p>
-                        <p className="whitespace-pre-wrap break-words text-caption text-danger-text">{run.error}</p>
+                        <p className="whitespace-pre-wrap break-words text-small text-danger-text">{run.error}</p>
                       </>
                     )}
                   </div>
@@ -276,7 +276,7 @@ export default function AdminVendorPage() {
           <p className="mb-4 text-caption font-semibold text-text-secondary">
             Sync league
           </p>
-          <p className="mb-4 text-caption text-text-muted">
+          <p className="mb-4 text-small text-text-muted">
             Fetches all teams + players for a league/season from API-Football. Can take several minutes on large leagues.
           </p>
           <form
@@ -321,7 +321,7 @@ export default function AdminVendorPage() {
               />
             </div>
             {leagueMutation.isError && (
-              <p className="text-caption text-danger-text">{getApiError(leagueMutation.error, "Sync failed.")}</p>
+              <p className="text-small text-danger-text">{getApiError(leagueMutation.error, "Sync failed.")}</p>
             )}
             <Button type="submit" variant="primary" size="sm" loading={leagueMutation.isPending}>
               Run League Sync
@@ -335,7 +335,7 @@ export default function AdminVendorPage() {
           <p className="mb-4 text-caption font-semibold text-text-secondary">
             Sync team
           </p>
-          <p className="mb-4 text-caption text-text-muted">
+          <p className="mb-4 text-small text-text-muted">
             Fetches stats for all players of a single team. Faster than a full league sync.
           </p>
           <form
@@ -370,7 +370,7 @@ export default function AdminVendorPage() {
               />
             </div>
             {teamMutation.isError && (
-              <p className="text-caption text-danger-text">{getApiError(teamMutation.error, "Sync failed.")}</p>
+              <p className="text-small text-danger-text">{getApiError(teamMutation.error, "Sync failed.")}</p>
             )}
             <Button type="submit" variant="primary" size="sm" loading={teamMutation.isPending}>
               Run Team Sync
@@ -384,7 +384,7 @@ export default function AdminVendorPage() {
           <p className="mb-4 text-caption font-semibold text-text-secondary">
             Compute player form
           </p>
-          <p className="mb-4 text-caption text-text-muted">
+          <p className="mb-4 text-small text-text-muted">
             Recalculates form scores for all players based on existing stats snapshots. No API calls made.
           </p>
           <form
@@ -418,7 +418,7 @@ export default function AdminVendorPage() {
               />
             </div>
             {formMutation.isError && (
-              <p className="text-caption text-danger-text">{getApiError(formMutation.error, "Compute failed.")}</p>
+              <p className="text-small text-danger-text">{getApiError(formMutation.error, "Compute failed.")}</p>
             )}
             <Button type="submit" variant="primary" size="sm" loading={formMutation.isPending}>
               Compute Form

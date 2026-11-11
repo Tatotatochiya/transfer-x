@@ -52,7 +52,7 @@ export default function SessionsCard() {
                 {s.device}
                 {s.current && <Badge variant="success" className="ml-2">This device</Badge>}
               </p>
-              <p className="mt-0.5 text-caption text-text-muted">
+              <p className="mt-0.5 text-small text-text-muted">
                 Signed in {formatDateTime(s.signed_in_at)} · last used {formatDateTime(s.last_used_at)}
               </p>
             </div>

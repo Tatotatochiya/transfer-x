@@ -24,7 +24,7 @@ function StatCard({
     >
       <p className="text-caption font-semibold text-text-secondary">{label}</p>
       <p className={`mt-2 text-display-sm sm:text-display font-bold ${accent}`}>{value.toLocaleString()}</p>
-      {sub && <p className="mt-1 text-caption text-text-muted">{sub}</p>}
+      {sub && <p className="mt-1 text-small text-text-muted">{sub}</p>}
     </div>
   );
 }
@@ -87,7 +87,7 @@ function PipelineBar({ byStage }: { byStage: Record<string, number> }) {
           return (
             <div key={key} className="flex-1">
               <div className="mb-1.5 flex items-end justify-between">
-                <span className="text-caption text-text-muted">{label}</span>
+                <span className="text-small text-text-muted">{label}</span>
                 <span className="text-section font-bold text-text">{count}</span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-border">
@@ -151,11 +151,11 @@ function NeedsAttentionPanel({ byStage }: { byStage: Record<string, number> }) {
               <p className="text-body text-text">
                 {confirmedCount} deal{confirmedCount !== 1 ? "s" : ""} ready to execute
               </p>
-              <p className="mt-0.5 text-caption text-text-muted">Waiting for final transfer execution</p>
+              <p className="mt-0.5 text-small text-text-muted">Waiting for final transfer execution</p>
             </div>
             <button
               onClick={() => navigate("/admin/deals")}
-              className="text-caption text-success-text hover:text-success-text-alt transition-colors"
+              className="text-small text-success-text hover:text-success-text-alt transition-colors"
             >
               View →
             </button>
@@ -170,13 +170,13 @@ function NeedsAttentionPanel({ byStage }: { byStage: Record<string, number> }) {
                   {d.player?.name ?? "Unknown"} — stuck in{" "}
                   <span className="text-warning-text">{d.stage}</span>
                 </p>
-                <p className="mt-0.5 text-caption text-text-muted">
+                <p className="mt-0.5 text-small text-text-muted">
                   {d.buyer_club?.name ?? "?"} ↔ {d.seller_club?.name ?? "?"} · {ageDays}d without update
                 </p>
               </div>
               <Link
                 to={`/deals/${d.id}`}
-                className="text-caption text-accent hover:text-accent-hover transition-colors"
+                className="text-small text-accent hover:text-accent-hover transition-colors"
               >
                 Open →
               </Link>
@@ -215,7 +215,7 @@ function ActivityFeed() {
     <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
       <div className="border-b border-rule px-6 py-3">
         <p className="text-body font-semibold text-text">Recent Activity</p>
-        <p className="mt-0.5 text-caption text-text-muted">Last 30 days</p>
+        <p className="mt-0.5 text-small text-text-muted">Last 30 days</p>
       </div>
       {isLoading ? (
         <div className="flex justify-center py-8"><Spinner /></div>
@@ -233,7 +233,7 @@ function ActivityFeed() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-body text-text-secondary">{item.message}</p>
-                  <p className="mt-0.5 text-caption text-text-muted">{formatDateTime(item.occurred_at)}</p>
+                  <p className="mt-0.5 text-small text-text-muted">{formatDateTime(item.occurred_at)}</p>
                 </div>
               </div>
             );
@@ -280,7 +280,7 @@ function BroadcastPanel() {
       >
         <div>
           <p className="text-body font-semibold text-text">Broadcast Notification</p>
-          <p className="mt-0.5 text-caption text-text-muted">Send a system message to all active users</p>
+          <p className="mt-0.5 text-small text-text-muted">Send a system message to all active users</p>
         </div>
         <span className="text-text-muted text-small">{open ? "▲" : "▼"}</span>
       </button>
@@ -331,12 +331,12 @@ function BroadcastPanel() {
                 Send to all users
               </Button>
               {mutation.isSuccess && (
-                <p className="text-caption text-success-text">
+                <p className="text-small text-success-text">
                   Sent to {(mutation.data as { recipients: number }).recipients} users.
                 </p>
               )}
               {mutation.isError && (
-                <p className="text-caption text-danger-text">{getApiError(mutation.error, "Failed to send.")}</p>
+                <p className="text-small text-danger-text">{getApiError(mutation.error, "Failed to send.")}</p>
               )}
             </div>
           </form>

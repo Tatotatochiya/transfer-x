@@ -45,7 +45,7 @@ function CopyUuid({ id }: { id: string }) {
     <button
       onClick={copy}
       title={id}
-      className={`font-mono text-caption transition-colors ${copied ? "text-success-text" : "text-text-muted"}`}
+      className={`font-mono text-small transition-colors ${copied ? "text-success-text" : "text-text-muted"}`}
     >
       {copied ? "Copied!" : `${id.slice(0, 8)}…`}
     </button>
@@ -87,7 +87,7 @@ function ResetLinkButton({ user }: { user: AdminUser }) {
   return (
     <>
       <button onClick={start} disabled={mutation.isPending}
-        className="text-caption text-text-muted hover:text-warning-text transition-colors disabled:opacity-40">
+        className="text-small text-text-muted hover:text-warning-text transition-colors disabled:opacity-40">
         Reset link
       </button>
       {mutation.isError && <span className="ml-2 text-caption text-danger-text">{getApiError(mutation.error, "Failed")}</span>}
@@ -223,7 +223,7 @@ export default function AdminUsersPage() {
         <span className="font-medium text-text">
           {u.full_name ?? u.email}
           {u.id === me?.id && <Badge variant="warning" className="ml-2">You</Badge>}
-          {u.full_name && <span className="block text-caption font-normal text-text-muted">{u.email}</span>}
+          {u.full_name && <span className="block text-small font-normal text-text-muted">{u.email}</span>}
           {u.deleted_at && <Badge variant="neutral" className="ml-2">Account closed</Badge>}
         </span>
       ),
@@ -255,7 +255,7 @@ export default function AdminUsersPage() {
     {
       key: "active_at", header: "Last active", priority: 4,
       render: (u) => (
-        <span className="text-caption text-text-muted" title={`Joined ${formatDate(u.created_at)}`}>
+        <span className="text-small text-text-muted" title={`Joined ${formatDate(u.created_at)}`}>
           {u.last_active_at ? formatDateTime(u.last_active_at) : "Never"}
         </span>
       ),
@@ -329,12 +329,12 @@ export default function AdminUsersPage() {
                     {u.full_name ?? u.email}
                     {u.id === me?.id && <Badge variant="warning" className="ml-2">You</Badge>}
                   </span>
-                  <span className="text-caption text-text-muted">
+                  <span className="text-small text-text-muted">
                     {u.last_active_at ? `Active ${formatDateTime(u.last_active_at)}` : "Never signed in"}
                   </span>
                 </div>
                 <WhoCell user={u} />
-                <div className="flex items-center gap-4 text-caption text-text-muted">
+                <div className="flex items-center gap-4 text-small text-text-muted">
                   <label className="flex items-center gap-1.5">
                     Active
                     <ToggleSwitch
@@ -372,10 +372,10 @@ export default function AdminUsersPage() {
           />
 
           {toggleMutation.isError && (
-            <p className="mt-3 text-caption text-danger-text">{getApiError(toggleMutation.error, "Update failed.")}</p>
+            <p className="mt-3 text-small text-danger-text">{getApiError(toggleMutation.error, "Update failed.")}</p>
           )}
           {deleteMutation.isError && (
-            <p className="mt-3 text-caption text-danger-text">{getApiError(deleteMutation.error, "Delete failed.")}</p>
+            <p className="mt-3 text-small text-danger-text">{getApiError(deleteMutation.error, "Delete failed.")}</p>
           )}
 
           <Pagination page={data.page} total={data.total} pageSize={data.page_size} onChange={setPage} />

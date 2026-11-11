@@ -83,7 +83,7 @@ export default function ValuationBreakdownPopover({ signal }: { signal: FairValu
               </p>
               <DriverRows drivers={valueDrivers} />
               {signal.comparables_used != null && signal.comparables_used > 0 && (
-                <p className="mt-1.5 text-caption text-text-muted">
+                <p className="mt-1.5 text-small text-text-muted">
                   Checked against {signal.comparables_used} comparable transfers
                 </p>
               )}
@@ -105,13 +105,13 @@ export default function ValuationBreakdownPopover({ signal }: { signal: FairValu
             ))}
           </div>
 
-          <div className="mt-3 space-y-1 border-t border-rule pt-2.5 text-caption text-text-muted">
+          <div className="mt-3 space-y-1 border-t border-rule pt-2.5 text-small text-text-muted">
             <p>{ageLine(signal)}</p>
             <p>League tier {signal.league_tier}</p>
             <p>{confidenceLine(signal)}</p>
           </div>
 
-          <p className="mt-3 border-t border-rule pt-2.5 text-caption leading-relaxed text-text-muted">
+          <p className="mt-3 border-t border-rule pt-2.5 text-small leading-relaxed text-text-muted">
             Model {signal.model_version} · as of {formatDate(signal.as_of)} ·{" "}
             Model estimate — not an official valuation.
           </p>

@@ -73,7 +73,7 @@ export default function MedicalResultDialog({ open, onClose, medicalCheck, actio
                     </span>
                     <span className={selected ? "" : "text-text"}>{MEDICAL[s].choice}</span>
                   </span>
-                  <span className={`text-caption leading-snug ${selected ? "" : "text-text-muted"}`}>{MEDICAL[s].effect}</span>
+                  <span className={`text-small leading-snug ${selected ? "" : "text-text-muted"}`}>{MEDICAL[s].effect}</span>
                 </button>
               );
             })}

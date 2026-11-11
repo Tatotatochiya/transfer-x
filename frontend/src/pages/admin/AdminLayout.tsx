@@ -102,7 +102,7 @@ export default function AdminLayout() {
 
           <div className="mt-6 rounded-lg bg-warning-bg px-3 py-2 ring-1 ring-warning-ring">
             <p className="text-caption font-semibold text-warning-text">SUPERUSER MODE</p>
-            <p className="mt-0.5 text-caption text-text-muted">{user.email}</p>
+            <p className="mt-0.5 text-small text-text-muted">{user.email}</p>
           </div>
         </div>
       </aside>

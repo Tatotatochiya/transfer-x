@@ -130,10 +130,10 @@ export default function AgentNegotiationWorkspace({
               <><dt className="text-text-muted">Paid by</dt><dd className="text-text capitalize">{negotiation.commission_payer.toLowerCase()}</dd></>
             )}
             {negotiation?.additional_conditions && (
-              <><dt className="text-text-muted">Conditions</dt><dd className="text-text text-caption">{negotiation.additional_conditions}</dd></>
+              <><dt className="text-text-muted">Conditions</dt><dd className="text-text text-small">{negotiation.additional_conditions}</dd></>
             )}
             {!negotiation?.commission_pct && !negotiation?.commission_amount && (
-              <p className="text-caption text-text-muted italic">No commission terms set yet.</p>
+              <p className="text-small text-text-muted italic">No commission terms set yet.</p>
             )}
           </dl>
         )}
@@ -141,7 +141,7 @@ export default function AgentNegotiationWorkspace({
           {clubAgreed ? (
             <span className="text-caption font-semibold text-success-text">✓ Club has agreed</span>
           ) : (
-            <span className="text-caption text-text-muted">Awaiting club agreement</span>
+            <span className="text-small text-text-muted">Awaiting club agreement</span>
           )}
         </div>
         {negotiation && (

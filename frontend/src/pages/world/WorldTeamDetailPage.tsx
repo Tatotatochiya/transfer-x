@@ -109,7 +109,7 @@ function SquadStatsPanel({ players }: { players: Player[] }) {
         ].map((m) => (
           <div key={m.label} className="rounded-xl bg-surface-inset px-4 py-3 text-center">
             <p className="text-headline sm:text-title font-bold text-text tabular-nums">{m.value}</p>
-            <p className="mt-1 text-caption text-text-muted">{m.label}</p>
+            <p className="mt-1 text-small text-text-muted">{m.label}</p>
           </div>
         ))}
       </div>
@@ -329,7 +329,7 @@ export default function WorldTeamDetailPage() {
                   {claimMutation.isPending ? "Registering…" : "Register as my club"}
                 </button>
                 {claimError && (
-                  <p className="mt-1.5 text-caption text-danger-text">{claimError}</p>
+                  <p className="mt-1.5 text-small text-danger-text">{claimError}</p>
                 )}
               </div>
             )}

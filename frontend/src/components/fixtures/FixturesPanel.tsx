@@ -118,7 +118,7 @@ function FixtureRow({
   return (
     <div className="rounded-xl bg-surface-inset px-4 py-3 ring-1 ring-border hover:ring-input-border transition-all">
       {/* Meta row */}
-      <div className="mb-2 flex items-center justify-between text-caption text-text-muted">
+      <div className="mb-2 flex items-center justify-between text-small text-text-muted">
         <span>{leagueName}{fixture.round ? ` · ${fixture.round}` : ""}</span>
         <span>{dateStr}{timeStr ? ` · ${timeStr}` : ""}</span>
       </div>
@@ -155,7 +155,7 @@ function FixtureRow({
       </div>
 
       {fixture.venue_name && (
-        <p className="mt-2 text-center text-caption text-text-muted">{fixture.venue_name}</p>
+        <p className="mt-2 text-center text-small text-text-muted">{fixture.venue_name}</p>
       )}
     </div>
   );

@@ -56,7 +56,7 @@ export default function AskAboutPlayerModal({
         className="space-y-4 px-6 py-5"
         onSubmit={(e) => { e.preventDefault(); setError(null); mutation.mutate(); }}
       >
-        <p className="text-caption text-text-muted">
+        <p className="text-small text-text-muted">
           An enquiry commits you to nothing — no budget is reserved and no offer is made. When you're both ready,
           make an offer from the thread.
         </p>
@@ -75,7 +75,7 @@ export default function AskAboutPlayerModal({
             onChange={(e) => setAnonymous(e.target.checked)}
             className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
           />
-          <span className="text-caption text-text-secondary">
+          <span className="text-small text-text-secondary">
             <span className="font-semibold">Ask anonymously</span> — {ownerName} sees only your league.
           </span>
         </label>

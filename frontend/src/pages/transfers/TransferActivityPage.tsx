@@ -203,7 +203,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
     <div className="rounded-xl bg-surface px-5 py-4 ring-1 ring-border">
       <p className="text-caption font-semibold text-text-secondary">{label}</p>
       <p className="mt-1.5 text-headline sm:text-title font-bold text-text tabular-nums">{value}</p>
-      {sub && <p className="mt-0.5 text-caption text-text-muted">{sub}</p>}
+      {sub && <p className="mt-0.5 text-small text-text-muted">{sub}</p>}
     </div>
   );
 }
@@ -231,7 +231,7 @@ function TopTransferRow({ t, rank }: { t: TransferActivity; rank: number }) {
             {t.player.position}
           </Badge>
         )}
-        <div className="mt-0.5 text-caption text-text-muted flex items-center gap-1.5">
+        <div className="mt-0.5 text-small text-text-muted flex items-center gap-1.5">
           <span>{t.seller_club?.name ?? "Free Agent"}</span>
           <span>→</span>
           <span>{t.buyer_club?.name ?? "—"}</span>
@@ -326,7 +326,7 @@ function AnalyticsTab() {
               <>
                 <p className="text-body font-bold text-text">{c.most_active_buyer.club.name}</p>
                 <p className="mt-0.5 text-small text-text-muted">{c.most_active_buyer.count} purchase{c.most_active_buyer.count !== 1 ? "s" : ""}</p>
-                <p className="mt-0.5 text-caption text-text-muted">{formatCompact(c.most_active_buyer.total_spend)} spent</p>
+                <p className="mt-0.5 text-small text-text-muted">{formatCompact(c.most_active_buyer.total_spend)} spent</p>
               </>
             ) : <p className="text-small text-text-muted">No data</p>}
           </div>
@@ -338,7 +338,7 @@ function AnalyticsTab() {
               <>
                 <p className="text-body font-bold text-text">{c.most_active_seller.club.name}</p>
                 <p className="mt-0.5 text-small text-text-muted">{c.most_active_seller.count} sale{c.most_active_seller.count !== 1 ? "s" : ""}</p>
-                <p className="mt-0.5 text-caption text-text-muted">{formatCompact(c.most_active_seller.total_spend)} earned</p>
+                <p className="mt-0.5 text-small text-text-muted">{formatCompact(c.most_active_seller.total_spend)} earned</p>
               </>
             ) : <p className="text-small text-text-muted">No data</p>}
           </div>
@@ -414,7 +414,7 @@ function AnalyticsTab() {
           <div className="rounded-xl bg-surface px-5 py-4 ring-1 ring-border sm:col-span-1">
             <p className="text-caption font-semibold text-text-secondary">Active deals</p>
             <p className="mt-1.5 text-headline sm:text-title font-bold text-text tabular-nums">{o.total_count}</p>
-            <p className="mt-0.5 text-caption text-text-muted">{formatCompact(o.total_committed_fees)} in committed fees</p>
+            <p className="mt-0.5 text-small text-text-muted">{formatCompact(o.total_committed_fees)} in committed fees</p>
           </div>
           {Object.entries(o.by_stage).length === 0 ? (
             <div className="rounded-xl bg-surface-inset px-5 py-4 ring-1 ring-border sm:col-span-3 flex items-center">
@@ -430,7 +430,7 @@ function AnalyticsTab() {
                   {STAGE_LABELS[stage] ?? stage}
                 </p>
                 <p className="mt-1.5 text-headline sm:text-title font-bold tabular-nums">{count}</p>
-                <p className="mt-0.5 text-caption opacity-60">deal{count !== 1 ? "s" : ""}</p>
+                <p className="mt-0.5 text-small opacity-60">deal{count !== 1 ? "s" : ""}</p>
               </div>
             ))
           )}
@@ -442,7 +442,7 @@ function AnalyticsTab() {
         <SectionHeading>Transfer Rumors</SectionHeading>
         <div className="rounded-xl bg-surface-inset px-6 py-8 ring-1 ring-border ring-dashed text-center">
           <p className="text-body font-medium text-text-muted">Rumors coming soon</p>
-          <p className="mt-1 text-caption text-text-muted">
+          <p className="mt-1 text-small text-text-muted">
             Unconfirmed transfer links and market speculation will appear here.
           </p>
         </div>

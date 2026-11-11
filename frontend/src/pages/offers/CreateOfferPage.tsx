@@ -301,7 +301,7 @@ export default function CreateOfferPage() {
       {player && (
         <div className="mb-6 rounded-xl bg-surface px-4 py-3 ring-1 ring-border">
           <p className="text-body font-semibold text-text">{player.name}</p>
-          <p className="text-caption text-text-muted mt-0.5">
+          <p className="text-small text-text-muted mt-0.5">
             {player.position ?? "No position"} ·{" "}
             {/* Fall through the real-world club signals before concluding "free
                 agent" — a vendor-imported player has no TransferX club but is
@@ -347,7 +347,7 @@ export default function CreateOfferPage() {
                   >
                     <span className="block text-body font-semibold">{label}</span>
                     {/* The reason as text, not a tooltip — touch never shows one. */}
-                    <span className="mt-0.5 block text-caption text-text-muted">{blocked ?? hint}</span>
+                    <span className="mt-0.5 block text-small text-text-muted">{blocked ?? hint}</span>
                   </button>
                 );
               })}
@@ -379,7 +379,7 @@ export default function CreateOfferPage() {
                     onChange={(e) => setLoanEnd(e.target.value)}
                     className="w-full rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                   />
-                  <p className="mt-1 text-caption text-text-muted">
+                  <p className="mt-1 text-small text-text-muted">
                     Cannot run past his contract with his current club, or past 18 months.
                   </p>
                 </div>
@@ -399,7 +399,7 @@ export default function CreateOfferPage() {
                     className="w-full rounded-lg bg-surface pl-7 pr-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                   />
                 </div>
-                <p className="mt-1 text-caption text-text-muted">
+                <p className="mt-1 text-small text-text-muted">
                   Paid to his club for the spell. Many loans have none — the wage is the cost.
                 </p>
               </div>
@@ -425,7 +425,7 @@ export default function CreateOfferPage() {
                 {/* The wage is his contract wage, read by the server — not a
                     figure to type. A blank used to mean you paid £0. The pound
                     figure appears on the offer once it is sent. */}
-                <p className="mt-1 text-caption text-text-muted">
+                <p className="mt-1 text-small text-text-muted">
                   A share of his current contract wage. The weekly figure is shown on the offer once
                   it is sent, and is reserved from your wage budget.
                 </p>
@@ -453,7 +453,7 @@ export default function CreateOfferPage() {
                     onChange={(e) => setObligation(e.target.checked)}
                     className="mt-0.5 h-4 w-4 shrink-0 rounded accent-accent disabled:opacity-40"
                   />
-                  <span className={`text-caption ${optionToBuy ? "text-text-secondary" : "text-text-muted"}`}>
+                  <span className={`text-small ${optionToBuy ? "text-text-secondary" : "text-text-muted"}`}>
                     Make it an <span className="font-semibold">obligation</span> — you must buy him at
                     that price when the loan ends, not merely may.
                     {!optionToBuy && " Set a price first."}
@@ -472,7 +472,7 @@ export default function CreateOfferPage() {
                       placeholder="e.g. If we are promoted, or he plays 20 league games"
                       className="w-full resize-none rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                     />
-                    <p className="mt-1 text-caption text-text-muted">
+                    <p className="mt-1 text-small text-text-muted">
                       The platform cannot check these. At the end of the loan the purchase starts
                       either way, and either club can collapse it if they were not met.
                     </p>
@@ -487,7 +487,7 @@ export default function CreateOfferPage() {
                   onChange={(e) => setRecallAllowed(e.target.checked)}
                   className="mt-0.5 h-4 w-4 shrink-0 rounded accent-accent"
                 />
-                <span className="text-caption text-text-secondary">
+                <span className="text-small text-text-secondary">
                   His club may <span className="font-semibold">recall him early</span>. Without this the
                   loan runs to its end date whatever happens.
                 </span>
@@ -525,7 +525,7 @@ export default function CreateOfferPage() {
                     placeholder="e.g. We take on his full wage so you can clear it from your books"
                     className="w-full resize-none rounded-lg bg-surface px-3 py-2.5 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors"
                   />
-                  <p className="mt-1 text-caption text-text-muted">
+                  <p className="mt-1 text-small text-text-muted">
                     Sent to his club with the offer. Out of contract? Sign him from his page instead.
                   </p>
                 </div>
@@ -600,7 +600,7 @@ export default function CreateOfferPage() {
                 <span className="block text-body font-semibold text-text-secondary">
                   Approach anonymously
                 </span>
-                <span className="mt-0.5 block text-caption text-text-muted">
+                <span className="mt-0.5 block text-small text-text-muted">
                   {player?.current_club?.name ?? "The selling club"} sees only your league until
                   they accept — accepting reveals you. If they reject or it expires, you're never
                   named.

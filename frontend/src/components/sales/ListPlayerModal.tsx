@@ -186,7 +186,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
             })}
           </select>
           {players.length === 0 && !squadLoading && (
-            <p className="mt-1.5 text-caption text-text-muted">
+            <p className="mt-1.5 text-small text-text-muted">
               No players in your squad.{" "}
               <Link to="/players/market" className="text-accent hover:underline">Browse the market</Link>
             </p>
@@ -236,7 +236,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
               </button>
             )}
           </div>
-          {adviceError != null && <p className="mt-2 text-caption text-danger-text">{getApiError(adviceError, "No suggestion just now.")}</p>}
+          {adviceError != null && <p className="mt-2 text-small text-danger-text">{getApiError(adviceError, "No suggestion just now.")}</p>}
           {advice && (
             <div className="mt-2 space-y-2 text-caption leading-snug">
               {advice.guide_price != null ? (
@@ -303,7 +303,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
         {fairValue && suggested != null && (
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span
-              className="text-caption text-text-muted"
+              className="text-small text-text-muted"
               title={`${fairValue.confidence.toLowerCase()} confidence`}
             >
               Model {formatCompactCurrency(model)} · range {formatCompactCurrency(Number(fairValue.fair_value_low))}–{formatCompactCurrency(Number(fairValue.fair_value_high))}
@@ -331,7 +331,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
           min={toLocalInputValue(new Date(Date.now() + 60 * 60 * 1000))}
           className={INPUT_CLASS}
         />
-        <p className="mt-1 text-caption text-text-muted">
+        <p className="mt-1 text-small text-text-muted">
           Clubs see this date. The listing closes then, and you choose from the offers you have. Leave it
           empty to keep hearing offers until you withdraw it.
         </p>

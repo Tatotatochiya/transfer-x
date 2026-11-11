@@ -118,7 +118,7 @@ export default function ClubListPage() {
 
       {data && data.items.length > 0 && (
         <>
-          <p className="mb-4 text-caption text-text-muted">{data.total} club{data.total !== 1 ? "s" : ""}</p>
+          <p className="mb-4 text-small text-text-muted">{data.total} club{data.total !== 1 ? "s" : ""}</p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {data.items.map((club) => (
               <div
@@ -136,7 +136,7 @@ export default function ClubListPage() {
                     <Icon name="check" className="h-3.5 w-3.5 shrink-0 text-accent" />
                   )}
                 </p>
-                <p className="mt-0.5 text-caption text-text-muted truncate">
+                <p className="mt-0.5 text-small text-text-muted truncate">
                   {[club.league_name, club.country].filter(Boolean).join(" · ") || "—"}
                 </p>
               </div>

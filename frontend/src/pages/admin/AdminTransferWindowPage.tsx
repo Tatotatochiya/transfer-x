@@ -167,7 +167,7 @@ export default function AdminTransferWindowPage() {
             </Button>
           </div>
           {formError && (
-            <p className="sm:col-span-3 text-caption text-danger-text">{formError}</p>
+            <p className="sm:col-span-3 text-small text-danger-text">{formError}</p>
           )}
         </form>
       </div>
@@ -191,10 +191,10 @@ export default function AdminTransferWindowPage() {
                       {w.is_open ? "Open" : "Closed"}
                     </Badge>
                   </div>
-                  <p className="mt-0.5 text-caption text-text-muted">
+                  <p className="mt-0.5 text-small text-text-muted">
                     {formatDate(w.opens_at)} → {formatDate(w.closes_at)}
                   </p>
-                  <p className="mt-0.5 truncate text-caption text-text-muted">
+                  <p className="mt-0.5 truncate text-small text-text-muted">
                     {w.source_url
                       ? <a href={w.source_url} target="_blank" rel="noreferrer" className="underline">Source</a>
                       : "No source recorded"}
@@ -212,7 +212,7 @@ export default function AdminTransferWindowPage() {
                     if (reason) deleteMutation.mutate({ id: w.id, reason });
                   }}
                   disabled={deleteMutation.isPending}
-                  className="shrink-0 rounded px-2 py-1 text-caption text-danger-text hover:brightness-95 transition-colors disabled:opacity-40"
+                  className="shrink-0 rounded px-2 py-1 text-small text-danger-text hover:brightness-95 transition-colors disabled:opacity-40"
                 >
                   Delete
                 </button>

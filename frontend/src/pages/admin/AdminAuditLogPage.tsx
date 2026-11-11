@@ -52,7 +52,7 @@ function Details({ row }: { row: AuditRow }) {
   const { admin_action: _a, reason: _r, ...rest } = row.payload ?? {};
   const changes = rest.changes as Record<string, [unknown, unknown]> | undefined;
   return (
-    <div className="space-y-1 text-caption text-text-secondary">
+    <div className="space-y-1 text-small text-text-secondary">
       {changes && Object.entries(changes).map(([field, [from, to]]) => (
         <div key={field}>
           <span className="font-semibold text-text">{field.replace(/_/g, " ")}</span>: {String(from ?? "—")} → {String(to ?? "—")}
@@ -131,7 +131,7 @@ export default function AdminAuditLogPage() {
   const columns: ResponsiveColumn<AuditRow>[] = [
     {
       key: "when", header: "When", priority: 3,
-      render: (r) => <span className="whitespace-nowrap text-caption text-text-muted">{formatDateTime(r.created_at)}</span>,
+      render: (r) => <span className="whitespace-nowrap text-small text-text-muted">{formatDateTime(r.created_at)}</span>,
     },
     {
       key: "who", header: "Who", priority: 2,
@@ -147,7 +147,7 @@ export default function AdminAuditLogPage() {
       render: (r) => (
         <div className="min-w-0">
           <p className="text-body font-medium text-text">{r.description ?? actionLabel(r.action)}</p>
-          <p className="text-caption text-text-muted">
+          <p className="text-small text-text-muted">
             {actionLabel(r.action)}
             {r.link ? <> · <Link to={r.link} className="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>Open {r.entity_type.toLowerCase()}</Link></> : <> · {r.entity_type.toLowerCase()}</>}
           </p>
@@ -176,7 +176,7 @@ export default function AdminAuditLogPage() {
             Export to Excel
           </Button>
           {exportError && <span className="text-caption text-danger-text">{exportError}</span>}
-          {data && data.total > 50_000 && <span className="text-caption text-text-muted">Exports the newest 50,000</span>}
+          {data && data.total > 50_000 && <span className="text-small text-text-muted">Exports the newest 50,000</span>}
         </div>
       </div>
 

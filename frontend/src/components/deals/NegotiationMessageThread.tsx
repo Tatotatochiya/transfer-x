@@ -57,9 +57,9 @@ export default function NegotiationMessageThread({
 
       <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
         {isLoading ? (
-          <p className="text-caption text-text-muted">Loading…</p>
+          <p className="text-small text-text-muted">Loading…</p>
         ) : messages.length === 0 ? (
-          <p className="text-caption text-text-muted italic">No messages yet.</p>
+          <p className="text-small text-text-muted italic">No messages yet.</p>
         ) : (
           messages.map((m) => {
             const isMine = m.sender_user_id === user?.id;

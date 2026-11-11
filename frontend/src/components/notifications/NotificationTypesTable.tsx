@@ -178,7 +178,7 @@ export default function NotificationTypesTable() {
                 <div className="flex items-center justify-between gap-3 px-5 py-3">
                   <div className="min-w-0">
                     <p className="text-body font-medium text-text">Daily summary</p>
-                    <p className="text-caption text-text-muted">One email a morning with what&rsquo;s waiting on you</p>
+                    <p className="text-small text-text-muted">One email a morning with what&rsquo;s waiting on you</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-4 sm:gap-6">
                     <span className="w-9" />
@@ -206,14 +206,14 @@ export default function NotificationTypesTable() {
                     label={`${name}: ${label}`}
                     title={title}
                   />
-                  {!disabled && !all(key) && some(key) && <span className="mt-0.5 text-caption text-text-muted">some</span>}
+                  {!disabled && !all(key) && some(key) && <span className="mt-0.5 text-small text-text-muted">some</span>}
                 </div>
               );
               return (
                 <div key={tier} className="flex items-center justify-between gap-3 px-5 py-3">
                   <div className="min-w-0">
                     <p className="text-body font-medium text-text">{label}</p>
-                    <p className="text-caption text-text-muted">{hint}</p>
+                    <p className="text-small text-text-muted">{hint}</p>
                   </div>
                   <div className="flex shrink-0 items-start gap-4 sm:gap-6">
                     {cell("enabled", "In-app")}

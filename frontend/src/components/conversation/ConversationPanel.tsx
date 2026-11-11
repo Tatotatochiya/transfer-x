@@ -175,7 +175,7 @@ export default function ConversationPanel({
           .map((row) => "e" in row && row.e ? (
           <div key={`t:${row.e.id}`} className="flex items-center gap-3 py-0.5">
             <div className="h-px flex-1 bg-rule" />
-            <span className="text-caption text-text-muted">{row.e.text} · {formatDateTime(row.e.created_at)}</span>
+            <span className="text-small text-text-muted">{row.e.text} · {formatDateTime(row.e.created_at)}</span>
             <div className="h-px flex-1 bg-rule" />
           </div>
         ) : "m" in row && row.m ? ((m) => (
@@ -187,7 +187,7 @@ export default function ConversationPanel({
               } text-text`}
             >
               <p className="whitespace-pre-wrap">{m.body}</p>
-              <p className="mt-1 text-caption text-text-muted">
+              <p className="mt-1 text-small text-text-muted">
                 {m.author} · {formatDateTime(m.created_at)} · {m.context}
                 {m.audience !== "both_clubs" && <> · <span className="font-semibold">{m.audience_label}</span></>}
               </p>
@@ -212,7 +212,7 @@ export default function ConversationPanel({
           />
           {mentionable && participants.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-caption text-text-muted">Mention:</span>
+              <span className="text-small text-text-muted">Mention:</span>
               {participants.map((p) => {
                 const on = mentions.includes(p.user_id);
                 return (
@@ -243,7 +243,7 @@ export default function ConversationPanel({
                 </select>
               </label>
             ) : (
-              <span className="text-caption text-text-muted">{selected?.label} can read this</span>
+              <span className="text-small text-text-muted">{selected?.label} can read this</span>
             )}
             <Button type="submit" size="sm" className="min-h-11 lg:min-h-0" disabled={!body.trim() || send.isPending}>
               {send.isPending ? "Sending…" : "Send"}
@@ -252,7 +252,7 @@ export default function ConversationPanel({
         </form>
       ) : (
         data.can_post_to.length === 0 && (
-          <p className="border-t border-rule-faint pt-3 text-caption text-text-muted">Nothing is open on this transfer, so it can't take new messages.</p>
+          <p className="border-t border-rule-faint pt-3 text-small text-text-muted">Nothing is open on this transfer, so it can't take new messages.</p>
         )
       )}
     </div>

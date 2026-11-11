@@ -104,10 +104,10 @@ function PipelineCard({
           <p className="truncate text-body font-semibold text-text">
             {deal.player?.name ?? "Unknown"}
             {deal.player?.position && (
-              <span className="ml-1.5 text-caption font-normal text-text-muted">{deal.player.position}</span>
+              <span className="ml-1.5 text-small font-normal text-text-muted">{deal.player.position}</span>
             )}
           </p>
-          <p className="mt-0.5 text-caption text-text-muted">
+          <p className="mt-0.5 text-small text-text-muted">
             {deal.buyer_club?.name ?? "?"} ← {deal.seller_club?.name ?? "?"}
           </p>
         </div>
@@ -123,7 +123,7 @@ function PipelineCard({
         )}
       </div>
 
-      <p className="text-caption text-text-muted">{formatDate(deal.created_at)}</p>
+      <p className="text-small text-text-muted">{formatDate(deal.created_at)}</p>
 
       <div onClick={(e) => e.preventDefault()}>
         <DealActions
@@ -181,7 +181,7 @@ function PipelineView({
           </div>
           <div className="p-3 space-y-3 min-h-[200px]">
             {byStage[key].length === 0 ? (
-              <p className="py-8 text-center text-caption text-text-muted">No deals in this stage</p>
+              <p className="py-8 text-center text-small text-text-muted">No deals in this stage</p>
             ) : (
               byStage[key].map((d) => (
                 <PipelineCard
@@ -377,7 +377,7 @@ export default function AdminDealsPage() {
                         <td className="px-4 py-3 font-medium text-text">
                           {d.player?.name ?? "—"}
                           {d.player?.position && (
-                            <span className="ml-1.5 text-caption text-text-muted">{d.player.position}</span>
+                            <span className="ml-1.5 text-small text-text-muted">{d.player.position}</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-caption text-text-muted">{d.buyer_club?.name ?? "—"}</td>

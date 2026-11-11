@@ -23,7 +23,7 @@ export default function WorkingPanel({ title, linkTo, rows }: {
     <Card tier={3} noPadding>
       <div className="flex items-center justify-between border-b border-rule px-[18px] py-[15px]">
         <p className="text-body font-bold text-text">{title}</p>
-        <button onClick={() => navigate(linkTo)} className="text-caption font-semibold text-accent hover:text-accent-hover">
+        <button onClick={() => navigate(linkTo)} className="text-small font-semibold text-accent hover:text-accent-hover">
           View all →
         </button>
       </div>
@@ -35,7 +35,7 @@ export default function WorkingPanel({ title, linkTo, rows }: {
               <p className="truncate text-body font-semibold text-text">
                 {row.player ? <PlayerLink id={row.player.id} name={row.name} photoUrl={row.player.photoUrl ?? null} /> : row.name}
               </p>
-              <p className="truncate text-caption text-text-muted">{row.sub}</p>
+              <p className="truncate text-small text-text-muted">{row.sub}</p>
             </div>
             <div className="text-right shrink-0">
               <p className="text-body font-bold text-text">{row.value}</p>

@@ -227,7 +227,7 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
               {s.done ? "✓" : ""}
             </span>
             <span className={`min-w-0 flex-1 text-body ${isNext ? "font-semibold text-text" : "text-text-secondary"}`}>{s.label}</span>
-            <span className="shrink-0 text-caption text-text-muted">{s.done ? "Done" : mine ? "Your move" : "Their move"}</span>
+            <span className="shrink-0 text-small text-text-muted">{s.done ? "Done" : mine ? "Your move" : "Their move"}</span>
           </li>
         );
       })}

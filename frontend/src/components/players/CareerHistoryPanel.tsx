@@ -13,7 +13,7 @@ function TeamChip({
   crest: string | null;
   label: string;
 }) {
-  if (!name) return <span className="text-text-muted text-caption">{label}: —</span>;
+  if (!name) return <span className="text-text-muted text-small">{label}: —</span>;
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-caption text-text-secondary font-semibold">{label}</span>
@@ -39,7 +39,7 @@ function TransferRow({ t }: { t: PlayerTransfer }) {
       {/* Date */}
       <div className="text-right">
         {year && <p className="text-body font-bold text-text tabular-nums">{year}</p>}
-        {month && <p className="text-caption text-text-muted">{month}</p>}
+        {month && <p className="text-small text-text-muted">{month}</p>}
       </div>
 
       {/* Transfer detail */}
@@ -59,7 +59,7 @@ function TransferRow({ t }: { t: PlayerTransfer }) {
             <span className="text-caption font-medium text-success-text">{t.fee_display}</span>
           )}
           {!t.fee_display && !isLoan && (
-            <span className="text-caption text-text-muted">Fee undisclosed</span>
+            <span className="text-small text-text-muted">Fee undisclosed</span>
           )}
         </div>
       </div>

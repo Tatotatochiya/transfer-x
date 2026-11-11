@@ -49,11 +49,11 @@ export default function TransferWindowBanner() {
         </span>
       </div>
       {next ? (
-        <span className="text-caption text-text-muted">
+        <span className="text-small text-text-muted">
           Next: <span className="text-text">{next.name}</span> opens {formatDate(next.opens_at)}
         </span>
       ) : (
-        <span className="text-caption text-text-muted">No date set for the next one</span>
+        <span className="text-small text-text-muted">No date set for the next one</span>
       )}
     </div>
   );

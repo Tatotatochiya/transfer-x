@@ -92,7 +92,7 @@ export default function EnquiryDetailPage() {
           then any offer and deal that follow it. */}
       <div className="rounded-xl bg-surface p-5 ring-1 ring-border">
         <ConversationPanel context={{ enquiryId: e.id }} placeholder="Write a reply…" />
-        {!open && <p className="mt-3 border-t border-rule-faint pt-3 text-caption text-text-muted">This enquiry is closed.</p>}
+        {!open && <p className="mt-3 border-t border-rule-faint pt-3 text-small text-text-muted">This enquiry is closed.</p>}
       </div>
     </div>
   );

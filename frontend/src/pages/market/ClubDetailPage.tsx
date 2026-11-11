@@ -165,7 +165,7 @@ export default function ClubDetailPage() {
             )}
           </div>
           {squadData && (
-            <p className="mt-1 text-caption text-text-muted">
+            <p className="mt-1 text-small text-text-muted">
               {squadData.total} player{squadData.total !== 1 ? "s" : ""} in squad
             </p>
           )}

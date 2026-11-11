@@ -193,7 +193,7 @@ function RunDetailModal({ runId, onClose }: { runId: string; onClose: () => void
               ))}
             </dl>
           )}
-          {moved.length > 0 && <p className="text-caption text-text-secondary">New season: {moved.join(", ")}</p>}
+          {moved.length > 0 && <p className="text-small text-text-secondary">New season: {moved.join(", ")}</p>}
           {failures.length > 0 && (
             <div>
               <h3 className="mb-1 text-section font-bold text-text">Not done</h3>
@@ -208,7 +208,7 @@ function RunDetailModal({ runId, onClose }: { runId: string; onClose: () => void
                   <div key={s.id} className="flex items-center justify-between gap-3 px-3 py-1.5 text-small">
                     <span className="text-text">{s.job.replace(/^.*\./, "")}</span>
                     <span className="flex items-center gap-3">
-                      <span className="text-caption text-text-muted">{duration(s.duration_ms)}</span>
+                      <span className="text-small text-text-muted">{duration(s.duration_ms)}</span>
                       <StatusBadge status={s.status} />
                     </span>
                   </div>
@@ -219,7 +219,7 @@ function RunDetailModal({ runId, onClose }: { runId: string; onClose: () => void
           <div>
             <h3 className="mb-1 text-section font-bold text-text">Log</h3>
             {data.log_lines === 0 && data.status !== "running" ? (
-              <p className="text-caption text-text-muted">This run kept no log.</p>
+              <p className="text-small text-text-muted">This run kept no log.</p>
             ) : (
               <RunLog runId={runId} />
             )}
@@ -279,7 +279,7 @@ export default function AdminJobsPage() {
                 {overview.data.running.map((r, i) => (
                   <div key={r.id ?? `${r.job}-${i}`} className="flex items-center justify-between gap-3 px-5 py-2.5 text-small">
                     <span className="text-text">{r.label ?? r.job}</span>
-                    <span className="flex items-center gap-3 text-caption text-text-muted">
+                    <span className="flex items-center gap-3 text-small text-text-muted">
                       {r.status === "lost" ? "stopped reporting" : `for ${since(r.started_at)}`}
                       {r.id && <button type="button" onClick={() => setOpened(r.id)} className="font-semibold text-accent hover:underline">Open</button>}
                     </span>
@@ -314,7 +314,7 @@ export default function AdminJobsPage() {
                         {j.running ? <StatusBadge status="running" /> : j.last_run_at ? (
                           <span className="flex items-center gap-2" title={j.last_error ?? undefined}>
                             <StatusBadge status={j.last_status} />
-                            <span className="text-caption text-text-muted">{formatDateTime(j.last_run_at)}</span>
+                            <span className="text-small text-text-muted">{formatDateTime(j.last_run_at)}</span>
                           </span>
                         ) : <span className="text-text-muted">Not yet</span>}
                       </td>
@@ -366,7 +366,7 @@ export default function AdminJobsPage() {
                     <td className="px-4 py-2 text-text-muted">{r.trigger}</td>
                     <td className="px-4 py-2"><StatusBadge status={r.status} /></td>
                     <td className="px-4 py-2 text-right">
-                      <button type="button" onClick={() => setOpened(r.id)} className="text-caption font-semibold text-accent hover:underline">
+                      <button type="button" onClick={() => setOpened(r.id)} className="text-small font-semibold text-accent hover:underline">
                         Details
                       </button>
                     </td>
@@ -390,7 +390,7 @@ export default function AdminJobsPage() {
             <input type="checkbox" checked={withValuations} onChange={(e) => setWithValuations(e.target.checked)} />
             Also recompute valuations (normally after the 22:00 run)
           </label>
-          {refresh.isError && <p className="text-caption text-danger-text">{getApiError(refresh.error, "Couldn't start the refresh.")}</p>}
+          {refresh.isError && <p className="text-small text-danger-text">{getApiError(refresh.error, "Couldn't start the refresh.")}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" size="sm" onClick={() => setConfirmRefresh(false)}>Cancel</Button>
             <Button size="sm" loading={refresh.isPending} onClick={() => refresh.mutate()}>Start refresh</Button>

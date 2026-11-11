@@ -164,7 +164,7 @@ function PlayerRow({
     <div
       role="row"
       style={{ gridTemplateColumns: cols }}
-      className={`grid items-center gap-x-3 px-4 text-caption tabular-nums whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-rule-faint)] transition-colors duration-150 hover:bg-surface-inset ${ROW_HEIGHT[density]}`}
+      className={`grid items-center gap-x-3 px-4 text-small tabular-nums whitespace-nowrap shadow-[inset_0_-1px_0_var(--color-rule-faint)] transition-colors duration-150 hover:bg-surface-inset ${ROW_HEIGHT[density]}`}
     >
       {/* Player */}
       <div role="cell" className="flex min-w-0 items-center gap-2.5">
@@ -455,7 +455,7 @@ export default function SquadTable({
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <span className="whitespace-nowrap text-caption text-text-muted">Sorted by contract risk</span>
+          <span className="whitespace-nowrap text-small text-text-muted">Sorted by contract risk</span>
           {onDensityChange && (
             <div role="group" aria-label="Row height" className="flex rounded-lg bg-surface-inset p-0.5">
               {(["compact", "comfortable"] as const).map((d) => (
@@ -492,7 +492,7 @@ export default function SquadTable({
             <div key={g.key} role="rowgroup">
               <PositionBand label={g.label} min={g.min} total={g.total} />
               {g.players.length === 0 ? (
-                <div role="row" className={`flex items-center px-4 text-caption text-text-muted shadow-[inset_0_-1px_0_var(--color-rule-faint)] ${ROW_HEIGHT[density]}`}>
+                <div role="row" className={`flex items-center px-4 text-small text-text-muted shadow-[inset_0_-1px_0_var(--color-rule-faint)] ${ROW_HEIGHT[density]}`}>
                   {g.total === 0 ? `No ${g.label.toLowerCase()} in the squad.` : `No ${g.label.toLowerCase()} match this filter.`}
                 </div>
               ) : (

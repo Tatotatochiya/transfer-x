@@ -239,7 +239,7 @@ export default function AgentDashboardPage() {
               </p>
               <button
                 onClick={() => navigate("/agent/roster/import")}
-                className="text-caption text-text-muted hover:text-text-secondary transition-colors"
+                className="text-small text-text-muted hover:text-text-secondary transition-colors"
               >
                 + Import more
               </button>

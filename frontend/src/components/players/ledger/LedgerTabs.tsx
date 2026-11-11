@@ -87,7 +87,7 @@ export function OverviewLedger({ ledger, statSet, onStatSet }: {
             </button>
           ))}
         </div>
-        <span className="text-caption text-text-muted">Apps (starts) · per 90 where noted · tap a season for competitions</span>
+        <span className="text-small text-text-muted">Apps (starts) · per 90 where noted · tap a season for competitions</span>
       </div>
       <SeasonLedger
         headers={set.headers} template={OVERVIEW_TEMPLATE} rows={rows} expanded={expanded} onToggle={toggle} highlightLast
@@ -127,7 +127,7 @@ export function FormStrip({ form }: { form: PlayerLedger["form"] }) {
     <div className="flex flex-wrap items-center gap-4 rounded-lg bg-surface-inset px-3 py-2.5 ring-1 ring-border">
       <div>
         <p className="text-caption font-semibold text-text-secondary">Form score</p>
-        <p className="text-caption text-text-muted">Last 5 games</p>
+        <p className="text-small text-text-muted">Last 5 games</p>
       </div>
       {form.score != null && (
         <p className="tabular-nums">
@@ -152,7 +152,7 @@ export function FormStrip({ form }: { form: PlayerLedger["form"] }) {
               }`}>
                 {g.rating == null ? "—" : g.rating.toFixed(1)}
               </span>
-              <span className="block text-caption text-text-muted">{(g.opponent ?? "?").replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase()}</span>
+              <span className="block text-small text-text-muted">{(g.opponent ?? "?").replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase()}</span>
             </li>
           ))}
         </ul>
@@ -213,7 +213,7 @@ function TransferRow({ move }: { move: PlayerLedger["transfers"][number] }) {
   const loan = (move.type ?? "").toLowerCase() === "loan";
   const known = move.fee && move.fee.toLowerCase() !== "n/a";
   return (
-    <div className="flex flex-wrap items-center gap-2.5 border-b border-rule-faint bg-surface-inset/60 py-1.5 pl-[30px] pr-2.5 text-caption text-text-secondary">
+    <div className="flex flex-wrap items-center gap-2.5 border-b border-rule-faint bg-surface-inset/60 py-1.5 pl-[30px] pr-2.5 text-small text-text-secondary">
       <span className="w-[62px] font-bold tabular-nums text-text">
         {move.date ? new Date(move.date).toLocaleDateString("en-GB", { month: "short", year: "numeric" }) : "—"}
       </span>
@@ -297,7 +297,7 @@ export function InjuriesLedger({ ledger }: { ledger: PlayerLedger }) {
         }}
         empty="No club seasons on record yet."
       />
-      <p className="text-caption text-text-muted">
+      <p className="text-small text-text-muted">
         Availability is the share of his clubs&rsquo; matches he wasn&rsquo;t missing through injury, where the match count is known.
         From API-Football&rsquo;s public injury records; this isn&rsquo;t medical data.
       </p>
@@ -310,7 +310,7 @@ function Tile({ label, value, sub, danger }: { label: string; value: string; sub
     <div className="bg-surface px-3 py-2.5">
       <p className="text-caption font-semibold text-text-secondary">{label}</p>
       <p className={`text-section font-bold tabular-nums ${danger ? "text-danger-text" : "text-text"}`}>{value}</p>
-      <p className="truncate text-caption text-text-muted">{sub}</p>
+      <p className="truncate text-small text-text-muted">{sub}</p>
     </div>
   );
 }

@@ -133,7 +133,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
       <label className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 ${sheet ? "" : "lg:min-h-0"}`}>
         <span className="text-small text-text-secondary">
           Buyable on TransferX only
-          <span className="block text-caption text-text-muted">
+          <span className="block text-small text-text-muted">
             Clubs on TransferX, and free agents
           </span>
         </span>
@@ -177,7 +177,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
         <p className="mb-1.5 text-caption font-semibold text-text-secondary">Price (£ millions)</p>
         <div className="flex items-center gap-1.5">
           <div className={fieldCls}><input type="number" min={0} placeholder="Min" aria-label="Minimum price, £ millions" value={filters.min_price} onChange={(e) => set("min_price", e.target.value)} className={numInputCls} /></div>
-          <span className="text-text-muted text-caption shrink-0">–</span>
+          <span className="text-text-muted text-small shrink-0">–</span>
           <div className={fieldCls}><input type="number" min={0} placeholder="Max" aria-label="Maximum price, £ millions" value={filters.max_price} onChange={(e) => set("max_price", e.target.value)} className={numInputCls} /></div>
         </div>
       </div>
@@ -187,7 +187,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
         <p className="mb-1.5 text-caption font-semibold text-text-secondary">Market value (€ millions)</p>
         <div className="flex items-center gap-1.5">
           <div className={fieldCls}><input type="number" min={0} placeholder="Min" aria-label="Minimum market value, € millions" value={filters.min_value} onChange={(e) => set("min_value", e.target.value)} className={numInputCls} /></div>
-          <span className="text-text-muted text-caption shrink-0">–</span>
+          <span className="text-text-muted text-small shrink-0">–</span>
           <div className={fieldCls}><input type="number" min={0} placeholder="Max" aria-label="Maximum market value, € millions" value={filters.max_value} onChange={(e) => set("max_value", e.target.value)} className={numInputCls} /></div>
         </div>
       </div>
@@ -197,7 +197,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
         <p className="mb-1.5 text-caption font-semibold text-text-secondary">Age</p>
         <div className="flex items-center gap-1.5">
           <div className={fieldCls}><input type="number" min={14} max={50} placeholder="Min age" value={filters.min_age} onChange={(e) => set("min_age", e.target.value)} className={numInputCls} /></div>
-          <span className="text-text-muted text-caption shrink-0">–</span>
+          <span className="text-text-muted text-small shrink-0">–</span>
           <div className={fieldCls}><input type="number" min={14} max={50} placeholder="Max age" value={filters.max_age} onChange={(e) => set("max_age", e.target.value)} className={numInputCls} /></div>
         </div>
       </div>
@@ -207,7 +207,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
         <p className="mb-1.5 text-caption font-semibold text-text-secondary">Contract ends within</p>
         <div className={fieldCls}>
           <input type="number" min={1} max={36} placeholder="Any" value={filters.contract_expiry_months} onChange={(e) => set("contract_expiry_months", e.target.value)} className={numInputCls} />
-          <span className="shrink-0 text-caption text-text-muted">months</span>
+          <span className="shrink-0 text-small text-text-muted">months</span>
         </div>
       </div>
 
@@ -216,7 +216,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
         <p className="mb-1.5 text-caption font-semibold text-text-secondary">Form score</p>
         <div className={fieldCls}>
           <input type="number" min={0} max={100} placeholder="Min" value={filters.min_form_score} onChange={(e) => set("min_form_score", e.target.value)} className={numInputCls} />
-          <span className="shrink-0 text-caption text-text-muted">and above</span>
+          <span className="shrink-0 text-small text-text-muted">and above</span>
         </div>
       </div>
 
@@ -225,7 +225,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
         type="button"
         aria-expanded={moreOpen}
         onClick={() => setMoreOpen((o) => !o)}
-        className={`flex w-full items-center justify-between font-semibold text-text-muted hover:text-text transition-colors ${sheet ? "min-h-11 text-body" : "text-caption"}`}
+        className={`flex w-full items-center justify-between font-semibold text-text-muted hover:text-text transition-colors ${sheet ? "min-h-11 text-body" : "text-small"}`}
       >
         <span>More filters{moreCount > 0 ? ` (${moreCount})` : ""}</span>
         <svg className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -267,7 +267,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
         <button
           type="button"
           onClick={() => onChange({ ...DEFAULT_PLAYER_FILTERS, search: filters.search, sort_by: filters.sort_by, sort_dir: filters.sort_dir })}
-          className="text-caption text-text-muted hover:text-text-secondary transition-colors"
+          className="text-small text-text-muted hover:text-text-secondary transition-colors"
         >
           Clear all filters
         </button>

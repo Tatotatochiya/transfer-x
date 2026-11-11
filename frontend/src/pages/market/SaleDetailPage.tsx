@@ -72,7 +72,7 @@ function ResolutionNote({ sale, onOpenDeal }: { sale: Sale; onOpenDeal: (dealId:
       {deal && (
         <button
           onClick={() => onOpenDeal(deal.id)}
-          className="mt-1 text-caption font-semibold text-accent hover:underline"
+          className="mt-1 text-small font-semibold text-accent hover:underline"
         >
           View the deal →
         </button>
@@ -162,7 +162,7 @@ export default function SaleDetailPage() {
         {sale.seller_club && (
           <button
             onClick={() => navigate(`/clubs/${sale.seller_club_id}`)}
-            className="ml-auto shrink-0 text-caption text-text-muted hover:text-text transition-colors"
+            className="ml-auto shrink-0 text-small text-text-muted hover:text-text transition-colors"
           >
             {sale.seller_club.name}
           </button>
@@ -194,12 +194,12 @@ export default function SaleDetailPage() {
             <FairValueBadge signal={sale.fair_value_signal} />
           </div>
         ) : (
-          <p className="text-caption text-text-muted">No model valuation — insufficient recent data.</p>
+          <p className="text-small text-text-muted">No model valuation — insufficient recent data.</p>
         )
       )}
 
       {sale.notes && (
-        <p className="text-caption text-text-secondary border-t border-rule pt-3">{sale.notes}</p>
+        <p className="text-small text-text-secondary border-t border-rule pt-3">{sale.notes}</p>
       )}
 
       {/* Seller actions */}
@@ -218,7 +218,7 @@ export default function SaleDetailPage() {
             Withdraw listing
           </Button>
           {withdrawMutation.isError && (
-            <p className="mt-2 text-caption text-danger-text">{getApiError(withdrawMutation.error, "Failed to withdraw.")}</p>
+            <p className="mt-2 text-small text-danger-text">{getApiError(withdrawMutation.error, "Failed to withdraw.")}</p>
           )}
         </div>
       )}

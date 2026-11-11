@@ -106,13 +106,13 @@ const PlayerRow = forwardRef<HTMLAnchorElement, { row: PlayerRowData }>(function
             )}
           </span>
           {row.why && row.why.length > 0 && (
-            <span className="block truncate text-caption text-text-muted">{row.why.join(" · ")}</span>
+            <span className="block truncate text-small text-text-muted">{row.why.join(" · ")}</span>
           )}
         </span>
         <span className="shrink-0 text-right">
           <span className="block text-body font-bold tabular-nums text-text">
             {row.price.text}
-            {row.price.basis === "model" && <span className="ml-1 text-caption font-medium text-text-muted">model</span>}
+            {row.price.basis === "model" && <span className="ml-1 text-small font-medium text-text-muted">model</span>}
           </span>
           {row.form != null && (
             <span className={`block text-caption font-semibold tabular-nums ${formText(row.form)}`}>Form {Math.round(row.form)}</span>

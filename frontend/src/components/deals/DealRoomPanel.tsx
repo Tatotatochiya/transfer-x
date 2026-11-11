@@ -46,13 +46,13 @@ function CommentRow({
       <div className={`rounded-[10px] px-3 py-2 text-small ${isMine ? "bg-accent-bg" : "bg-page"}`}>
         <div className="mb-0.5 flex items-center justify-between gap-2">
           <span className="text-caption font-bold text-text-secondary">{comment.author_label ?? "Unknown"}</span>
-          <span className="text-caption text-text-muted">{formatDateTime(comment.created_at)}</span>
+          <span className="text-small text-text-muted">{formatDateTime(comment.created_at)}</span>
         </div>
         <p className="whitespace-pre-wrap break-words text-body text-text">{comment.body}</p>
         <button
           type="button"
           onClick={() => onReply(comment)}
-          className="-ml-1 mt-1 inline-flex min-h-11 lg:min-h-0 items-center px-1 text-caption text-text-muted transition-colors hover:text-text-secondary"
+          className="-ml-1 mt-1 inline-flex min-h-11 lg:min-h-0 items-center px-1 text-small text-text-muted transition-colors hover:text-text-secondary"
         >
           Reply
         </button>
@@ -61,7 +61,7 @@ function CommentRow({
         <div key={r.id} className="ml-6 mt-2 rounded-[10px] bg-surface-inset px-3 py-2 text-small">
           <div className="mb-0.5 flex items-center justify-between gap-2">
             <span className="text-caption font-bold text-text-secondary">{r.author_label ?? "Unknown"}</span>
-            <span className="text-caption text-text-muted">{formatDateTime(r.created_at)}</span>
+            <span className="text-small text-text-muted">{formatDateTime(r.created_at)}</span>
           </div>
           <p className="whitespace-pre-wrap break-words text-body text-text">{r.body}</p>
         </div>
@@ -165,7 +165,7 @@ function CommentThread({
           />
           {participants.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span className="self-center text-caption text-text-muted">Mention:</span>
+              <span className="self-center text-small text-text-muted">Mention:</span>
               {participants.map((p) => (
                 <button
                   key={p.user_id}
@@ -262,7 +262,7 @@ function DocumentsTab({
               className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-surface-inset"
             >
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1.5 truncate text-caption font-medium text-text">
+                <p className="flex items-center gap-1.5 truncate text-small font-medium text-text">
                   {a.filename}
                   {a.audience !== "SHARED" && (
                     <span className="shrink-0 rounded-full bg-warning-bg px-1.5 py-0.5 text-caption font-semibold text-warning-text">
@@ -270,7 +270,7 @@ function DocumentsTab({
                     </span>
                   )}
                 </p>
-                <p className="text-caption text-text-muted">
+                <p className="text-small text-text-muted">
                   {formatFileSize(a.size_bytes)} · {a.uploaded_by_label ?? "Unknown"} · {formatDateTime(a.created_at)}
                 </p>
               </div>

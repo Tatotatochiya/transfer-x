@@ -117,7 +117,7 @@ export default function DeadlinePage({ lite = false }: { lite?: boolean }) {
       )}
 
       {w.state === "open" && (
-        <p className={`text-text-muted ${lite ? "text-body" : "text-caption"}`}>
+        <p className={`text-text-muted ${lite ? "text-body" : "text-small"}`}>
           &ldquo;At risk&rdquo; is a rough guide: fewer than {data.hours_per_step} hours left for each step still to do
           (agreeing the fee, personal terms, paperwork, signing). It shows what to chase, not what will fail.
         </p>

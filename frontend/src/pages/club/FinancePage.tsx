@@ -40,7 +40,7 @@ function FinanceSection({ title, total, remaining, reserved, committed, spent, f
     <Card>
       <p className="text-caption font-semibold text-text-secondary">{title}</p>
       <p className="mt-2 text-display-sm sm:text-display font-bold text-text tabular-nums">{heroFn(remaining)}</p>
-      <p className="text-caption text-text-muted">left of {heroFn(total)}</p>
+      <p className="text-small text-text-muted">left of {heroFn(total)}</p>
 
       <div className="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-border-quiet">
         {spent !== undefined && <div className="h-full bg-text" style={{ width: `${pct(spent)}%` }} />}
@@ -104,7 +104,7 @@ function ApprovalPolicyCard() {
         </p>
         {!editing ? (
           <div className="shrink-0 text-right">
-            <p className="text-caption text-text-muted">Threshold</p>
+            <p className="text-small text-text-muted">Threshold</p>
             <p className="text-display-sm sm:text-display font-bold text-text tabular-nums">
               {threshold != null ? formatCurrency(Number(threshold)) : "Off"}
             </p>
@@ -235,7 +235,7 @@ function CommitmentsTable({ clubId }: { clubId: string }) {
     <div>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-body font-bold text-text">Where the money is committed</h2>
-        <span className="text-caption text-text-muted">{formatCurrency(totalCommitted)} across {rows.length} commitment{rows.length === 1 ? "" : "s"}</span>
+        <span className="text-small text-text-muted">{formatCurrency(totalCommitted)} across {rows.length} commitment{rows.length === 1 ? "" : "s"}</span>
       </div>
       <ResponsiveTable
         columns={columns}
@@ -248,7 +248,7 @@ function CommitmentsTable({ clubId }: { clubId: string }) {
               <PlayerLink id={r.playerId} name={r.name} photoUrl={r.photoUrl} className="text-body font-semibold text-text" />
               <span className="text-body font-bold text-text">{formatCurrency(r.amount)}</span>
             </div>
-            <div className="mt-0.5 flex items-center justify-between text-caption text-text-muted">
+            <div className="mt-0.5 flex items-center justify-between text-small text-text-muted">
               <span>{r.type}</span>
               <span>{r.releasesWhen}</span>
             </div>

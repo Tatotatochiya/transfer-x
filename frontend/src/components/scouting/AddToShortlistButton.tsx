@@ -150,7 +150,7 @@ export default function AddToShortlistButton({ playerId, size = "default", label
             Add to shortlist
           </p>
 
-          {isLoading && <p className="px-3 py-2 text-caption text-text-muted">Loading…</p>}
+          {isLoading && <p className="px-3 py-2 text-small text-text-muted">Loading…</p>}
 
           {added ? (
             <p className="flex items-center gap-1.5 px-3 py-2 text-body font-medium text-success-text" role="status">
@@ -180,7 +180,7 @@ export default function AddToShortlistButton({ playerId, size = "default", label
                           </svg>
                         </span>
                         <span className={`min-w-0 flex-1 truncate ${onIt ? "text-text-muted" : "text-text-secondary"}`}>{sl.name}</span>
-                        <span className="shrink-0 text-caption text-text-muted">{onIt ? "Already on it" : sl.item_count}</span>
+                        <span className="shrink-0 text-small text-text-muted">{onIt ? "Already on it" : sl.item_count}</span>
                       </button>
                     );
                   })}
@@ -219,7 +219,7 @@ export default function AddToShortlistButton({ playerId, size = "default", label
                         <button
                           type="button"
                           onClick={() => { setCreating(false); setError(null); }}
-                          className="text-caption text-text-muted hover:text-text"
+                          className="text-small text-text-muted hover:text-text"
                         >
                           Cancel
                         </button>
@@ -238,14 +238,14 @@ export default function AddToShortlistButton({ playerId, size = "default", label
                 )
               )}
 
-              {error && <p className="px-3 py-1.5 text-caption text-danger-text" role="alert">{error}</p>}
+              {error && <p className="px-3 py-1.5 text-small text-danger-text" role="alert">{error}</p>}
             </>
           )}
 
           <div className="mt-1 border-t border-rule px-3 pt-1.5 pb-1">
             <button
               onClick={() => { setOpen(false); navigate("/scouting/shortlists"); }}
-              className="text-caption text-text-muted hover:text-text-secondary transition-colors"
+              className="text-small text-text-muted hover:text-text-secondary transition-colors"
             >
               Manage shortlists →
             </button>

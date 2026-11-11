@@ -42,7 +42,7 @@ export default function DealTimeline({ dealId }: { dealId: string }) {
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
                 <span className="text-body font-medium text-text">{ev.description ?? ev.action}</span>
-                <span className="text-caption text-text-muted shrink-0">
+                <span className="text-small text-text-muted shrink-0">
                   {new Date(ev.created_at).toLocaleString("en-GB", {
                     day: "numeric", month: "short", year: "numeric",
                     hour: "2-digit", minute: "2-digit",
@@ -50,7 +50,7 @@ export default function DealTimeline({ dealId }: { dealId: string }) {
                 </span>
               </div>
               {ev.actor_label && (
-                <p className="mt-0.5 text-caption text-text-muted">{ev.actor_label}</p>
+                <p className="mt-0.5 text-small text-text-muted">{ev.actor_label}</p>
               )}
             </div>
           </div>

@@ -73,7 +73,7 @@ function WorldTeamPicker({
               </div>
               <div>
                 <p className="font-medium text-text">{team.name}</p>
-                <p className="text-caption text-text-muted">
+                <p className="text-small text-text-muted">
                   {[team.league_name, team.country].filter(Boolean).join(" · ") || "—"}
                 </p>
               </div>
@@ -146,14 +146,14 @@ function CreateClubPanel({ onCreated }: { onCreated: (club: AdminClubDetail) => 
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-body font-medium text-text truncate">{prefilled.name}</p>
-            <p className="text-caption text-text-muted">
+            <p className="text-small text-text-muted">
               {[prefilled.league_name, prefilled.country].filter(Boolean).join(" · ") || "—"}
             </p>
           </div>
           <button
             type="button"
             onClick={clearPrefill}
-            className="text-caption text-text-muted hover:text-text transition-colors shrink-0"
+            className="text-small text-text-muted hover:text-text transition-colors shrink-0"
           >
             ✕ Clear
           </button>
@@ -256,10 +256,10 @@ function CreateClubPanel({ onCreated }: { onCreated: (club: AdminClubDetail) => 
           Create club
         </Button>
         {mutation.isError && (
-          <p className="text-caption text-danger-text">{getApiError(mutation.error, "Create failed.")}</p>
+          <p className="text-small text-danger-text">{getApiError(mutation.error, "Create failed.")}</p>
         )}
         {mutation.isSuccess && (
-          <p className="text-caption text-success-text">Club created.</p>
+          <p className="text-small text-success-text">Club created.</p>
         )}
       </div>
     </form>
@@ -321,7 +321,7 @@ function ClubInvitationsPanel() {
   return (
     <div className="mb-6 rounded-xl bg-surface p-5 ring-1 ring-border">
       <p className="text-body font-bold text-text">Invite a club</p>
-      <p className="mt-0.5 text-caption text-text-muted">
+      <p className="mt-0.5 text-small text-text-muted">
         Clubs join by invitation only. The owner gets an email with a link to set a password; accepting creates
         the club.
       </p>
@@ -330,7 +330,7 @@ function ClubInvitationsPanel() {
         onSubmit={(e) => { e.preventDefault(); invite.mutate(); }}
       >
         <label className="min-w-[200px] flex-1">
-          <span className="mb-1 block text-caption text-text-muted">Club name</span>
+          <span className="mb-1 block text-small text-text-muted">Club name</span>
           <input
             required
             value={clubName}
@@ -339,7 +339,7 @@ function ClubInvitationsPanel() {
           />
         </label>
         <label className="min-w-[220px] flex-1">
-          <span className="mb-1 block text-caption text-text-muted">Owner's email</span>
+          <span className="mb-1 block text-small text-text-muted">Owner's email</span>
           <input
             required
             type="email"

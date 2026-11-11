@@ -69,7 +69,7 @@ export default function BuyerOrderBook({ saleId, playerId }: Props) {
         )}
 
         {!hasParticipated && ob.active_count > 0 && (
-          <p className="mt-1 text-caption text-text-muted">Submit an offer to see your ranking</p>
+          <p className="mt-1 text-small text-text-muted">Submit an offer to see your ranking</p>
         )}
       </div>
 
@@ -133,7 +133,7 @@ export default function BuyerOrderBook({ saleId, playerId }: Props) {
               </div>
             </div>
             {ob.your_entry.is_countered && (
-              <p className="mt-1 text-caption text-warning-text-alt">Countered — awaiting response</p>
+              <p className="mt-1 text-small text-warning-text-alt">Countered — awaiting response</p>
             )}
           </div>
         </div>
@@ -141,7 +141,7 @@ export default function BuyerOrderBook({ saleId, playerId }: Props) {
 
       {/* No participation yet */}
       {!hasParticipated && (
-        <div className="px-4 py-6 text-center text-caption text-text-muted">
+        <div className="px-4 py-6 text-center text-small text-text-muted">
           Competition details visible after submitting an offer
         </div>
       )}

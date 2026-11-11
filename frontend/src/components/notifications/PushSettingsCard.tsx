@@ -135,7 +135,7 @@ function ThisDevice({ state, onTurnOn, busy, device, onTest, onTurnOff, onShowGu
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="min-w-0">
         <p className="text-body text-text">Get offers and approvals on this device as they happen.</p>
-        <p className="text-caption text-text-muted">Off</p>
+        <p className="text-small text-text-muted">Off</p>
       </div>
       <Button variant="primary" size="sm" onClick={onTurnOn} loading={busy}>Turn on notifications</Button>
     </div>
@@ -231,7 +231,7 @@ export default function PushSettingsCard() {
               <Dot className="bg-danger" />
               <div>
                 <p className="text-body font-semibold text-text">Your move</p>
-                <p className="text-caption text-text-muted">Offers, counters and approvals that need you. {MODE_SUMMARY[prefs.push_your_move]}.</p>
+                <p className="text-small text-text-muted">Offers, counters and approvals that need you. {MODE_SUMMARY[prefs.push_your_move]}.</p>
               </div>
             </div>
             <ModeControl label="Your move" value={prefs.push_your_move} onChange={(m) => save({ push_your_move: m })} />
@@ -241,7 +241,7 @@ export default function PushSettingsCard() {
               <Dot className="bg-warning-fill" />
               <div>
                 <p className="text-body font-semibold text-text">Heads-up</p>
-                <p className="text-caption text-text-muted">Answers to your offers, messages, offers expiring. {MODE_SUMMARY[prefs.push_heads_up]}.</p>
+                <p className="text-small text-text-muted">Answers to your offers, messages, offers expiring. {MODE_SUMMARY[prefs.push_heads_up]}.</p>
               </div>
             </div>
             <ModeControl label="Heads-up" value={prefs.push_heads_up} onChange={(m) => save({ push_heads_up: m })} />
@@ -251,7 +251,7 @@ export default function PushSettingsCard() {
               <Dot className="bg-text-muted" />
               <div>
                 <p className="text-body font-semibold text-text">FYI, and a morning summary</p>
-                <p className="text-caption text-text-muted">
+                <p className="text-small text-text-muted">
                   Completed deals, loans and the like stay in the app. One push each morning says what's waiting on you, only when something is.
                 </p>
               </div>
@@ -272,7 +272,7 @@ export default function PushSettingsCard() {
           <Row>
             <div className="min-w-0 flex-[1_1_16rem]">
               <p className="text-body font-semibold text-text">Quiet hours</p>
-              <p className="text-caption text-text-muted">
+              <p className="text-small text-text-muted">
                 Held until morning. Something of yours with a deadline before then still comes through.
               </p>
             </div>
@@ -295,7 +295,7 @@ export default function PushSettingsCard() {
           <Row>
             <div className="min-w-0 flex-[1_1_16rem]">
               <p className="text-body font-semibold text-text">Hide amounts on the lock screen</p>
-              <p className="text-caption text-text-muted">
+              <p className="text-small text-text-muted">
                 Pushes say only what happened, such as "New offer received". No figures, clubs or players until you open TransferX.
               </p>
             </div>
@@ -306,7 +306,7 @@ export default function PushSettingsCard() {
               label="Hide amounts on the lock screen"
             />
           </Row>
-          <p className="px-5 py-2.5 text-caption text-text-muted">Times are in {prefs.timezone.replace(/_/g, " ")}.</p>
+          <p className="px-5 py-2.5 text-small text-text-muted">Times are in {prefs.timezone.replace(/_/g, " ")}.</p>
         </>
       )}
 
@@ -318,7 +318,7 @@ export default function PushSettingsCard() {
               <li key={d.id} className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-body text-text">{d.label}</p>
-                  <p className="text-caption text-text-muted">
+                  <p className="text-small text-text-muted">
                     Added {new Date(d.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
                 </div>

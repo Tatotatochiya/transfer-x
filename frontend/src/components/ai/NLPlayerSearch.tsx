@@ -29,7 +29,7 @@ export function FilterChips({ filters }: { filters: NLParsedFilters }) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-caption text-text-muted italic">"{filters.interpreted_as}"</span>
+      <span className="text-small text-text-muted italic">"{filters.interpreted_as}"</span>
       {chips.map((c) => (
         <span
           key={c}

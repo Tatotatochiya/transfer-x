@@ -44,7 +44,7 @@ function NoteForm({ dealId }: { dealId: string }) {
       <Button type="submit" variant="secondary" size="sm" loading={mutation.isPending}>
         Add
       </Button>
-      {error && <p className="text-caption text-danger-text self-center">{error}</p>}
+      {error && <p className="text-small text-danger-text self-center">{error}</p>}
     </form>
   );
 }
@@ -65,7 +65,7 @@ export default function DealNotes({ deal, canAdd }: { deal: Deal; canAdd: boolea
             <div key={note.id} className="rounded-lg bg-surface-inset px-4 py-3">
               <div className="mb-1 flex items-center justify-between">
                 <p className="text-caption font-semibold text-text-secondary">{note.author_club?.name ?? "System"}</p>
-                <p className="text-caption text-text-muted">{formatDate(note.created_at)}</p>
+                <p className="text-small text-text-muted">{formatDate(note.created_at)}</p>
               </div>
               <p className="text-body text-text-secondary">{note.body}</p>
             </div>

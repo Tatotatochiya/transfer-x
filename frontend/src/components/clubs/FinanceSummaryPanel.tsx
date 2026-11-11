@@ -23,7 +23,7 @@ export default function FinanceSummaryPanel({ finance }: { finance: ClubFinance 
         <p className="text-caption font-semibold text-text-secondary">Finances</p>
         <Link
           to="/club/finance"
-          className="text-caption text-text-muted hover:text-accent transition-colors"
+          className="text-small text-text-muted hover:text-accent transition-colors"
         >
           Full view →
         </Link>
@@ -31,25 +31,25 @@ export default function FinanceSummaryPanel({ finance }: { finance: ClubFinance 
       <div className="space-y-4">
         <div>
           <div className="flex items-baseline justify-between">
-            <span className="text-caption text-text-muted">Transfer budget</span>
+            <span className="text-small text-text-muted">Transfer budget</span>
             <span className="text-body font-semibold text-text tabular-nums">
               <Money value={finance.transfer_remaining} compact />
             </span>
           </div>
           <MiniBar used={transferSpent} total={finance.transfer_budget_total} />
-          <p className="mt-1 text-caption text-text-muted">
+          <p className="mt-1 text-small text-text-muted">
             of {formatCompact(finance.transfer_budget_total)} total
           </p>
         </div>
         <div>
           <div className="flex items-baseline justify-between">
-            <span className="text-caption text-text-muted">Wage budget / wk</span>
+            <span className="text-small text-text-muted">Wage budget / wk</span>
             <span className="text-body font-semibold text-text tabular-nums">
               {formatWage(finance.wage_remaining_weekly)}
             </span>
           </div>
           <MiniBar used={wageSpent} total={finance.wage_budget_total_weekly} />
-          <p className="mt-1 text-caption text-text-muted">
+          <p className="mt-1 text-small text-text-muted">
             of {formatWage(finance.wage_budget_total_weekly)} total
           </p>
         </div>

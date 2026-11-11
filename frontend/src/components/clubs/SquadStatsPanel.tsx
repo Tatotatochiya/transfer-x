@@ -65,7 +65,7 @@ export default function SquadStatsPanel({ players }: { players: PlayerDetail[] }
         ].map(({ label, value, colour }) => (
           <div key={label} className="flex flex-col items-center rounded-xl bg-surface-inset px-4 py-4">
             <span className={`text-headline sm:text-title font-bold tabular-nums ${colour}`}>{value}</span>
-            <span className="mt-1 text-caption text-text-muted">{label}</span>
+            <span className="mt-1 text-small text-text-muted">{label}</span>
           </div>
         ))}
       </div>
@@ -85,7 +85,7 @@ export default function SquadStatsPanel({ players }: { players: PlayerDetail[] }
                   <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-7 w-7 text-caption" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-body font-medium text-text group-hover:text-accent transition-colors">{p.name}</p>
-                    {p.position && <p className="text-caption text-text-muted">{p.position}</p>}
+                    {p.position && <p className="text-small text-text-muted">{p.position}</p>}
                   </div>
                   <span className="shrink-0 text-body font-bold text-success-text tabular-nums">
                     {allStats[p.id]?.goals}g
@@ -110,7 +110,7 @@ export default function SquadStatsPanel({ players }: { players: PlayerDetail[] }
                   <FallbackImage src={p.photo_url} name={p.name} sizeClass="h-7 w-7 text-caption" colorClass="bg-surface-inset text-text-muted" className={p.photo_url ? "ring-1 ring-border" : ""} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-body font-medium text-text group-hover:text-accent transition-colors">{p.name}</p>
-                    {p.position && <p className="text-caption text-text-muted">{p.position}</p>}
+                    {p.position && <p className="text-small text-text-muted">{p.position}</p>}
                   </div>
                   <span className="shrink-0 text-body font-bold text-accent tabular-nums">
                     {allStats[p.id]?.assists}a

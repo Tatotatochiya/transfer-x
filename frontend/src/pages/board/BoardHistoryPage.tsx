@@ -97,7 +97,7 @@ export default function BoardHistoryPage() {
         <EmptyState title="Nothing here" body={params.get("q") || outcome || side !== "BOTH" ? "Nothing matches these filters." : "Finished transfers and ones that ended will be listed here."} />
       ) : (
         <>
-          <p className="mb-2 text-caption text-text-muted">{data.total} {data.total === 1 ? "item" : "items"}</p>
+          <p className="mb-2 text-small text-text-muted">{data.total} {data.total === 1 ? "item" : "items"}</p>
           <div className="divide-y divide-rule-faint rounded-xl bg-surface ring-1 ring-border">
             {data.items.map((c) => (
               <div
@@ -111,9 +111,9 @@ export default function BoardHistoryPage() {
                 <span className="min-w-0 flex-1 basis-48">
                   <span className="flex min-w-0 items-center gap-1.5 text-body font-semibold text-text">
                     <PlayerLink id={c.player_id} name={c.player_name} photoUrl={c.player_photo_url ?? null} size="md" />
-                    {c.player_position && <span className="shrink-0 text-caption font-normal text-text-muted">{c.player_position}</span>}
+                    {c.player_position && <span className="shrink-0 text-small font-normal text-text-muted">{c.player_position}</span>}
                   </span>
-                  <span className="block truncate text-caption text-text-muted">
+                  <span className="block truncate text-small text-text-muted">
                     {c.side === "BUYING" ? "Buying" : "Selling"}
                     {c.counterparty && (c.side === "BUYING" ? ` from ${c.counterparty}` : ` to ${c.counterparty}`)}
                   </span>
@@ -122,7 +122,7 @@ export default function BoardHistoryPage() {
                 <span className="w-20 text-right text-body font-bold tabular-nums text-text">
                   {c.amount != null ? formatCompactCurrency(Number(c.amount)) : "—"}
                 </span>
-                <span className="w-24 text-right text-caption text-text-muted">{c.updated_at ? formatDate(c.updated_at) : ""}</span>
+                <span className="w-24 text-right text-small text-text-muted">{c.updated_at ? formatDate(c.updated_at) : ""}</span>
               </div>
             ))}
           </div>

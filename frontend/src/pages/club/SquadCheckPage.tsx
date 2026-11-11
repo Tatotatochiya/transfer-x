@@ -119,9 +119,9 @@ function Row({ p, canConfirm }: { p: SquadCheckPlayer; canConfirm: boolean }) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-body font-semibold text-text">
             {p.name}
-            {p.position && <span className="ml-2 text-caption font-normal text-text-muted">{p.position}</span>}
+            {p.position && <span className="ml-2 text-small font-normal text-text-muted">{p.position}</span>}
           </p>
-          <p className="mt-0.5 text-caption text-text-muted">
+          <p className="mt-0.5 text-small text-text-muted">
             {c
               ? <>Until {c.end_date ? formatDate(c.end_date) : "—"} · {formatWage(num(c.wage_weekly))} · valued {c.club_valuation != null ? formatCurrency(num(c.club_valuation)) : "—"}</>
               : "No contract on TransferX"}
@@ -141,7 +141,7 @@ function Row({ p, canConfirm }: { p: SquadCheckPlayer; canConfirm: boolean }) {
         )}
       </div>
       {c?.confirmed_at && (
-        <p className="mt-1 text-caption text-text-muted">
+        <p className="mt-1 text-small text-text-muted">
           Confirmed {formatDate(c.confirmed_at)}{c.confirmed_by ? ` by ${c.confirmed_by}` : ""}
         </p>
       )}
@@ -198,7 +198,7 @@ export default function SquadCheckPage() {
               <div className="h-full bg-success" style={{ width: `${(data.confirmed / data.total) * 100}%` }} />
             </div>
             {!canConfirm && (
-              <p className="mt-3 text-caption text-text-muted">The owner or sporting director confirms contracts.</p>
+              <p className="mt-3 text-small text-text-muted">The owner or sporting director confirms contracts.</p>
             )}
           </Card>
           <Card noPadding className="divide-y divide-rule-faint">

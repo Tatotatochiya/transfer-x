@@ -147,7 +147,7 @@ export default function AdminClubDetailPage() {
           </div>
           <div>
             <h1 className="text-title-sm sm:text-title font-bold text-text">{club.name}</h1>
-            <p className="text-caption text-text-muted">ID: {club.id}</p>
+            <p className="text-small text-text-muted">ID: {club.id}</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -196,7 +196,7 @@ export default function AdminClubDetailPage() {
               <Metric label="Country" value={club.country ?? "—"} />
               <Metric label="City"    value={club.city ?? "—"} />
               <Metric label="League"  value={club.league_name ?? "—"} />
-              <Metric label="User ID" value={<span className="text-caption text-text-muted">{club.user_id}</span>} />
+              <Metric label="User ID" value={<span className="text-small text-text-muted">{club.user_id}</span>} />
               <Metric label="Created" value={formatDate(club.created_at)} />
             </div>
           ) : (
@@ -234,7 +234,7 @@ export default function AdminClubDetailPage() {
                 />
               </div>
               {profileMutation.isError && (
-                <p className="text-caption text-danger-text">{getApiError(profileMutation.error, "Save failed.")}</p>
+                <p className="text-small text-danger-text">{getApiError(profileMutation.error, "Save failed.")}</p>
               )}
               <div className="flex gap-2">
                 <Button type="submit" variant="primary" size="sm" loading={profileMutation.isPending}>Save</Button>
@@ -312,7 +312,7 @@ export default function AdminClubDetailPage() {
                 )}
               </div>
               {financeMutation.isError && (
-                <p className="text-caption text-danger-text">{getApiError(financeMutation.error, "Save failed.")}</p>
+                <p className="text-small text-danger-text">{getApiError(financeMutation.error, "Save failed.")}</p>
               )}
               <div className="flex gap-2">
                 <Button type="submit" variant="primary" size="sm" loading={financeMutation.isPending}>Save</Button>
@@ -381,7 +381,7 @@ function StaffPanel({ clubId }: { clubId: string }) {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-caption font-semibold text-text-secondary">Staff accounts</p>
-          <p className="mt-0.5 text-caption text-text-muted">
+          <p className="mt-0.5 text-small text-text-muted">
             Invite someone by email. They choose their own password from the link; it lasts 7 days.
           </p>
         </div>
@@ -442,7 +442,7 @@ function StaffPanel({ clubId }: { clubId: string }) {
             </select>
           </div>
           {createMutation.isError && (
-            <p className="text-caption text-danger-text">{getApiError(createMutation.error, "Couldn't create the invitation.")}</p>
+            <p className="text-small text-danger-text">{getApiError(createMutation.error, "Couldn't create the invitation.")}</p>
           )}
           <div className="flex gap-2">
             <Button type="submit" variant="primary" size="sm" loading={createMutation.isPending}>
@@ -505,7 +505,7 @@ function StaffPanel({ clubId }: { clubId: string }) {
                         })) deleteMutation.mutate(s.id);
                       }}
                       disabled={deleteMutation.isPending}
-                      className="text-caption text-danger-text hover:text-danger-text-alt transition-colors disabled:opacity-40"
+                      className="text-small text-danger-text hover:text-danger-text-alt transition-colors disabled:opacity-40"
                     >
                       Remove
                     </button>
@@ -515,7 +515,7 @@ function StaffPanel({ clubId }: { clubId: string }) {
             </tbody>
           </table>
           {deleteMutation.isError && (
-            <p className="mt-2 px-3 text-caption text-danger-text">{getApiError(deleteMutation.error, "Delete failed.")}</p>
+            <p className="mt-2 px-3 text-small text-danger-text">{getApiError(deleteMutation.error, "Delete failed.")}</p>
           )}
         </div>
       )}

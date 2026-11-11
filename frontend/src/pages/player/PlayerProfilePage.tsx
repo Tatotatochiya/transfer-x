@@ -84,13 +84,13 @@ function MandateRow({
           <span className="text-body font-medium text-text">Agent representation</span>
           {mandate.exclusive && <Badge variant="success">Exclusive</Badge>}
         </div>
-        <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-caption text-text-muted">
+        <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-small text-text-muted">
           {mandate.start_date && <span>From {mandate.start_date}</span>}
           {mandate.end_date   && <span>Until {mandate.end_date}</span>}
           {mandate.territory  && <span>Territory: {mandate.territory}</span>}
           <span>Since {new Date(mandate.created_at).toLocaleDateString()}</span>
         </div>
-        {error && <p className="mt-1 text-caption text-danger-text">{error}</p>}
+        {error && <p className="mt-1 text-small text-danger-text">{error}</p>}
       </div>
       <button
         onClick={handleRevoke}
@@ -212,7 +212,7 @@ export default function PlayerProfilePage() {
           {player.current_club ? (
             <div>
               <p className="text-body font-medium text-text-secondary">Available for transfer</p>
-              <p className="text-caption text-text-muted">
+              <p className="text-small text-text-muted">
                 {player.open_to_offers
                   ? `Yes — ${player.current_club.name} has listed you.`
                   : `Not listed. ${player.current_club.name} makes you available by listing you.`}
@@ -222,7 +222,7 @@ export default function PlayerProfilePage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-body font-medium text-text-secondary">Open to offers</p>
-              <p className="text-caption text-text-muted">Clubs can express interest in signing you</p>
+              <p className="text-small text-text-muted">Clubs can express interest in signing you</p>
             </div>
             <button
               type="button"
@@ -259,7 +259,7 @@ export default function PlayerProfilePage() {
       {dealInPersonalTerms && personalTerms && personalTerms.player_consent === "PENDING" && (
         <div className="mt-6 rounded-xl bg-warning-bg ring-1 ring-warning-ring px-5 py-5">
           <p className="text-body font-semibold text-warning-text mb-1">Personal terms require your consent</p>
-          <p className="text-caption text-warning-text-alt mb-4">
+          <p className="text-small text-warning-text-alt mb-4">
             Your agent has proposed the following contract terms to join{" "}
             <span className="font-semibold text-warning-text">{personalTerms.buyer_club_name}</span>. Review and respond.
           </p>
@@ -291,7 +291,7 @@ export default function PlayerProfilePage() {
             </button>
           </div>
           {consentMutation.isError && (
-            <p className="mt-2 text-caption text-danger-text">Failed to respond. Please try again.</p>
+            <p className="mt-2 text-small text-danger-text">Failed to respond. Please try again.</p>
           )}
         </div>
       )}

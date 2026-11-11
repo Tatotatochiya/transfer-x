@@ -182,7 +182,7 @@ function NotificationRow({
           <span className={`text-caption font-semibold ${colour}`}>
             {TYPE_LABELS[notification.type] ?? notification.type}
           </span>
-          <span className="text-caption text-text-muted">
+          <span className="text-small text-text-muted">
             {formatDateTime(notification.created_at)}
           </span>
         </div>

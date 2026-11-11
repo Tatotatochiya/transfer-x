@@ -96,13 +96,13 @@ function ChecklistShell({
             <Icon name="bolt" className="h-3.5 w-3.5 text-success-text" />
           </span>
           <p className="text-body font-semibold text-text">{title}</p>
-          <span className="text-caption text-text-muted">
+          <span className="text-small text-text-muted">
             {doneCount}/{steps.length}
           </span>
         </div>
         <button
           onClick={dismiss}
-          className="text-caption text-text-muted hover:text-text-secondary transition-colors"
+          className="text-small text-text-muted hover:text-text-secondary transition-colors"
         >
           Dismiss
         </button>
@@ -126,7 +126,7 @@ function ChecklistShell({
             <span className={`text-small ${step.done ? "text-text-muted line-through" : "text-text-secondary"}`}>
               {step.label}
             </span>
-            {!step.done && <span className="ml-auto text-caption text-text-muted">→</span>}
+            {!step.done && <span className="ml-auto text-small text-text-muted">→</span>}
           </button>
         ))}
       </div>

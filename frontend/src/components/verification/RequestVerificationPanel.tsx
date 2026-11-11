@@ -51,7 +51,7 @@ export default function RequestVerificationPanel({ verified }: RequestVerificati
         <div className="flex items-center justify-between gap-3">
           <p className="text-body text-text-secondary">
             Verification request pending review
-            <span className="ml-2 text-caption text-text-muted">submitted {formatDate(latest.created_at)}</span>
+            <span className="ml-2 text-small text-text-muted">submitted {formatDate(latest.created_at)}</span>
           </p>
         </div>
       ) : (

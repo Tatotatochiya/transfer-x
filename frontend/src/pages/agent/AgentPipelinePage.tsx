@@ -66,7 +66,7 @@ function CardLink({ to, children }: { to: string; children: ReactNode }) {
 
 function DealParties({ item, className = "" }: { item: PipelineDealItem; className?: string }) {
   return (
-    <p className={`flex min-w-0 items-center gap-1.5 text-caption text-text-muted ${className}`}>
+    <p className={`flex min-w-0 items-center gap-1.5 text-small text-text-muted ${className}`}>
       <ClubLink id={item.seller_club_id} name={item.seller_club_name} crestUrl={item.seller_club_crest ?? null} fallback="?" />
       <span aria-hidden="true">→</span>
       <ClubLink id={item.buyer_club_id} name={item.buyer_club_name} crestUrl={item.buyer_club_crest ?? null} fallback="?" />
@@ -236,19 +236,19 @@ function CommissionsTab() {
           <p className="text-headline sm:text-title font-bold text-success-text tabular-nums break-words">
             {summary ? formatCompact(summary.earned) : "—"}
           </p>
-          <p className="mt-0.5 text-caption text-text-muted">Earned (paid)</p>
+          <p className="mt-0.5 text-small text-text-muted">Earned (paid)</p>
         </div>
         <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
           <p className="text-headline sm:text-title font-bold text-warning-text tabular-nums break-words">
             {summary ? formatCompact(summary.outstanding) : "—"}
           </p>
-          <p className="mt-0.5 text-caption text-text-muted">Outstanding (invoiced)</p>
+          <p className="mt-0.5 text-small text-text-muted">Outstanding (invoiced)</p>
         </div>
         <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
           <p className="text-headline sm:text-title font-bold text-text tabular-nums break-words">
             {summary ? formatCompact(summary.pipeline) : "—"}
           </p>
-          <p className="mt-0.5 text-caption text-text-muted">Pipeline (pending)</p>
+          <p className="mt-0.5 text-small text-text-muted">Pipeline (pending)</p>
         </div>
       </div>
 
@@ -373,13 +373,13 @@ export default function AgentPipelinePage() {
             <p className="text-headline sm:text-title font-bold text-text tabular-nums">
               {pipeline.deals_in_progress}
             </p>
-            <p className="mt-0.5 text-caption text-text-muted">Active deals</p>
+            <p className="mt-0.5 text-small text-text-muted">Active deals</p>
           </div>
           <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
             <p className="text-headline sm:text-title font-bold text-text tabular-nums">
               {pipeline.deals_completed_this_window}
             </p>
-            <p className="mt-0.5 text-caption text-text-muted">Completed (90 days)</p>
+            <p className="mt-0.5 text-small text-text-muted">Completed (90 days)</p>
           </div>
           <div className="rounded-xl bg-surface px-4 py-3 text-center ring-1 ring-border">
             <p className="text-headline sm:text-title font-bold text-success-text tabular-nums break-words">
@@ -387,7 +387,7 @@ export default function AgentPipelinePage() {
                 ? formatCompact(pipeline.total_commission_pipeline)
                 : "—"}
             </p>
-            <p className="mt-0.5 text-caption text-text-muted">Commission pipeline</p>
+            <p className="mt-0.5 text-small text-text-muted">Commission pipeline</p>
           </div>
         </div>
       )}
@@ -420,7 +420,7 @@ export default function AgentPipelinePage() {
                   <div className="space-y-2">
                     {colItems.length === 0 ? (
                       <div className="rounded-xl border border-dashed border-border px-3 py-5 text-center">
-                        <p className="text-caption text-text-muted">—</p>
+                        <p className="text-small text-text-muted">—</p>
                       </div>
                     ) : (
                       colItems.map((item) => (
@@ -463,7 +463,7 @@ export default function AgentPipelinePage() {
                     <DealParties item={item} className="mt-0.5" />
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-caption font-medium text-text-muted">
+                    <p className="text-small font-medium text-text-muted">
                       {item.stage.replace(/_/g, " ")}
                     </p>
                     {item.agreed_fee != null && (

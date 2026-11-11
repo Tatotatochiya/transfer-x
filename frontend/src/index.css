@@ -294,6 +294,9 @@
 body {
   background-color: var(--color-page);
   color: var(--color-text);
+  /* Text with no size class reads as Body, not the browser's 16px. */
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 

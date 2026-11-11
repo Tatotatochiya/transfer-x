@@ -79,7 +79,7 @@ export default function ResetPasswordPage() {
                 <label htmlFor="pw" className="mb-1.5 block text-small font-medium text-text-secondary">New password</label>
                 <input id="pw" type="password" autoComplete="new-password" value={password}
                   onChange={(e) => setPassword(e.target.value)} className={input} />
-                <p className="mt-1 text-caption text-text-muted">At least 8 characters.</p>
+                <p className="mt-1 text-small text-text-muted">At least 8 characters.</p>
               </div>
               <div>
                 <label htmlFor="pw2" className="mb-1.5 block text-small font-medium text-text-secondary">Type it again</label>

@@ -65,7 +65,7 @@ export default function WaitingOnYouBand({
           <span className="h-2 w-2 rounded-full bg-danger" />
           <span className="text-caption font-bold text-danger-heading">{heading} — {items.length}</span>
         </div>
-        <span className="text-caption text-text-muted">Sorted by deadline</span>
+        <span className="text-small text-text-muted">Sorted by deadline</span>
       </div>
       <div>
         {shown.map((item) => (
@@ -74,14 +74,14 @@ export default function WaitingOnYouBand({
               <p className="text-section font-bold text-text sm:font-semibold">
                 {item.player ? <PlayerLink id={item.player.id} name={item.title} photoUrl={item.player.photoUrl} size="md" /> : item.title}
               </p>
-              <p className="line-clamp-2 text-caption text-text-muted sm:line-clamp-none">{item.description}</p>
+              <p className="line-clamp-2 text-small text-text-muted sm:line-clamp-none">{item.description}</p>
             </div>
             <div className="basis-[130px] shrink">
-              <p className="text-caption text-text-muted">Amount</p>
+              <p className="text-small text-text-muted">Amount</p>
               <p className="text-body font-bold text-text">{item.amount != null ? formatCompact(item.amount) : "—"}</p>
             </div>
             <div className="basis-[130px] shrink">
-              <p className="text-caption text-text-muted">Deadline</p>
+              <p className="text-small text-text-muted">Deadline</p>
               <DeadlineValue deadline={item.deadline} />
             </div>
             <button
@@ -95,7 +95,7 @@ export default function WaitingOnYouBand({
       </div>
       {items.length > 5 && (
         <div className="border-t border-rule px-4 py-2.5 sm:px-5">
-          <button className="text-caption font-semibold text-accent hover:text-accent-hover">
+          <button className="text-small font-semibold text-accent hover:text-accent-hover">
             View all {items.length} →
           </button>
         </div>

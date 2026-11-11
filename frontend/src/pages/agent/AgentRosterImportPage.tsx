@@ -79,7 +79,7 @@ function UploadStep({ onPreview }: { onPreview: (rows: RosterPreviewRow[]) => vo
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
             </svg>
             <p className="text-body font-medium text-text">Drop your file here</p>
-            <p className="mt-1 text-caption text-text-muted">or click to browse (CSV)</p>
+            <p className="mt-1 text-small text-text-muted">or click to browse (CSV)</p>
           </>
         )}
       </div>
@@ -136,14 +136,14 @@ function ReviewStep({
               <tr key={row.row_index} className="border-b border-rule-faint last:border-0">
                 <td className="px-4 py-3">
                   <p className="font-medium text-text">{row.name}</p>
-                  {row.current_club && <p className="text-caption text-text-muted">{row.current_club}</p>}
+                  {row.current_club && <p className="text-small text-text-muted">{row.current_club}</p>}
                 </td>
                 <td className="px-4 py-3 text-caption text-text-muted">
                   {[row.position, row.nationality, row.dob].filter(Boolean).join(" · ") || "—"}
                 </td>
                 <td className="px-4 py-3">
                   {row.match_status === "no_match" ? (
-                    <span className="text-caption text-text-muted">No match — will create</span>
+                    <span className="text-small text-text-muted">No match — will create</span>
                   ) : row.match_candidates.length === 1 ? (
                     <span className="text-caption text-success-text">
                       Matched: {row.match_candidates[0].player_name}
@@ -226,12 +226,12 @@ function SettingsStep({
           />
           <div>
             <p className="text-body font-medium text-text">Exclusive mandate</p>
-            <p className="text-caption text-text-muted">You are the sole agent for these clients</p>
+            <p className="text-small text-text-muted">You are the sole agent for these clients</p>
           </div>
         </label>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="mb-1.5 text-caption font-medium text-text-secondary">Start date</p>
+            <p className="mb-1.5 text-small font-medium text-text-secondary">Start date</p>
             <input
               type="date"
               value={settings.start_date}
@@ -240,7 +240,7 @@ function SettingsStep({
             />
           </div>
           <div>
-            <p className="mb-1.5 text-caption font-medium text-text-secondary">End date</p>
+            <p className="mb-1.5 text-small font-medium text-text-secondary">End date</p>
             <input
               type="date"
               value={settings.end_date}
@@ -250,7 +250,7 @@ function SettingsStep({
           </div>
         </div>
         <div>
-          <p className="mb-1.5 text-caption font-medium text-text-secondary">Territory (optional)</p>
+          <p className="mb-1.5 text-small font-medium text-text-secondary">Territory (optional)</p>
           <input
             type="text"
             value={settings.territory}
@@ -438,7 +438,7 @@ export default function AgentRosterImportPage() {
               <div className="mt-4 text-left rounded-lg bg-danger-bg px-4 py-3 ring-1 ring-danger-border">
                 <p className="mb-2 text-caption font-semibold text-danger-text">Errors ({result.errors.length})</p>
                 {result.errors.map((e, i) => (
-                  <p key={i} className="text-caption text-danger-text">{e}</p>
+                  <p key={i} className="text-small text-danger-text">{e}</p>
                 ))}
               </div>
             )}

@@ -61,12 +61,12 @@ function RequestRow({ req }: { req: VerificationRequest }) {
         {req.evidence_ref ? (
           <span className="break-all">{req.evidence_ref}</span>
         ) : "—"}
-        {req.notes && <p className="mt-1 text-caption text-text-muted">{req.notes}</p>}
+        {req.notes && <p className="mt-1 text-small text-text-muted">{req.notes}</p>}
       </td>
       <td className="px-4 py-3">
         <Badge variant={STATUS_VARIANT[req.status]}>{req.status}</Badge>
         {req.status !== "PENDING" && req.review_notes && (
-          <p className="mt-1 text-caption text-text-muted">{req.review_notes}</p>
+          <p className="mt-1 text-small text-text-muted">{req.review_notes}</p>
         )}
       </td>
       <td className="px-4 py-3 text-caption text-text-muted">{formatDate(req.created_at)}</td>

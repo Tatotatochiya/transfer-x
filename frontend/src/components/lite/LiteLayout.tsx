@@ -43,7 +43,7 @@ export default function LiteLayout({ children }: { children: React.ReactNode }) 
   const onHome = pathname === "/lite" || pathname === "/lite/";
 
   return (
-    <div className="min-h-screen bg-page text-text">
+    <div className="min-h-screen bg-page text-lite-body text-text">
       <DemoPlayAsBanner />
       <DemoControl />
       <header className="flex h-[4.5rem] items-center justify-between border-b border-border bg-surface px-4 sm:px-8">

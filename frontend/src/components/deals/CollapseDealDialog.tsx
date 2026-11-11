@@ -29,7 +29,7 @@ export default function CollapseDealDialog({ open, onClose, actions }: { open: b
           placeholder="e.g. Failed the medical"
           className="mt-1.5 w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-2 focus:ring-accent"
         />
-        <p className="mt-1 text-caption text-text-muted">Both clubs will see this.</p>
+        <p className="mt-1 text-small text-text-muted">Both clubs will see this.</p>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button

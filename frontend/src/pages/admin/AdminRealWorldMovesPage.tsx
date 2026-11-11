@@ -271,7 +271,7 @@ export default function AdminRealWorldMovesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Link to={`/players/market/${m.player_id}`} className="font-medium text-text hover:text-accent">{m.name}</Link>
-                        {m.position && <span className="ml-2 text-caption text-text-muted">{m.position}</span>}
+                        {m.position && <span className="ml-2 text-small text-text-muted">{m.position}</span>}
                       </td>
                       <td className="px-4 py-3 text-text">{m.registered_club ?? "—"}</td>
                       <td className="px-4 py-3">
@@ -279,7 +279,7 @@ export default function AdminRealWorldMovesPage() {
                           {m.real_club_logo && <FallbackImage src={m.real_club_logo} name={m.real_club ?? "?"} kind="club" sizeClass="h-5 w-5 text-caption" colorClass="bg-surface-inset text-text-muted" />}
                           {m.real_club ?? "—"}
                         </span>
-                        {m.real_club_on_transferx_id && <span className="text-caption text-text-muted">on TransferX</span>}
+                        {m.real_club_on_transferx_id && <span className="text-small text-text-muted">on TransferX</span>}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={KIND_VARIANT[m.kind]}>{MOVE_KIND_LABEL[m.kind]}</Badge>
@@ -287,13 +287,13 @@ export default function AdminRealWorldMovesPage() {
                           {m.moved_on ? formatDate(m.moved_on) : "No transfer on record"}{m.fee ? ` · ${m.fee}` : ""}
                         </span>
                         {m.case === "behind_transferx" && m.transferx_move && (
-                          <p className="mt-1 text-caption text-warning-text">
+                          <p className="mt-1 text-small text-warning-text">
                             TransferX moved him from {m.transferx_move.from_club ?? "his old club"} on {formatDate(m.transferx_move.on)}.
                             Staff only: the clubs aren&rsquo;t told.
                           </p>
                         )}
                         {m.open_deal && m.case === "moved" && (
-                          <p className="mt-1 text-caption text-warning-text">
+                          <p className="mt-1 text-small text-warning-text">
                             <Link to={`/deals/${m.open_deal.id}`} className="font-medium underline">
                               In a deal with {m.open_deal.buyer_club ?? "another club"}
                             </Link>
@@ -317,7 +317,7 @@ export default function AdminRealWorldMovesPage() {
                             {m.case === "behind_transferx" || m.open_deal ? "Confirm registration" : "Dismiss"}
                           </Button>
                         </div>
-                        {m.apply_blocked && <p className="mt-1 max-w-[260px] text-caption text-text-muted">{m.apply_blocked}</p>}
+                        {m.apply_blocked && <p className="mt-1 max-w-[260px] text-small text-text-muted">{m.apply_blocked}</p>}
                       </td>
                     </tr>
                   ))}

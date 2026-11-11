@@ -58,18 +58,18 @@ function DecisionRow({
               size="md" className="mb-1 text-body font-semibold text-text" />
           )}
           <p className="text-body font-bold text-text">{approval.summary ?? approval.action_type.replace(/_/g, " ")}</p>
-          <p className="text-caption text-text-secondary">
+          <p className="text-small text-text-secondary">
             {approval.requested_by_name ?? approval.requested_by_email ?? "Unknown requester"} · {elapsed(approval.created_at)}
             {approval.expires_at && ` · expires ${formatDateTime(approval.expires_at)}`}
           </p>
         </div>
         <div className="basis-[150px] shrink">
-          <p className="text-caption text-text-muted">Amount</p>
+          <p className="text-small text-text-muted">Amount</p>
           <p className="text-section font-bold text-text">{formatCurrency(approval.amount)}</p>
         </div>
         {budgetAfter != null && (
           <div className="basis-[150px] shrink">
-            <p className="text-caption text-text-muted">Budget after</p>
+            <p className="text-small text-text-muted">Budget after</p>
             <p className="text-section font-bold text-success-text">{formatCurrency(budgetAfter)}</p>
           </div>
         )}
@@ -195,7 +195,7 @@ export default function ApprovalsPage() {
     { key: "requester", header: "Requested by", priority: 3, render: (a) => <span className="text-text-muted">{a.requested_by_name ?? a.requested_by_email ?? "—"}</span> },
     { key: "amount", header: "Amount", priority: 2, className: "text-right", render: (a) => <span className="font-bold text-text">{formatCurrency(a.amount)}</span> },
     { key: "outcome", header: "Outcome", priority: 4, render: (a) => <Badge variant={STATUS_BADGE[a.status].variant}>{STATUS_BADGE[a.status].label}</Badge> },
-    { key: "decided", header: "Decided", priority: 5, className: "text-right", render: (a) => <span className="text-caption text-text-muted">{a.decided_at ? formatDateTime(a.decided_at) : "—"}</span> },
+    { key: "decided", header: "Decided", priority: 5, className: "text-right", render: (a) => <span className="text-small text-text-muted">{a.decided_at ? formatDateTime(a.decided_at) : "—"}</span> },
   ];
 
   return (
@@ -206,7 +206,7 @@ export default function ApprovalsPage() {
       />
 
       {can("TEAM_MANAGE") && (
-        <p className="mb-5 text-caption text-text-secondary">
+        <p className="mb-5 text-small text-text-secondary">
           {policy?.approval_threshold != null
             ? <>Manager actions at or above <span className="font-semibold text-text">{formatCurrency(policy.approval_threshold)}</span> require your approval. Change this on the Finance page.</>
             : "No approval threshold is set — manager actions execute directly. Set one on the Finance page."}
@@ -274,7 +274,7 @@ export default function ApprovalsPage() {
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="flex-1 basis-[240px]">
                       <p className="text-body font-semibold text-text">{a.summary ?? a.action_type.replace(/_/g, " ")}</p>
-                      <p className="text-caption text-text-muted">{elapsed(a.created_at)} · expires {formatDateTime(a.expires_at)}</p>
+                      <p className="text-small text-text-muted">{elapsed(a.created_at)} · expires {formatDateTime(a.expires_at)}</p>
                     </div>
                     <span className="text-body font-bold text-text">{formatCurrency(a.amount)}</span>
                     <Badge variant="warning">Pending</Badge>
@@ -304,7 +304,7 @@ export default function ApprovalsPage() {
                     </div>
                     <div className="mt-1 flex items-center justify-between">
                       <Badge variant={STATUS_BADGE[a.status].variant}>{STATUS_BADGE[a.status].label}</Badge>
-                      <span className="text-caption text-text-muted">{a.decided_at ? formatDateTime(a.decided_at) : "—"}</span>
+                      <span className="text-small text-text-muted">{a.decided_at ? formatDateTime(a.decided_at) : "—"}</span>
                     </div>
                   </div>
                 )}

@@ -190,8 +190,8 @@ export default function TeamPage() {
                   <div key={member.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-body font-medium text-text">{member.name ?? member.email}</p>
-                      {member.name && <p className="truncate text-caption text-text-muted">{member.email}</p>}
-                      <p className="mt-0.5 text-caption text-text-muted">
+                      {member.name && <p className="truncate text-small text-text-muted">{member.email}</p>}
+                      <p className="mt-0.5 text-small text-text-muted">
                         Joined {formatDateTime(member.created_at)}
                       </p>
                     </div>
@@ -249,7 +249,7 @@ export default function TeamPage() {
                   <div key={inv.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-body font-medium text-text">{inv.email}</p>
-                      <p className="mt-0.5 text-caption text-text-muted">
+                      <p className="mt-0.5 text-small text-text-muted">
                         Expires {formatDateTime(inv.expires_at)}
                       </p>
                     </div>
@@ -267,7 +267,7 @@ export default function TeamPage() {
               </div>
             )}
             {invitations.length > 0 && (
-              <p className="border-t border-rule px-5 py-2.5 text-caption text-text-muted">
+              <p className="border-t border-rule px-5 py-2.5 text-small text-text-muted">
                 For security, an invitation link is shown only once, when it's created. If a
                 link is lost, revoke the invitation and send a new one.
               </p>
@@ -302,7 +302,7 @@ export default function TeamPage() {
                     <option key={r} value={r}>{ROLE_INFO[r].label}</option>
                   ))}
                 </select>
-                <p className="mt-2 text-caption leading-relaxed text-text-muted">
+                <p className="mt-2 text-small leading-relaxed text-text-muted">
                   {ROLE_INFO[inviteRole].description}
                 </p>
               </div>
@@ -318,7 +318,7 @@ export default function TeamPage() {
               <p className="text-body font-semibold text-success-text">
                 Invitation created for {lastInvite.email}
               </p>
-              <p className="mt-1 text-caption text-success-text/70">
+              <p className="mt-1 text-small text-success-text/70">
                 An email has been sent if email delivery is configured. This link is shown
                 once — copy it now if you want to share it yourself.
               </p>

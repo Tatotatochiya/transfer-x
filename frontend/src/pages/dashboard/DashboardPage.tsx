@@ -113,12 +113,12 @@ function CompletedTransfersTable({ deals, total }: { deals: Deal[]; total: numbe
 
   const columns: ResponsiveColumn<CompletedRow>[] = [
     { key: "player", header: "Player", priority: 1, render: (r) => (
-      <span className="inline-flex items-center gap-2 font-medium text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-caption text-text-muted">{r.position}</span>}</span>
+      <span className="inline-flex items-center gap-2 font-medium text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-small text-text-muted">{r.position}</span>}</span>
     ) },
     { key: "from", header: "From", priority: 4, render: (r) => r.from ? <ClubLink id={r.from.id} name={r.from.name} /> : <span className="text-text-muted">Free agent</span> },
     { key: "to", header: "To", priority: 3, render: (r) => r.to ? <ClubLink id={r.to.id} name={r.to.name} /> : "—" },
     { key: "fee", header: "Fee", priority: 2, className: "text-right", render: (r) => <span className="font-bold text-text">{formatCompact(r.fee)}</span> },
-    { key: "completed", header: "Completed", priority: 5, className: "text-right", render: (r) => <span className="text-text-muted text-caption">{r.completedAt ? formatDate(r.completedAt) : "—"}</span> },
+    { key: "completed", header: "Completed", priority: 5, className: "text-right", render: (r) => <span className="text-text-muted text-small">{r.completedAt ? formatDate(r.completedAt) : "—"}</span> },
   ];
 
   if (rows.length === 0) return null;
@@ -128,7 +128,7 @@ function CompletedTransfersTable({ deals, total }: { deals: Deal[]; total: numbe
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-section font-bold text-text">Completed transfers</h2>
         {total > rows.length && (
-          <button onClick={() => navigate("/board")} className="text-caption font-semibold text-accent hover:text-accent-hover">
+          <button onClick={() => navigate("/board")} className="text-small font-semibold text-accent hover:text-accent-hover">
             View all {total} →
           </button>
         )}
@@ -141,13 +141,13 @@ function CompletedTransfersTable({ deals, total }: { deals: Deal[]; total: numbe
         renderCard={(r) => (
           <div className="px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 text-body font-semibold text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-caption text-text-muted">{r.position}</span>}</span>
+              <span className="inline-flex items-center gap-1.5 text-body font-semibold text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-small text-text-muted">{r.position}</span>}</span>
               <span className="text-body font-bold text-text">{formatCompact(r.fee)}</span>
             </div>
-            <p className="mt-0.5 text-caption text-text-muted">
+            <p className="mt-0.5 text-small text-text-muted">
               {r.from ? r.from.name : "Free agent"} → {r.to ? r.to.name : "—"}
             </p>
-            {r.completedAt && <p className="mt-0.5 text-caption text-text-muted">{formatDate(r.completedAt)}</p>}
+            {r.completedAt && <p className="mt-0.5 text-small text-text-muted">{formatDate(r.completedAt)}</p>}
           </div>
         )}
       />
