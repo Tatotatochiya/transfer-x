@@ -10,9 +10,9 @@ import type { TokenResponse, User } from "../../types/api";
 type ActorType = "CLUB" | "AGENT" | "PLAYER";
 
 const INPUT_CLS =
-  "w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors";
+  "w-full rounded-lg bg-surface px-3 py-2.5 text-small text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors";
 
-const LABEL_CLS = "mb-1.5 block text-sm font-medium text-text-secondary";
+const LABEL_CLS = "mb-1.5 block text-body font-medium text-text-secondary";
 
 interface TypeCardProps {
   type: ActorType;
@@ -35,8 +35,8 @@ function TypeCard({ icon, title, description, selected, onSelect }: TypeCardProp
       }`}
     >
       <Icon name={icon} className={`h-5 w-5 mb-1 ${selected ? "text-accent" : ""}`} />
-      <span className="text-sm font-semibold text-text">{title}</span>
-      <span className="text-xs leading-snug">{description}</span>
+      <span className="text-body font-semibold text-text">{title}</span>
+      <span className="text-caption leading-snug">{description}</span>
     </button>
   );
 }
@@ -105,14 +105,14 @@ export default function RegisterPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent-bg">
             <Icon name="bolt" className="h-7 w-7 text-accent" />
           </div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-accent">TransferX</p>
-          <h1 className="mt-2 text-2xl font-semibold text-text">Create an account</h1>
-          <p className="mt-1 text-sm text-text-muted">Choose your role to get started.</p>
+          <p className="text-caption font-semibold text-accent">TransferX</p>
+          <h1 className="mt-2 text-title-sm sm:text-title font-semibold text-text">Create an account</h1>
+          <p className="mt-1 text-small text-text-muted">Choose your role to get started.</p>
         </div>
 
         <div className="rounded-xl bg-surface p-8 ring-1 ring-border">
           {error && (
-            <div className="mb-4 rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
+            <div className="mb-4 rounded-lg bg-danger-bg px-4 py-3 text-small text-danger-text ring-1 ring-danger-border">
               {error}
             </div>
           )}
@@ -155,8 +155,8 @@ export default function RegisterPage() {
                 rather than offering a form the server would refuse. */}
             {actorType === "CLUB" ? (
               <div className="rounded-lg bg-surface-inset px-4 py-4 ring-1 ring-border">
-                <p className="text-sm font-semibold text-text">Clubs join TransferX by invitation</p>
-                <p className="mt-1 text-[13px] text-text-muted">
+                <p className="text-body font-semibold text-text">Clubs join TransferX by invitation</p>
+                <p className="mt-1 text-caption text-text-muted">
                   Every club on TransferX is invited and verified by our team, so the club you deal with is
                   the club it says it is. Contact TransferX to be invited; if you already have been, use
                   the link in your invitation email.
@@ -167,8 +167,8 @@ export default function RegisterPage() {
                  player account accepts personal terms, so it is never claimed
                  by searching for a name. */
               <div className="rounded-lg bg-surface-inset px-4 py-4 ring-1 ring-border">
-                <p className="text-sm font-semibold text-text">Players join by invitation from their club</p>
-                <p className="mt-1 text-[13px] text-text-muted">
+                <p className="text-body font-semibold text-text">Players join by invitation from their club</p>
+                <p className="mt-1 text-caption text-text-muted">
                   Your account lets you review and accept the personal terms clubs offer you, so it is set up
                   by the club you play for. Ask your club to invite you, then use the link in your invitation
                   email. Your agent can also accept terms on your behalf.
@@ -266,7 +266,7 @@ export default function RegisterPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-sm text-text-muted">
+        <p className="mt-6 text-center text-small text-text-muted">
           Already have an account?{" "}
           <Link to="/login" className="text-accent hover:underline">
             Sign in

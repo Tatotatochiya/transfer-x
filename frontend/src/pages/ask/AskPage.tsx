@@ -187,8 +187,8 @@ function AnswerChart({ block }: { block: ChartBlock }) {
   return (
     <div className="mt-3 rounded-xl bg-surface p-4 ring-1 ring-border">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-text">{block.title}</p>
-        <div className="flex flex-wrap gap-3 text-xs text-text-muted">
+        <p className="text-body font-semibold text-text">{block.title}</p>
+        <div className="flex flex-wrap gap-3 text-caption text-text-muted">
           {block.y.map((y, i) => (
             <span key={y} className="inline-flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-sm ${SERIES[i]}`} />{HEADERS[y] ?? words(y)}</span>
           ))}
@@ -197,7 +197,7 @@ function AnswerChart({ block }: { block: ChartBlock }) {
       <div className="space-y-2.5">
         {block.rows.map((r, i) => (
           <div key={i} className="grid grid-cols-[minmax(0,9rem)_1fr] items-center gap-3">
-            <span className="truncate text-xs text-text-secondary" title={String(r[block.x] ?? "")}>{String(r[block.x] ?? "—")}</span>
+            <span className="truncate text-caption text-text-secondary" title={String(r[block.x] ?? "")}>{String(r[block.x] ?? "—")}</span>
             <div className="space-y-1">
               {block.y.map((y, j) => {
                 const v = Number(r[y]) || 0;
@@ -205,7 +205,7 @@ function AnswerChart({ block }: { block: ChartBlock }) {
                 return (
                   <div key={y} className="flex items-center gap-2">
                     <div className={`h-2.5 rounded-sm ${SERIES[j]}`} style={{ width: `${pct}%` }} />
-                    <span className="text-[11px] tabular-nums text-text-muted">{cell(y, r)}</span>
+                    <span className="text-caption tabular-nums text-text-muted">{cell(y, r)}</span>
                   </div>
                 );
               })}
@@ -213,7 +213,7 @@ function AnswerChart({ block }: { block: ChartBlock }) {
           </div>
         ))}
       </div>
-      <p className="mt-3 text-[11px] text-text-muted">{sourceLine(block.source)}</p>
+      <p className="mt-3 text-caption text-text-muted">{sourceLine(block.source)}</p>
     </div>
   );
 }
@@ -223,17 +223,17 @@ function AnswerTable({ block }: { block: TableBlock }) {
   return (
     <div className="mt-3 overflow-hidden rounded-xl bg-surface ring-1 ring-border">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-4 py-2.5">
-        <p className="text-sm font-semibold text-text">{block.title}</p>
-        <div className="flex items-center gap-3 text-xs text-text-muted">
+        <p className="text-body font-semibold text-text">{block.title}</p>
+        <div className="flex items-center gap-3 text-caption text-text-muted">
           <span>{block.rows.length < block.total ? `Showing ${block.rows.length} of ${block.total}` : `${block.total} ${block.total === 1 ? "row" : "rows"}`}</span>
           <button type="button" onClick={() => download(block)} className="font-semibold text-accent hover:underline">CSV</button>
           <button type="button" onClick={() => void downloadExcel(block)} className="font-semibold text-accent hover:underline">Excel</button>
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-body">
           <thead>
-            <tr className="border-b border-rule-faint text-left text-xs text-text-muted">
+            <tr className="border-b border-rule-faint text-left text-caption text-text-muted">
               {block.columns.map((c) => <th key={c} className="whitespace-nowrap px-4 py-2 font-semibold">{HEADERS[c] ?? words(c)}</th>)}
             </tr>
           </thead>
@@ -250,7 +250,7 @@ function AnswerTable({ block }: { block: TableBlock }) {
           </tbody>
         </table>
       </div>
-      <p className="border-t border-rule-faint px-4 py-2 text-[11px] text-text-muted">
+      <p className="border-t border-rule-faint px-4 py-2 text-caption text-text-muted">
         {sourceLine(block.source)}
         {block.source.note && <> · {block.source.note}</>}
       </p>
@@ -313,16 +313,16 @@ export default function AskPage() {
     <div className="mx-auto flex max-w-5xl flex-col">
       <div className="mb-4 flex items-baseline justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-text">Ask TransferX</h1>
-          <p className="text-sm text-text-muted">Ask what you'd ask an analyst. Answers come from your club's data and the market on TransferX.</p>
+          <h1 className="text-headline sm:text-title font-bold text-text">Ask TransferX</h1>
+          <p className="text-small text-text-muted">Ask what you'd ask an analyst. Answers come from your club's data and the market on TransferX.</p>
         </div>
         {thread.length > 0 && (
-          <button type="button" onClick={() => { setThread([]); setContext(null); }} className="text-sm font-semibold text-text-secondary hover:text-text">New conversation</button>
+          <button type="button" onClick={() => { setThread([]); setContext(null); }} className="text-small font-semibold text-text-secondary hover:text-text">New conversation</button>
         )}
       </div>
 
       {context && (
-        <p className="mb-3 inline-flex items-center gap-2 self-start rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent ring-1 ring-accent/20">
+        <p className="mb-3 inline-flex items-center gap-2 self-start rounded-full bg-accent-bg px-3 py-1 text-caption font-semibold text-accent ring-1 ring-accent-ring">
           About {context.name || `this ${context.type}`}
           <button type="button" aria-label="Stop asking about this" onClick={() => setContext(null)} className="text-accent/70 hover:text-accent">✕</button>
         </p>
@@ -332,7 +332,7 @@ export default function AskPage() {
         <div className="mb-6 grid gap-2 sm:grid-cols-2">
           {(context ? CONTEXT_STARTERS[context.type](context.name) : STARTERS).map((s) => (
             <button key={s} type="button" onClick={() => send(s)}
-              className="rounded-xl bg-surface px-4 py-3 text-left text-sm text-text ring-1 ring-border hover:ring-accent">
+              className="rounded-xl bg-surface px-4 py-3 text-left text-body text-text ring-1 ring-border hover:ring-accent">
               {s}
             </button>
           ))}
@@ -343,19 +343,19 @@ export default function AskPage() {
         {thread.map((t, i) => (
           <div key={i}>
             <div className="flex justify-end">
-              <p className="max-w-[80%] rounded-2xl bg-accent-bg px-4 py-2.5 text-sm text-text">{t.question}</p>
+              <p className="max-w-[80%] rounded-2xl bg-accent-bg px-4 py-2.5 text-body text-text">{t.question}</p>
             </div>
             <div className="mt-3">
               {!t.result && !t.error && (
-                <p className="flex items-center gap-2 text-sm text-text-muted"><Spinner size="sm" /> Looking it up…</p>
+                <p className="flex items-center gap-2 text-small text-text-muted"><Spinner size="sm" /> Looking it up…</p>
               )}
-              {t.error && <p className="text-sm text-danger-text">{t.error}</p>}
+              {t.error && <p className="text-body text-danger-text">{t.error}</p>}
               {t.result && (
                 <>
-                  <p className="text-[15px] leading-relaxed text-text">{t.result.answer}</p>
+                  <p className="text-body leading-relaxed text-text">{t.result.answer}</p>
                   {t.result.proposal && (
                     <button type="button" onClick={() => navigate(t.result!.proposal!.card_path)}
-                      className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-hover">
+                      className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-body font-semibold text-on-accent hover:bg-accent-hover">
                       Check and send →
                     </button>
                   )}
@@ -363,7 +363,7 @@ export default function AskPage() {
                     <div className="mt-2 flex flex-wrap gap-2">
                       {t.result.links.map((l) => (
                         <button key={l.path} type="button" onClick={() => navigate(l.path)}
-                          className="rounded-lg bg-accent-bg px-2.5 py-1 text-xs font-semibold text-accent ring-1 ring-accent/20">
+                          className="rounded-lg bg-accent-bg px-2.5 py-1 text-caption font-semibold text-accent ring-1 ring-accent-ring">
                           {l.label} →
                         </button>
                       ))}
@@ -376,7 +376,7 @@ export default function AskPage() {
                     <div className="mt-3 flex flex-wrap gap-2">
                       {t.result.follow_ups.map((f) => (
                         <button key={f} type="button" onClick={() => send(f)}
-                          className="rounded-full px-3 py-1 text-xs font-medium text-text-secondary ring-1 ring-border hover:text-text hover:ring-accent">
+                          className="rounded-full px-3 py-1 text-caption font-medium text-text-secondary ring-1 ring-border hover:text-text hover:ring-accent">
                           {f}
                         </button>
                       ))}
@@ -399,10 +399,10 @@ export default function AskPage() {
           onChange={(e) => setText(e.target.value)}
           placeholder={thread.length ? "Ask a follow-up…" : "Ask anything about players, your squad, your transfers…"}
           aria-label="Your question"
-          className="min-w-0 flex-1 rounded-xl bg-surface px-4 py-3 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+          className="min-w-0 flex-1 rounded-xl bg-surface px-4 py-3 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
         />
         <button type="submit" disabled={text.trim().length < 3 || ask.isPending}
-          className="rounded-xl bg-accent px-5 text-sm font-semibold text-on-accent disabled:opacity-50">
+          className="rounded-xl bg-accent px-5 text-body font-semibold text-on-accent disabled:opacity-50">
           {ask.isPending ? "…" : "Ask"}
         </button>
       </form>

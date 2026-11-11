@@ -30,13 +30,13 @@ function ScoreRing({ score }: { score: number }) {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl font-black text-text leading-none">{score}</span>
-          <span className="text-[11px] text-text-muted leading-none mt-0.5">/ 100</span>
+          <span className="text-headline font-bold text-text leading-none">{score}</span>
+          <span className="text-caption text-text-muted leading-none mt-0.5">/ 100</span>
         </div>
       </div>
       <div>
-        <p className={`text-sm font-bold ${labelColour}`}>{label}</p>
-        <p className="text-xs text-text-muted mt-0.5">Squad fit score</p>
+        <p className={`text-body font-bold ${labelColour}`}>{label}</p>
+        <p className="text-caption text-text-muted mt-0.5">Squad fit score</p>
       </div>
     </div>
   );
@@ -54,15 +54,15 @@ export function PlayerFitCard({ playerId }: PlayerFitCardProps) {
     return (
       <div className="rounded-xl bg-surface ring-1 ring-border px-4 py-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-text">AI Fit Score</span>
+          <span className="text-body font-semibold text-text">AI Fit Score</span>
           <button
             onClick={() => setEnabled(true)}
-            className="rounded-lg bg-ai-bg px-2.5 py-1 text-xs font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 transition-colors"
+            className="rounded-lg bg-ai-bg px-2.5 py-1 text-caption font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 transition-colors"
           >
             ✦ Analyse
           </button>
         </div>
-        <p className="mt-1 text-xs text-text-muted">Check how well this player fits your squad.</p>
+        <p className="mt-1 text-caption text-text-muted">Check how well this player fits your squad.</p>
       </div>
     );
   }
@@ -70,18 +70,18 @@ export function PlayerFitCard({ playerId }: PlayerFitCardProps) {
   return (
     <div className="rounded-xl bg-surface ring-1 ring-border overflow-hidden">
       <div className="px-4 py-3 border-b border-rule">
-        <span className="text-sm font-semibold text-text">✦ AI Fit Score</span>
+        <span className="text-body font-semibold text-text">✦ AI Fit Score</span>
       </div>
 
       {isFetching && (
-        <div className="flex items-center gap-2 px-4 py-4 text-sm text-text-muted">
+        <div className="flex items-center gap-2 px-4 py-4 text-small text-text-muted">
           <Spinner size="sm" />
           Analysing fit…
         </div>
       )}
 
       {error && !isFetching && (
-        <p className="px-4 py-3 text-xs text-danger-text">
+        <p className="px-4 py-3 text-caption text-danger-text">
           {(error as { response?: { data?: { detail?: string } } }).response?.data?.detail ??
             "Analysis failed."}
         </p>
@@ -96,20 +96,20 @@ export function PlayerFitCard({ playerId }: PlayerFitCardProps) {
 
           {/* Summary */}
           <div className="px-4 py-3">
-            <p className="text-xs leading-relaxed text-text-muted">{data.summary}</p>
+            <p className="text-caption leading-relaxed text-text-muted">{data.summary}</p>
           </div>
 
           {/* Strengths */}
           {data.strengths.length > 0 && (
             <div className="px-4 py-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-success-text">
+              <p className="mb-2 text-caption font-semibold text-success-text">
                 Strengths
               </p>
               <ul className="space-y-1.5">
                 {data.strengths.map((s, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="mt-0.5 shrink-0 text-success-text">✓</span>
-                    <span className="text-xs text-text-secondary leading-snug">{s}</span>
+                    <span className="text-caption text-text-secondary leading-snug">{s}</span>
                   </li>
                 ))}
               </ul>
@@ -119,14 +119,14 @@ export function PlayerFitCard({ playerId }: PlayerFitCardProps) {
           {/* Concerns */}
           {data.concerns.length > 0 && (
             <div className="px-4 py-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-warning-text">
+              <p className="mb-2 text-caption font-semibold text-warning-text">
                 Concerns
               </p>
               <ul className="space-y-1.5">
                 {data.concerns.map((c, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="mt-0.5 shrink-0 text-warning-text">⚠</span>
-                    <span className="text-xs text-text-secondary leading-snug">{c}</span>
+                    <span className="text-caption text-text-secondary leading-snug">{c}</span>
                   </li>
                 ))}
               </ul>

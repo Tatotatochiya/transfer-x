@@ -105,7 +105,7 @@ function DemoPill() {
         type="button"
         onClick={() => start.mutate()}
         disabled={start.isPending}
-        className="fixed bottom-[calc(1rem+var(--action-bar-h,0px))] right-4 z-[60] rounded-full bg-surface px-4 py-2 text-sm font-semibold text-text shadow-lg ring-1 ring-border hover:ring-accent disabled:opacity-60"
+        className="fixed bottom-[calc(1rem+var(--action-bar-h,0px))] right-4 z-[60] rounded-full bg-surface px-4 py-2 text-body font-semibold text-text shadow-lg ring-1 ring-border hover:ring-accent disabled:opacity-60"
       >
         Start demo
       </button>
@@ -115,12 +115,12 @@ function DemoPill() {
   return (
     <div className="fixed bottom-[calc(1rem+var(--action-bar-h,0px))] right-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
       {open && (
-        <div role="dialog" aria-label="Demo" className="w-80 max-w-full rounded-2xl bg-surface p-4 text-sm shadow-xl ring-1 ring-border">
+        <div role="dialog" aria-label="Demo" className="w-80 max-w-full rounded-2xl bg-surface p-4 text-small shadow-xl ring-1 ring-border">
           <p className="font-semibold text-text">Your demo</p>
           <p className="mt-1 text-text-secondary">
             {run.changes} change{run.changes === 1 ? "" : "s"} so far. Resets by itself on {run.resets_on ? formatDate(run.resets_on) : "—"}.
           </p>
-          <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-text-muted">House clubs answer</p>
+          <p className="mt-3 text-caption font-semibold text-text-secondary">House clubs answer</p>
           <div role="radiogroup" aria-label="How fast house clubs answer" className="mt-1 flex gap-1 rounded-lg bg-surface-inset p-1">
             {(["instant", "realistic"] as const).map((v) => (
               <button
@@ -130,7 +130,7 @@ function DemoPill() {
                 aria-checked={(run.speed ?? "instant") === v}
                 disabled={speed.isPending}
                 onClick={() => speed.mutate({ speed: v })}
-                className={`flex-1 rounded-md px-2 py-1 text-xs font-semibold ${
+                className={`flex-1 rounded-md px-2 py-1 text-caption font-semibold ${
                   (run.speed ?? "instant") === v ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
                 }`}
               >
@@ -138,7 +138,7 @@ function DemoPill() {
               </button>
             ))}
           </div>
-          <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Rival bidders</p>
+          <p className="mt-3 text-caption font-semibold text-text-secondary">Rival bidders</p>
           <div role="radiogroup" aria-label="Rival bidders" className="mt-1 flex gap-1 rounded-lg bg-surface-inset p-1">
             {(["never", "sometimes", "always"] as const).map((v) => (
               <button
@@ -148,7 +148,7 @@ function DemoPill() {
                 aria-checked={(run.rivals ?? "sometimes") === v}
                 disabled={speed.isPending}
                 onClick={() => speed.mutate({ rivals: v })}
-                className={`flex-1 rounded-md px-2 py-1 text-xs font-semibold capitalize ${
+                className={`flex-1 rounded-md px-2 py-1 text-caption font-semibold capitalize ${
                   (run.rivals ?? "sometimes") === v ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text"
                 }`}
               >
@@ -156,10 +156,10 @@ function DemoPill() {
               </button>
             ))}
           </div>
-          <p className="mt-1 text-xs text-text-muted">
+          <p className="mt-1 text-caption text-text-muted">
             They answer your offers by their valuation, bid for players you list, and do their side of each deal. Sometimes another club bids against you. Each move says &ldquo;Automated (demo)&rdquo;.
           </p>
-          <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-text-muted">Or play the other side yourself</p>
+          <p className="mt-3 text-caption font-semibold text-text-secondary">Or play the other side yourself</p>
           {houses.isLoading ? (
             <p className="mt-1 text-text-muted">Loading…</p>
           ) : !houses.data?.length ? (
@@ -204,7 +204,7 @@ function DemoPill() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-full bg-warning-fill px-4 py-2 text-sm font-bold text-ink shadow-lg"
+        className="flex items-center gap-2 rounded-full bg-warning-fill px-4 py-2 text-body font-bold text-ink shadow-lg"
       >
         <span aria-hidden>●</span> Demo · {run.changes} change{run.changes === 1 ? "" : "s"}
       </button>
@@ -217,7 +217,7 @@ export function DemoPlayAsBanner() {
   const { demoPlayedBy } = useAuth();
   if (!demoPlayedBy) return null;
   return (
-    <div role="status" className="sticky top-0 z-[70] bg-warning-fill px-4 py-2 text-center text-sm font-semibold text-ink">
+    <div role="status" className="sticky top-0 z-[70] bg-warning-fill px-4 py-2 text-center text-body font-semibold text-ink">
       Demo: you&rsquo;re playing this house club in {demoPlayedBy}&rsquo;s demo. Everything here is undone when the demo is reset.
     </div>
   );

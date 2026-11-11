@@ -20,7 +20,7 @@ export default function ViewAsBanner() {
     <div
       role="status"
       // Bottom-right, so it covers neither the sidebar nor the page header.
-      className="fixed bottom-4 right-4 z-[70] flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-ink px-4 py-2.5 text-sm text-white shadow-xl"
+      className="fixed bottom-4 right-4 z-[70] flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-ink px-4 py-2.5 text-small text-white shadow-xl"
     >
       <span>
         <span className="font-semibold">Viewing as {identity.name ?? "this club"}</span>

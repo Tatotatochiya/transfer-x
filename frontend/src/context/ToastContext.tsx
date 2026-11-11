@@ -50,9 +50,9 @@ export function useToast() {
 // ── Toast container ────────────────────────────────────────────────────────────
 
 const variantStyles: Record<ToastVariant, string> = {
-  success: "bg-success/10 ring-success/30 text-success-text",
-  error:   "bg-danger/10 ring-danger/30 text-danger-text",
-  warning: "bg-warning-fill/10 ring-warning-fill/30 text-warning-text",
+  success: "bg-success-bg ring-success-ring text-success-text",
+  error:   "bg-danger-bg ring-danger-ring text-danger-text",
+  warning: "bg-warning-bg ring-warning-ring text-warning-text",
   info:    "bg-surface ring-border text-text-secondary",
 };
 
@@ -77,7 +77,7 @@ function ToastContainer({
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`pointer-events-auto flex items-start gap-3 rounded-xl px-4 py-3 text-sm shadow-lg ring-1 backdrop-blur-sm max-w-sm ${variantStyles[toast.variant]}`}
+          className={`pointer-events-auto flex items-start gap-3 rounded-xl px-4 py-3 text-small shadow-lg ring-1 backdrop-blur-sm max-w-sm ${variantStyles[toast.variant]}`}
           style={{ animation: "toast-in 0.2s ease-out" }}
         >
           <span className="mt-px shrink-0 font-bold">{variantIcon[toast.variant]}</span>

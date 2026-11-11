@@ -44,7 +44,7 @@ export default function ResetPasswordPage() {
     }
   }
 
-  const input = "w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
+  const input = "w-full rounded-lg bg-surface px-3 py-2 text-small text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-page px-4">
@@ -53,40 +53,40 @@ export default function ResetPasswordPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent-bg">
             <Icon name="bolt" className="h-7 w-7 text-accent" />
           </div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-accent">TransferX</p>
-          <h1 className="mt-2 text-2xl font-semibold text-text">Choose a new password</h1>
+          <p className="text-caption font-semibold text-accent">TransferX</p>
+          <h1 className="mt-2 text-title-sm sm:text-title font-semibold text-text">Choose a new password</h1>
         </div>
 
         <div className="rounded-xl bg-surface p-8 ring-1 ring-border">
           {done ? (
             <div className="text-center">
-              <p className="text-sm font-medium text-success-text">Your password has been changed.</p>
-              <p className="mt-2 text-sm text-text-muted">You've been signed out on every device. Sign in with your new password.</p>
-              <Link to="/login" className="mt-5 inline-block text-sm font-semibold text-accent hover:underline">Go to sign in</Link>
+              <p className="text-body font-medium text-success-text">Your password has been changed.</p>
+              <p className="mt-2 text-small text-text-muted">You've been signed out on every device. Sign in with your new password.</p>
+              <Link to="/login" className="mt-5 inline-block text-body font-semibold text-accent hover:underline">Go to sign in</Link>
             </div>
           ) : isLoading ? (
             <div className="flex justify-center py-8"><Spinner size="lg" /></div>
           ) : !token || isError || !preview ? (
             <div className="text-center">
-              <p className="text-sm font-medium text-danger-text">This link has expired or has already been used.</p>
-              <p className="mt-2 text-sm text-text-muted">Ask TransferX for a new one.</p>
-              <Link to="/login" className="mt-5 inline-block text-sm font-semibold text-accent hover:underline">Go to sign in</Link>
+              <p className="text-body font-medium text-danger-text">This link has expired or has already been used.</p>
+              <p className="mt-2 text-small text-text-muted">Ask TransferX for a new one.</p>
+              <Link to="/login" className="mt-5 inline-block text-body font-semibold text-accent hover:underline">Go to sign in</Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              <p className="text-sm text-text-secondary">For <span className="font-semibold text-text">{preview.email}</span></p>
+              <p className="text-body text-text-secondary">For <span className="font-semibold text-text">{preview.email}</span></p>
               <div>
-                <label htmlFor="pw" className="mb-1.5 block text-sm font-medium text-text-secondary">New password</label>
+                <label htmlFor="pw" className="mb-1.5 block text-small font-medium text-text-secondary">New password</label>
                 <input id="pw" type="password" autoComplete="new-password" value={password}
                   onChange={(e) => setPassword(e.target.value)} className={input} />
-                <p className="mt-1 text-xs text-text-muted">At least 8 characters.</p>
+                <p className="mt-1 text-caption text-text-muted">At least 8 characters.</p>
               </div>
               <div>
-                <label htmlFor="pw2" className="mb-1.5 block text-sm font-medium text-text-secondary">Type it again</label>
+                <label htmlFor="pw2" className="mb-1.5 block text-small font-medium text-text-secondary">Type it again</label>
                 <input id="pw2" type="password" autoComplete="new-password" value={confirmPw}
                   onChange={(e) => setConfirmPw(e.target.value)} className={input} />
               </div>
-              {error && <p className="text-sm text-danger-text">{error}</p>}
+              {error && <p className="text-body text-danger-text">{error}</p>}
               <Button type="submit" variant="primary" className="w-full" loading={submitting}>Set password</Button>
             </form>
           )}

@@ -209,14 +209,14 @@ export function NotificationBell({ size = "sm" }: { size?: "sm" | "touch" }) {
       className={({ isActive }) =>
         `relative flex shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
           size === "touch" ? "h-11 w-11" : "h-8 w-8"
-        } ${isActive ? "bg-accent-bg text-accent ring-accent/30" : "text-text-secondary ring-border hover:bg-surface-inset"}`
+        } ${isActive ? "bg-accent-bg text-accent ring-accent-ring" : "text-text-secondary ring-border hover:bg-surface-inset"}`
       }
     >
       <Icon name="bell" className={size === "touch" ? "h-5 w-5" : "h-4 w-4"} />
       {count > 0 && (
         <span
           aria-hidden
-          className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger px-1 text-[11px] font-bold leading-none text-white"
+          className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-caption font-bold leading-none text-white"
         >
           {count > 99 ? "99+" : count}
         </span>
@@ -226,7 +226,7 @@ export function NotificationBell({ size = "sm" }: { size?: "sm" | "touch" }) {
 }
 
 // 32px rows on desktop; 48px touch rows in the drawer below 1024px.
-const ROW = "flex min-h-12 items-center gap-2.5 rounded-[7px] px-2 text-[15px] font-medium no-underline transition-colors lg:h-8 lg:min-h-0 lg:text-[13.5px]";
+const ROW = "flex min-h-12 items-center gap-2.5 rounded-[7px] px-2 text-body font-medium no-underline transition-colors lg:h-8 lg:min-h-0";
 // An inset outline, so the nav's overflow-y-auto never clips it.
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent";
 const ROW_ICON = "h-[18px] w-[18px] shrink-0 lg:h-4 lg:w-4";
@@ -250,7 +250,7 @@ function SidebarLink({ item, waiting = 0 }: { item: NavItem; waiting?: number })
               nav" keeps meaning exactly one thing. */}
           {waiting > 0 && (
             <span
-              className="ml-auto flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger px-1 text-[11px] font-bold text-white leading-none"
+              className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-caption font-bold text-white leading-none"
               aria-label={`${waiting} waiting on you`}
             >
               {waiting > 99 ? "99+" : waiting}
@@ -264,7 +264,7 @@ function SidebarLink({ item, waiting = 0 }: { item: NavItem; waiting?: number })
 
 // ── Account menu (the footer) ────────────────────────────────────────────────
 
-const MENU_ITEM = `flex min-h-12 w-full items-center rounded-lg px-2.5 text-left text-[15px] text-text no-underline hover:bg-surface-inset disabled:opacity-50 lg:min-h-9 lg:text-[13.5px] ${FOCUS}`;
+const MENU_ITEM = `flex min-h-12 w-full items-center rounded-lg px-2.5 text-left text-body text-text no-underline hover:bg-surface-inset disabled:opacity-50 lg:min-h-9 ${FOCUS}`;
 
 /**
  * One button that opens upwards: Settings, Notification settings, Switch to
@@ -392,11 +392,11 @@ function AccountMenu({ onLogout }: { onLogout: () => void }) {
           size="sm"
         />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-semibold text-text">{name}</span>
+          <span className="block truncate text-caption font-semibold text-text">{name}</span>
           <span className="flex min-w-0 items-center gap-1.5">
-            {subLine && <span className="truncate text-[11.5px] text-text-muted">{subLine}</span>}
+            {subLine && <span className="truncate text-caption text-text-muted">{subLine}</span>}
             {identity.isSuperuser && (
-              <span className="shrink-0 rounded px-1.5 py-px text-[10px] font-bold uppercase tracking-wider bg-danger/15 text-danger-text">
+              <span className="shrink-0 rounded px-1.5 py-px text-caption font-semibold bg-danger-bg text-danger-text">
                 Staff
               </span>
             )}
@@ -475,7 +475,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-accent">
             <Icon name="bolt" className="h-3.5 w-3.5 text-white" />
           </div>
-          <Link to="/dashboard" className={`flex-1 rounded text-[15px] font-bold text-text whitespace-nowrap no-underline ${FOCUS}`}>
+          <Link to="/dashboard" className={`flex-1 rounded text-body font-bold text-text whitespace-nowrap no-underline ${FOCUS}`}>
             TransferX
           </Link>
           {isAuthenticated && <NotificationBell />}
@@ -490,7 +490,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             if (group.superuserOnly && !user?.is_superuser) return null;
             return (
               <div key={group.title}>
-                <p className="flex h-[22px] items-center px-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-text-muted">
+                <p className="flex h-[22px] items-center px-2 text-caption font-semibold text-text-secondary">
                   {group.title}
                 </p>
                 <div className="flex flex-col">

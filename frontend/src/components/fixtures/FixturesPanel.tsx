@@ -28,7 +28,7 @@ function StatusBadge({ short }: { short: string; long: string | null }) {
 
   if (isLive) {
     return (
-      <span className="flex items-center gap-1 rounded-full bg-danger/15 px-2 py-0.5 text-[11px] font-bold text-danger-text ring-1 ring-danger/30">
+      <span className="flex items-center gap-1 rounded-full bg-danger-bg px-2 py-0.5 text-caption font-bold text-danger-text ring-1 ring-danger-ring">
         <span className="h-1.5 w-1.5 rounded-full bg-danger animate-pulse" />
         {short}
       </span>
@@ -36,14 +36,14 @@ function StatusBadge({ short }: { short: string; long: string | null }) {
   }
   if (isFinished) {
     return (
-      <span className="rounded-full bg-text-muted/15 px-2 py-0.5 text-[11px] font-bold text-text-muted">
+      <span className="rounded-full bg-surface-inset px-2 py-0.5 text-caption font-bold text-text-muted">
         {short}
       </span>
     );
   }
   // Not started / postponed / cancelled
   return (
-    <span className="rounded-full bg-surface-inset px-2 py-0.5 text-[11px] font-medium text-text-muted ring-1 ring-border">
+    <span className="rounded-full bg-surface-inset px-2 py-0.5 text-caption font-medium text-text-muted ring-1 ring-border">
       {short === "NS" ? "—" : short}
     </span>
   );
@@ -81,9 +81,9 @@ function TeamBadge({
       onClick={handleClick}
       className={`flex items-center gap-2 min-w-0 cursor-pointer group ${align === "right" ? "flex-row-reverse" : ""}`}
     >
-      <FallbackImage src={crest} name={name} kind="club" sizeClass="h-6 w-6 text-[11px]" colorClass="bg-surface-inset text-text-muted" />
+      <FallbackImage src={crest} name={name} kind="club" sizeClass="h-6 w-6 text-caption" colorClass="bg-surface-inset text-text-muted" />
       <span
-        className={`truncate text-sm font-medium transition-colors group-hover:text-accent ${
+        className={`truncate text-body font-medium transition-colors group-hover:text-accent ${
           isHighlighted ? "text-text" : "text-text-muted"
         }`}
       >
@@ -118,7 +118,7 @@ function FixtureRow({
   return (
     <div className="rounded-xl bg-surface-inset px-4 py-3 ring-1 ring-border hover:ring-input-border transition-all">
       {/* Meta row */}
-      <div className="mb-2 flex items-center justify-between text-[11px] text-text-muted">
+      <div className="mb-2 flex items-center justify-between text-caption text-text-muted">
         <span>{leagueName}{fixture.round ? ` · ${fixture.round}` : ""}</span>
         <span>{dateStr}{timeStr ? ` · ${timeStr}` : ""}</span>
       </div>
@@ -136,11 +136,11 @@ function FixtureRow({
         {/* Score / status */}
         <div className="flex flex-col items-center gap-0.5">
           {isFinished && fixture.home_goals != null && fixture.away_goals != null ? (
-            <span className="text-lg font-bold tabular-nums text-text">
+            <span className="text-section font-bold tabular-nums text-text">
               {fixture.home_goals} – {fixture.away_goals}
             </span>
           ) : (
-            <span className="text-lg font-bold text-text-muted">vs</span>
+            <span className="text-section font-bold text-text-muted">vs</span>
           )}
           <StatusBadge short={fixture.status_short} long={fixture.status_long} />
         </div>
@@ -155,7 +155,7 @@ function FixtureRow({
       </div>
 
       {fixture.venue_name && (
-        <p className="mt-2 text-center text-[13px] text-text-muted">{fixture.venue_name}</p>
+        <p className="mt-2 text-center text-caption text-text-muted">{fixture.venue_name}</p>
       )}
     </div>
   );
@@ -187,7 +187,7 @@ export default function FixturesPanel({ vendorTeamId }: Props) {
 
   if (isError || !fixtures) {
     return (
-      <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
+      <div className="rounded-xl bg-danger-bg px-4 py-3 text-small text-danger-text ring-1 ring-danger-border">
         Could not load fixtures.
       </div>
     );
@@ -195,7 +195,7 @@ export default function FixturesPanel({ vendorTeamId }: Props) {
 
   if (fixtures.length === 0) {
     return (
-      <div className="rounded-xl bg-surface-inset px-4 py-4 text-sm text-text-muted ring-1 ring-border">
+      <div className="rounded-xl bg-surface-inset px-4 py-4 text-small text-text-muted ring-1 ring-border">
         No fixture data available.
       </div>
     );
@@ -220,8 +220,8 @@ export default function FixturesPanel({ vendorTeamId }: Props) {
     <div className="space-y-6">
       {past.length > 0 && (
         <div>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Recent Results
+          <p className="mb-3 text-caption font-semibold text-text-secondary">
+            Recent results
           </p>
           <div className="space-y-2">
             {past.map((f) => (
@@ -233,7 +233,7 @@ export default function FixturesPanel({ vendorTeamId }: Props) {
 
       {upcoming.length > 0 && (
         <div>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
+          <p className="mb-3 text-caption font-semibold text-text-secondary">
             Upcoming
           </p>
           <div className="space-y-2">

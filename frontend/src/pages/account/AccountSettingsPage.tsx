@@ -38,7 +38,7 @@ function SegmentedControl<T extends string>({
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
-          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`rounded-md px-3 py-1.5 text-caption font-medium transition-colors ${
             value === opt.value
               ? "bg-surface text-text shadow-sm"
               : "text-text-muted hover:text-text-secondary"
@@ -57,8 +57,8 @@ function Section({ id, title, subtitle, children }: { id?: string; title: string
   return (
     <div id={id} className="scroll-mt-20">
       <div className="mb-3">
-        <h2 className="text-sm font-semibold text-text">{title}</h2>
-        {subtitle && <p className="mt-0.5 text-xs text-text-muted">{subtitle}</p>}
+        <h2 className="text-body font-semibold text-text">{title}</h2>
+        {subtitle && <p className="mt-0.5 text-caption text-text-muted">{subtitle}</p>}
       </div>
       {children}
     </div>
@@ -128,13 +128,13 @@ export default function AccountSettingsPage() {
 
         {/* Profile */}
         <Card className="flex items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-inset text-lg font-bold text-text-secondary ring-1 ring-border">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-inset text-section font-bold text-text-secondary ring-1 ring-border">
             {(user?.first_name ?? user?.email)?.[0]?.toUpperCase() ?? "?"}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-text">{user?.full_name ?? user?.email}</p>
-            {user?.full_name && <p className="truncate text-xs text-text-muted">{user.email}</p>}
-            <p className="mt-0.5 text-xs text-text-muted">
+            <p className="truncate text-body font-semibold text-text">{user?.full_name ?? user?.email}</p>
+            {user?.full_name && <p className="truncate text-caption text-text-muted">{user.email}</p>}
+            <p className="mt-0.5 text-caption text-text-muted">
               Member since{" "}
               {user?.created_at
                 ? new Date(user.created_at).toLocaleDateString("en-GB", {
@@ -160,8 +160,8 @@ export default function AccountSettingsPage() {
 
             <div className="flex items-center justify-between px-5 py-4">
               <div>
-                <p className="text-sm text-text">Appearance</p>
-                <p className="mt-0.5 text-xs text-text-muted">Colour scheme used across the app</p>
+                <p className="text-body text-text">Appearance</p>
+                <p className="mt-0.5 text-caption text-text-muted">Colour scheme used across the app</p>
               </div>
               <SegmentedControl<Theme>
                 value={theme}
@@ -175,8 +175,8 @@ export default function AccountSettingsPage() {
 
             <div className="flex items-center justify-between px-5 py-4">
               <div>
-                <p className="text-sm text-text">Estimates in another currency</p>
-                <p className="mt-0.5 text-xs text-text-muted">
+                <p className="text-body text-text">Estimates in another currency</p>
+                <p className="mt-0.5 text-caption text-text-muted">
                   Amounts are agreed in pounds. Pick a currency to see an estimate next to fees, valuations and budgets.
                 </p>
               </div>
@@ -193,8 +193,8 @@ export default function AccountSettingsPage() {
 
             <div className="flex items-center justify-between px-5 py-4">
               <div>
-                <p className="text-sm text-text">Default market view</p>
-                <p className="mt-0.5 text-xs text-text-muted">Starting layout on the player market</p>
+                <p className="text-body text-text">Default market view</p>
+                <p className="mt-0.5 text-caption text-text-muted">Starting layout on the player market</p>
               </div>
               <SegmentedControl<MarketView>
                 value={defaultMarketView}
@@ -208,8 +208,8 @@ export default function AccountSettingsPage() {
 
             <div className="flex items-center justify-between px-5 py-4">
               <div>
-                <p className="text-sm text-text">Date format</p>
-                <p className="mt-0.5 text-xs text-text-muted">How timestamps appear in activity feeds</p>
+                <p className="text-body text-text">Date format</p>
+                <p className="mt-0.5 text-caption text-text-muted">How timestamps appear in activity feeds</p>
               </div>
               <SegmentedControl<DateFormat>
                 value={dateFormat}
@@ -250,39 +250,39 @@ export default function AccountSettingsPage() {
           <Card>
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div>
-                <label className="mb-1 block text-xs text-text-muted">Current password</label>
+                <label className="mb-1 block text-caption text-text-muted">Current password</label>
                 <input
                   type="password"
                   required
                   value={current}
                   onChange={(e) => setCurrent(e.target.value)}
-                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs text-text-muted">New password</label>
+                <label className="mb-1 block text-caption text-text-muted">New password</label>
                 <input
                   type="password"
                   required
                   value={next}
                   onChange={(e) => setNext(e.target.value)}
-                  className="w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs text-text-muted">Confirm new password</label>
+                <label className="mb-1 block text-caption text-text-muted">Confirm new password</label>
                 <input
                   type="password"
                   required
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  className={`w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 focus:outline-none focus:ring-accent ${
+                  className={`w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 focus:outline-none focus:ring-accent ${
                     mismatch ? "ring-danger" : "ring-input-border"
                   }`}
                 />
-                {mismatch && <p className="mt-1 text-xs text-danger-text">Passwords do not match</p>}
+                {mismatch && <p className="mt-1 text-caption text-danger-text">Passwords do not match</p>}
               </div>
 
               <div className="flex items-center gap-3 pt-1">
@@ -296,12 +296,12 @@ export default function AccountSettingsPage() {
                   Update password
                 </Button>
                 {passwordMutation.isError && (
-                  <p className="text-xs text-danger-text">
+                  <p className="text-caption text-danger-text">
                     {getApiError(passwordMutation.error, "Update failed.")}
                   </p>
                 )}
                 {passwordMutation.isSuccess && (
-                  <p className="text-xs text-success-text">Password updated.</p>
+                  <p className="text-caption text-success-text">Password updated.</p>
                 )}
               </div>
             </form>

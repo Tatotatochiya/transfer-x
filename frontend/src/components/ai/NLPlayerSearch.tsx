@@ -29,11 +29,11 @@ export function FilterChips({ filters }: { filters: NLParsedFilters }) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-xs text-text-muted italic">"{filters.interpreted_as}"</span>
+      <span className="text-caption text-text-muted italic">"{filters.interpreted_as}"</span>
       {chips.map((c) => (
         <span
           key={c}
-          className="rounded-md bg-ai-bg px-2 py-0.5 text-xs font-medium text-ai-text ring-1 ring-ai-ring"
+          className="rounded-md bg-ai-bg px-2 py-0.5 text-caption font-medium text-ai-text ring-1 ring-ai-ring"
         >
           {c}
         </span>

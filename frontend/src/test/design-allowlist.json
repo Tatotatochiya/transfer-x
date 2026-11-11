@@ -1,20 +1,4 @@
 {
- "src/App.tsx": {
-  "size": 2
- },
- "src/components/account/NamePrompt.tsx": {
-  "size": 1,
-  "tint": 2
- },
- "src/components/account/SessionsCard.tsx": {
-  "size": 2
- },
- "src/components/account/YourDataCard.tsx": {
-  "size": 9
- },
- "src/components/account/YourNameCard.tsx": {
-  "size": 3
- },
  "src/components/admin/DealStaffTools.tsx": {
   "size": 5,
   "uppercase": 1,
@@ -23,75 +7,6 @@
  "src/components/admin/ObligationDecisionsPanel.tsx": {
   "size": 7,
   "tint": 1
- },
- "src/components/ai/AskAboutButton.tsx": {
-  "size": 2
- },
- "src/components/ai/Assistant.tsx": {
-  "size": 27,
-  "tint": 6
- },
- "src/components/ai/DraftButton.tsx": {
-  "size": 3
- },
- "src/components/ai/MarketRecommendationsPanel.tsx": {
-  "size": 10
- },
- "src/components/ai/NLPlayerSearch.tsx": {
-  "size": 2
- },
- "src/components/ai/PlayerFitCard.tsx": {
-  "size": 15,
-  "uppercase": 2,
-  "extrabold": 1
- },
- "src/components/ai/ScoutReportPanel.tsx": {
-  "size": 10,
-  "uppercase": 1
- },
- "src/components/ai/ShortlistReviewPanel.tsx": {
-  "size": 18,
-  "uppercase": 3,
-  "tint": 8
- },
- "src/components/auth/NameFields.tsx": {
-  "size": 3
- },
- "src/components/conversation/ConversationPanel.tsx": {
-  "size": 15,
-  "tint": 3
- },
- "src/components/demo/DemoControl.tsx": {
-  "size": 10,
-  "uppercase": 3
- },
- "src/components/demo/DemoOfferControls.tsx": {
-  "size": 2,
-  "tint": 2
- },
- "src/components/fixtures/FixturesPanel.tsx": {
-  "size": 13,
-  "uppercase": 2,
-  "tint": 3
- },
- "src/components/layout/AppShell.tsx": {
-  "size": 2
- },
- "src/components/layout/GlobalSearch.tsx": {
-  "size": 24,
-  "uppercase": 3,
-  "tint": 1
- },
- "src/components/layout/MarketActions.tsx": {
-  "size": 2
- },
- "src/components/layout/Sidebar.tsx": {
-  "size": 11,
-  "uppercase": 2,
-  "tint": 2
- },
- "src/components/layout/ViewAsBanner.tsx": {
-  "size": 1
  },
  "src/components/lite/ActionCard.tsx": {
   "size": 30,
@@ -105,30 +20,6 @@
  },
  "src/components/lite/WaitingNav.tsx": {
   "size": 4
- },
- "src/components/notifications/InstallGuide.tsx": {
-  "size": 7
- },
- "src/components/notifications/NotificationTypesTable.tsx": {
-  "size": 12,
-  "uppercase": 2
- },
- "src/components/notifications/PushSettingsCard.tsx": {
-  "size": 25,
-  "uppercase": 1
- },
- "src/components/notifications/PushSoftAsk.tsx": {
-  "size": 7
- },
- "src/context/ConfirmContext.tsx": {
-  "size": 5
- },
- "src/context/ToastContext.tsx": {
-  "size": 1,
-  "tint": 6
- },
- "src/pages/account/AccountSettingsPage.tsx": {
-  "size": 24
  },
  "src/pages/admin/AdminAIPage.tsx": {
   "size": 25,
@@ -251,34 +142,6 @@
   "uppercase": 4,
   "tint": 7
  },
- "src/pages/ask/AskPage.tsx": {
-  "size": 24,
-  "tint": 3
- },
- "src/pages/auth/AcceptInvitePage.tsx": {
-  "size": 15,
-  "uppercase": 1
- },
- "src/pages/auth/JoinClubPage.tsx": {
-  "size": 13,
-  "uppercase": 1
- },
- "src/pages/auth/JoinPlayerPage.tsx": {
-  "size": 13,
-  "uppercase": 1
- },
- "src/pages/auth/LoginPage.tsx": {
-  "size": 9,
-  "uppercase": 1
- },
- "src/pages/auth/RegisterPage.tsx": {
-  "size": 13,
-  "uppercase": 1
- },
- "src/pages/auth/ResetPasswordPage.tsx": {
-  "size": 14,
-  "uppercase": 1
- },
  "src/pages/lite/LiteApprovalPage.tsx": {
   "size": 9
  },
@@ -310,9 +173,6 @@
  },
  "src/pages/lite/LiteSentPage.tsx": {
   "size": 24
- },
- "src/pages/notifications/NotificationsPage.tsx": {
-  "size": 7
  },
  "src/pages/player/PlayerProfilePage.tsx": {
   "size": 20,

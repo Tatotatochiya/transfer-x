@@ -73,7 +73,7 @@ export default function JoinClubPage() {
 
   const invalid = !token || isError;
   const inputClass =
-    "w-full rounded-lg bg-surface px-3 py-2.5 text-sm text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors";
+    "w-full rounded-lg bg-surface px-3 py-2.5 text-small text-text placeholder-text-muted ring-1 ring-input-border focus:outline-none focus:ring-accent transition-colors";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-page px-4">
@@ -82,8 +82,8 @@ export default function JoinClubPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent-bg">
             <Icon name="bolt" className="h-7 w-7 text-accent" />
           </div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-accent">TransferX</p>
-          <h1 className="mt-2 text-2xl font-semibold text-text">Bring your club onto TransferX</h1>
+          <p className="text-caption font-semibold text-accent">TransferX</p>
+          <h1 className="mt-2 text-title-sm sm:text-title font-semibold text-text">Bring your club onto TransferX</h1>
         </div>
 
         <div className="rounded-xl bg-surface p-8 ring-1 ring-border">
@@ -91,10 +91,10 @@ export default function JoinClubPage() {
             <div className="flex justify-center py-8"><Spinner size="lg" /></div>
           ) : invalid ? (
             <div className="text-center">
-              <p className="text-sm font-medium text-danger-text">
+              <p className="text-body font-medium text-danger-text">
                 This invitation link is invalid, expired, or has already been used.
               </p>
-              <p className="mt-2 text-sm text-text-muted">Ask TransferX to send you a new invitation.</p>
+              <p className="mt-2 text-small text-text-muted">Ask TransferX to send you a new invitation.</p>
               <Button variant="secondary" size="sm" className="mt-5" onClick={() => navigate("/login")}>
                 Go to sign in
               </Button>
@@ -102,32 +102,32 @@ export default function JoinClubPage() {
           ) : preview ? (
             <>
               <div className="mb-6 rounded-lg bg-surface-inset px-4 py-3.5 ring-1 ring-border">
-                <p className="text-sm font-semibold text-text">{preview.club_name}</p>
-                <p className="text-[13px] text-text-muted">
+                <p className="text-body font-semibold text-text">{preview.club_name}</p>
+                <p className="text-caption text-text-muted">
                   You're invited as the club's owner. You can invite your team once you're in.
                 </p>
-                <p className="mt-0.5 text-[13px] text-text-muted">Expires {formatDateTime(preview.expires_at)}</p>
+                <p className="mt-0.5 text-caption text-text-muted">Expires {formatDateTime(preview.expires_at)}</p>
               </div>
 
               {error && (
-                <div className="mb-4 rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
+                <div className="mb-4 rounded-lg bg-danger-bg px-4 py-3 text-small text-danger-text ring-1 ring-danger-border">
                   {error}
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-text-secondary">Email</label>
+                  <label className="mb-1.5 block text-small font-medium text-text-secondary">Email</label>
                   <input
                     type="email"
                     value={preview.email}
                     disabled
-                    className="w-full rounded-lg bg-surface-inset px-3 py-2.5 text-sm text-text-muted ring-1 ring-input-border"
+                    className="w-full rounded-lg bg-surface-inset px-3 py-2.5 text-input lg:text-body text-text-muted ring-1 ring-input-border"
                   />
                 </div>
                 <NameFields first={firstName} last={lastName} onFirst={setFirstName} onLast={setLastName} />
                 <div>
-                  <label htmlFor="pw" className="mb-1.5 block text-sm font-medium text-text-secondary">
+                  <label htmlFor="pw" className="mb-1.5 block text-small font-medium text-text-secondary">
                     Choose a password
                   </label>
                   <input
@@ -142,7 +142,7 @@ export default function JoinClubPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="pw2" className="mb-1.5 block text-sm font-medium text-text-secondary">
+                  <label htmlFor="pw2" className="mb-1.5 block text-small font-medium text-text-secondary">
                     Confirm password
                   </label>
                   <input

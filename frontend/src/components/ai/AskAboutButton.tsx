@@ -17,8 +17,8 @@ export default function AskAboutButton({
   className?: string;
 }) {
   const sizing = size === "sm"
-    ? "min-h-11 lg:min-h-0 px-3 py-1.5 text-xs"
-    : "min-h-11 lg:min-h-0 px-[18px] py-2.5 text-sm";
+    ? "min-h-11 lg:min-h-0 px-3 py-1.5 text-caption"
+    : "min-h-11 lg:min-h-0 px-[18px] py-2.5 text-small";
   return (
     <Link
       to={askAboutPath(about, id, name)}

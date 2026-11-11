@@ -16,7 +16,7 @@ export default function MarketActions({ compact = false, divider = false }: { co
   const { can } = useClubCapabilities();
   if (!isAuthenticated || userType !== "CLUB" || !hasClub || viewedBy || !can("MARKET_WRITE")) return null;
   const cls = `flex items-center gap-1.5 rounded-lg bg-transparent font-semibold text-text-secondary no-underline hover:bg-surface-inset hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-    compact ? "h-9 px-2.5 text-[13px] ring-1 ring-input-border" : "h-9 px-3 text-sm"
+    compact ? "h-9 px-2.5 text-caption ring-1 ring-input-border" : "h-9 px-3 text-body"
   }`;
   return (
     <div className="flex shrink-0 items-center gap-1.5">

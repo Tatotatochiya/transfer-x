@@ -5,9 +5,9 @@ import type { ShortlistPlayerAssessment } from "../../types/api";
 import Spinner from "../ui/Spinner";
 
 const VERDICT_STYLES = {
-  strong:   { label: "Strong shortlist",   cls: "bg-success/15 text-success-text ring-success/30" },
-  adequate: { label: "Adequate shortlist", cls: "bg-warning-fill/15 text-warning-text ring-warning-fill/30" },
-  weak:     { label: "Weak shortlist",     cls: "bg-danger/15 text-danger-text ring-danger/30" },
+  strong:   { label: "Strong shortlist",   cls: "bg-success-bg text-success-text ring-success-ring" },
+  adequate: { label: "Adequate shortlist", cls: "bg-warning-bg text-warning-text ring-warning-ring" },
+  weak:     { label: "Weak shortlist",     cls: "bg-danger-bg text-danger-text ring-danger-ring" },
 };
 
 const PRIORITY_STYLES = {
@@ -23,15 +23,15 @@ function AssessmentRow({ a }: { a: ShortlistPlayerAssessment }) {
       <div className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${p.dot}`} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-semibold text-text">{a.name}</span>
+          <span className="text-body font-semibold text-text">{a.name}</span>
           {a.addresses_gap && (
-            <span className="rounded-md bg-ai-bg px-1.5 py-0.5 text-[13px] font-semibold text-ai-text ring-1 ring-ai-ring">
+            <span className="rounded-md bg-ai-bg px-1.5 py-0.5 text-caption font-semibold text-ai-text ring-1 ring-ai-ring">
               fills gap
             </span>
           )}
-          <span className="text-[13px] text-text-muted">{p.label}</span>
+          <span className="text-caption text-text-muted">{p.label}</span>
         </div>
-        <p className="mt-0.5 text-xs text-text-muted leading-snug">{a.reason}</p>
+        <p className="mt-0.5 text-caption text-text-muted leading-snug">{a.reason}</p>
       </div>
     </li>
   );
@@ -53,12 +53,12 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
     return (
       <div className="mb-6 flex items-center justify-between rounded-xl bg-surface px-4 py-3 ring-1 ring-ai-ring">
         <div>
-          <p className="text-sm font-semibold text-text">✦ AI Shortlist Review</p>
-          <p className="text-xs text-text-muted">Get an AI assessment of your {itemCount} scouted player{itemCount !== 1 ? "s" : ""}</p>
+          <p className="text-body font-semibold text-text">✦ AI Shortlist Review</p>
+          <p className="text-caption text-text-muted">Get an AI assessment of your {itemCount} scouted player{itemCount !== 1 ? "s" : ""}</p>
         </div>
         <button
           onClick={() => setEnabled(true)}
-          className="shrink-0 rounded-lg bg-ai-bg px-3 py-1.5 text-xs font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 transition-colors"
+          className="shrink-0 rounded-lg bg-ai-bg px-3 py-1.5 text-caption font-semibold text-ai-text ring-1 ring-ai-ring hover:brightness-95 transition-colors"
         >
           Generate
         </button>
@@ -70,18 +70,18 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
     <div className="mb-6 rounded-xl bg-surface ring-1 ring-ai-ring overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-rule">
-        <p className="text-sm font-semibold text-text">✦ AI Shortlist Review</p>
+        <p className="text-body font-semibold text-text">✦ AI Shortlist Review</p>
         <div className="flex items-center gap-2">
           {data && !isFetching && (
             <button
               onClick={() => { setForceRefresh(true); setEnabled(true); }}
-              className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+              className="text-caption text-text-muted hover:text-text-secondary transition-colors"
             >
               Refresh
             </button>
           )}
           {verdict && (
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${verdict.cls}`}>
+            <span className={`rounded-full px-2.5 py-0.5 text-caption font-semibold ring-1 ${verdict.cls}`}>
               {verdict.label}
             </span>
           )}
@@ -89,14 +89,14 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
       </div>
 
       {isFetching && (
-        <div className="flex items-center gap-2 px-4 py-4 text-sm text-text-muted">
+        <div className="flex items-center gap-2 px-4 py-4 text-small text-text-muted">
           <Spinner size="sm" />
           Reviewing shortlist…
         </div>
       )}
 
       {error && !isFetching && (
-        <p className="px-4 py-3 text-xs text-danger-text">
+        <p className="px-4 py-3 text-caption text-danger-text">
           {(error as { response?: { data?: { detail?: string } } }).response?.data?.detail ??
             "Review failed. Please try again."}
         </p>
@@ -106,7 +106,7 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
         <div className="divide-y divide-rule-faint">
           {/* Summary */}
           <div className="px-4 py-3">
-            <p className="text-xs leading-relaxed text-text-muted">{data.summary}</p>
+            <p className="text-caption leading-relaxed text-text-muted">{data.summary}</p>
           </div>
 
           {/* Top picks + missing positions */}
@@ -114,14 +114,14 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
             <div className="flex flex-wrap gap-6 px-4 py-3">
               {data.top_picks.length > 0 && (
                 <div>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-widest text-ai-text">
+                  <p className="mb-1.5 text-caption font-semibold text-ai-text">
                     Top picks
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {data.top_picks.map((name) => (
                       <span
                         key={name}
-                        className="rounded-md bg-ai-bg px-2 py-0.5 text-xs font-medium text-ai-text ring-1 ring-ai-ring"
+                        className="rounded-md bg-ai-bg px-2 py-0.5 text-caption font-medium text-ai-text ring-1 ring-ai-ring"
                       >
                         {name}
                       </span>
@@ -131,14 +131,14 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
               )}
               {data.missing_positions.length > 0 && (
                 <div>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-widest text-warning-text">
+                  <p className="mb-1.5 text-caption font-semibold text-warning-text">
                     Still needed
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {data.missing_positions.map((pos) => (
                       <span
                         key={pos}
-                        className="rounded-md bg-warning-fill/10 px-2 py-0.5 text-xs font-medium text-warning-text ring-1 ring-warning-fill/20"
+                        className="rounded-md bg-warning-bg px-2 py-0.5 text-caption font-medium text-warning-text ring-1 ring-warning-ring"
                       >
                         {pos}
                       </span>
@@ -152,7 +152,7 @@ export function ShortlistReviewPanel({ shortlistId, itemCount }: ShortlistReview
           {/* Per-player assessments */}
           {data.player_assessments.length > 0 && (
             <div>
-              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-widest text-text-muted">
+              <p className="px-4 pt-3 pb-1 text-caption font-semibold text-text-secondary">
                 Player assessments
               </p>
               <ul className="divide-y divide-rule-faint">
