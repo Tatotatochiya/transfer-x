@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { Offer, OfferEvent } from "../../types/api";
+import type { Offer, OfferEvent, OrderBook } from "../../types/api";
 import type { LiteOfferCard } from "../../hooks/useLite";
-import { deadlineText, getOfferStatus, type OfferViewer } from "./offerStatus";
+import { buyerRanking, deadlineText, getOfferStatus, type OfferViewer } from "./offerStatus";
 
 const BUYER = "buyer-club";
 const SELLER = "seller-club";
@@ -215,3 +215,31 @@ describe("deadlineText", () => {
     expect(v.urgent).toBe(true);
   });
 });
+
+describe("buyerRanking", () => {
+  const book = (over: Partial<OrderBook>): OrderBook =>
+    ({ role: "buyer", active_count: 4, your_rank: 2, is_leading: false, tiers: [], entries: [], your_entry: null, ...over } as OrderBook);
+
+  it("names the place, the lead, or the only offer", () => {
+    expect(buyerRanking(book({}))).toEqual({ short: "2nd of 4", sentence: "You're 2nd of 4 offers." });
+    expect(buyerRanking(book({ your_rank: 3, active_count: 13 }))?.short).toBe("3rd of 13");
+    expect(buyerRanking(book({ your_rank: 11, active_count: 12 }))?.short).toBe("11th of 12");
+    expect(buyerRanking(book({ your_rank: 1, is_leading: true }))).toEqual({ short: "Leading", sentence: "Yours is the leading offer of 4." });
+    expect(buyerRanking(book({ your_rank: 1, is_leading: true, active_count: 1 }))?.short).toBe("Only offer");
+  });
+
+  it("says nothing without a rank, or to a seller", () => {
+    expect(buyerRanking(undefined)).toBeNull();
+    expect(buyerRanking(book({ your_rank: null }))).toBeNull();
+    expect(buyerRanking(book({ role: "seller" }))).toBeNull();
+  });
+
+  it("goes first in the waiting buyer's status card, and never in the seller's", () => {
+    const ranking = buyerRanking(book({}));
+    expect(getOfferStatus(offer(), buyer({ ranking })).body)
+      .toBe("You're 2nd of 4 offers. You can raise it now or wait for their answer.");
+    const o = offer({ status: "COUNTERED", last_actor_club_id: SELLER, events: [ev("SENT", BUYER), ev("COUNTERED", SELLER)] });
+    expect(getOfferStatus(o, seller({ isMyTurn: false, ranking })).body).toBeUndefined();
+  });
+});
+

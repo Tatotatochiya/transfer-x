@@ -1,4 +1,4 @@
-import type { Offer, OfferEvent } from "../../types/api";
+import type { Offer, OfferEvent, OrderBook } from "../../types/api";
 import type { LiteOfferCard } from "../../hooks/useLite";
 import { buyerLabel } from "../../lib/buyerIdentity";
 import { offerStatusLabel } from "../../lib/badges";
@@ -47,9 +47,38 @@ export interface OfferViewer {
   pushAction: string | null;
   myClubId?: string;
   now?: Date;
+  /** The buyer's place among the open offers, from the order book once loaded. */
+  ranking?: BuyerRanking | null;
 }
 
 const DAY = 86_400_000;
+
+export interface BuyerRanking {
+  /** The tab's suffix: "Leading", "Only offer", "2nd of 4". */
+  short: string;
+  /** For the waiting status card. */
+  sentence: string;
+}
+
+const ordinal = (n: number) => {
+  const tens = n % 100;
+  const suffix = tens >= 11 && tens <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
+  return `${n}${suffix}`;
+};
+
+/**
+ * Where the buyer's offer stands among the open offers, so the tab and the
+ * status card can say it without a click. The order book ranks by fee and
+ * sends a rank only to a club with an open offer (none for a loan with no
+ * fee); it already shows the buyer this, so nothing new is revealed.
+ */
+export function buyerRanking(book: OrderBook | null | undefined): BuyerRanking | null {
+  if (!book || book.role !== "buyer" || book.your_rank == null) return null;
+  const n = book.active_count;
+  if (n <= 1) return { short: "Only offer", sentence: "Yours is the only offer." };
+  if (book.is_leading) return { short: "Leading", sentence: `Yours is the leading offer of ${n}.` };
+  return { short: `${ordinal(book.your_rank)} of ${n}`, sentence: `You're ${ordinal(book.your_rank)} of ${n} offers.` };
+}
 
 /** The first letter upper-cased: a masked buyer ("an undisclosed club") can open a sentence. */
 export function cap(s: string): string {
@@ -241,6 +270,7 @@ export function getOfferStatus(offer: Offer, viewer: OfferViewer): OfferStatusVi
   const days = Math.floor((now.getTime() - since.getTime()) / DAY);
   const canRaise = side === "buyer" && viewer.canWrite;
   const body = [
+    side === "buyer" ? viewer.ranking?.sentence ?? null : null,
     deadline && deadline.text !== "deadline passed" ? `It expires ${deadline.text}.` : null,
     canRaise ? "You can raise it now or wait for their answer." : null,
   ].filter(Boolean).join(" ");
