@@ -143,7 +143,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
           aria-checked={filters.buyable}
           aria-label="Buyable on TransferX only"
           onClick={() => set("buyable", !filters.buyable)}
-          className={`relative h-4 w-8 shrink-0 rounded-full transition-colors ${filters.buyable ? "bg-success" : "bg-border"}`}
+          className={`relative h-4 w-8 shrink-0 rounded-full transition-colors ${filters.buyable ? "bg-accent" : "bg-border"}`}
         >
           <span className={`absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${filters.buyable ? "translate-x-4" : ""}`} />
         </button>
@@ -247,7 +247,7 @@ export default function PlayerFilters({ filters, onChange, view, onViewChange, l
             <span className="text-small text-text-secondary">Listed only</span>
             <div
               onClick={(e) => { e.preventDefault(); set("open_to_offers", !filters.open_to_offers); }}
-              className={`relative h-4 w-8 shrink-0 rounded-full transition-colors ${filters.open_to_offers ? "bg-success" : "bg-border"}`}
+              className={`relative h-4 w-8 shrink-0 rounded-full transition-colors ${filters.open_to_offers ? "bg-accent" : "bg-border"}`}
             >
               <span className={`absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${filters.open_to_offers ? "translate-x-4" : ""}`} />
             </div>

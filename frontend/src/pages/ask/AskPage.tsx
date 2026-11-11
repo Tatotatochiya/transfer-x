@@ -179,7 +179,8 @@ async function downloadExcel(b: TableBlock) {
   URL.revokeObjectURL(url);
 }
 
-const SERIES = ["bg-accent", "bg-success", "bg-warning-fill"];
+// Chart series are categories: ink greys, never status colours or accent.
+const SERIES = ["bg-text", "bg-text-secondary", "bg-text-muted"];
 
 /** A horizontal bar chart, one group per row, every bar on the same scale. */
 function AnswerChart({ block }: { block: ChartBlock }) {

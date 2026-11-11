@@ -43,14 +43,14 @@ function UploadStep({ onPreview }: { onPreview: (rows: RosterPreviewRow[]) => vo
 
   return (
     <Card>
-      <p className="mb-1 text-base font-semibold text-text">Upload your client roster</p>
-      <p className="mb-6 text-sm text-text-muted">
-        Upload a CSV or Excel file. Required column: <code className="rounded bg-surface-inset px-1 text-xs">Name</code>.
+      <p className="mb-1 text-body font-semibold text-text">Upload your client roster</p>
+      <p className="mb-6 text-small text-text-muted">
+        Upload a CSV or Excel file. Required column: <code className="rounded bg-surface-inset px-1 text-caption">Name</code>.
         Optional: DOB, Nationality, Position, Current Club, Contract Expiry.
       </p>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger-text ring-1 ring-danger-border">
+        <div className="mb-4 rounded-lg bg-danger-bg px-4 py-3 text-small text-danger-text ring-1 ring-danger-border">
           {error}
         </div>
       )}
@@ -78,8 +78,8 @@ function UploadStep({ onPreview }: { onPreview: (rows: RosterPreviewRow[]) => vo
             <svg className="mb-3 h-10 w-10 text-text-muted" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
             </svg>
-            <p className="text-sm font-medium text-text">Drop your file here</p>
-            <p className="mt-1 text-xs text-text-muted">or click to browse (CSV)</p>
+            <p className="text-body font-medium text-text">Drop your file here</p>
+            <p className="mt-1 text-caption text-text-muted">or click to browse (CSV)</p>
           </>
         )}
       </div>
@@ -113,20 +113,20 @@ function ReviewStep({
   onChange: (index: number, patch: Partial<RowState>) => void;
 }) {
   const actionBadge: Record<RowAction, string> = {
-    create: "bg-accent/15 text-accent ring-accent/30",
-    link:   "bg-success/15 text-success-text ring-success/30",
-    skip:   "bg-text-muted/15 text-text-muted ring-input-border",
+    create: "bg-accent-bg text-accent ring-accent-ring",
+    link:   "bg-success-bg text-success-text ring-success-ring",
+    skip:   "bg-surface-inset text-text-muted ring-input-border",
   };
 
   return (
     <div className="overflow-x-auto rounded-xl ring-1 ring-border">
-      <table className="w-full text-sm">
+      <table className="w-full text-small">
         <thead>
           <tr className="border-b border-rule bg-surface-header">
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted">Name</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted">Details</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted">Match</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted">Action</th>
+            <th className="eyebrow px-4 py-3 text-left text-text-secondary">Name</th>
+            <th className="eyebrow px-4 py-3 text-left text-text-secondary">Details</th>
+            <th className="eyebrow px-4 py-3 text-left text-text-secondary">Match</th>
+            <th className="eyebrow px-4 py-3 text-left text-text-secondary">Action</th>
           </tr>
         </thead>
         <tbody className="bg-surface">
@@ -136,23 +136,23 @@ function ReviewStep({
               <tr key={row.row_index} className="border-b border-rule-faint last:border-0">
                 <td className="px-4 py-3">
                   <p className="font-medium text-text">{row.name}</p>
-                  {row.current_club && <p className="text-xs text-text-muted">{row.current_club}</p>}
+                  {row.current_club && <p className="text-caption text-text-muted">{row.current_club}</p>}
                 </td>
-                <td className="px-4 py-3 text-xs text-text-muted">
+                <td className="px-4 py-3 text-caption text-text-muted">
                   {[row.position, row.nationality, row.dob].filter(Boolean).join(" · ") || "—"}
                 </td>
                 <td className="px-4 py-3">
                   {row.match_status === "no_match" ? (
-                    <span className="text-xs text-text-muted">No match — will create</span>
+                    <span className="text-caption text-text-muted">No match — will create</span>
                   ) : row.match_candidates.length === 1 ? (
-                    <span className="text-xs text-success-text">
+                    <span className="text-caption text-success-text">
                       Matched: {row.match_candidates[0].player_name}
                     </span>
                   ) : (
                     <select
                       value={state.linkedPlayerId}
                       onChange={(e) => onChange(i, { linkedPlayerId: e.target.value, action: "link" })}
-                      className="rounded bg-surface px-2 py-1 text-xs text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+                      className="rounded bg-surface px-2 py-1 text-caption text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
                     >
                       {row.match_candidates.map((c: MatchCandidate) => (
                         <option key={c.player_id} value={c.player_id}>
@@ -171,7 +171,7 @@ function ReviewStep({
                         <button
                           key={a}
                           onClick={() => onChange(i, { action: a })}
-                          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 transition-all capitalize ${
+                          className={`rounded-full px-2.5 py-0.5 text-caption font-medium ring-1 transition-all capitalize ${
                             state.action === a
                               ? actionBadge[a]
                               : "bg-transparent ring-input-border text-text-muted hover:text-text-secondary"
@@ -208,12 +208,12 @@ function SettingsStep({
   settings: MandateSettings;
   onChange: (patch: Partial<MandateSettings>) => void;
 }) {
-  const INPUT = "w-full rounded-lg bg-surface px-3 py-2 text-sm text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
+  const INPUT = "w-full rounded-lg bg-surface px-3 py-2 text-small text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
 
   return (
     <Card>
-      <p className="mb-4 text-base font-semibold text-text">Mandate settings</p>
-      <p className="mb-6 text-sm text-text-muted">
+      <p className="mb-4 text-body font-semibold text-text">Mandate settings</p>
+      <p className="mb-6 text-small text-text-muted">
         These settings apply to all mandates created from the import. You can edit them individually afterwards.
       </p>
       <div className="space-y-4">
@@ -225,13 +225,13 @@ function SettingsStep({
             className="accent-accent h-4 w-4"
           />
           <div>
-            <p className="text-sm font-medium text-text">Exclusive mandate</p>
-            <p className="text-xs text-text-muted">You are the sole agent for these clients</p>
+            <p className="text-body font-medium text-text">Exclusive mandate</p>
+            <p className="text-caption text-text-muted">You are the sole agent for these clients</p>
           </div>
         </label>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="mb-1.5 text-xs font-medium text-text-secondary">Start date</p>
+            <p className="mb-1.5 text-caption font-medium text-text-secondary">Start date</p>
             <input
               type="date"
               value={settings.start_date}
@@ -240,7 +240,7 @@ function SettingsStep({
             />
           </div>
           <div>
-            <p className="mb-1.5 text-xs font-medium text-text-secondary">End date</p>
+            <p className="mb-1.5 text-caption font-medium text-text-secondary">End date</p>
             <input
               type="date"
               value={settings.end_date}
@@ -250,7 +250,7 @@ function SettingsStep({
           </div>
         </div>
         <div>
-          <p className="mb-1.5 text-xs font-medium text-text-secondary">Territory (optional)</p>
+          <p className="mb-1.5 text-caption font-medium text-text-secondary">Territory (optional)</p>
           <input
             type="text"
             value={settings.territory}
@@ -350,11 +350,11 @@ export default function AgentRosterImportPage() {
       <div className="mb-8 flex items-center gap-3">
         {STEPS.filter((s) => s !== "done").map((s, i) => (
           <div key={s} className="flex items-center gap-3">
-            <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
+            <div className={`flex h-7 w-7 items-center justify-center rounded-full text-caption font-semibold ${
               i < stepIndex
                 ? "bg-success text-white"
                 : i === stepIndex
-                ? "bg-accent/20 text-accent ring-1 ring-accent"
+                ? "bg-accent-bg text-accent ring-1 ring-accent"
                 : "bg-surface-inset text-text-muted ring-1 ring-border"
             }`}>
               {i < stepIndex ? (
@@ -365,7 +365,7 @@ export default function AgentRosterImportPage() {
                 i + 1
               )}
             </div>
-            <span className={`hidden md:inline text-sm font-medium ${i === stepIndex ? "text-text" : "text-text-muted"}`}>
+            <span className={`hidden md:inline text-body font-medium ${i === stepIndex ? "text-text" : "text-text-muted"}`}>
               {STEP_LABELS[i]}
             </span>
             {i < 2 && <div className="h-px w-8 bg-border" />}
@@ -378,13 +378,13 @@ export default function AgentRosterImportPage() {
 
       {step === "review" && (
         <div className="space-y-4">
-          <p className="text-sm text-text-muted">
+          <p className="text-small text-text-muted">
             {previewRows.length} player{previewRows.length !== 1 ? "s" : ""} found.
             Review the suggested actions and adjust as needed.
           </p>
           <ReviewStep rows={previewRows} rowStates={rowStates} onChange={updateRowState} />
           <div className="flex justify-end gap-3">
-            <button onClick={() => setStep("upload")} className="text-sm text-text-muted hover:text-text">
+            <button onClick={() => setStep("upload")} className="text-body text-text-muted hover:text-text">
               ← Back
             </button>
             <Button variant="primary" onClick={() => setStep("settings")}>
@@ -401,7 +401,7 @@ export default function AgentRosterImportPage() {
             onChange={(patch) => setMandateSettings((s) => ({ ...s, ...patch }))}
           />
           <div className="flex justify-end gap-3">
-            <button onClick={() => setStep("review")} className="text-sm text-text-muted hover:text-text">
+            <button onClick={() => setStep("review")} className="text-body text-text-muted hover:text-text">
               ← Back
             </button>
             <Button variant="primary" loading={importing} onClick={handleImport}>
@@ -414,31 +414,31 @@ export default function AgentRosterImportPage() {
       {step === "done" && result && (
         <Card>
           <div className="text-center py-6">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success/15">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success-bg">
               <svg className="h-7 w-7 text-success-text" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
               </svg>
             </div>
-            <p className="text-lg font-semibold text-text">Import complete</p>
-            <div className="mt-4 flex justify-center gap-6 text-sm">
+            <p className="text-section font-semibold text-text">Import complete</p>
+            <div className="mt-4 flex justify-center gap-6 text-small">
               <div className="text-center">
-                <p className="text-2xl font-bold text-accent">{result.created}</p>
+                <p className="text-headline sm:text-title font-bold text-accent">{result.created}</p>
                 <p className="text-text-muted">Created</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-success-text">{result.linked}</p>
+                <p className="text-headline sm:text-title font-bold text-success-text">{result.linked}</p>
                 <p className="text-text-muted">Linked</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-text-muted">{result.skipped}</p>
+                <p className="text-headline sm:text-title font-bold text-text-muted">{result.skipped}</p>
                 <p className="text-text-muted">Skipped</p>
               </div>
             </div>
             {result.errors.length > 0 && (
               <div className="mt-4 text-left rounded-lg bg-danger-bg px-4 py-3 ring-1 ring-danger-border">
-                <p className="mb-2 text-xs font-semibold text-danger-text">Errors ({result.errors.length})</p>
+                <p className="mb-2 text-caption font-semibold text-danger-text">Errors ({result.errors.length})</p>
                 {result.errors.map((e, i) => (
-                  <p key={i} className="text-xs text-danger-text">{e}</p>
+                  <p key={i} className="text-caption text-danger-text">{e}</p>
                 ))}
               </div>
             )}
@@ -448,7 +448,7 @@ export default function AgentRosterImportPage() {
               </Button>
               <button
                 onClick={() => { setStep("upload"); setPreviewRows([]); setResult(null); }}
-                className="text-sm text-text-muted hover:text-text"
+                className="text-body text-text-muted hover:text-text"
               >
                 Import another file
               </button>

@@ -25,7 +25,7 @@ export function MiniToggle({
       aria-label={label}
       title={title ?? label}
       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 ${
-        value ? "bg-success" : "bg-border"
+        value ? "bg-accent" : "bg-border"
       }`}
     >
       <span

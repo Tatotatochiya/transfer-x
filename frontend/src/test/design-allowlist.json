@@ -119,29 +119,6 @@
   "uppercase": 1,
   "tint": 4
  },
- "src/pages/agent/AgentClientPage.tsx": {
-  "size": 29,
-  "uppercase": 7,
-  "tint": 8
- },
- "src/pages/agent/AgentDashboardPage.tsx": {
-  "size": 10,
-  "uppercase": 1,
-  "tint": 1
- },
- "src/pages/agent/AgentPipelinePage.tsx": {
-  "size": 46,
-  "uppercase": 11,
-  "tint": 19
- },
- "src/pages/agent/AgentProfilePage.tsx": {
-  "size": 6
- },
- "src/pages/agent/AgentRosterImportPage.tsx": {
-  "size": 38,
-  "uppercase": 4,
-  "tint": 7
- },
  "src/pages/lite/LiteApprovalPage.tsx": {
   "size": 9
  },
@@ -173,10 +150,5 @@
  },
  "src/pages/lite/LiteSentPage.tsx": {
   "size": 24
- },
- "src/pages/player/PlayerProfilePage.tsx": {
-  "size": 20,
-  "uppercase": 2,
-  "tint": 12
  }
 }
