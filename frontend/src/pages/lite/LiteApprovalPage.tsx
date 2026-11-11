@@ -59,7 +59,7 @@ export default function LiteApprovalPage() {
   });
 
   if (isLoading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
-  if (error || !a) return <p className="text-[1.125rem] text-text">{getApiError(error, "That approval isn't there any more.")}</p>;
+  if (error || !a) return <p className="text-lite-body text-text">{getApiError(error, "That approval isn't there any more.")}</p>;
 
   if (done) {
     return (
@@ -77,7 +77,7 @@ export default function LiteApprovalPage() {
   const canDecide = can("APPROVE_ACTIONS");
   const left = timeLeft(a.expires_at);
   const who = a.requested_by_name ?? a.requested_by_email ?? "Someone";
-  const btn = "min-h-[3.5rem] rounded-[14px] px-6 text-[1.125rem] font-bold";
+  const btn = "min-h-[3.5rem] rounded-[14px] px-6 text-lite-body font-bold";
   const busy = approve.isPending || decline.isPending;
   const err = approve.error ?? decline.error;
 
@@ -109,9 +109,9 @@ export default function LiteApprovalPage() {
           </div>
 
           {!pending ? (
-            <p className="text-[1.125rem] text-text">{STATUS_TEXT[a.status] ?? a.status}</p>
+            <p className="text-lite-body text-text">{STATUS_TEXT[a.status] ?? a.status}</p>
           ) : !canDecide ? (
-            <p className="text-[1.125rem] text-text-secondary">Waiting for the owner or sporting director to decide.</p>
+            <p className="text-lite-body text-text-secondary">Waiting for the owner or sporting director to decide.</p>
           ) : mode === "answer" ? (
             <div className="flex flex-wrap gap-3">
               <button type="button" className={`${btn} bg-accent text-on-accent`} onClick={() => setMode("approve")}>Approve</button>
@@ -119,7 +119,7 @@ export default function LiteApprovalPage() {
             </div>
           ) : mode === "approve" ? (
             <div className="flex flex-col gap-3">
-              <p className="text-[1.125rem] text-text">This carries it out now, in your club&rsquo;s name. There&rsquo;s no undo.</p>
+              <p className="text-lite-body text-text">This carries it out now, in your club&rsquo;s name. There&rsquo;s no undo.</p>
               <div className="flex flex-wrap gap-3">
                 <button type="button" disabled={busy} className={`${btn} bg-accent text-on-accent disabled:opacity-60`} onClick={() => approve.mutate()}>
                   {approve.isPending ? "Approving…" : "Yes, approve"}
@@ -129,10 +129,10 @@ export default function LiteApprovalPage() {
             </div>
           ) : (
             <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); decline.mutate(); }}>
-              <label className="text-[1.0625rem] text-text-secondary">
+              <label className="text-lite-body text-text-secondary">
                 Why not? <span className="text-text-muted">(optional, {who} sees it)</span>
                 <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={500}
-                  className="mt-1 w-full rounded-xl bg-surface px-4 py-3 text-[1.125rem] text-text ring-1 ring-input-border focus:outline-none focus:ring-accent" />
+                  className="mt-1 w-full rounded-xl bg-surface px-4 py-3 text-lite-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent" />
               </label>
               <div className="flex flex-wrap gap-3">
                 <button type="submit" disabled={busy} className={`${btn} bg-danger text-white disabled:opacity-60`}>
@@ -142,8 +142,8 @@ export default function LiteApprovalPage() {
               </div>
             </form>
           )}
-          {err && <p className="text-[1.0625rem] text-danger-text">{getApiError(err)}</p>}
-          <button type="button" className="self-start text-[1.0625rem] font-semibold text-text-secondary" onClick={() => navigate("/club/approvals")}>
+          {err && <p className="text-lite-body text-danger-text">{getApiError(err)}</p>}
+          <button type="button" className="self-start text-lite-body font-semibold text-text-secondary" onClick={() => navigate("/club/approvals")}>
             See all approvals
           </button>
         </ActionCardShell>

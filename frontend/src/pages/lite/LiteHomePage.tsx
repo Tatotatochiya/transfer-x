@@ -52,19 +52,19 @@ function Tile({ tile }: { tile: LiteTile }) {
     >
       <span className="flex items-start justify-between gap-3">
         {tile.style === "ai" ? (
-          <span className="text-[2.25rem] leading-none text-ai-text">✦</span>
+          <span className="text-lite-display leading-none text-ai-text">✦</span>
         ) : (
           <Icon name={TILE_ICON[tile.key] ?? "bolt"} className={`h-10 w-10 ${tile.style === "accent" ? "text-on-accent" : quiet ? "text-text-muted" : "text-accent"}`} />
         )}
         {tile.badge && (
-          <span className="rounded-full bg-danger px-3 py-1 text-[1.125rem] font-extrabold text-white">{tile.badge}</span>
+          <span className="rounded-full bg-danger px-3 py-1 text-lite-body font-extrabold text-white">{tile.badge}</span>
         )}
       </span>
       <span className="mt-4 block">
-        <span className={`block text-[1.5rem] font-extrabold leading-tight sm:text-[1.875rem] ${quiet ? "text-text-muted" : ""}`}>
+        <span className={`block text-lite-headline font-extrabold leading-tight sm:text-lite-title ${quiet ? "text-text-muted" : ""}`}>
           {tile.title}
         </span>
-        <span className={`mt-1 block text-[1.125rem] ${sub}`}>{disabled ? tile.disabled_reason : tile.subtitle}</span>
+        <span className={`mt-1 block text-lite-body ${sub}`}>{disabled ? tile.disabled_reason : tile.subtitle}</span>
       </span>
     </button>
   );
@@ -79,8 +79,8 @@ export default function LiteHomePage() {
   if (isError || !home) {
     return (
       <div className="space-y-4">
-        <p className="text-[1.375rem] text-text">We couldn&rsquo;t load your home just now.</p>
-        <Link to="/dashboard" className="text-[1.125rem] font-bold text-accent">Open the full app →</Link>
+        <p className="text-lite-section text-text">We couldn&rsquo;t load your home just now.</p>
+        <Link to="/dashboard" className="text-lite-body font-bold text-accent">Open the full app →</Link>
       </div>
     );
   }
@@ -88,12 +88,12 @@ export default function LiteHomePage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-[2rem] font-extrabold leading-tight tracking-[-0.025em] text-text sm:text-[2.5rem]">
+        <h1 className="text-lite-title font-extrabold leading-tight tracking-[-0.025em] text-text sm:text-lite-title-lg">
           {greeting()}, {user?.first_name ?? home.club_name}.
         </h1>
-        <p className="mt-2 text-[1.25rem] text-text-secondary sm:text-[1.375rem]">{situation(home)}</p>
+        <p className="mt-2 text-lite-section text-text-secondary">{situation(home)}</p>
         {home.briefing_headline && (
-          <p className="mt-2 text-[1.125rem] text-text-muted">
+          <p className="mt-2 text-lite-body text-text-muted">
             <span className="text-ai-text">✦</span> {home.briefing_headline}
           </p>
         )}
@@ -102,17 +102,17 @@ export default function LiteHomePage() {
       <DeadlineBanner lite />
 
       {home.resume && (
-        <div className="flex flex-wrap items-center gap-4 rounded-[18px] bg-surface px-5 py-4 ring-2 ring-accent/25">
+        <div className="flex flex-wrap items-center gap-4 rounded-[18px] bg-surface px-5 py-4 ring-2 ring-accent-ring">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent-bg text-accent">
             <Icon name="chevrons-right" className="h-6 w-6" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[0.9375rem] font-semibold text-accent">Carry on where you left off</span>
-            <span className="block truncate text-[1.25rem] font-bold text-text">{home.resume.title}</span>
+            <span className="block text-lite-caption font-semibold text-accent">Carry on where you left off</span>
+            <span className="block truncate text-lite-section font-bold text-text">{home.resume.title}</span>
           </span>
           <Link
             to={home.resume.href}
-            className="flex min-h-[3.375rem] items-center rounded-xl bg-accent px-6 text-[1.0625rem] font-bold text-on-accent no-underline"
+            className="flex min-h-[3.375rem] items-center rounded-xl bg-accent px-6 text-lite-body font-bold text-on-accent no-underline"
           >
             Continue
           </Link>
@@ -123,7 +123,7 @@ export default function LiteHomePage() {
         {home.tiles.map((t) => <Tile key={t.key} tile={t} />)}
       </div>
 
-      <p className="text-[1rem] text-text-muted">
+      <p className="text-lite-caption text-text-muted">
         Need something else? <Link to="/dashboard" className="font-semibold text-accent">Open the full app</Link>
       </p>
     </div>

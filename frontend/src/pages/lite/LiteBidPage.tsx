@@ -66,8 +66,8 @@ export default function LiteBidPage() {
   if (error || !draft || fee == null) {
     return (
       <div className="flex flex-col items-start gap-5">
-        <h1 className="text-[1.75rem] font-extrabold text-text">You can't make this offer</h1>
-        <p className="text-[1.25rem] text-text-secondary">{getApiError(error, "We couldn't find that player.")}</p>
+        <h1 className="text-lite-title font-extrabold text-text">You can't make this offer</h1>
+        <p className="text-lite-section text-text-secondary">{getApiError(error, "We couldn't find that player.")}</p>
         <button type="button" onClick={() => navigate(-1)} className={secondaryBtn}>Go back</button>
       </div>
     );
@@ -107,7 +107,7 @@ export default function LiteBidPage() {
           <FactRow label="Sent to">{club}</FactRow>
           <FactRow label="Fee">
             {liteMoney(fee)}
-            {draft.asking_price != null && <span className="block text-base font-normal text-text-muted">They ask {liteMoney(draft.asking_price)}</span>}
+            {draft.asking_price != null && <span className="block text-lite-caption font-normal text-text-muted">They ask {liteMoney(draft.asking_price)}</span>}
           </FactRow>
           <FactRow label="Wages offered">{draft.wage_weekly != null ? liteWage(draft.wage_weekly) : "Agreed with him later"}</FactRow>
           <FactRow label="Contract">{draft.contract_years} years</FactRow>
@@ -115,14 +115,14 @@ export default function LiteBidPage() {
         {editing && <FeeStepper value={fee} onChange={setFee} label="Fee in millions of pounds" />}
         <Notes warnings={check.data?.warnings} />
         {blocked && (
-          <p className="rounded-xl bg-surface-inset px-4 py-3 text-[1.0625rem] text-text-secondary">
+          <p className="rounded-xl bg-surface-inset px-4 py-3 text-lite-body text-text-secondary">
             {blocked}
             {draft.existing_offer_id && (
               <> <Link to={`/lite/offers/${draft.existing_offer_id}`} className="font-semibold text-accent">See your offer</Link></>
             )}
           </p>
         )}
-        {sendError && <p role="alert" className="rounded-xl bg-danger-bg px-4 py-3 text-[1.0625rem] text-danger-text">{sendError}</p>}
+        {sendError && <p role="alert" className="rounded-xl bg-danger-bg px-4 py-3 text-lite-body text-danger-text">{sendError}</p>}
         <div className="mt-auto flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <button type="button" className={primaryBtn} disabled={!!blocked || !current || !!money?.over_budget || sending} onClick={confirm}>
             {sending ? "Sending…" : money?.requires_approval ? "Send for approval" : "Confirm and send bid"}
@@ -135,7 +135,7 @@ export default function LiteBidPage() {
           <button type="button" className={textBtn} onClick={() => navigate(-1)}>Cancel</button>
         </div>
         {money?.requires_approval && !blocked && (
-          <p className="text-base text-text-secondary">
+          <p className="text-lite-caption text-text-secondary">
             Bids of this size need your owner's or sporting director's approval, so it waits for them before {club} sees it.
           </p>
         )}

@@ -51,16 +51,16 @@ export default function LiteLayout({ children }: { children: React.ReactNode }) 
           <span className="flex h-[2.125rem] w-[2.125rem] shrink-0 items-center justify-center rounded-[9px] bg-accent text-on-accent">
             <Icon name="bolt" className="h-5 w-5" />
           </span>
-          <span className="text-[1.125rem] font-extrabold text-text">TransferX</span>
+          <span className="text-lite-body font-extrabold text-text">TransferX</span>
           {identity.name && (
-            <span className="hidden truncate text-base text-text-muted sm:inline">{identity.name}</span>
+            <span className="hidden truncate text-lite-caption text-text-muted sm:inline">{identity.name}</span>
           )}
         </Link>
         <div className="flex items-center gap-3">
           {!onHome && (
             <Link
               to="/lite"
-              className="flex min-h-[2.75rem] items-center gap-2 rounded-xl bg-surface-inset px-5 text-base font-bold text-text no-underline hover:bg-accent-bg"
+              className="flex min-h-[2.75rem] items-center gap-2 rounded-xl bg-surface-inset px-5 text-lite-caption font-bold text-text no-underline hover:bg-accent-bg"
             >
               <Icon name="home" className="h-5 w-5" /> Home
             </Link>
@@ -84,7 +84,7 @@ function FullAppButton() {
       disabled={update.isPending}
       onClick={() => update.mutate({ lite_mode: false }, { onSuccess: () => navigate("/dashboard") })}
       title="Switch to the full app. You can come back to Lite from your account menu."
-      className="flex min-h-[2.75rem] items-center gap-2 rounded-xl px-4 text-base font-bold text-text ring-1 ring-border hover:ring-accent disabled:opacity-60"
+      className="flex min-h-[2.75rem] items-center gap-2 rounded-xl px-4 text-lite-caption font-bold text-text ring-1 ring-border hover:ring-accent disabled:opacity-60"
     >
       <Icon name="layout-dashboard" className="h-5 w-5" />
       <span><span className="hidden sm:inline">Switch to </span>full app</span>
@@ -95,9 +95,9 @@ function FullAppButton() {
 // ── Profile menu (Screen 8) ──────────────────────────────────────────────────
 
 const SCALES: { key: TextScale; size: string; label: string }[] = [
-  { key: "NORMAL", size: "text-[0.9375rem]", label: "Normal text" },
-  { key: "LARGE", size: "text-[1.1875rem]", label: "Large text" },
-  { key: "LARGER", size: "text-[1.5rem]", label: "Larger text" },
+  { key: "NORMAL", size: "text-lite-caption", label: "Normal text" },
+  { key: "LARGE", size: "text-lite-section", label: "Large text" },
+  { key: "LARGER", size: "text-lite-headline", label: "Larger text" },
 ];
 
 function ProfileMenu({ scale }: { scale: TextScale }) {
@@ -134,7 +134,7 @@ function ProfileMenu({ scale }: { scale: TextScale }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Your account"
-        className="flex h-[2.75rem] w-[2.75rem] items-center justify-center overflow-hidden rounded-full bg-accent-bg text-[1.0625rem] font-extrabold text-accent ring-1 ring-border focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="flex h-[2.75rem] w-[2.75rem] items-center justify-center overflow-hidden rounded-full bg-accent-bg text-lite-body font-extrabold text-accent ring-1 ring-border focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         {identity.crestUrl ? <FallbackImage src={identity.crestUrl} name={initial} kind="club" sizeClass="h-full w-full" colorClass="" /> : initial}
       </button>
@@ -144,14 +144,14 @@ function ProfileMenu({ scale }: { scale: TextScale }) {
           role="menu"
           className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(23.75rem,calc(100vw-2rem))] rounded-[20px] bg-surface p-5 shadow-2xl ring-1 ring-border"
         >
-          <p className="text-[1.125rem] font-extrabold text-text">{identity.name ?? "Your club"}</p>
-          {identity.subLabel && <p className="text-[0.9375rem] text-text-muted">{identity.subLabel}</p>}
+          <p className="text-lite-body font-extrabold text-text">{identity.name ?? "Your club"}</p>
+          {identity.subLabel && <p className="text-lite-caption text-text-muted">{identity.subLabel}</p>}
 
           {/* Lite mode switch: toggling takes you straight to the other home. */}
           <div className="mt-5 flex items-center justify-between gap-4 border-t border-rule pt-4">
             <div>
-              <p className="text-[1.0625rem] font-bold text-text">Lite mode</p>
-              <p className="text-[0.9375rem] text-text-muted">Simple home with big buttons</p>
+              <p className="text-lite-body font-bold text-text">Lite mode</p>
+              <p className="text-lite-caption text-text-muted">Simple home with big buttons</p>
             </div>
             <button
               type="button"
@@ -168,7 +168,7 @@ function ProfileMenu({ scale }: { scale: TextScale }) {
 
           {/* Text size: Lite only (decision 5). */}
           <div className="mt-4 border-t border-rule pt-4">
-            <p className="mb-2 text-[1.0625rem] font-bold text-text">Text size</p>
+            <p className="mb-2 text-lite-body font-bold text-text">Text size</p>
             <div className="flex gap-2">
               {SCALES.map((s) => (
                 <button
@@ -192,7 +192,7 @@ function ProfileMenu({ scale }: { scale: TextScale }) {
           <div className="mt-4 space-y-1 border-t border-rule pt-3">
             <Link
               to="/account"
-              className="flex min-h-[3.25rem] items-center rounded-xl px-2 text-[1.0625rem] font-semibold text-text no-underline hover:bg-surface-inset"
+              className="flex min-h-[3.25rem] items-center rounded-xl px-2 text-lite-body font-semibold text-text no-underline hover:bg-surface-inset"
             >
               Notifications and messages
             </Link>
@@ -202,7 +202,7 @@ function ProfileMenu({ scale }: { scale: TextScale }) {
                 await logout();
                 navigate("/login");
               }}
-              className="flex min-h-[3.25rem] w-full items-center rounded-xl px-2 text-left text-[1.0625rem] font-semibold text-text hover:bg-surface-inset"
+              className="flex min-h-[3.25rem] w-full items-center rounded-xl px-2 text-left text-lite-body font-semibold text-text hover:bg-surface-inset"
             >
               Sign out
             </button>

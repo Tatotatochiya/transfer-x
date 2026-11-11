@@ -28,10 +28,10 @@ import FallbackImage from "../../components/ui/FallbackImage";
 const POSITION_LABEL: Record<string, string> = { GK: "Goalkeeper", DEF: "Defender", MID: "Midfielder", FWD: "Forward" };
 
 function Avatar({ name, photo }: { name: string; photo?: string | null }) {
-  return <FallbackImage src={photo} name={name} sizeClass="h-12 w-12 text-[1.25rem]" colorClass="bg-accent-bg text-accent" className="font-extrabold" />;
+  return <FallbackImage src={photo} name={name} sizeClass="h-12 w-12 text-lite-section" colorClass="bg-accent-bg text-accent" className="font-extrabold" />;
 }
 
-const rowBtn = "flex min-h-[3.25rem] items-center justify-center rounded-xl px-5 text-[1.0625rem] font-bold no-underline";
+const rowBtn = "flex min-h-[3.25rem] items-center justify-center rounded-xl px-5 text-lite-body font-bold no-underline";
 const plainBtn = `${rowBtn} text-text ring-1 ring-border hover:ring-accent`;
 
 function ShortlistButton({ p }: { p: LiteSearchResult }) {
@@ -58,7 +58,7 @@ function ShortlistButton({ p }: { p: LiteSearchResult }) {
       >
         {on ? <><Icon name="check" className="h-5 w-5 text-accent" /> On your shortlist</> : "Shortlist"}
       </button>
-      {error && <span role="alert" className="mt-1 text-[0.9375rem] text-danger-text">{error}</span>}
+      {error && <span role="alert" className="mt-1 text-lite-caption text-danger-text">{error}</span>}
     </span>
   );
 }
@@ -77,11 +77,11 @@ function PlayerRow({ p }: { p: LiteSearchResult }) {
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[20px] bg-surface px-5 py-4 ring-1 ring-border">
       <Avatar name={p.name} photo={p.photo_url} />
       <div className="min-w-0 flex-1 basis-48">
-        <Link to={`/players/market/${p.player_id}`} className="block truncate text-[1.25rem] font-extrabold text-text no-underline hover:text-accent">{p.name}</Link>
-        {facts && <span className="block truncate text-base text-text-muted">{facts}</span>}
-        {p.note && <span className="block text-base text-text-secondary">{p.note}</span>}
+        <Link to={`/players/market/${p.player_id}`} className="block truncate text-lite-section font-extrabold text-text no-underline hover:text-accent">{p.name}</Link>
+        {facts && <span className="block truncate text-lite-caption text-text-muted">{facts}</span>}
+        {p.note && <span className="block text-lite-caption text-text-secondary">{p.note}</span>}
       </div>
-      {price && <span className="text-[1.125rem] font-extrabold text-accent">{price}</span>}
+      {price && <span className="text-lite-body font-extrabold text-accent">{price}</span>}
       <div className="flex w-full flex-wrap gap-2 sm:w-auto [&>*]:flex-1">
         {p.state === "buyable" ? (
           <button
@@ -114,11 +114,11 @@ function PlayerRow({ p }: { p: LiteSearchResult }) {
 
 function SearchResults({ q }: { q: string }) {
   const { data, isFetching, isError } = useLiteBuySearch(q);
-  if (isError) return <p className="text-[1.25rem] text-danger-text">We couldn&rsquo;t search just now. Try again in a moment.</p>;
+  if (isError) return <p className="text-lite-section text-danger-text">We couldn&rsquo;t search just now. Try again in a moment.</p>;
   if (!data) return <div className="flex justify-center py-6"><Spinner size="lg" /></div>;
   if (data.players.length === 0) {
     return (
-      <p className="rounded-[20px] bg-surface px-6 py-5 text-[1.25rem] text-text ring-1 ring-border">
+      <p className="rounded-[20px] bg-surface px-6 py-5 text-lite-section text-text ring-1 ring-border">
         No one called &ldquo;{data.q}&rdquo;. Check the spelling, or ask TransferX below.
       </p>
     );
@@ -134,13 +134,13 @@ function Targets() {
   const { data, isLoading, isError } = useLiteBuyTargets();
   return (
     <section className="flex flex-col gap-4" aria-labelledby="targets-heading">
-      <h2 id="targets-heading" className="text-[1.375rem] font-bold text-text">Your shortlist</h2>
+      <h2 id="targets-heading" className="text-lite-section font-bold text-text">Your shortlist</h2>
       {isLoading ? (
         <div className="flex justify-center py-6"><Spinner size="lg" /></div>
       ) : isError ? (
-        <p className="text-[1.25rem] text-danger-text">We couldn&rsquo;t load your shortlist. Try again in a moment.</p>
+        <p className="text-lite-section text-danger-text">We couldn&rsquo;t load your shortlist. Try again in a moment.</p>
       ) : !data || data.players.length === 0 ? (
-        <p className="rounded-[20px] bg-surface px-6 py-5 text-[1.25rem] text-text ring-1 ring-border">
+        <p className="rounded-[20px] bg-surface px-6 py-5 text-lite-section text-text ring-1 ring-border">
           No one on it yet. Search for a player above and tap <strong>Shortlist</strong> to keep him here.
         </p>
       ) : (
@@ -149,7 +149,7 @@ function Targets() {
             {data.players.map((p) => <PlayerRow key={p.player_id} p={p} />)}
           </ul>
           {data.total > data.players.length && (
-            <Link to="/scouting/shortlists" className="text-[1.125rem] font-bold text-accent">
+            <Link to="/scouting/shortlists" className="text-lite-body font-bold text-accent">
               See all {data.total} in Scouting →
             </Link>
           )}
@@ -171,14 +171,14 @@ export function LiteBuyPage() {
         <button
           type="button"
           onClick={() => navigate("/lite")}
-          className="flex min-h-[3.25rem] items-center gap-2 rounded-xl px-4 text-[1.0625rem] font-semibold text-text ring-1 ring-border hover:ring-accent"
+          className="flex min-h-[3.25rem] items-center gap-2 rounded-xl px-4 text-lite-body font-semibold text-text ring-1 ring-border hover:ring-accent"
         >
           <Icon name="chevron-right" className="h-5 w-5 rotate-180" /> Back
         </button>
       </div>
       <div>
-        <h1 className="text-[1.75rem] font-extrabold tracking-[-0.02em] text-text sm:text-[2.375rem]">Who are you looking for?</h1>
-        <p className="mt-1 text-[1.25rem] text-text-secondary">Search by name, or pick from your shortlist.</p>
+        <h1 className="text-lite-title font-extrabold tracking-[-0.02em] text-text sm:text-lite-title-lg">Who are you looking for?</h1>
+        <p className="mt-1 text-lite-section text-text-secondary">Search by name, or pick from your shortlist.</p>
       </div>
       <div className="flex flex-col gap-4">
         <label className="flex min-h-[4.25rem] items-center gap-3 rounded-[18px] bg-surface px-5 ring-2 ring-border focus-within:ring-[3px] focus-within:ring-accent">
@@ -192,13 +192,13 @@ export function LiteBuyPage() {
             placeholder="Search by name"
             autoComplete="off"
             enterKeyHint="search"
-            className="min-w-0 flex-1 bg-transparent text-[1.25rem] text-text outline-none placeholder:text-text-muted"
+            className="min-w-0 flex-1 bg-transparent text-lite-section text-text outline-none placeholder:text-text-muted"
           />
         </label>
         {searching && <SearchResults q={q} />}
       </div>
       {!searching && <Targets />}
-      <div className="flex flex-col gap-2 border-t border-rule pt-6 text-[1.125rem]">
+      <div className="flex flex-col gap-2 border-t border-rule pt-6 text-lite-body">
         <span className="text-text-secondary">Not sure who you need?</span>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           <Link to="/lite/ask" className="font-bold text-accent">Ask TransferX →</Link>

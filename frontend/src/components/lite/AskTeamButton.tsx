@@ -64,15 +64,15 @@ export default function AskTeamButton({
               rows={3}
               maxLength={1000}
               aria-label="Your question"
-              className="w-full rounded-xl bg-surface px-4 py-3 text-[1.125rem] text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+              className="w-full rounded-xl bg-surface px-4 py-3 text-lite-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             />
-            <p className="text-[0.9375rem] text-text-muted">
+            <p className="text-lite-caption text-text-muted">
               {contact?.name ? `${contact.name} gets a notification with a link to this.` : "Everyone at your club who can make offers gets it."}
             </p>
             <button
               type="submit"
               disabled={!text.trim() || ask.isPending}
-              className="min-h-[3.25rem] w-full rounded-[13px] bg-accent text-[1.0625rem] font-bold text-on-accent disabled:opacity-50"
+              className="min-h-[3.25rem] w-full rounded-[13px] bg-accent text-lite-body font-bold text-on-accent disabled:opacity-50"
             >
               {ask.isPending ? "Sending…" : "Send"}
             </button>
