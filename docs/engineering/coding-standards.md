@@ -1,6 +1,6 @@
 ---
 title: "Coding Standards"
-last_updated: 2026-10-11
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Technical Owner"
 ---
@@ -39,8 +39,8 @@ Out of scope: testing ([`testing-strategy.md`](./testing-strategy.md)), architec
 
 - **Data.** Server data through TanStack Query, via `lib/api.ts`.
 - **Building blocks.** UI primitives come from `components/ui/`, and players and clubs are linked with `PlayerLink` / `ClubLink`.
-- **Money.** Formatted with the helpers in `lib/money.ts` / `lib/utils.ts`, in pounds, with an estimate beside them when a currency is chosen.
-- **Visual rules.** Follow [`../design-system/`](../design-system/README.md): tokens, four tiers, "whose move", an 11px type floor and 44px touch targets.
+- **Money.** Formatted with the helpers in `lib/utils.ts`, in pounds, with an estimate beside them when a currency is chosen. `formatCompact` ("£21.5M") for headers, status cards, tiles and lists; `formatCurrency` ("£21,500,000") only where terms are agreed (TOKENS.md "Money").
+- **Visual rules.** Follow [`../design-system/`](../design-system/README.md): tokens, four tiers, "whose move", 44px touch targets, and the type roles (`text-caption` … `text-display`, a 13px floor) and colour roles in [`TOKENS.md`](../design-system/TOKENS.md). Never a raw Tailwind size (`text-sm`, `text-[13px]`), an opacity tint (`bg-success/15`) or `uppercase` outside `eyebrow`: `src/test/designSystem.test.ts` fails on them.
 - **TypeScript.** Strict. `npx tsc -b` must stay at 0 errors.
 - **Browser storage.** Per-device conveniences only, each read and write wrapped in try/catch.
 

@@ -19,18 +19,27 @@ transfer-x/
 └── .env.example
 ```
 
-## Quick start (Docker)
+## Getting started
+
+**New here? Follow [`STARTER.md`](STARTER.md).** It goes from a fresh clone to a running app with
+real players, all 20 Premier League clubs and demo deals at every stage, with no API keys. It covers
+`.env`, restoring the reference database snapshot, the setup scripts, demo sign-ins and common
+problems.
+
+The short version, once `.env` exists (`cp .env.example .env`, then set `JWT_SECRET_KEY`):
 
 ```bash
-cp .env.example .env
-# set POSTGRES_PASSWORD and JWT_SECRET_KEY at minimum; APISPORTS_KEY and an LLM key are optional
-
-docker compose up --build
+docker compose up -d db mailpit
+docker compose cp backend/seeds/transferx_reference_20260808.dump db:/tmp/ref.dump
+docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner /tmp/ref.dump'
+docker compose up --build -d
+docker compose exec api python scripts/onboard_premier_league_clubs.py
+docker compose exec api python scripts/seed_demo.py
 ```
 
 | Service | URL |
 |---|---|
-| Frontend | http://localhost:5173 |
+| Frontend | http://localhost:5173 (demo clubs sign in as `arsenal` … with `password123`) |
 | API | http://localhost:8001 (Swagger at `/docs`) |
 | Mailpit (every email sent locally) | http://localhost:8025 |
 | PostgreSQL | localhost:5432 |
@@ -38,14 +47,6 @@ docker compose up --build
 **What runs:**
 - **The API** mounts `backend/` and applies migrations when it starts, so `docker compose restart api` picks up backend changes.
 - **The frontend** is a built production image, so UI changes need `docker compose build frontend && docker compose up -d frontend`.
-
-**First accounts.** Accounts normally come from invitations. Locally:
-
-```bash
-docker compose exec api python scripts/create_superuser.py admin@example.com password123
-docker compose exec api python scripts/create_user.py owner@club.com password123 "My Club"
-docker compose exec api python scripts/seed_demo.py            # demo deals at every stage (needs the demo clubs and players; see backend/seeds/)
-```
 
 ## Everyday commands
 
@@ -58,7 +59,7 @@ docker compose exec -T api alembic revision -m "description"
 # The data refresh, by hand
 docker compose exec -T api python -m app.jobs.daily_refresh --force
 
-# Frontend type check and tests
+# Frontend type check and tests (includes the design guard; `npm run check:design` runs it alone)
 cd frontend && npx tsc -b && npx vitest run
 ```
 
@@ -66,14 +67,8 @@ More in [`docs/engineering/`](docs/engineering/README.md): testing, migrations, 
 
 ## Environment
 
-See [`.env.example`](.env.example).
-- **Required:** `POSTGRES_*` (or `DATABASE_URL`) and `JWT_SECRET_KEY`.
-- **Optional:**
-  - `APISPORTS_KEY` for API-Football data;
-  - `LLM_MODEL` with a provider key for the AI assistant;
-  - `SMTP_*` for email;
-  - `VAPID_*` for phone push;
-  - `SLACK_WEBHOOK_URL` for job and monitoring messages;
-  - `FRONTEND_BASE_URL` for links in emails and Slack.
+Every setting is listed and explained in [`.env.example`](.env.example); `STARTER.md` step 2 says which to set.
+- **Required:** `POSTGRES_*` and `JWT_SECRET_KEY`. Leave `DATABASE_URL` unset locally (Railway sets it).
+- **Optional:** `APISPORTS_KEY` (data refresh and backfills), `LLM_MODEL` with a provider key (the AI assistant), `SMTP_*` (email; Mailpit locally), `VAPID_*` (phone push), `SLACK_WEBHOOK_URL`, `FRONTEND_BASE_URL`, `LITE_DEFAULT_ON`, `DEMO_ENABLED`.
 
 Production runs on Railway: see [`docs/operations/environments-and-deployment.md`](docs/operations/environments-and-deployment.md).

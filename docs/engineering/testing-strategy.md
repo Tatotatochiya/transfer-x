@@ -1,6 +1,6 @@
 ---
 title: "Testing Strategy"
-last_updated: 2026-10-11
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Technical Owner"
 ---
@@ -48,6 +48,7 @@ docker compose exec -T api python -m pytest -q tests/test_offers.py -k accept # 
 **Commands:**
 - `npx tsc -b` is the type check, and part of the build. Use `-b`: plain `tsc --noEmit` checks nothing in this project.
 - `npx vitest run` runs the tests.
+- `npm run check:design` runs only `src/test/designSystem.test.ts`: it fails on raw Tailwind sizes, opacity tints on colour tokens, `uppercase` outside `eyebrow`, extra-bold outside Lite and white text on accent (with an allowlist that may only shrink, now empty), and checks the token contrast pairs reach 4.5:1 in both themes.
 
 ## Beyond the suites
 
@@ -57,9 +58,9 @@ docker compose exec -T api python -m pytest -q tests/test_offers.py -k accept # 
 
 ## Current totals
 
-As of 2026-10-11:
-- **Backend:** 877 passed.
-- **Frontend:** vitest 250 passed.
+As of 2026-11-11:
+- **Backend:** 938 passed.
+- **Frontend:** vitest 480 passed (65 files).
 - **Type check:** `tsc -b` has 0 errors.
 
 ## Related documents

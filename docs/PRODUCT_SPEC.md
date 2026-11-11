@@ -1,6 +1,6 @@
 ---
 title: "TransferX Product Specification"
-last_updated: 2026-10-12
+last_updated: 2026-11-11
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -95,12 +95,12 @@ TransferX is a web platform for professional football transfers. It connects **s
 *The visual and interaction rules every screen follows.*
 
 - [`design-system/README.md`](./design-system/README.md): the principle, four tiers, "whose move", settled decisions
-- [`design-system/RULES.md`](./design-system/RULES.md), [`TOKENS.md`](./design-system/TOKENS.md), [`RESPONSIVE.md`](./design-system/RESPONSIVE.md), [`SCREENS.md`](./design-system/SCREENS.md)
+- [`design-system/RULES.md`](./design-system/RULES.md), [`TOKENS.md`](./design-system/TOKENS.md), [`RESPONSIVE.md`](./design-system/RESPONSIVE.md), [`SCREENS.md`](./design-system/SCREENS.md): tokens, the seven type roles (13px floor) and colour roles, enforced by `frontend/src/test/designSystem.test.ts`
 
 ### Engineering
 *Working in the codebase.*
 
-- [`engineering/getting-started.md`](./engineering/getting-started.md) (commands in the root [`README.md`](../README.md))
+- [`engineering/getting-started.md`](./engineering/getting-started.md) (commands in the root [`STARTER.md`](../STARTER.md))
 - [`engineering/coding-standards.md`](./engineering/coding-standards.md)
 - [`engineering/testing-strategy.md`](./engineering/testing-strategy.md)
 - [`engineering/database-migrations.md`](./engineering/database-migrations.md)

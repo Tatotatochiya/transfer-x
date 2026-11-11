@@ -89,7 +89,7 @@ Each item was checked against the code on 2026-10-11 unless it says otherwise.
 
 As of 2026-11-11:
 
-- **Backend:** 938 passed (full suite, SQLite; last run 2026-11-09, no backend change since).
+- **Backend:** 938 passed (full suite, SQLite; run 2026-11-11 after the `0062` and `seed_demo.py` fixes).
 - **Frontend:** vitest 480 passed (65 files), including the design-system guard and contrast tests.
 - **Lint:** not run; the repo has no eslint.
 
