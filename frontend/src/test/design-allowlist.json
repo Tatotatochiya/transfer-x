@@ -1,0 +1,800 @@
+{
+ "src/App.tsx": {
+  "size": 2
+ },
+ "src/components/account/NamePrompt.tsx": {
+  "size": 1,
+  "tint": 2
+ },
+ "src/components/account/SessionsCard.tsx": {
+  "size": 2
+ },
+ "src/components/account/YourDataCard.tsx": {
+  "size": 9
+ },
+ "src/components/account/YourNameCard.tsx": {
+  "size": 3
+ },
+ "src/components/admin/DealStaffTools.tsx": {
+  "size": 5,
+  "uppercase": 1,
+  "tint": 1
+ },
+ "src/components/admin/ObligationDecisionsPanel.tsx": {
+  "size": 7,
+  "tint": 1
+ },
+ "src/components/agent/IntelligenceFeed.tsx": {
+  "size": 7,
+  "uppercase": 2,
+  "tint": 1
+ },
+ "src/components/ai/AskAboutButton.tsx": {
+  "size": 2,
+  "tint": 3
+ },
+ "src/components/ai/Assistant.tsx": {
+  "size": 27,
+  "tint": 10,
+  "white-on-accent": 1
+ },
+ "src/components/ai/DraftButton.tsx": {
+  "size": 3,
+  "tint": 2
+ },
+ "src/components/ai/MarketRecommendationsPanel.tsx": {
+  "size": 10,
+  "tint": 4
+ },
+ "src/components/ai/NLPlayerSearch.tsx": {
+  "size": 2,
+  "tint": 2
+ },
+ "src/components/ai/PlayerFitCard.tsx": {
+  "size": 15,
+  "uppercase": 2,
+  "tint": 3,
+  "extrabold": 1
+ },
+ "src/components/ai/ScoutReportPanel.tsx": {
+  "size": 10,
+  "uppercase": 1,
+  "tint": 3
+ },
+ "src/components/ai/ShortlistReviewPanel.tsx": {
+  "size": 18,
+  "uppercase": 3,
+  "tint": 17
+ },
+ "src/components/auth/NameFields.tsx": {
+  "size": 3
+ },
+ "src/components/clubs/ClubInfoPanel.tsx": {
+  "size": 4,
+  "uppercase": 1
+ },
+ "src/components/clubs/FinanceSummaryPanel.tsx": {
+  "size": 8,
+  "uppercase": 1
+ },
+ "src/components/clubs/SquadRail.tsx": {
+  "size": 7
+ },
+ "src/components/clubs/SquadStatsPanel.tsx": {
+  "size": 13
+ },
+ "src/components/clubs/TopPerformers.tsx": {
+  "size": 3,
+  "uppercase": 1
+ },
+ "src/components/conversation/ConversationPanel.tsx": {
+  "size": 15,
+  "tint": 3
+ },
+ "src/components/dashboard/FigureCard.tsx": {
+  "size": 3
+ },
+ "src/components/dashboard/ReferencePanel.tsx": {
+  "size": 6
+ },
+ "src/components/dashboard/WaitingOnYouBand.tsx": {
+  "size": 11,
+  "white-on-accent": 1
+ },
+ "src/components/dashboard/WorkingPanel.tsx": {
+  "size": 6
+ },
+ "src/components/deadline/DeadlineBanner.tsx": {
+  "size": 6,
+  "extrabold": 1
+ },
+ "src/components/deals/AgentNegotiationWorkspace.tsx": {
+  "size": 16,
+  "uppercase": 2,
+  "tint": 5
+ },
+ "src/components/deals/AgreedOfferHistory.tsx": {
+  "size": 1
+ },
+ "src/components/deals/CollapseDealDialog.tsx": {
+  "size": 5
+ },
+ "src/components/deals/DealHeader.tsx": {
+  "size": 1,
+  "tint": 2
+ },
+ "src/components/deals/DealNotes.tsx": {
+  "size": 7
+ },
+ "src/components/deals/DealProgress.tsx": {
+  "size": 7,
+  "white-on-accent": 1
+ },
+ "src/components/deals/DealRoomPanel.tsx": {
+  "size": 23
+ },
+ "src/components/deals/DealStatusCard.tsx": {
+  "size": 13,
+  "white-on-accent": 1
+ },
+ "src/components/deals/DealTermsCard.tsx": {
+  "size": 11,
+  "tint": 2
+ },
+ "src/components/deals/DealTimeline.tsx": {
+  "size": 4
+ },
+ "src/components/deals/MedicalResultDialog.tsx": {
+  "size": 6,
+  "tint": 3
+ },
+ "src/components/deals/NegotiationMessageThread.tsx": {
+  "size": 7,
+  "uppercase": 1,
+  "white-on-accent": 1
+ },
+ "src/components/deals/TermsDiffSpine.tsx": {
+  "size": 6
+ },
+ "src/components/demo/DemoControl.tsx": {
+  "size": 10,
+  "uppercase": 3
+ },
+ "src/components/demo/DemoOfferControls.tsx": {
+  "size": 2,
+  "tint": 2
+ },
+ "src/components/enquiries/AskAboutPlayerModal.tsx": {
+  "size": 4
+ },
+ "src/components/ErrorBoundary.tsx": {
+  "size": 4,
+  "tint": 3
+ },
+ "src/components/fixtures/FixturesPanel.tsx": {
+  "size": 13,
+  "uppercase": 2,
+  "tint": 3
+ },
+ "src/components/layout/AppShell.tsx": {
+  "size": 2
+ },
+ "src/components/layout/GlobalSearch.tsx": {
+  "size": 24,
+  "uppercase": 3,
+  "white-on-accent": 1,
+  "tint": 1
+ },
+ "src/components/layout/MarketActions.tsx": {
+  "size": 2
+ },
+ "src/components/layout/Sidebar.tsx": {
+  "size": 11,
+  "uppercase": 2,
+  "tint": 2
+ },
+ "src/components/layout/ViewAsBanner.tsx": {
+  "size": 1
+ },
+ "src/components/lite/ActionCard.tsx": {
+  "size": 30,
+  "uppercase": 1,
+  "white-on-accent": 2
+ },
+ "src/components/lite/AskTeamButton.tsx": {
+  "size": 3,
+  "white-on-accent": 1
+ },
+ "src/components/lite/LiteLayout.tsx": {
+  "size": 15,
+  "white-on-accent": 1
+ },
+ "src/components/lite/WaitingNav.tsx": {
+  "size": 4
+ },
+ "src/components/market/ActiveFilterChips.tsx": {
+  "size": 3
+ },
+ "src/components/market/FiltersSheet.tsx": {
+  "size": 3,
+  "uppercase": 1,
+  "white-on-accent": 1
+ },
+ "src/components/market/MarketHeader.tsx": {
+  "size": 5
+ },
+ "src/components/market/MarketSearch.tsx": {
+  "size": 4,
+  "tint": 3
+ },
+ "src/components/market/MarketToolbar.tsx": {
+  "size": 3,
+  "white-on-accent": 1
+ },
+ "src/components/market/RecommendationsRow.tsx": {
+  "size": 4,
+  "tint": 4
+ },
+ "src/components/notifications/InstallGuide.tsx": {
+  "size": 7
+ },
+ "src/components/notifications/NotificationTypesTable.tsx": {
+  "size": 12,
+  "uppercase": 2
+ },
+ "src/components/notifications/PushSettingsCard.tsx": {
+  "size": 25,
+  "uppercase": 1
+ },
+ "src/components/notifications/PushSoftAsk.tsx": {
+  "size": 7,
+  "white-on-accent": 1
+ },
+ "src/components/offers/CounterForm.tsx": {
+  "size": 28
+ },
+ "src/components/offers/DealStructureFields.tsx": {
+  "size": 14
+ },
+ "src/components/offers/OfferHeader.tsx": {
+  "size": 1
+ },
+ "src/components/offers/OfferStanding.tsx": {
+  "size": 11
+ },
+ "src/components/offers/OfferStatusCard.tsx": {
+  "size": 7
+ },
+ "src/components/offers/OfferTermsCard.tsx": {
+  "size": 11,
+  "tint": 1
+ },
+ "src/components/offers/OfferThread.tsx": {
+  "size": 8
+ },
+ "src/components/offers/RaiseOfferForm.tsx": {
+  "size": 9
+ },
+ "src/components/OnboardingChecklist.tsx": {
+  "size": 5,
+  "tint": 4
+ },
+ "src/components/players/CareerHistoryPanel.tsx": {
+  "size": 11,
+  "uppercase": 1,
+  "tint": 4
+ },
+ "src/components/players/CompareBar.tsx": {
+  "size": 5
+ },
+ "src/components/players/FairValueBadge.tsx": {
+  "size": 3
+ },
+ "src/components/players/FormBadge.tsx": {
+  "size": 2,
+  "tint": 8
+ },
+ "src/components/players/InjuryHistoryPanel.tsx": {
+  "size": 9,
+  "tint": 12
+ },
+ "src/components/players/ledger/FactsStrip.tsx": {
+  "size": 10,
+  "uppercase": 2,
+  "tint": 2
+ },
+ "src/components/players/ledger/LedgerTabs.tsx": {
+  "size": 18,
+  "uppercase": 4,
+  "extrabold": 1
+ },
+ "src/components/players/ledger/SeasonLedger.tsx": {
+  "size": 8,
+  "uppercase": 1
+ },
+ "src/components/players/LoansPanel.tsx": {
+  "size": 23
+ },
+ "src/components/players/PlayerAccountCard.tsx": {
+  "size": 8,
+  "uppercase": 1,
+  "tint": 1
+ },
+ "src/components/players/PlayerActionNote.tsx": {
+  "size": 1
+ },
+ "src/components/players/PlayerCard.tsx": {
+  "size": 9,
+  "tint": 2,
+  "extrabold": 1
+ },
+ "src/components/players/PlayerFilters.tsx": {
+  "size": 21,
+  "uppercase": 6
+ },
+ "src/components/players/PlayerListRow.tsx": {
+  "size": 18,
+  "tint": 3,
+  "white-on-accent": 1
+ },
+ "src/components/players/PlayerRow.tsx": {
+  "size": 9,
+  "tint": 1
+ },
+ "src/components/players/RealWorldMoveBanner.tsx": {
+  "size": 3,
+  "tint": 2
+ },
+ "src/components/players/SquadTable.tsx": {
+  "size": 13,
+  "uppercase": 1
+ },
+ "src/components/players/StatsPanel.tsx": {
+  "size": 15,
+  "uppercase": 2,
+  "tint": 17
+ },
+ "src/components/players/ValuationBreakdownPopover.tsx": {
+  "size": 7,
+  "uppercase": 2
+ },
+ "src/components/players/ViewSwitcher.tsx": {
+  "size": 27,
+  "uppercase": 1
+ },
+ "src/components/sales/BuyerOrderBook.tsx": {
+  "size": 15,
+  "uppercase": 3,
+  "tint": 5
+ },
+ "src/components/sales/ListPlayerModal.tsx": {
+  "size": 17,
+  "tint": 4
+ },
+ "src/components/sales/SaleCard.tsx": {
+  "size": 3
+ },
+ "src/components/sales/SellerOrderBook.tsx": {
+  "size": 17,
+  "uppercase": 1,
+  "tint": 11
+ },
+ "src/components/scouting/AddToShortlistButton.tsx": {
+  "size": 14,
+  "uppercase": 1,
+  "white-on-accent": 1
+ },
+ "src/components/transfer/MoreMenu.tsx": {
+  "size": 4
+ },
+ "src/components/transfer/StatusCardShell.tsx": {
+  "size": 4,
+  "uppercase": 1,
+  "tint": 2
+ },
+ "src/components/transfer/TransferHeader.tsx": {
+  "size": 10
+ },
+ "src/components/transfers/TransferWindowBanner.tsx": {
+  "size": 5,
+  "tint": 2
+ },
+ "src/components/ui/Alert.tsx": {
+  "size": 1,
+  "tint": 5
+ },
+ "src/components/ui/Avatar.tsx": {
+  "size": 2,
+  "tint": 1
+ },
+ "src/components/ui/Badge.tsx": {
+  "size": 1,
+  "tint": 10
+ },
+ "src/components/ui/Button.tsx": {
+  "size": 3,
+  "white-on-accent": 1
+ },
+ "src/components/ui/ClubLink.tsx": {
+  "size": 1
+ },
+ "src/components/ui/DateRangeFilter.tsx": {
+  "size": 4,
+  "tint": 3
+ },
+ "src/components/ui/EmptyState.tsx": {
+  "size": 3,
+  "white-on-accent": 1
+ },
+ "src/components/ui/Input.tsx": {
+  "size": 3,
+  "tint": 1
+ },
+ "src/components/ui/Metric.tsx": {
+  "size": 1
+ },
+ "src/components/ui/Modal.tsx": {
+  "size": 1
+ },
+ "src/components/ui/Money.tsx": {
+  "size": 1
+ },
+ "src/components/ui/PageHeader.tsx": {
+  "size": 2
+ },
+ "src/components/ui/Pagination.tsx": {
+  "size": 1
+ },
+ "src/components/ui/Panel.tsx": {
+  "size": 2
+ },
+ "src/components/ui/PlayerLink.tsx": {
+  "size": 3
+ },
+ "src/components/ui/ResponsiveTable.tsx": {
+  "size": 5,
+  "uppercase": 1
+ },
+ "src/components/ui/SectionHeader.tsx": {
+  "size": 1,
+  "uppercase": 1
+ },
+ "src/components/ui/SegmentedControl.tsx": {
+  "size": 3,
+  "white-on-accent": 1
+ },
+ "src/components/ui/Select.tsx": {
+  "size": 3,
+  "tint": 1
+ },
+ "src/components/ui/Sheet.tsx": {
+  "size": 3
+ },
+ "src/components/ui/StatCard.tsx": {
+  "size": 3,
+  "uppercase": 1
+ },
+ "src/components/ui/Tabs.tsx": {
+  "size": 1
+ },
+ "src/components/ui/Timeline.tsx": {
+  "size": 3
+ },
+ "src/components/ui/Tooltip.tsx": {
+  "size": 1
+ },
+ "src/components/verification/RequestVerificationPanel.tsx": {
+  "size": 8
+ },
+ "src/components/verification/VerifiedBadge.tsx": {
+  "size": 1,
+  "tint": 2
+ },
+ "src/context/ConfirmContext.tsx": {
+  "size": 5
+ },
+ "src/context/ToastContext.tsx": {
+  "size": 1,
+  "tint": 6
+ },
+ "src/lib/badges.ts": {
+  "tint": 6
+ },
+ "src/pages/account/AccountSettingsPage.tsx": {
+  "size": 24
+ },
+ "src/pages/admin/AdminAIPage.tsx": {
+  "size": 25,
+  "uppercase": 6,
+  "tint": 4
+ },
+ "src/pages/admin/AdminAnalyticsPage.tsx": {
+  "size": 36,
+  "uppercase": 16,
+  "tint": 5
+ },
+ "src/pages/admin/AdminAuditLogPage.tsx": {
+  "size": 14
+ },
+ "src/pages/admin/AdminClubDetailPage.tsx": {
+  "size": 43,
+  "uppercase": 4,
+  "tint": 8
+ },
+ "src/pages/admin/AdminClubsPage.tsx": {
+  "size": 45,
+  "uppercase": 2,
+  "tint": 1
+ },
+ "src/pages/admin/AdminDashboardPage.tsx": {
+  "size": 37,
+  "uppercase": 3,
+  "tint": 5
+ },
+ "src/pages/admin/AdminDealsPage.tsx": {
+  "size": 24,
+  "uppercase": 2,
+  "tint": 11
+ },
+ "src/pages/admin/AdminDemoPage.tsx": {
+  "size": 15,
+  "uppercase": 4,
+  "tint": 2
+ },
+ "src/pages/admin/AdminErrorsPage.tsx": {
+  "size": 18,
+  "uppercase": 1
+ },
+ "src/pages/admin/AdminHealthPage.tsx": {
+  "size": 26,
+  "uppercase": 3,
+  "tint": 10
+ },
+ "src/pages/admin/AdminJobsPage.tsx": {
+  "size": 35,
+  "uppercase": 5
+ },
+ "src/pages/admin/AdminLayout.tsx": {
+  "size": 9,
+  "uppercase": 1,
+  "tint": 6
+ },
+ "src/pages/admin/AdminOffersPage.tsx": {
+  "size": 11,
+  "uppercase": 1,
+  "tint": 2
+ },
+ "src/pages/admin/AdminPlayerDetailPage.tsx": {
+  "size": 21,
+  "uppercase": 2
+ },
+ "src/pages/admin/AdminPlayersPage.tsx": {
+  "size": 9,
+  "uppercase": 1
+ },
+ "src/pages/admin/AdminRealWorldMovesPage.tsx": {
+  "size": 15,
+  "uppercase": 1
+ },
+ "src/pages/admin/AdminSalesPage.tsx": {
+  "size": 10,
+  "uppercase": 1,
+  "tint": 2
+ },
+ "src/pages/admin/AdminTransferWindowPage.tsx": {
+  "size": 20,
+  "uppercase": 1,
+  "tint": 3
+ },
+ "src/pages/admin/AdminUsersPage.tsx": {
+  "size": 19
+ },
+ "src/pages/admin/AdminVendorPage.tsx": {
+  "size": 47,
+  "uppercase": 8
+ },
+ "src/pages/admin/AdminVerificationPage.tsx": {
+  "size": 9,
+  "uppercase": 1
+ },
+ "src/pages/admin/AdminWorldImportPage.tsx": {
+  "size": 25,
+  "uppercase": 1,
+  "tint": 4
+ },
+ "src/pages/agent/AgentClientPage.tsx": {
+  "size": 29,
+  "uppercase": 7,
+  "tint": 9
+ },
+ "src/pages/agent/AgentDashboardPage.tsx": {
+  "size": 10,
+  "uppercase": 1,
+  "tint": 1,
+  "white-on-accent": 1
+ },
+ "src/pages/agent/AgentPipelinePage.tsx": {
+  "size": 46,
+  "uppercase": 11,
+  "tint": 15
+ },
+ "src/pages/agent/AgentProfilePage.tsx": {
+  "size": 6
+ },
+ "src/pages/agent/AgentRosterImportPage.tsx": {
+  "size": 38,
+  "uppercase": 4,
+  "tint": 7
+ },
+ "src/pages/ask/AskPage.tsx": {
+  "size": 24,
+  "tint": 3,
+  "white-on-accent": 2
+ },
+ "src/pages/auth/AcceptInvitePage.tsx": {
+  "size": 15,
+  "uppercase": 1
+ },
+ "src/pages/auth/JoinClubPage.tsx": {
+  "size": 13,
+  "uppercase": 1
+ },
+ "src/pages/auth/JoinPlayerPage.tsx": {
+  "size": 13,
+  "uppercase": 1
+ },
+ "src/pages/auth/LoginPage.tsx": {
+  "size": 9,
+  "uppercase": 1
+ },
+ "src/pages/auth/RegisterPage.tsx": {
+  "size": 13,
+  "uppercase": 1
+ },
+ "src/pages/auth/ResetPasswordPage.tsx": {
+  "size": 14,
+  "uppercase": 1
+ },
+ "src/pages/board/BoardHistoryPage.tsx": {
+  "size": 11
+ },
+ "src/pages/board/BoardPage.tsx": {
+  "size": 21,
+  "uppercase": 3,
+  "tint": 2
+ },
+ "src/pages/club/ApprovalsPage.tsx": {
+  "size": 19
+ },
+ "src/pages/club/FinancePage.tsx": {
+  "size": 14,
+  "uppercase": 1
+ },
+ "src/pages/club/MyClubPage.tsx": {
+  "size": 16,
+  "tint": 2
+ },
+ "src/pages/club/SquadCheckPage.tsx": {
+  "size": 14
+ },
+ "src/pages/club/TeamPage.tsx": {
+  "size": 22,
+  "uppercase": 2,
+  "tint": 2
+ },
+ "src/pages/dashboard/DashboardPage.tsx": {
+  "size": 11
+ },
+ "src/pages/deadline/DeadlinePage.tsx": {
+  "size": 22,
+  "white-on-accent": 1,
+  "extrabold": 3
+ },
+ "src/pages/deals/DealDetailPage.tsx": {
+  "size": 5
+ },
+ "src/pages/enquiries/EnquiryDetailPage.tsx": {
+  "size": 5
+ },
+ "src/pages/lite/LiteApprovalPage.tsx": {
+  "size": 9,
+  "white-on-accent": 2
+ },
+ "src/pages/lite/LiteAskPage.tsx": {
+  "size": 21,
+  "uppercase": 1,
+  "tint": 4,
+  "white-on-accent": 3
+ },
+ "src/pages/lite/LiteBidPage.tsx": {
+  "size": 6
+ },
+ "src/pages/lite/LiteBuyPage.tsx": {
+  "size": 19,
+  "white-on-accent": 2
+ },
+ "src/pages/lite/LiteConfirmPage.tsx": {
+  "size": 12,
+  "white-on-accent": 3
+ },
+ "src/pages/lite/LiteHomePage.tsx": {
+  "size": 16,
+  "white-on-accent": 2,
+  "tint": 3
+ },
+ "src/pages/lite/LiteOfferCardPage.tsx": {
+  "size": 10,
+  "uppercase": 1
+ },
+ "src/pages/lite/LiteOffersPage.tsx": {
+  "size": 11,
+  "uppercase": 1,
+  "white-on-accent": 1
+ },
+ "src/pages/lite/LiteSentPage.tsx": {
+  "size": 24,
+  "white-on-accent": 2
+ },
+ "src/pages/market/ClubDetailPage.tsx": {
+  "size": 9,
+  "tint": 1
+ },
+ "src/pages/market/ClubListPage.tsx": {
+  "size": 8
+ },
+ "src/pages/market/PlayerMarketDetailPage.tsx": {
+  "size": 34,
+  "uppercase": 1,
+  "tint": 8
+ },
+ "src/pages/market/PlayerMarketPage.tsx": {
+  "size": 9
+ },
+ "src/pages/market/SaleDetailPage.tsx": {
+  "size": 15
+ },
+ "src/pages/market/SaleListPage.tsx": {
+  "size": 2,
+  "tint": 1
+ },
+ "src/pages/notifications/NotificationsPage.tsx": {
+  "size": 7
+ },
+ "src/pages/offers/CreateOfferPage.tsx": {
+  "size": 48,
+  "tint": 8
+ },
+ "src/pages/offers/OfferDetailPage.tsx": {
+  "size": 2
+ },
+ "src/pages/player/PlayerProfilePage.tsx": {
+  "size": 20,
+  "uppercase": 2,
+  "tint": 12
+ },
+ "src/pages/players/PlayerComparePage.tsx": {
+  "size": 14,
+  "uppercase": 1,
+  "extrabold": 1
+ },
+ "src/pages/scouting/ShortlistDetailPage.tsx": {
+  "size": 24,
+  "uppercase": 1,
+  "tint": 4
+ },
+ "src/pages/scouting/ShortlistListPage.tsx": {
+  "size": 9,
+  "uppercase": 1
+ },
+ "src/pages/transfers/TransferActivityPage.tsx": {
+  "size": 47,
+  "uppercase": 10,
+  "tint": 6
+ },
+ "src/pages/world/WorldTeamDetailPage.tsx": {
+  "size": 27,
+  "uppercase": 3,
+  "tint": 5,
+  "extrabold": 1
+ }
+}
