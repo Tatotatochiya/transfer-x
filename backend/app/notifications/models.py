@@ -64,6 +64,10 @@ class NotificationType(str, enum.Enum):
     DEADLINE_DAY = "DEADLINE_DAY"
     # API-Football has some of the club's players at other clubs (players/real_world.py).
     REAL_WORLD_MOVES = "REAL_WORLD_MOVES"
+    # Someone is waiting on the recipient's move; an escalation once reminders
+    # were ignored or it has waited a week (docs/feature_spec/move-reminders).
+    MOVE_REMINDER = "MOVE_REMINDER"
+    MOVE_ESCALATED = "MOVE_ESCALATED"
 
 
 class Notification(Base):

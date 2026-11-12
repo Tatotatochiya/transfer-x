@@ -28,6 +28,7 @@ import SegmentedControl from "../../components/ui/SegmentedControl";
 import Spinner from "../../components/ui/Spinner";
 import Tabs from "../../components/ui/Tabs";
 import { formatDate } from "../../lib/utils";
+import MoveReminder from "../../components/transfer/MoveReminder";
 
 type Tab = "overview" | "messages" | "documents" | "history" | "activity";
 const TABS: Tab[] = ["overview", "messages", "documents", "history", "activity"];
@@ -251,6 +252,7 @@ export default function DealDetailPage() {
         <DealStatusCard
           view={view} deal={deal} viewerSide={isAgent ? null : viewerSide} actions={actions}
           onOpenMessages={openMessages} onShowSchedule={showSchedule} onRecordMedical={() => setMedicalOpen(true)}
+          reminder={view.tone === "wait" && (isParty || isAgent) ? <MoveReminder subjectType="deal" subjectId={deal.id} /> : undefined}
         />
       </div>
       <div className="mt-3">

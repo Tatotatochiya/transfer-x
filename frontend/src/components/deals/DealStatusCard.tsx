@@ -19,6 +19,8 @@ interface Props {
   onOpenMessages: () => void;
   onShowSchedule: () => void;
   onRecordMedical: () => void;
+  /** Chasing whoever holds the move (MoveReminder), shown under the card's actions. */
+  reminder?: React.ReactNode;
 }
 
 /** Proposing the player's personal terms, inside the card (ADR 0001). */
@@ -105,7 +107,7 @@ function RecordConsentForm({ deal, actions, onCancel }: { deal: Deal; actions: D
  * (deal-room-focus §5.3). It replaces the "Blocked on" header, the lanes,
  * the stage banners, the paperwork block and the Actions card.
  */
-export default function DealStatusCard({ view, deal, viewerSide, actions, onOpenMessages, onShowSchedule, onRecordMedical }: Props) {
+export default function DealStatusCard({ view, deal, viewerSide, actions, onOpenMessages, onShowSchedule, onRecordMedical, reminder }: Props) {
   const confirm = useConfirm();
   const [showSteps, setShowSteps] = useState(false);
   const [inline, setInline] = useState<"propose-terms" | "record-consent" | null>(null);
@@ -285,6 +287,7 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
               <p>{s.body}</p>
             </div>
           ))}
+          {reminder && <div className="mt-4 border-t border-rule pt-3">{reminder}</div>}
         </>
       }
     >

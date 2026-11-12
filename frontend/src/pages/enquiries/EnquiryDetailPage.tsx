@@ -11,6 +11,7 @@ import { getApiError } from "../../lib/utils";
 import ConversationPanel from "../../components/conversation/ConversationPanel";
 import ClubLink from "../../components/ui/ClubLink";
 import PlayerLink from "../../components/ui/PlayerLink";
+import MoveReminder from "../../components/transfer/MoveReminder";
 
 /**
  * One enquiry's thread. The asking club can move to a formal offer from here
@@ -87,6 +88,8 @@ export default function EnquiryDetailPage() {
           )}
         </div>
       </div>
+
+      {open && <MoveReminder subjectType="enquiry" subjectId={e.id} className="mb-4 rounded-xl bg-surface px-5 py-3 ring-1 ring-border" />}
 
       {/* The whole transfer's conversation (product ADR 0008): this enquiry,
           then any offer and deal that follow it. */}

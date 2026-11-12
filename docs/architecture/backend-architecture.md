@@ -1,6 +1,6 @@
 ---
 title: "Backend Architecture"
-last_updated: 2026-11-02
+last_updated: 2026-11-12
 status: Active
 owner: "TODO — assign a Technical Owner"
 ---
@@ -34,6 +34,7 @@ Modules live under `backend/app/` and mostly follow `models.py` / `schemas.py` /
 | `sales` | Listings (open to offers, with an optional "Offers by" date; fixed price kept for existing listings). Auctions are retired (product ADR 0011); the `bids` table is history |
 | `offers` | Offers and counter-offers, including loans and anonymous buyers. The actions live in `actions.py`, which Lite's held sends call too |
 | `enquiries` | Pre-offer conversations, open or anonymous |
+| `reminders` | Move reminders: who holds the move on an open offer, deal or enquiry (`service.holders`), reminders and escalations, and the automatic ones ([`move-reminders`](../feature_spec/move-reminders/README.md)) |
 | `deals` | The deal and its stage machine, the club-run paperwork checklist, and the deal room (`room_*`: terms versions, comments, attachments) |
 | `loans` | Loan registration, recall, expiry and conversion of obligations ([ADR 0005](./decisions/0005-loan-registration-separate-from-ownership.md)) |
 | `board` | The Transfers board: every player a club is buying or selling, once, at its furthest point (product ADR 0008) |
@@ -97,6 +98,7 @@ Modules live under `backend/app/` and mostly follow `models.py` / `schemas.py` /
 | `expire_mandates` | 24 h | Expires mandates past their end date |
 | `deal_sla` | 24 h | Flags deals stuck in pending completion past their SLA deadline (flags; doesn't collapse) |
 | `real_world_alerts` | 1 h | Tells each club which of its players API-Football has at other clubs: one notification listing them, again only when the list grows (`players/real_world.py`) |
+| `move_reminders` | 1 h | Reminds whoever holds the move on an open offer, deal or enquiry at 3 and 7 days without movement (the second escalates); skips anything idle over 30 days (`app/reminders/`) |
 | `deadline_reminders` | 15 min | Deadline day: pushes each club with transfers open once at 24, 6 and 2 hours before the window closes (`app/deadline/`) |
 | `loan_lifecycle` | 24 h | Returns loans at expiry, warns two weeks ahead, converts obligations |
 | `monitoring_retention` | 24 h | Deletes monitoring data past retention |

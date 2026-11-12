@@ -8,6 +8,7 @@ import { useLiteHome } from "../../hooks/useLite";
 import { CLUB_DASHBOARD_KEY } from "../../hooks/useClubDashboard";
 import Spinner from "../../components/ui/Spinner";
 import { textBtn } from "../../components/lite/ActionCard";
+import MoveReminder from "../../components/transfer/MoveReminder";
 
 /**
  * Screen 6 (Lite L6): sent, with undo and plain progress.
@@ -181,6 +182,9 @@ export default function LiteSentPage() {
         <section className="rounded-3xl bg-surface px-6 py-6 ring-1 ring-border sm:px-8">
           <h2 className="mb-5 text-lite-section font-bold text-text">Where this deal is</h2>
           <Stepper steps={data.progress.steps} />
+          {data.status === "EXECUTED" && (dealId || offerId) && (
+            <MoveReminder lite subjectType={dealId ? "deal" : "offer"} subjectId={(dealId ?? offerId)!} className="mt-5 border-t border-rule pt-4" />
+          )}
         </section>
       </div>
 

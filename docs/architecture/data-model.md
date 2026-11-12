@@ -1,6 +1,6 @@
 ---
 title: "Data Model"
-last_updated: 2026-10-11
+last_updated: 2026-11-12
 status: Active
 owner: "TODO — assign a Technical Owner"
 ---
@@ -35,6 +35,7 @@ Verified against `backend/app/*/models.py` on 2026-10-11.
 | `sales` | `Sale` (a listing), `Bid`, `SaleEvent` |
 | `offers` | `Offer` (permanent or loan, possibly anonymous), `OfferMessage`, `OfferEvent` |
 | `enquiries` | `Enquiry`, `EnquiryMessage` |
+| `reminders` | `MoveReminder` (who reminded whom about which move, escalated or automatic; the cooldown and escalation count read it) |
 | `conversation` | `ConversationRead` (how far each person has read a transfer's conversation, keyed by player and buying club; migration `0110`) |
 | `deals` | `Deal`, `DealClause`, `DealInstalment`, `PersonalTerms`, `MedicalCheck`, `DealNote`; the deal room: `DealTermsVersion`, `DealComment`, `DealAttachment` |
 | `loans` | `PlayerLoan` |

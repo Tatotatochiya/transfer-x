@@ -1,6 +1,6 @@
 ---
 title: "Workflow: Transfer Lifecycle"
-last_updated: 2026-10-11
+last_updated: 2026-11-12
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -40,6 +40,14 @@ A transfer begins with a selling club listing a player (see [`negotiation-and-of
 | `CONFIRMED` | Paperwork complete; ready for the transfer to be executed. |
 | `COMPLETED` | The transfer is finalized. For a **permanent** deal the player's contract moves to the buying club. For a **loan** the registration moves but ownership does not — see [Deal types](#deal-types) below. |
 | `COLLAPSED` | A deal status rather than a stage: any deal not yet completed can collapse, when either party withdraws or a required consent is declined. Reserved money is released. |
+
+**When a transfer stalls.** Whoever is waiting can remind whoever holds the move: the other club,
+a club with paperwork outstanding, the agent, or the player ([`move-reminders`](../../feature_spec/move-reminders/README.md)).
+A reminder goes in-app, by email and by push, is on the deal's timeline, and never changes the
+deal. After two ignored reminders or a week, it escalates: an agent's player and the other club are
+told, a player's agent (or the selling club), and a club's owner and sporting directors. TransferX
+also reminds automatically at 3 and 7 days without movement. Confirmed deals are left to their
+completion deadline (`deal_sla`).
 
 > **TODO:** Keep this table in sync with the actual stage machine as it evolves — see [`../../architecture/data-model.md`](../../architecture/data-model.md) for the authoritative technical definition.
 

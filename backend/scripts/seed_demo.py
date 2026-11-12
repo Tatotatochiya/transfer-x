@@ -70,6 +70,7 @@ import app.enquiries.models  # noqa: F401
 import app.lite.models  # noqa: F401
 import app.loans.models  # noqa: F401
 import app.monitoring.models  # noqa: F401
+import app.reminders.models  # noqa: F401
 
 # deals/offers/sales service modules do `from app import clubs as clubs_module`
 # and then reach for `clubs_module.service.*` at call time. That only resolves if
