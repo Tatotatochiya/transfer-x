@@ -58,6 +58,8 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   REGISTRATION_UPDATED:       "Squad updated",
   DEADLINE_DAY:               "Deadline day",
   REAL_WORLD_MOVES:           "Moved in real life",
+  MOVE_REMINDER:              "Reminder",
+  MOVE_ESCALATED:             "Still waiting on you",
   APPROVAL_DECIDED:           "Approval decided",
 };
 
@@ -105,6 +107,8 @@ const TYPE_COLOURS: Record<NotificationType, string> = {
   REGISTRATION_UPDATED:     "text-warning-text",
   DEADLINE_DAY:             "text-danger-text",
   REAL_WORLD_MOVES:         "text-warning-text",
+  MOVE_REMINDER:            "text-danger-text",
+  MOVE_ESCALATED:           "text-danger-text",
   APPROVAL_DECIDED:         "text-success-text",
 };
 

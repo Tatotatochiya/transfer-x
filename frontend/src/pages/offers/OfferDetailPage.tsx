@@ -27,6 +27,7 @@ import { useOfferActions } from "../../hooks/useOfferActions";
 import { useAIStatus, useOfferAdvice } from "../../hooks/useAssistant";
 import { lastChange, offerRounds } from "../../lib/offerChanges";
 import { formatDate } from "../../lib/utils";
+import MoveReminder from "../../components/transfer/MoveReminder";
 
 type Tab = "terms" | "messages" | "bids" | "history";
 
@@ -246,6 +247,7 @@ export default function OfferDetailPage() {
           onRaise={() => setEditing("raise")}
           onOpenMessages={openMessages}
           onShowAllChanges={showTerms}
+          reminder={view.tone === "wait" && isParty ? <MoveReminder subjectType="offer" subjectId={offer.id} /> : undefined}
         />
       </div>
       <div className="mt-3">

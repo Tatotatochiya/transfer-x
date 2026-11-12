@@ -47,6 +47,7 @@ from app.conversation import router as conversation_router
 from app.monitoring import router as monitoring_router
 from app.demo import journal as _demo_journal  # noqa: F401  (registers the demo change journal)
 from app.demo import router as demo_router
+from app.reminders import router as reminders_router
 
 logger = logging.getLogger(__name__)
 
@@ -286,6 +287,21 @@ async def _real_world_alerts_job() -> None:
             logger.exception("Error in real-world alerts job")
 
 
+async def _move_reminders_job() -> None:
+    """Move reminders (docs/feature_spec/move-reminders D6): at 3 and 7 days
+    without movement, remind whoever holds the move."""
+    from app.reminders.service import send_automatic
+
+    async with AsyncSessionLocal() as db:
+        try:
+            sent = await send_automatic(db)
+            await db.commit()
+            if sent:
+                logger.info("Automatic move reminders sent: %d", sent)
+        except Exception:
+            logger.exception("Error in move reminders job")
+
+
 async def _deadline_reminders_job() -> None:
     """Deadline-day mode: push each club with transfers open at 24, 6 and 2
     hours before the window closes (once each)."""
@@ -407,6 +423,10 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(
         _deadline_reminders_job, "interval", minutes=15, id="deadline_reminders",
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=50),
+    )
+    _scheduler.add_job(
+        _move_reminders_job, "interval", hours=1, id="move_reminders",
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5),
     )
     _scheduler.add_job(
         _window_opened_job, "interval", minutes=15, id="window_opened",
@@ -532,3 +552,4 @@ app.include_router(dashboard_router.router, prefix="")
 app.include_router(board_router.router)
 app.include_router(conversation_router.router)
 app.include_router(demo_router.router)
+app.include_router(reminders_router.router)

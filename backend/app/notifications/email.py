@@ -33,6 +33,8 @@ EMAIL_ENABLED_TYPES = {
     # visits a few times a week would otherwise not know until it looked.
     NotificationType.OFFER_COUNTERED,
     NotificationType.APPROVAL_REQUESTED,
+    NotificationType.MOVE_REMINDER,
+    NotificationType.MOVE_ESCALATED,
     NotificationType.DEAL_PERSONAL_TERMS_SENT,
 }
 

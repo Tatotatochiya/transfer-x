@@ -103,7 +103,9 @@ export type NotificationType =
   | "APPROVAL_DECIDED"
   | "REGISTRATION_UPDATED"
   | "DEADLINE_DAY"
-  | "REAL_WORLD_MOVES";
+  | "REAL_WORLD_MOVES"
+  | "MOVE_REMINDER"
+  | "MOVE_ESCALATED";
 
 // TRA-151 — club roles & capabilities (server matrix is the only truth; the
 // UI only ever consumes the capability list from GET /clubs/me/membership)

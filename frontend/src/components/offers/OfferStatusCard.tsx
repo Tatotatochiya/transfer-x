@@ -23,7 +23,7 @@ export function focusOfferHeadline() {
  * card's content (`editing`).
  */
 export default function OfferStatusCard({
-  view, offer, actions, desktop, editing, onCounter, onRaise, onOpenMessages, onShowAllChanges,
+  view, offer, actions, desktop, editing, onCounter, onRaise, onOpenMessages, onShowAllChanges, reminder,
 }: {
   view: OfferStatusView;
   /** From 1024px the changes are the card's middle column; below, under the body. */
@@ -35,6 +35,8 @@ export default function OfferStatusCard({
   onRaise: () => void;
   onOpenMessages: () => void;
   onShowAllChanges: () => void;
+  /** Chasing whoever holds the move (MoveReminder), at the foot of the card. */
+  reminder?: ReactNode;
 }) {
   const confirm = useConfirm();
   const navigate = useNavigate();
@@ -141,6 +143,7 @@ export default function OfferStatusCard({
         </>
       }
       actions={actionsNode || undefined}
+      footer={reminder ? <div className="mt-4 border-t border-rule pt-3">{reminder}</div> : undefined}
     >
       {changes && desktop ? changes : null}
     </StatusCardShell>

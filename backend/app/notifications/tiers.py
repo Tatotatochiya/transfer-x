@@ -21,7 +21,10 @@ class Tier(str, enum.Enum):
     FYI = "FYI"
 
 
-_YOUR_MOVE = {T.OFFER_RECEIVED, T.OFFER_COUNTERED, T.APPROVAL_REQUESTED, T.DEAL_PERSONAL_TERMS_SENT}
+_YOUR_MOVE = {
+    T.OFFER_RECEIVED, T.OFFER_COUNTERED, T.APPROVAL_REQUESTED, T.DEAL_PERSONAL_TERMS_SENT,
+    T.MOVE_REMINDER, T.MOVE_ESCALATED,
+}
 
 _HEADS_UP = {
     T.OFFER_EXPIRING, T.OFFER_MESSAGE,
@@ -66,6 +69,8 @@ HIDDEN_TITLES: dict[T, str] = {
     T.OFFER_COUNTERED: "Your offer was countered",
     T.APPROVAL_REQUESTED: "An approval needs you",
     T.DEAL_PERSONAL_TERMS_SENT: "Personal terms to review",
+    T.MOVE_REMINDER: "A transfer is waiting on you",
+    T.MOVE_ESCALATED: "A transfer is still waiting on you",
     T.OUTBID: "You've been outbid",
     T.OFFER_EXPIRING: "An offer is expiring soon",
     T.AUCTION_ENDING: "An auction is ending soon",
