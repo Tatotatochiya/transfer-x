@@ -13,6 +13,8 @@ import Spinner from "../../components/ui/Spinner";
 import { formatDateTime } from "../../lib/utils";
 import ClubLink from "../../components/ui/ClubLink";
 import PlayerLink from "../../components/ui/PlayerLink";
+import { ChasedBadge } from "../../components/transfer/ReminderBadges";
+import Badge from "../../components/ui/Badge";
 
 // ── Notification type labels + colours ───────────────────────────────────────
 
@@ -60,6 +62,7 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   REAL_WORLD_MOVES:           "Moved in real life",
   MOVE_REMINDER:              "Reminder",
   MOVE_ESCALATED:             "Still waiting on you",
+  MOVE_STALLED:               "Transfer stuck",
   APPROVAL_DECIDED:           "Approval decided",
 };
 
@@ -109,6 +112,7 @@ const TYPE_COLOURS: Record<NotificationType, string> = {
   REAL_WORLD_MOVES:         "text-warning-text",
   MOVE_REMINDER:            "text-danger-text",
   MOVE_ESCALATED:           "text-danger-text",
+  MOVE_STALLED:             "text-warning-text",
   APPROVAL_DECIDED:         "text-success-text",
 };
 
@@ -186,6 +190,8 @@ function NotificationRow({
           <span className={`text-caption font-semibold ${colour}`}>
             {TYPE_LABELS[notification.type] ?? notification.type}
           </span>
+          {notification.type === "MOVE_ESCALATED" && <ChasedBadge escalated />}
+          {notification.type === "MOVE_STALLED" && <Badge variant="warning">Escalated</Badge>}
           <span className="text-small text-text-muted">
             {formatDateTime(notification.created_at)}
           </span>

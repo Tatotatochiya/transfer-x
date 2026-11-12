@@ -65,7 +65,7 @@ async def _idle(db: AsyncSession, deal_id, idle: timedelta) -> None:
 async def _notes(db: AsyncSession, user_id) -> list[Notification]:
     return list((await db.execute(
         select(Notification).where(Notification.recipient_user_id == user_id,
-                                   Notification.type.in_([NotificationType.MOVE_REMINDER, NotificationType.MOVE_ESCALATED]))
+                                   Notification.type.in_([NotificationType.MOVE_REMINDER, NotificationType.MOVE_ESCALATED, NotificationType.MOVE_STALLED]))
     )).scalars())
 
 
@@ -286,3 +286,28 @@ async def test_paperwork_holds_only_the_side_with_steps_left(client, db):
     hs = await _holders_for(db, deal.id)
     expected = {c for c in (deal.buyer_club_id, deal.seller_club_id) if deals_service.outstanding_paperwork_for(deal, c)}
     assert {h.id for h in hs} == expected and all(h.kind == "club" for h in hs)
+
+
+# ── Colour coding: chased cards, masked senders, third parties ────────────────
+
+async def test_the_board_marks_a_chased_card_and_the_holder_sees_who(client, db):
+    offer, buyer, seller = await _offer(client, db, anonymous=True)
+    assert (await client.post(f"/reminders/offer/{offer['id']}", json={"note": "Soon please"}, headers=_auth_headers(buyer))).status_code == 200
+
+    board = (await client.get("/board", headers=_auth_headers(seller))).json()
+    cards = [c for col in board["columns"] for c in col["cards"] if c["entity_id"] == offer["id"]]
+    assert cards and cards[0]["chased"] == "REMINDED"
+
+    st = (await client.get(f"/reminders/offer/{offer['id']}", headers=_auth_headers(seller))).json()
+    assert st["to_you"]["note"] == "Soon please"
+    # The seller never learns an anonymous buyer's name, here or in `last`.
+    assert st["to_you"]["by"] == "An undisclosed club" and st["last"]["by"] == "An undisclosed club"
+    assert "Chelsea" not in str(st)
+
+
+async def test_third_parties_get_the_amber_notice_not_the_holders(client, db):
+    ctx = await _agent_deal(client, db, idle=timedelta(days=8))
+    assert (await client.post(f"/reminders/deal/{ctx['deal'].id}", json={}, headers=_auth_headers(ctx["buyer"]))).status_code == 200
+    seller_notes = await db.execute(select(Notification.type).where(
+        Notification.recipient_user_id == await _user_id(client, ctx["seller"])))
+    assert list(seller_notes.scalars()) == [NotificationType.MOVE_STALLED]

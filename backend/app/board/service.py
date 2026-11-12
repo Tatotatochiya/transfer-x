@@ -12,6 +12,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.board.schemas import BoardCard, BoardColumn, BoardResponse
@@ -204,6 +205,27 @@ async def _listing_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, hi
     return cards
 
 
+async def _mark_chased(db: AsyncSession, club_id: uuid.UUID, cards: list[BoardCard]) -> None:
+    """Flag the club's-move cards someone has reminded it about since they last
+    moved, in one query (move reminders)."""
+    from app.reminders.models import MoveReminder
+
+    mine = [c for c in cards if c.whose_move == WhoseMove.YOUR and c.kind in ("offer", "deal", "enquiry")]
+    if not mine:
+        return
+    rows = (await db.execute(
+        select(MoveReminder.subject_id, MoveReminder.escalated, MoveReminder.created_at).where(
+            MoveReminder.holder_kind == "club", MoveReminder.holder_id == club_id,
+            MoveReminder.subject_id.in_([c.entity_id for c in mine]),
+        )
+    )).all()
+    for c in mine:
+        since = _aware(c.updated_at)
+        hits = [r for r in rows if r.subject_id == c.entity_id and (since is None or _aware(r.created_at) >= since)]
+        if hits:
+            c.chased = "ESCALATED" if any(r.escalated for r in hits) else "REMINDED"
+
+
 async def get_board(db: AsyncSession, club_id: uuid.UUID, side: str = "BOTH") -> BoardResponse:
     now = datetime.now(timezone.utc)
     all_cards = (
@@ -230,6 +252,8 @@ async def get_board(db: AsyncSession, club_id: uuid.UUID, side: str = "BOTH") ->
             continue  # active again on this side: the live card is enough
         cards.sort(key=lambda c: _aware(c.updated_at) or now, reverse=True)
         drawer.append(cards[0])
+
+    await _mark_chased(db, club_id, shown)
 
     def order(c: BoardCard):
         # Your move first, then soonest deadline, then most recent.

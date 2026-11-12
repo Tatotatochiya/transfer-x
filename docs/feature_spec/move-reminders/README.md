@@ -98,8 +98,10 @@ New table `move_reminders` (migration `0111`):
 | `note` | string(200), null | |
 | `created_at` | timestamptz | |
 
-Index on `(subject_type, subject_id, created_at)`. Notification types `MOVE_REMINDER` and
-`MOVE_ESCALATED` are added to `notificationtype`. Both are in `EMAIL_ENABLED_TYPES`.
+Index on `(subject_type, subject_id, created_at)`. Notification types `MOVE_REMINDER`,
+`MOVE_ESCALATED` (to the holder) and `MOVE_STALLED` (to the people told on an escalation) are added
+to `notificationtype` (`MOVE_STALLED` in migration `0112`, since `0111` had already shipped). All
+three are in `EMAIL_ENABLED_TYPES`.
 
 ## 3. API
 
@@ -124,6 +126,21 @@ Both return `404` to anyone who isn't a party, so an offer's existence isn't rev
 - **Lite**: the sent-offer page ("Waiting on Chelsea") gets **"Remind them"**, with the same sheet in
   Lite's sizes.
 - **Timeline**: reminders and escalations show as events with the note.
+- **Colour** (TOKENS.md colour roles; `components/transfer/ReminderBadges.tsx`). The words say the
+  step, the colour says how serious it is:
+
+  | Who sees it | State | Badge |
+  |---|---|---|
+  | The waiting side | Waiting 3+ days, not yet reminded | Amber "Stalled · N days" |
+  | | Reminded, still fresh | Grey "Reminded" |
+  | | Reminded and stalled, or escalated | Amber "Reminded" / "Escalated" |
+  | The holder (being chased) | Reminded or escalated | Red "Reminded" / "Escalated", with who and the note; no button |
+  | Told on escalation (an agent's player, the other club) | `MOVE_STALLED` notification | Amber "Transfer stuck" + "Escalated" |
+
+  Never red on the waiting side (nothing is needed from them). The Board's cards and the
+  Dashboard's working panels carry the same badges: amber "Stalled" on cards waiting on the other
+  side, red "Reminded"/"Escalated" on the club's own-move cards it has been chased about
+  (`BoardCard.chased`).
 - **Notifications page and email**: the fixed wording, a link to the transaction, and for an
   escalation the line "This is the third reminder" or "This has been waiting 7 days".
 

@@ -253,7 +253,7 @@ export default function DealDetailPage() {
         <DealStatusCard
           view={view} deal={deal} viewerSide={isAgent ? null : viewerSide} actions={actions}
           onOpenMessages={openMessages} onShowSchedule={showSchedule} onRecordMedical={() => setMedicalOpen(true)}
-          reminder={view.tone === "wait" && (isParty || isAgent) ? <MoveReminder subjectType="deal" subjectId={deal.id} /> : undefined}
+          reminder={(view.tone === "wait" || view.tone === "you") && (isParty || isAgent) ? <MoveReminder subjectType="deal" subjectId={deal.id} /> : undefined}
         />
         <DemoDealControls dealId={deal.id} waiting={view.tone === "wait" && isParty} waitingOn={view.overline} />
       </div>

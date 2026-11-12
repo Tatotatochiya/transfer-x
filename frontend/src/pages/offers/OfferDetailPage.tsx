@@ -247,7 +247,7 @@ export default function OfferDetailPage() {
           onRaise={() => setEditing("raise")}
           onOpenMessages={openMessages}
           onShowAllChanges={showTerms}
-          reminder={view.tone === "wait" && isParty ? <MoveReminder subjectType="offer" subjectId={offer.id} /> : undefined}
+          reminder={(view.tone === "wait" || view.tone === "you") && isParty ? <MoveReminder subjectType="offer" subjectId={offer.id} /> : undefined}
         />
       </div>
       <div className="mt-3">
