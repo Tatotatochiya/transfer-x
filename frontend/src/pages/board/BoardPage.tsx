@@ -14,6 +14,7 @@ import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import ConversationPanel, { type ConversationContext } from "../../components/conversation/ConversationPanel";
 import PlayerLink from "../../components/ui/PlayerLink";
+import { ChasedBadge, StalledBadge, stalledDays } from "../../components/transfer/ReminderBadges";
 
 /**
  * The Transfers board (Phase 3, product ADR 0008): every player the club is
@@ -40,6 +41,8 @@ export interface BoardCard {
   deadline: string | null;
   link: string;
   updated_at: string | null;
+  /** Your move, and the other side has chased it since it last moved. */
+  chased?: "REMINDED" | "ESCALATED" | null;
   others: number;
 }
 
@@ -117,6 +120,13 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
           {card.others > 0 && <span>+{card.others} more</span>}
         </p>
       )}
+      {(yours && card.chased) || (card.whose_move === "their" && stalledDays(card.updated_at) != null) ? (
+        <div className="mt-2">
+          {yours && card.chased
+            ? <ChasedBadge escalated={card.chased === "ESCALATED"} />
+            : <StalledBadge since={card.updated_at} />}
+        </div>
+      ) : null}
     </div>
   );
 }

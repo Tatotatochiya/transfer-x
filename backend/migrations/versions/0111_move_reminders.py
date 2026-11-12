@@ -34,6 +34,7 @@ def upgrade() -> None:
     op.create_index("ix_move_reminders_subject", "move_reminders", ["subject_type", "subject_id", "created_at"])
     op.execute("ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'MOVE_REMINDER'")
     op.execute("ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'MOVE_ESCALATED'")
+    op.execute("ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS 'MOVE_STALLED'")
 
 
 def downgrade() -> None:

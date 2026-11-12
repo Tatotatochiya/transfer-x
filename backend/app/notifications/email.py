@@ -35,6 +35,7 @@ EMAIL_ENABLED_TYPES = {
     NotificationType.APPROVAL_REQUESTED,
     NotificationType.MOVE_REMINDER,
     NotificationType.MOVE_ESCALATED,
+    NotificationType.MOVE_STALLED,
     NotificationType.DEAL_PERSONAL_TERMS_SENT,
 }
 

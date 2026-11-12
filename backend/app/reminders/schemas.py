@@ -27,6 +27,8 @@ class ReminderState(BaseModel):
     # The exact sentence the holder will get.
     preview: str | None = None
     last: LastReminder | None = None
+    # A reminder sent to the viewer (they hold the move): shown in red on their card.
+    to_you: LastReminder | None = None
 
 
 class SendReminder(BaseModel):

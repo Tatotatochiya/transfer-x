@@ -3,6 +3,7 @@ import Badge from "../ui/Badge";
 import Card from "../ui/Card";
 import { WHOSE_MOVE_LABEL, type WhoseMove } from "../../lib/whoseMove";
 import PlayerLink from "../ui/PlayerLink";
+import { StalledBadge, stalledDays } from "../transfer/ReminderBadges";
 
 function WhoseMoveTag({ move }: { move: WhoseMove }) {
   if (move === "neither") return null;
@@ -14,6 +15,8 @@ export default function WorkingPanel({ title, linkTo, rows }: {
   title: string; linkTo: string;
   rows: {
     key: string; onClick: () => void; name: string; sub: string; value: string; move: WhoseMove;
+    /** When it last moved: waiting on the other side for 3+ days reads "Stalled", in amber. */
+    idleSince?: string | null;
     /** The player, for a link to his profile and his photo. */
     player?: { id: string | null | undefined; photoUrl: string | null | undefined };
   }[];
@@ -39,7 +42,9 @@ export default function WorkingPanel({ title, linkTo, rows }: {
             </div>
             <div className="text-right shrink-0">
               <p className="text-body font-bold text-text">{row.value}</p>
-              <WhoseMoveTag move={row.move} />
+              {row.move === "their" && stalledDays(row.idleSince) != null
+                ? <StalledBadge since={row.idleSince} />
+                : <WhoseMoveTag move={row.move} />}
             </div>
           </div>
         ))}

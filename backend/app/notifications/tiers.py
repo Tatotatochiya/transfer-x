@@ -31,7 +31,7 @@ _HEADS_UP = {
     T.NEGOTIATION_MESSAGE, T.ENQUIRY_RECEIVED, T.ENQUIRY_REPLIED, T.OFFER_ACCEPTED, T.OFFER_REJECTED,
     T.DEAL_COLLAPSED, T.DEAL_SLA_BREACHED, T.SALE_REOPENED, T.INSTALMENT_DUE,
     T.RELEASE_CLAUSE_TRIGGERED, T.LOAN_RECALLED, T.LITE_QUESTION, T.REGISTRATION_UPDATED,
-    T.DEADLINE_DAY, T.REAL_WORLD_MOVES,
+    T.DEADLINE_DAY, T.REAL_WORLD_MOVES, T.MOVE_STALLED,
 }
 
 # DAILY_DIGEST is a preference rather than a notification anyone receives;
@@ -71,6 +71,7 @@ HIDDEN_TITLES: dict[T, str] = {
     T.DEAL_PERSONAL_TERMS_SENT: "Personal terms to review",
     T.MOVE_REMINDER: "A transfer is waiting on you",
     T.MOVE_ESCALATED: "A transfer is still waiting on you",
+    T.MOVE_STALLED: "A transfer is stuck",
     T.OUTBID: "You've been outbid",
     T.OFFER_EXPIRING: "An offer is expiring soon",
     T.AUCTION_ENDING: "An auction is ending soon",
