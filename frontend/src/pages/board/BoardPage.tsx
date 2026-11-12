@@ -77,6 +77,8 @@ function SideTag({ side }: { side: BoardCard["side"] }) {
   );
 }
 
+// "Your move" is red (needs you), never blue: blue is only for what you can
+// tap (TOKENS.md colour roles). Hover and focus stay accent.
 function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; onOpen: (c: BoardCard) => void }) {
   const yours = card.whose_move === "your";
   const left = timeLeft(card.deadline);
@@ -90,7 +92,7 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
       onClick={() => onOpen(card)}
       onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(card); } }}
       className={`w-full cursor-pointer rounded-xl bg-surface p-3 text-left ring-1 transition-colors hover:ring-accent-ring focus-visible:outline-2 focus-visible:outline-accent ${
-        yours ? "ring-accent-ring" : "ring-border"
+        yours ? "ring-danger-ring" : "ring-border"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -98,7 +100,7 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
           <PlayerLink id={card.player_id} name={card.player_name} photoUrl={card.player_photo_url ?? null} size="md" />
           {card.player_position && <span className="shrink-0 text-small font-normal text-text-muted">{card.player_position}</span>}
         </p>
-        {yours && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Your move" />}
+        {yours && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-danger" aria-label="Your move" />}
       </div>
       {(card.counterparty || showSide) && (
         <p className="mt-0.5 truncate text-small text-text-muted">
@@ -113,7 +115,7 @@ function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; 
           <Estimate value={card.amount} />
         </p>
       )}
-      <p className={`mt-1 text-caption ${yours ? "font-semibold text-accent" : "text-text-secondary"}`}>{card.detail}</p>
+      <p className={`mt-1 text-caption ${yours ? "font-semibold text-danger-text" : "text-text-secondary"}`}>{card.detail}</p>
       {(left || card.others > 0) && (
         <p className="mt-1 flex flex-wrap gap-x-2 text-small text-text-muted">
           {left && <span className={left.urgent ? "font-semibold text-danger-text" : ""}>{left.text}</span>}
@@ -155,7 +157,7 @@ function CardDetail({ card, onClose }: { card: BoardCard; onClose: () => void })
               {card.counterparty && (card.side === "BUYING" ? ` from ${card.counterparty}` : ` to ${card.counterparty}`)}
               {card.amount != null && <> · <span className="font-semibold text-text">{formatCompactCurrency(Number(card.amount))}</span></>}
             </p>
-            <p className={card.whose_move === "your" ? "font-semibold text-accent" : "text-text-muted"}>{card.detail}</p>
+            <p className={card.whose_move === "your" ? "font-semibold text-danger-text" : "text-text-muted"}>{card.detail}</p>
           </div>
           <div className="flex gap-2">
             {card.kind === "deal" || card.kind === "offer"

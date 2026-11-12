@@ -47,3 +47,18 @@ describe("BoardPage", () => {
     expect(screen.queryByRole("region", { name: "Buying" })).not.toBeInTheDocument();
   });
 });
+
+describe("BoardPage colours", () => {
+  it("your move is red, chased cards say so in red, and the other side's stalled cards are amber", async () => {
+    const mine = { ...card("SELLING", "D. Mukasa", "talking"), whose_move: "your", detail: "Offer received · your move", chased: "ESCALATED" };
+    const stalled = { ...card("BUYING", "L. Hall", "talking"), whose_move: "their", updated_at: new Date(Date.now() - 5 * 86_400_000).toISOString() };
+    api.get.mockReset().mockResolvedValue({ data: { ...board, columns: [{ key: "talking", label: "Talking", cards: [mine, stalled] }] } });
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={["/board?side=BOTH"]}><BoardPage /></MemoryRouter></QueryClientProvider>);
+
+    expect((await screen.findByText("Offer received · your move")).className).toContain("text-danger-text");
+    expect(screen.getByLabelText("Your move").className).toContain("bg-danger");
+    expect(screen.getByText("Escalated").className).toContain("bg-danger-bg");
+    expect(screen.getByText("Stalled · 5 days").className).toContain("bg-warning-bg");
+    expect(document.querySelector(".text-accent.font-semibold")).toBeNull();
+  });
+});
