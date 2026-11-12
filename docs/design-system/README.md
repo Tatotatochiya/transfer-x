@@ -45,7 +45,7 @@ When tier 1 is empty it's a single line, "Nothing is waiting on you", with no il
 
 ## "Whose move"
 
-Every row that represents a live negotiation shows **Your move**, **Their move** or **Neither**. A colour is never the only signal: each state has a text label.
+Every row that represents a live negotiation shows **Your move**, **Their move** or **Neither**. A colour is never the only signal: each state has a text label. **Your move** is red (needs you), **Their move** grey, turning amber "Stalled" after 3 days; never blue, which is only for what you can tap.
 
 The value is a `whose_move` field computed on the server, so the dashboard, the board, the lists, the sidebar counts and the daily digest all agree:
 - `compute_offer_whose_move` (offers);
