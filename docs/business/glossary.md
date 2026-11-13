@@ -1,6 +1,6 @@
 ---
 title: "Glossary"
-last_updated: 2026-10-11
+last_updated: 2026-11-13
 status: Active
 owner: "TODO — assign a Documentation Owner"
 ---
@@ -46,7 +46,8 @@ Out of scope: pure engineering jargon (framework names, library names) — those
 | **Bid** | An amount placed in an auction. Auctions are retired (product ADR 0011); past bids stay as history. In Lite, "bid" also means making an offer. |
 | **Reserve price** | A seller's private floor on a listing; visible only to the seller and staff. |
 | **Order book** | The ranked view of active bids/offers on a Sale. |
-| **Fair value (model)** | TransferX's own estimate of a player's transfer value, with a confidence range. Since 2026-10-07 it's the `market-v2` model: up to three seasons of stats, age and potential, form, contract length, availability, league, and comparable transfers ([spec](../feature_spec/valuation-model-v2.md)). An estimate, never an official valuation. Not shown to player accounts. |
+| **Fair value (model)** | TransferX's own estimate of a player's transfer value, with a confidence range. It's the `market-v2` model (up to three seasons of stats, age and potential, form, contract length, availability, league, and comparable transfers). `market-v3` adds the last-fee anchor; it is built but switched off (`VALUATION_FEE_ANCHOR_ENABLED`) until its production backtest has been reviewed ([spec](../feature_spec/valuation/model.md)). An estimate, never an official valuation. Not shown to player accounts. |
+| **Last fee anchor** | The bounded adjustment a player's own last permanent transfer fee makes to his fair value in `market-v3`, after comparable transfers and before the release-clause cap. The fee is restated for inflation and adjusted for age, form, league, contract and availability, then blended in proportion to how informative it still is (source, basis, recency, pre-move evidence). It is skipped for free, loan and undisclosed fees, for too little pre-move evidence, for old or weakly sourced fees, and when the player has outgrown the fee. Always a visible driver, never a hidden multiplier ([spec](../feature_spec/valuation/model.md#last-fee-anchor--stage-g2-market-v3)). |
 | **Divergence** | How far a reference price (asking price or agreed fee) sits from the model fair value, as a percentage with a band from "Well below model" to "Well above model". Never computed against a hidden reserve price. |
 
 ## Negotiation

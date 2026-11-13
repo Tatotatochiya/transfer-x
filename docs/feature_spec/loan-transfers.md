@@ -490,6 +490,6 @@ Recorded before the phases were marked shipped, per this folder's [README](./REA
 ## Related documents
 
 - [`../architecture/backend-architecture.md`](../architecture/backend-architecture.md) — module boundaries this spec adds to
-- [`fair-value-vs-asking-signal.md`](./fair-value-vs-asking-signal.md) — sibling spec; its D5/D7 copy and confidentiality rules apply to any loan figures shown
+- [`valuation/fair-value-vs-asking-signal.md`](./valuation/fair-value-vs-asking-signal.md) — sibling spec; its D5/D7 copy and confidentiality rules apply to any loan figures shown
 - [`club-team-roles-and-onboarding.md`](./club-team-roles-and-onboarding.md) — D7 approval thresholds, which loan money must respect
 - [`../CHANGELOG.md`](../CHANGELOG.md) — the blank-fee 500 fix and the Transfer fee / No fee control this spec's offer form builds on

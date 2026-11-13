@@ -9,7 +9,7 @@ owner: "TODO — assign a Product Owner"
 
 ## Purpose
 
-Full implementation specification for turning TransferX's already-ingested injury history (`PlayerInjury`, fed by API-Football `/sidelined`) from a passive list into a decision-support signal: an **availability percentage**, a **risk band**, and a **recurrence flag**, surfaced at the points where clubs decide — player cards, player/sale detail, and the deal room — alongside the fair-value signal ([sibling spec](./fair-value-vs-asking-signal.md)).
+Full implementation specification for turning TransferX's already-ingested injury history (`PlayerInjury`, fed by API-Football `/sidelined`) from a passive list into a decision-support signal: an **availability percentage**, a **risk band**, and a **recurrence flag**, surfaced at the points where clubs decide — player cards, player/sale detail, and the deal room — alongside the fair-value signal ([sibling spec](./valuation/fair-value-vs-asking-signal.md)).
 
 "Availability is the best ability" is a real recruitment axiom: *"Model £19m"* next to *"missed 25% of the last two seasons"* is a stronger decision artifact than either alone.
 
@@ -181,7 +181,7 @@ Rows: Cruciate Ligament Injury, start 2025-10-14, end **null** (264 days before 
 
 ### Part 1 — Ingestion fix (prerequisite)
 
-1. **Migration**: add `end_date: Mapped[date | None]` to `PlayerInjury` (`Date`, nullable). Use the next available migration number — the head is `0047_agent_negotiation_commission_only` as of 2026-07-05, but the [fair-value spec](./fair-value-vs-asking-signal.md) also allocates the next slot; check `backend/migrations/versions/` and chain `down_revision` off the actual current head at implementation time.
+1. **Migration**: add `end_date: Mapped[date | None]` to `PlayerInjury` (`Date`, nullable). Use the next available migration number — the head is `0047_agent_negotiation_commission_only` as of 2026-07-05, but the [fair-value spec](./valuation/fair-value-vs-asking-signal.md) also allocates the next slot; check `backend/migrations/versions/` and chain `down_revision` off the actual current head at implementation time.
 2. **Populate it**: in the refresh logic, `end_date` from `s.get("end")` (same date-parse guard as `start`). No data backfill needed — the existing 24h delete-and-rewrite cache repopulates a player's rows, now with end dates, on next view.
 3. **Extract the refresh** out of `players/router.py::get_player_injuries` into `players_service.refresh_injury_history(db, player) -> bool` (returns whether a vendor fetch succeeded). Both the existing injuries endpoint and the new profile endpoint call it — one copy of the fetch/cache logic, per the reuse rule in [`engineering-standards`](../../.claude/skills/engineering-standards/SKILL.md). Preserve the existing swallow-and-serve-stale error behaviour.
 
@@ -385,7 +385,7 @@ Per [`linear-workflow`](../../.claude/skills/linear-workflow/SKILL.md) — sugge
 
 ## Related documents
 
-- [`fair-value-vs-asking-signal.md`](./fair-value-vs-asking-signal.md) — sibling signal; shared UI language, shared D6 player-exclusion stance
+- [`valuation/fair-value-vs-asking-signal.md`](./valuation/fair-value-vs-asking-signal.md) — sibling signal; shared UI language, shared D6 player-exclusion stance
 - [`../security-and-compliance/permissions-model.md`](../security-and-compliance/permissions-model.md) — medical-check confidentiality boundary D5 protects
 - [`../architecture/data-model.md`](../architecture/data-model.md) — `PlayerInjury` entity (gains `end_date` on completion)
 - [`README.md`](./README.md) — spec lifecycle

@@ -1,6 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -179,6 +180,50 @@ class AdminPlayerUpdateRequest(BaseModel):
     photo_url: str | None = None
     current_club_id: uuid.UUID | None = None   # set null to make free agent
     clear_club: bool = False           # explicitly unset current_club_id
+
+
+class AdminTransferFeeResponse(BaseModel):
+    """One row of a player's transfer-fee history, vendor and staff rows alike."""
+
+    id: uuid.UUID
+    transfer_date: date | None
+    transfer_type: str | None
+    from_club: str | None
+    to_club: str | None
+    fee_display: str | None
+    fee_gbp: float | None
+    vendor: str
+    fee_basis: str | None
+    source_note: str | None
+    source_url: str | None
+    entered_by_user_id: uuid.UUID | None
+
+
+class AdminTransferFeeCreateRequest(BaseModel):
+    """A staff-entered fee, with the source it came from."""
+
+    amount: float = Field(gt=0, le=500_000_000)
+    currency: Literal["GBP", "EUR", "USD"]
+    transfer_date: date
+    from_club: str = Field(min_length=1, max_length=200)
+    to_club: str = Field(min_length=1, max_length=200)
+    basis: Literal["PERMANENT", "RELEASE_CLAUSE"] = "PERMANENT"
+    source_note: str = Field(min_length=5, max_length=500)
+    source_url: str | None = Field(default=None, max_length=512)
+
+    @field_validator("transfer_date")
+    @classmethod
+    def _not_in_future(cls, v: date) -> date:
+        if v > date.today():
+            raise ValueError("The transfer date cannot be in the future")
+        return v
+
+    @field_validator("source_url")
+    @classmethod
+    def _http_url(cls, v: str | None) -> str | None:
+        if v is not None and not v.startswith(("http://", "https://")):
+            raise ValueError("The source URL must start with http:// or https://")
+        return v
 
 
 # ── Deal admin schemas ─────────────────────────────────────────────────────────

@@ -1,6 +1,8 @@
 # ── Secrets ───────────────────────────────────────────────────────────────
 .env
 .env.local
+# Any other env file, such as one sent as an attachment (ATT95143.env).
+*.env
 
 # ── Python ────────────────────────────────────────────────────────────────
 .venv/

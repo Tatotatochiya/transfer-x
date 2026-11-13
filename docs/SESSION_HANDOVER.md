@@ -22,6 +22,36 @@ Overwritten at the end of each session by the [`session-lifecycle`](../.claude/s
 
 ## Latest Session Summary
 
+## Session Summary — 2026-11-13 (valuation `market-v3`: review, made safe to ship)
+
+**Completed work:**
+- Reviewed the uncommitted `valuation-v3-fee-anchor` work against [`docs/feature_spec/valuation/execution-plan.md`](./feature_spec/valuation/execution-plan.md) and [`docs/feature_spec/valuation/execution-log.md`](./feature_spec/valuation/execution-log.md) (Round 3 there has the detail). The engine, last-fee lookup, admin endpoints, sync fix and tests match the plan.
+- Brought the branch up to `origin/main` (`15e6ba1`: type and colour, move reminders). Conflicts resolved in `FactsStrip.tsx` and five docs.
+- **Migration renumbered `0111` → `0112`** (`0112_manual_transfer_fees.py`, revises `0111`). `main` gained `0111_move_reminders` on 2026-11-12; shipping the old file would have given Alembic two revisions called `0111` and stopped the API at start. `alembic heads` now prints one head, `0112`.
+- **The fee anchor ships switched off:** `VALUATION_FEE_ANCHOR_ENABLED` (default `false`). While off, the fee is not loaded into the features and rows are computed, labelled and replayed as `market-v2`. Staff-entered fees, the vendor-sync fix and the fee's provenance are live either way.
+- The admin "Transfer fees" card and the popover's "Last fee not used" line moved onto the type roles, so `designSystem.test.ts` passes with an empty allowlist.
+- Valuation docs moved into [`feature_spec/valuation/`](./feature_spec/valuation/README.md) (model, signal, market data, sample report, brief, execution plan and log) with an index; `.gitignore` covers `*.env`.
+- Tests: backend 997 passed and 7 failed on Windows, all seven the `strftime("%-d")` error in untouched code (`app/reminders/service.py`, `app/players/real_world.py`), which is valid on Linux; frontend 490 passed; `tsc -b` clean.
+
+**Important decisions:**
+- The production backtest and outcome report are still not run: the env file supplied holds only the local Docker database (`db:5432`), and this machine has no Docker. Because the plan makes that run a blocking gate, the anchor is off by default instead of live and unproven.
+- The migration-first route (plan Addendum 2) is dropped: the migration now ships with the code in one PR. The local branch `migration-0111-manual-transfer-fees` and its worktree are stale and can be deleted.
+
+**Outstanding work:**
+- Merge the pull request from `valuation-v3-fee-anchor`. `conversation.jfif` and `docs/presentations/` are left untracked.
+- After deploy (migration `0112` applied): run, read-only against production, `scripts.valuation_backtest --csv`, `--grid` and `scripts.valuation_outcome_report`; fill the `TODO` table in [`valuation/model.md`](./feature_spec/valuation/model.md); show the product owner and ask the plan's three section-11.5 questions.
+- Only then set `VALUATION_FEE_ANCHOR_ENABLED=true` on `backend` and `stats-worker` ([deployment](./operations/environments-and-deployment.md#the-last-fee-anchor-switch)).
+- Follow-up: PlayerElo pilot in admin-only shadow mode.
+
+**Risks:**
+- The `stats-worker` runs the new image without migrating. Merge away from the 17:00 and 22:00 UK refreshes so the API has applied `0112` before the worker next reads `player_transfers`.
+- A staff-entered fee changes the comparables index (it replaces the vendor's figure for the same move; release clauses are left out), so it can move other players' market-rate step at the next recompute. Intended, and audited.
+- `source_note` is public to clubs and to signed-out viewers of a public player; the form says so.
+- Pre-existing: seven Windows-only `strftime("%-d")` test failures (six in `test_move_reminders.py`, one in `test_real_world.py`); the suite was not run on Linux in this session.
+
+**Recommended next task:**
+- Commit, open the PR, merge between refreshes, then run the read-only production backtest and outcome report.
+
 ## Session Summary — 2026-11-12 (move reminders)
 
 **Completed work:**

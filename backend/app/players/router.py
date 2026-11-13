@@ -459,10 +459,13 @@ async def get_player_transfers(
     if player is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
 
-    # Check cache freshness
+    # Check cache freshness against the vendor's rows only: a just-added
+    # staff-entered fee (vendor="manual") must not suppress the refresh.
     cutoff = datetime.now(timezone.utc) - timedelta(hours=CAREER_CACHE_HOURS)
     newest_q = await db.execute(
-        select(safunc.max(PlayerTransfer.fetched_at)).where(PlayerTransfer.player_id == player_id)
+        select(safunc.max(PlayerTransfer.fetched_at)).where(
+            PlayerTransfer.player_id == player_id, PlayerTransfer.vendor == VENDOR
+        )
     )
     newest = newest_q.scalar()
     is_fresh = newest is not None and (

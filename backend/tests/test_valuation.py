@@ -1,7 +1,7 @@
 """TRA-91 — fair-value valuation signal tests.
 
 The worked examples A/B/C are exact fixtures from
-docs/feature_spec/fair-value-vs-asking-signal.md, within its stated tolerances:
+docs/feature_spec/valuation/fair-value-vs-asking-signal.md, within its stated tolerances:
 performance_score ± 0.05, money ± £100,000, divergence ± 0.2 pct-points.
 They are the regression net for any future tuning of valuation/constants.py —
 a constant change must update these expectations in the same commit.
@@ -341,11 +341,12 @@ async def test_get_valuation_full_shape(client: AsyncClient, club: dict, admin: 
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert data["currency"] == "GBP"
-    # Served by market-v2: Example A's stat line through the
-    # v2 pipeline (single season, so shrinkage 90.58 → 81.39; no contract,
-    # injury, form or comparables data → those factors are neutral).
+    # Served by market-v3 (no last fee in this fixture, so the anchor is
+    # neutral): Example A's stat line through the v2 pipeline (single season,
+    # so shrinkage 90.58 → 81.39; no contract, injury, form or comparables
+    # data → those factors are neutral).
     # The v1 fixture numbers are still asserted at engine level above.
-    assert data["model_version"] == "market-v2"
+    assert data["model_version"] == "market-v3"
     assert data["confidence"] == "HIGH"
     assert data["league_tier"] == 1
     assert abs(float(data["performance_score"]) - 81.39) <= 0.05

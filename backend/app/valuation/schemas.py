@@ -37,9 +37,22 @@ class LastTransfer(BaseModel):
     date: str
     from_club: str | None = Field(None, alias="from")
     to_club: str | None = Field(None, alias="to")
-    source: str  # "API-Football" | "TransferX"
+    source: str  # "API-Football" | "TransferX" | "Manual"
+    source_note: str | None = None  # where a staff-entered fee came from
+    basis: str | None = None  # "PERMANENT" | "RELEASE_CLAUSE"
 
     model_config = {"populate_by_name": True}
+
+
+class FeeAnchorInfo(BaseModel):
+    """market-v3: how the player's own last fee moved the model, or why it didn't."""
+
+    applied: bool
+    factor: float
+    weight: float
+    anchor_value: float | None = None
+    fee_today: float | None = None
+    reason: str
 
 
 class ValuationResponse(BaseModel):
@@ -67,6 +80,8 @@ class ValuationResponse(BaseModel):
     # What a club last paid for him (players/last_fee.py), shown beside the
     # model's value so it can be checked against a real figure.
     last_transfer: LastTransfer | None = None
+    # market-v3 only; null on earlier rows (boxscore-v1 and market-v2).
+    fee_anchor: FeeAnchorInfo | None = None
 
     model_config = {"from_attributes": True}
 

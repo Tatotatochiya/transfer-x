@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FairValueSignal, ValuationDriver } from "../../types/api";
 import { formatCurrency, formatDate } from "../../lib/utils";
 
-/** market-v2 value build-up: each factor and where it takes the number.
+/** market-v3 value build-up: each factor and where it takes the number.
  *  Neutral steps (×1.00) are hidden to keep the popover short. */
 function DriverRows({ drivers }: { drivers: ValuationDriver[] }) {
   const shown = drivers.filter((d) => d.factor == null || Math.abs(d.factor - 1) >= 0.005);
@@ -82,6 +82,11 @@ export default function ValuationBreakdownPopover({ signal }: { signal: FairValu
                 How the value builds
               </p>
               <DriverRows drivers={valueDrivers} />
+              {signal.fee_anchor && !signal.fee_anchor.applied && signal.last_transfer && (
+                <p className="mt-1.5 text-small text-text-muted">
+                  Last fee not used: {signal.fee_anchor.reason}
+                </p>
+              )}
               {signal.comparables_used != null && signal.comparables_used > 0 && (
                 <p className="mt-1.5 text-small text-text-muted">
                   Checked against {signal.comparables_used} comparable transfers

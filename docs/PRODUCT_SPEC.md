@@ -1,6 +1,6 @@
 ---
 title: "TransferX Product Specification"
-last_updated: 2026-11-11
+last_updated: 2026-11-13
 status: Active
 owner: "TODO — assign a Product Owner"
 ---
@@ -56,7 +56,7 @@ TransferX is a web platform for professional football transfers. It connects **s
 | Working surfaces | The Transfers board with one conversation per transfer; the dashboard; Lite mode, the default for club members (Lite decides, the full app operates) | [product ADR 0008](./product/decisions/0008-transfers-board-one-way-to-buy-lite-decides.md) |
 | Notifications | In-app, email (per type and the daily digest), phone push (tiers, quiet hours, morning summary, decision sheets, email fallback) | [`feature_spec/mobile-notifications/`](./feature_spec/mobile-notifications/README.md) |
 | AI | Advises, never acts (ADR 0006); Ask TransferX answers as an analyst from read-only, club-scoped tools | [`feature_spec/ai-analyst/`](./feature_spec/ai-analyst/README.md) |
-| Data | API-Football, refreshed at 17:00 and 22:00 UK by the `stats-worker`; valuations (`market-v2`) recomputed daily. Real-world moves are flagged and applied only by staff ([product ADR 0009](./product/decisions/0009-real-world-moves-flagged-applied-by-staff.md)) | [`feature_spec/scheduled-data-refresh.md`](./feature_spec/scheduled-data-refresh.md) |
+| Data | API-Football, refreshed at 17:00 and 22:00 UK by the `stats-worker`; valuations (`market-v2`; the `market-v3` last-fee anchor is built and switched off until its production backtest is reviewed) recomputed daily; staff can record a transfer fee with its source. Real-world moves are flagged and applied only by staff ([product ADR 0009](./product/decisions/0009-real-world-moves-flagged-applied-by-staff.md)) | [`feature_spec/scheduled-data-refresh.md`](./feature_spec/scheduled-data-refresh.md) |
 | Operations | Railway, deploying `main` automatically: `backend`, `frontend`, `Postgres`, `stats-worker`. A demo environment, not production. Admin Jobs, Errors and Health | [`operations/environments-and-deployment.md`](./operations/environments-and-deployment.md) |
 | Current plan | Q4 2026 phased plan: Phases 0, 1 and 3 done (except the phone test and two-factor sign-in) | [`product/roadmap.md`](./product/roadmap.md) |
 | Built state and gaps | Verified by area, with known gaps | [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) |

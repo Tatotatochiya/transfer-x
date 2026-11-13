@@ -12,7 +12,7 @@ function makeSignal(overrides: Partial<FairValueSignal> = {}): FairValueSignal {
     currency: "GBP",
     performance_score: 71.5,
     confidence: "HIGH",
-    model_version: "market-v2",
+    model_version: "market-v3",
     league_tier: 1,
     age_factor: 0.91,
     age: 29,
@@ -32,7 +32,7 @@ const drivers = [
 ];
 
 describe("ValuationBreakdownPopover", () => {
-  it("shows the market-v2 value build-up, hiding neutral steps", () => {
+  it("shows the market-v3 value build-up, hiding neutral steps", () => {
     render(<ValuationBreakdownPopover signal={makeSignal({ drivers, comparables_used: 6 })} />);
     fireEvent.click(screen.getByLabelText("Valuation breakdown"));
     expect(screen.getByText("How the value builds")).toBeInTheDocument();
@@ -40,6 +40,65 @@ describe("ValuationBreakdownPopover", () => {
     expect(screen.queryByText("League")).not.toBeInTheDocument(); // ×1.00
     expect(screen.getByText(/6 comparable transfers/)).toBeInTheDocument();
     expect(screen.getByText(/not an official valuation/)).toBeInTheDocument();
+  });
+
+  it("shows the last fee anchor step", () => {
+    render(
+      <ValuationBreakdownPopover
+        signal={makeSignal({
+          drivers: [
+            ...drivers,
+            {
+              key: "fee_anchor",
+              label: "Last fee anchor",
+              detail: "£60.0m in Jul 2023 is £75.0m in today's money; weight 0.47",
+              factor: 1.16,
+              value_after: 48_100_000,
+            },
+          ],
+          fee_anchor: {
+            applied: true,
+            factor: 1.16,
+            weight: 0.47,
+            anchor_value: 48_100_000,
+            fee_today: 75_000_000,
+            reason: "£60.0m in Jul 2023 is £75.0m in today's money; weight 0.47",
+          },
+        })}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Valuation breakdown"));
+    expect(screen.getByText("Last fee anchor")).toBeInTheDocument();
+    expect(screen.getByText(/×1.16/)).toBeInTheDocument();
+  });
+
+  it("says why the last fee was not used", () => {
+    render(
+      <ValuationBreakdownPopover
+        signal={makeSignal({
+          drivers,
+          last_transfer: {
+            fee_gbp: 60_000_000,
+            fee_display: "€ 60M",
+            date: "2019-07-15",
+            from: "Ajax",
+            to: "Arsenal",
+            source: "API-Football",
+          },
+          fee_anchor: {
+            applied: false,
+            factor: 1,
+            weight: 0,
+            anchor_value: null,
+            fee_today: 60_000_000,
+            reason: "He has outgrown the fee paid in 2019",
+          },
+        })}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Valuation breakdown"));
+    expect(screen.getByText(/Last fee not used: He has outgrown the fee paid in 2019/)).toBeInTheDocument();
+    expect(screen.queryByText("Last fee anchor")).not.toBeInTheDocument();
   });
 
   it("renders v1 valuations exactly as before", () => {

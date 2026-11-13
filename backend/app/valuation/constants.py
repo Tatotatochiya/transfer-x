@@ -3,7 +3,7 @@
 Nothing numeric belongs anywhere else in the valuation module. Any change to
 a constant here must update the worked-example fixtures in
 tests/test_valuation.py in the same commit — they are the regression net for
-tuning (see docs/feature_spec/fair-value-vs-asking-signal.md §4).
+tuning (see docs/feature_spec/valuation/fair-value-vs-asking-signal.md §4).
 """
 import enum
 

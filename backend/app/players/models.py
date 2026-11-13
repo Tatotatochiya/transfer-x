@@ -166,7 +166,8 @@ class Contract(Base):
 
 
 class PlayerTransfer(Base):
-    """Transfer history cached from API-Football /transfers endpoint."""
+    """Transfer history: cached from API-Football, plus staff-entered rows
+    (`vendor = 'manual'`) with the source the fee came from."""
     __tablename__ = "player_transfers"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -183,6 +184,14 @@ class PlayerTransfer(Base):
     team_out_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     team_out_crest_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     fee_display: Mapped[str | None] = mapped_column(String(100), nullable=True)  # e.g. "€50M", "Free", "Loan"
+    # Staff-entered fees (migration 0112): the basis, where the figure came
+    # from, and who entered it. Null on vendor rows.
+    fee_basis: Mapped[str | None] = mapped_column(String(20), nullable=True)  # PERMANENT, RELEASE_CLAUSE
+    source_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    entered_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     fetched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

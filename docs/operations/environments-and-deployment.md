@@ -1,6 +1,6 @@
 ---
 title: "Environments & Deployment"
-last_updated: 2026-10-11
+last_updated: 2026-11-13
 status: Active
 owner: "TODO — assign an Operations Owner"
 ---
@@ -22,6 +22,7 @@ Out of scope: local setup ([`../engineering/getting-started.md`](../engineering/
 - [Deployment process](#deployment-process)
 - [Railway demo environment](#railway-demo-environment)
 - [The stats-worker service](#the-stats-worker-service-scheduled-data-refresh)
+- [The last-fee anchor switch](#the-last-fee-anchor-switch)
 - [Email and phone notifications](#email)
 - [Data repairs](#data-repairs)
 - [Related documents](#related-documents)
@@ -112,6 +113,10 @@ Railway's cron is UTC: the job exits within a second unless it's 17:00 or 22:00 
 **Running it by hand:** Admin → Jobs → **Run refresh now** (in the web app), or `railway run python -m app.jobs.daily_refresh --force [--steps stats,injuries,form,valuations]`.
 
 **The first run on a new season** moves each league to API-Football's current season (`world_leagues.season`). Until a player has 450 minutes in the new season, his valuation stays at its last value: no new row is written.
+
+## The last-fee anchor switch
+
+`VALUATION_FEE_ANCHOR_ENABLED` (default `false`) turns on the `market-v3` last-fee anchor ([model](../feature_spec/valuation/model.md#last-fee-anchor--stage-g2-market-v3)). While it is off, valuations are computed and labelled exactly as `market-v2`; staff-entered transfer fees work either way. It is off on Railway, and stays off until the read-only backtest and outcome report have been run against production and reviewed. To turn it on, set it to `true` on **both** `backend` (the admin fee endpoints recompute a player) and `stats-worker` (the daily recompute); `market-v3` rows appear from the next recompute. Setting it back to `false` returns new rows to `market-v2`; rows already written stay, as valuation history is append-only.
 
 ## Email
 

@@ -23,6 +23,8 @@ from app.admin.schemas import (
     AdminFinancesUpdateRequest,
     AdminPlayerUpdateRequest,
     AdminReasonRequest,
+    AdminTransferFeeCreateRequest,
+    AdminTransferFeeResponse,
     StaffInvitationResult,
     ViewAsResponse,
     AdminResetLinkRequest,
@@ -714,6 +716,140 @@ async def update_player(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     player = await admin_service.admin_get_player(db, player_id)
     return PlayerResponse.model_validate(player)
+
+
+# ── Transfer fees (staff-entered last fees, market-v3) ───────────────────────
+
+
+def _transfer_fee_response(t) -> AdminTransferFeeResponse:
+    from app.players.last_fee import fee_gbp
+
+    return AdminTransferFeeResponse(
+        id=t.id,
+        transfer_date=t.transfer_date,
+        transfer_type=t.transfer_type,
+        from_club=t.team_out_name,
+        to_club=t.team_in_name,
+        fee_display=t.fee_display,
+        fee_gbp=fee_gbp(t.fee_display),
+        vendor=t.vendor,
+        fee_basis=t.fee_basis,
+        source_note=t.source_note,
+        source_url=t.source_url,
+        entered_by_user_id=t.entered_by_user_id,
+    )
+
+
+@router.get("/players/{player_id}/transfer-fees", response_model=list[AdminTransferFeeResponse])
+async def list_transfer_fees(
+    player_id: uuid.UUID,
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> list[AdminTransferFeeResponse]:
+    """Every fee on record for a player, staff-entered and vendor rows alike,
+    newest first — the figure the market-v3 anchor reads."""
+    from app.players.models import Player, PlayerTransfer
+
+    if await db.get(Player, player_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    rows = (await db.execute(
+        select(PlayerTransfer)
+        .where(PlayerTransfer.player_id == player_id)
+        .order_by(PlayerTransfer.transfer_date.desc().nulls_last(),
+                  PlayerTransfer.fetched_at.desc())
+    )).scalars().all()
+    return [_transfer_fee_response(t) for t in rows]
+
+
+@router.post("/players/{player_id}/transfer-fees", response_model=AdminTransferFeeResponse,
+             status_code=status.HTTP_201_CREATED)
+async def add_transfer_fee(
+    player_id: uuid.UUID,
+    body: AdminTransferFeeCreateRequest,
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> AdminTransferFeeResponse:
+    """Record a fee the vendor missed or got wrong. Staff rows win over vendor
+    rows for the same move, and the player is revalued at once."""
+    from app.players.last_fee import format_fee_display
+    from app.players.models import Player, PlayerTransfer
+    from app.valuation import service as valuation_service
+
+    player = await db.get(Player, player_id)
+    if player is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    transfer = PlayerTransfer(
+        player_id=player.id,
+        vendor="manual",
+        transfer_date=body.transfer_date,
+        transfer_type="Transfer",
+        team_out_name=body.from_club,
+        team_in_name=body.to_club,
+        # The vendor's shape, so both fee parsers read it back unchanged.
+        fee_display=format_fee_display(body.amount, body.currency),
+        fee_basis=body.basis,
+        source_note=body.source_note,
+        source_url=body.source_url,
+        entered_by_user_id=current_user.id,
+    )
+    try:
+        db.add(transfer)
+        await db.flush()
+        await admin_audit.record(
+            db, current_user, "player.transfer_fee_added", entity_type="player", entity_id=player.id,
+            description=f"Recorded a transfer fee for {player.name}",
+            details={"amount": body.amount, "currency": body.currency,
+                     "transfer_date": body.transfer_date, "from": body.from_club,
+                     "to": body.to_club, "basis": body.basis,
+                     "source_note": body.source_note, "source_url": body.source_url},
+        )
+        await valuation_service.compute_and_store_valuation(db, player)
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return _transfer_fee_response(transfer)
+
+
+@router.delete("/players/{player_id}/transfer-fees/{transfer_id}",
+               status_code=status.HTTP_204_NO_CONTENT)
+async def delete_transfer_fee(
+    player_id: uuid.UUID,
+    transfer_id: uuid.UUID,
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Remove a staff-entered fee (a mistake, or a better figure replaces it).
+    Vendor rows are not ours to delete."""
+    from app.players.last_fee import fee_gbp
+    from app.players.models import Player, PlayerTransfer
+    from app.valuation import service as valuation_service
+
+    player = await db.get(Player, player_id)
+    if player is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
+    transfer = await db.get(PlayerTransfer, transfer_id)
+    if transfer is None or transfer.player_id != player_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transfer not found")
+    if transfer.vendor != "manual":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Only staff-entered fees can be removed")
+    try:
+        await admin_audit.record(
+            db, current_user, "player.transfer_fee_removed", entity_type="player", entity_id=player.id,
+            description=f"Removed a transfer fee for {player.name}",
+            details={"transfer_date": transfer.transfer_date,
+                     "from": transfer.team_out_name, "to": transfer.team_in_name,
+                     "fee_display": transfer.fee_display, "fee_gbp": fee_gbp(transfer.fee_display),
+                     "fee_basis": transfer.fee_basis, "source_note": transfer.source_note},
+        )
+        await db.delete(transfer)
+        await db.flush()
+        await valuation_service.compute_and_store_valuation(db, player)
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 # ── Sales (all statuses) ──────────────────────────────────────────────────────
