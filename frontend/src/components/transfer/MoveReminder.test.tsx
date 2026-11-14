@@ -46,6 +46,7 @@ describe("MoveReminder", () => {
     expect(await screen.findByText("Waiting on Sofia Reyes since 9 Nov 2026.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Send a reminder" }));
     expect(screen.getByText(base.preview!)).toBeInTheDocument();
+    expect(screen.getByText("They'll get, by notification, email and push")).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("Add a note (optional)"), "By Friday");
     await userEvent.click(screen.getByRole("button", { name: "Send reminder" }));
 
@@ -63,6 +64,7 @@ describe("MoveReminder", () => {
     expect(await screen.findByText("TransferX reminded Sofia Reyes on 10 Nov 2026.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Escalate" }));
     expect(screen.getByText("The player and the other club are told too.")).toBeInTheDocument();
+    expect(screen.getByText("They'll get, by notification and push")).toBeInTheDocument();
   });
 
   it("the side being chased sees who reminded them, in red, and no button", async () => {

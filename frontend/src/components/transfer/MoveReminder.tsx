@@ -114,7 +114,10 @@ export default function MoveReminder({ subjectType, subjectId, lite = false, cla
       <Modal open={open} onClose={() => setOpen(false)} title={st.would_escalate ? `Escalate to ${st.holder.name}` : `Remind ${st.holder.name}`}>
         <div className="space-y-4 px-6 py-5">
           <div>
-            <p className="text-caption font-semibold text-text-secondary">They'll get, by notification, email and push</p>
+            <p className="text-caption font-semibold text-text-secondary">
+              {/* Escalations aren't emailed for now (move-reminders §6). */}
+              {st.would_escalate ? "They'll get, by notification and push" : "They'll get, by notification, email and push"}
+            </p>
             <p className="mt-1 rounded-lg bg-surface-inset px-3 py-2.5 text-body text-text">{st.preview}</p>
             {st.would_escalate && (
               <p className="mt-2 text-small text-text-secondary">
