@@ -30,6 +30,7 @@ Real negotiations go back and forth: a club offers 3% where an agent asks for 8%
 
 - `agent_negotiations.proposed_by` and `personal_terms.proposed_by` say whose terms are on the table; rows from before default to the old meaning (the agent's commission; terms for the player side to answer). Migration `0113`.
 - New endpoints: `POST /deals/{id}/agent-negotiation/club-counter`, `…/agent-accept`, `POST /deals/{id}/personal-terms/club-respond`, `GET /deals/{id}/term-proposals`; `PUT /deals/{id}/personal-terms` takes a note and accepts the player's own counter.
+- Whose move (Board, Dashboard, deal lists) follows `proposed_by` too: `compute_deal_whose_move`.
 - Move reminders follow the new holders: the agent holds a club's counter; the buying club holds the player side's terms.
 - In demos the house agent answers counters (accepting within a point of 5%, otherwise meeting halfway), and the player's side answers the club's terms (accepting 95% of its ask, otherwise meeting halfway); after two rounds either takes what's offered.
 

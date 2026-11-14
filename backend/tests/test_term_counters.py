@@ -118,3 +118,44 @@ async def test_the_club_walks_away_from_the_players_terms(client: AsyncClient, d
     assert r.status_code == 200, r.text
     deal = (await client.get(f"/deals/{ctx['deal_id']}", headers=_headers(ctx["buyer"]))).json()
     assert deal["status"] == "COLLAPSED" and deal["collapse_reason"] == "Beyond our wage structure"
+
+
+async def test_whose_move_follows_whose_terms_are_on_the_table(client: AsyncClient, db: AsyncSession):
+    """The Board, the Dashboard and the deal list read whose_move (ADR 0012)."""
+    ctx = await _setup_invited_deal(client, db)
+    deal = ctx["deal_id"]
+    buyer, seller, agent = _headers(ctx["buyer"]), _headers(ctx["seller"]), _headers(ctx["invited_agent"])
+
+    async def moves():
+        b = (await client.get(f"/deals/{deal}", headers=buyer)).json()["whose_move"]
+        s = (await client.get(f"/deals/{deal}", headers=seller)).json()["whose_move"]
+        return b, s
+
+    async def on_dashboard():
+        items = (await client.get("/clubs/me/dashboard", headers=buyer)).json()["waiting_on_you"]
+        return next((i["reason"] for i in items if i["kind"] == "deal" and i["id"] == deal), None)
+
+    assert await moves() == ("their", "neither")  # waiting on the agent's proposal
+    await _propose(client, ctx)
+    assert await moves() == ("your", "neither")
+    assert await on_dashboard() == "Agent — commission to answer"
+    await client.post(f"/deals/{deal}/agent-negotiation/club-counter", headers=buyer,
+                      json={"commission_pct": 0.04, "commission_payer": "BUYER"})
+    assert await moves() == ("their", "neither")  # the agent answers the counter
+    assert await on_dashboard() is None
+    await client.post(f"/deals/{deal}/agent-negotiation/agent-accept", headers=agent)
+    assert await moves() == ("your", "neither")  # move it on
+    await client.post(f"/deals/{deal}/advance", headers=buyer)
+
+    assert await moves() == ("their", "neither")  # the agent opens with the terms
+    await client.put(f"/deals/{deal}/personal-terms", headers=agent, json={"wage_weekly": 90000, "length_years": 5})
+    assert await moves() == ("your", "neither")
+    assert await on_dashboard() == "Personal terms — answer the player's side"
+    await client.put(f"/deals/{deal}/personal-terms", headers=buyer, json={"wage_weekly": 70000, "length_years": 4})
+    assert await moves() == ("their", "neither")  # the agent answers for him
+    await client.post(f"/deals/{deal}/personal-terms/player-consent", headers=agent, json={"agreement": "AGREED"})
+    assert await moves() == ("your", "your")  # either club moves it on
+
+    board = (await client.get("/board", headers=buyer)).json()
+    card = next(c for col in board["columns"] for c in col["cards"] if c["entity_id"] == deal)
+    assert (card["whose_move"], card["detail"]) == ("your", "Personal terms · your move")

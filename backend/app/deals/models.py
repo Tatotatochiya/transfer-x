@@ -173,6 +173,15 @@ class Deal(Base):
     medical_check: Mapped["MedicalCheck | None"] = relationship(
         "MedicalCheck", back_populates="deal", uselist=False, cascade="all, delete-orphan"
     )
+    # Read-only, for whose move it is (service.compute_deal_whose_move): the
+    # agent's commission negotiation, and whether the player has an account.
+    agent_negotiation: Mapped["app.agents.models.AgentNegotiation | None"] = relationship(  # type: ignore[name-defined]
+        "AgentNegotiation", uselist=False, viewonly=True,
+    )
+    player_profile: Mapped["app.auth.models.PlayerProfile | None"] = relationship(  # type: ignore[name-defined]
+        "PlayerProfile", uselist=False, viewonly=True,
+        primaryjoin="Deal.player_id == foreign(PlayerProfile.player_id)",
+    )
 
     @property
     def is_auction_deal(self) -> bool:

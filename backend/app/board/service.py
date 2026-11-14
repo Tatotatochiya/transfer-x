@@ -139,7 +139,7 @@ async def _deal_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, histo
             elif outstanding:
                 detail = f"You: {_PAPERWORK.get(outstanding[0], 'paperwork')}"
             elif d.stage == DealStage.AGENT_NEGOTIATION:
-                detail = "Agent negotiation"
+                detail = "Agent commission" + (" · your move" if move == WhoseMove.YOUR else "")
             elif d.stage == DealStage.PERSONAL_TERMS:
                 detail = "Personal terms" + (" · your move" if move == WhoseMove.YOUR else "")
             elif d.stage == DealStage.PAPERWORK:

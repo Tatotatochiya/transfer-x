@@ -40,7 +40,6 @@ _DEAL_SLA_DAYS = 14
 # B1: agent silence past this threshold counts as "your move" (chasing is an
 # action) — the DECISIONS.md item 1 default, matching AGENT_SILENCE_HOURS in
 # frontend/src/lib/whoseMove.ts exactly.
-_AGENT_SILENCE_HOURS = 72
 
 
 async def _lock(db: AsyncSession, obj, *attributes: str) -> None:
@@ -208,13 +207,17 @@ async def complete_paperwork_step(
 
 
 def compute_deal_whose_move(deal: Deal, viewer_club_id: uuid.UUID | None = None) -> WhoseMove:
-    """B1: mirrors dealWhoseMove() in frontend/src/lib/whoseMove.ts exactly,
-    including what it does NOT do: distinguish buyer from seller. At
-    CONFIRMED both clubs must sign and per-club signature status isn't
-    tracked separately today, so "your move" is returned to whichever club
-    asks. AGENT_NEGOTIATION uses updated_at as a proxy for "how long has this
-    state persisted" — the frontend's own comment calls this "the best
-    available proxy", not a real signal; see docs/design-system/README.md.
+    """Whose move a deal is, for one club: the Board, the Dashboard, the deal
+    list and the sidebar counts all read this (docs/design-system/README.md,
+    "Whose move"). Needs `agent_negotiation`, `personal_terms` and
+    `player_profile` loaded, as `_load_options` does.
+
+    At CONFIRMED both clubs must sign and per-club signature status isn't
+    tracked separately, so "your move" goes to whichever club asks. The
+    commission and personal terms follow whose terms are on the table
+    (`proposed_by`, ADR 0012): they're the buying club's to answer, or the
+    agent's or player's. The selling club isn't part of either, until the
+    terms are agreed and either club can move the deal on.
     """
     if deal.status in (DealStatus.COMPLETED, DealStatus.COLLAPSED):
         return WhoseMove.NEITHER
@@ -226,12 +229,38 @@ def compute_deal_whose_move(deal: Deal, viewer_club_id: uuid.UUID | None = None)
             return WhoseMove.YOUR
         other = deal.seller_club_id if viewer_club_id == deal.buyer_club_id else deal.buyer_club_id
         return WhoseMove.THEIR if outstanding_paperwork_for(deal, other) else WhoseMove.NEITHER
+
+    buyer = viewer_club_id is not None and viewer_club_id == deal.buyer_club_id
+    party = buyer or (viewer_club_id is not None and viewer_club_id == deal.seller_club_id)
     if deal.stage == DealStage.AGENT_NEGOTIATION:
-        updated_at = deal.updated_at
-        if updated_at.tzinfo is None:  # SQLite drops tzinfo
-            updated_at = updated_at.replace(tzinfo=timezone.utc)
-        hours_since_update = (datetime.now(timezone.utc) - updated_at).total_seconds() / 3600
-        return WhoseMove.YOUR if hours_since_update >= _AGENT_SILENCE_HOURS else WhoseMove.THEIR
+        if not buyer:
+            return WhoseMove.NEITHER
+        neg = deal.agent_negotiation
+        proposed = neg is not None and (neg.commission_pct is not None or neg.commission_amount is not None)
+        if not proposed:
+            return WhoseMove.THEIR  # waiting on the agent's proposal
+        agreement = getattr(neg.club_agreement, "value", neg.club_agreement)
+        if agreement == "AGREED":
+            return WhoseMove.YOUR  # move it on to personal terms
+        return WhoseMove.THEIR if neg.proposed_by == "BUYER" else WhoseMove.YOUR
+
+    if deal.stage == DealStage.PERSONAL_TERMS:
+        pt = deal.personal_terms
+        consent = getattr(pt.player_consent, "value", pt.player_consent) if pt is not None else None
+        if consent == "AGREED":
+            return WhoseMove.YOUR if party else WhoseMove.NEITHER  # either club moves it on
+        if not buyer:
+            return WhoseMove.NEITHER
+        if pt is None:
+            # The agent opens with the player's terms; without one, the club does.
+            return WhoseMove.THEIR if deal.commission_agent_id else WhoseMove.YOUR
+        if pt.proposed_by == "PLAYER":
+            return WhoseMove.YOUR  # the player side's terms, for the club to answer
+        # The club's own terms: the agent or the player answers; with neither,
+        # the club records the player's answer.
+        if pt.agent_id is None and deal.player_profile is None:
+            return WhoseMove.YOUR
+        return WhoseMove.THEIR
     return WhoseMove.NEITHER
 
 
@@ -247,6 +276,8 @@ def _load_options():
         selectinload(Deal.instalments),
         selectinload(Deal.personal_terms),
         selectinload(Deal.medical_check),
+        selectinload(Deal.agent_negotiation),
+        selectinload(Deal.player_profile),
     ]
 
 

@@ -6,7 +6,7 @@ cross-module needs go through the service layer, not model internals.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -105,19 +105,29 @@ _PAPERWORK_REASON = {
 
 
 def _deal_reason(deal: Deal, club_id: uuid.UUID | None = None) -> str:
-    """Mirrors dealWhoseMoveReason() in frontend/src/lib/whoseMove.ts for the
-    stages that can actually reach here (whose_move already == YOUR)."""
+    """What the club has to do, for the stages where it's its move
+    (deals_service.compute_deal_whose_move already returned YOUR)."""
     if deal.stage == DealStage.CONFIRMED:
         return "You — signature"
     if deal.stage == DealStage.PAPERWORK:
         outstanding = deals_service.outstanding_paperwork_for(deal, club_id)
         if outstanding:
             return _PAPERWORK_REASON[outstanding[0]]
-    updated_at = deal.updated_at
-    if updated_at.tzinfo is None:  # SQLite drops tzinfo
-        updated_at = updated_at.replace(tzinfo=timezone.utc)
-    days = int((datetime.now(timezone.utc) - updated_at).total_seconds() // 86400)
-    return f"Agent — {days} day{'s' if days != 1 else ''} idle"
+    if deal.stage == DealStage.AGENT_NEGOTIATION:
+        neg = deal.agent_negotiation
+        if neg is not None and getattr(neg.club_agreement, "value", neg.club_agreement) == "AGREED":
+            return "Commission agreed — move on to personal terms"
+        return "Agent — commission to answer"
+    if deal.stage == DealStage.PERSONAL_TERMS:
+        pt = deal.personal_terms
+        if pt is None:
+            return "Personal terms — propose them"
+        if getattr(pt.player_consent, "value", pt.player_consent) == "AGREED":
+            return "Terms agreed — move on to paperwork"
+        if pt.proposed_by == "PLAYER":
+            return "Personal terms — answer the player's side"
+        return "Personal terms — record the player's answer"
+    return "Your move"
 
 
 async def _deal_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[datetime, DashboardItem]]:

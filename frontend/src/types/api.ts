@@ -909,6 +909,8 @@ export interface Deal {
   commission_payer: CommissionPayer | null;
   commission_agent_id: string | null;
   // TRA-60
+  /** Whose move it is for your club, from the server (compute_deal_whose_move). */
+  whose_move?: "your" | "their" | "neither";
   personal_terms: PersonalTerms | null;
   // TRA-61
   medical_check: MedicalCheck | null;

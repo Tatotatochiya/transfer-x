@@ -41,14 +41,14 @@ Overwritten at the end of each session by the [`session-lifecycle`](../.claude/s
 
 **Outstanding work:**
 - Merge #73 before this branch (it carries #73's commits until then).
-- Whose-move on the Board, Dashboard and digest (`compute_deal_whose_move`, `lib/whoseMove.ts`) still treats personal terms as nobody's move and agent negotiation by a 72-hour proxy; it should follow `proposed_by` now that it exists.
+- Branch `whose-move` (on top of #74): whose move follows `proposed_by` on the Board, the Dashboard and deal lists; the Dashboard reads the server's `whose_move`, and the frontend copy of the deal rule is gone. Merge order: #73, #74, then this.
 - The local frontend container serves a built bundle: `docker compose build frontend` after frontend changes.
 
 **Risks:**
 - In-flight production deals whose agent proposed terms before this change: `proposed_by` is null, read as the club's terms, so the agent can still agree them as before.
 
 **Recommended next task:**
-- Whose-move from `proposed_by` (Board and Dashboard), then the registration checklist.
+- The registration checklist.
 
 ## Session Summary — 2026-11-13 (demo gaps)
 
