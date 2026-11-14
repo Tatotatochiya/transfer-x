@@ -190,10 +190,31 @@ async def demo_deal(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Whether this deal belongs to your open demo (so "Make them move now" applies)."""
-    from app.demo import house
+    """Whether this deal belongs to your open demo (so "Make them move now"
+    applies), and if not, whether you can add it (`can_adopt`, `adopt_reason`)."""
+    from app.demo import house, service
 
-    return {"in_demo": await house.deal_in_demo(db, current_user, deal_id)}
+    in_demo = await house.deal_in_demo(db, current_user, deal_id)
+    can_adopt, why = (False, None) if in_demo else await service.adoption(db, current_user, deal_id)
+    return {"in_demo": in_demo, "can_adopt": can_adopt, "adopt_reason": why}
+
+
+@router.post("/demo/deals/{deal_id}/adopt")
+async def adopt_deal(
+    deal_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Add a deal your club is part of to your open demo: TransferX plays the
+    agent and the player from now on, and Reset puts the deal back as it is
+    now. 409 with the reason when it can't."""
+    from app.demo import service
+
+    try:
+        await service.adopt_deal(db, current_user, deal_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    return {"in_demo": True}
 
 
 @router.post("/demo/deals/{deal_id}/make")

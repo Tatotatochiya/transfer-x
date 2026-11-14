@@ -22,6 +22,28 @@ Overwritten at the end of each session by the [`session-lifecycle`](../.claude/s
 
 ## Latest Session Summary
 
+## Session Summary — 2026-11-14 (adopting a deal into a demo; the Transfers board on phones)
+
+**Completed work:**
+- Merged today: #73 (reminder colours), #74 (counters and confirmed declines, ADR 0012), #75 (whose move from `proposed_by`), #76 (the deal page updates live during a negotiation).
+- Branch `demo-adopt`: a deal outside any demo (a seeded scenario deal, say) can be added to your open demo from its page ("Add to my demo"). TransferX then plays its agent and player, "Make them move now" and reminders work, and Reset puts it back. Done as a journal `adopt` entry (`journal.RUN_ROW_OPS`), no migration. Checked on the stack: adopted a Chelsea–Arsenal deal, the house agent proposed, Reset restored it.
+- Branch `transfers-board-mobile` (from `README_TRANSFERS.md`, 14 Nov): below 1280px the board is a list grouped by whose move it is, with stage bars, stage chips (`?stage=`), a ⋯ menu; from 1280px empty columns collapse and a "Waiting on you" strip sits above the lanes; the name banner shows on the Dashboard only. First row at 297px on a 390 phone; nothing under 13px. Spec filed under `docs/feature_spec/transfers-board-mobile/` with its deviations.
+- `README_TRANSFER.md` (9 Nov, Browse Players) was already built (PRs #65, #66).
+- Tests: `demo-adopt` backend 970 passed, frontend 503; `transfers-board-mobile` frontend 519.
+
+**Important decisions:**
+- An adopted deal is played only on its agent's and player's side (and a house club's, if one is party), never a club people use.
+
+**Outstanding work:**
+- Both branches open as PRs; they touch different code (docs overlap in CHANGELOG only).
+- Whether Railway's email is real or caught: a reminder escalated to a seeded agent (`james.mitchell@elitesports.com`) may have gone to a real domain.
+
+**Risks:**
+- A deal adopted into a demo is refused to anyone outside that demo until it's reset (as every demo row is).
+
+**Recommended next task:**
+- The registration checklist.
+
 ## Session Summary — 2026-11-14 (counters and confirmed declines)
 
 **Completed work:**
@@ -50,32 +72,6 @@ Overwritten at the end of each session by the [`session-lifecycle`](../.claude/s
 
 **Recommended next task:**
 - The registration checklist.
-
-## Session Summary — 2026-11-13 (demo gaps)
-
-**Completed work:**
-- Reviewed demo mode for gaps after a report that agents never came back with personal terms. Found and fixed six on branch `demo-gaps` ([demo mode](./feature_spec/demo-mode.md)):
-  1. With an agent, the tester buying, nobody proposed personal terms ("Waiting on the agent" forever). The agent now prepares them and agrees them for the player (`demo/house.py`).
-  2. An agent or player whose account had *ever* been used never answered in any demo; now only while someone is signed in as him (`SIGNED_IN`, two hours).
-  3. "After a few minutes" waited 3 minutes before each of the house's steps in a row; it now counts from the tester's last move on the deal.
-  4. "Make them move now" on demo deals (`POST /demo/deals/{id}/make`, `DemoDealControls` on the deal page).
-  5. Reminders in a demo can go at once and the house answers them; automatic reminders skip demo transactions.
-  6. House clubs answer enquiries.
-- Tests: backend 956 passed, frontend 486 passed, `tsc -b` clean.
-
-**Important decisions:**
-- "Signed in" = active in the last two hours: the house may act for a real agent in a demo when he isn't online. Everything it does is journaled and undone by Reset, and only on deals the demo made.
-- "Make them move now" on a deal also answers for an agent or player who is signed in (it's the tester's explicit choice); a reminder doesn't.
-
-**Outstanding work:**
-- **PR #71 was merged before its last two commits were pushed.** `main` has the reminders commit (d57c29e) but not the colour coding (69fe5f7) or the Board "your move in red" fix (006de3d); they're still on `move-reminders`. They need a follow-up PR.
-- Not checked in a browser: the deal-page panel, and the enquiry reply on the running stack.
-
-**Risks:**
-- In production, a real agent who isn't signed in will now be played by the house on demo deals involving his clients (journaled and reset with the run).
-
-**Recommended next task:**
-- Open the follow-up PR for the two missing move-reminders commits, then this branch's PR; then the registration checklist.
 
 ## Related documents
 

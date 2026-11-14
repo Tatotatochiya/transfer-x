@@ -420,13 +420,13 @@ async def test_an_agent_signed_in_long_ago_still_answers_but_not_one_signed_in_n
     assert await _tick(demo) == 0  # someone is signed in as him: he answers himself
 
     # The tester can make him move anyway.
-    assert (await client.get(f"/demo/deals/{deal_id}", headers=demo["h"])).json() == {"in_demo": True}
+    assert (await client.get(f"/demo/deals/{deal_id}", headers=demo["h"])).json()["in_demo"] is True
     r = await client.post(f"/demo/deals/{deal_id}/make", headers=demo["h"])
     assert r.status_code == 200 and r.json() == {"done": "agent_terms"}, r.text
     db.expire_all()
     assert (await db.execute(select(AgentNegotiation).where(AgentNegotiation.deal_id == deal_id))).scalar_one().commission_pct
     r = await client.post(f"/demo/deals/{deal_id}/make", headers=demo["h"])
-    assert r.status_code == 409 and r.json()["detail"] == "Nothing for them to do: it's your move."
+    assert r.status_code == 409 and r.json()["detail"].startswith("Nothing for TransferX to do")
 
     # An agent last signed in days ago is free for the house to play.
     from app.demo.house import _available
@@ -443,7 +443,8 @@ async def test_an_agent_signed_in_long_ago_still_answers_but_not_one_signed_in_n
 
     # Not a deal in someone else's demo.
     other = await _register(client, "h_peek2@demo-example.com", club_name="Peekers Two")
-    assert (await client.get(f"/demo/deals/{deal_id}", headers=_auth_headers(other))).json() == {"in_demo": False}
+    assert (await client.get(f"/demo/deals/{deal_id}", headers=_auth_headers(other))).json() == {
+        "in_demo": False, "can_adopt": False, "adopt_reason": None}
     assert (await client.post(f"/demo/deals/{deal_id}/make", headers=_auth_headers(other))).status_code == 404
 
 
