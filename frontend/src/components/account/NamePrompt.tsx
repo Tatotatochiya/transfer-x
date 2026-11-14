@@ -5,14 +5,16 @@ import { useAuthStore } from "../../store/auth";
 
 const DISMISSED_KEY = "transferx-name-prompt-dismissed";
 
-/** Accounts made before names existed are asked once per session for theirs. */
+/** Accounts made before names existed are asked once per session for theirs, on the Dashboard. */
 export default function NamePrompt() {
   const user = useAuthStore((s) => s.user);
   const { pathname } = useLocation();
   const [dismissed, setDismissed] = useState(() => {
     try { return sessionStorage.getItem(DISMISSED_KEY) === "1"; } catch { return false; }
   });
-  if (!user || user.full_name || user.viewed_by || dismissed || pathname.startsWith("/account")) return null;
+  // On the Dashboard only (README_TRANSFERS §6): elsewhere it pushes the
+  // page's content down a phone screen and has nothing to do with it.
+  if (!user || user.full_name || user.viewed_by || dismissed || pathname !== "/dashboard") return null;
 
   function dismiss() {
     setDismissed(true);

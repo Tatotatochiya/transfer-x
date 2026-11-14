@@ -47,6 +47,7 @@ Statuses verified against the code and `CHANGELOG.md` on 2026-10-11. Once a spec
 | [`move-reminders/`](./move-reminders/README.md): chase whoever holds the move on an offer, deal or enquiry; escalate after two ignored reminders or a week; automatic reminders at 3 and 7 days | 2026-11-12 |
 | [`type-and-colour/`](./type-and-colour/README.md): seven text roles with a 13px floor, one meaning per colour, one compact money format, and the guard test | 2026-11-11 |
 | [`player-actions/`](./player-actions/README.md): one blue button, the top bar as navigation and the player page's actions by situation | 2026-11-10 |
+| [`transfers-board-mobile/`](./transfers-board-mobile/README.md): the Transfers board as a list grouped by whose move it is below 1280px (stage bars, stage chips, a ⋯ menu), a roomier board from 1280px (empty columns collapse, a "Waiting on you" strip); the name banner on the Dashboard only | 2026-11-14 |
 | [`browse-players-focus/`](./browse-players-focus/README.md): Browse Players, players first (search, toolbar, chips, filters sheet, phone rows), plus server sort, image fallbacks and the grid fix | 2026-11-09 |
 | [`offer-room-focus/`](./offer-room-focus/README.md): the offer page, answer first (status card, counter sheet, where it stands, Raise your offer) | 2026-11-09 |
 | [`deal-room-focus/`](./deal-room-focus/README.md): the deal room, answer first (header, status card, progress, sections) | 2026-11-08 |

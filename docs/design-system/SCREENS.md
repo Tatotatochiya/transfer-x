@@ -45,6 +45,12 @@ sits right, baseline-aligned.
 
 ---
 
+## Transfers board
+
+Route: `/board` ([product ADR 0008](../product/decisions/0008-transfers-board-one-way-to-buy-lite-decides.md), [spec](../feature_spec/transfers-board-mobile/README.md)).
+- **Below 1280px, a list grouped by whose move it is:** "Waiting on you" (red dot and heading, soonest deadline first), "In progress · nothing for you yet" (furthest stage first), "Listed, no offers yet", "Completed". Each row links to the transfer's page and shows the player, "Buying from / Selling to {club}", the fee, the time left, five neutral stage bars with the stage name and what's happening, and the chased / stalled badges. Stage chips ("All N", then each stage in use) filter it, kept in `?stage=`. Phones: title with search and ⋯ (New listing, History) icons, the counts, a full-width Both / Buying / Selling switch. Tablets lay each row in columns under a Player · Stage · Fee · Due header.
+- **From 1280px, the board:** a lane per side with the stage columns; a column empty in every lane shown collapses to a 52px strip; a "Waiting on you" strip above the lanes opens each card's pop-up; the search box sits on the title line.
+
 ## Dashboard
 
 Route: `/dashboard`. The reference implementation of the four tiers.
