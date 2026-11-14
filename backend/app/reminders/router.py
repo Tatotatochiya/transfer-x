@@ -40,7 +40,8 @@ async def _load(db: AsyncSession, user: User, subject_type: str, subject_id: uui
     return s, v
 
 
-async def _by(db: AsyncSession, s: service.Subject, r) -> str:
+async def _by(db: AsyncSession, s: service.Subject, r, v: service.Viewer) -> str:
+    """Who sent `r`, as `v` may see it: an anonymous buyer stays masked."""
     if r.automatic:
         return "TransferX"
     if r.sender_club_id is None:
@@ -48,6 +49,10 @@ async def _by(db: AsyncSession, s: service.Subject, r) -> str:
 
         name = (await db.execute(select(AgentProfile.display_name).where(AgentProfile.user_id == r.sender_user_id))).scalar()
         return name or "The agent"
+    if s.type in ("offer", "enquiry") and r.sender_club_id == s.obj.from_club_id:
+        from app.common.masking import buyer_name
+
+        return buyer_name(s.obj, s.obj.from_club, v.club_id)
     return service.sender_label(s, service.Viewer(r.sender_user_id, club_id=r.sender_club_id), None)
 
 
@@ -56,8 +61,13 @@ async def _response(db: AsyncSession, s: service.Subject, st: service.State, v: 
     if st.last is not None:
         r = st.last
         mine = not r.automatic and ((v.club_id is not None and r.sender_club_id == v.club_id) or r.sender_user_id == v.user_id)
-        last = LastReminder(at=r.created_at, by=await _by(db, s, r), escalated=r.escalated, note=r.note, by_you=mine)
+        last = LastReminder(at=r.created_at, by=await _by(db, s, r, v), escalated=r.escalated, note=r.note, by_you=mine)
+    to_you = None
+    if st.to_you is not None:
+        r = st.to_you
+        to_you = LastReminder(at=r.created_at, by=await _by(db, s, r, v), escalated=r.escalated, note=r.note)
     return ReminderState(
+        to_you=to_you,
         holder=ReminderHolder(kind=st.holder.kind, name=st.holder.name) if st.holder else None,
         waiting_since=st.waiting_since, can_send=st.can_send, reason=st.reason,
         next_allowed_at=st.next_allowed_at, would_escalate=st.would_escalate,

@@ -242,10 +242,13 @@ async def holders(db: AsyncSession, s: Subject) -> list[Holder]:
         neg = await deals_service.get_agent_negotiation(db, d.id)
         agent_id = neg.agent_id if neg else d.commission_agent_id
         proposed = neg is not None and (neg.commission_pct is not None or neg.commission_amount is not None)
-        if agent_id and (not proposed or neg.club_agreement == AgreementStatus.DECLINED):
-            again = proposed and neg.club_agreement == AgreementStatus.DECLINED
+        if agent_id and not proposed:
             h = await _agent_holder(db, agent_id, "deal:AGENT_NEGOTIATION:propose-commission",
-                                    f"{'a new' if again else 'your'} commission proposal for {P}")
+                                    f"your commission proposal for {P}")
+            return [h] if h else []
+        if agent_id and neg.proposed_by == "BUYER" and neg.club_agreement == AgreementStatus.PENDING:
+            h = await _agent_holder(db, agent_id, "deal:AGENT_NEGOTIATION:answer-counter",
+                                    f"an answer to the commission counter for {P}")
             return [h] if h else []
         if proposed and neg.club_agreement == AgreementStatus.PENDING:
             return [await _club_holder(db, buyer, "deal:AGENT_NEGOTIATION:answer-commission",
@@ -266,6 +269,9 @@ async def holders(db: AsyncSession, s: Subject) -> list[Holder]:
             if seller is not None:
                 out.append(await _club_holder(db, seller, "deal:PERSONAL_TERMS:advance", f"moving {P}'s deal on to paperwork"))
             return out
+        if terms.player_consent == AgreementStatus.PENDING and terms.proposed_by == "PLAYER":
+            return [await _club_holder(db, buyer, "deal:PERSONAL_TERMS:answer-player",
+                                       f"an answer to {P}'s personal terms")]
         if terms.player_consent == AgreementStatus.PENDING:
             if terms.agent_id:
                 h = await _agent_holder(db, terms.agent_id, "deal:PERSONAL_TERMS:answer", f"an answer to {P}'s personal terms")
@@ -334,6 +340,8 @@ class State:
     would_escalate: bool
     last: MoveReminder | None
     preview: str | None
+    # The latest reminder sent to the viewer since the move last moved.
+    to_you: MoveReminder | None = None
 
 
 async def _in_demo(db: AsyncSession, s: Subject) -> bool:
@@ -353,9 +361,13 @@ async def state_for(db: AsyncSession, s: Subject, v: Viewer, now: datetime | Non
     reminders = await _reminders_since(db, s, since) if since else []
     last = reminders[-1] if reminders else None
 
+    to_you = next((r for r in reversed(reminders)
+                   if (r.holder_kind == "club" and r.holder_id == v.club_id)
+                   or (r.holder_kind == "agent" and r.holder_id == v.agent_id)), None)
+
     def out(can, reason=None, nxt=None, esc=False):
         preview = message_for(s, holder, sender_label(s, v, holder), now, esc) if holder else None
-        return State(holder, since if holder else None, can, reason, nxt, esc, last, preview)
+        return State(holder, since if holder else None, can, reason, nxt, esc, last, preview, to_you)
 
     if mine:
         return out(False, "It's your move.")
@@ -535,7 +547,7 @@ async def _notify(db, s: Subject, holder: Holder, v: Viewer | None, text: str, n
             extra.append(uid)
         for club_id in s.party_clubs:
             if club_id != sender_club:
-                extra += await club_recipient_user_ids(db, club_id, type_)
+                extra += await club_recipient_user_ids(db, club_id, NotificationType.MOVE_STALLED)
     elif holder.kind == "player":
         if s.agent_ids:
             from app.auth.models import AgentProfile
@@ -544,13 +556,13 @@ async def _notify(db, s: Subject, holder: Holder, v: Viewer | None, text: str, n
             if uid:
                 extra.append(uid)
         elif getattr(s.obj, "seller_club_id", None):
-            extra += await club_recipient_user_ids(db, s.obj.seller_club_id, type_)
+            extra += await club_recipient_user_ids(db, s.obj.seller_club_id, NotificationType.MOVE_STALLED)
     for uid in extra:
         if uid in told:
             continue
         told.add(uid)
         await create_notification(
-            db, recipient_user_id=uid, type=type_, message=fyi, link=s.link,
+            db, recipient_user_id=uid, type=NotificationType.MOVE_STALLED, message=fyi, link=s.link,
             related_player_id=player_id, title="A transfer is stuck", body=why,
             group_key=f"remind:{s.type}:{s.obj.id}",
         )

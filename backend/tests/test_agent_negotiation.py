@@ -80,6 +80,7 @@ async def _setup_invited_deal(client: AsyncClient, db: AsyncSession) -> dict:
         "deal_id": str(deal.id),
         "player_id": str(player.id),
         "buyer": buyer_tokens,
+        "seller": seller_tokens,
         "invited_agent": invited_agent_tokens,
     }
 
@@ -304,13 +305,14 @@ async def test_uninvited_agent_cannot_set_personal_terms(client: AsyncClient, db
 
 async def test_mandated_agent_can_consent_for_player_with_no_account(client: AsyncClient, db: AsyncSession):
     """A player who hasn't registered an account has no other way to consent —
-    the mandated agent may act as their proxy, same rule as commission."""
+    the mandated agent may act as their proxy, same rule as commission. (The
+    club's terms: since ADR 0012 the agent's own are the club's to answer.)"""
     ctx = await _setup_invited_deal(client, db)
     await _advance_to_personal_terms(client, ctx)
     await client.put(
         f"/deals/{ctx['deal_id']}/personal-terms",
         json={"wage_weekly": 55000, "length_years": 5},
-        headers=_headers(ctx["invited_agent"]),
+        headers=_headers(ctx["buyer"]),
     )
 
     resp = await client.post(
@@ -333,7 +335,7 @@ async def test_mandated_agent_can_consent_even_when_player_has_an_account(client
     await client.put(
         f"/deals/{ctx['deal_id']}/personal-terms",
         json={"wage_weekly": 55000, "length_years": 5},
-        headers=_headers(ctx["invited_agent"]),
+        headers=_headers(ctx["buyer"]),
     )
 
     resp = await client.post(
@@ -344,6 +346,21 @@ async def test_mandated_agent_can_consent_even_when_player_has_an_account(client
     assert resp.status_code == 200, resp.text
     assert resp.json()["player_consent"] == "AGREED"
     assert resp.json()["player_has_account"] is True
+
+
+async def test_agent_cannot_accept_his_own_terms(client: AsyncClient, db: AsyncSession):
+    """ADR 0012: terms the agent asks for are the buying club's to answer."""
+    ctx = await _setup_invited_deal(client, db)
+    await _advance_to_personal_terms(client, ctx)
+    r = await client.put(f"/deals/{ctx['deal_id']}/personal-terms", json={"wage_weekly": 55000, "length_years": 5},
+                         headers=_headers(ctx["invited_agent"]))
+    assert r.status_code == 200 and r.json()["proposed_by"] == "PLAYER", r.text
+    r = await client.post(f"/deals/{ctx['deal_id']}/personal-terms/player-consent", json={"agreement": "AGREED"},
+                          headers=_headers(ctx["invited_agent"]))
+    assert r.status_code == 400 and "buying club answers" in r.json()["detail"]
+    r = await client.post(f"/deals/{ctx['deal_id']}/personal-terms/club-respond", json={"agreement": "AGREED"},
+                          headers=_headers(ctx["buyer"]))
+    assert r.status_code == 200 and r.json()["player_consent"] == "AGREED", r.text
 
 
 # ── Agent dashboard invitations vs. deal lifecycle ──────────────────────────────

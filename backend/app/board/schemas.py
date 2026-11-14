@@ -32,6 +32,9 @@ class BoardCard(BaseModel):
     # Other open items for the same player in the same column (e.g. three
     # offers received): the card shows the most pressing one.
     others: int = 0
+    # Your move, and the other side has chased it since it last moved
+    # (docs/feature_spec/move-reminders): shown in red on the card.
+    chased: Literal["REMINDED", "ESCALATED"] | None = None
 
 
 class BoardColumn(BaseModel):

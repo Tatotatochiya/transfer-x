@@ -17,7 +17,11 @@ export type StatusAction =
   | { kind: "paperwork"; step: "sign-agreement" | "submit-registration"; label: string }
   | { kind: "record-medical"; label: string }
   | { kind: "commission-respond"; agreement: "AGREED" | "DECLINED"; label: string; danger?: boolean }
+  | { kind: "commission-counter"; label: string }
+  | { kind: "agent-accept"; label: string }
   | { kind: "propose-terms"; label: string }
+  | { kind: "counter-terms"; label: string }
+  | { kind: "terms-respond"; agreement: "AGREED" | "DECLINED"; label: string; danger?: boolean }
   | { kind: "record-consent"; label: string }
   | { kind: "player-consent"; agreement: "AGREED" | "DECLINED"; label: string; danger?: boolean }
   | { kind: "open-messages"; label: string }
@@ -34,6 +38,8 @@ export interface DealStatusView {
   body?: string;
   primary?: StatusAction;
   secondary?: StatusAction;
+  /** A quiet third action: declining, which ends the transfer (always confirmed). */
+  tertiary?: StatusAction;
   showChecklist: boolean;
   strips: StatusStrip[];
 }
@@ -220,8 +226,11 @@ function row(deal: Deal, v: StatusViewer): Row {
     const terms = deal.personal_terms;
     if (!terms) {
       if (v.canSetPersonalTerms) {
-        return { tone: "you", overline: "Your move", headline: `Propose personal terms to ${P}`,
-          body: "The deal moves on once he accepts them.", primary: { kind: "propose-terms", label: "Propose terms" } };
+        return v.isAgent
+          ? { tone: "you", overline: "Your move", headline: `Propose ${P}'s terms to ${B}`,
+              body: `${B} accepts, counters or declines them.`, primary: { kind: "propose-terms", label: "Propose terms" } }
+          : { tone: "you", overline: "Your move", headline: `Propose personal terms to ${P}`,
+              body: "The deal moves on once he accepts them.", primary: { kind: "propose-terms", label: "Propose terms" } };
       }
       const viaAgent = deal.commission_agent_id != null;
       return {
@@ -239,7 +248,23 @@ function row(deal: Deal, v: StatusViewer): Row {
       }
       return { tone: "wait", overline: "Waiting on the clubs", headline: `${P} accepted the terms. The clubs move the deal on to paperwork.` };
     }
-    // PENDING (a declined proposal collapses the deal).
+    // PENDING (a declined proposal collapses the deal). The player side's own
+    // terms (his agent's ask, or a counter) are the buying club's to answer.
+    if (terms.proposed_by === "PLAYER") {
+      const t = termsSentence(terms.wage_weekly, terms.length_years);
+      const who = terms.agent_id ? A : P;
+      const bonus = Number(terms.signing_bonus ?? 0) > 0 ? `Signing bonus ${formatCurrency(Number(terms.signing_bonus))}.` : undefined;
+      if (party && v.side === "buyer") {
+        return { tone: "you", overline: "Your move", headline: t ? `${who} asks for ${t}` : `${who} sent new terms`, body: bonus,
+          primary: { kind: "terms-respond", agreement: "AGREED", label: "Accept terms" },
+          secondary: { kind: "counter-terms", label: "Counter" },
+          tertiary: { kind: "terms-respond", agreement: "DECLINED", label: "Decline", danger: true } };
+      }
+      return { tone: "wait", overline: `Waiting on ${B}`,
+        headline: v.isAgent || v.isPlayer ? `${B} is answering your terms` : `${B} is answering ${P}'s terms`,
+        body: t ? `${who} asked for ${t}.` : undefined,
+        secondary: party ? { kind: "open-messages", label: "Open messages" } : undefined };
+    }
     if (v.canRecordConsent) {
       return { tone: "you", overline: "Your move", headline: `Record ${P}'s answer to the terms`,
         body: "He has no TransferX account or agent. Upload the signed terms to record that he agreed.",
@@ -247,10 +272,12 @@ function row(deal: Deal, v: StatusViewer): Row {
         secondary: { kind: "player-consent", agreement: "DECLINED", label: "He declined", danger: true } };
     }
     if (v.isAgent) {
-      return { tone: "you", overline: "Your move", headline: `Answer for ${P}`,
+      const t = termsSentence(terms.wage_weekly, terms.length_years);
+      return { tone: "you", overline: "Your move", headline: t ? `${B} offers ${P} ${t}` : `Answer for ${P}`,
         body: terms.player_has_account ? "He can answer himself, or you can answer for him." : "He has no TransferX account, so you answer for him.",
         primary: { kind: "player-consent", agreement: "AGREED", label: "Accept for player" },
-        secondary: { kind: "player-consent", agreement: "DECLINED", label: "Decline for player", danger: true } };
+        secondary: { kind: "counter-terms", label: "Counter" },
+        tertiary: { kind: "player-consent", agreement: "DECLINED", label: "Decline for player", danger: true } };
     }
     if (v.isPlayer) {
       const t = termsSentence(terms.wage_weekly, terms.length_years);
@@ -265,18 +292,24 @@ function row(deal: Deal, v: StatusViewer): Row {
     };
   }
 
-  // 16–23: agent negotiation.
+  // 16–23: agent negotiation. The agent proposes, the buying club accepts,
+  // counters or declines (ending the transfer); a counter is the agent's to
+  // accept or answer with a new proposal (ADR 0012).
   if (deal.stage === "AGENT_NEGOTIATION") {
     const neg = v.negotiation ?? null;
     const proposed = !!neg && (neg.commission_pct != null || neg.commission_amount != null);
     const commission = commissionText(neg?.commission_pct, neg?.commission_amount);
+    const payer = neg?.commission_payer ? `Paid by ${PAYER[neg.commission_payer] ?? neg.commission_payer.toLowerCase()}.` : "";
+    const open = proposed && neg!.club_agreement === "PENDING";
+    const countered = open && neg!.proposed_by === "BUYER";
     if (v.isAgent) {
       if (!proposed) return { tone: "you", overline: "Your move", headline: "Propose your commission",
         body: `Set it in the negotiation workspace below. ${B} then answers it.` };
-      if (neg!.club_agreement === "PENDING") return { tone: "wait", overline: `Waiting on ${B}`,
+      if (countered) return { tone: "you", overline: "Your move", headline: `${B} countered with ${commission}`,
+        body: `${payer} Accept it, or change the terms below to propose again.`.trim(),
+        primary: { kind: "agent-accept", label: "Accept counter" } };
+      if (open) return { tone: "wait", overline: `Waiting on ${B}`,
         headline: `${B} is considering your proposal`, body: `You asked for ${commission}.` };
-      if (neg!.club_agreement === "DECLINED") return { tone: "you", overline: "Your move",
-        headline: `${B} declined your proposal`, body: "Change the terms below to send a new one." };
     }
     if (neg?.club_agreement === "AGREED" && proposed) {
       if (v.isAgent || (party && v.side === "buyer")) {
@@ -291,20 +324,23 @@ function row(deal: Deal, v: StatusViewer): Row {
     if (party) {
       if (!proposed) return { tone: "wait", overline: "Waiting on the agent", headline: `${A} hasn't proposed his commission yet`,
         body: `Personal terms start once ${B} agrees the commission.`, secondary: { kind: "open-messages", label: "Open messages" } };
-      if (neg!.club_agreement === "PENDING") {
+      if (countered) {
+        return { tone: "wait", overline: "Waiting on the agent",
+          headline: v.side === "buyer" ? `${A} is answering your counter of ${commission}` : `${A} is answering ${B}'s counter`,
+          body: v.side === "buyer" ? payer || undefined : undefined,
+          secondary: { kind: "open-messages", label: "Open messages" } };
+      }
+      if (open) {
         if (v.side === "buyer") {
-          const payer = neg!.commission_payer ? `Paid by ${PAYER[neg!.commission_payer] ?? neg!.commission_payer.toLowerCase()}.` : "";
           return { tone: "you", overline: "Your move", headline: `${A} asks for ${commission}`,
             body: [payer, neg!.additional_conditions ? `Conditions: ${neg!.additional_conditions}` : ""].filter(Boolean).join(" ") || undefined,
             primary: { kind: "commission-respond", agreement: "AGREED", label: "Accept proposal" },
-            secondary: { kind: "commission-respond", agreement: "DECLINED", label: "Decline", danger: true } };
+            secondary: { kind: "commission-counter", label: "Counter" },
+            tertiary: { kind: "commission-respond", agreement: "DECLINED", label: "Decline", danger: true } };
         }
         return { tone: "wait", overline: `Waiting on ${B}`, headline: `${B} is answering the agent's commission proposal`,
           secondary: { kind: "open-messages", label: `Message ${B}` } };
       }
-      if (neg!.club_agreement === "DECLINED") return { tone: "wait", overline: "Waiting on the agent",
-        headline: `${B} declined the commission proposal`, body: `${A} can send a new proposal.`,
-        secondary: { kind: "open-messages", label: "Open messages" } };
     }
   }
 
@@ -405,7 +441,9 @@ export function stageNote(deal: Deal, negotiation: AgentNegotiation | null | und
         return wage != null ? `${first} agreed ${formatWage(Number(wage))}` : `${first} agreed his terms`;
       }
       if (!terms) return "Terms not proposed yet";
-      return terms.player_consent === "AGREED" ? `${P} accepted` : `Waiting for ${P}'s answer`;
+      if (terms.player_consent === "AGREED") return "Terms agreed";
+      // ADR 0012: the player side's own terms wait on the buying club.
+      return terms.proposed_by === "PLAYER" ? `Waiting for ${deal.buyer_club?.name ?? "the buying club"}'s answer` : `Waiting for ${P}'s answer`;
     }
     case "PAPERWORK": {
       if (state === "next") return "Not started";

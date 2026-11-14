@@ -94,7 +94,7 @@ export default function AgentNegotiationWorkspace({
               onChange={(e) => setDraft((d) => ({ ...d, commission_pct: e.target.value }))}
               className="w-full rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             />
-            <label className="block text-caption text-text-muted pt-1">Commission amount (€)</label>
+            <label className="block text-caption text-text-muted pt-1">Commission amount (£)</label>
             <CurrencyInput
               value={draft.commission_amount}
               onChange={(v) => setDraft((d) => ({ ...d, commission_amount: v }))}

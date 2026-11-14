@@ -45,7 +45,7 @@ When tier 1 is empty it's a single line, "Nothing is waiting on you", with no il
 
 ## "Whose move"
 
-Every row that represents a live negotiation shows **Your move**, **Their move** or **Neither**. A colour is never the only signal: each state has a text label.
+Every row that represents a live negotiation shows **Your move**, **Their move** or **Neither**. A colour is never the only signal: each state has a text label. **Your move** is red (needs you), **Their move** grey, turning amber "Stalled" after 3 days; never blue, which is only for what you can tap.
 
 The value is a `whose_move` field computed on the server, so the dashboard, the board, the lists, the sidebar counts and the daily digest all agree:
 - `compute_offer_whose_move` (offers);
@@ -57,6 +57,10 @@ The value is a `whose_move` field computed on the server, so the dashboard, the 
 - **Paperwork** is yours while any of your checklist steps are outstanding.
 - **Confirmed** is yours.
 - **Agent negotiation** is theirs, until the agent has been silent for 72 hours; then it's yours to chase.
+
+## Ending a transfer
+
+Any answer that ends a transfer (declining the agent's commission, declining personal terms for the player or as the player, the buying club declining the player side's terms, or recording that the player declined) opens `EndTransferDialog` before anything is sent. It says the deal collapses and who is told, offers **Counter instead** where a counter is possible, and takes an optional reason that both sides see. On the status card a decline is the quiet third action, in red, under Accept and Counter. `src/test/endTransfer.test.ts` fails if a DECLINED answer is sent from a file that doesn't use the dialog ([ADR 0012](../product/decisions/0012-commission-and-personal-terms-are-negotiated.md)). Rejecting or withdrawing an offer, and collapsing a deal, have their own confirmations.
 
 ## Settled decisions
 

@@ -5,7 +5,10 @@ import { useToast } from "../context/ToastContext";
 import { getApiError } from "../lib/utils";
 
 export type MedicalStatus = "PENDING" | "PASSED" | "FAILED";
-export interface PersonalTermsValues { wage_weekly: number | null; signing_bonus: number | null; length_years: number | null }
+export interface PersonalTermsValues { wage_weekly: number | null; signing_bonus: number | null; length_years: number | null; note?: string | null }
+/** An answer; a decline ends the transfer, with an optional reason the other side sees. */
+export interface Answer { agreement: "AGREED" | "DECLINED"; reason?: string | null }
+export interface CommissionCounter { commission_pct: number; commission_payer: "BUYER" | "SELLER" | "PLAYER"; note?: string | null }
 
 /**
  * Every write on a deal, in one place (deal-room-focus §5.8). Moved from the
@@ -70,12 +73,45 @@ export function useDealActions(dealId: string | undefined, opts: { onDone?: () =
   });
 
   const commissionRespond = useMutation({
-    mutationFn: (agreement: "AGREED" | "DECLINED") =>
-      api.post(`/deals/${dealId}/agent-negotiation/club-respond`, { agreement }).then((r) => r.data),
-    onSuccess: (_, agreement) => {
-      queryClient.invalidateQueries({ queryKey: ["deals", dealId, "agent-negotiation"] });
+    mutationFn: (a: Answer) =>
+      api.post(`/deals/${dealId}/agent-negotiation/club-respond`, a).then((r) => r.data),
+    onSuccess: (_, a) => {
       queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
-      addToast(agreement === "AGREED" ? "Proposal accepted." : "Proposal declined.", agreement === "AGREED" ? "success" : "warning");
+      addToast(a.agreement === "AGREED" ? "Proposal accepted." : "Declined. The transfer has ended.", a.agreement === "AGREED" ? "success" : "warning");
+      done();
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Failed to respond."), "error"),
+  });
+
+  // ADR 0012: the buying club counters the agent's commission; the agent
+  // accepts the counter or proposes again.
+  const commissionCounter = useMutation({
+    mutationFn: (v: CommissionCounter) =>
+      api.post(`/deals/${dealId}/agent-negotiation/club-counter`, v).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
+      addToast("Counter sent to the agent.", "success");
+      done();
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Failed to send the counter."), "error"),
+  });
+
+  const agentAccept = useMutation({
+    mutationFn: () => api.post(`/deals/${dealId}/agent-negotiation/agent-accept`).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
+      addToast("Counter accepted. The commission is agreed.", "success");
+      done();
+    },
+    onError: (err: unknown) => addToast(getApiError(err, "Failed to accept."), "error"),
+  });
+
+  // The buying club answering the player side's terms.
+  const termsRespond = useMutation({
+    mutationFn: (a: Answer) => api.post(`/deals/${dealId}/personal-terms/club-respond`, a).then((r) => r.data),
+    onSuccess: (_, a) => {
+      queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
+      addToast(a.agreement === "AGREED" ? "Terms agreed." : "Declined. The transfer has ended.", a.agreement === "AGREED" ? "success" : "warning");
       done();
     },
     onError: (err: unknown) => addToast(getApiError(err, "Failed to respond."), "error"),
@@ -85,7 +121,7 @@ export function useDealActions(dealId: string | undefined, opts: { onDone?: () =
     mutationFn: (v: PersonalTermsValues) => api.put(`/deals/${dealId}/personal-terms`, v).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
-      addToast("Personal terms sent to the player.", "success");
+      addToast("Personal terms sent.", "success");
       done();
     },
     onError: (err: unknown) => addToast(getApiError(err, "Failed to set personal terms."), "error"),
@@ -94,9 +130,9 @@ export function useDealActions(dealId: string | undefined, opts: { onDone?: () =
   // Responding for a player with no account: his mandated agent, or the
   // buying club when he has no agent either.
   const playerConsent = useMutation({
-    mutationFn: (agreement: "AGREED" | "DECLINED") =>
-      api.post(`/deals/${dealId}/personal-terms/player-consent`, { agreement }).then((r) => r.data),
-    onSuccess: (_, agreement) => {
+    mutationFn: (a: Answer) =>
+      api.post(`/deals/${dealId}/personal-terms/player-consent`, a).then((r) => r.data),
+    onSuccess: (_, { agreement }) => {
       queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
       addToast(
         agreement === "AGREED" ? "Accepted on behalf of the player." : "Declined on behalf of the player.",
@@ -129,7 +165,10 @@ export function useDealActions(dealId: string | undefined, opts: { onDone?: () =
     onError: (err: unknown) => addToast(getApiError(err, "Could not record the agreement."), "error"),
   });
 
-  return { advance, collapse, paperwork, recordMedical, commissionRespond, setPersonalTerms, playerConsent, recordAgreement };
+  return {
+    advance, collapse, paperwork, recordMedical, commissionRespond, commissionCounter, agentAccept,
+    setPersonalTerms, termsRespond, playerConsent, recordAgreement,
+  };
 }
 
 export type DealActions = ReturnType<typeof useDealActions>;

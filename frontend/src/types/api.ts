@@ -738,6 +738,8 @@ export interface PersonalTerms {
   signing_bonus: number | null;
   length_years: number | null;
   player_consent: AgreementStatus;
+  /** Whose terms these are: the buying club's, or the player side's (his agent or himself). The other side answers. */
+  proposed_by: "BUYER" | "PLAYER";
   player_has_account: boolean;
   agreed_at: string | null;
   created_at: string;
@@ -778,8 +780,24 @@ export interface AgentNegotiation {
   commission_payer: CommissionPayer | null;
   additional_conditions: string | null;
   club_agreement: AgreementStatus;
+  /** Whose terms are on the table: the agent's, or the buying club's counter (ADR 0012). */
+  proposed_by: "AGENT" | "BUYER";
   created_at: string;
   agreed_at: string | null;
+}
+
+/** One round of a deal's commission or personal-terms negotiation (ADR 0012). Money as strings. */
+export interface TermProposal {
+  id: string;
+  kind: "COMMISSION" | "PERSONAL_TERMS";
+  side: "AGENT" | "BUYER" | "PLAYER";
+  terms: {
+    commission_pct?: string | null; commission_amount?: string | null; commission_payer?: string | null;
+    additional_conditions?: string | null;
+    wage_weekly?: string | null; signing_bonus?: string | null; length_years?: number | null;
+  };
+  note: string | null;
+  created_at: string;
 }
 
 // ── TRA-81: deal room ──────────────────────────────────────────────────────────

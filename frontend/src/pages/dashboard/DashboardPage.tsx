@@ -299,12 +299,12 @@ export default function DashboardPage() {
     name: o.player?.name ?? "—", player: { id: o.player?.id, photoUrl: o.player?.photo_url },
     sub: o.from_club_id === myClubId ? `to ${o.to_club?.name ?? "—"}` : `from ${buyerLabel(o, "—")}`,
     value: offerHeadline(o, formatCompact),
-    move: offerWhoseMove(o, myClubId),
+    move: offerWhoseMove(o, myClubId), idleSince: o.last_action_at,
   }));
   const dealRows = deals.slice(0, 3).map((d) => ({
     key: d.id, onClick: () => navigate(`/deals/${d.id}`),
     name: d.player?.name ?? "—", player: { id: d.player?.id, photoUrl: d.player?.photo_url }, sub: d.stage.replace(/_/g, " ").toLowerCase(),
-    value: formatCompact(d.agreed_fee), move: dealWhoseMove(d, myClubId),
+    value: formatCompact(d.agreed_fee), move: dealWhoseMove(d, myClubId), idleSince: d.updated_at,
   }));
 
   // ── Tier 4 ──
