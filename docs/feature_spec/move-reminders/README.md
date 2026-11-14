@@ -170,6 +170,9 @@ Mailpit with the fixed wording.
   chase abandoned transactions.
 - **An offer's clock** is its latest send, counter or raise (offers have no `updated_at`); a message
   doesn't count as movement. A deal's is `updated_at`, an enquiry's `updated_at`.
+- **In a demo** ([demo mode](../demo-mode.md#house-clubs-answer-on-their-own), 2026-11-13) a
+  reminder can go straight away, one a minute, and the house answers it at once; the automatic
+  reminders skip demo transactions, which a reset would otherwise leave reminders behind for.
 - **Times in reasons** ("You can send another from 14:30") are UK time.
 
 ### Not checked

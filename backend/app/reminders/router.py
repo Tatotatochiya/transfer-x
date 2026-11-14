@@ -85,4 +85,11 @@ async def send_reminder(
     except service.ReminderError as exc:
         raise HTTPException(exc.status_code, exc.detail)
     await db.commit()
+    from app.demo.house import on_reminder
+
+    # In the sender's own demo, the house answers the reminder now.
+    if await on_reminder(db, user, subject_type, subject_id):
+        db.expire_all()
+        await db.refresh(user)
+        s, v = await _load(db, user, subject_type, subject_id)
     return await _response(db, s, await service.state_for(db, s, v), v)

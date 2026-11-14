@@ -184,6 +184,38 @@ async def make_house_move(
     return {"done": done}
 
 
+@router.get("/demo/deals/{deal_id}")
+async def demo_deal(
+    deal_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Whether this deal belongs to your open demo (so "Make them move now" applies)."""
+    from app.demo import house
+
+    return {"in_demo": await house.deal_in_demo(db, current_user, deal_id)}
+
+
+@router.post("/demo/deals/{deal_id}/make")
+async def make_deal_move(
+    deal_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Make the other side's next move on a deal in your demo now: the house
+    club's, the agent's or the player's. Reset undoes it."""
+    from app.demo import house
+
+    try:
+        done = await house.make_deal_move(db, current_user, deal_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    return {"done": done}
+
+
 # ── Staff ────────────────────────────────────────────────────────────────────
 
 

@@ -42,6 +42,20 @@ async def active_run(db: AsyncSession, user_id: uuid.UUID) -> DemoRun | None:
         DemoRun.user_id == user_id, DemoRun.status == "ACTIVE"))).scalar_one_or_none()
 
 
+async def open_demo_rows(db: AsyncSession, table: str) -> dict[uuid.UUID, uuid.UUID]:
+    """{row id: run id} for the rows open demo runs inserted into `table`."""
+    out = {}
+    for key, run_id in (await db.execute(
+            select(DemoChange.pk, DemoChange.run_id).join(DemoRun, DemoRun.id == DemoChange.run_id)
+            .where(DemoRun.status == "ACTIVE", DemoChange.op == "insert", DemoChange.table_name == table))).all():
+        raw = json.loads(key).get("id")
+        try:
+            out[journal.dec(raw) if isinstance(raw, dict) else uuid.UUID(str(raw))] = run_id
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
 async def change_count(db: AsyncSession, run_id: uuid.UUID) -> int:
     return (await db.execute(select(func.count()).select_from(DemoChange).where(DemoChange.run_id == run_id))).scalar_one()
 

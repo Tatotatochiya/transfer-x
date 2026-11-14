@@ -337,3 +337,158 @@ async def test_the_tester_can_make_the_house_club_move_now(client: AsyncClient, 
     await _start(client, other)
     assert (await client.get(f"/demo/offers/{oid}", headers=_auth_headers(other))).json() == {"in_demo": False}
     assert (await client.post(f"/demo/offers/{oid}/make", headers=_auth_headers(other), json={"action": "accept"})).status_code == 404
+
+
+# ── Agents, the tester's waits, enquiries and reminders ──────────────────────
+
+
+async def _agent(client, db, demo, *, signed_in: timedelta | None = None):
+    """An agent for the house club's player; `signed_in` ago, or never."""
+    from app.auth.models import AgentProfile, User
+    from app.mandates.models import Mandate, MandateStatus
+
+    email = f"h_agent{uuid.uuid4().hex[:6]}@demo-example.com"
+    await client.post("/auth/register", json={
+        "email": email, "password": "password123", "user_type": "AGENT",
+        "display_name": "Andy Agent", "agency_name": "Andy Sports", "country": "England"})
+    user = (await db.execute(select(User).where(User.email == email))).scalar_one()
+    user.last_active_at = None if signed_in is None else datetime.now(timezone.utc) - signed_in
+    profile = (await db.execute(select(AgentProfile).where(AgentProfile.user_id == user.id))).scalar_one()
+    db.add(Mandate(agent_id=profile.id, player_id=uuid.UUID(demo["player"]["id"]), status=MandateStatus.ACTIVE))
+    await db.commit()
+    return profile
+
+
+async def _deal_at_terms(client, db, demo) -> str:
+    """The tester's offer accepted, the agent's commission agreed: personal terms."""
+    from app.deals.models import Deal
+
+    await _start(client, demo["tester"])
+    await _offer(client, demo, 10_000_000)
+    await _tick(demo)
+    deal = (await db.execute(select(Deal).where(Deal.player_id == uuid.UUID(demo["player"]["id"])))).scalar_one()
+    deal_id = str(deal.id)
+    await _tick(demo)  # the agent proposes his commission
+    r = await client.post(f"/deals/{deal_id}/agent-negotiation/club-respond", headers=demo["h"], json={"agreement": "AGREED"})
+    assert r.status_code == 200, r.text
+    assert (await client.post(f"/deals/{deal_id}/advance", headers=demo["h"])).json()["stage"] == "PERSONAL_TERMS"
+    return deal_id
+
+
+async def test_the_agent_prepares_personal_terms_and_agrees_them_for_the_player(client: AsyncClient, db, demo):
+    from app.deals.models import DealNote
+    from app.deals.service import get_personal_terms
+
+    agent_id = (await _agent(client, db, demo)).id
+    deal_id = await _deal_at_terms(client, db, demo)
+    assert await _tick(demo) == 1
+    db.expire_all()
+    pt = await get_personal_terms(db, uuid.UUID(deal_id))
+    assert pt.agent_id == agent_id and pt.length_years == 4 and pt.player_consent == "PENDING"
+    assert await _tick(demo) == 1
+    db.expire_all()
+    assert (await get_personal_terms(db, uuid.UUID(deal_id))).player_consent == "AGREED"
+    notes = [n.body for n in (await db.execute(select(DealNote).where(DealNote.deal_id == uuid.UUID(deal_id)))).scalars()]
+    assert any(n.startswith("Automated (demo): Andy Agent proposed personal terms: four years at £") for n in notes)
+    assert "Automated (demo): Andy Agent agreed the personal terms for the player." in notes
+    assert await _tick(demo) == 0  # the tester moves it on to paperwork
+
+
+async def test_an_agent_signed_in_long_ago_still_answers_but_not_one_signed_in_now(client: AsyncClient, db, demo):
+    from app.agents.models import AgentNegotiation
+    from app.deals.models import Deal
+
+    await _agent(client, db, demo, signed_in=timedelta(minutes=10))
+    await _start(client, demo["tester"])
+    await _offer(client, demo, 10_000_000)
+    await _tick(demo)
+    deal = (await db.execute(select(Deal).where(Deal.player_id == uuid.UUID(demo["player"]["id"])))).scalar_one()
+    deal_id = deal.id
+    assert await _tick(demo) == 0  # someone is signed in as him: he answers himself
+
+    # The tester can make him move anyway.
+    assert (await client.get(f"/demo/deals/{deal_id}", headers=demo["h"])).json() == {"in_demo": True}
+    r = await client.post(f"/demo/deals/{deal_id}/make", headers=demo["h"])
+    assert r.status_code == 200 and r.json() == {"done": "agent_terms"}, r.text
+    db.expire_all()
+    assert (await db.execute(select(AgentNegotiation).where(AgentNegotiation.deal_id == deal_id))).scalar_one().commission_pct
+    r = await client.post(f"/demo/deals/{deal_id}/make", headers=demo["h"])
+    assert r.status_code == 409 and r.json()["detail"] == "Nothing for them to do: it's your move."
+
+    # An agent last signed in days ago is free for the house to play.
+    from app.demo.house import _available
+
+    assert await _available(db, None)
+    from app.auth.models import AgentProfile, User
+
+    neg = (await db.execute(select(AgentNegotiation).where(AgentNegotiation.deal_id == deal_id))).scalar_one()
+    user = await db.get(User, (await db.get(AgentProfile, neg.agent_id)).user_id)
+    assert not await _available(db, user.id)
+    user.last_active_at = datetime.now(timezone.utc) - timedelta(days=3)
+    await db.commit()
+    assert await _available(db, user.id)
+
+    # Not a deal in someone else's demo.
+    other = await _register(client, "h_peek2@demo-example.com", club_name="Peekers Two")
+    assert (await client.get(f"/demo/deals/{deal_id}", headers=_auth_headers(other))).json() == {"in_demo": False}
+    assert (await client.post(f"/demo/deals/{deal_id}/make", headers=_auth_headers(other))).status_code == 404
+
+
+async def test_after_a_few_minutes_counts_from_the_testers_move_not_the_houses(client: AsyncClient, db, demo):
+    from app.audit.models import AuditEvent
+    from app.deals.service import get_personal_terms
+
+    await _agent(client, db, demo)
+    deal_id = await _deal_at_terms(client, db, demo)
+    assert (await client.patch("/demo/run", headers=demo["h"], json={"speed": "realistic"})).status_code == 200
+    assert await _tick(demo) == 0  # the tester just moved the deal on
+    await db.execute(update(AuditEvent).where(AuditEvent.entity_id == uuid.UUID(deal_id))
+                     .values(created_at=datetime.now(timezone.utc) - timedelta(minutes=4)))
+    await db.commit()
+    assert await _tick(demo) == 1  # the agent proposes terms…
+    assert await _tick(demo) == 1  # …and agrees them, without another wait
+    db.expire_all()
+    assert (await get_personal_terms(db, uuid.UUID(deal_id))).player_consent == "AGREED"
+
+
+async def test_a_house_club_answers_an_enquiry(client: AsyncClient, db, demo):
+    await _start(client, demo["tester"])
+    r = await client.post("/enquiries", headers=demo["h"], json={"player_id": demo["player"]["id"], "body": "Is he available?"})
+    assert r.status_code == 201, r.text
+    eid = r.json()["id"]
+    assert await _tick(demo) == 1
+    msgs = (await client.get(f"/enquiries/{eid}", headers=demo["h"])).json()["messages"]
+    assert msgs[-1]["body"].endswith("We'd consider offers around £10m. Send one and we'll answer it.")
+    assert msgs[-1]["side"] == "theirs"
+    assert await _tick(demo) == 0  # the tester's move
+    await client.post(f"/enquiries/{eid}/messages", headers=demo["h"], json={"body": "Would £8m do?"})
+    assert await _tick(demo) == 1
+    msgs = (await client.get(f"/enquiries/{eid}", headers=demo["h"])).json()["messages"]
+    assert "Our position hasn't changed" in msgs[-1]["body"]
+
+
+async def test_a_reminder_in_a_demo_goes_now_and_the_house_answers_it(client: AsyncClient, db, demo):
+    from app.offers.models import Offer
+    from app.reminders.service import send_automatic
+
+    await _start(client, demo["tester"])
+    await client.patch("/demo/run", headers=demo["h"], json={"speed": "realistic"})
+    offer = await _offer(client, demo, 10_000_000)
+    assert await _tick(demo) == 0  # a real club would take its time
+
+    # Days without movement, but the automatic reminders leave demo offers alone.
+    await db.execute(update(Offer).where(Offer.id == uuid.UUID(offer["id"]))
+                     .values(last_action_at=datetime.now(timezone.utc) - timedelta(days=4)))
+    await db.commit()
+    assert await send_automatic(db) == 0
+    await db.execute(update(Offer).where(Offer.id == uuid.UUID(offer["id"]))
+                     .values(last_action_at=datetime.now(timezone.utc)))
+    await db.commit()
+
+    # No day's wait to remind them in a demo; the house answers straight away.
+    state = (await client.get(f"/reminders/offer/{offer['id']}", headers=demo["h"])).json()
+    assert state["can_send"] is True, state
+    r = await client.post(f"/reminders/offer/{offer['id']}", headers=demo["h"], json={})
+    assert r.status_code == 200, r.text
+    db.expire_all()
+    assert (await db.get(Offer, uuid.UUID(offer["id"]))).status.value == "ACCEPTED"
