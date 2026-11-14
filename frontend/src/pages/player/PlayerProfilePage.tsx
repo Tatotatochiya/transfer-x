@@ -8,6 +8,7 @@ import Card from "../../components/ui/Card";
 import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import Badge from "../../components/ui/Badge";
+import EndTransferDialog from "../../components/deals/EndTransferDialog";
 import Button from "../../components/ui/Button";
 import VerifiedBadge from "../../components/verification/VerifiedBadge";
 import RequestVerificationPanel from "../../components/verification/RequestVerificationPanel";
@@ -131,11 +132,26 @@ export default function PlayerProfilePage() {
   });
 
   const consentMutation = useMutation({
-    mutationFn: (agreement: AgreementStatus) =>
-      api.post(`/deals/${activeDealId}/personal-terms/player-consent`, { agreement }),
+    mutationFn: ({ agreement, reason }: { agreement: AgreementStatus; reason?: string | null }) =>
+      api.post(`/deals/${activeDealId}/personal-terms/player-consent`, { agreement, reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["players", "me"] });
       queryClient.invalidateQueries({ queryKey: ["deals", activeDealId, "personal-terms"] });
+      setDeclining(false);
+    },
+  });
+  // ADR 0012: the player can counter the club's terms himself.
+  const [countering, setCountering] = useState(false);
+  const [declining, setDeclining] = useState(false);
+  const [counter, setCounter] = useState({ wage: "", bonus: "", years: "", note: "" });
+  const counterMutation = useMutation({
+    mutationFn: () => api.put(`/deals/${activeDealId}/personal-terms`, {
+      wage_weekly: Number(counter.wage), signing_bonus: counter.bonus ? Number(counter.bonus) : null,
+      length_years: Number(counter.years), note: counter.note.trim() || null,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals", activeDealId, "personal-terms"] });
+      setCountering(false);
     },
   });
 
@@ -256,12 +272,19 @@ export default function PlayerProfilePage() {
       </Card>
 
       {/* Personal terms consent (TRA-74) */}
-      {dealInPersonalTerms && personalTerms && personalTerms.player_consent === "PENDING" && (
+      {dealInPersonalTerms && personalTerms && personalTerms.player_consent === "PENDING" && personalTerms.proposed_by === "PLAYER" && (
+        <div className="mt-6 rounded-xl bg-surface-inset px-5 py-4 text-small text-text-secondary">
+          Your side asked for {personalTerms.wage_weekly != null ? formatWage(personalTerms.wage_weekly) : "new terms"}
+          {personalTerms.length_years != null ? ` for ${personalTerms.length_years} years` : ""}. Waiting on{" "}
+          <span className="font-semibold text-text">{personalTerms.buyer_club_name}</span> to answer.
+        </div>
+      )}
+      {dealInPersonalTerms && personalTerms && personalTerms.player_consent === "PENDING" && personalTerms.proposed_by !== "PLAYER" && (
         <div className="mt-6 rounded-xl bg-warning-bg ring-1 ring-warning-ring px-5 py-5">
           <p className="text-body font-semibold text-warning-text mb-1">Personal terms require your consent</p>
           <p className="text-small text-warning-text-alt mb-4">
-            Your agent has proposed the following contract terms to join{" "}
-            <span className="font-semibold text-warning-text">{personalTerms.buyer_club_name}</span>. Review and respond.
+            <span className="font-semibold text-warning-text">{personalTerms.buyer_club_name}</span> offers you
+            these contract terms. Accept them, counter, or decline.
           </p>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-small mb-5">
             {personalTerms.wage_weekly != null && (
@@ -274,22 +297,63 @@ export default function PlayerProfilePage() {
               <><dt className="text-text-muted">Contract length</dt><dd className="text-text font-semibold">{personalTerms.length_years} yr{personalTerms.length_years !== 1 ? "s" : ""}</dd></>
             )}
           </dl>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button
-              onClick={() => consentMutation.mutate("AGREED")}
+              onClick={() => consentMutation.mutate({ agreement: "AGREED" })}
               disabled={consentMutation.isPending}
               className="flex-1 rounded-lg bg-accent px-4 py-2 text-body font-semibold text-on-accent hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
               {consentMutation.isPending ? "…" : "Accept terms"}
             </button>
             <button
-              onClick={() => consentMutation.mutate("DECLINED")}
+              onClick={() => setCountering((v) => !v)}
+              aria-expanded={countering}
+              className="flex-1 rounded-lg bg-surface px-4 py-2 text-body font-semibold text-text ring-1 ring-input-border hover:bg-surface-inset transition-colors"
+            >
+              Counter
+            </button>
+            <button
+              onClick={() => setDeclining(true)}
               disabled={consentMutation.isPending}
               className="flex-1 rounded-lg bg-danger-bg px-4 py-2 text-body font-semibold text-danger-text ring-1 ring-danger-ring hover:brightness-95 transition-colors disabled:opacity-50"
             >
               Decline
             </button>
           </div>
+          {countering && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {([["wage", "Weekly wage (£)"], ["bonus", "Signing bonus (£)"], ["years", "Contract length (years)"]] as const).map(([k, label]) => (
+                <div key={k}>
+                  <label htmlFor={`counter-${k}`} className="mb-1 block text-small font-medium text-text-secondary">{label}</label>
+                  <input id={`counter-${k}`} type="number" min={k === "years" ? 1 : 0} value={counter[k]}
+                    onChange={(e) => setCounter((c) => ({ ...c, [k]: e.target.value }))}
+                    className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border" />
+                </div>
+              ))}
+              <div className="sm:col-span-3">
+                <label htmlFor="counter-note" className="mb-1 block text-small font-medium text-text-secondary">Note to the club (optional)</label>
+                <input id="counter-note" maxLength={200} value={counter.note}
+                  onChange={(e) => setCounter((c) => ({ ...c, note: e.target.value }))}
+                  className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border" />
+              </div>
+              <div className="sm:col-span-3">
+                <Button variant="primary" loading={counterMutation.isPending} disabled={!counter.wage || !counter.years}
+                  onClick={() => counterMutation.mutate()}>
+                  Send counter
+                </Button>
+              </div>
+            </div>
+          )}
+          <EndTransferDialog
+            open={declining}
+            title="Decline these terms?"
+            who={personalTerms.buyer_club_name}
+            confirmLabel="Decline and end the transfer"
+            loading={consentMutation.isPending}
+            onConfirm={(reason) => consentMutation.mutate({ agreement: "DECLINED", reason })}
+            onCounter={() => setCountering(true)}
+            onClose={() => setDeclining(false)}
+          />
           {consentMutation.isError && (
             <p className="mt-2 text-small text-danger-text">Failed to respond. Please try again.</p>
           )}

@@ -26,6 +26,7 @@ from app.deals.models import (
     MedicalCheck,
     MedicalStatus,
     PersonalTerms,
+    TermProposal,
 )
 from app.loans import service as loans_service
 from app.loans.models import LoanEndReason
@@ -1421,38 +1422,136 @@ async def set_personal_terms(
     signing_bonus: Decimal | None,
     length_years: int | None,
     actor_user_id: uuid.UUID | None = None,
+    side: str = "BUYER",
+    note: str | None = None,
 ) -> PersonalTerms:
-    """Create or replace the personal-terms record for a deal in PERSONAL_TERMS stage."""
+    """Propose personal terms, or counter the other side's (ADR 0012).
+
+    `side` is "BUYER" for the buying club or "PLAYER" for the player's side
+    (his agent or the player himself). The terms on the table are replaced and
+    the other side answers: the player's side agrees or declines the club's,
+    the club agrees or declines the player side's. Either side may put new
+    terms while they're pending: a counter, or revising its own."""
     # A collapsed deal keeps its stage, so the stage check alone let terms be
     # proposed (and consented to) on a deal that had already fallen through.
     if deal.status != DealStatus.IN_PROGRESS:
         raise ValueError("This deal is no longer in progress")
     if deal.stage != DealStage.PERSONAL_TERMS:
         raise ValueError("Deal is not in PERSONAL_TERMS stage")
+    if side not in ("BUYER", "PLAYER"):
+        raise ValueError("Unknown side")
 
     pt = await get_personal_terms(db, deal.id)
     if pt is None:
-        pt = PersonalTerms(deal_id=deal.id)
+        # The player's agent answers the club's terms for his client.
+        pt = PersonalTerms(deal_id=deal.id, agent_id=deal.commission_agent_id)
         db.add(pt)
 
-    pt.agent_id = agent_profile_id
+    # The player's agent stays on the terms through the club's counters: he
+    # answers them for his client.
+    if agent_profile_id is not None:
+        pt.agent_id = agent_profile_id
     pt.wage_weekly = wage_weekly
     pt.signing_bonus = signing_bonus
     pt.length_years = length_years
+    pt.proposed_by = side
     # Reset consent whenever terms change — and any signed copy recorded with it,
     # which was a signature on the old terms.
     pt.player_consent = "PENDING"  # type: ignore[assignment]
     pt.agreed_at = None
     pt.consent_evidence_attachment_id = None
     await db.flush()
+    countered = await _has_rounds(db, deal.id, "PERSONAL_TERMS")
+    await record_round(db, deal, "PERSONAL_TERMS", side, {
+        "wage_weekly": wage_weekly, "signing_bonus": signing_bonus, "length_years": length_years,
+    }, note=note, actor_user_id=actor_user_id)
     await audit_service.emit(
         db,
         entity_type="DEAL", entity_id=deal.id,
-        action="PERSONAL_TERMS_SET",
+        action="PERSONAL_TERMS_COUNTERED" if countered else "PERSONAL_TERMS_SET",
         actor_user_id=actor_user_id,
-        description="Personal terms proposed to the player",
+        payload={"side": side, "note": note} if note else {"side": side},
+        description=(
+            ("The buying club countered the personal terms" if side == "BUYER" else "The player's side countered the personal terms")
+            if countered else
+            ("Personal terms proposed to the player" if side == "BUYER" else "The player's side proposed personal terms")
+        ),
     )
     return pt
+
+
+async def club_respond_to_terms(
+    db: AsyncSession,
+    deal: Deal,
+    club_id: uuid.UUID,
+    agreement: "AgreementStatus",  # type: ignore[name-defined]
+    *,
+    reason: str | None = None,
+    actor_user_id: uuid.UUID | None = None,
+) -> PersonalTerms:
+    """The buying club answers the player side's terms (ADR 0012): agreeing
+    them agrees the terms; declining ends the transfer."""
+    from app.agents.models import AgreementStatus
+
+    if deal.status != DealStatus.IN_PROGRESS:
+        raise ValueError("This deal is no longer in progress")
+    if deal.stage != DealStage.PERSONAL_TERMS:
+        raise ValueError("Deal is not in PERSONAL_TERMS stage")
+    if club_id != deal.buyer_club_id:
+        raise ValueError("Only the buying club answers the player's terms")
+    pt = await get_personal_terms(db, deal.id)
+    if pt is None or pt.player_consent != "PENDING":
+        raise ValueError("There are no terms waiting for an answer")
+    if agreement == AgreementStatus.AGREED and pt.proposed_by != "PLAYER":
+        raise ValueError("These are your terms: the player's side answers them")
+
+    if agreement == AgreementStatus.AGREED:
+        pt.player_consent = AgreementStatus.AGREED
+        pt.agreed_at = datetime.now(timezone.utc)
+    await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="PERSONAL_TERMS_CLUB_RESPONDED",
+        actor_user_id=actor_user_id,
+        payload={"agreement": agreement.value},
+        description=f"The buying club {agreement.value.lower()} the player's terms",
+    )
+    if agreement == AgreementStatus.DECLINED:
+        await collapse_deal(
+            db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id, reason=reason,
+        )
+    return pt
+
+
+# ── Negotiation rounds (ADR 0012) ─────────────────────────────────────────────
+
+
+def _plain(v):
+    return str(v) if isinstance(v, Decimal) else getattr(v, "value", v)
+
+
+async def record_round(
+    db: AsyncSession, deal: Deal, kind: str, side: str, terms: dict, *,
+    note: str | None = None, actor_user_id: uuid.UUID | None = None,
+) -> TermProposal:
+    row = TermProposal(deal_id=deal.id, kind=kind, side=side,
+                       terms={k: _plain(v) for k, v in terms.items()},
+                       note=(note or "").strip() or None, created_by_user_id=actor_user_id)
+    db.add(row)
+    await db.flush()
+    return row
+
+
+async def _has_rounds(db: AsyncSession, deal_id: uuid.UUID, kind: str) -> bool:
+    return (await db.execute(select(TermProposal.id).where(
+        TermProposal.deal_id == deal_id, TermProposal.kind == kind).limit(1))).first() is not None
+
+
+async def list_term_proposals(db: AsyncSession, deal_id: uuid.UUID, *, kinds: Sequence[str]) -> list[TermProposal]:
+    return list((await db.execute(select(TermProposal).where(
+        TermProposal.deal_id == deal_id, TermProposal.kind.in_(list(kinds)))
+        .order_by(TermProposal.created_at, TermProposal.id))).scalars())
 
 
 async def player_consent_to_terms(
@@ -1462,6 +1561,7 @@ async def player_consent_to_terms(
     actor_user_id: uuid.UUID | None = None,
     recorded_by_club: bool = False,
     evidence_attachment_id: uuid.UUID | None = None,
+    reason: str | None = None,
 ) -> PersonalTerms:
     """Player agrees or declines personal terms. Decline collapses the deal.
 
@@ -1478,6 +1578,8 @@ async def player_consent_to_terms(
     pt = await get_personal_terms(db, deal.id)
     if pt is None:
         raise ValueError("No personal terms have been set")
+    if agreement == AgreementStatus.AGREED and pt.proposed_by == "PLAYER":
+        raise ValueError("These are the player's own terms: the buying club answers them")
 
     pt.player_consent = agreement
     if agreement == AgreementStatus.AGREED:
@@ -1503,6 +1605,7 @@ async def player_consent_to_terms(
     if agreement == AgreementStatus.DECLINED:
         await collapse_deal(
             db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id,
+            reason=reason,
         )
 
     return pt
@@ -1525,9 +1628,11 @@ async def upsert_negotiation_terms(
     agent_profile_id: uuid.UUID,
     updates: dict,
     actor_user_id: uuid.UUID | None = None,
+    note: str | None = None,
 ) -> "AgentNegotiation":  # type: ignore[name-defined]
-    """Agent creates or updates commission terms proposed to the buying club."""
-    from app.agents.models import AgentDealInvitation, AgentNegotiation, NegotiationStatus
+    """Agent creates or updates commission terms proposed to the buying club:
+    his first proposal, or his answer to the club's counter (ADR 0012)."""
+    from app.agents.models import AgentDealInvitation, AgentNegotiation, AgreementStatus, NegotiationStatus
 
     if deal.stage != DealStage.AGENT_NEGOTIATION:
         raise ValueError("Deal is not in AGENT_NEGOTIATION stage")
@@ -1558,13 +1663,20 @@ async def upsert_negotiation_terms(
 
     # Commission is naturally negotiated as a percentage ("2% of the fee") —
     # derive the absolute amount from the deal's agreed fee whenever a
-    # percentage is set and no explicit amount exists yet, so downstream
+    # percentage is set and no explicit amount came with it, so downstream
     # tracking (AgentCommission, deal.agent_commission_amount) isn't silently
-    # blank just because nobody hand-calculated and typed the euro figure.
-    if neg.commission_pct is not None and neg.commission_amount is None and deal.agreed_fee:
+    # blank (or stale, after a counter) just because nobody typed the figure.
+    if neg.commission_pct is not None and deal.agreed_fee and (
+            neg.commission_amount is None or (updates.get("commission_pct") is not None
+                                              and updates.get("commission_amount") is None)):
         neg.commission_amount = (neg.commission_pct * deal.agreed_fee).quantize(Decimal("0.01"))
+    # A new proposal is the agent's, and waits for the club's answer again.
+    neg.proposed_by = "AGENT"
+    neg.club_agreement = AgreementStatus.PENDING
 
     await db.flush()
+    await record_round(db, deal, "COMMISSION", "AGENT", _commission_terms(neg),
+                       note=note, actor_user_id=actor_user_id)
     await audit_service.emit(
         db,
         entity_type="DEAL", entity_id=deal.id,
@@ -1576,25 +1688,40 @@ async def upsert_negotiation_terms(
     return neg
 
 
+def _commission_terms(neg) -> dict:
+    return {"commission_pct": neg.commission_pct, "commission_amount": neg.commission_amount,
+            "commission_payer": neg.commission_payer, "additional_conditions": neg.additional_conditions}
+
+
+async def _open_negotiation(db: AsyncSession, deal: Deal):
+    from app.agents.models import NegotiationStatus
+
+    if deal.stage != DealStage.AGENT_NEGOTIATION:
+        raise ValueError("Deal is not in AGENT_NEGOTIATION stage")
+    neg = await get_agent_negotiation(db, deal.id)
+    if neg is None:
+        raise ValueError("No agent negotiation record found")
+    if neg.status != NegotiationStatus.IN_PROGRESS:
+        raise ValueError("Negotiation is no longer in progress")
+    return neg
+
+
 async def club_respond_to_negotiation(
     db: AsyncSession,
     deal: Deal,
     club_id: uuid.UUID,
     agreement: "AgreementStatus",  # type: ignore[name-defined]
     actor_user_id: uuid.UUID | None = None,
+    reason: str | None = None,
 ) -> "AgentNegotiation":  # type: ignore[name-defined]
-    """Buying club agrees or declines commission terms. Decline collapses the deal."""
-    from app.agents.models import AgentNegotiation, AgreementStatus, NegotiationStatus
+    """Buying club agrees the agent's commission proposal, or declines, which
+    ends the transfer (the club counters with `club_counter_commission`)."""
+    from app.agents.models import AgreementStatus, NegotiationStatus
 
     _require_party(deal, club_id)
-    if deal.stage != DealStage.AGENT_NEGOTIATION:
-        raise ValueError("Deal is not in AGENT_NEGOTIATION stage")
-
-    neg = await get_agent_negotiation(db, deal.id)
-    if neg is None:
-        raise ValueError("No agent negotiation record found")
-    if neg.status != NegotiationStatus.IN_PROGRESS:
-        raise ValueError("Negotiation is no longer in progress")
+    neg = await _open_negotiation(db, deal)
+    if agreement == AgreementStatus.AGREED and neg.proposed_by == "BUYER":
+        raise ValueError("That's your counter: the agent answers it")
 
     neg.club_agreement = agreement
     await db.flush()
@@ -1610,9 +1737,74 @@ async def club_respond_to_negotiation(
     if agreement == AgreementStatus.DECLINED:
         neg.status = NegotiationStatus.COLLAPSED
         await collapse_deal(
-            db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id,
+            db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, actor_user_id=actor_user_id, reason=reason,
         )
 
+    return neg
+
+
+async def club_counter_commission(
+    db: AsyncSession,
+    deal: Deal,
+    club_id: uuid.UUID,
+    *,
+    commission_pct: Decimal,
+    commission_payer: "CommissionPayer",  # type: ignore[name-defined]
+    note: str | None = None,
+    actor_user_id: uuid.UUID | None = None,
+) -> "AgentNegotiation":  # type: ignore[name-defined]
+    """The buying club counters the agent's commission (ADR 0012): its terms go
+    on the table and the agent accepts them or proposes again."""
+    from app.agents.models import AgreementStatus
+
+    if club_id != deal.buyer_club_id:
+        raise ValueError("Only the buying club negotiates the agent's commission")
+    neg = await _open_negotiation(db, deal)
+    if neg.commission_pct is None and neg.commission_amount is None:
+        raise ValueError("The agent hasn't proposed his commission yet")
+    if neg.club_agreement != AgreementStatus.PENDING:
+        raise ValueError("The commission is already agreed")
+    if not (Decimal(0) <= commission_pct < Decimal(1)):
+        raise ValueError("Commission must be between 0% and 100%")
+
+    neg.commission_pct = commission_pct
+    neg.commission_payer = commission_payer
+    neg.commission_amount = (commission_pct * deal.agreed_fee).quantize(Decimal("0.01")) if deal.agreed_fee else None
+    neg.proposed_by = "BUYER"
+    neg.club_agreement = AgreementStatus.PENDING
+    await db.flush()
+    await record_round(db, deal, "COMMISSION", "BUYER", _commission_terms(neg), note=note, actor_user_id=actor_user_id)
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="NEGOTIATION_COUNTERED",
+        actor_user_id=actor_user_id,
+        payload={"commission_pct": str(commission_pct), "commission_payer": _plain(commission_payer), "note": note},
+        description="Buying club countered the agent's commission",
+    )
+    return neg
+
+
+async def agent_accept_counter(
+    db: AsyncSession, deal: Deal, agent_profile_id: uuid.UUID, *, actor_user_id: uuid.UUID | None = None,
+) -> "AgentNegotiation":  # type: ignore[name-defined]
+    """The agent accepts the buying club's counter: the commission is agreed."""
+    from app.agents.models import AgreementStatus
+
+    neg = await _open_negotiation(db, deal)
+    if neg.agent_id != agent_profile_id:
+        raise ValueError("Only the mandated agent may answer the club's counter")
+    if neg.proposed_by != "BUYER" or neg.club_agreement != AgreementStatus.PENDING:
+        raise ValueError("There's no counter from the club to accept")
+    neg.club_agreement = AgreementStatus.AGREED
+    await db.flush()
+    await audit_service.emit(
+        db,
+        entity_type="DEAL", entity_id=deal.id,
+        action="NEGOTIATION_AGENT_ACCEPTED",
+        actor_user_id=actor_user_id,
+        description="Agent accepted the buying club's commission counter",
+    )
     return neg
 
 

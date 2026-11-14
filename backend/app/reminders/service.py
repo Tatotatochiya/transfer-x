@@ -242,10 +242,13 @@ async def holders(db: AsyncSession, s: Subject) -> list[Holder]:
         neg = await deals_service.get_agent_negotiation(db, d.id)
         agent_id = neg.agent_id if neg else d.commission_agent_id
         proposed = neg is not None and (neg.commission_pct is not None or neg.commission_amount is not None)
-        if agent_id and (not proposed or neg.club_agreement == AgreementStatus.DECLINED):
-            again = proposed and neg.club_agreement == AgreementStatus.DECLINED
+        if agent_id and not proposed:
             h = await _agent_holder(db, agent_id, "deal:AGENT_NEGOTIATION:propose-commission",
-                                    f"{'a new' if again else 'your'} commission proposal for {P}")
+                                    f"your commission proposal for {P}")
+            return [h] if h else []
+        if agent_id and neg.proposed_by == "BUYER" and neg.club_agreement == AgreementStatus.PENDING:
+            h = await _agent_holder(db, agent_id, "deal:AGENT_NEGOTIATION:answer-counter",
+                                    f"an answer to the commission counter for {P}")
             return [h] if h else []
         if proposed and neg.club_agreement == AgreementStatus.PENDING:
             return [await _club_holder(db, buyer, "deal:AGENT_NEGOTIATION:answer-commission",
@@ -266,6 +269,9 @@ async def holders(db: AsyncSession, s: Subject) -> list[Holder]:
             if seller is not None:
                 out.append(await _club_holder(db, seller, "deal:PERSONAL_TERMS:advance", f"moving {P}'s deal on to paperwork"))
             return out
+        if terms.player_consent == AgreementStatus.PENDING and terms.proposed_by == "PLAYER":
+            return [await _club_holder(db, buyer, "deal:PERSONAL_TERMS:answer-player",
+                                       f"an answer to {P}'s personal terms")]
         if terms.player_consent == AgreementStatus.PENDING:
             if terms.agent_id:
                 h = await _agent_holder(db, terms.agent_id, "deal:PERSONAL_TERMS:answer", f"an answer to {P}'s personal terms")

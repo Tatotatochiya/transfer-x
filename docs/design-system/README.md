@@ -58,6 +58,10 @@ The value is a `whose_move` field computed on the server, so the dashboard, the 
 - **Confirmed** is yours.
 - **Agent negotiation** is theirs, until the agent has been silent for 72 hours; then it's yours to chase.
 
+## Ending a transfer
+
+Any answer that ends a transfer (declining the agent's commission, declining personal terms for the player or as the player, the buying club declining the player side's terms, or recording that the player declined) opens `EndTransferDialog` before anything is sent. It says the deal collapses and who is told, offers **Counter instead** where a counter is possible, and takes an optional reason that both sides see. On the status card a decline is the quiet third action, in red, under Accept and Counter. `src/test/endTransfer.test.ts` fails if a DECLINED answer is sent from a file that doesn't use the dialog ([ADR 0012](../product/decisions/0012-commission-and-personal-terms-are-negotiated.md)). Rejecting or withdrawing an offer, and collapsing a deal, have their own confirmations.
+
 ## Settled decisions
 
 Decided during and after the redesign:

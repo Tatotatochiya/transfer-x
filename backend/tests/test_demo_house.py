@@ -375,23 +375,36 @@ async def _deal_at_terms(client, db, demo) -> str:
     return deal_id
 
 
-async def test_the_agent_prepares_personal_terms_and_agrees_them_for_the_player(client: AsyncClient, db, demo):
+async def test_the_agent_asks_for_terms_and_negotiates_the_testers_counter(client: AsyncClient, db, demo):
     from app.deals.models import DealNote
     from app.deals.service import get_personal_terms
 
     agent_id = (await _agent(client, db, demo)).id
     deal_id = await _deal_at_terms(client, db, demo)
+    assert await _tick(demo) == 1  # the agent asks for his client's terms
+    db.expire_all()
+    pt = await get_personal_terms(db, uuid.UUID(deal_id))
+    assert (pt.agent_id, pt.proposed_by, pt.length_years, pt.player_consent) == (agent_id, "PLAYER", 4, "PENDING")
+    ask = pt.wage_weekly
+    assert await _tick(demo) == 0  # the buying club (the tester) answers
+
+    # The tester counters at half; the agent meets them halfway.
+    r = await client.put(f"/deals/{deal_id}/personal-terms", headers=demo["h"], json={
+        "wage_weekly": str(ask / 2), "signing_bonus": 0, "length_years": 4, "note": "Our wage structure"})
+    assert r.status_code == 200 and r.json()["proposed_by"] == "BUYER", r.text
     assert await _tick(demo) == 1
     db.expire_all()
     pt = await get_personal_terms(db, uuid.UUID(deal_id))
-    assert pt.agent_id == agent_id and pt.length_years == 4 and pt.player_consent == "PENDING"
-    assert await _tick(demo) == 1
-    db.expire_all()
-    assert (await get_personal_terms(db, uuid.UUID(deal_id))).player_consent == "AGREED"
+    assert pt.proposed_by == "PLAYER" and pt.wage_weekly == (ask * 3 / 4).quantize(Decimal("1"))
     notes = [n.body for n in (await db.execute(select(DealNote).where(DealNote.deal_id == uuid.UUID(deal_id)))).scalars()]
-    assert any(n.startswith("Automated (demo): Andy Agent proposed personal terms: four years at £") for n in notes)
-    assert "Automated (demo): Andy Agent agreed the personal terms for the player." in notes
-    assert await _tick(demo) == 0  # the tester moves it on to paperwork
+    assert any(n.startswith("Automated (demo): Andy Agent came back at £") for n in notes)
+
+    # The tester takes it: the terms are agreed.
+    r = await client.post(f"/deals/{deal_id}/personal-terms/club-respond", headers=demo["h"], json={"agreement": "AGREED"})
+    assert r.status_code == 200 and r.json()["player_consent"] == "AGREED", r.text
+    rounds = (await client.get(f"/deals/{deal_id}/term-proposals", headers=demo["h"])).json()
+    terms = [(x["side"], x["note"]) for x in rounds if x["kind"] == "PERSONAL_TERMS"]
+    assert terms == [("PLAYER", None), ("BUYER", "Our wage structure"), ("PLAYER", terms[2][1])]
 
 
 async def test_an_agent_signed_in_long_ago_still_answers_but_not_one_signed_in_now(client: AsyncClient, db, demo):
@@ -434,7 +447,7 @@ async def test_an_agent_signed_in_long_ago_still_answers_but_not_one_signed_in_n
     assert (await client.post(f"/demo/deals/{deal_id}/make", headers=_auth_headers(other))).status_code == 404
 
 
-async def test_after_a_few_minutes_counts_from_the_testers_move_not_the_houses(client: AsyncClient, db, demo):
+async def test_after_a_few_minutes_counts_from_the_testers_move(client: AsyncClient, db, demo):
     from app.audit.models import AuditEvent
     from app.deals.service import get_personal_terms
 
@@ -445,10 +458,9 @@ async def test_after_a_few_minutes_counts_from_the_testers_move_not_the_houses(c
     await db.execute(update(AuditEvent).where(AuditEvent.entity_id == uuid.UUID(deal_id))
                      .values(created_at=datetime.now(timezone.utc) - timedelta(minutes=4)))
     await db.commit()
-    assert await _tick(demo) == 1  # the agent proposes terms…
-    assert await _tick(demo) == 1  # …and agrees them, without another wait
+    assert await _tick(demo) == 1  # the agent asks for terms
     db.expire_all()
-    assert (await get_personal_terms(db, uuid.UUID(deal_id))).player_consent == "AGREED"
+    assert (await get_personal_terms(db, uuid.UUID(deal_id))).proposed_by == "PLAYER"
 
 
 async def test_a_house_club_answers_an_enquiry(client: AsyncClient, db, demo):
@@ -492,3 +504,33 @@ async def test_a_reminder_in_a_demo_goes_now_and_the_house_answers_it(client: As
     assert r.status_code == 200, r.text
     db.expire_all()
     assert (await db.get(Offer, uuid.UUID(offer["id"]))).status.value == "ACCEPTED"
+
+
+async def test_the_agent_meets_a_low_commission_counter_halfway_and_takes_a_close_one(client: AsyncClient, db, demo):
+    from app.agents.models import AgentNegotiation
+    from app.deals.models import Deal
+
+    await _agent(client, db, demo)
+    await _start(client, demo["tester"])
+    await _offer(client, demo, 10_000_000)
+    await _tick(demo)  # accepted
+    deal_id = (await db.execute(select(Deal.id).where(Deal.player_id == uuid.UUID(demo["player"]["id"])))).scalar_one()
+    await _tick(demo)  # the agent asks for 5%
+
+    async def neg():
+        db.expire_all()
+        return (await db.execute(select(AgentNegotiation).where(AgentNegotiation.deal_id == deal_id))).scalar_one()
+
+    r = await client.post(f"/deals/{deal_id}/agent-negotiation/club-counter", headers=demo["h"],
+                          json={"commission_pct": 0.02, "commission_payer": "BUYER"})
+    assert r.status_code == 200, r.text
+    assert await _tick(demo) == 1
+    n = await neg()
+    assert (n.proposed_by, n.commission_pct) == ("AGENT", Decimal("0.035"))
+
+    await client.post(f"/deals/{deal_id}/agent-negotiation/club-counter", headers=demo["h"],
+                      json={"commission_pct": 0.045, "commission_payer": "BUYER"})
+    assert await _tick(demo) == 1
+    n = await neg()
+    assert (n.proposed_by, n.club_agreement.value, n.commission_pct) == ("BUYER", "AGREED", Decimal("0.045"))
+    assert await _tick(demo) == 0  # the tester moves it on

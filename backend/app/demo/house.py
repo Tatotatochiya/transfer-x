@@ -15,10 +15,11 @@ rival bidder):
   MAX_COUNTERS counters it takes anything above the midpoint and walks away
   otherwise. A loan offer is accepted.
 - **Its side of a deal:** the player's agent (unless someone is signed in as
-  him, SIGNED_IN) proposes a 5% commission paid by the buyer, then prepares
-  personal terms and agrees them for the player; a player with no agent
-  (unless signed in) agrees them himself; the club signs the transfer
-  agreement.
+  him, SIGNED_IN) proposes a 5% commission paid by the buyer, takes a counter
+  within a point of it and meets a lower one halfway. He asks for personal
+  terms (four years, 10% over the current wage); the player's side takes a
+  club's terms at 95% of that and meets lower ones halfway; after two rounds
+  either takes what's offered. The club signs the transfer agreement.
 - **An enquiry about one of its players:** it replies with roughly what it
   would take, then points the tester at an offer.
 - **A player the tester lists:** two house clubs make offers, at their
@@ -72,6 +73,22 @@ def _aware(dt: datetime | None) -> datetime | None:
 def _money(v: Decimal) -> str:
     m = float(v) / 1e6
     return f"£{m:g}m" if m >= 1 else f"£{float(v) / 1e3:,.0f}k"
+
+
+def _pct(v: Decimal) -> str:
+    return f"{float(v) * 100:g}%"
+
+
+def _round_half_pct(v: Decimal) -> Decimal:
+    """To the nearest half a percentage point."""
+    return (v * 200).quantize(Decimal("1"), rounding=ROUND_HALF_UP) / 200
+
+
+async def _rounds_by(db: AsyncSession, deal_id: uuid.UUID, kind: str, side: str) -> int:
+    from app.deals.models import TermProposal
+
+    return (await db.execute(select(func.count()).select_from(TermProposal).where(
+        TermProposal.deal_id == deal_id, TermProposal.kind == kind, TermProposal.side == side))).scalar_one()
 
 
 def _round_half_m(v: Decimal) -> Decimal:
@@ -467,8 +484,27 @@ async def _deal_step(db: AsyncSession, deal_id: uuid.UUID, run_id: uuid.UUID, *,
                 "commission_pct": COMMISSION_PCT, "commission_payer": CommissionPayer.BUYER,
             }, actor_user_id=agent.user_id)
             return await done("agent_terms", "The player's agent proposed a 5% commission, paid by the buying club.")
-        if house_buyer is not None and neg is not None and neg.commission_pct is not None:
-            if getattr(neg.club_agreement, "value", neg.club_agreement) != "AGREED":
+        if neg is None or neg.commission_pct is None:
+            return None
+        agreement = getattr(neg.club_agreement, "value", neg.club_agreement)
+        if neg.proposed_by == "BUYER" and agreement == "PENDING":
+            # The club countered: the agent takes it within a point of his ask,
+            # otherwise meets it halfway; after two rounds he takes it.
+            agent = await db.get(AgentProfile, neg.agent_id)
+            if agent is None or not await may(agent.user_id):
+                return None
+            rounds = await _rounds_by(db, deal.id, "COMMISSION", "AGENT")
+            if neg.commission_pct >= COMMISSION_PCT - Decimal("0.01") or rounds > MAX_COUNTERS:
+                await deals.agent_accept_counter(db, deal, agent.id, actor_user_id=agent.user_id)
+                return await done("commission_accepted",
+                                  f"{agent.display_name} accepted {_pct(neg.commission_pct)} commission.")
+            meet = _round_half_pct((COMMISSION_PCT + neg.commission_pct) / 2)
+            await deals.upsert_negotiation_terms(db, deal, agent.id, {
+                "commission_pct": meet, "commission_payer": neg.commission_payer,
+            }, actor_user_id=agent.user_id, note=f"I can meet you at {_pct(meet)}.")
+            return await done("commission_countered", f"{agent.display_name} came back at {_pct(meet)} commission.")
+        if house_buyer is not None:
+            if agreement != "AGREED":
                 await deals.club_respond_to_negotiation(db, deal, house_buyer.id, AgreementStatus.AGREED,
                                                         actor_user_id=house_buyer.user_id)
             await deals.advance_deal(db, deal, actor_club_id=house_buyer.id, actor_user_id=house_buyer.user_id)
@@ -477,41 +513,61 @@ async def _deal_step(db: AsyncSession, deal_id: uuid.UUID, run_id: uuid.UUID, *,
 
     if deal.stage == DealStage.PERSONAL_TERMS:
         pt = await deals.get_personal_terms(db, deal.id)
+        wage = (await db.execute(select(Contract.wage_weekly).where(
+            Contract.player_id == deal.player_id, Contract.is_active.is_(True)))).scalars().first()
+        # What his side asks for: four years at 10% over his current wage.
+        target = (_round_half_m(Decimal(str(wage)) * Decimal("1.1") * 52) / 52).quantize(Decimal("1")) if wage else Decimal(30000)
         if pt is None:
             # With an agent, he prepares the terms (the deal card says "Waiting on
             # the agent"), whichever side the tester is on. Without one, or with
-            # an agent someone is signed in as, a buying house club does.
+            # an agent someone is signed in as, a buying house club offers them.
             agent = await db.get(AgentProfile, deal.commission_agent_id) if deal.commission_agent_id else None
             if agent is not None and await may(agent.user_id):
-                proposer, by, actor = agent.id, agent.display_name, agent.user_id
-            elif house_buyer is not None:
-                proposer, by, actor = None, house_buyer.name, house_buyer.user_id
-            else:
-                return None  # the tester, buying, proposes them
-            wage = (await db.execute(select(Contract.wage_weekly).where(
-                Contract.player_id == deal.player_id, Contract.is_active.is_(True)))).scalars().first()
-            offer_wage = _round_half_m(Decimal(str(wage)) * Decimal("1.1") * 52) / 52 if wage else Decimal(30000)
-            offer_wage = offer_wage.quantize(Decimal("1"))
-            await deals.set_personal_terms(db, deal, agent_profile_id=proposer,
-                                           wage_weekly=offer_wage, signing_bonus=Decimal(0),
-                                           length_years=4, actor_user_id=actor)
-            return await done("terms_proposed",
-                              f"{by} proposed personal terms: four years at £{offer_wage:,.0f} a week.")
+                await deals.set_personal_terms(db, deal, agent_profile_id=agent.id, wage_weekly=target,
+                                               signing_bonus=Decimal(0), length_years=4,
+                                               actor_user_id=agent.user_id, side="PLAYER")
+                return await done("terms_proposed",
+                                  f"{agent.display_name} asked for four years at £{target:,.0f} a week.")
+            if house_buyer is None:
+                return None  # the tester, buying, offers them
+            await deals.set_personal_terms(db, deal, agent_profile_id=None, wage_weekly=target,
+                                           signing_bonus=Decimal(0), length_years=4,
+                                           actor_user_id=house_buyer.user_id, side="BUYER")
+            return await done("terms_proposed", f"{house_buyer.name} offered four years at £{target:,.0f} a week.")
         consent = getattr(pt.player_consent, "value", pt.player_consent)
+        if consent == "PENDING" and pt.proposed_by == "PLAYER":
+            # The player's side's terms: the buying club answers.
+            if house_buyer is None:
+                return None  # the tester agrees, counters or walks away
+            await deals.club_respond_to_terms(db, deal, house_buyer.id, AgreementStatus.AGREED,
+                                              actor_user_id=house_buyer.user_id)
+            return await done("terms_agreed", f"{house_buyer.name} agreed the personal terms.")
         if consent == "PENDING":
+            # The club's terms: the player's side answers, his agent if he has
+            # one. It takes 95% of what it asks for, otherwise meets the club
+            # halfway; after two rounds it takes what's offered.
             agent = await db.get(AgentProfile, pt.agent_id) if pt.agent_id else None
             profile = (await db.execute(select(PlayerProfile).where(
                 PlayerProfile.player_id == deal.player_id))).scalars().first()
             if agent is not None and await may(agent.user_id):
-                actor, said = agent.user_id, f"{agent.display_name} agreed the personal terms for the player."
+                actor, who, agent_id = agent.user_id, agent.display_name, agent.id
             elif profile is not None and await may(profile.user_id):
-                actor, said = profile.user_id, "The player agreed the personal terms."
+                actor, who, agent_id = profile.user_id, "The player", None
             elif agent is None and profile is None:
-                actor, said = (house_seller or house_buyer).user_id, "The player agreed the personal terms."
+                actor, who, agent_id = (house_seller or house_buyer).user_id, "The player", None
             else:
                 return None  # whoever answers for him is signed in: they answer
-            await deals.player_consent_to_terms(db, deal, AgreementStatus.AGREED, actor_user_id=actor)
-            return await done("consent", said)
+            offered = Decimal(str(pt.wage_weekly or 0))
+            rounds = await _rounds_by(db, deal.id, "PERSONAL_TERMS", "PLAYER")
+            if offered >= target * Decimal("0.95") or rounds >= MAX_COUNTERS:
+                await deals.player_consent_to_terms(db, deal, AgreementStatus.AGREED, actor_user_id=actor)
+                return await done("consent", f"{who} agreed the personal terms" + (" for the player." if agent_id else "."))
+            meet = ((offered + target) / 2).quantize(Decimal("1"))
+            await deals.set_personal_terms(db, deal, agent_profile_id=agent_id, wage_weekly=meet,
+                                           signing_bonus=pt.signing_bonus, length_years=pt.length_years,
+                                           actor_user_id=actor, side="PLAYER",
+                                           note=f"He'd sign for £{meet:,.0f} a week.")
+            return await done("terms_countered", f"{who} came back at £{meet:,.0f} a week.")
         if consent == "AGREED" and house_buyer is not None:
             await deals.advance_deal(db, deal, actor_club_id=house_buyer.id, actor_user_id=house_buyer.user_id)
             return await done("advanced", f"{house_buyer.name} moved the deal on to paperwork.")

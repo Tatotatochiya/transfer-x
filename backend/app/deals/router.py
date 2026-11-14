@@ -16,6 +16,7 @@ from app.deals.models import ClauseStatus, DealStage, DealStatus
 from app.deals.schemas import (
     DealCollapseRequest,
     AgentNegotiationResponse,
+    CommissionCounterRequest,
     ClubTransferStat,
     CompletedStats,
     CreateClauseRequest,
@@ -32,6 +33,8 @@ from app.deals.schemas import (
     PersonalTermsResponse,
     PositionBreakdown,
     SetPersonalTermsRequest,
+    TermProposalResponse,
+    TermsRespondRequest,
     TransferActivityItem,
     TransferAnalytics,
     UpdateClauseStatusRequest,
@@ -794,6 +797,7 @@ async def _build_personal_terms_response(db: AsyncSession, pt, deal) -> Personal
         signing_bonus=pt.signing_bonus,
         length_years=pt.length_years,
         player_consent=pt.player_consent,
+        proposed_by=pt.proposed_by or "BUYER",
         player_has_account=await players_service.player_has_account(db, deal.player_id),
         agreed_at=pt.agreed_at,
         created_at=pt.created_at,
@@ -825,13 +829,24 @@ async def set_personal_terms(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Agent, the buying club (when there's no mandated agent), or staff sets/updates personal terms."""
-    from app.auth.models import AgentProfile, UserType
+    """Propose or counter personal terms (ADR 0012): the buying club, the
+    mandated agent, or the player himself answering the club's terms. Staff
+    may set them for the buying club."""
+    from app.auth.models import AgentProfile, PlayerProfile, UserType
 
     deal = await _get_deal_or_404(db, deal_id)
 
     agent_profile_id = None
-    if current_user.user_type == UserType.AGENT:
+    side = "BUYER"
+    if current_user.user_type == UserType.PLAYER:
+        pp = (await db.execute(select(PlayerProfile).where(PlayerProfile.user_id == current_user.id))).scalar_one_or_none()
+        if pp is None or pp.player_id != deal.player_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not the player for this deal")
+        if await service.get_personal_terms(db, deal.id) is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="The buying club or your agent proposes your terms first")
+        side = "PLAYER"
+    elif current_user.user_type == UserType.AGENT:
         profile_r = await db.execute(select(AgentProfile).where(AgentProfile.user_id == current_user.id))
         profile = profile_r.scalar_one_or_none()
         if profile is None:
@@ -840,6 +855,7 @@ async def set_personal_terms(
         if neg is None or neg.agent_id != profile.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not the mandated agent for this deal")
         agent_profile_id = profile.id
+        side = "PLAYER"
     elif current_user.user_type == UserType.CLUB:
         # TRA-60: without a mandated agent, the buying club is who proposes personal
         # terms to the player — mirroring how a real club's contract offer works.
@@ -864,8 +880,18 @@ async def set_personal_terms(
             signing_bonus=body.signing_bonus,
             length_years=body.length_years,
             actor_user_id=current_user.id,
+            side=side,
+            note=body.note,
         )
-        await _notify_personal_terms_sent(db, deal, pt, consent_was_reset=consent_was_reset)
+        if side == "BUYER":
+            await _notify_personal_terms_sent(db, deal, pt, consent_was_reset=consent_was_reset)
+        else:
+            player_name = deal.player.name if deal.player else "the player"
+            await notif_service.notify_club(
+                db, deal.buyer_club_id, type=NotificationType.DEAL_PERSONAL_TERMS_SENT,
+                message=f"New personal terms from {player_name}'s side: your answer",
+                link=f"/deals/{deal.id}", related_player_id=deal.player_id,
+            )
         await db.commit()
         await db.refresh(pt)
     except ValueError as exc:
@@ -963,6 +989,7 @@ async def player_consent_to_terms(
         pt = await service.player_consent_to_terms(
             db, deal, body.agreement, actor_user_id=current_user.id, recorded_by_club=recorded_by_club,
             evidence_attachment_id=body.evidence_attachment_id if recorded_by_club else None,
+            reason=body.reason,
         )
         player_name = deal.player.name if deal.player else "The player"
         decision = "agreed to" if pt.player_consent == "AGREED" else "declined"
@@ -998,6 +1025,7 @@ def _build_neg_response(neg, *, caller_user_type: str) -> AgentNegotiationRespon
         agent_id=neg.agent_id,
         status=neg.status,
         club_agreement=neg.club_agreement,
+        proposed_by=neg.proposed_by or "AGENT",
         # Shown to agent/staff + the buying club — personal terms live in
         # PersonalTerms now, not here, so there's no player-side to gate.
         commission_pct=neg.commission_pct if (is_agent_or_staff or is_club) else None,
@@ -1042,9 +1070,11 @@ async def update_negotiation_terms(
 
     deal = await _get_deal_or_404(db, deal_id)
     updates = body.model_dump(exclude_unset=True)
+    note = updates.pop("note", None)
 
     try:
-        neg = await service.upsert_negotiation_terms(db, deal, agent_profile.id, updates, actor_user_id=current_user.id)
+        neg = await service.upsert_negotiation_terms(db, deal, agent_profile.id, updates,
+                                                     actor_user_id=current_user.id, note=note)
         await db.commit()
         await db.refresh(neg)
     except ValueError as exc:
@@ -1066,7 +1096,8 @@ async def club_respond_to_negotiation(
     deal = await _get_deal_or_404(db, deal_id)
 
     try:
-        neg = await service.club_respond_to_negotiation(db, deal, club.id, body.agreement, actor_user_id=current_user.id)
+        neg = await service.club_respond_to_negotiation(db, deal, club.id, body.agreement,
+                                                        actor_user_id=current_user.id, reason=body.reason)
         await db.commit()
         await db.refresh(neg)
     except ValueError as exc:
@@ -1074,6 +1105,127 @@ async def club_respond_to_negotiation(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     return _build_neg_response(neg, caller_user_type="CLUB")
+
+
+async def _notify_agent(db: AsyncSession, agent_id, deal, message: str) -> None:
+    from app.auth.models import AgentProfile
+
+    agent = await db.get(AgentProfile, agent_id)
+    if agent is not None:
+        await notif_service.create_notification(
+            db, recipient_user_id=agent.user_id, type=NotificationType.NEGOTIATION_MESSAGE,
+            message=message, link=f"/deals/{deal.id}", related_player_id=deal.player_id,
+        )
+
+
+@router.post("/deals/{deal_id}/agent-negotiation/club-counter", response_model=AgentNegotiationResponse)
+async def club_counter_commission(
+    deal_id: uuid.UUID,
+    body: CommissionCounterRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
+):
+    """The buying club counters the agent's commission (ADR 0012)."""
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+    try:
+        neg = await service.club_counter_commission(
+            db, deal, club.id, commission_pct=body.commission_pct, commission_payer=body.commission_payer,
+            note=body.note, actor_user_id=current_user.id)
+        player_name = deal.player.name if deal.player else "your client"
+        await _notify_agent(db, neg.agent_id, deal, f"{club.name} countered your commission for {player_name}")
+        await db.commit()
+        await db.refresh(neg)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return _build_neg_response(neg, caller_user_type="CLUB")
+
+
+@router.post("/deals/{deal_id}/agent-negotiation/agent-accept", response_model=AgentNegotiationResponse)
+async def agent_accept_counter(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """The agent accepts the buying club's commission counter."""
+    from app.auth.models import AgentProfile, UserType
+
+    if current_user.user_type != UserType.AGENT:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Agent access required")
+    profile = (await db.execute(select(AgentProfile).where(AgentProfile.user_id == current_user.id))).scalar_one_or_none()
+    if profile is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Agent profile not found")
+    deal = await _get_deal_or_404(db, deal_id)
+    try:
+        neg = await service.agent_accept_counter(db, deal, profile.id, actor_user_id=current_user.id)
+        player_name = deal.player.name if deal.player else "the player"
+        await notif_service.notify_club(
+            db, deal.buyer_club_id, type=NotificationType.NEGOTIATION_MESSAGE,
+            message=f"{profile.display_name} accepted your commission counter for {player_name}",
+            link=f"/deals/{deal.id}", related_player_id=deal.player_id,
+        )
+        await db.commit()
+        await db.refresh(neg)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return _build_neg_response(neg, caller_user_type="AGENT")
+
+
+@router.post("/deals/{deal_id}/personal-terms/club-respond", response_model=PersonalTermsResponse)
+async def club_respond_to_terms(
+    deal_id: uuid.UUID,
+    body: TermsRespondRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _write: User = Depends(_deal_write),
+):
+    """The buying club agrees the player side's terms, or declines (ending the transfer)."""
+    club = await _get_club_or_403(db, current_user)
+    deal = await _get_deal_or_404(db, deal_id)
+    try:
+        pt = await service.club_respond_to_terms(db, deal, club.id, body.agreement,
+                                                 reason=body.reason, actor_user_id=current_user.id)
+        player_name = deal.player.name if deal.player else "The player"
+        decision = "agreed" if body.agreement.value == "AGREED" else "declined"
+        await _db_notify_deal_parties(
+            db, deal, ntype=NotificationType.PERSONAL_TERMS_DECISION,
+            message=f"{club.name} {decision} {player_name}'s personal terms",
+        )
+        if pt.agent_id is not None:
+            await _notify_agent(db, pt.agent_id, deal, f"{club.name} {decision} {player_name}'s personal terms")
+        await db.commit()
+        await db.refresh(pt)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return await _build_personal_terms_response(db, pt, deal)
+
+
+@router.get("/deals/{deal_id}/term-proposals", response_model=list[TermProposalResponse])
+async def term_proposals(
+    deal_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Every round of the commission and personal-terms negotiations, oldest
+    first. Commission rounds are the buying club's and the agent's business
+    (hidden from the player and the selling club, as the commission is)."""
+    from app.auth.models import UserType
+
+    deal = await _get_deal_or_404(db, deal_id)
+    if not await room_service.is_deal_participant(db, deal, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a party to this deal")
+    kinds = ["PERSONAL_TERMS"]
+    if current_user.is_superuser or current_user.user_type == UserType.AGENT:
+        kinds.append("COMMISSION")
+    elif current_user.user_type == UserType.CLUB:
+        club = await clubs_service.get_club_for_user(db, current_user.id)
+        if club is not None and club.id == deal.buyer_club_id:
+            kinds.append("COMMISSION")
+    return [TermProposalResponse.model_validate(r) for r in await service.list_term_proposals(db, deal.id, kinds=kinds)]
 
 
 @router.patch("/deals/{deal_id}/instalments/{instalment_id}/paid", response_model=DealInstalmentResponse)

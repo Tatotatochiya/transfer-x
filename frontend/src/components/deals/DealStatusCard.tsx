@@ -8,6 +8,8 @@ import type { DealActions } from "../../hooks/useDealActions";
 import { formatCurrency, getApiError } from "../../lib/utils";
 import StatusCardShell from "../transfer/StatusCardShell";
 import type { DealStatusView, StatusAction } from "./dealStatus";
+import EndTransferDialog from "./EndTransferDialog";
+import TermRounds from "./TermRounds";
 
 const INPUT = "w-full min-h-12 lg:min-h-0 rounded-lg bg-surface px-3 py-2 text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent";
 
@@ -23,25 +25,43 @@ interface Props {
   reminder?: React.ReactNode;
 }
 
-/** Proposing the player's personal terms, inside the card (ADR 0001). */
-function ProposeTermsForm({ actions, onCancel }: { actions: DealActions; onCancel: () => void }) {
-  const [wage, setWage] = useState("");
-  const [bonus, setBonus] = useState("");
-  const [years, setYears] = useState("");
+const NOTE_MAX = 200;
+
+function NoteField({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="sm:col-span-3">
+      <label htmlFor={id} className="mb-1 block text-small font-medium text-text-secondary">Note to the other side <span className="text-text-muted">(optional)</span></label>
+      <input id={id} value={value} maxLength={NOTE_MAX} onChange={(e) => onChange(e.target.value)} className={INPUT} />
+    </div>
+  );
+}
+
+/** Proposing the player's personal terms, or countering them, inside the card (ADRs 0001, 0012). */
+function ProposeTermsForm({ actions, onCancel, initial, submitLabel }: {
+  actions: DealActions; onCancel: () => void;
+  /** The terms on the table, when countering them. */
+  initial?: { wage: number | null; bonus: number | null; years: number | null };
+  submitLabel: string;
+}) {
+  const [wage, setWage] = useState(initial?.wage != null ? String(Math.round(initial.wage)) : "");
+  const [bonus, setBonus] = useState(initial?.bonus ? String(Math.round(initial.bonus)) : "");
+  const [years, setYears] = useState(initial?.years != null ? String(initial.years) : "");
+  const [note, setNote] = useState("");
   return (
     <div className="mt-4 grid gap-3 border-t border-rule pt-4 sm:grid-cols-3">
       <div>
-        <label htmlFor="pt-wage" className="mb-1 block text-small font-medium text-text-secondary">Weekly wage (€)</label>
+        <label htmlFor="pt-wage" className="mb-1 block text-small font-medium text-text-secondary">Weekly wage (£)</label>
         <CurrencyInput id="pt-wage" value={wage} onChange={setWage} className={INPUT} />
       </div>
       <div>
-        <label htmlFor="pt-bonus" className="mb-1 block text-small font-medium text-text-secondary">Signing bonus (€)</label>
+        <label htmlFor="pt-bonus" className="mb-1 block text-small font-medium text-text-secondary">Signing bonus (£)</label>
         <CurrencyInput id="pt-bonus" value={bonus} onChange={setBonus} className={INPUT} />
       </div>
       <div>
         <label htmlFor="pt-years" className="mb-1 block text-small font-medium text-text-secondary">Contract length (years)</label>
         <input id="pt-years" type="number" min={1} max={10} value={years} onChange={(e) => setYears(e.target.value)} className={INPUT} />
       </div>
+      {initial && <NoteField id="pt-note" value={note} onChange={setNote} />}
       <div className="flex flex-wrap gap-2 sm:col-span-3">
         <Button
           variant="primary"
@@ -52,9 +72,50 @@ function ProposeTermsForm({ actions, onCancel }: { actions: DealActions; onCance
             wage_weekly: wage !== "" ? Number(wage) : null,
             signing_bonus: bonus !== "" ? Number(bonus) : null,
             length_years: years !== "" ? Number(years) : null,
+            note: note.trim() || null,
           })}
         >
-          Send to player
+          {submitLabel}
+        </Button>
+        <Button variant="ghost" size="lg" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
+/** The buying club's counter to the agent's commission (ADR 0012). */
+function CommissionCounterForm({ actions, onCancel, initialPayer }: {
+  actions: DealActions; onCancel: () => void; initialPayer: "BUYER" | "SELLER" | "PLAYER";
+}) {
+  const [pct, setPct] = useState("");
+  const [payer, setPayer] = useState(initialPayer);
+  const [note, setNote] = useState("");
+  const value = Number(pct);
+  const valid = pct !== "" && value >= 0 && value < 100;
+  return (
+    <div className="mt-4 grid gap-3 border-t border-rule pt-4 sm:grid-cols-3">
+      <div>
+        <label htmlFor="cc-pct" className="mb-1 block text-small font-medium text-text-secondary">Commission (% of the fee)</label>
+        <input id="cc-pct" type="number" min={0} max={99} step={0.5} value={pct} onChange={(e) => setPct(e.target.value)} className={INPUT} />
+      </div>
+      <div>
+        <label htmlFor="cc-payer" className="mb-1 block text-small font-medium text-text-secondary">Paid by</label>
+        <select id="cc-payer" value={payer} onChange={(e) => setPayer(e.target.value as typeof payer)} className={INPUT}>
+          <option value="BUYER">The buying club</option>
+          <option value="SELLER">The selling club</option>
+          <option value="PLAYER">The player</option>
+        </select>
+      </div>
+      <NoteField id="cc-note" value={note} onChange={setNote} />
+      <div className="flex flex-wrap gap-2 sm:col-span-3">
+        <Button
+          variant="primary"
+          size="lg"
+          loading={actions.commissionCounter.isPending}
+          disabled={!valid}
+          onClick={() => actions.commissionCounter.mutate({ commission_pct: value / 100, commission_payer: payer, note: note.trim() || null })}
+        >
+          Send counter
         </Button>
         <Button variant="ghost" size="lg" onClick={onCancel}>Cancel</Button>
       </div>
@@ -107,12 +168,19 @@ function RecordConsentForm({ deal, actions, onCancel }: { deal: Deal; actions: D
  * (deal-room-focus §5.3). It replaces the "Blocked on" header, the lanes,
  * the stage banners, the paperwork block and the Actions card.
  */
+type Inline = "propose-terms" | "record-consent" | "commission-counter" | "counter-terms";
+type Ending = Extract<StatusAction, { kind: "commission-respond" | "terms-respond" | "player-consent" }>;
+
 export default function DealStatusCard({ view, deal, viewerSide, actions, onOpenMessages, onShowSchedule, onRecordMedical, reminder }: Props) {
   const confirm = useConfirm();
   const [showSteps, setShowSteps] = useState(false);
-  const [inline, setInline] = useState<"propose-terms" | "record-consent" | null>(null);
+  const [inline, setInline] = useState<Inline | null>(null);
+  const [ending, setEnding] = useState<Ending | null>(null);
   const P = deal.player?.name ?? "the player";
   const B = deal.buyer_club?.name ?? "the buying club";
+  const S = deal.seller_club_id ? deal.seller_club?.name ?? "the selling club" : null;
+  const A = deal.agent?.display_name ?? "the agent";
+  const toggle = (k: Inline) => setInline((v) => (v === k ? null : k));
 
   async function run(a: StatusAction) {
     switch (a.kind) {
@@ -142,28 +210,20 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
       case "record-medical":
         onRecordMedical();
         break;
+      // Any answer that ends the transfer is confirmed first (EndTransferDialog).
       case "commission-respond":
-        actions.commissionRespond.mutate(a.agreement);
-        break;
-      case "propose-terms":
-        setInline((v) => (v === "propose-terms" ? null : "propose-terms"));
-        break;
-      case "record-consent":
-        setInline((v) => (v === "record-consent" ? null : "record-consent"));
-        break;
+      case "terms-respond":
       case "player-consent":
-        // From the buying club, declining collapses the deal: confirm first.
-        // The agent answers straight away, as before.
-        if (a.agreement === "DECLINED" && viewerSide === "buyer") {
-          if (await confirm({
-            title: "Record that the player declined?",
-            message: "A declined proposal ends this transfer: the deal collapses and the committed budget is released.",
-            confirmLabel: "Record and collapse",
-            variant: "danger",
-          })) actions.playerConsent.mutate("DECLINED");
-        } else {
-          actions.playerConsent.mutate(a.agreement);
-        }
+        if (a.agreement === "DECLINED") setEnding(a);
+        else if (a.kind === "commission-respond") actions.commissionRespond.mutate({ agreement: "AGREED" });
+        else if (a.kind === "terms-respond") actions.termsRespond.mutate({ agreement: "AGREED" });
+        else actions.playerConsent.mutate({ agreement: "AGREED" });
+        break;
+      case "commission-counter": case "counter-terms": case "propose-terms": case "record-consent":
+        toggle(a.kind);
+        break;
+      case "agent-accept":
+        actions.agentAccept.mutate();
         break;
       case "open-messages":
         onOpenMessages();
@@ -181,6 +241,8 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
       case "advance": case "complete": return actions.advance.isPending;
       case "paperwork": return actions.paperwork.isPending;
       case "commission-respond": return actions.commissionRespond.isPending;
+      case "terms-respond": return actions.termsRespond.isPending;
+      case "agent-accept": return actions.agentAccept.isPending;
       case "player-consent": return actions.playerConsent.isPending;
       default: return false;
     }
@@ -196,7 +258,8 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
         </Link>
       );
     }
-    const expanded = (a.kind === "propose-terms" || a.kind === "record-consent") ? inline === a.kind : undefined;
+    const expanded = (a.kind === "propose-terms" || a.kind === "record-consent" || a.kind === "commission-counter" || a.kind === "counter-terms")
+      ? inline === a.kind : undefined;
     return (
       <Button
         variant={primary ? "primary" : "secondary"}
@@ -208,6 +271,35 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
       >
         {a.label}
       </Button>
+    );
+  }
+
+  /** The confirmation for whichever transfer-ending answer was chosen. */
+  function endDialog() {
+    const e = ending!;
+    const close = () => setEnding(null);
+    const and = (...xs: (string | null)[]) => xs.filter(Boolean).join(" and ");
+    const recording = e.kind === "player-consent" && viewerSide === "buyer";
+    const text = e.kind === "commission-respond"
+      ? { title: "Decline the agent's commission?", who: and(A, S), counter: "commission-counter" as const }
+      : e.kind === "terms-respond"
+        ? { title: `Decline ${P}'s terms?`, who: and(deal.personal_terms?.agent_id ? A : P, S), counter: "counter-terms" as const }
+        : recording
+          ? { title: `Record that ${P} declined?`, who: S ?? "Nobody else", counter: undefined }
+          : { title: `Decline the terms for ${P}?`, who: and(B, S), counter: "counter-terms" as const };
+    const mutation = e.kind === "commission-respond" ? actions.commissionRespond
+      : e.kind === "terms-respond" ? actions.termsRespond : actions.playerConsent;
+    return (
+      <EndTransferDialog
+        open
+        title={text.title}
+        who={text.who}
+        confirmLabel={recording ? "Record and end the transfer" : "Decline and end the transfer"}
+        loading={mutation.isPending}
+        onConfirm={(reason) => mutation.mutate({ agreement: "DECLINED", reason }, { onSettled: close })}
+        onCounter={text.counter ? () => setInline(text.counter) : undefined}
+        onClose={close}
+      />
     );
   }
 
@@ -245,7 +337,7 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
       headline={view.headline}
       headlineId="deal-status-headline"
       body={view.body && <p className="mt-1.5 text-body leading-normal text-text-secondary">{view.body}</p>}
-      actions={(view.primary || view.secondary) && (
+      actions={(view.primary || view.secondary || view.tertiary) && (
         <>
           {view.primary && actionButton(view.primary, true)}
           {view.secondary && (
@@ -254,6 +346,15 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
             <div className={view.primary && view.secondary.kind === "open-messages" ? "hidden sm:block" : undefined}>
               {actionButton(view.secondary, false)}
             </div>
+          )}
+          {view.tertiary && (
+            <button
+              type="button"
+              onClick={() => run(view.tertiary!)}
+              className="min-h-11 w-full text-body font-semibold text-danger-text-alt hover:underline lg:min-h-0"
+            >
+              {view.tertiary.label}
+            </button>
           )}
           {advanceError && <p role="alert" className="text-body text-danger-text">{advanceError}</p>}
         </>
@@ -278,7 +379,18 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
             </>
           )}
 
-          {inline === "propose-terms" && <ProposeTermsForm actions={actions} onCancel={() => setInline(null)} />}
+          {inline === "propose-terms" && (
+            <ProposeTermsForm actions={actions} onCancel={() => setInline(null)}
+              submitLabel={viewerSide === "buyer" ? "Send to player" : `Send to ${B}`} />
+          )}
+          {inline === "counter-terms" && deal.personal_terms && (
+            <ProposeTermsForm actions={actions} onCancel={() => setInline(null)} submitLabel="Send counter"
+              initial={{ wage: deal.personal_terms.wage_weekly, bonus: deal.personal_terms.signing_bonus, years: deal.personal_terms.length_years }} />
+          )}
+          {inline === "commission-counter" && (
+            <CommissionCounterForm actions={actions} onCancel={() => setInline(null)} initialPayer="BUYER" />
+          )}
+          <TermRounds deal={deal} />
           {inline === "record-consent" && <RecordConsentForm deal={deal} actions={actions} onCancel={() => setInline(null)} />}
 
           {view.strips.map((s) => (
@@ -292,6 +404,7 @@ export default function DealStatusCard({ view, deal, viewerSide, actions, onOpen
       }
     >
       {checklist && <div className="hidden lg:block lg:w-[300px] lg:shrink-0">{checklist}</div>}
+      {ending && endDialog()}
     </StatusCardShell>
   );
 }

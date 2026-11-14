@@ -22,6 +22,34 @@ Overwritten at the end of each session by the [`session-lifecycle`](../.claude/s
 
 ## Latest Session Summary
 
+## Session Summary — 2026-11-14 (counters and confirmed declines)
+
+**Completed work:**
+- PR #73 (reminder colour coding and the Board's red "your move", missed from #71) opened, with `MOVE_STALLED` moved to migration `0112` because `0111` had shipped.
+- Branch `counters` (on top of #73): [product ADR 0012](./product/decisions/0012-commission-and-personal-terms-are-negotiated.md).
+  - The buying club counters the agent's commission; the agent accepts or proposes again.
+  - Personal terms go back and forth between the buying club and the player's side; the agent's terms are now the club's to answer (before, the agent proposed and agreed them himself).
+  - Every round is kept (`term_proposals`, migration `0113`) and shown as "The negotiation so far".
+  - Every answer that ends a transfer goes through `EndTransferDialog` (reason, "Counter instead"); `src/test/endTransfer.test.ts` guards it.
+  - The card no longer says "the agent can send a new proposal" after a decline that had collapsed the deal.
+  - The demo house agent and player negotiate counters.
+- Checked on the running stack in a demo (Chelsea for I. Maatsen): the commission card, decline dialog, phone counter form, a 2% counter answered at 3.5% with the history, the agent's terms card and its decline dialog.
+- Tests: backend 965 passed, frontend 498 passed, `tsc -b` clean.
+
+**Important decisions:**
+- ADR 0012. `player_consent` AGREED now means both sides agreed the terms. Old rows without `proposed_by` keep the old meaning.
+
+**Outstanding work:**
+- Merge #73 before this branch (it carries #73's commits until then).
+- Whose-move on the Board, Dashboard and digest (`compute_deal_whose_move`, `lib/whoseMove.ts`) still treats personal terms as nobody's move and agent negotiation by a 72-hour proxy; it should follow `proposed_by` now that it exists.
+- The local frontend container serves a built bundle: `docker compose build frontend` after frontend changes.
+
+**Risks:**
+- In-flight production deals whose agent proposed terms before this change: `proposed_by` is null, read as the club's terms, so the agent can still agree them as before.
+
+**Recommended next task:**
+- Whose-move from `proposed_by` (Board and Dashboard), then the registration checklist.
+
 ## Session Summary — 2026-11-13 (demo gaps)
 
 **Completed work:**
@@ -47,27 +75,6 @@ Overwritten at the end of each session by the [`session-lifecycle`](../.claude/s
 
 **Recommended next task:**
 - Open the follow-up PR for the two missing move-reminders commits, then this branch's PR; then the registration checklist.
-
-## Session Summary — 2026-11-12 (move reminders)
-
-**Completed work:**
-- Built [`move-reminders`](./feature_spec/move-reminders/README.md) on branch `move-reminders`, on top of `type-and-colour` (PR #70): `app/reminders/` (who holds the move, cooldowns, escalation, sending, automatic job), migration `0111`, notification types `MOVE_REMINDER` / `MOVE_ESCALATED` (your-move push tier, emailed), `MoveReminder` on the deal and offer status cards, the enquiry page and Lite's sent page.
-- Checked on the running stack: Chelsea reminded Man City about the £30M D. Mukasa offer; notification and Mailpit email arrived.
-- Tests: backend 951 passed, frontend 484 passed, `tsc -b` clean.
-
-**Important decisions:**
-- Covers offers, deals and enquiries; the server decides who holds the move. 24 hours before a reminder, 48 between (2 and 12 on deadline days); escalation after two ignored reminders or 7 days; automatic at 3 and 7 days, skipping anything idle over 30 days. Confirmed deals stay with the existing completion SLA.
-
-**Outstanding work:**
-- Push `move-reminders` and open its PR (after PR #70, which it builds on).
-- The hourly job will send automatic reminders on the local and production data once deployed: anything idle 3–30 days gets one. Worth a look at production's open offers and deals before shipping.
-- The reminder email carries the sentence but not the note.
-
-**Risks:**
-- First deploy sends a batch of automatic reminders and emails at once (bounded by the 30-day rule).
-
-**Recommended next task:**
-- Merge PR #70, then the move-reminders PR; then the registration checklist.
 
 ## Related documents
 

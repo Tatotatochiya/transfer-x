@@ -101,6 +101,10 @@ class AgentNegotiation(Base):
         default=AgreementStatus.PENDING,
         server_default="PENDING",
     )
+    # Whose terms are on the table: "AGENT" (his proposal) or "BUYER" (the
+    # buying club's counter). The other side answers. Null on rows from before
+    # counters (2026-11-14): the agent's.
+    proposed_by: Mapped[str | None] = mapped_column(String(10), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
