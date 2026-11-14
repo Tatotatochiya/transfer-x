@@ -24,6 +24,8 @@ Tailwind's defaults, used as follows:
 
 Design at 1280px. The design files are drawn at desktop width.
 
+**The Transfers board's breakpoint is 1280px**, not 1024: with the sidebar, 1024 leaves about 728px, too little for six stage columns. Below 1280 it's a list grouped by whose move it is ([spec](../feature_spec/transfers-board-mobile/README.md)).
+
 ## Navigation
 
 **Desktop (≥1024px):** persistent 232px white sidebar, always expanded, labels always visible.
