@@ -462,8 +462,11 @@ async def _deal_step(db: AsyncSession, deal_id: uuid.UUID, run_id: uuid.UUID, *,
         return chosen or await _available(db, user_id)
 
     async def done(what: str, note: str) -> str:
+        from app.deals.live import deal_updated
+
         await deals.add_note(db, deal, author_club_id=note_club, body=label + note)
         await db.commit()
+        await deal_updated(db, deal_id)  # open deal pages refetch
         return what
 
     if deal.stage == DealStage.AGREEMENT and house_buyer is not None:

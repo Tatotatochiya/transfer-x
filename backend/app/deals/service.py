@@ -1539,6 +1539,7 @@ async def club_respond_to_terms(
     if agreement == AgreementStatus.AGREED:
         pt.player_consent = AgreementStatus.AGREED
         pt.agreed_at = datetime.now(timezone.utc)
+    deal.updated_at = datetime.now(timezone.utc)
     await db.flush()
     await audit_service.emit(
         db,
@@ -1566,6 +1567,7 @@ async def record_round(
     db: AsyncSession, deal: Deal, kind: str, side: str, terms: dict, *,
     note: str | None = None, actor_user_id: uuid.UUID | None = None,
 ) -> TermProposal:
+    deal.updated_at = datetime.now(timezone.utc)  # a round is movement on the deal
     row = TermProposal(deal_id=deal.id, kind=kind, side=side,
                        terms={k: _plain(v) for k, v in terms.items()},
                        note=(note or "").strip() or None, created_by_user_id=actor_user_id)
@@ -1613,6 +1615,7 @@ async def player_consent_to_terms(
         raise ValueError("These are the player's own terms: the buying club answers them")
 
     pt.player_consent = agreement
+    deal.updated_at = datetime.now(timezone.utc)
     if agreement == AgreementStatus.AGREED:
         pt.agreed_at = datetime.now(timezone.utc)
         pt.consent_evidence_attachment_id = evidence_attachment_id
@@ -1755,6 +1758,7 @@ async def club_respond_to_negotiation(
         raise ValueError("That's your counter: the agent answers it")
 
     neg.club_agreement = agreement
+    deal.updated_at = datetime.now(timezone.utc)
     await db.flush()
     await audit_service.emit(
         db,
@@ -1828,6 +1832,7 @@ async def agent_accept_counter(
     if neg.proposed_by != "BUYER" or neg.club_agreement != AgreementStatus.PENDING:
         raise ValueError("There's no counter from the club to accept")
     neg.club_agreement = AgreementStatus.AGREED
+    deal.updated_at = datetime.now(timezone.utc)
     await db.flush()
     await audit_service.emit(
         db,

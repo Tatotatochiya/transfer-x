@@ -534,3 +534,21 @@ async def test_the_agent_meets_a_low_commission_counter_halfway_and_takes_a_clos
     n = await neg()
     assert (n.proposed_by, n.club_agreement.value, n.commission_pct) == ("BUYER", "AGREED", Decimal("0.045"))
     assert await _tick(demo) == 0  # the tester moves it on
+
+
+async def test_a_house_move_on_a_deal_reaches_open_pages(client: AsyncClient, db, demo, monkeypatch):
+    from app.ws.manager import manager
+
+    pushed = []
+
+    async def capture(user_ids, payload):
+        pushed.append(payload)
+
+    monkeypatch.setattr(manager, "broadcast_to_users", capture)
+    await _agent(client, db, demo)
+    await _start(client, demo["tester"])
+    await _offer(client, demo, 10_000_000)
+    await _tick(demo)  # accepted: a deal
+    pushed.clear()
+    assert await _tick(demo) == 1  # the agent proposes his commission
+    assert [p["type"] for p in pushed] == ["DEAL_UPDATED"]

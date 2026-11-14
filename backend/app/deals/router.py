@@ -47,7 +47,6 @@ from app.deps import get_current_user
 from app.notifications import service as notif_service
 from app.notifications.models import NotificationType
 from app.players import service as players_service
-from app.ws.manager import manager as ws_manager
 
 router = APIRouter(tags=["deals"])
 
@@ -67,19 +66,10 @@ async def _get_club_or_403(db: AsyncSession, user: User):
 
 
 async def _notify_deal_parties(db: AsyncSession, deal_id: uuid.UUID) -> None:
-    """Push DEAL_UPDATED to every member of both clubs involved in a deal."""
-    deal = await service.get_deal_by_id(db, deal_id)
-    if deal is None:
-        return
-    user_ids: list[uuid.UUID] = []
-    for club_id in [deal.buyer_club_id, deal.seller_club_id]:
-        if club_id is None:
-            continue
-        user_ids += await notif_service.club_member_user_ids(db, uuid.UUID(str(club_id)))
-    await ws_manager.broadcast_to_users(
-        list(set(user_ids)),
-        {"type": "DEAL_UPDATED", "id": str(deal_id)},
-    )
+    """Push DEAL_UPDATED to everyone on the deal (deals/live.py)."""
+    from app.deals.live import deal_updated
+
+    await deal_updated(db, deal_id)
 
 
 async def _db_notify_deal_parties(
@@ -894,6 +884,7 @@ async def set_personal_terms(
             )
         await db.commit()
         await db.refresh(pt)
+        await _notify_deal_parties(db, deal.id)
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -1004,6 +995,7 @@ async def player_consent_to_terms(
         )
         await db.commit()
         await db.refresh(pt)
+        await _notify_deal_parties(db, deal.id)
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -1077,6 +1069,7 @@ async def update_negotiation_terms(
                                                      actor_user_id=current_user.id, note=note)
         await db.commit()
         await db.refresh(neg)
+        await _notify_deal_parties(db, deal.id)
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -1100,6 +1093,7 @@ async def club_respond_to_negotiation(
                                                         actor_user_id=current_user.id, reason=body.reason)
         await db.commit()
         await db.refresh(neg)
+        await _notify_deal_parties(db, deal.id)
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -1137,6 +1131,7 @@ async def club_counter_commission(
         await _notify_agent(db, neg.agent_id, deal, f"{club.name} countered your commission for {player_name}")
         await db.commit()
         await db.refresh(neg)
+        await _notify_deal_parties(db, deal.id)
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -1168,6 +1163,7 @@ async def agent_accept_counter(
         )
         await db.commit()
         await db.refresh(neg)
+        await _notify_deal_parties(db, deal.id)
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -1198,6 +1194,7 @@ async def club_respond_to_terms(
             await _notify_agent(db, pt.agent_id, deal, f"{club.name} {decision} {player_name}'s personal terms")
         await db.commit()
         await db.refresh(pt)
+        await _notify_deal_parties(db, deal.id)
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

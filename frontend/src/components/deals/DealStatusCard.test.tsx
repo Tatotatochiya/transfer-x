@@ -53,7 +53,7 @@ describe("DealStatusCard: counters and declines", () => {
     await userEvent.type(screen.getByLabelText("Commission (% of the fee)"), "4");
     await userEvent.selectOptions(screen.getByLabelText("Paid by"), "PLAYER");
     await userEvent.click(screen.getByRole("button", { name: "Send counter" }));
-    expect(a.commissionCounter.mutate).toHaveBeenCalledWith({ commission_pct: 0.04, commission_payer: "PLAYER", note: null });
+    expect(a.commissionCounter.mutate).toHaveBeenCalledWith({ commission_pct: 0.04, commission_payer: "PLAYER", note: null }, expect.anything());
     expect(a.commissionRespond.mutate).not.toHaveBeenCalled();
   });
 
@@ -61,5 +61,17 @@ describe("DealStatusCard: counters and declines", () => {
     const a = card();
     await userEvent.click(screen.getByRole("button", { name: "Accept proposal" }));
     expect(a.commissionRespond.mutate).toHaveBeenCalledWith({ agreement: "AGREED" });
+  });
+});
+
+describe("DealStatusCard: the counter form", () => {
+  it("closes once the counter is sent", async () => {
+    const a = actions();
+    (a.commissionCounter.mutate as ReturnType<typeof vi.fn>).mockImplementation((_v, opts) => opts?.onSuccess?.());
+    card(a);
+    await userEvent.click(screen.getByRole("button", { name: "Counter" }));
+    await userEvent.type(screen.getByLabelText("Commission (% of the fee)"), "3");
+    await userEvent.click(screen.getByRole("button", { name: "Send counter" }));
+    expect(screen.queryByLabelText("Commission (% of the fee)")).toBeNull();
   });
 });
