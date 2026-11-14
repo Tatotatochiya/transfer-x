@@ -42,6 +42,7 @@ Overwritten at the end of each session by the [`session-lifecycle`](../.claude/s
 **Outstanding work:**
 - Merge #73 before this branch (it carries #73's commits until then).
 - Branch `whose-move` (on top of #74): whose move follows `proposed_by` on the Board, the Dashboard and deal lists; the Dashboard reads the server's `whose_move`, and the frontend copy of the deal rule is gone. Merge order: #73, #74, then this.
+- Branch `negotiation-live`: the deal page updates live on every negotiation action and house move (`deals/live.py`); a round counts as movement (the demo journal now skips `deals.updated_at`, like `users.last_active_at`).
 - The local frontend container serves a built bundle: `docker compose build frontend` after frontend changes.
 
 **Risks:**

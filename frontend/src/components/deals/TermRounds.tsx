@@ -20,6 +20,12 @@ function personalTerms(t: TermProposal["terms"]): string {
   return [[wage, years].filter(Boolean).join(" for "), bonus].filter(Boolean).join(", ");
 }
 
+/** The buying club offers or counters; the agent or player asks, or comes back. */
+function verb(r: TermProposal, i: number): string {
+  if (r.side === "BUYER") return i === 0 && r.kind === "PERSONAL_TERMS" ? "offered" : "countered with";
+  return i === 0 ? "asked for" : "came back with";
+}
+
 /**
  * The rounds of the stage's negotiation, oldest first (ADR 0012): who asked
  * for what, and each counter with its note. Shown once there's been a counter.
@@ -45,7 +51,7 @@ export default function TermRounds({ deal }: { deal: Deal }) {
         {rounds.map((r, i) => (
           <li key={r.id} className="text-small text-text-secondary">
             <span className="font-semibold text-text">{name(r.side)}</span>{" "}
-            {i === 0 ? "asked for" : "countered with"} {kind === "COMMISSION" ? commission(r.terms) : personalTerms(r.terms)}
+            {verb(r, i)} {kind === "COMMISSION" ? commission(r.terms) : personalTerms(r.terms)}
             <span className="text-text-muted"> · {formatDate(r.created_at)}</span>
             {r.note && <span className="text-text-muted"> “{r.note}”</span>}
           </li>

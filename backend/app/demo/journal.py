@@ -35,7 +35,10 @@ SKIP_TABLES = frozenset({
     "ai_suggestion_events", "vendor_sync_states", "vendor_sync_runs", "vendor_fetch_log",
     "refresh_tokens", "push_deliveries", "player_views", "player_search_views",
 })
-SKIP_COLUMNS = frozenset({("users", "last_active_at")})
+# Bookkeeping that later saves move on by themselves, so reset neither
+# restores nor checks them: a deal's updated_at is set by the database on
+# every save, and by a negotiation round (deals/service.record_round).
+SKIP_COLUMNS = frozenset({("users", "last_active_at"), ("deals", "updated_at")})
 
 ACTIVE_CACHE_SECONDS = 5
 _active = {"until": 0.0, "any": False}

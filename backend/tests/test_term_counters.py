@@ -159,3 +159,45 @@ async def test_whose_move_follows_whose_terms_are_on_the_table(client: AsyncClie
     board = (await client.get("/board", headers=buyer)).json()
     card = next(c for col in board["columns"] for c in col["cards"] if c["entity_id"] == deal)
     assert (card["whose_move"], card["detail"]) == ("your", "Personal terms · your move")
+
+
+async def test_every_round_reaches_open_pages_and_counts_as_movement(client: AsyncClient, db: AsyncSession, monkeypatch):
+    """The deal page refetches on DEAL_UPDATED (hooks/useWebSocket.ts): every
+    negotiation action pushes it to both clubs, the agent and the player."""
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import select, update
+
+    from app.auth.models import AgentProfile, User
+    from app.deals.models import Deal
+    from app.ws.manager import manager
+
+    pushed: list[tuple[set, dict]] = []
+
+    async def capture(user_ids, payload):
+        pushed.append((set(user_ids), payload))
+
+    monkeypatch.setattr(manager, "broadcast_to_users", capture)
+    ctx = await _setup_invited_deal(client, db)
+    deal = ctx["deal_id"]
+    agent_user = (await db.execute(select(AgentProfile.user_id).join(User, User.id == AgentProfile.user_id)
+                                   .where(User.email == "invited@negterms.com"))).scalar_one()
+    buyer_user = (await db.execute(select(User.id).where(User.email == "buyer@negterms.com"))).scalar_one()
+
+    # Five days quiet, then a proposal and a counter.
+    await db.execute(update(Deal).where(Deal.id == __import__("uuid").UUID(deal))
+                     .values(updated_at=datetime.now(timezone.utc) - timedelta(days=5)))
+    await db.commit()
+    await _propose(client, ctx)
+    await client.post(f"/deals/{deal}/agent-negotiation/club-counter", headers=_headers(ctx["buyer"]),
+                      json={"commission_pct": 0.03, "commission_payer": "BUYER"})
+    await client.post(f"/deals/{deal}/agent-negotiation/agent-accept", headers=_headers(ctx["invited_agent"]))
+
+    updates = [ids for ids, p in pushed if p == {"type": "DEAL_UPDATED", "id": deal}]
+    assert len(updates) == 3
+    assert all({agent_user, buyer_user} <= ids for ids in updates)
+
+    body = (await client.get(f"/deals/{deal}", headers=_headers(ctx["buyer"]))).json()
+    moved = datetime.fromisoformat(body["updated_at"])
+    moved = moved if moved.tzinfo else moved.replace(tzinfo=timezone.utc)  # SQLite drops the zone
+    assert moved > datetime.now(timezone.utc) - timedelta(minutes=5)

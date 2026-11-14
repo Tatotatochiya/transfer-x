@@ -73,7 +73,7 @@ function ProposeTermsForm({ actions, onCancel, initial, submitLabel }: {
             signing_bonus: bonus !== "" ? Number(bonus) : null,
             length_years: years !== "" ? Number(years) : null,
             note: note.trim() || null,
-          })}
+          }, { onSuccess: onCancel })}
         >
           {submitLabel}
         </Button>
@@ -113,7 +113,8 @@ function CommissionCounterForm({ actions, onCancel, initialPayer }: {
           size="lg"
           loading={actions.commissionCounter.isPending}
           disabled={!valid}
-          onClick={() => actions.commissionCounter.mutate({ commission_pct: value / 100, commission_payer: payer, note: note.trim() || null })}
+          onClick={() => actions.commissionCounter.mutate(
+            { commission_pct: value / 100, commission_payer: payer, note: note.trim() || null }, { onSuccess: onCancel })}
         >
           Send counter
         </Button>
