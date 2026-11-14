@@ -1670,6 +1670,7 @@ async def upsert_negotiation_terms(
 
     if deal.stage != DealStage.AGENT_NEGOTIATION:
         raise ValueError("Deal is not in AGENT_NEGOTIATION stage")
+    _check_payer(updates.get("commission_payer"))
 
     neg = await get_agent_negotiation(db, deal.id)
     if neg is None:
@@ -1720,6 +1721,17 @@ async def upsert_negotiation_terms(
         description="Agent updated commission terms",
     )
     return neg
+
+
+# The commission is negotiated between the buying club and the player's agent;
+# the selling club takes no part, so neither can commit it to paying (ADR 0012).
+COMMISSION_PAYERS = ("BUYER", "PLAYER")
+
+
+def _check_payer(payer) -> None:
+    if payer is not None and getattr(payer, "value", payer) not in COMMISSION_PAYERS:
+        raise ValueError("The commission is paid by the buying club or the player: "
+                         "the selling club isn't part of this negotiation")
 
 
 def _commission_terms(neg) -> dict:
@@ -1801,6 +1813,7 @@ async def club_counter_commission(
         raise ValueError("The commission is already agreed")
     if not (Decimal(0) <= commission_pct < Decimal(1)):
         raise ValueError("Commission must be between 0% and 100%")
+    _check_payer(commission_payer)
 
     neg.commission_pct = commission_pct
     neg.commission_payer = commission_payer
