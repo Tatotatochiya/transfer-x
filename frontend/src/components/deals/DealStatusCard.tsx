@@ -85,7 +85,7 @@ function ProposeTermsForm({ actions, onCancel, initial, submitLabel }: {
 
 /** The buying club's counter to the agent's commission (ADR 0012). */
 function CommissionCounterForm({ actions, onCancel, initialPayer }: {
-  actions: DealActions; onCancel: () => void; initialPayer: "BUYER" | "SELLER" | "PLAYER";
+  actions: DealActions; onCancel: () => void; initialPayer: "BUYER" | "PLAYER";
 }) {
   const [pct, setPct] = useState("");
   const [payer, setPayer] = useState(initialPayer);
@@ -102,7 +102,6 @@ function CommissionCounterForm({ actions, onCancel, initialPayer }: {
         <label htmlFor="cc-payer" className="mb-1 block text-small font-medium text-text-secondary">Paid by</label>
         <select id="cc-payer" value={payer} onChange={(e) => setPayer(e.target.value as typeof payer)} className={INPUT}>
           <option value="BUYER">The buying club</option>
-          <option value="SELLER">The selling club</option>
           <option value="PLAYER">The player</option>
         </select>
       </div>

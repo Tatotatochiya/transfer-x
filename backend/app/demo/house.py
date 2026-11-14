@@ -515,7 +515,10 @@ async def _deal_step(db: AsyncSession, deal_id: uuid.UUID, run_id: uuid.UUID, *,
                                   f"{agent.display_name} accepted {_pct(neg.commission_pct)} commission.")
             meet = _round_half_pct((COMMISSION_PCT + neg.commission_pct) / 2)
             await deals.upsert_negotiation_terms(db, deal, agent.id, {
-                "commission_pct": meet, "commission_payer": neg.commission_payer,
+                # The club's payer, unless it's the selling club (not part of this; ADR 0012).
+                "commission_pct": meet,
+                "commission_payer": neg.commission_payer if getattr(neg.commission_payer, "value", neg.commission_payer) in (
+                    "BUYER", "PLAYER") else CommissionPayer.BUYER,
             }, actor_user_id=agent.user_id, note=f"I can meet you at {_pct(meet)}.")
             return await done("commission_countered", f"{agent.display_name} came back at {_pct(meet)} commission.")
         if house_buyer is not None:

@@ -8,7 +8,7 @@ export type MedicalStatus = "PENDING" | "PASSED" | "FAILED";
 export interface PersonalTermsValues { wage_weekly: number | null; signing_bonus: number | null; length_years: number | null; note?: string | null }
 /** An answer; a decline ends the transfer, with an optional reason the other side sees. */
 export interface Answer { agreement: "AGREED" | "DECLINED"; reason?: string | null }
-export interface CommissionCounter { commission_pct: number; commission_payer: "BUYER" | "SELLER" | "PLAYER"; note?: string | null }
+export interface CommissionCounter { commission_pct: number; commission_payer: "BUYER" | "PLAYER"; note?: string | null }
 
 /**
  * Every write on a deal, in one place (deal-room-focus §5.8). Moved from the

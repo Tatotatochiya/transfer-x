@@ -201,3 +201,20 @@ async def test_every_round_reaches_open_pages_and_counts_as_movement(client: Asy
     moved = datetime.fromisoformat(body["updated_at"])
     moved = moved if moved.tzinfo else moved.replace(tzinfo=timezone.utc)  # SQLite drops the zone
     assert moved > datetime.now(timezone.utc) - timedelta(minutes=5)
+
+
+async def test_the_selling_club_cant_be_made_to_pay_the_commission(client: AsyncClient, db: AsyncSession):
+    """The commission is between the buying club and the agent: neither can
+    put it on the selling club, which takes no part in the negotiation."""
+    ctx = await _setup_invited_deal(client, db)
+    deal = ctx["deal_id"]
+    r = await client.patch(f"/deals/{deal}/agent-negotiation/terms", headers=_headers(ctx["invited_agent"]),
+                           json={"commission_pct": 0.05, "commission_payer": "SELLER"})
+    assert r.status_code == 400 and "selling club isn't part" in r.json()["detail"]
+    await _propose(client, ctx)
+    r = await client.post(f"/deals/{deal}/agent-negotiation/club-counter", headers=_headers(ctx["buyer"]),
+                          json={"commission_pct": 0.02, "commission_payer": "SELLER"})
+    assert r.status_code == 400 and "selling club isn't part" in r.json()["detail"]
+    r = await client.post(f"/deals/{deal}/agent-negotiation/club-counter", headers=_headers(ctx["buyer"]),
+                          json={"commission_pct": 0.02, "commission_payer": "PLAYER"})
+    assert r.status_code == 200 and r.json()["commission_payer"] == "PLAYER", r.text
