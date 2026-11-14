@@ -23,6 +23,9 @@ COOLDOWN = timedelta(hours=48)
 DEADLINE_SHOW_AFTER = timedelta(hours=2)
 DEADLINE_COOLDOWN = timedelta(hours=12)
 DEADLINE_WINDOW = timedelta(hours=72)
+# In a demo (app/demo) nothing waits a day: a reminder makes the house answer now.
+DEMO_SHOW_AFTER = timedelta(0)
+DEMO_COOLDOWN = timedelta(minutes=1)
 ESCALATE_AFTER = timedelta(days=7)
 ESCALATE_AFTER_IGNORED = 2
 AUTO_FIRST = timedelta(days=3)
@@ -333,6 +336,13 @@ class State:
     preview: str | None
 
 
+async def _in_demo(db: AsyncSession, s: Subject) -> bool:
+    from app.demo.service import open_demo_rows
+
+    table = {"offer": "offers", "deal": "deals", "enquiry": "enquiries"}[s.type]
+    return s.obj.id in await open_demo_rows(db, table)
+
+
 async def state_for(db: AsyncSession, s: Subject, v: Viewer, now: datetime | None = None) -> State:
     now = now or datetime.now(timezone.utc)
     all_holders = await holders(db, s)
@@ -353,9 +363,12 @@ async def state_for(db: AsyncSession, s: Subject, v: Viewer, now: datetime | Non
         return out(False, "Nobody else is holding this up.")
     if not v.can_act:
         return out(False, "Your role can't act on this transfer.")
-    deadline = await _deadline_soon(db, s, now)
-    show_after = DEADLINE_SHOW_AFTER if deadline else SHOW_AFTER
-    cooldown = DEADLINE_COOLDOWN if deadline else COOLDOWN
+    if await _in_demo(db, s):
+        show_after, cooldown = DEMO_SHOW_AFTER, DEMO_COOLDOWN
+    elif await _deadline_soon(db, s, now):
+        show_after, cooldown = DEADLINE_SHOW_AFTER, DEADLINE_COOLDOWN
+    else:
+        show_after, cooldown = SHOW_AFTER, COOLDOWN
     if now - since < show_after:
         return out(False, f"You can send a reminder from {_when(since + show_after, now)}.", since + show_after)
     mine_sent = [r for r in reminders if _same_side(r, v)]
@@ -560,6 +573,15 @@ async def send_automatic(db: AsyncSession, now: datetime | None = None) -> int:
         select(Deal.id).where(Deal.status == DealStatus.IN_PROGRESS))).scalars()]
     ids += [("enquiry", i) for i in (await db.execute(
         select(Enquiry.id).where(Enquiry.status == EnquiryStatus.OPEN))).scalars()]
+
+    # Demo transactions (app/demo): the house answers them itself, and a
+    # reminder about one would outlive the demo's reset.
+    from app.demo.service import open_demo_rows
+
+    in_demo = {("offer", i) for i in await open_demo_rows(db, "offers")}
+    in_demo |= {("deal", i) for i in await open_demo_rows(db, "deals")}
+    in_demo |= {("enquiry", i) for i in await open_demo_rows(db, "enquiries")}
+    ids = [k for k in ids if k not in in_demo]
 
     sent = 0
     for kind, sid in ids:

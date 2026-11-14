@@ -1,7 +1,7 @@
 ---
 title: "Demo Mode"
-last_updated: 2026-11-08
-status: Built (runs, journal, reset, play-as; demo and test deals kept out of shared figures; house clubs sell, buy and bid as rivals; "make them…" controls)
+last_updated: 2026-11-13
+status: Built (runs, journal, reset, play-as; demo and test deals kept out of shared figures; house clubs sell, buy and bid as rivals; "make them…" controls on offers and deals; house clubs answer enquiries and reminders)
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -45,7 +45,9 @@ Added 2026-11-02 (`backend/app/demo/house.py`, job `demo_house_clubs`, every 5 s
 
 A counter is always above the offer and rounded to £0.5m. After two counters the club takes anything above the midpoint and walks away otherwise. A loan offer is accepted. With no price to judge by, a hard or fair club counters once (130% / 115%), then accepts; an eager one accepts.
 
-**Its side of the deal.** The player's agent, if nobody uses the agent's account, proposes a 5% commission paid by the buying club. The player, if he has no account in use, agrees personal terms. The club signs its side of the transfer agreement. The buying club's own steps (agreeing commission, proposing terms, the medical, registration, completing) stay with the tester.
+**Its side of the deal.** The player's agent proposes a 5% commission paid by the buying club. Once the clubs move on to personal terms, the agent prepares them (four years, 10% over his current wage) and then agrees them for the player; a player with no agent agrees them himself. The club signs its side of the transfer agreement. The buying club's own steps (agreeing commission, the medical, registration, completing) stay with the tester; so does proposing terms when the player has no agent.
+
+**Agents and players someone is signed in as** answer for themselves. "Signed in" means the account was active in the last two hours (`house.SIGNED_IN`; a session refreshes at least hourly). Until 2026-11-13 it meant "has ever signed in", so one tester trying an agent's side once stalled every demo deal for all his clients.
 
 **A player the tester lists** (added 2026-11-03). Two house clubs make offers, each at its opening share of his price (asking price, model value, last fee or market value), a little apart: hard-nosed 85%, fair 95%, eager 105%, give or take 4%. On a fixed-price listing they offer the asking price. A tester's counter is accepted up to the club's top (95% / 105% / 115%), met halfway otherwise ("Our best is £…"), and after two counters the club walks away. Once a deal starts, the buying house club does every buyer's step: moves it on, agrees the agent's commission, proposes personal terms (four years, 10% over his current wage), signs, records a passed medical, submits the registration and completes. The tester signs their side as the seller.
 
@@ -57,7 +59,13 @@ A counter is always above the offer and rounded to £0.5m. After two counters th
 
 **One player, one demo.** A tester can't bid for a player who is in another tester's open demo: "He's in another tester's demo right now."
 
-**Speed.** In the Demo pill, house clubs answer **Straight away** (the next tick) or **After a few minutes** (3 minutes after the tester's last move, as a real club would take its time). `PATCH /demo/run {"speed": "instant" | "realistic"}`, migration `0106`.
+**Speed.** In the Demo pill, house clubs answer **Straight away** (the next tick) or **After a few minutes** (3 minutes after the tester's last move, as a real club would take its time). On a deal, "the tester's last move" is their latest audit event on it, so the house's own steps in a row follow each other at once instead of waiting 3 minutes each. `PATCH /demo/run {"speed": "instant" | "realistic"}`, migration `0106`.
+
+**Make them move now on a deal** (added 2026-11-13). On a deal in your own demo that's waiting on the other side, a "Demo: waiting on …" panel under the status card makes the next move that isn't yours (the house club's, the agent's or the player's) at once, even for an agent or player someone is signed in as. The deal's note says "Automated (demo, the tester's choice): …". `GET /demo/deals/{id}`, `POST /demo/deals/{id}/make` (409 when it's your move).
+
+**Enquiries** (added 2026-11-13). A house club answers an enquiry about one of its players: the first time with roughly what it would take (its counter level: hard-nosed 120% of his price, fair 100%, eager 95%), after that "Our position hasn't changed. Send us an offer…". It never closes one.
+
+**Reminders** ([move reminders](./move-reminders/README.md), added 2026-11-13). In a demo, "Send a reminder" is there straight away (one minute between reminders, not 24 and 48 hours), and the house answers it at once, skipping "After a few minutes". It doesn't make an agent or player someone is signed in as move. The automatic 3- and 7-day reminders leave demo transactions alone.
 
 ## Kept out of shared figures
 
@@ -77,6 +85,8 @@ Added 2026-10-29. While a run is open, the deals it made don't count in what eve
 |---|---|
 | `GET /demo/run` | Your active run (changes, auto-reset date) and whether you may start one |
 | `POST /demo/run`, `/demo/run/reset`, `/demo/run/keep` | Start, reset, keep |
+| `GET /demo/offers/{id}`, `POST /demo/offers/{id}/make` | Make the house club accept, counter or reject an offer now |
+| `GET /demo/deals/{id}`, `POST /demo/deals/{id}/make` | Make the other side's next move on a deal now |
 | `GET /demo/house-clubs`, `POST /demo/house-clubs/{id}/play-as` | House clubs; a two-hour token to play one inside your run |
 | `GET /admin/demo` | Runs with their reports, testers, every club and whether it's in use |
 | `PATCH /admin/demo/clubs/{id}`, `PATCH /admin/demo/testers/{id}` | House club on or off (and personality); tester on or off. Reason required |
@@ -87,6 +97,6 @@ Code: `backend/app/demo/` (`journal.py`, `service.py`, `router.py`), migration `
 
 ## Not built yet
 
-Nothing planned. Ideas: house clubs making the first approach for a tester's unlisted players; enquiries answered by house clubs.
+Nothing planned. Ideas: house clubs making the first approach for a tester's unlisted players; house clubs replying to messages on offers and deals.
 
 > **TODO:** a real club can still make an offer *to a tester's club* during a demo, outside it; only bids on demo listings are refused. Fine while testers' clubs aren't used by anyone else.

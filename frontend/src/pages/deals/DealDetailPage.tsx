@@ -8,6 +8,7 @@ import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useDealActions } from "../../hooks/useDealActions";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import DealStaffTools from "../../components/admin/DealStaffTools";
+import DemoDealControls from "../../components/demo/DemoDealControls";
 import AgentNegotiationWorkspace from "../../components/deals/AgentNegotiationWorkspace";
 import AgreedOfferHistory from "../../components/deals/AgreedOfferHistory";
 import CollapseDealDialog from "../../components/deals/CollapseDealDialog";
@@ -254,6 +255,7 @@ export default function DealDetailPage() {
           onOpenMessages={openMessages} onShowSchedule={showSchedule} onRecordMedical={() => setMedicalOpen(true)}
           reminder={view.tone === "wait" && (isParty || isAgent) ? <MoveReminder subjectType="deal" subjectId={deal.id} /> : undefined}
         />
+        <DemoDealControls dealId={deal.id} waiting={view.tone === "wait" && isParty} waitingOn={view.overline} />
       </div>
       <div className="mt-3">
         <DealProgress deal={deal} negotiation={negotiation} />

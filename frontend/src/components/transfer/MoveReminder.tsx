@@ -59,7 +59,8 @@ export default function MoveReminder({ subjectType, subjectId, lite = false, cla
     mutationFn: () => api.post<ReminderState>(`/reminders/${subjectType}/${subjectId}`, { note: note.trim() || null }).then((r) => r.data),
     onSuccess: (next) => {
       queryClient.setQueryData(key, next);
-      if (subjectType === "deal") queryClient.invalidateQueries({ queryKey: ["deals", subjectId, "audit-log"] });
+      // The timeline gains the reminder; in a demo, the house club may already have answered it.
+      queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "reminders" });
       addToast(`${st?.would_escalate ? "Escalated to" : "Reminder sent to"} ${st?.holder?.name ?? "them"}.`, "success");
       setOpen(false);
       setNote("");
