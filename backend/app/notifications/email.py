@@ -34,8 +34,10 @@ EMAIL_ENABLED_TYPES = {
     NotificationType.OFFER_COUNTERED,
     NotificationType.APPROVAL_REQUESTED,
     NotificationType.MOVE_REMINDER,
-    NotificationType.MOVE_ESCALATED,
-    NotificationType.MOVE_STALLED,
+    # Escalations (MOVE_ESCALATED to the holder, MOVE_STALLED to the people
+    # told) are in-app and push only for now (2026-11-14): on the shared demo
+    # environment they reach seeded agents' addresses, some of which look
+    # like real companies' domains.
     NotificationType.DEAL_PERSONAL_TERMS_SENT,
 }
 

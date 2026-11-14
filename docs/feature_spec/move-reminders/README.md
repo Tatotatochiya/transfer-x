@@ -100,8 +100,8 @@ New table `move_reminders` (migration `0111`):
 
 Index on `(subject_type, subject_id, created_at)`. Notification types `MOVE_REMINDER`,
 `MOVE_ESCALATED` (to the holder) and `MOVE_STALLED` (to the people told on an escalation) are added
-to `notificationtype` (`MOVE_STALLED` in migration `0112`, since `0111` had already shipped). All
-three are in `EMAIL_ENABLED_TYPES`.
+to `notificationtype` (`MOVE_STALLED` in migration `0112`, since `0111` had already shipped).
+`MOVE_REMINDER` is in `EMAIL_ENABLED_TYPES`; the two escalation types aren't, for now (§6).
 
 ## 3. API
 
@@ -175,6 +175,10 @@ Mailpit with the fixed wording.
 
 - **D10** no longer says escalations can't be turned off in-app: preferences apply to both types,
   like every other notification.
+- **Escalations aren't emailed for now** (2026-11-14). `MOVE_ESCALATED` and `MOVE_STALLED` are in-app
+  and push only; a first reminder (`MOVE_REMINDER`) is still emailed. On the shared demo environment
+  escalations reached seeded agents' addresses, some on what look like real companies' domains. Put
+  them back in `EMAIL_ENABLED_TYPES` once that environment's mail is caught or its addresses are fake.
 - **The email carries the fixed sentence, not the note.** The note is in the in-app notification,
   the push body, the deal timeline and on both sides' status cards. The notification email has no
   body field today.

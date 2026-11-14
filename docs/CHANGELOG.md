@@ -257,6 +257,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Escalations aren't emailed for now.** An escalated reminder, and the "transfer stuck" notice to the people told, arrive in-app and by push only; a first reminder is still emailed. On the shared demo environment escalations went to seeded agents' addresses, some on real-looking domains ([move reminders](./feature_spec/move-reminders/README.md)).
 - **Colours mean one thing.** Positions, account roles, contract state, deal stages, stat groups and chart series are neutral; blue is only for what you can tap (switches that are on included); red is "needs you", errors and destructive actions; violet is only the AI (✦ buttons, advice, fit scores, AI search), no longer shared with the Agent badge. Tints come from tokens, not opacity.
 - **Dark mode's accent is blue**, like light mode's (it was emerald, the same family as "done" green), with dark text on primary buttons.
 - **One compact money format**: "£52M", "£21.5M", "£450K", "£2.6B" (was "£52.0m", "£450k") in headers, status cards, tiles, lists, the board and Lite. Full figures stay on terms cards, forms, accept confirmations, order books and the Finance breakdown and ledger. Finance's hero reads "£232.5M left of £260M".

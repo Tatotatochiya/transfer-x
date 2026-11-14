@@ -311,3 +311,14 @@ async def test_third_parties_get_the_amber_notice_not_the_holders(client, db):
     seller_notes = await db.execute(select(Notification.type).where(
         Notification.recipient_user_id == await _user_id(client, ctx["seller"])))
     assert list(seller_notes.scalars()) == [NotificationType.MOVE_STALLED]
+
+
+def test_escalations_are_not_emailed_for_now():
+    """2026-11-14: a reminder is emailed; an escalation, to the holder or to
+    the people told, is in-app and push only."""
+    from app.notifications.email import EMAIL_ENABLED_TYPES
+    from app.notifications.models import NotificationType
+
+    assert NotificationType.MOVE_REMINDER in EMAIL_ENABLED_TYPES
+    assert NotificationType.MOVE_ESCALATED not in EMAIL_ENABLED_TYPES
+    assert NotificationType.MOVE_STALLED not in EMAIL_ENABLED_TYPES
