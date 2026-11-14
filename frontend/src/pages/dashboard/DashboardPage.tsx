@@ -26,7 +26,7 @@ import { formatCompact, formatDate } from "../../lib/utils";
 import { useAuth } from "../../hooks/useAuth";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { ScoutReportPanel } from "../../components/ai/ScoutReportPanel";
-import { dealWhoseMove, offerWhoseMove, type WhoseMove } from "../../lib/whoseMove";
+import { offerWhoseMove, type WhoseMove } from "../../lib/whoseMove";
 import WaitingOnYouBand, { type WaitingItem } from "../../components/dashboard/WaitingOnYouBand";
 import { BriefingCard } from "../../components/ai/Assistant";
 import { useClubDashboard } from "../../hooks/useClubDashboard";
@@ -304,7 +304,7 @@ export default function DashboardPage() {
   const dealRows = deals.slice(0, 3).map((d) => ({
     key: d.id, onClick: () => navigate(`/deals/${d.id}`),
     name: d.player?.name ?? "—", player: { id: d.player?.id, photoUrl: d.player?.photo_url }, sub: d.stage.replace(/_/g, " ").toLowerCase(),
-    value: formatCompact(d.agreed_fee), move: dealWhoseMove(d, myClubId), idleSince: d.updated_at,
+    value: formatCompact(d.agreed_fee), move: d.whose_move ?? "neither", idleSince: d.updated_at,
   }));
 
   // ── Tier 4 ──
