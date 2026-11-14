@@ -47,7 +47,7 @@ async def open_demo_rows(db: AsyncSession, table: str) -> dict[uuid.UUID, uuid.U
     out = {}
     for key, run_id in (await db.execute(
             select(DemoChange.pk, DemoChange.run_id).join(DemoRun, DemoRun.id == DemoChange.run_id)
-            .where(DemoRun.status == "ACTIVE", DemoChange.op == "insert", DemoChange.table_name == table))).all():
+            .where(DemoRun.status == "ACTIVE", DemoChange.op.in_(journal.RUN_ROW_OPS), DemoChange.table_name == table))).all():
         raw = json.loads(key).get("id")
         try:
             out[journal.dec(raw) if isinstance(raw, dict) else uuid.UUID(str(raw))] = run_id
@@ -98,6 +98,8 @@ def _where_pk(table, pk_text: str):
 
 
 async def _undo(db: AsyncSession, change: DemoChange, skipped: list[dict]) -> bool:
+    if change.op == "adopt":
+        return False  # a marker: the deal's own changes are undone one by one
     table = _table(change.table_name)
     where = _where_pk(table, change.pk)
     if change.op == "insert":
@@ -244,7 +246,7 @@ async def _not_in_another_demo(db: AsyncSession, user_id: uuid.UUID, player_id: 
     keys = {(t, journal.pk_key({"id": i})) for t, i in open_ids}
     rows = (await db.execute(
         select(DemoChange.table_name, DemoChange.pk, DemoChange.run_id).join(DemoRun, DemoRun.id == DemoChange.run_id)
-        .where(DemoRun.status == "ACTIVE", DemoChange.op == "insert",
+        .where(DemoRun.status == "ACTIVE", DemoChange.op.in_(journal.RUN_ROW_OPS),
                DemoChange.table_name.in_(["offers", "deals"]),
                DemoChange.pk.in_([k for _t, k in keys])))).all()
     if any((t, k) in keys and run_id != (own.id if own else None) for t, k, run_id in rows):
@@ -261,10 +263,59 @@ async def guard_demo_row(db: AsyncSession, table: str, pk: dict, *, what: str) -
         return
     row = (await db.execute(
         select(DemoChange.run_id).join(DemoRun, DemoRun.id == DemoChange.run_id)
-        .where(DemoRun.status == "ACTIVE", DemoChange.op == "insert", DemoChange.table_name == table,
+        .where(DemoRun.status == "ACTIVE", DemoChange.op.in_(journal.RUN_ROW_OPS), DemoChange.table_name == table,
                DemoChange.pk == journal.pk_key(pk)).limit(1))).first()
     if row is not None and db.sync_session.info.get("demo_run_id") != row[0]:
         raise PermissionError(f"This {what} is part of someone's demo, so it can't be used outside it.")
+
+
+# ── Adopting a deal into a demo ──────────────────────────────────────────────
+
+
+async def adoption(db: AsyncSession, user, deal_id: uuid.UUID) -> tuple[bool, str | None]:
+    """Whether the user can adopt this deal into their open demo, and if not,
+    why (None when there's nothing to say: no demo, or already in it)."""
+    from app.clubs import service as clubs_service
+    from app.deals.models import Deal, DealStatus
+
+    run = await active_run(db, user.id)
+    if run is None:
+        return False, None
+    if (await open_demo_rows(db, "deals")).get(deal_id) is not None:
+        return False, None  # already in a demo: this one, or another tester's
+    deal = await db.get(Deal, deal_id)
+    if deal is None:
+        return False, None
+    club = await clubs_service.get_club_for_user(db, user.id)
+    if club is None or club.id not in (deal.buyer_club_id, deal.seller_club_id):
+        return False, None
+    if deal.status not in (DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION):
+        return False, "Only a deal in progress can be added to your demo."
+    try:
+        await _not_in_another_demo(db, user.id, deal.player_id)
+    except PermissionError as exc:
+        return False, str(exc)
+    return True, None
+
+
+async def adopt_deal(db: AsyncSession, user, deal_id: uuid.UUID) -> DemoRun:
+    """Adopt a deal your club is part of into your open demo: from now on its
+    changes belong to the run, TransferX plays the agent and the player (and
+    a house club, if one is party), and Reset puts the deal back as it is
+    now. PermissionError with the reason when it can't."""
+    from app.audit import service as audit_service
+
+    ok, why = await adoption(db, user, deal_id)
+    if not ok:
+        raise PermissionError(why or "This deal can't be added to your demo.")
+    run = await active_run(db, user.id)
+    db.add(DemoChange(run_id=run.id, table_name="deals", pk=journal.pk_key({"id": deal_id}), op="adopt"))
+    await audit_service.emit(
+        db, entity_type="DEAL", entity_id=deal_id, action="DEMO_ADOPTED", actor_user_id=user.id,
+        payload={"run_id": str(run.id)}, description="Added to a demo: TransferX plays the other side until it's reset",
+    )
+    await db.commit()
+    return run
 
 
 # ── Keeping demo and test deals out of shared figures ────────────────────────
@@ -279,7 +330,7 @@ async def active_demo_ids(db: AsyncSession, table: str) -> set[uuid.UUID]:
         return set()
     keys = (await db.execute(
         select(DemoChange.pk).join(DemoRun, DemoRun.id == DemoChange.run_id)
-        .where(DemoRun.status == "ACTIVE", DemoChange.op == "insert", DemoChange.table_name == table))).scalars().all()
+        .where(DemoRun.status == "ACTIVE", DemoChange.op.in_(journal.RUN_ROW_OPS), DemoChange.table_name == table))).scalars().all()
     out = set()
     for key in keys:
         raw = json.loads(key).get("id")

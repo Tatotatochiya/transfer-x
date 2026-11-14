@@ -31,4 +31,20 @@ describe("DemoDealControls", () => {
     await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
     expect(screen.queryByRole("region", { name: "Demo controls" })).not.toBeInTheDocument();
   });
+
+  it("offers to add a deal outside the demo, and adds it", async () => {
+    api.get.mockResolvedValue({ data: { in_demo: false, can_adopt: true, adopt_reason: null } });
+    api.post.mockResolvedValue({ data: { in_demo: true } });
+    renderWithProviders(<DemoDealControls dealId="d3" waiting waitingOn="Waiting on the agent" />);
+    expect(await screen.findByText("Demo: play the other side of this deal")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Add to my demo" }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/demo/deals/d3/adopt"));
+  });
+
+  it("says why a deal can't be added, without a button", async () => {
+    api.get.mockResolvedValue({ data: { in_demo: false, can_adopt: false, adopt_reason: "He's in another tester's demo right now." } });
+    renderWithProviders(<DemoDealControls dealId="d4" waiting waitingOn="Waiting on the agent" />);
+    expect(await screen.findByText("He's in another tester's demo right now.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add to my demo" })).toBeNull();
+  });
 });

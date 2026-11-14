@@ -1,6 +1,6 @@
 ---
 title: "Demo Mode"
-last_updated: 2026-11-13
+last_updated: 2026-11-14
 status: Built (runs, journal, reset, play-as; demo and test deals kept out of shared figures; house clubs sell, buy and bid as rivals; "make them…" controls on offers and deals; house clubs answer enquiries and reminders)
 owner: "TODO — assign a Product Owner"
 ---
@@ -63,6 +63,8 @@ A counter is always above the offer and rounded to £0.5m. After two counters th
 
 **Make them move now on a deal** (added 2026-11-13). On a deal in your own demo that's waiting on the other side, a "Demo: waiting on …" panel under the status card makes the next move that isn't yours (the house club's, the agent's or the player's) at once, even for an agent or player someone is signed in as. The deal's note says "Automated (demo, the tester's choice): …". `GET /demo/deals/{id}`, `POST /demo/deals/{id}/make` (409 when it's your move).
 
+**Adopt a deal into your demo** (added 2026-11-14). A deal your club is part of that no demo made (one of the seeded scenario deals, or one from before your demo) can be added to your open demo from its page: "Demo: play the other side of this deal" → **Add to my demo**. From then on it behaves like a deal your demo made: TransferX plays its agent and its player (and a house club, if one is party; never a club people use), "Make them move now" and reminders work, nobody outside the demo can act on it, and **Reset puts it back as it was when you adopted it**. The journal records the adoption as an `adopt` entry (`journal.RUN_ROW_OPS`), so every check that asks "is this a demo's row?" counts it. It can't be adopted when another tester's demo has the player, or when it's no longer in progress. `GET /demo/deals/{id}` (`can_adopt`, `adopt_reason`), `POST /demo/deals/{id}/adopt`; audited as `DEMO_ADOPTED`.
+
 **Enquiries** (added 2026-11-13). A house club answers an enquiry about one of its players: the first time with roughly what it would take (its counter level: hard-nosed 120% of his price, fair 100%, eager 95%), after that "Our position hasn't changed. Send us an offer…". It never closes one.
 
 **Reminders** ([move reminders](./move-reminders/README.md), added 2026-11-13). In a demo, "Send a reminder" is there straight away (one minute between reminders, not 24 and 48 hours), and the house answers it at once, skipping "After a few minutes". It doesn't make an agent or player someone is signed in as move. The automatic 3- and 7-day reminders leave demo transactions alone.
@@ -86,7 +88,8 @@ Added 2026-10-29. While a run is open, the deals it made don't count in what eve
 | `GET /demo/run` | Your active run (changes, auto-reset date) and whether you may start one |
 | `POST /demo/run`, `/demo/run/reset`, `/demo/run/keep` | Start, reset, keep |
 | `GET /demo/offers/{id}`, `POST /demo/offers/{id}/make` | Make the house club accept, counter or reject an offer now |
-| `GET /demo/deals/{id}`, `POST /demo/deals/{id}/make` | Make the other side's next move on a deal now |
+| `GET /demo/deals/{id}`, `POST /demo/deals/{id}/make` | Make the other side's next move on a deal now; whether it can be adopted |
+| `POST /demo/deals/{id}/adopt` | Add a deal your club is part of to your demo |
 | `GET /demo/house-clubs`, `POST /demo/house-clubs/{id}/play-as` | House clubs; a two-hour token to play one inside your run |
 | `GET /admin/demo` | Runs with their reports, testers, every club and whether it's in use |
 | `PATCH /admin/demo/clubs/{id}`, `PATCH /admin/demo/testers/{id}` | House club on or off (and personality); tester on or off. Reason required |
