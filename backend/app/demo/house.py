@@ -135,6 +135,15 @@ async def _demo_rows(db: AsyncSession, table: str) -> dict[uuid.UUID, uuid.UUID]
     return await open_demo_rows(db, table)
 
 
+async def _adopted(db: AsyncSession, deal_id: uuid.UUID, run_id: uuid.UUID) -> bool:
+    from app.demo import journal
+    from app.demo.models import DemoChange
+
+    return (await db.execute(select(DemoChange.id).where(
+        DemoChange.run_id == run_id, DemoChange.op == "adopt", DemoChange.table_name == "deals",
+        DemoChange.pk == journal.pk_key({"id": deal_id})).limit(1))).first() is not None
+
+
 # Someone using TransferX refreshes their session at least hourly (access
 # tokens last 60 minutes), so a sign-in inside this window means they're here.
 SIGNED_IN = timedelta(hours=2)
@@ -448,14 +457,17 @@ async def _deal_step(db: AsyncSession, deal_id: uuid.UUID, run_id: uuid.UUID, *,
     buyer = await db.get(Club, deal.buyer_club_id)
     house_seller = seller if seller is not None and seller.house_club else None
     house_buyer = buyer if buyer is not None and buyer.house_club else None
-    if house_seller is None and house_buyer is None:
-        return None
     run = await db.get(DemoRun, run_id)
+    # An adopted deal (demo/service.adopt_deal) is between clubs people use:
+    # the house plays only its agent and player.
+    adopted = await _adopted(db, deal.id, run_id)
+    if house_seller is None and house_buyer is None and not adopted:
+        return None
     if not (hurry or chosen):
         last = await _tester_moved_at(db, "DEAL", deal.id, run) or deal.created_at
         if not _due(last, getattr(run, "speed", "instant"), datetime.now(timezone.utc)):
             return None
-    note_club = (house_buyer or house_seller).id
+    note_club = (house_buyer or house_seller).id if (house_buyer or house_seller) else deal.buyer_club_id
     label = CHOSEN if chosen else LABEL
 
     async def may(user_id: uuid.UUID | None) -> bool:
@@ -556,7 +568,7 @@ async def _deal_step(db: AsyncSession, deal_id: uuid.UUID, run_id: uuid.UUID, *,
                 actor, who, agent_id = agent.user_id, agent.display_name, agent.id
             elif profile is not None and await may(profile.user_id):
                 actor, who, agent_id = profile.user_id, "The player", None
-            elif agent is None and profile is None:
+            elif agent is None and profile is None and (house_seller or house_buyer):
                 actor, who, agent_id = (house_seller or house_buyer).user_id, "The player", None
             else:
                 return None  # whoever answers for him is signed in: they answer
@@ -747,7 +759,7 @@ async def make_deal_move(db: AsyncSession, user, deal_id: uuid.UUID) -> str:
         raise LookupError("Not a deal in your demo.")
     done = await _deal_step(db, deal_id, run_id, chosen=True)
     if done is None:
-        raise ValueError("Nothing for them to do: it's your move.")
+        raise ValueError("Nothing for TransferX to do: it's your move, or a club's that people use.")
     return done
 
 
