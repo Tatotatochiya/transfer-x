@@ -4,7 +4,7 @@ import asyncio
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.filters import apply_date_range
@@ -60,6 +60,8 @@ async def create_notification(
     pref_row = pref.scalar_one_or_none()
     if pref_row is not None and not pref_row.enabled:
         return None  # Suppressed by user preference
+    if related_club_id is None:
+        related_club_id = await _other_club(db, recipient_user_id, link)
 
     n = Notification(
         recipient_user_id=recipient_user_id,
@@ -117,6 +119,61 @@ async def get_unread_count(db: AsyncSession, user_id: uuid.UUID) -> int:
     return result.scalar_one()
 
 
+# Letters with no Unicode decomposition, folded by hand.
+_SPECIAL = {"ø": "o", "đ": "d", "ı": "i", "ł": "l"}
+
+
+def _fold(text: str) -> str:
+    """Lower case without accents, so "estev" finds Estêvão and "odeg" Ødegaard."""
+    import unicodedata
+
+    text = "".join(_SPECIAL.get(c, c) for c in text.lower())
+    return "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c))
+
+
+# For Postgres's translate(): each accented letter and its plain one, same length.
+_ACCENTED = "áàâäãåāăąçćčďéèêëēėęěíìîïīįñńňóòôöõōőřśšşșťțúùûüūůűųýÿžźżøđıł"
+_PLAIN = "".join(_fold(c) for c in _ACCENTED)
+assert len(_ACCENTED) == len(_PLAIN)
+
+
+def _folded(col, dialect: str | None):
+    """A column lower-cased, and on Postgres stripped of accents too
+    (translate); SQLite, in tests, only lower-cases."""
+    lowered = func.lower(col)
+    return func.translate(lowered, _ACCENTED, _PLAIN) if dialect == "postgresql" else lowered
+
+
+def _filtered(q, *, unread: bool = False, tier: str | None = None, category: str | None = None,
+              player_id: uuid.UUID | None = None, club_id: uuid.UUID | None = None, search: str | None = None,
+              dialect: str | None = None):
+    """The notifications page's filters, on a query over Notification. `search`
+    matches the player's name, the club's name and the wording (so a club
+    named only in the text still matches). Unknown tier or category: no rows."""
+    from app.clubs.models import Club
+    from app.notifications.tiers import CATEGORIES, TIERS
+    from app.players.models import Player
+
+    if unread:
+        q = q.where(Notification.is_read == False)  # noqa: E712
+    if tier:
+        q = q.where(Notification.type.in_([t for t, v in TIERS.items() if v.value == tier] or [None]))
+    if category:
+        q = q.where(Notification.type.in_(list(CATEGORIES.get(category, set())) or [None]))
+    if player_id:
+        q = q.where(Notification.related_player_id == player_id)
+    if club_id:
+        q = q.where(Notification.related_club_id == club_id)
+    needle = (search or "").strip()
+    if needle:
+        like = f"%{_fold(needle)}%"
+        cols = (Player.name, Club.name, Notification.message, Notification.title, Notification.body)
+        q = (q.outerjoin(Player, Player.id == Notification.related_player_id)
+             .outerjoin(Club, Club.id == Notification.related_club_id)
+             .where(or_(*(_folded(c, dialect).like(like) for c in cols))))
+    return q
+
+
 async def list_notifications(
     db: AsyncSession,
     user_id: uuid.UUID,
@@ -124,9 +181,11 @@ async def list_notifications(
     date_to: date | None = None,
     page: int = 1,
     page_size: int = 30,
+    **filters,
 ) -> tuple[list[Notification], int]:
     q = select(Notification).where(Notification.recipient_user_id == user_id)
     q = apply_date_range(q, Notification.created_at, date_from, date_to)
+    q = _filtered(q, dialect=db.bind.dialect.name, **filters)
     total_result = await db.execute(select(func.count()).select_from(q.subquery()))
     total = total_result.scalar_one()
     rows = await db.execute(
@@ -151,13 +210,52 @@ async def mark_read(db: AsyncSession, notification_id: uuid.UUID, user_id: uuid.
     return n
 
 
-async def mark_all_read(db: AsyncSession, user_id: uuid.UUID) -> int:
+async def mark_all_read(db: AsyncSession, user_id: uuid.UUID, date_from: date | None = None,
+                        date_to: date | None = None, **filters) -> int:
+    """Mark read every unread notification, or only those the page's filters
+    show ("Mark these read")."""
+    ids = select(Notification.id).where(Notification.recipient_user_id == user_id)
+    ids = apply_date_range(ids, Notification.created_at, date_from, date_to)
+    ids = _filtered(ids, unread=True, dialect=db.bind.dialect.name,
+                    **{k: v for k, v in filters.items() if k != "unread"})
     result = await db.execute(
         update(Notification)
-        .where(Notification.recipient_user_id == user_id, Notification.is_read == False)  # noqa: E712
+        .where(Notification.id.in_(ids.scalar_subquery()))
         .values(is_read=True)
+        .execution_options(synchronize_session=False)
     )
     return result.rowcount
+
+
+async def _other_club(db: AsyncSession, recipient_user_id: uuid.UUID, link: str | None) -> uuid.UUID | None:
+    """For a notification about an offer or a deal, the other club in it (as
+    the recipient sees it), so the page can show it and filter by it. Never an
+    anonymous buyer before acceptance (common/masking)."""
+    import re
+
+    from app.clubs.service import get_club_for_user
+    from app.common.masking import buyer_is_masked
+    from app.deals.models import Deal
+    from app.offers.models import Offer
+
+    m = re.match(r"^/(offers|deals)/([0-9a-fA-F-]{36})", link or "")
+    if not m:
+        return None
+    club = await get_club_for_user(db, recipient_user_id)
+    if club is None:
+        return None
+    entity_id = uuid.UUID(m.group(2))
+    if m.group(1) == "offers":
+        offer = await db.get(Offer, entity_id)
+        if offer is None or club.id not in (offer.from_club_id, offer.to_club_id):
+            return None
+        if club.id == offer.from_club_id:
+            return offer.to_club_id
+        return None if buyer_is_masked(offer, club.id) else offer.from_club_id
+    deal = await db.get(Deal, entity_id)
+    if deal is None or club.id not in (deal.buyer_club_id, deal.seller_club_id):
+        return None
+    return deal.seller_club_id if club.id == deal.buyer_club_id else deal.buyer_club_id
 
 
 # ── Club recipient routing (TRA-152, D5) ─────────────────────────────────────

@@ -25,6 +25,14 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Notifications you can filter.** The notifications page gains:
+  - a search box for a player or club, which also matches the wording and ignores accents ("pecsi" finds Á. Pécsi);
+  - chips for **Unread**, **Your move / Heads-up / For your information**, and a category (Offers, Deals, Reminders, Loans, Squad, Team);
+  - a filter button beside each row's player and club, to see only notifications about him or them;
+  - day headings (Today, Yesterday, Earlier this week, then dates) and **Show more** instead of page numbers;
+  - **Mark these read** under a filter.
+
+  Filters are kept in the URL. New offer and deal notifications record the other club (never an anonymous buyer), so filtering by club is exact. `GET /notifications` and `POST /notifications/read-all` take `unread`, `tier`, `category`, `player_id`, `club_id` and `q`.
 - **Where a received offer stands, without a click.** For a seller, the "Other bids" tab says "Best of 2" or "2nd of 2", and the Your move card says "Leeds have offered £2.5M more (£19M)".
 - **A player's other offers on the board.** A card that stands for two offers for one player lists the other one ("Also Bournemouth · £16.5M · Offer received ›") as a link, on the board, in the phone and tablet list, and in the card's pop-up (`BoardCard.other_items`).
 - **Add-ons, sell-on and instalments show without opening the section.** In the counter form, anything beyond the plain default is a chip in the "Payment, add-ons and sell-on" summary.
