@@ -187,7 +187,9 @@ async def test_suggested_counter_is_validated(client, buyer, seller, db, fake_mo
     offer = await _offer(client, buyer, seller, db)
     advice = (await client.get(f"/ai/offers/{offer['id']}/advice", headers=_auth_headers(seller))).json()
     assert advice["recommendation"] == "counter"
-    assert advice["suggested_terms"] == {"sell_on_pct": 0.15, "wage_weekly": 25000.0}
+    # The model's fee is dropped, and TransferX's own suggestion (10% over the
+    # £5m bid) takes its place: the advisor never names its own fee.
+    assert advice["suggested_terms"] == {"fee_amount": 5_500_000, "sell_on_pct": 0.15, "wage_weekly": 25000.0}
 
     # Cached until the offer moves: asking again makes no second model call.
     before = len(calls)
@@ -252,3 +254,53 @@ async def test_model_features_answer_503_without_a_model(client, buyer, seller, 
     assert resp.status_code == 503
     status = (await client.get("/ai/status", headers=_auth_headers(seller))).json()
     assert status["available"] is False
+
+
+@pytest.mark.asyncio
+async def test_the_advisor_and_the_counter_box_suggest_the_same_fee(client, buyer, seller, outsider, db, fake_model):
+    """One suggested counter (lite/service.suggested_counter_fee): the advisor
+    uses it whatever the model writes, and for a seller it never undercuts a
+    better bid already on the table."""
+    calls, reply = fake_model
+    reply["OFFER_ADVICE_USER"] = {"recommendation": "counter", "summary": "Push",
+                                  "suggested_terms": {"fee_amount": 21_000_000, "sell_on_pct": 0.15}}
+    offer = await _offer(client, buyer, seller, db, fee=5_000_000)
+    rival = await client.post("/offers", headers=_auth_headers(outsider), json={
+        "player_id": offer["player_id"], "to_club_id": offer["to_club_id"], "fee_amount": 8_000_000,
+        "wage_weekly": 20000, "contract_years": 3})
+    assert rival.status_code == 201, rival.text
+
+    advice = (await client.get(f"/ai/offers/{offer['id']}/advice", headers=_auth_headers(seller))).json()
+    assert calls[-1]["facts"]["suggested_counter_fee"] == 8_000_000  # the £8m bid, not 10% over £5m
+    assert advice["suggested_terms"]["fee_amount"] == 8_000_000  # the model's £21m is replaced
+    assert advice["suggested_terms"]["sell_on_pct"] == 0.15  # its other terms stand
+
+    card = (await client.get(f"/lite/offers/{offer['id']}", headers=_auth_headers(seller))).json()
+    assert card["counter_suggestion"] == 8_000_000  # the counter box's "Suggested" is the same figure
+
+
+@pytest.mark.asyncio
+async def test_under_a_listed_price_the_suggestion_is_that_price(client, buyer, seller, outsider, db, fake_model):
+    """A club that listed him at £25m isn't told to counter at the model's
+    £52m: under its own asking price, the suggestion is that price (or a
+    better bid already on the table)."""
+    from decimal import Decimal
+    from uuid import UUID
+
+    from app.valuation.models import PlayerValuation, ValuationConfidence
+
+    calls, reply = fake_model
+    reply["OFFER_ADVICE_USER"] = {"recommendation": "counter", "summary": "Ask for more"}
+    offer = await _offer(client, buyer, seller, db, fee=24_000_000)
+    db.add(PlayerValuation(player_id=UUID(offer["player_id"]), fair_value=Decimal(52_000_000),
+                           fair_value_low=Decimal(40_000_000), fair_value_high=Decimal(64_000_000),
+                           performance_score=Decimal("80"), confidence=list(ValuationConfidence)[0],
+                           model_version="test", league_tier=1, age_factor=Decimal("1")))
+    await db.commit()
+    r = await client.post("/sales", headers=_auth_headers(seller), json={
+        "player_id": offer["player_id"], "sale_type": "OPEN_TO_OFFERS", "asking_price": 25_000_000})
+    assert r.status_code == 201, r.text
+    card = (await client.get(f"/lite/offers/{offer['id']}", headers=_auth_headers(seller))).json()
+    assert card["counter_suggestion"] == 25_000_000
+    advice = (await client.get(f"/ai/offers/{offer['id']}/advice", headers=_auth_headers(seller))).json()
+    assert advice["suggested_terms"]["fee_amount"] == 25_000_000

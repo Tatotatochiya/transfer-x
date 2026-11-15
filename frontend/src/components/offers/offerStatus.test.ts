@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Offer, OfferEvent, OrderBook } from "../../types/api";
 import type { LiteOfferCard } from "../../hooks/useLite";
-import { buyerRanking, deadlineText, getOfferStatus, type OfferViewer } from "./offerStatus";
+import { buyerRanking, deadlineText, getOfferStatus, sellerRanking, type OfferViewer } from "./offerStatus";
 
 const BUYER = "buyer-club";
 const SELLER = "seller-club";
@@ -243,3 +243,23 @@ describe("buyerRanking", () => {
   });
 });
 
+
+describe("sellerRanking", () => {
+  const entry = (id: string, rank: number, fee: number, name: string) =>
+    ({ id, rank, fee_amount: fee, club: { id: name, name, crest_url: null }, kind: "offer", wage_weekly: null,
+      status: "SENT", is_countered: false, is_active: true, last_action_at: "2026-11-14T10:00:00Z" });
+  const book = (entries: ReturnType<typeof entry>[]): OrderBook =>
+    ({ role: "seller", active_count: entries.length, entries, summary: "", tiers: [], your_rank: null, is_leading: false, your_entry: null } as unknown as OrderBook);
+  const two = book([entry("leeds", 1, 19_000_000, "Leeds"), entry("bou", 2, 16_500_000, "Bournemouth")]);
+
+  it("says whether this offer is the best, and by how much the best beats it", () => {
+    expect(sellerRanking(two, "leeds")).toEqual({ short: "Best of 2", sentence: "It's the best of 2 offers." });
+    expect(sellerRanking(two, "bou")).toEqual({ short: "2nd of 2", sentence: "Leeds have offered £2.5M more (£19M)." });
+    expect(sellerRanking(book([entry("only", 1, 5_000_000, "Leeds")]), "only")?.short).toBe("Only offer");
+  });
+
+  it("puts the sentence in the seller's your-move card", () => {
+    const v = getOfferStatus(offer(), { ...seller(), standing: sellerRanking(two, "bou") });
+    expect(v.body).toContain("Leeds have offered £2.5M more (£19M).");
+  });
+});

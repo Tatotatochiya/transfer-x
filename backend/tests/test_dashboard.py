@@ -109,7 +109,7 @@ async def test_dashboard_shows_confirmed_deal_to_both_parties(client: AsyncClien
         items = dash.json()["waiting_on_you"]
         match = [i for i in items if i["kind"] == "deal" and i["id"] == deal_id]
         assert match, dash.json()
-        assert match[0]["reason"] == "You — signature"
+        assert match[0]["reason"] == "Complete the transfer"
 
 
 @pytest.mark.asyncio

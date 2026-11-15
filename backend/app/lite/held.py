@@ -94,7 +94,7 @@ async def _check(db: AsyncSession, user, club, kind: str, payload: dict) -> None
         if await offers_service.get_active_offer_for_buyer(db, body.player_id, club.id):
             raise _bad("You already have an open offer for this player.", status.HTTP_409_CONFLICT)
         active = await deals_service.get_active_deal_for_player(db, body.player_id)
-        if active and getattr(active.status, "value", active.status) == "IN_PROGRESS":
+        if deals_service.is_open(active):
             raise _bad("This player already has a transfer in progress.", status.HTTP_409_CONFLICT)
         try:
             await offers_service.check_new_offer(

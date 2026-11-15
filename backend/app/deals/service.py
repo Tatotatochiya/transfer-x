@@ -206,14 +206,34 @@ async def complete_paperwork_step(
     return deal
 
 
-def compute_deal_whose_move(deal: Deal, viewer_club_id: uuid.UUID | None = None) -> WhoseMove:
+async def completion_holds(db: AsyncSession, deals) -> dict[uuid.UUID, str]:
+    """For confirmed deals that can't complete yet: {deal id: "window" or
+    "real_world"}. A closed window holds completion until it opens; a player
+    API-Football has at another club waits on staff (players/real_world).
+    Nobody can move such a deal on, so it's nobody's move."""
+    from app.players.real_world import completion_hold
+    from app.transfer_window.service import completion_hold as window_hold
+
+    out: dict[uuid.UUID, str] = {}
+    for d in deals:
+        if d.stage != DealStage.CONFIRMED or not is_open(d):
+            continue
+        if await completion_hold(db, d) is not None:
+            out[d.id] = "real_world"
+        elif await window_hold(db, d) is not None:
+            out[d.id] = "window"
+    return out
+
+
+def compute_deal_whose_move(deal: Deal, viewer_club_id: uuid.UUID | None = None, *, held: bool = False) -> WhoseMove:
     """Whose move a deal is, for one club: the Board, the Dashboard, the deal
     list and the sidebar counts all read this (docs/design-system/README.md,
     "Whose move"). Needs `agent_negotiation`, `personal_terms` and
     `player_profile` loaded, as `_load_options` does.
 
-    At CONFIRMED both clubs must sign and per-club signature status isn't
-    tracked separately, so "your move" goes to whichever club asks. The
+    At CONFIRMED either club completes, so it's "your move" for whichever
+    club asks, unless completion is `held` (completion_holds): a closed
+    window or a real-world move, which nobody can act on. The
     commission and personal terms follow whose terms are on the table
     (`proposed_by`, ADR 0012): they're the buying club's to answer, or the
     agent's or player's. The selling club isn't part of either, until the
@@ -222,7 +242,7 @@ def compute_deal_whose_move(deal: Deal, viewer_club_id: uuid.UUID | None = None)
     if deal.status in (DealStatus.COMPLETED, DealStatus.COLLAPSED):
         return WhoseMove.NEITHER
     if deal.stage == DealStage.CONFIRMED:
-        return WhoseMove.YOUR
+        return WhoseMove.NEITHER if held else WhoseMove.YOUR
     # The paperwork checklist knows exactly whose steps are outstanding.
     if deal.stage == DealStage.PAPERWORK and viewer_club_id is not None:
         if outstanding_paperwork_for(deal, viewer_club_id):
@@ -303,12 +323,24 @@ async def get_deals_by_offer_ids(
     return {d.offer_id: d for d in result.scalars().all() if d.offer_id is not None}
 
 
+# A deal still running: in progress, or confirmed and waiting to complete
+# (a closed window, a real-world move). Either way the player is spoken for:
+# no listing, offer or second deal until it completes or falls through.
+OPEN_DEAL_STATUSES = (DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION)
+
+
+def is_open(deal: Deal | None) -> bool:
+    """Whether a deal is still running (OPEN_DEAL_STATUSES)."""
+    return deal is not None and getattr(deal.status, "value", deal.status) in {s.value for s in OPEN_DEAL_STATUSES}
+
+
 async def get_active_deal_for_player(db: AsyncSession, player_id: uuid.UUID) -> Deal | None:
-    """Return the IN_PROGRESS deal for this player, or most recent COMPLETED deal within 30 days."""
-    # IN_PROGRESS takes priority
+    """Return this player's open deal (in progress, or confirmed and waiting
+    to complete), or his most recent COMPLETED deal within 30 days."""
+    # An open deal takes priority
     result = await db.execute(
         select(Deal)
-        .where(Deal.player_id == player_id, Deal.status == DealStatus.IN_PROGRESS)
+        .where(Deal.player_id == player_id, Deal.status.in_(OPEN_DEAL_STATUSES))
         .options(*_DEAL_CLUB_OPTS)
         .limit(1)
     )
@@ -335,7 +367,7 @@ async def get_active_deals_for_players(
     db: AsyncSession, player_ids: list[uuid.UUID]
 ) -> dict[uuid.UUID, Deal]:
     """Batch version: returns {player_id: deal} for the given set of player IDs.
-    Prefers IN_PROGRESS over COMPLETED; only includes COMPLETED within 30 days."""
+    Prefers an open deal over COMPLETED; only includes COMPLETED within 30 days."""
     if not player_ids:
         return {}
 
@@ -345,24 +377,25 @@ async def get_active_deals_for_players(
         .where(
             Deal.player_id.in_(player_ids),
             or_(
-                Deal.status == DealStatus.IN_PROGRESS,
+                Deal.status.in_(OPEN_DEAL_STATUSES),
                 (Deal.status == DealStatus.COMPLETED) & (Deal.completed_at >= cutoff),
             ),
         )
         .options(*_DEAL_CLUB_OPTS)
-        .order_by(Deal.player_id, Deal.status)  # IN_PROGRESS sorts before COMPLETED alphabetically
+        .order_by(Deal.player_id)
     )
     deals = list(result.scalars())
 
-    # For each player keep IN_PROGRESS if present, else most recent COMPLETED
+    # For each player keep the open deal if there is one, else the most recent COMPLETED
     out: dict[uuid.UUID, Deal] = {}
     for deal in deals:
         pid = uuid.UUID(str(deal.player_id))
         existing = out.get(pid)
         if existing is None:
             out[pid] = deal
-        elif deal.status == DealStatus.IN_PROGRESS:
-            out[pid] = deal  # IN_PROGRESS always wins
+        elif is_open(deal) or (not is_open(existing) and deal.completed_at and (
+                existing.completed_at is None or deal.completed_at > existing.completed_at)):
+            out[pid] = deal  # an open deal always wins; else the latest completed
     return out
 
 

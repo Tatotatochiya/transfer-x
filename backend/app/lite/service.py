@@ -1,10 +1,11 @@
 """Lite mode preferences (docs/feature_spec/lite-mode/BACKEND.md §1)."""
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.deals.service import is_open as is_open_deal
 from app.lite.models import TextScale, UserPreference
 
 
@@ -352,7 +353,7 @@ async def _resolve_for_club(db: AsyncSession, club, rows) -> list[dict]:
             state, note = "outside", "His club isn't on TransferX, so there's no one to send an offer to."
         elif p.id in my_offers:
             state, note, offer_id = "offer_in", "You already have an offer in for him.", my_offers[p.id]
-        elif p.id in busy and busy[p.id].status.value == "IN_PROGRESS":
+        elif p.id in busy and is_open_deal(busy[p.id]):
             state, note = "in_transfer", "He's already in a transfer with another club."
         elif owner is None:
             state, note = "free_agent", "A free agent: there's no fee to pay."
@@ -584,7 +585,7 @@ async def offer_draft(db: AsyncSession, user, *, player_id: uuid.UUID) -> dict:
         disabled = NO_MARKET_REASON
     elif existing is not None:
         disabled = "You already have an offer in for him."
-    elif deal is not None and deal.status == "IN_PROGRESS":
+    elif is_open_deal(deal):
         disabled = "He is already in a transfer with another club."
 
     return {
@@ -599,6 +600,56 @@ async def offer_draft(db: AsyncSession, user, *, player_id: uuid.UUID) -> dict:
         "existing_offer_id": str(existing.id) if existing is not None else None,
         "disabled_reason": disabled,
     }
+
+
+async def suggested_counter_fee(db: AsyncSession, offer, *, side: str, your_move: bool,
+                                valuation: float | None) -> float | None:
+    """The one suggested counter fee for a permanent offer, shown in the
+    counter box ("Suggested") and given to the offer advisor, which must use
+    it (ai/assist.py): the same facts always give the same figure.
+
+    Seller: the club's own valuation when it's above the bid; else, under a
+    listed asking price, that price (or the best competing bid if higher);
+    otherwise the highest of 10% over the bid, the model's value and the best
+    competing open offer. Rounded up to £0.5m. A bid already on the table from
+    another club is never undercut. Buyer: 5% under their ask, rounded down.
+    None when it isn't the viewer's move."""
+    from app.offers.models import Offer as _Offer, OfferStatus
+    from app.valuation.service import get_latest_valuations
+
+    fee = float(offer.fee_amount or 0)
+    if not your_move:
+        return None
+    counter = None
+    if side == "seller" and valuation and valuation > fee:
+        # The club has said what he's worth: ask for that (the push's
+        # "Ask for £21m" opens this card with the same figure).
+        counter = valuation
+    elif side == "seller":
+        rival = (await db.execute(select(func.max(_Offer.fee_amount)).where(
+            _Offer.player_id == offer.player_id, _Offer.id != offer.id, _Offer.to_club_id == offer.to_club_id,
+            _Offer.deal_type == offer.deal_type,
+            _Offer.status.in_([OfferStatus.SENT, OfferStatus.COUNTERED])))).scalar()
+        rival = float(rival) if rival else None
+        price = await _prices(db, [offer.player], owned={offer.player_id})
+        listed = price[offer.player_id][0] if offer.player_id in price and price[offer.player_id][1] == "listed" else None
+        if listed and fee < listed:
+            # The club named its price: ask for that (or the better bid on
+            # the table), never more than it said it would take.
+            counter = _round_half_m(max(listed, rival or 0), up=True)
+        else:
+            anchors = [fee * 1.1]
+            vals = await get_latest_valuations(db, [offer.player_id])
+            if offer.player_id in vals:
+                anchors.append(float(vals[offer.player_id].fair_value))
+            if rival:
+                anchors.append(rival)
+            counter = _round_half_m(max(anchors), up=True)
+    elif fee > HALF_M:
+        counter = _round_half_m(fee * 0.95, down=True)
+    if counter is not None and counter == fee:
+        counter = fee + HALF_M if side == "seller" else max(HALF_M, fee - HALF_M)
+    return counter
 
 
 async def offer_card(db: AsyncSession, user, *, offer_id: uuid.UUID) -> dict:
@@ -663,25 +714,7 @@ async def offer_card(db: AsyncSession, user, *, offer_id: uuid.UUID) -> dict:
         a = (await db.execute(sale_q.order_by(Sale.created_at.desc()).limit(1))).scalars().first()
         asking = float(a) if a is not None else None
 
-    counter = None
-    if your_move and not loan:
-        if side == "seller" and valuation and valuation > fee:
-            # The club has said what he's worth: ask for that (the push's
-            # "Ask for £21m" opens this card with the same figure).
-            counter = valuation
-        elif side == "seller":
-            anchors = [fee * 1.1]
-            vals = await get_latest_valuations(db, [offer.player_id])
-            if offer.player_id in vals:
-                anchors.append(float(vals[offer.player_id].fair_value))
-            price = await _prices(db, [offer.player], owned={offer.player_id})
-            if offer.player_id in price and price[offer.player_id][1] == "listed":
-                anchors.append(price[offer.player_id][0])
-            counter = _round_half_m(max(anchors), up=True)
-        elif fee > HALF_M:
-            counter = _round_half_m(fee * 0.95, down=True)
-        if counter is not None and counter == fee:
-            counter = fee + HALF_M if side == "seller" else max(HALF_M, fee - HALF_M)
+    counter = await suggested_counter_fee(db, offer, side=side, your_move=your_move, valuation=valuation) if not loan else None
 
     disabled = None
     if not await _can_market(db, user, role):

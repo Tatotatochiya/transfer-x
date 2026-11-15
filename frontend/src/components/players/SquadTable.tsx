@@ -5,6 +5,7 @@ import { parseValuation } from "../../lib/money";
 import { formatCompactCurrency, formatCurrency } from "../../lib/utils";
 import PlayerLink from "../ui/PlayerLink";
 import FallbackImage from "../ui/FallbackImage";
+import { isOpenDeal } from "../../lib/openDeal";
 
 /**
  * The squad as one compact table (docs/feature_spec/my-club-compact-squad):
@@ -143,7 +144,7 @@ function PlayerRow({
 
   const flag = loan
     ? { label: "On loan", colour: "text-accent" }
-    : player.active_deal?.status === "IN_PROGRESS"
+    : isOpenDeal(player.active_deal)
     ? { label: "Transfer pending", colour: "text-warning-text" }
     : listingId
     ? { label: "Listed", colour: "text-accent" }
@@ -305,7 +306,7 @@ function PlayerRow({
                   {unlisting ? "Unlisting…" : "Unlist"}
                 </button>
               </>
-            ) : player.active_deal?.status === "IN_PROGRESS" ? (
+            ) : isOpenDeal(player.active_deal) ? (
               <span className="font-semibold text-warning-text">Transfer pending</span>
             ) : (
               <button
@@ -386,7 +387,7 @@ export default function SquadTable({
 }: Props) {
   const [chip, setChip] = useState<ChipKey>("all");
   const listed = openListings ?? new Map<string, string>();
-  const isInPlay = (p: SquadPlayer) => listed.has(p.id) || !!inPlay?.has(p.id) || p.active_deal?.status === "IN_PROGRESS";
+  const isInPlay = (p: SquadPlayer) => listed.has(p.id) || !!inPlay?.has(p.id) || isOpenDeal(p.active_deal);
 
   if (players.length === 0) {
     return <p className="py-8 text-center text-small text-text-muted">No players in squad.</p>;

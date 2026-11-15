@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.board.schemas import BoardCard, BoardColumn, BoardResponse
+from app.board.schemas import BoardCard, BoardColumn, BoardOther, BoardResponse
 from app.common.masking import buyer_name
 from app.common.schemas import WhoseMove
 from app.deals import service as deals_service
@@ -114,6 +114,7 @@ async def _offer_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, hist
 
 async def _deal_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, history: bool = False) -> list[BoardCard]:
     deals, _ = await deals_service.list_deals(db, club_id=club_id, page=1, page_size=_PAGE)
+    holds = await deals_service.completion_holds(db, deals)
     cards = []
     for d in deals:
         if d.player is None:
@@ -132,10 +133,15 @@ async def _deal_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, histo
             column, move, detail = "done", WhoseMove.NEITHER, "Transfer complete"
         else:
             column = DEAL_COLUMN.get(d.stage, "fee_agreed")
-            move = deals_service.compute_deal_whose_move(d, club_id)
+            hold = holds.get(d.id)
+            move = deals_service.compute_deal_whose_move(d, club_id, held=hold is not None)
             outstanding = deals_service.outstanding_paperwork_for(d, club_id)
             if d.stage == DealStage.CONFIRMED:
-                detail = "Signature" + (" · your move" if move == WhoseMove.YOUR else f" · waiting on {other or 'them'}")
+                # Paperwork's done: completing is all that's left, unless a
+                # closed window or a real-world move holds it.
+                detail = ("Completes when the window opens" if hold == "window"
+                          else "On hold: he's moved in real life" if hold == "real_world"
+                          else "Ready to complete" + (" · your move" if move == WhoseMove.YOUR else ""))
             elif outstanding:
                 detail = f"You: {_PAPERWORK.get(outstanding[0], 'paperwork')}"
             elif d.stage == DealStage.AGENT_NEGOTIATION:
@@ -244,7 +250,11 @@ async def get_board(db: AsyncSession, club_id: uuid.UUID, side: str = "BOTH") ->
     for key, cards in active.items():
         cards.sort(key=lambda c: _Entry(c).sort_key, reverse=True)
         top = cards[0]
-        top.others = sum(1 for c in cards[1:] if c.column == top.column)
+        same = [c for c in cards[1:] if c.column == top.column]
+        top.others = len(same)
+        top.other_items = [BoardOther(kind=c.kind, entity_id=c.entity_id, counterparty=c.counterparty,
+                                      amount=c.amount, detail=c.detail, whose_move=c.whose_move, link=c.link)
+                           for c in same]
         shown.append(top)
     drawer = []
     for key, cards in closed.items():
