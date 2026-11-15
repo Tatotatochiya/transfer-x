@@ -3,7 +3,9 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,17 +33,32 @@ from app.notifications.tiers import RETIRED, tier_of
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
+def _filters(
+    unread: bool = False,
+    tier: Literal["YOUR_MOVE", "HEADS_UP", "FYI"] | None = None,
+    category: Literal["offers", "deals", "reminders", "loans", "squad", "team"] | None = None,
+    player_id: uuid.UUID | None = None,
+    club_id: uuid.UUID | None = None,
+    q: str | None = Query(None, max_length=100),
+) -> dict:
+    """The notifications page's filters, shared by the list and "Mark these read"."""
+    return {"unread": unread, "tier": tier, "category": category, "player_id": player_id,
+            "club_id": club_id, "search": q}
+
+
 @router.get("", response_model=Paginated[NotificationResponse])
 async def list_notifications(
     date_from: date | None = None,
     date_to: date | None = None,
-    page: int = 1,
-    page_size: int = 30,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(30, ge=1, le=100),
+    filters: dict = Depends(_filters),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """The page's list, newest first, with its filters (_filters)."""
     notifications, total = await service.list_notifications(
-        db, current_user.id, date_from=date_from, date_to=date_to, page=page, page_size=page_size
+        db, current_user.id, date_from=date_from, date_to=date_to, page=page, page_size=page_size, **filters
     )
     return Paginated(
         items=await service.with_subjects(db, notifications),
@@ -76,12 +93,17 @@ async def mark_read(
 
 @router.post("/read-all", response_model=UnreadCountResponse)
 async def mark_all_read(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    filters: dict = Depends(_filters),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    await service.mark_all_read(db, current_user.id)
+    """Mark everything read, or with the list's filters only what they show
+    ("Mark these read"). Returns the unread count left."""
+    await service.mark_all_read(db, current_user.id, date_from=date_from, date_to=date_to, **filters)
     await db.commit()
-    return UnreadCountResponse(count=0)
+    return UnreadCountResponse(count=await service.get_unread_count(db, current_user.id))
 
 
 async def _preferences_response(db: AsyncSession, user_id: uuid.UUID) -> NotificationPreferencesResponse:

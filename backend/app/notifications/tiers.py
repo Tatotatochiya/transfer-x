@@ -61,6 +61,24 @@ def tier_of(type_: T) -> Tier:
     return TIERS[type_]
 
 
+# The notifications page's category filter: every type in exactly one. The
+# keys are the page's ?category= values.
+CATEGORIES: dict[str, set[T]] = {
+    "offers": {T.OFFER_RECEIVED, T.OFFER_ACCEPTED, T.OFFER_REJECTED, T.OFFER_COUNTERED, T.OFFER_WITHDRAWN,
+               T.OFFER_EXPIRING, T.OFFER_MESSAGE, T.ENQUIRY_RECEIVED, T.ENQUIRY_REPLIED, T.SALE_REOPENED,
+               T.RELEASE_CLAUSE_TRIGGERED} | RETIRED,
+    "deals": {T.DEAL_COMPLETED, T.DEAL_COLLAPSED, T.DEAL_PERSONAL_TERMS_SENT, T.PERSONAL_TERMS_DECISION,
+              T.DEAL_PAPERWORK, T.DEAL_SLA_BREACHED, T.INSTALMENT_DUE, T.DEAL_CLAUSE_TRIGGERED, T.DEAL_SELL_ON,
+              T.NEGOTIATION_MESSAGE, T.DEAL_AGENT_INVITED},
+    "reminders": {T.MOVE_REMINDER, T.MOVE_ESCALATED, T.MOVE_STALLED},
+    "loans": {T.LOAN_STARTED, T.LOAN_ENDING_SOON, T.LOAN_ENDED, T.LOAN_RECALLED, T.LOAN_CONVERTED},
+    "squad": {T.REAL_WORLD_MOVES, T.REGISTRATION_UPDATED, T.PLAYER_AVAILABLE, T.DEADLINE_DAY, T.CLIENT_ALERT,
+              T.REPRESENTATION_STARTED, T.REPRESENTATION_REVOKED, T.REPRESENTATION_EXPIRED},
+    "team": {T.STAFF_INVITATION, T.APPROVAL_REQUESTED, T.APPROVAL_DECIDED, T.LITE_QUESTION,
+             T.VERIFICATION_APPROVED, T.VERIFICATION_REJECTED, T.DAILY_DIGEST, T.SYSTEM_BROADCAST},
+}
+
+
 # What the lock screen says when the user hides amounts (review decision 1).
 # No figures, no club names, no message text: only what kind of thing
 # happened. The details are one tap away, behind the phone's lock.
