@@ -108,7 +108,7 @@ def _deal_reason(deal: Deal, club_id: uuid.UUID | None = None) -> str:
     """What the club has to do, for the stages where it's its move
     (deals_service.compute_deal_whose_move already returned YOUR)."""
     if deal.stage == DealStage.CONFIRMED:
-        return "You — signature"
+        return "Complete the transfer"
     if deal.stage == DealStage.PAPERWORK:
         outstanding = deals_service.outstanding_paperwork_for(deal, club_id)
         if outstanding:
@@ -133,8 +133,9 @@ def _deal_reason(deal: Deal, club_id: uuid.UUID | None = None) -> str:
 async def _deal_items(db: AsyncSession, club_id: uuid.UUID) -> list[tuple[datetime, DashboardItem]]:
     deals, _ = await deals_service.list_deals(db, club_id=club_id, page=1, page_size=_CANDIDATE_PAGE_SIZE)
     out = []
+    holds = await deals_service.completion_holds(db, deals)
     for d in deals:
-        if deals_service.compute_deal_whose_move(d, club_id) != WhoseMove.YOUR:
+        if deals_service.compute_deal_whose_move(d, club_id, held=d.id in holds) != WhoseMove.YOUR:
             continue
         counterparty = d.seller_club if d.buyer_club_id == club_id else d.buyer_club
         out.append((

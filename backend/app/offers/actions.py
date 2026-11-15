@@ -182,7 +182,7 @@ async def create_offer(db: AsyncSession, user: User, club, body: OfferCreateRequ
     from app.deals import service as deals_service
 
     active_deal = await deals_service.get_active_deal_for_player(db, body.player_id)
-    if active_deal and active_deal.status == "IN_PROGRESS":
+    if deals_service.is_open(active_deal):
         raise OfferActionError(
             409, "This player already has a transfer deal in progress. New offers cannot be made at this time.",
         )

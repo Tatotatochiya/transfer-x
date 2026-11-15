@@ -18,7 +18,7 @@ import OfferStanding, { RoundsList } from "../../components/offers/OfferStanding
 import OfferTermsCard, { OfferAdvice } from "../../components/offers/OfferTermsCard";
 import CounterForm from "../../components/offers/CounterForm";
 import RaiseOfferForm from "../../components/offers/RaiseOfferForm";
-import { buyerRanking, deadlineText, getOfferStatus, otherName } from "../../components/offers/offerStatus";
+import { buyerRanking, deadlineText, getOfferStatus, otherName, sellerRanking } from "../../components/offers/offerStatus";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
@@ -102,6 +102,7 @@ export default function OfferDetailPage() {
     refetchInterval: 300_000,
   });
   const ranking = isBuyer ? buyerRanking(book) : null;
+  const standing = isSeller && offer ? sellerRanking(book, offer.id) : null;
 
   // "✦ Suggest a counter" fills the form the way "Use these terms" does.
   useEffect(() => {
@@ -146,7 +147,7 @@ export default function OfferDetailPage() {
   const side = isBuyer ? "buyer" : isSeller ? "seller" : null;
   const other = otherName(offer, side, card);
   const view = getOfferStatus(offer, {
-    side, isMyTurn: isParty && isActive && isMyTurn, canWrite: canMarketWrite, card, pushAction, myClubId, ranking,
+    side, isMyTurn: isParty && isActive && isMyTurn, canWrite: canMarketWrite, card, pushAction, myClubId, ranking, standing,
   });
   const deadline = deadlineText(card?.expires_at ?? offer.expires_at, new Date());
   const rounds = offerRounds(offer, myClubId);
@@ -171,6 +172,21 @@ export default function OfferDetailPage() {
   function showHistory() {
     setMainTab("history");
     writeTab("history");
+  }
+
+  // The advisor's "Use these terms": open the counter with them, and take the
+  // user to it. On desktop it opens in the status card at the top of the
+  // page, out of view from the advisor below; on phones it's a sheet, which
+  // takes focus itself.
+  function applyAdvisorTerms(t: SuggestedTerms) {
+    setPrefill(t);
+    setEditing("counter");
+    if (!isDesktop) return;
+    setTimeout(() => {
+      const form = document.getElementById("offer-counter");
+      form?.scrollIntoView({ block: "center", behavior: "smooth" });
+      form?.querySelector<HTMLElement>("[data-autofocus]")?.focus({ preventScroll: true });
+    }, 0);
   }
 
   function finishEditing(sent: boolean) {
@@ -211,7 +227,7 @@ export default function OfferDetailPage() {
     <div className="space-y-4">
       <OfferTermsCard offer={offer} heading={termsHeading} />
       {isParty && isActive && (
-        <OfferAdvice offer={offer} canCounter={canAct} onUseTerms={(t) => { setPrefill(t); setEditing("counter"); }} />
+        <OfferAdvice offer={offer} canCounter={canAct} onUseTerms={applyAdvisorTerms} />
       )}
       <DemoOfferControls offerId={offer.id} />
     </div>
@@ -231,9 +247,9 @@ export default function OfferDetailPage() {
   // The buyer's place is in the tab's own name, so it rarely needs opening.
   // The phone's three tabs are ~115px each, so there it's the place alone
   // ("2nd of 4"); the status card says it in full.
-  const bidsLabel = isSeller ? (book?.active_count != null ? `Other bids · ${book.active_count}` : "Other bids")
+  const bidsLabel = isSeller ? (standing ? `Other bids · ${standing.short}` : book?.active_count != null ? `Other bids · ${book.active_count}` : "Other bids")
     : ranking ? `Ranking · ${ranking.short}` : "Ranking";
-  const bidsTab = isSeller ? "Other bids" : ranking ? ranking.short : "Ranking";
+  const bidsTab = isSeller ? (standing ? standing.short : "Other bids") : ranking ? ranking.short : "Ranking";
 
   return (
     <div>

@@ -443,9 +443,9 @@ export interface Player {
 
 export interface ActiveDealStub {
   id: string;
-  // Any deal status. The player endpoint only ever returns IN_PROGRESS or
-  // COMPLETED, but the offer embed deliberately includes COLLAPSED — that is
-  // the whole point of it.
+  // Any deal status. The player endpoint returns an open deal (IN_PROGRESS,
+  // or PENDING_COMPLETION once confirmed) or a recent COMPLETED one; the offer
+  // embed deliberately includes COLLAPSED — that is the whole point of it.
   status: DealStatus;
   stage: string | null;
   buyer_club: ClubMinimal | null;

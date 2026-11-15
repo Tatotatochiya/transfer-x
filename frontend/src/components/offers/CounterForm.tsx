@@ -34,6 +34,18 @@ export function structureSummary(d: StructureDraft): string {
   ].join(" · ");
 }
 
+/** The structure's parts, each flagged when it's more than the plain default
+ *  (instalments, a sell-on, add-ons), so the closed section can show them. */
+export function structureParts(d: StructureDraft): { text: string; extra: boolean }[] {
+  const n = d.instalments.length;
+  const a = d.clauses.length;
+  return [
+    { text: n === 0 ? "On completion" : `${n} instalment${n === 1 ? "" : "s"}`, extra: n > 0 },
+    { text: d.sellOn ? `${d.sellOn}% sell-on` : "no sell-on", extra: !!d.sellOn },
+    { text: a === 0 ? "no add-ons" : `${a} add-on${a === 1 ? "" : "s"}`, extra: a > 0 },
+  ];
+}
+
 export interface SuggestState {
   onClick: () => void;
   loading: boolean;
@@ -291,7 +303,20 @@ export default function CounterForm({
         >
           <span>
             <span className="block text-body font-semibold text-text">Payment, add-ons and sell-on</span>
-            <span className="block text-small text-text-muted">{structureSummary(structure)}</span>
+            {/* Anything beyond the plain default is a chip, so a sell-on or an
+                add-on is seen without opening the section. */}
+            <span className="mt-1 flex flex-wrap items-center gap-1.5">
+              {structureParts(structure).map((p, i) => (
+                <span key={p.text} className="inline-flex items-center gap-1.5">
+                  {i > 0 && <span aria-hidden className="text-small text-text-muted">·</span>}
+                  {p.extra ? (
+                    <span className="rounded-full bg-surface-inset px-2 py-0.5 text-small font-semibold text-text ring-1 ring-border">{p.text}</span>
+                  ) : (
+                    <span className="text-small text-text-muted">{p.text}</span>
+                  )}
+                </span>
+              ))}
+            </span>
           </span>
           <span aria-hidden className={`text-text-muted transition-transform ${structureOpen ? "rotate-90" : ""}`}>›</span>
         </button>

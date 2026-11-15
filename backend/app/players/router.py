@@ -209,7 +209,7 @@ async def _resolve_direct_signing_context(db: AsyncSession, player_id: uuid.UUID
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Player not found")
 
     active_deal = await deals_service.get_active_deal_for_player(db, player_id)
-    if active_deal and active_deal.status == "IN_PROGRESS":
+    if deals_service.is_open(active_deal):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="This player already has a transfer deal in progress.",

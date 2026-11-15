@@ -1,6 +1,7 @@
 import { useId } from "react";
 
 import { groupRows } from "./boardList";
+import OtherItems from "./OtherItems";
 import TransferRow from "./TransferRow";
 import type { BoardCard, Side } from "./types";
 
@@ -52,6 +53,7 @@ export default function TransferList({ rows, side, labels, layout }: {
           {g.rows.map((c) => (
             <li key={c.key} className={ITEM}>
               <TransferRow card={c} side={side} stageLabel={labels[c.column] ?? c.column} layout={layout} />
+              <OtherItems card={c} className="-mt-1 pb-3 pl-[68px] pr-4" />
             </li>
           ))}
         </Group>

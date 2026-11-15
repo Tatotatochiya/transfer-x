@@ -211,7 +211,8 @@ async def _build_deal_response(
         deal_notes=deal.deal_notes,
         sla_deadline=deal.sla_deadline,
         sla_escalated_at=deal.sla_escalated_at,
-        whose_move=service.compute_deal_whose_move(deal, viewer_club_id),
+        whose_move=service.compute_deal_whose_move(
+            deal, viewer_club_id, held=bool(await service.completion_holds(db, [deal]))),
         collapse_reason=collapse_reason,
         collapsed_by_club_id=collapsed_by,
     )

@@ -9,6 +9,7 @@ import Modal from "../ui/Modal";
 import ConversationPanel, { type ConversationContext } from "../conversation/ConversationPanel";
 import PlayerLink from "../ui/PlayerLink";
 import { ChasedBadge, StalledBadge, stalledDays } from "../transfer/ReminderBadges";
+import OtherItems from "./OtherItems";
 import type { Board, BoardCard } from "./types";
 
 /**
@@ -69,12 +70,13 @@ export function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: bo
         </p>
       )}
       <p className={`mt-1 text-caption ${yours ? "font-semibold text-danger-text" : "text-text-secondary"}`}>{card.detail}</p>
-      {(left || card.others > 0) && (
+      {(left || (card.others > 0 && !card.other_items?.length)) && (
         <p className="mt-1 flex flex-wrap gap-x-2 text-small text-text-muted">
           {left && <span className={left.urgent ? "font-semibold text-danger-text" : ""}>{left.text}</span>}
-          {card.others > 0 && <span>+{card.others} more</span>}
+          {card.others > 0 && !card.other_items?.length && <span>+{card.others} more</span>}
         </p>
       )}
+      <OtherItems card={card} className="mt-1.5" />
       {(yours && card.chased) || (card.whose_move === "their" && stalledDays(card.updated_at) != null) ? (
         <div className="mt-2">
           {yours && card.chased
@@ -111,6 +113,7 @@ export function CardDetail({ card, onClose }: { card: BoardCard; onClose: () => 
               {card.amount != null && <> · <span className="font-semibold text-text">{formatCompactCurrency(Number(card.amount))}</span></>}
             </p>
             <p className={card.whose_move === "your" ? "font-semibold text-danger-text" : "text-text-muted"}>{card.detail}</p>
+            <OtherItems card={card} className="mt-2" />
           </div>
           <div className="flex gap-2">
             {card.kind === "deal" || card.kind === "offer"

@@ -2,6 +2,7 @@ import type { ActiveDealStub } from "../types/api";
 import type { DealStage } from "../types/enums";
 import { dealStageLabel } from "./badges";
 import { formatDate } from "./utils";
+import { isOpenDeal } from "./openDeal";
 
 /**
  * What the player page offers, by the player's situation (player-actions §4):
@@ -104,7 +105,7 @@ export function playerSituation(i: SituationInput): PlayerSituation {
 
   // 6–7. A deal in progress pauses everything else. Checked before the
   // own-player rows, so a listing isn't offered while one runs (as today).
-  const deal = i.activeDeal?.status === "IN_PROGRESS" ? i.activeDeal : null;
+  const deal = isOpenDeal(i.activeDeal) ? i.activeDeal : null;
   if (deal) {
     const buyer = deal.buyer_club?.id;
     const seller = deal.seller_club?.id;

@@ -22,6 +22,19 @@ export interface BoardCard {
   /** Your move, and the other side has chased it since it last moved. */
   chased?: "REMINDED" | "ESCALATED" | null;
   others: number;
+  /** Those other open items for him (a second offer, say), most pressing first. */
+  other_items?: BoardOther[];
+}
+
+/** Another open item for the same player in the same column. */
+export interface BoardOther {
+  kind: BoardCard["kind"];
+  entity_id: string;
+  counterparty: string | null;
+  amount: string | number | null;
+  detail: string;
+  whose_move: WhoseMove;
+  link: string;
 }
 
 export interface Board {

@@ -541,6 +541,20 @@ async def offer_facts(db: AsyncSession, offer, viewer_club_id: uuid.UUID) -> dic
         )).scalars().all()
         fees = [_num(o.fee_amount) for o in rivals if o.fee_amount is not None and o.deal_type == offer.deal_type]
         facts["competing_offers"] = {"count": len(rivals), "best_fee": max(fees) if fees else None}
+    # The one counter fee TransferX suggests (the counter box shows the same
+    # figure): the model must use it rather than pick its own.
+    if your_turn and not loan:
+        from app.lite.service import suggested_counter_fee
+        from app.players.models import Contract
+
+        valuation = None
+        if role == "seller":
+            v = (await db.execute(select(Contract.club_valuation).where(
+                Contract.player_id == offer.player_id, Contract.club_id == viewer_club_id,
+                Contract.is_active.is_(True)))).scalars().first()
+            valuation = float(v) if v is not None else None
+        facts["suggested_counter_fee"] = await suggested_counter_fee(
+            db, offer, side=role, your_move=True, valuation=valuation)
     return facts
 
 
@@ -573,6 +587,16 @@ def _validate_suggestion(raw: dict | None, facts: dict) -> dict | None:
     return out or None
 
 
+def _with_suggested_fee(terms: dict | None, facts: dict) -> dict | None:
+    """A counter's fee is TransferX's suggested figure, whatever the model
+    wrote: the advice and the counter box never disagree, and the same facts
+    give the same fee."""
+    fee = facts.get("suggested_counter_fee")
+    if fee is None:
+        return terms
+    return {**(terms or {}), "fee_amount": fee}
+
+
 async def offer_advice(db: AsyncSession, offer_id: uuid.UUID, *, viewer_club_id: uuid.UUID,
                        user_id: uuid.UUID, refresh: bool = False) -> dict:
     offer = await _load_offer(db, offer_id, viewer_club_id)
@@ -587,7 +611,11 @@ async def offer_advice(db: AsyncSession, offer_id: uuid.UUID, *, viewer_club_id:
         # model call (and without using the user's AI allowance).
         return {**_waiting_advice(facts), "checks": checks, "facts": _public_offer_facts(facts), "cached": False}
 
-    key = f"advice:{offer.id}:{viewer_club_id}:{offer.last_action_at.isoformat()}"
+    # The state the advice describes: this offer, and for a seller the
+    # competing offers it weighs, so a rival's new bid gets fresh advice.
+    comp = facts.get("competing_offers") or {}
+    key = (f"advice:{offer.id}:{viewer_club_id}:{offer.last_action_at.isoformat()}"
+           f":{comp.get('count')}:{comp.get('best_fee')}")
     if refresh:
         _cache.pop(key, None)
 
@@ -604,7 +632,8 @@ async def offer_advice(db: AsyncSession, offer_id: uuid.UUID, *, viewer_club_id:
         return {
             "summary": str(data.get("summary", "")).strip(),
             "recommendation": rec,
-            "suggested_terms": _validate_suggestion(data.get("suggested_terms"), facts) if rec == "counter" else None,
+            "suggested_terms": _with_suggested_fee(
+                _validate_suggestion(data.get("suggested_terms"), facts), facts) if rec == "counter" else None,
             "reasons": _strs(data.get("reasons"), 4),
             "watch_outs": useful_tips(_strs(data.get("watch_outs"), 3), limit=3),
         }

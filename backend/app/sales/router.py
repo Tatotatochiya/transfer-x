@@ -202,7 +202,7 @@ async def create_sale(
     # Guard: cannot list a player for sale while a deal is already in progress for them
     from app.deals import service as deals_service
     active_deal = await deals_service.get_active_deal_for_player(db, body.player_id)
-    if active_deal and active_deal.status == "IN_PROGRESS":
+    if deals_service.is_open(active_deal):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="This player already has a transfer deal in progress and cannot be listed for sale.",

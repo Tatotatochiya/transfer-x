@@ -24,11 +24,11 @@ function Badges({ card }: { card: BoardCard }) {
   const yours = card.whose_move === "your";
   const chased = yours && card.chased;
   const stalled = card.whose_move === "their" && stalledDays(card.updated_at) != null;
-  if (!chased && !stalled && card.others === 0) return null;
+  if (!chased && !stalled && (card.others === 0 || !!card.other_items?.length)) return null;
   return (
     <span className="mt-1.5 flex flex-wrap items-center gap-2">
       {chased ? <ChasedBadge escalated={card.chased === "ESCALATED"} /> : stalled ? <StalledBadge since={card.updated_at} /> : null}
-      {card.others > 0 && <span className="text-small text-text-muted">+{card.others} more</span>}
+      {card.others > 0 && !card.other_items?.length && <span className="text-small text-text-muted">+{card.others} more</span>}
     </span>
   );
 }

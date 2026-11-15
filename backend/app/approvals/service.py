@@ -271,7 +271,7 @@ async def _execute(db: AsyncSession, approval: PendingApproval) -> None:
             raise ValueError("The club already has an active offer for this player")
         from app.deals import service as deals_service
         active_deal = await deals_service.get_active_deal_for_player(db, player_id)
-        if active_deal and active_deal.status == "IN_PROGRESS":
+        if deals_service.is_open(active_deal):
             raise ValueError("This player already has a transfer deal in progress")
 
         from app.deals.models import DealType
