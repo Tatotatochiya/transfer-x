@@ -7,7 +7,7 @@ owner: "TODO — assign a Product Owner"
 
 # Feature Spec: Fair-Value-vs-Asking Signal
 
-> **Model superseded 2026-10-07:** the engine described under [The model](#the-model--exact-specification) is `boxscore-v1`. New valuations come from `market-v2`, see [valuation-model-v2.md](./valuation-model-v2.md). Everything else in this spec (endpoints, permissions, divergence, UI, tone) still applies.
+> **Model superseded 2026-10-07:** the engine described under [The model](#the-model--exact-specification) is `boxscore-v1`. New valuations come from `market-v2`, see [`model.md`](./model.md). Everything else in this spec (endpoints, permissions, divergence, UI, tone) still applies.
 
 ## Purpose
 
@@ -20,15 +20,15 @@ This document is written for an implementer (human or AI agent) with **no access
 1. Read [Decisions already made](#decisions-already-made) first — these were settled deliberately; do not relitigate them during implementation.
 2. Implement backend per [The model](#the-model--exact-specification) and [Backend implementation](#backend-implementation), then UI per [UI specification](#ui-specification-tra-92).
 3. Verify against [Success criteria](#success-criteria) — the three worked examples are exact test fixtures; the edge-case matrix and checklists are the review gate.
-4. On completion, follow [Definition of done](#7-definition-of-done--tests-and-documentation) — including the documentation updates required by the [`documentation-standards`](../../.claude/skills/documentation-standards/SKILL.md) skill, and set this spec's `status` to `Implemented`.
+4. On completion, follow [Definition of done](#7-definition-of-done--tests-and-documentation) — including the documentation updates required by the [`documentation-standards`](../../../.claude/skills/documentation-standards/SKILL.md) skill, and set this spec's `status` to `Implemented`.
 
-Also read before writing code: the repo's `CLAUDE.md`, the [`engineering-standards`](../../.claude/skills/engineering-standards/SKILL.md) and [`product-principles`](../../.claude/skills/product-principles/SKILL.md) skills, and [Implementation gotchas](#implementation-gotchas-house-specific) below.
+Also read before writing code: the repo's `CLAUDE.md`, the [`engineering-standards`](../../../.claude/skills/engineering-standards/SKILL.md) and [`product-principles`](../../../.claude/skills/product-principles/SKILL.md) skills, and [Implementation gotchas](#implementation-gotchas-house-specific) below.
 
 ## Product context and value
 
-TransferX is enterprise software for professional clubs, agents, and players — not a consumer app (see [`product-principles`](../../.claude/skills/product-principles/SKILL.md)). TRA-91 calls this feature "the flagship differentiator — TCA for transfers": rather than only displaying a third-party value, TransferX computes an **independent second opinion** and shows its divergence from the price on the table.
+TransferX is enterprise software for professional clubs, agents, and players — not a consumer app (see [`product-principles`](../../../.claude/skills/product-principles/SKILL.md)). TRA-91 calls this feature "the flagship differentiator — TCA for transfers": rather than only displaying a third-party value, TransferX computes an **independent second opinion** and shows its divergence from the price on the table.
 
-Value per stakeholder ([personas](../product/personas.md)):
+Value per stakeholder ([personas](../../product/personas.md)):
 
 | Stakeholder | Value |
 |---|---|
@@ -62,7 +62,7 @@ Value per stakeholder ([personas](../product/personas.md)):
 
 ## Decisions already made
 
-Settled 2026-07-05 with the product owner. **Do not reverse these during implementation** — if one proves impossible, stop and surface it rather than silently choosing differently (per [`engineering-standards`](../../.claude/skills/engineering-standards/SKILL.md) §4).
+Settled 2026-07-05 with the product owner. **Do not reverse these during implementation** — if one proves impossible, stop and surface it rather than silently choosing differently (per [`engineering-standards`](../../../.claude/skills/engineering-standards/SKILL.md) §4).
 
 - **D1 — v1 compares fair value vs asking/agreed price only, not vs ETV.** Reason: ETV pipeline is a verified no-op today (no key, no ID mapping). The asking price is internal (`Sale.asking_price`) and always available for fixed-price listings.
 - **D2 — Build on season-aggregate box-score stats already flowing into `PlayerStats`.** No new vendor, no fixture-level ingestion. API-Football has no xG; fixture-level API-Football stats would be effort spent on a source that still lacks xG and is not the long-term plan.
@@ -70,7 +70,7 @@ Settled 2026-07-05 with the product owner. **Do not reverse these during impleme
 - **D4 — League strength is a static, hand-maintained tier table** in a constants module. API-Football has no league-strength field; a tier table is the legitimate "simple and interpretable" start. Neutral conservative default for unknown leagues.
 - **D5 — The UI presents an estimate, never a verdict.** Confidence band always shown; tone rules below are mandatory (e.g. "Above model", never "overpriced").
 - **D6 — Player accounts never see the signal.** Server-enforced by `user_type`. Rationale: the signal is club/agent decision-support; showing a player "your transfer is 26% above model" mid-deal destabilises negotiations. This mirrors the existing house pattern of hiding commission fields from the player in `_build_deal_response`.
-- **D7 — Auction listings never show divergence vs any seller-side number.** `reserve_price` and best bid are seller-only (TRA-139 closed that leak; see [permissions-model](../security-and-compliance/permissions-model.md)). A divergence against a hidden reserve would leak it. Auctions show fair value + range only.
+- **D7 — Auction listings never show divergence vs any seller-side number.** `reserve_price` and best bid are seller-only (TRA-139 closed that leak; see [permissions-model](../../security-and-compliance/permissions-model.md)). A divergence against a hidden reserve would leak it. Auctions show fair value + range only.
 
 ## Data inputs (verified available 2026-07-05)
 
@@ -304,7 +304,7 @@ Inputs: DEF, age 33, minutes 2430 (n90 = 27), tackles 62, interceptions 40, bloc
 
 ### Module layout
 
-New module `backend/app/valuation/` following the house `models.py / schemas.py / service.py / router.py` layering ([backend-architecture](../architecture/backend-architecture.md)), plus three files specific to this feature's decoupling requirement (D3):
+New module `backend/app/valuation/` following the house `models.py / schemas.py / service.py / router.py` layering ([backend-architecture](../../architecture/backend-architecture.md)), plus three files specific to this feature's decoupling requirement (D3):
 
 | File | Contract |
 |---|---|
@@ -515,7 +515,7 @@ The review gate. An implementation is done when every item below passes.
 
 ### 7. Definition of done — tests and documentation
 
-Per [`documentation-standards`](../../.claude/skills/documentation-standards/SKILL.md), in the same session as implementation:
+Per [`documentation-standards`](../../../.claude/skills/documentation-standards/SKILL.md), in the same session as implementation:
 
 - [ ] `docs/CHANGELOG.md` — `Added` entry.
 - [ ] `docs/IMPLEMENTATION_STATUS.md` — row for this feature, verified state.
@@ -553,7 +553,7 @@ Implemented as specified, with these deliberate deviations:
 
 ## Linear reconciliation (suggested, not executed)
 
-Per the [`linear-workflow`](../../.claude/skills/linear-workflow/SKILL.md) skill, these are suggestions for whoever closes the tickets — this spec does not modify Linear:
+Per the [`linear-workflow`](../../../.claude/skills/linear-workflow/SKILL.md) skill, these are suggestions for whoever closes the tickets — this spec does not modify Linear:
 
 - **TRA-91:** on completion, comment that the "vs licensed ETV" acceptance criterion is deliberately deferred (adapter inactive: no key, no TRA-103 mapping) and link this spec — deliberate narrowing, not a miss.
 - **TRA-92:** on completion, note D6 (player accounts excluded) and D7 (no divergence on auctions) as deliberate scope decisions with rationale here.
@@ -561,10 +561,10 @@ Per the [`linear-workflow`](../../.claude/skills/linear-workflow/SKILL.md) skill
 
 ## Related documents
 
-- [`../product/roadmap.md`](../product/roadmap.md) — Differentiation & Demo Readiness phase
-- [`../architecture/backend-architecture.md`](../architecture/backend-architecture.md) / [`../architecture/data-model.md`](../architecture/data-model.md) — where the new module/entity get recorded on completion
-- [`../security-and-compliance/permissions-model.md`](../security-and-compliance/permissions-model.md) — the confidentiality boundaries D6/D7 protect
-- [`../business/glossary.md`](../business/glossary.md) — canonical term definitions (gains two entries on completion)
+- [`../product/roadmap.md`](../../product/roadmap.md) — Differentiation & Demo Readiness phase
+- [`../architecture/backend-architecture.md`](../../architecture/backend-architecture.md) / [`../architecture/data-model.md`](../../architecture/data-model.md) — where the new module/entity get recorded on completion
+- [`../security-and-compliance/permissions-model.md`](../../security-and-compliance/permissions-model.md) — the confidentiality boundaries D6/D7 protect
+- [`../business/glossary.md`](../../business/glossary.md) — canonical term definitions (gains two entries on completion)
 
 ## Appendix: implementation gotchas (house-specific)
 

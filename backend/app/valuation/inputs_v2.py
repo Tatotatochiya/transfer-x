@@ -30,6 +30,26 @@ class RecentGame:
 
 
 @dataclass
+class LastFee:
+    """The player's own last permanent fee, with what the model knew about him
+    at the time — the input to the market-v3 fee anchor."""
+
+    fee_gbp: float
+    transfer_date: str  # ISO date
+    years_since: float  # unrounded, so a stored row replays exactly
+    source: str  # "TRANSFERX" | "MANUAL" | "REPORTED"
+    basis: str = "PERMANENT"  # | "RELEASE_CLAUSE"
+    age_at_transfer: int | None = None
+    score_at_transfer: float | None = None  # shrunk score from pre-move seasons
+    minutes_at_transfer: float | None = None  # weighted minutes behind that score
+    league_coefficient_at_transfer: float | None = None
+    fee_display: str | None = None
+    from_team: str | None = None
+    to_team: str | None = None
+    later_free_move: str | None = None  # ISO date of a later permanent free move
+
+
+@dataclass
 class FeatureSetV2:
     player_id: str
     position: str
@@ -41,6 +61,7 @@ class FeatureSetV2:
     release_clause_gbp: float | None = None
     games_missed_injured: int | None = None  # over AVAILABILITY_SEASONS
     games_available_total: int | None = None
+    last_fee: LastFee | None = None
 
     @property
     def latest(self) -> FeatureSet:
@@ -76,6 +97,9 @@ class CompRecord:
     # The pre-transfer season he was judged on — kept for the backtest's v1
     # baseline (scripts/valuation_backtest.py); not used by the engine.
     reference: SeasonFeatures | None = None
+    # The player's own earlier fee — kept for the backtest's repeat-transfer
+    # table; not used by the engine.
+    prev_fee: LastFee | None = None
 
     @property
     def ratio(self) -> float:
@@ -110,4 +134,5 @@ def features_from_snapshot(snapshot: dict) -> FeatureSetV2:
         release_clause_gbp=snapshot.get("release_clause_gbp"),
         games_missed_injured=snapshot.get("games_missed_injured"),
         games_available_total=snapshot.get("games_available_total"),
+        last_fee=LastFee(**snapshot["last_fee"]) if snapshot.get("last_fee") else None,
     )

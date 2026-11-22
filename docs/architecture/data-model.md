@@ -1,6 +1,6 @@
 ---
 title: "Data Model"
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 status: Active
 owner: "TODO — assign a Technical Owner"
 ---
@@ -31,7 +31,7 @@ Verified against `backend/app/*/models.py` on 2026-10-11.
 |---|---|
 | `auth` | `User`, `RefreshToken` (sessions and signed-in devices), `PasswordResetToken`, `AgentProfile`, `PlayerProfile` |
 | `clubs` | `Club`, `ClubFinance` (budget: reserved, committed, spent; approval thresholds), `ClubStaff`, `ClubInvitation`, `ClubStaffInvitation`, `PlayerInvitation`, `PlayerSearchView` |
-| `players` | `Player`, `Contract`, `PlayerTransfer` (history), `PlayerInjury`, `PlayerView` (profile views, counts per club per day), `RealWorldDismissal` (real-world moves staff chose to leave as they are; [product ADR 0009](../product/decisions/0009-real-world-moves-flagged-applied-by-staff.md)) |
+| `players` | `Player`, `Contract`, `PlayerTransfer` (history from API-Football, plus staff-entered rows with `vendor = 'manual'` carrying `fee_basis`, `source_note`, `source_url` and `entered_by_user_id`; migration `0114`), `PlayerInjury`, `PlayerView` (profile views, counts per club per day), `RealWorldDismissal` (real-world moves staff chose to leave as they are; [product ADR 0009](../product/decisions/0009-real-world-moves-flagged-applied-by-staff.md)) |
 | `sales` | `Sale` (a listing), `Bid`, `SaleEvent` |
 | `offers` | `Offer` (permanent or loan, possibly anonymous), `OfferMessage`, `OfferEvent` |
 | `enquiries` | `Enquiry`, `EnquiryMessage` |
@@ -85,6 +85,7 @@ erDiagram
 - **Money.** Every money action moves `ClubFinance` through reserve, then commit, then spend, under row locks.
 - **One listing.** A player has at most one open listing (a partial unique index).
 - **Append-only.** Valuations and audit events are never updated in place.
+- **Staff-entered fees.** A `PlayerTransfer` with `vendor = 'manual'` is a staff correction or a fee the vendor never reported; it is never touched by the vendor sync, which deletes only `vendor = 'api_sports_v3'` rows. When a manual row and a vendor row describe the same move (dates within 60 days), the manual row is the one used as the player's last fee ([model](../feature_spec/valuation/model.md#last-fee-anchor--stage-g2-market-v3)).
 
 ## Related documents
 

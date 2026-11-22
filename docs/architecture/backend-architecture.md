@@ -40,7 +40,7 @@ Modules live under `backend/app/` and mostly follow `models.py` / `schemas.py` /
 | `board` | The Transfers board: every player a club is buying or selling, once, at its furthest point (product ADR 0008) |
 | `conversation` | One conversation per transfer, read across the existing message stores ([ADR 0008](./decisions/0008-one-conversation-read-across-existing-messages.md)) |
 | `transfer_window` | Transfer windows per country, and the completion hold while the buying club's window is closed |
-| `valuation` | The fair-value model: `market-v2` engine, comparables, append-only `PlayerValuation` history ([spec](../feature_spec/valuation-model-v2.md)) |
+| `valuation` | The fair-value model: `market-v2` engine, comparables, append-only `PlayerValuation` history ([spec](../feature_spec/valuation/model.md)) |
 | `scouting` | Shortlists and player interest |
 
 **Clubs and people**

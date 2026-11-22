@@ -1,4 +1,4 @@
-"""market-v2 valuation engine — pure functions, no DB access, no side effects.
+"""market-v2/v3 valuation engine — pure functions, no DB access, no side effects.
 
 fair_value = anchor[position]
              × league_coefficient
@@ -7,6 +7,7 @@ fair_value = anchor[position]
              × trajectory × form             ← improving / in-form players
              × contract × availability       ← years left, injury record
              × market_rate                   ← what similar profiles actually sold for
+             × fee_anchor                    ← market-v3: his own last fee, restated
              (capped at a public release clause)
 
 Every factor is reported as a "driver" so the number can be rebuilt by hand in
@@ -16,7 +17,7 @@ the UI, the same way v1's breakdown explains its score.
 import math
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from app.valuation import engine as v1
 from app.valuation.constants import CONFIDENCE_BANDS, ValuationConfidence
@@ -43,6 +44,22 @@ from app.valuation.constants_v2 import (
     DECLINE_LINEAR,
     DECLINE_QUADRATIC,
     DEFAULT_LEAGUE_COEFFICIENT,
+    FEE_ANCHOR_BASIS_WEIGHT,
+    FEE_ANCHOR_FACTOR_BOUNDS,
+    FEE_ANCHOR_FULL_EVIDENCE_MINUTES,
+    FEE_ANCHOR_LEAGUE_BOUNDS,
+    FEE_ANCHOR_LEAGUE_EXPONENT,
+    FEE_ANCHOR_MIN_EVIDENCE_MINUTES,
+    FEE_ANCHOR_MIN_WEIGHT,
+    FEE_ANCHOR_OUTGROWN_MAX_AGE,
+    FEE_ANCHOR_OUTGROWN_MIN_SCORE_GAIN,
+    FEE_ANCHOR_OUTGROWN_MIN_YEARS,
+    FEE_ANCHOR_PERF_BOUNDS,
+    FEE_ANCHOR_PERF_EXPONENT,
+    FEE_ANCHOR_RECENCY_YEARS,
+    FEE_ANCHOR_SOURCE_CREDIBILITY,
+    FEE_ANCHOR_UNKNOWN_EVIDENCE_WEIGHT,
+    FEE_INFLATION_PER_YEAR,
     FORM_MAX_EFFECT,
     FORM_MAX_GAMES,
     FORM_MIN_GAMES,
@@ -71,7 +88,7 @@ from app.valuation.constants_v2 import (
     YOUTH_BAND_WIDENING,
     YOUTH_BAND_WIDENING_AGE,
 )
-from app.valuation.inputs_v2 import CompRecord, FeatureSetV2, RecentGame, SeasonFeatures
+from app.valuation.inputs_v2 import CompRecord, FeatureSetV2, LastFee, RecentGame, SeasonFeatures
 
 clamp = v1.clamp
 
@@ -108,6 +125,19 @@ class PerformanceEvidence:
 
 
 @dataclass
+class FeeAnchor:
+    """market-v3: what the player's own last fee says he is worth today, and
+    how strongly that evidence moves the model."""
+
+    applied: bool
+    factor: float  # 1.0 when not applied
+    weight: float
+    anchor_value: float | None  # the fee restated and adjusted to today
+    fee_today: float | None  # the fee in today's money, before adjustments
+    reason: str  # why it was applied, or why not
+
+
+@dataclass
 class ValuationOutcomeV2:
     fair_value: float
     fair_value_low: float
@@ -122,6 +152,7 @@ class ValuationOutcomeV2:
     market: MarketRate
     drivers: list[Driver]
     band: float
+    fee_anchor: FeeAnchor
 
 
 # ── Stage A: performance evidence ─────────────────────────────────────────────
@@ -370,6 +401,142 @@ def market_rate(
     )
 
 
+# ── Stage G2: last-fee anchor ─────────────────────────────────────────────────
+
+
+def _month_year(iso: str) -> str:
+    return date.fromisoformat(iso).strftime("%b %Y")
+
+
+def fee_anchor(
+    last_fee: LastFee | None,
+    *,
+    position: str,
+    age: int | None,
+    score: float,
+    coef: float,
+    contract_f: float,
+    availability_f: float,
+    value_before: float,
+    source_credibility: dict[str, float] | None = None,
+    recency_years: float | None = None,
+) -> FeeAnchor:
+    """The last-fee anchor. `source_credibility` and `recency_years` exist so
+    the backtest can sweep calibration settings in memory; production omits
+    them and gets the constants."""
+    if last_fee is None or last_fee.fee_gbp <= 0 or value_before <= 0:
+        return FeeAnchor(False, 1.0, 0.0, None, None, "No transfer fee on record")
+
+    year = last_fee.transfer_date[:4]
+    fee_today = last_fee.fee_gbp * (1 + FEE_INFLATION_PER_YEAR) ** last_fee.years_since
+
+    if last_fee.later_free_move:
+        return FeeAnchor(
+            False,
+            1.0,
+            0.0,
+            None,
+            fee_today,
+            f"He has moved on a free transfer since the {year} fee",
+        )
+
+    minutes = last_fee.minutes_at_transfer
+    if minutes is not None and minutes < FEE_ANCHOR_MIN_EVIDENCE_MINUTES:
+        return FeeAnchor(
+            False,
+            1.0,
+            0.0,
+            None,
+            fee_today,
+            f"The {year} fee was paid on too little playing time to anchor on",
+        )
+
+    then = last_fee.score_at_transfer
+    if (
+        age is not None
+        and age <= FEE_ANCHOR_OUTGROWN_MAX_AGE
+        and last_fee.years_since >= FEE_ANCHOR_OUTGROWN_MIN_YEARS
+        and then is not None
+        and score - then >= FEE_ANCHOR_OUTGROWN_MIN_SCORE_GAIN
+    ):
+        return FeeAnchor(
+            False, 1.0, 0.0, None, fee_today, f"He has outgrown the fee paid in {year}"
+        )
+
+    credibility = (
+        FEE_ANCHOR_SOURCE_CREDIBILITY if source_credibility is None else source_credibility
+    )
+    recency_scale = FEE_ANCHOR_RECENCY_YEARS if recency_years is None else recency_years
+    evidence = (
+        FEE_ANCHOR_UNKNOWN_EVIDENCE_WEIGHT
+        if minutes is None
+        else min(1.0, minutes / FEE_ANCHOR_FULL_EVIDENCE_MINUTES)
+    )
+    source_w = credibility.get(last_fee.source, 0.0)
+    basis_w = FEE_ANCHOR_BASIS_WEIGHT.get(last_fee.basis, 0.0)
+    recency_w = 1.0 / (1.0 + last_fee.years_since / recency_scale)
+    weight = source_w * basis_w * recency_w * evidence
+
+    age_then = last_fee.age_at_transfer
+    age_ratio = (
+        age_factor(position, age) / age_factor(position, age_then)
+        if age is not None and age_then is not None
+        else 1.0
+    )
+    perf_ratio = (
+        clamp((score / then) ** FEE_ANCHOR_PERF_EXPONENT, *FEE_ANCHOR_PERF_BOUNDS)
+        if then
+        else 1.0
+    )
+    coef_then = last_fee.league_coefficient_at_transfer
+    league_ratio = (
+        clamp((coef / coef_then) ** FEE_ANCHOR_LEAGUE_EXPONENT, *FEE_ANCHOR_LEAGUE_BOUNDS)
+        if coef_then and coef > 0
+        else 1.0
+    )
+    anchor_value = fee_today * age_ratio * perf_ratio * league_ratio * contract_f * availability_f
+
+    if anchor_value <= 0:  # a zeroed factor: nothing to take a logarithm of
+        return FeeAnchor(False, 1.0, 0.0, None, fee_today, "No transfer fee on record")
+
+    if weight < FEE_ANCHOR_MIN_WEIGHT:
+        # Name the factor that did the most damage, so a recent fee skipped for
+        # thin evidence is never described as "too old".
+        weakest = min(
+            (
+                ("basis", basis_w),
+                ("evidence", evidence),
+                ("recency", recency_w),
+                ("source", source_w),
+            ),
+            key=lambda pair: pair[1],
+        )[0]
+        reasons = {
+            "basis": (
+                f"The {year} fee was a release clause, which says little about his "
+                "market price"
+            ),
+            "evidence": f"The {year} fee was paid on little playing time on record",
+            "recency": f"The {year} fee is too old to anchor on",
+            "source": f"The {year} fee is too weakly sourced to anchor on",
+        }
+        return FeeAnchor(False, 1.0, weight, anchor_value, fee_today, reasons[weakest])
+
+    lo, hi = FEE_ANCHOR_FACTOR_BOUNDS
+    factor = math.exp(
+        clamp(weight * math.log(anchor_value / value_before), math.log(lo), math.log(hi))
+    )
+    return FeeAnchor(
+        True,
+        factor,
+        weight,
+        anchor_value,
+        fee_today,
+        f"£{last_fee.fee_gbp / 1e6:.1f}m in {_month_year(last_fee.transfer_date)}"
+        f" is £{fee_today / 1e6:.1f}m in today's money; weight {weight:.2f}",
+    )
+
+
 # ── Orchestration ─────────────────────────────────────────────────────────────
 
 _POSITION_LABEL = {"GK": "goalkeeper", "DEF": "defender", "MID": "midfielder", "FWD": "forward"}
@@ -392,10 +559,15 @@ def compute_valuation_v2(
     now: datetime | None = None,
     *,
     market: MarketRate | None = None,
+    use_fee_anchor: bool = True,
 ) -> ValuationOutcomeV2:
     """`market` replays a stored market result instead of recomputing it from
     `comps` — how a persisted row is reproduced from its own inputs_json
-    without storing the whole comparables index."""
+    without storing the whole comparables index.
+
+    `use_fee_anchor` defaults to on so a replay follows its own inputs: a row
+    stored with a last fee was anchored, one without wasn't. A fresh valuation
+    passes the setting explicitly (`service.compute_and_store_valuation`)."""
     if now is None:
         now = datetime.now(timezone.utc)
     position, age = fs.position, fs.age
@@ -531,6 +703,21 @@ def compute_valuation_v2(
             )
         )
 
+    anchor = fee_anchor(
+        fs.last_fee if use_fee_anchor else None,
+        position=position,
+        age=age,
+        score=perf.score,
+        coef=coef,
+        contract_f=c_factor,
+        availability_f=av_factor,
+        value_before=value,
+    )
+    if anchor.applied:
+        value = step("fee_anchor", "Last fee anchor", anchor.reason, anchor.factor, value)
+    elif use_fee_anchor and fs.last_fee is not None:
+        drivers.append(Driver("fee_anchor", "Last fee anchor", anchor.reason, 1.0, value))
+
     # ── Confidence and band ───────────────────────────────────────────────────
     confidence = v1.compute_confidence(latest.features, now)
     band = CONFIDENCE_BANDS[confidence]
@@ -569,6 +756,7 @@ def compute_valuation_v2(
         market=market,
         drivers=drivers,
         band=band,
+        fee_anchor=anchor,
     )
 
 

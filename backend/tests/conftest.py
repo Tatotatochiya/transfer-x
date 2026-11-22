@@ -24,6 +24,9 @@ settings.fx_rates_url = None
 
 # No Slack posts from tests (tests/test_monitoring.py catches them itself).
 settings.slack_webhook_url = None
+# The market-v3 last-fee anchor ships off (config.py); the suite tests the
+# model with it on, and test_valuation_v2 covers the off switch.
+settings.valuation_fee_anchor_enabled = True
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 

@@ -266,7 +266,7 @@ Per [`linear-workflow`](../../.claude/skills/linear-workflow/SKILL.md) — sugge
 
 - [`../architecture/authentication-and-permissions.md`](../architecture/authentication-and-permissions.md) — gains the role model this spec defines (its open TODO)
 - [`../security-and-compliance/permissions-model.md`](../security-and-compliance/permissions-model.md) — confidentiality boundaries extended per phase
-- [`fair-value-vs-asking-signal.md`](./fair-value-vs-asking-signal.md) / [`injury-availability-risk-profile.md`](./injury-availability-risk-profile.md) — sibling specs; their player-account exclusions (D6 there) are unaffected by staff roles
+- [`valuation/fair-value-vs-asking-signal.md`](./valuation/fair-value-vs-asking-signal.md) / [`injury-availability-risk-profile.md`](./injury-availability-risk-profile.md) — sibling specs; their player-account exclusions (D6 there) are unaffected by staff roles
 - [`README.md`](./README.md) — spec lifecycle
 
 ## Appendix: implementation gotchas (house-specific)

@@ -251,6 +251,6 @@ Each part ships on its own. Part 1 is useful without Part 2.
 
 ## Related
 
-- [Valuation Model v2](./valuation-model-v2.md): the daily recompute this moves
+- [Valuation Model v2](./valuation/model.md): the daily recompute this moves
 - [Player Profile Ledger](./player-profile-ledger/README.md): the injury and history data this keeps current
 - `backend/app/vendor/`: the sync code the worker reuses

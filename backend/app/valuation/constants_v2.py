@@ -1,4 +1,4 @@
-"""Every tunable of the market-v2 fair-value model in one place.
+"""Every tunable of the market-v2/v3 fair-value model in one place.
 
 market-v2 keeps boxscore-v1's per-position performance score (same feature
 tables, same norms — imported from constants.py, not duplicated) and adds the
@@ -6,12 +6,19 @@ things a transfer market actually prices: multi-season evidence, position-
 specific ageing, youth potential, trajectory, recent form, contract length,
 availability, and what comparable profiles have really been sold for.
 
+market-v3 adds Stage G2, the last-fee anchor: a player's own last permanent
+fee, restated to today and adjusted for what has changed since, pulls the
+model toward it in proportion to how informative the fee still is.
+
 Nothing numeric belongs anywhere else in the v2 modules. Any change here must
 update the fixtures in tests/test_valuation_v2.py in the same commit.
-See docs/feature_spec/valuation-model-v2.md for the reasoning behind each value.
+See docs/feature_spec/valuation/model.md for the reasoning behind each value.
 """
 
-MODEL_VERSION_V2 = "market-v2"
+MODEL_VERSION_V2 = "market-v3"
+# What a row is labelled while settings.valuation_fee_anchor_enabled is off:
+# without Stage G2 the computation is market-v2, so the row says so.
+MODEL_VERSION_WITHOUT_FEE_ANCHOR = "market-v2"
 
 # ── Stage A: performance evidence ─────────────────────────────────────────────
 
@@ -59,7 +66,7 @@ BASE_ANCHORS_V2: dict[str, float] = {
 # keeps its value and the bottom is never lifted more than x3.5. The x2.16
 # moved into BASE_ANCHORS_V2, so the curve stays 1.0 at 50. Against
 # production it moved fees within +/-25% from 12% to 31% and the median
-# bias from -64% to -9% (feature_spec/valuation-model-v2.md).
+# bias from -64% to -9% (feature_spec/valuation/model.md).
 VALUE_CURVE_KNOTS: tuple[tuple[float, float], ...] = (
     (0.0, 0.0486),
     (30.0, 0.243),
@@ -192,6 +199,35 @@ COMPS_MIN_WEIGHT = 0.05  # comps lighter than this are not "similar" at all
 COMPS_SHRINKAGE_K = 4.0
 MARKET_FACTOR_BOUNDS = (0.65, 1.60)
 COMPS_MAX_REPORTED = 8  # top comps by weight returned for display
+
+# ── Stage G2: last-fee anchor (market-v3) ─────────────────────────────────────
+# A player's own last permanent fee, restated to today and adjusted for what has
+# changed since, pulls the model toward it in proportion to how informative the
+# fee still is. Bounded, visible as a driver, and skipped (with a reason) when
+# the fee is weak evidence. Spec: docs/feature_spec/valuation/market-data.md.
+
+# How far to trust the figure, by who says so.
+FEE_ANCHOR_SOURCE_CREDIBILITY: dict[str, float] = {
+    "TRANSFERX": 1.00,  # completed TransferX deal: the verified agreed fee
+    "MANUAL": 0.80,     # staff-entered, with a source noted
+    "REPORTED": 0.65,   # API-Football: a reported figure
+}
+# A release clause is a contract term, not a market-clearing price.
+FEE_ANCHOR_BASIS_WEIGHT: dict[str, float] = {"PERMANENT": 1.00, "RELEASE_CLAUSE": 0.40}
+FEE_ANCHOR_RECENCY_YEARS = 3.0  # recency weight = 1 / (1 + years / this): 3y → 0.50
+FEE_ANCHOR_FULL_EVIDENCE_MINUTES = 1800.0  # pre-move weighted minutes for full weight
+FEE_ANCHOR_MIN_EVIDENCE_MINUTES = 450.0  # known but below this: paid for potential
+FEE_ANCHOR_UNKNOWN_EVIDENCE_WEIGHT = 0.60  # no pre-move stats on record at all
+FEE_ANCHOR_MIN_WEIGHT = 0.25  # below this the anchor is not applied
+FEE_ANCHOR_FACTOR_BOUNDS = (0.70, 1.60)
+FEE_ANCHOR_PERF_EXPONENT = 0.5  # square root: 60 → 70 gives ~×1.08, not ×1.17
+FEE_ANCHOR_PERF_BOUNDS = (0.80, 1.60)
+FEE_ANCHOR_LEAGUE_EXPONENT = 0.25  # small: the fee already reflects the buying league
+FEE_ANCHOR_LEAGUE_BOUNDS = (0.90, 1.10)
+# The fee described a different player: young, a while ago, much better since.
+FEE_ANCHOR_OUTGROWN_MAX_AGE = 24
+FEE_ANCHOR_OUTGROWN_MIN_YEARS = 2.0
+FEE_ANCHOR_OUTGROWN_MIN_SCORE_GAIN = 15.0
 
 # ── Stage H: confidence ───────────────────────────────────────────────────────
 

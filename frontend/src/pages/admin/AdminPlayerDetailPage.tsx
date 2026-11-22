@@ -13,10 +13,32 @@ import { formatDate, getApiError } from "../../lib/utils";
 import { positionVariant } from "../../lib/badges";
 import type { PlayerPosition } from "../../types/enums";
 import FallbackImage from "../../components/ui/FallbackImage";
+import { useAskReason } from "../../context/ConfirmContext";
 
 /** GET /admin/players/{id}: the player plus every contract, past and present. */
 type AdminPlayer = Player & {
   contracts: { id: string; club_id: string; start_date?: string; end_date?: string; wage_weekly?: number; is_active: boolean }[];
+};
+
+/** One row of GET /admin/players/{id}/transfer-fees (vendor and staff rows alike). */
+type TransferFee = {
+  id: string;
+  transfer_date: string | null;
+  transfer_type: string | null;
+  from_club: string | null;
+  to_club: string | null;
+  fee_display: string | null;
+  fee_gbp: number | null;
+  vendor: string;
+  fee_basis: string | null;
+  source_note: string | null;
+  source_url: string | null;
+  entered_by_user_id: string | null;
+};
+
+const EMPTY_FEE = {
+  amount: "", currency: "GBP", transfer_date: "", from_club: "", to_club: "",
+  basis: "PERMANENT", source_note: "", source_url: "",
 };
 
 const POSITIONS  = ["GK", "DEF", "MID", "FWD"];
@@ -33,11 +55,42 @@ export default function AdminPlayerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const askReason = useAskReason();
 
   const { data: player, isLoading } = useQuery<AdminPlayer>({
     queryKey: ["admin", "players", id],
     queryFn: () => api.get<AdminPlayer>(`/admin/players/${id}`).then((r) => r.data),
     enabled: !!id,
+  });
+
+  // The fee history the market-v3 anchor reads: vendor rows plus staff entries.
+  const { data: fees = [], isLoading: feesLoading } = useQuery<TransferFee[]>({
+    queryKey: ["admin", "players", id, "transfer-fees"],
+    queryFn: () => api.get<TransferFee[]>(`/admin/players/${id}/transfer-fees`).then((r) => r.data),
+    enabled: !!id,
+  });
+  const [feeForm, setFeeForm] = useState(EMPTY_FEE);
+
+  /** The fee is an input to his valuation and the ledger's Last transfer cell. */
+  function invalidateFeeDependents() {
+    queryClient.invalidateQueries({ queryKey: ["admin", "players", id, "transfer-fees"] });
+    queryClient.invalidateQueries({ queryKey: ["valuation"] });
+    queryClient.invalidateQueries({ queryKey: ["players", id, "ledger"] });
+  }
+
+  const addFee = useMutation({
+    mutationFn: (body: object) =>
+      api.post(`/admin/players/${id}/transfer-fees`, body).then((r) => r.data),
+    onSuccess: () => {
+      invalidateFeeDependents();
+      setFeeForm(EMPTY_FEE);
+    },
+  });
+
+  const removeFee = useMutation({
+    mutationFn: ({ feeId, reason }: { feeId: string; reason: string }) =>
+      api.delete(`/admin/players/${id}/transfer-fees/${feeId}`, { data: { reason } }),
+    onSuccess: invalidateFeeDependents,
   });
 
   const [editing, setEditing] = useState(false);
@@ -94,6 +147,34 @@ export default function AdminPlayerDetailPage() {
       clear_club:     fClearClub,
     });
   }
+
+  async function handleRemoveFee(fee: TransferFee) {
+    const reason = await askReason({
+      title: "Remove this fee?",
+      message: "His model value is recalculated straight away.",
+      reasonLabel: "Why?",
+      placeholder: "e.g. Wrong figure: the club's statement says £38m",
+      confirmLabel: "Remove",
+    });
+    if (reason) removeFee.mutate({ feeId: fee.id, reason });
+  }
+
+  function handleAddFee(e: React.FormEvent) {
+    e.preventDefault();
+    addFee.mutate({
+      amount: Number(feeForm.amount),
+      currency: feeForm.currency,
+      transfer_date: feeForm.transfer_date,
+      from_club: feeForm.from_club,
+      to_club: feeForm.to_club,
+      basis: feeForm.basis,
+      source_note: feeForm.source_note,
+      source_url: feeForm.source_url || undefined,
+    });
+  }
+
+  const feeInput = "w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-warning-fill";
+  const feeLabel = "mb-1 block text-caption text-text-muted";
 
   if (isLoading) return <div className="flex justify-center py-12"><Spinner size="lg" /></div>;
   if (!player) return (
@@ -270,6 +351,133 @@ export default function AdminPlayerDetailPage() {
           )}
         </Card>
       </div>
+
+      {/* ── Transfer fees: staff entries plus the vendor's, the anchor's input ── */}
+      <Card className="mt-6">
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-caption font-semibold text-text-secondary">Transfer fees</p>
+          <span className="text-small text-text-muted">The newest fee is his last transfer</span>
+        </div>
+
+        {feesLoading ? (
+          <div className="flex justify-center py-6"><Spinner /></div>
+        ) : fees.length === 0 ? (
+          <p className="mb-5 text-small text-text-muted">No fees on record.</p>
+        ) : (
+          <div className="mb-5 overflow-x-auto">
+            <table className="w-full text-left text-small">
+              <thead>
+                <tr className="text-text-muted">
+                  <th className="pb-2 pr-3 font-medium">Date</th>
+                  <th className="pb-2 pr-3 font-medium">Move</th>
+                  <th className="pb-2 pr-3 font-medium">Fee</th>
+                  <th className="pb-2 pr-3 font-medium">Source</th>
+                  <th className="pb-2 pr-3 font-medium">Note</th>
+                  <th className="pb-2 font-medium" />
+                </tr>
+              </thead>
+              <tbody>
+                {fees.map((fee) => (
+                  <tr key={fee.id} className="border-t border-rule">
+                    <td className="py-2 pr-3 tabular-nums text-text-secondary">
+                      {fee.transfer_date ? formatDate(fee.transfer_date) : "—"}
+                    </td>
+                    <td className="py-2 pr-3 text-text-secondary">
+                      {[fee.from_club, fee.to_club].filter(Boolean).join(" → ") || "—"}
+                    </td>
+                    <td className="py-2 pr-3 tabular-nums text-text">{fee.fee_display ?? "—"}</td>
+                    <td className="py-2 pr-3 text-text-secondary">
+                      {fee.vendor === "manual" ? "Staff-entered" : "API-Football"}
+                    </td>
+                    <td className="py-2 pr-3 text-text-muted">
+                      {fee.source_url ? (
+                        <a href={fee.source_url} target="_blank" rel="noreferrer" className="underline hover:text-text">
+                          {fee.source_note ?? fee.source_url}
+                        </a>
+                      ) : fee.source_note ?? "—"}
+                    </td>
+                    <td className="py-2 text-right">
+                      {fee.vendor === "manual" && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveFee(fee)}
+                          disabled={removeFee.isPending}
+                          aria-label={`Remove the fee from ${fee.transfer_date ?? "record"}`}
+                          className="text-small text-danger-text hover:underline disabled:opacity-40"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <form onSubmit={handleAddFee} className="grid gap-3 border-t border-rule pt-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label htmlFor="fee-amount" className={feeLabel}>Amount</label>
+            <input id="fee-amount" type="number" min="1" step="any" required value={feeForm.amount}
+              onChange={(e) => setFeeForm({ ...feeForm, amount: e.target.value })} className={feeInput} />
+          </div>
+          <div>
+            <label htmlFor="fee-currency" className={feeLabel}>Currency</label>
+            <select id="fee-currency" value={feeForm.currency}
+              onChange={(e) => setFeeForm({ ...feeForm, currency: e.target.value })} className={feeInput}>
+              {["GBP", "EUR", "USD"].map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="fee-date" className={feeLabel}>Transfer date</label>
+            <input id="fee-date" type="date" required value={feeForm.transfer_date}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setFeeForm({ ...feeForm, transfer_date: e.target.value })} className={feeInput} />
+          </div>
+          <div>
+            <label htmlFor="fee-basis" className={feeLabel}>Basis</label>
+            <select id="fee-basis" value={feeForm.basis}
+              onChange={(e) => setFeeForm({ ...feeForm, basis: e.target.value })} className={feeInput}>
+              <option value="PERMANENT">Permanent transfer</option>
+              <option value="RELEASE_CLAUSE">Release clause</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="fee-from" className={feeLabel}>From club</label>
+            <input id="fee-from" required maxLength={200} value={feeForm.from_club}
+              onChange={(e) => setFeeForm({ ...feeForm, from_club: e.target.value })} className={feeInput} />
+          </div>
+          <div>
+            <label htmlFor="fee-to" className={feeLabel}>To club</label>
+            <input id="fee-to" required maxLength={200} value={feeForm.to_club}
+              onChange={(e) => setFeeForm({ ...feeForm, to_club: e.target.value })} className={feeInput} />
+          </div>
+          <div>
+            <label htmlFor="fee-note" className={feeLabel}>Source note (staff only)</label>
+            <input id="fee-note" required minLength={5} maxLength={500} placeholder="e.g. BBC Sport, 15 Jul 2023"
+              value={feeForm.source_note}
+              onChange={(e) => setFeeForm({ ...feeForm, source_note: e.target.value })} className={feeInput} />
+          </div>
+          <div>
+            <label htmlFor="fee-url" className={feeLabel}>Source URL</label>
+            <input id="fee-url" type="url" maxLength={512} placeholder="https://…"
+              value={feeForm.source_url}
+              onChange={(e) => setFeeForm({ ...feeForm, source_url: e.target.value })} className={feeInput} />
+            <p className="mt-1 text-small text-text-muted">Admins only — this link is not shown to clubs.</p>
+          </div>
+
+          <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-4">
+            <Button type="submit" variant="primary" size="sm" loading={addFee.isPending}>Record fee</Button>
+            {addFee.isError && (
+              <p className="text-small text-danger-text">{getApiError(addFee.error, "Could not record the fee.")}</p>
+            )}
+            {removeFee.isError && (
+              <p className="text-small text-danger-text">{getApiError(removeFee.error, "Could not remove the fee.")}</p>
+            )}
+          </div>
+        </form>
+      </Card>
     </div>
   );
 }

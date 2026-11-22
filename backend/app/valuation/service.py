@@ -8,15 +8,17 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.config import settings
 from app.players.models import Player
 from app.sales.models import Sale, SaleStatus, SaleType
 from app.valuation import engine, engine_v2
 from app.valuation.constants import CURRENCY, MIN_MINUTES
-from app.valuation.constants_v2 import MODEL_VERSION_V2
+from app.valuation.constants_v2 import MODEL_VERSION_V2, MODEL_VERSION_WITHOUT_FEE_ANCHOR
 from app.valuation.features_v2 import MarketFeatureProvider, build_comparables_index
 from app.valuation.inputs_v2 import CompRecord, FeatureSetV2, SeasonFeatures
 from app.valuation.models import PlayerValuation
 from app.valuation.schemas import (
+    FeeAnchorInfo,
     ValuationBreakdownEntry,
     ValuationDivergence,
     ValuationDriver,
@@ -58,6 +60,7 @@ def _serialize_features(fs: FeatureSetV2) -> dict:
         "release_clause_gbp": fs.release_clause_gbp,
         "games_missed_injured": fs.games_missed_injured,
         "games_available_total": fs.games_available_total,
+        "last_fee": asdict(fs.last_fee) if fs.last_fee else None,
     }
 
 
@@ -90,23 +93,34 @@ def _serialize_drivers(drivers: list[engine_v2.Driver]) -> list[dict]:
 
 
 async def compute_and_store_valuation(
-    db: AsyncSession, player: Player, comps: list[CompRecord] | None = None
+    db: AsyncSession,
+    player: Player,
+    comps: list[CompRecord] | None = None,
+    last_fees: dict | None = None,
 ) -> PlayerValuation | None:
-    """Compute and append a market-v2 valuation row, or return None if the
+    """Compute and append a market-v3 valuation row, or return None if the
     player is ineligible (no position / no vendor stats / latest season below
     the minutes floor). Ineligible players get no row — never a made-up number.
 
     `comps` is the comparable-transfers index; the batch job builds it once and
-    passes it in, a single recompute builds its own."""
+    passes it in, a single recompute builds its own. `last_fees` is the same
+    for the last-fee lookup behind the market-v3 anchor.
+
+    While settings.valuation_fee_anchor_enabled is off the fee is not loaded
+    into the features at all, so the row is computed, labelled and replayed
+    exactly as market-v2."""
     if player.position is None:
         return None
-    features = await _provider.get_features(db, player)
+    anchor_on = settings.valuation_fee_anchor_enabled
+    features = await _provider.get_features(db, player, last_fees if anchor_on else {})
     if features is None or features.seasons[0].minutes < MIN_MINUTES:
         return None
     if comps is None:
         comps = await build_comparables_index(db)
 
-    outcome = engine_v2.compute_valuation_v2(features, comps)
+    # Both guards, so neither alone can turn the anchor on: the fee isn't
+    # loaded while the setting is off, and the engine is told the setting too.
+    outcome = engine_v2.compute_valuation_v2(features, comps, use_fee_anchor=anchor_on)
     breakdown = engine.compute_breakdown(features.latest)
 
     row = PlayerValuation(
@@ -117,7 +131,7 @@ async def compute_and_store_valuation(
         currency=CURRENCY,
         performance_score=Decimal(str(round(outcome.performance.score, 2))),
         confidence=outcome.confidence,
-        model_version=MODEL_VERSION_V2,
+        model_version=MODEL_VERSION_V2 if anchor_on else MODEL_VERSION_WITHOUT_FEE_ANCHOR,
         league_tier=outcome.league_tier,
         # Age and youth potential combined, so the existing "Age 19 (×1.62)"
         # line in the UI stays truthful about what age does to the number.
@@ -129,6 +143,7 @@ async def compute_and_store_valuation(
             # Unrounded: compute_valuation_v2(..., market=MarketRate(**this))
             # replays the row exactly without the whole comparables index.
             "market": asdict(outcome.market),
+            "fee_anchor": asdict(outcome.fee_anchor) if anchor_on else None,
             "factors": {
                 "league_coefficient": outcome.league_coefficient,
                 "age_factor": round(outcome.age_factor, 6),
@@ -222,20 +237,30 @@ async def get_reference_prices(
 async def compute_all_valuations(db: AsyncSession) -> dict[str, int]:
     """Recompute every player's valuation (daily job). Per-player failures are
     logged and never abort the batch."""
+    from app.players.last_fee import last_transfer_fees
+
     result = await db.execute(select(Player))
     players = result.scalars().all()
     comps = await build_comparables_index(db)  # once for the whole run
+    last_fees = (
+        await last_transfer_fees(db, [p.id for p in players])
+        if settings.valuation_fee_anchor_enabled
+        else {}
+    )
 
     updated = 0
     skipped_ineligible = 0
     errors = 0
+    fee_anchored = 0
     for player in players:
         try:
-            row = await compute_and_store_valuation(db, player, comps)
+            row = await compute_and_store_valuation(db, player, comps, last_fees)
             if row is None:
                 skipped_ineligible += 1
             else:
                 updated += 1
+                if ((row.inputs_json or {}).get("fee_anchor") or {}).get("applied"):
+                    fee_anchored += 1
         except Exception:
             errors += 1
             logger.exception("Valuation compute failed for player %s", player.id)
@@ -245,6 +270,7 @@ async def compute_all_valuations(db: AsyncSession) -> dict[str, int]:
         "skipped_ineligible": skipped_ineligible,
         "errors": errors,
         "comparables": len(comps),
+        "fee_anchored": fee_anchored,
     }
 
 
@@ -276,6 +302,7 @@ def build_valuation_response(
         ValuationDriver(**entry) for entry in (row.inputs_json or {}).get("drivers", [])
     ]
     market = (row.inputs_json or {}).get("market") or {}
+    anchor = (row.inputs_json or {}).get("fee_anchor")
     return ValuationResponse(
         player_id=row.player_id,
         fair_value=row.fair_value,
@@ -294,4 +321,5 @@ def build_valuation_response(
         drivers=drivers,
         comparables_used=market.get("comps_used"),
         divergence=divergence,
+        fee_anchor=FeeAnchorInfo(**anchor) if anchor else None,
     )

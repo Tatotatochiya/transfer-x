@@ -1,7 +1,7 @@
 ---
 title: "Feature Spec: Valuation Model v2 (market-v2)"
-last_updated: 2026-10-17
-status: Implemented and shipped 2026-10-07; calibrated against production 2026-10-17 (see Calibration)
+last_updated: 2026-11-13
+status: Implemented and shipped 2026-10-07; calibrated against production 2026-10-17 (see Calibration); market-v3 (last-fee anchor) built 2026-11-10 and switched off until its production backtest is reviewed
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -12,6 +12,8 @@ owner: "TODO — assign a Product Owner"
 Replaces the fair-value engine behind the [Fair-Value-vs-Asking Signal](./fair-value-vs-asking-signal.md) (`boxscore-v1`) with a model that prices what a transfer market actually pays for: multi-season evidence, position-specific ageing, youth potential, trajectory, recent form, contract length, availability, and the fees comparable profiles have really fetched. Everything else in that spec still stands: endpoints, permissions (D6), auction rules (D7), divergence bands, append-only history and the "estimate, never a verdict" tone (D5).
 
 `market-v2` remains deterministic and fully explainable (no trained model). Every factor is persisted as a *driver*, so any number can be rebuilt by hand, and every stored row replays exactly from its own `inputs_json`.
+
+`market-v3` is this model plus one stage: the player's own last fee, restated to today and bounded (see [Last-fee anchor](#last-fee-anchor--stage-g2-market-v3)). Players without a usable fee are valued exactly as before. **`market-v3` is switched off:** `VALUATION_FEE_ANCHOR_ENABLED` defaults to `false`, and while it is off the fee is not loaded into the features, so every row is computed, labelled and replayed as `market-v2` (`test_fee_anchor_switched_off_stores_a_market_v2_row`). It stays off until the [backtest below](#calibration-archetypes-not-a-backtest) has been run against production and reviewed.
 
 ## Why v1 needed replacing
 
@@ -33,6 +35,7 @@ fair_value = anchor[position]
            × trajectory × form
            × contract × availability
            × market_rate               comparable transfers, leave-own-out
+           × fee_anchor                market-v3: his own last fee, restated
            (capped at a published release clause)
 ```
 
@@ -46,12 +49,52 @@ All tunables are in `backend/app/valuation/constants_v2.py`. The engine (`engine
 | C. Potential | Age, score, minutes | `1 + 1.2 × youth × quality × evidence`: youth fades from 1 at ≤19 to 0 at peak start; quality needs a score above 35; evidence needs ~2,000 weighted minutes. An unproven teenager earns little of it |
 | C. Trajectory | Latest vs previous season score | ±10% for a ±20-point swing (half for players over 23); needs 900+ minutes in both seasons |
 | D. Form | `PlayerFixtureRating` (last 5 games, 20+ min) | Recency-weighted rating vs season average, ×0.08 per rating point, capped at ±8%. Deliberately small |
-| E. Contract | Active TransferX `Contract.end_date`, else vendor `Player.contract_expiry` ([ADR 0001](../architecture/decisions/0001-vendor-data-never-overrides-transferx-contract.md) precedence) | Knots: 0y → 0.30, 0.5y → 0.50, 1y → 0.70, 2y → 0.88, 3y+ → 1.00. Unknown → neutral |
-| F. Availability | `PlayerInjuryFixture` vs `TeamSeasonFixtures`, last 2 seasons | No discount at ≥90% available, up to −20% at ≤50%. Suspensions excluded using the [risk profile](./injury-availability-risk-profile.md)'s D4 terms. Any team-season count unknown → neutral (no guessing) |
+| E. Contract | Active TransferX `Contract.end_date`, else vendor `Player.contract_expiry` ([ADR 0001](../../architecture/decisions/0001-vendor-data-never-overrides-transferx-contract.md) precedence) | Knots: 0y → 0.30, 0.5y → 0.50, 1y → 0.70, 2y → 0.88, 3y+ → 1.00. Unknown → neutral |
+| F. Availability | `PlayerInjuryFixture` vs `TeamSeasonFixtures`, last 2 seasons | No discount at ≥90% available, up to −20% at ≤50%. Suspensions excluded using the [risk profile](../injury-availability-risk-profile.md)'s D4 terms. Any team-season count unknown → neutral (no guessing) |
 | G. Market rate | Completed TransferX deals (agreed fee) + vendor-reported fees ("€ 42M"), last 3 years | Each comparable is restated as *fee in today's £ ÷ the model's intrinsic value at the time*, using the stats the buyer had (pre-transfer seasons). Similarity-weighted median of that ratio, shrunk toward 1 by the effective number of comps, bounded to ×0.65–1.60. Needs ≥3 similar comps. A player's own transfers never price him. TransferX deals outweigh reported fees (×1.5) and win when both describe the same move |
+| G2. Last-fee anchor (**`market-v3`**) | His own last permanent fee (`PlayerTransfer`, including staff-entered `vendor = 'manual'` rows), its date and basis, and the pre-move season's stats | The fee is inflated to today, adjusted by age, performance, league, contract and availability, and blended into the value in proportion to how informative it still is. Bounded to ×0.70–1.60; skipped below weight 0.25 and when he has outgrown the fee. See below |
 | H. Confidence | — | Levels use v1's rules on the latest season (shared code). Band widens +10 pts at ≤21 (potential is uncertain) and narrows 3 pts when the market rate applied |
 
 The release clause cap applies last: no buyer pays more than a published clause.
+
+### Last-fee anchor — Stage G2, `market-v3`
+
+The last fee is the strongest single piece of evidence about how clubs priced a player, but it is not his current value: time, age, form, contract and availability all move it. The anchor applies a bounded, visible adjustment after the comparable-market stage and before the release-clause cap. Players without a usable fee are valued exactly as `market-v2`; a test asserts it (`test_use_fee_anchor_false_reproduces_v2`).
+
+```text
+fee_today    = last_fee_gbp × (1 + 0.06) ^ years_since_fee
+anchor_value = fee_today × age_ratio × performance_ratio × league_ratio
+             × contract_factor × availability_factor
+
+weight = source_credibility × basis_weight × recency_weight × evidence_weight
+factor = exp(clamp(weight × ln(anchor_value / value_before), ln 0.70, ln 1.60))
+```
+
+| Input | Value |
+|---|---|
+| `source_credibility` | TransferX completed deal 1.00; staff-entered 0.80; API-Football report 0.65 |
+| `basis_weight` | Permanent disclosed 1.00; release clause 0.40; any other basis 0 |
+| `recency_weight` | `1 / (1 + years / 3)` |
+| `evidence_weight` | `min(1, pre-move minutes / 1800)`; no pre-move stats on record → 0.60; fewer than 450 minutes on record → no anchor |
+| Minimum weight | 0.25; below it the anchor is not applied and says so |
+| `age_ratio` | Current position-specific age factor ÷ the factor at the transfer; 1.0 when either age is unknown |
+| `performance_ratio` | `clamp((score / score_then) ^ 0.5, 0.80, 1.60)` |
+| `league_ratio` | `clamp((coefficient / coefficient_then) ^ 0.25, 0.90, 1.10)` |
+| Contract and availability | The player's current factors; both at the transfer date are assumed neutral (1.00), because historical contract and availability state is not stored |
+
+The anchor is skipped, with the reason exposed as `fee_anchor.reason`, when:
+
+- there is no fee, or it is zero/unparseable — free, loan, undisclosed;
+- fewer than 450 minutes were on record before the move (the fee was for potential);
+- he has moved on a permanent free transfer since the fee (`later_free_move`): the old fee no longer describes his market. A loan or an undisclosed ("N/A") move does not trigger this;
+- the weight falls below 0.25. The reason names the weakest multiplier, so a recent fee is never called "too old":
+  - release-clause basis — "The {year} fee was a release clause, which says little about his market price";
+  - evidence weight — "The {year} fee was paid on little playing time on record";
+  - recency weight — "The {year} fee is too old to anchor on";
+  - source credibility of zero (unknown source key) — "The {year} fee is too weakly sourced to anchor on";
+- he has outgrown the fee: age ≤ 24, at least 2 years since the transfer, and a score improvement of at least 15 points. The fee described a different player; this is the Cole Palmer case in the [sample report](./report-sample.md#case-2--cole-palmer-when-the-last-fee-should-not-anchor).
+
+The applied factor is a visible driver ("Last fee anchor ×1.16"), and the result is persisted as `inputs_json["fee_anchor"]` so the row replays exactly. Staff-entered fees are ordinary `player_transfers` rows with `vendor = 'manual'`; see [Licensed Market Data](./market-data.md#what-was-built-and-how-it-differs-from-this-spec).
 
 ### Confidentiality
 
@@ -113,6 +156,25 @@ A robust fit of the gap against the score gave ×2.16 at 50, falling 5.9% a poin
 - **Trade-off, chosen by the product owner:** fitting real fees makes mid-table players dearer than the archetype ranges. An average PL full-back, 30, goes from £9m to £22m (archetype range £6–14m), a solid PL centre-back to £47m (£30–45m), an injury-prone midfielder to £46m (£20–35m). The elite archetypes are unchanged and in range. Partial corrections were tried: three-quarters of the fit gave within ±25% of 24% and a −26% bias, so the full fit was kept.
 - **Still to do:** fees under £5m are now over-predicted (+118%, 7 transfers), and £25m+ still under (−37%, 33). `LEAGUE_COEFFICIENTS` for smaller leagues look low (Belgium, Portugal, Scandinavia: fees 5–15× the model), but each has 2–4 transfers. Revisit both when there are more fees (TransferX deals, or a Transfermarkt licence). Re-run `python -m scripts.valuation_backtest` against production after each window.
 
+**Backtest, `market-v3` (pending).** The comparison is implemented in `scripts/valuation_backtest.py`: for players with an earlier fee-bearing permanent move it prints `v2_market` and `v3_anchor` side by side (n, median |error|, ±25%, ±50%, median bias), split by whether the anchor applied, plus a count of skip reasons. The deciding sample is the rows where the anchor **applied**; under 15, the default constants stand. `--grid` sweeps REPORTED credibility {0.50, 0.65, 0.80, 0.90} × recency years {2, 3, 4, 5} (16 settings) in memory, with `v2_market` recomputed on each setting's applied rows. `scripts/valuation_outcome_report.py` prints named players' before/after values with the reason, the 10 largest rises and falls among anchor-applied players, and the min/max factor against the bounds.
+
+Neither has been run: no production `DATABASE_URL` was available to the build (the env file supplied on 2026-11-13 holds only the local Docker database). That is why the anchor ships switched off. Both scripts are read-only and compute the anchor in memory whatever the switch says, so they can run against production as soon as migration `0114` is deployed there:
+
+```powershell
+cd D:\Repo\transfer-x\backend
+python -m scripts.valuation_backtest --csv <scratch>\backtest.csv
+python -m scripts.valuation_backtest --grid
+python -m scripts.valuation_outcome_report --players "Rice,Palmer,Yamal" --also 6 --out <scratch>\outcome.md
+```
+
+| Segment | n | `v2_market` ±25% | `v3_anchor` ±25% | `v2_market` bias | `v3_anchor` bias |
+|---|---|---|---|---|---|
+| All repeat transfers | — | — | — | — | — |
+| Anchor applied | — | — | — | — | — |
+| Anchor not applied | — | — | — | — | — |
+
+> **TODO:** fill this table from the production run, with the sample size for each segment. The gate is that `v3_anchor` is no worse than `v2_market` on ±25% and |median bias| for repeat transfers. Players without a fee are untouched by construction, so they enter no comparison. Do not tune a constant without the 16-row grid from `--grid`. Only then set `VALUATION_FEE_ANCHOR_ENABLED=true`.
+
 ## Decisions for the product owner
 
 These were judgement calls made during implementation. Each is a single constant to change.
@@ -130,5 +192,5 @@ The holding club's `club_valuation` and wages (confidential); `Player.market_val
 ## Related
 
 - [Fair-Value-vs-Asking Signal](./fair-value-vs-asking-signal.md): the signal, endpoints and UI this model feeds
-- [Injury-Availability Risk Profile](./injury-availability-risk-profile.md): D4 suspension terms shared
-- [ADR 0002](../architecture/decisions/0002-contract-cliff-prefers-fair-value-over-legacy-market-value.md): fair value preferred over `market_value` wherever both exist
+- [Injury-Availability Risk Profile](../injury-availability-risk-profile.md): D4 suspension terms shared
+- [ADR 0002](../../architecture/decisions/0002-contract-cliff-prefers-fair-value-over-legacy-market-value.md): fair value preferred over `market_value` wherever both exist

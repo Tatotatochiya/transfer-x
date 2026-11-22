@@ -1,6 +1,6 @@
 ---
 title: "API Reference"
-last_updated: 2026-10-11
+last_updated: 2026-11-13
 status: Active
 owner: "TODO — assign a Technical Owner"
 ---
@@ -28,7 +28,7 @@ Swagger UI at `http://localhost:8001/docs` locally, and the raw schema at `/open
 
 ## Prefix map
 
-Verified against the router mounts in `backend/app/main.py` on 2026-10-11.
+Verified against the router mounts in `backend/app/main.py` on 2026-11-10.
 
 | Prefix | Module |
 |---|---|
@@ -47,7 +47,7 @@ Verified against the router mounts in `backend/app/main.py` on 2026-10-11.
 | `/lite` | Lite home, buy page (search by name, the club's shortlist and players of interest, shortlist add and remove), offer cards, held sends, team contact, email confirmations |
 | `/demo` | Demo mode: your run (start, reset, keep, house clubs' speed and rivals), house clubs and play-as, making a house club answer an offer now; staff side under `/admin/demo` ([spec](../feature_spec/demo-mode.md)) |
 | `/ai` | The assistant, Ask TransferX (`/ai/ask`), the analyst (`/ai/analyst`, `/ai/analyst/export`) |
-| `/valuation` | Fair-value reads and staff recompute |
+| `/valuation` | Fair-value reads and staff recompute. Responses carry `fee_anchor` (the last-fee anchor's result and reason; `null` on `market-v2` rows, which is every row while `VALUATION_FEE_ANCHOR_ENABLED` is off) and `last_transfer` with `basis` (a staff-entered fee's source is labelled "Staff-entered"; its note stays in the admin endpoints) |
 | `/agents`, `/mandates`, `/negotiations` | Agents, mandates, agent negotiation messages |
 | `/scouting` | Shortlists and interest |
 | `/notifications` | Notifications, preferences, push subscriptions |
@@ -57,7 +57,7 @@ Verified against the router mounts in `backend/app/main.py` on 2026-10-11.
 | `/deadline` | Deadline day: the club's open transfers against the window's close (club members) |
 | `/search` | Global search (⌘K, shortlists); signed-in only |
 | `/analytics` | Usage events |
-| `/admin` | Staff administration, including `/admin/jobs`, `/admin/errors`, `/admin/health` and `/admin/real-world-moves` (list, bulk apply, dismiss, collapse a deal and apply) and `/admin/deals/{id}/…` (staff tools for a stuck deal; `/test` marks a test transfer) |
+| `/admin` | Staff administration, including `/admin/jobs`, `/admin/errors`, `/admin/health` and `/admin/real-world-moves` (list, bulk apply, dismiss, collapse a deal and apply), `/admin/deals/{id}/…` (staff tools for a stuck deal; `/test` marks a test transfer), and `/admin/players/{id}/transfer-fees` (list, add and remove staff-entered fees; superuser only) |
 | `/monitoring/client-errors` | Browser error reports |
 | `/health` | Liveness check |
 | `/ws` | WebSocket |

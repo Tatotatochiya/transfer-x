@@ -522,7 +522,7 @@ export interface ValuationBreakdownEntry {
   contribution: number;
 }
 
-/** One step of the market-v2 value build-up (anchor → … → fair value). */
+/** One step of the market-v3 value build-up (anchor → … → last fee anchor → fair value). */
 export interface ValuationDriver {
   key: string;
   label: string;
@@ -537,7 +537,7 @@ export interface ValuationDivergence {
   band: ValuationBand;
 }
 
-/** A player's last permanent transfer with a known fee: API-Football's or a TransferX deal. */
+/** A player's last permanent transfer with a known fee: API-Football's, a TransferX deal, or a staff-entered one. */
 export interface LastTransfer {
   fee_gbp: number;
   /** As reported, e.g. "€ 116.6M"; null for a TransferX deal. */
@@ -545,7 +545,19 @@ export interface LastTransfer {
   date: string;
   from: string | null;
   to: string | null;
-  source: "API-Football" | "TransferX";
+  source: "API-Football" | "TransferX" | "Staff-entered";
+  /** "PERMANENT" | "RELEASE_CLAUSE". Null on figures that predate the field. */
+  basis?: string | null;
+}
+
+/** market-v3: how the player's own last fee moved the model, or why it didn't. */
+export interface FeeAnchorInfo {
+  applied: boolean;
+  factor: number;
+  weight: number;
+  anchor_value: number | null;
+  fee_today: number | null;
+  reason: string;
 }
 
 export interface FairValueSignal {
@@ -565,7 +577,9 @@ export interface FairValueSignal {
   breakdown: ValuationBreakdownEntry[];
   /** What a club last paid for him, beside the model's value. */
   last_transfer?: LastTransfer | null;
-  /** market-v2 only; empty on boxscore-v1 valuations. */
+  /** market-v3: the last-fee anchor step, applied or explained. Null on earlier rows. */
+  fee_anchor?: FeeAnchorInfo | null;
+  /** market-v3 (and market-v2); empty on boxscore-v1 valuations. */
   drivers?: ValuationDriver[];
   comparables_used?: number | null;
   divergence: ValuationDivergence | null;

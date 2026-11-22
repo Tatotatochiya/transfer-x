@@ -167,6 +167,11 @@ class Settings(BaseSettings):
     # unused clubs house clubs. Off by default; turning it off stops new runs
     # and journaling, and leaves open runs to be reset.
     demo_enabled: bool = False
+    # The market-v3 last-fee anchor (valuation/engine_v2.py, Stage G2). Off until
+    # the production backtest and outcome report have been reviewed: while off,
+    # new valuation rows are computed and labelled exactly as market-v2. The
+    # staff-entered fees and the fee's provenance work either way.
+    valuation_fee_anchor_enabled: bool = False
 
 
 settings = Settings()

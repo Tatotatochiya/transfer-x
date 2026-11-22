@@ -101,7 +101,10 @@ async def refresh_transfers(db: AsyncSession, player, client: ApiFootballClient)
     from app.players.models import PlayerTransfer
 
     resp = await client.get_player_transfers(int(player.vendor_id))
-    await db.execute(delete(PlayerTransfer).where(PlayerTransfer.player_id == player.id))
+    # Replace only the vendor's rows: a staff-entered fee (vendor="manual")
+    # must survive the next sync.
+    await db.execute(delete(PlayerTransfer).where(
+        PlayerTransfer.player_id == player.id, PlayerTransfer.vendor == VENDOR))
     count = 0
     now = _now()
     for item in resp.get("response") or []:

@@ -25,11 +25,25 @@ import asyncio
 import csv
 import math
 import statistics
-from collections import defaultdict
+from collections import Counter, defaultdict
+
+from sqlalchemy import text
 
 from app.valuation import engine as v1
 from app.valuation import engine_v2
 from app.valuation.inputs_v2 import CompRecord
+
+# Calibration sweep for the repeat-transfer sample (R5): REPORTED-fee
+# credibility × how fast the weight decays with the age of the fee.
+GRID_CREDIBILITY = (0.50, 0.65, 0.80, 0.90)
+GRID_RECENCY_YEARS = (2.0, 3.0, 4.0, 5.0)
+# The plan keeps the defaults unless at least this many repeat transfers have
+# the anchor applied; below it, the grid is read, not acted on.
+MIN_CALIBRATION_N = 15
+
+
+def _gbp_m(value: float) -> str:
+    return f"£{value / 1e6:.1f}m"
 
 
 def _metrics(pairs: list[tuple[float, float]]) -> dict:
@@ -48,8 +62,16 @@ def _metrics(pairs: list[tuple[float, float]]) -> dict:
     }
 
 
-def backtest_rows(comps: list[CompRecord]) -> list[dict]:
-    """Per-transfer predictions from each model vs the fee actually paid."""
+def backtest_rows(
+    comps: list[CompRecord],
+    *,
+    source_credibility: dict[str, float] | None = None,
+    recency_years: float | None = None,
+) -> list[dict]:
+    """Per-transfer predictions from each model vs the fee actually paid.
+
+    The two overrides drive the --grid calibration sweep; omitted, the anchor
+    uses its constants exactly as production does."""
     rows = []
     for comp in comps:
         if comp.reference is None:
@@ -65,6 +87,19 @@ def backtest_rows(comps: list[CompRecord]) -> list[dict]:
             score=comp.score_at_transfer,
             coef=comp.league_coefficient,
         )
+        v2_market = comp.intrinsic_gbp * market.factor
+        anchor = engine_v2.fee_anchor(
+            comp.prev_fee,
+            position=comp.position,
+            age=comp.age_at_transfer,
+            score=comp.score_at_transfer,
+            coef=comp.league_coefficient,
+            contract_f=1.0,
+            availability_f=1.0,
+            value_before=v2_market,
+            source_credibility=source_credibility,
+            recency_years=recency_years,
+        )
         rows.append(
             {
                 "player": comp.player_name,
@@ -76,19 +111,66 @@ def backtest_rows(comps: list[CompRecord]) -> list[dict]:
                 "actual": comp.fee_gbp_today,
                 "v1": v1_pred,
                 "v2_intrinsic": comp.intrinsic_gbp,
-                "v2_market": comp.intrinsic_gbp * market.factor,
+                "v2_market": v2_market,
                 "comps_used": market.comps_used,
+                "prev_fee_gbp": comp.prev_fee.fee_gbp if comp.prev_fee else None,
+                "prev_fee_date": comp.prev_fee.transfer_date if comp.prev_fee else None,
+                "v3_anchor": v2_market * anchor.factor,
+                "anchor_applied": anchor.applied,
+                "anchor_reason": anchor.reason,
             }
         )
     return rows
 
 
-async def run(csv_path: str | None) -> None:
+def _grid(comps: list[CompRecord]) -> None:
+    """R5: sweep REPORTED credibility × recency years on the repeat-transfer
+    sample. The applied set changes with each setting, so v2_market is
+    recomputed on the same rows for a like-for-like comparison."""
+    print(
+        "\nCalibration grid — the repeat transfers where the anchor is applied"
+        "\nThe deciding sample changes with each setting, so v2_market is recomputed"
+        " on the same rows. Small n means read it, do not tune."
+    )
+    print(
+        f"\n{'REPORTED':>9} {'recency':>8} {'n':>5}"
+        f" {'v3 ±25%':>9} {'v3 med':>8} {'v3 bias':>8}"
+        f" {'v2 ±25%':>9} {'v2 med':>8} {'v2 bias':>8}"
+    )
+
+    def fmt(stats: dict, key: str) -> str:
+        return "—" if stats["n"] == 0 else str(stats[key])
+
+    default_credibility = dict(engine_v2.FEE_ANCHOR_SOURCE_CREDIBILITY)
+    for cred in GRID_CREDIBILITY:
+        for recency in GRID_RECENCY_YEARS:
+            rows = backtest_rows(
+                comps,
+                source_credibility={**default_credibility, "REPORTED": cred},
+                recency_years=recency,
+            )
+            applied = [
+                r for r in rows if r["prev_fee_gbp"] is not None and r["anchor_applied"]
+            ]
+            v3 = _metrics([(r["v3_anchor"], r["actual"]) for r in applied])
+            v2 = _metrics([(r["v2_market"], r["actual"]) for r in applied])
+            print(
+                f"{cred:>9.2f} {recency:>8.0f} {v3['n']:>5}"
+                f" {fmt(v3, 'within_25pct'):>9} {fmt(v3, 'median_abs_err_pct'):>8}"
+                f" {fmt(v3, 'median_bias_pct'):>8}"
+                f" {fmt(v2, 'within_25pct'):>9} {fmt(v2, 'median_abs_err_pct'):>8}"
+                f" {fmt(v2, 'median_bias_pct'):>8}"
+            )
+
+
+async def run(csv_path: str | None, grid: bool = False) -> None:
     import app.main  # noqa: F401 — registers every ORM model before querying
     from app.database import AsyncSessionLocal
     from app.valuation.features_v2 import build_comparables_index
 
     async with AsyncSessionLocal() as db:
+        if db.bind is not None and db.bind.dialect.name == "postgresql":
+            await db.execute(text("SET TRANSACTION READ ONLY"))
         comps = await build_comparables_index(db)
     rows = backtest_rows(comps)
     if not rows:
@@ -103,9 +185,9 @@ async def run(csv_path: str | None) -> None:
     print(header)
     print(f"{'':22}" + "   n  med|err|  ±25%   ±50%    bias" * len(models))
 
-    def line(label: str, subset: list[dict]) -> None:
+    def line(label: str, subset: list[dict], which=models) -> None:
         cells = []
-        for m in models:
+        for m in which:
             s = _metrics([(r[m], r["actual"]) for r in subset])
             if s["n"] == 0:
                 cells.append(f"{'—':>36}")
@@ -128,8 +210,65 @@ async def run(csv_path: str | None) -> None:
     for key in sorted(by):
         line(key, by[key])
 
+    # ── market-v3: the last-fee anchor on repeat transfers ────────────────────
+    repeats = [r for r in rows if r["prev_fee_gbp"] is not None]
+    print(
+        f"\nRepeat transfers (players with an earlier fee) — n={len(repeats)}"
+        "\nEach later fee is predicted with and without the player's own earlier fee."
+    )
+    if repeats:
+        both = ("v2_market", "v3_anchor")
+        print(f"{'segment':22}" + "".join(f"{m:>36}" for m in both))
+        print(f"{'':22}" + "   n  med|err|  ±25%   ±50%    bias" * len(both))
+        line("ALL", repeats, both)
+        line("anchor applied", [r for r in repeats if r["anchor_applied"]], both)
+        line("anchor not applied", [r for r in repeats if not r["anchor_applied"]], both)
+        print(
+            "\nCaveat: the actual fee is in today's money and the earlier fee is restated to"
+            " the transfer date. Fee inflation between the two dates scales both predictions"
+            " equally, so v2_market vs v3_anchor is a fair comparison; neither includes"
+            " contract, form or availability at the time."
+        )
+        applied = [r for r in repeats if r["anchor_applied"]]
+        print(
+            f"\nDeciding sample: repeat transfers with the anchor applied — n={len(applied)}."
+            + (
+                " Under 15: keep the default constants; do not tune."
+                if len(applied) < MIN_CALIBRATION_N
+                else ""
+            )
+        )
+        if applied:
+            print("\nThe applied rows (both models predict the later fee):")
+            print(
+                f"{'player':26}{'earlier fee':>26}{'later fee':>26}"
+                f"{'v2_market':>12}{'v3_anchor':>12}"
+            )
+            for r in applied[:30]:
+                earlier = f"£{r['prev_fee_gbp'] / 1e6:.1f}m {r['prev_fee_date'] or ''}".strip()
+                later = f"£{r['actual'] / 1e6:.1f}m {r['date']}"
+                print(
+                    f"{r['player'][:25]:26}{earlier:>26}{later:>26}"
+                    f"{_gbp_m(r['v2_market']):>12}{_gbp_m(r['v3_anchor']):>12}"
+                )
+            if len(applied) > 30:
+                print(f"  … and {len(applied) - 30} more")
+        skipped = [r for r in repeats if not r["anchor_applied"]]
+        if skipped:
+            print("\nWhy the anchor was not applied (repeat-transfer rows):")
+            for reason, n in Counter(r["anchor_reason"] for r in skipped).most_common():
+                print(f"  {n:>4}  {reason}")
+    else:
+        print(
+            "No player in this database has two fee-bearing permanent moves — the anchor"
+            " cannot be verified on repeat transfers here."
+        )
+
+    if grid:
+        _grid(comps)
+
     if csv_path:
-        with open(csv_path, "w", newline="") as fh:
+        with open(csv_path, "w", newline="", encoding="utf-8") as fh:
             writer = csv.DictWriter(fh, fieldnames=list(rows[0]))
             writer.writeheader()
             writer.writerows(rows)
@@ -139,4 +278,10 @@ async def run(csv_path: str | None) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--csv", help="also write per-transfer predictions to this CSV")
-    asyncio.run(run(parser.parse_args().csv))
+    parser.add_argument(
+        "--grid",
+        action="store_true",
+        help="sweep REPORTED credibility × recency years on the anchor-applied rows",
+    )
+    args = parser.parse_args()
+    asyncio.run(run(args.csv, args.grid))

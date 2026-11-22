@@ -40,7 +40,13 @@ from app.valuation.constants_v2 import (
     SEASONS_CONSIDERED,
 )
 from app.valuation.features import FeatureSet, _floor_years
-from app.valuation.inputs_v2 import CompRecord, FeatureSetV2, RecentGame, SeasonFeatures
+from app.valuation.inputs_v2 import (
+    CompRecord,
+    FeatureSetV2,
+    LastFee,
+    RecentGame,
+    SeasonFeatures,
+)
 
 # Static rates (units per £1), the fx module's offline fallback — static on
 # purpose so a stored valuation can be reproduced from its inputs.
@@ -259,7 +265,9 @@ async def _availability(
 class MarketFeatureProvider:
     """Builds a FeatureSetV2, or None when the player has no usable stats."""
 
-    async def get_features(self, db: AsyncSession, player: Player) -> FeatureSetV2 | None:
+    async def get_features(
+        self, db: AsyncSession, player: Player, last_fees: dict | None = None
+    ) -> FeatureSetV2 | None:
         if player.position is None:
             return None
         today = date.today()
@@ -300,6 +308,12 @@ class MarketFeatureProvider:
         missed, total = await _availability(
             db, player, list(rows), [s.season for s in seasons[:AVAILABILITY_SEASONS]]
         )
+        if last_fees is None:
+            from app.players.last_fee import last_transfer_fees
+
+            last_fees = await last_transfer_fees(db, [player.id])
+        fee = last_fees.get(uuid.UUID(str(player.id)))
+        last_fee = build_last_fee(player, fee, list(rows), today) if fee else None
         return FeatureSetV2(
             player_id=str(player.id),
             position=player.position.value,
@@ -311,6 +325,7 @@ class MarketFeatureProvider:
             release_clause_gbp=contract.release_clause,
             games_missed_injured=missed,
             games_available_total=total,
+            last_fee=last_fee,
         )
 
 
@@ -329,6 +344,47 @@ def _age_at(player: Player, on: date, today: date) -> int | None:
     if player.age is not None:
         return player.age - int(round((today - on).days / 365.25))
     return None
+
+
+def build_last_fee(
+    player: Player,
+    fee: dict,
+    stats_rows: list[PlayerStats],
+    today: date,
+    *,
+    as_of: date | None = None,
+) -> LastFee | None:
+    """A last_transfer_fees() row plus what the model knew of him at the time.
+
+    `as_of` is the reference date for "years since the fee" — today in
+    production; the backtest passes the later transfer's date, so the earlier
+    fee is seen exactly as it would have been on that day."""
+    on = date.fromisoformat(fee["date"])
+    position = player.position.value
+    age_then = _age_at(player, on, today)
+    seasons = build_seasons(
+        str(player.id), position, age_then, stats_rows, up_to_season=reference_season(on)
+    )
+    score = minutes = coef = None
+    if seasons:
+        perf = engine_v2.performance_evidence(seasons)
+        score, minutes = perf.score, perf.weighted_minutes
+        coef = engine_v2.league_coefficient(seasons[0].league_id)
+    return LastFee(
+        fee_gbp=float(fee["fee_gbp"]),
+        transfer_date=fee["date"],
+        years_since=max(((as_of or today) - on).days / 365.25, 0.0),
+        source=fee.get("source_key", "REPORTED"),
+        basis=fee.get("basis") or "PERMANENT",
+        age_at_transfer=age_then,
+        score_at_transfer=score,
+        minutes_at_transfer=minutes,
+        league_coefficient_at_transfer=coef,
+        fee_display=fee.get("fee_display"),
+        from_team=fee.get("from"),
+        to_team=fee.get("to"),
+        later_free_move=fee.get("later_free_move"),
+    )
 
 
 async def build_comparables_index(db: AsyncSession, today: date | None = None) -> list[CompRecord]:
@@ -386,7 +442,13 @@ async def build_comparables_index(db: AsyncSession, today: date | None = None) -
             )
         )
     ).all()
+    manual_dates: dict[str, list[date]] = defaultdict(list)
     for move, player in reported:
+        if move.vendor == "manual" and move.transfer_date is not None:
+            manual_dates[str(player.id)].append(move.transfer_date)
+    for move, player in reported:
+        if move.fee_basis == "RELEASE_CLAUSE":
+            continue  # a contract term, not a market-clearing price
         fee = engine_v2.parse_fee(move.fee_display, GBP_PER)
         if fee is None or fee < COMPS_MIN_FEE_GBP or move.transfer_date is None:
             continue
@@ -394,12 +456,17 @@ async def build_comparables_index(db: AsyncSession, today: date | None = None) -
             abs((move.transfer_date - d).days) <= 60 for d in platform_moves.get(str(player.id), [])
         ):
             continue
+        if move.vendor != "manual" and any(
+            abs((move.transfer_date - d).days) <= 60
+            for d in manual_dates.get(str(player.id), [])
+        ):
+            continue  # a staff correction of this same move wins
         events.append(
             (
                 player,
                 move.transfer_date,
                 fee,
-                "REPORTED",
+                "REPORTED",  # manual rows carry no extra comps weight
                 move.fee_display,
                 move.team_out_name,
                 move.team_in_name,
@@ -425,6 +492,33 @@ async def build_comparables_index(db: AsyncSession, today: date | None = None) -
         ):
             stats_by_player[str(row.player_id)].append(row)
 
+    # Earlier fees for the backtest's repeat-transfer comparison. No date limit:
+    # a player's previous sale is usually older than the comparables window.
+    # Known and accepted: this lookup ignores the manual-shadow rule and treats
+    # every earlier row as REPORTED/PERMANENT, so the backtest cannot see a
+    # staff correction or a release clause. Production has no manual rows yet,
+    # so it cannot affect this gate.
+    from app.players.last_fee import fee_gbp
+
+    earlier: dict[str, list[tuple[date, float, str | None]]] = defaultdict(list)
+    for i in range(0, len(player_ids), _CHUNK):
+        chunk = player_ids[i : i + _CHUNK]
+        for move in (
+            await db.execute(
+                select(PlayerTransfer).where(
+                    PlayerTransfer.player_id.in_(chunk),
+                    PlayerTransfer.transfer_type == "Transfer",
+                    PlayerTransfer.fee_display.is_not(None),
+                    PlayerTransfer.transfer_date.is_not(None),
+                )
+            )
+        ).scalars():
+            fee = fee_gbp(move.fee_display)
+            if fee:
+                earlier[str(move.player_id)].append((move.transfer_date, fee, move.fee_display))
+    for moves in earlier.values():
+        moves.sort(key=lambda m: m[0], reverse=True)
+
     comps: list[CompRecord] = []
     for player, on, fee, source, display, out_team, in_team in events:
         position = player.position.value
@@ -443,6 +537,23 @@ async def build_comparables_index(db: AsyncSession, today: date | None = None) -
         perf = engine_v2.performance_evidence(seasons)
         coef = engine_v2.league_coefficient(seasons[0].league_id)
         years_ago = max((today - on).days / 365.25, 0.0)
+        prev_fee = None
+        for when, earlier_fee, earlier_display in earlier.get(str(player.id), []):
+            if (on - when).days > 60:  # strictly an earlier move, not this one
+                prev_fee = build_last_fee(
+                    player,
+                    {
+                        "fee_gbp": earlier_fee,
+                        "date": when.isoformat(),
+                        "source_key": "REPORTED",
+                        "basis": "PERMANENT",
+                        "fee_display": earlier_display,
+                    },
+                    stats_by_player.get(str(player.id), []),
+                    today,
+                    as_of=on,
+                )
+                break
         comps.append(
             CompRecord(
                 player_id=str(player.id),
@@ -460,6 +571,7 @@ async def build_comparables_index(db: AsyncSession, today: date | None = None) -
                 from_team=out_team,
                 to_team=in_team,
                 reference=seasons[0],
+                prev_fee=prev_fee,
             )
         )
     return comps

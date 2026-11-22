@@ -77,7 +77,8 @@ export default function FactsStrip({
         sub={fairValue ? `Range ${money(fairValue.fair_value_low)}–${money(fairValue.fair_value_high)}` : "Not enough recent data"} />
       <Cell label="Last transfer" value={lastTransfer ? money(lastTransfer.fee_gbp) : "—"}
         sub={lastTransfer
-          ? [monthYear(lastTransfer.date), lastTransfer.from && lastTransfer.to ? `${lastTransfer.from} → ${lastTransfer.to}` : null]
+          ? [monthYear(lastTransfer.date), lastTransfer.from && lastTransfer.to ? `${lastTransfer.from} → ${lastTransfer.to}` : null,
+              lastTransfer.source]
             .filter(Boolean).join(" · ")
           : "No fee on record"} />
       <Cell label="Market value" value={money(player.market_value, player.market_value_currency)}

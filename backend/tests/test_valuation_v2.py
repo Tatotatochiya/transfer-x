@@ -27,16 +27,25 @@ from app.valuation import engine_v2, service
 from app.valuation.constants import ValuationConfidence
 from app.valuation.constants_v2 import (
     AVAILABILITY_MAX_DISCOUNT,
+    FEE_ANCHOR_FACTOR_BOUNDS,
+    FEE_ANCHOR_RECENCY_YEARS,
+    FEE_ANCHOR_SOURCE_CREDIBILITY,
     MARKET_FACTOR_BOUNDS,
     POTENTIAL_MAX,
     TRAJECTORY_MAX,
 )
 from app.valuation.engine_v2 import MarketRate
 from app.valuation.features import FeatureSet
-from app.valuation.features_v2 import build_comparables_index, reference_season
+from app.valuation.features_v2 import (
+    build_comparables_index,
+    build_last_fee,
+    build_seasons,
+    reference_season,
+)
 from app.valuation.inputs_v2 import (
     CompRecord,
     FeatureSetV2,
+    LastFee,
     RecentGame,
     SeasonFeatures,
     features_from_snapshot,
@@ -113,6 +122,21 @@ def _comp(ratio: float, **overrides) -> CompRecord:
     )
     base.update(overrides)
     return CompRecord(**base)
+
+
+def _last_fee(fee=60_000_000.0, years=1.0, **overrides) -> LastFee:
+    base = dict(
+        fee_gbp=fee,
+        transfer_date="2025-07-01",
+        years_since=years,
+        source="REPORTED",
+        age_at_transfer=24,
+        score_at_transfer=None,
+        minutes_at_transfer=2700.0,
+        league_coefficient_at_transfer=1.0,
+    )
+    base.update(overrides)
+    return LastFee(**base)
 
 
 # ── Engine: performance evidence ──────────────────────────────────────────────
@@ -283,6 +307,244 @@ def test_similar_comps_outweigh_dissimilar_ones():
     assert m.factor > 1.0
 
 
+# ── Engine: last-fee anchor (market-v3) ───────────────────────────────────────
+
+
+def test_fee_above_model_raises_value_and_below_lowers_it():
+    base = engine_v2.compute_valuation_v2(_fs())
+    up = engine_v2.compute_valuation_v2(_fs(last_fee=_last_fee(fee=200_000_000.0)))
+    down = engine_v2.compute_valuation_v2(_fs(last_fee=_last_fee(fee=10_000_000.0)))
+    assert up.fair_value > base.fair_value
+    assert down.fair_value < base.fair_value
+    driver = next(d for d in up.drivers if d.key == "fee_anchor")
+    assert driver.factor != 1.0
+    assert up.fee_anchor.applied is True
+
+
+def test_fee_anchor_factor_is_bounded():
+    lo, hi = FEE_ANCHOR_FACTOR_BOUNDS
+    huge = engine_v2.compute_valuation_v2(_fs(last_fee=_last_fee(fee=1_000_000_000.0)))
+    tiny = engine_v2.compute_valuation_v2(_fs(last_fee=_last_fee(fee=100_000.0)))
+    assert huge.fee_anchor.factor == pytest.approx(hi)
+    assert tiny.fee_anchor.factor == pytest.approx(lo)
+
+
+def test_fee_anchor_weight_falls_with_age_of_fee():
+    recent = engine_v2.compute_valuation_v2(
+        _fs(last_fee=_last_fee(fee=200_000_000.0, years=0.5))
+    )
+    older = engine_v2.compute_valuation_v2(
+        _fs(last_fee=_last_fee(fee=200_000_000.0, years=3.0))
+    )
+    assert 1.0 < older.fee_anchor.factor < recent.fee_anchor.factor
+
+
+def test_old_reported_fee_is_not_applied_and_says_why():
+    base = engine_v2.compute_valuation_v2(_fs())
+    out = engine_v2.compute_valuation_v2(
+        _fs(last_fee=_last_fee(fee=100_000_000.0, years=6.0, transfer_date="2020-07-01"))
+    )
+    assert out.fair_value == base.fair_value
+    assert out.fee_anchor.applied is False
+    assert "2020" in out.fee_anchor.reason
+    assert "too old" in out.fee_anchor.reason
+    neutral = next(d for d in out.drivers if d.key == "fee_anchor")
+    assert neutral.factor == 1.0
+
+
+def test_a_skip_reason_names_thin_evidence_not_age():
+    out = engine_v2.compute_valuation_v2(
+        _fs(last_fee=_last_fee(fee=100_000_000.0, years=0.5, minutes_at_transfer=540))
+    )
+    assert out.fee_anchor.applied is False
+    assert "little playing time on record" in out.fee_anchor.reason
+    assert "too old" not in out.fee_anchor.reason
+
+
+def test_a_skip_reason_names_an_unknown_source():
+    out = engine_v2.compute_valuation_v2(
+        _fs(last_fee=_last_fee(fee=100_000_000.0, source="UNKNOWN", years=0.5))
+    )
+    assert out.fee_anchor.applied is False
+    assert "weakly sourced" in out.fee_anchor.reason
+
+
+def test_a_skip_reason_names_the_release_clause():
+    out = engine_v2.compute_valuation_v2(
+        _fs(last_fee=_last_fee(fee=200_000_000.0, basis="RELEASE_CLAUSE"))
+    )
+    assert out.fee_anchor.applied is False
+    assert "release clause" in out.fee_anchor.reason
+
+
+def test_a_later_free_move_stops_the_anchor():
+    base = engine_v2.compute_valuation_v2(_fs())
+    out = engine_v2.compute_valuation_v2(
+        _fs(
+            last_fee=_last_fee(
+                fee=100_000_000.0,
+                years=3.0,
+                transfer_date="2022-07-01",
+                later_free_move="2025-08-01",
+            )
+        )
+    )
+    assert out.fair_value == base.fair_value
+    assert out.fee_anchor.applied is False
+    assert "free transfer" in out.fee_anchor.reason
+    assert "2022" in out.fee_anchor.reason
+
+
+def test_fee_anchor_overrides_default_to_the_constants():
+    """The backtest's --grid overrides must not change production behaviour."""
+    fee = _last_fee(fee=200_000_000.0)
+    kwargs = dict(
+        position="FWD",
+        age=25,
+        score=80.0,
+        coef=1.0,
+        contract_f=0.8,
+        availability_f=1.0,
+        value_before=50_000_000.0,
+    )
+    default = engine_v2.fee_anchor(fee, **kwargs)
+    explicit = engine_v2.fee_anchor(
+        fee,
+        **kwargs,
+        source_credibility=FEE_ANCHOR_SOURCE_CREDIBILITY,
+        recency_years=FEE_ANCHOR_RECENCY_YEARS,
+    )
+    assert (default.factor, default.weight, default.reason) == (
+        explicit.factor,
+        explicit.weight,
+        explicit.reason,
+    )
+
+
+def test_fee_anchor_worked_example():
+    """Appendix B, computed from the real constants rather than pasted."""
+    fee = LastFee(
+        fee_gbp=100_000_000.0,
+        transfer_date="2023-07-01",
+        years_since=3.3,
+        source="REPORTED",
+        basis="PERMANENT",
+        age_at_transfer=27,
+        score_at_transfer=62.0,
+        minutes_at_transfer=2700.0,
+        league_coefficient_at_transfer=1.0,
+    )
+    contract = engine_v2.contract_factor(1.6)
+    anchor = engine_v2.fee_anchor(
+        fee,
+        position="MID",
+        age=27,
+        score=70.0,
+        coef=1.0,
+        contract_f=contract,
+        availability_f=1.0,
+        value_before=45_000_000.0,
+    )
+    fee_today = 100_000_000.0 * (1 + engine_v2.FEE_INFLATION_PER_YEAR) ** 3.3
+    anchor_value = fee_today * math.sqrt(70 / 62) * contract
+    expected_weight = 0.65 * 1.0 * (1 / (1 + 3.3 / 3)) * 1.0
+    expected_factor = math.exp(expected_weight * math.log(anchor_value / 45_000_000.0))
+    assert anchor.applied is True
+    assert anchor.weight == pytest.approx(expected_weight)
+    assert anchor.factor == pytest.approx(expected_factor)
+    assert anchor.weight == pytest.approx(0.310, abs=0.001)
+    assert anchor.factor == pytest.approx(1.297, abs=0.005)
+
+
+def test_source_credibility_orders_the_pull():
+    def factor(source: str) -> float:
+        return engine_v2.compute_valuation_v2(
+            _fs(last_fee=_last_fee(fee=200_000_000.0, source=source))
+        ).fee_anchor.factor
+
+    assert factor("TRANSFERX") > factor("MANUAL") > factor("REPORTED") > 1.0
+
+
+def test_release_clause_basis_weighs_less():
+    permanent = engine_v2.compute_valuation_v2(
+        _fs(last_fee=_last_fee(fee=200_000_000.0))
+    )
+    clause = engine_v2.compute_valuation_v2(
+        _fs(last_fee=_last_fee(fee=200_000_000.0, basis="RELEASE_CLAUSE"))
+    )
+    assert clause.fee_anchor.factor < permanent.fee_anchor.factor
+    assert clause.fee_anchor.applied is False  # weight drops below the minimum
+
+
+def test_fee_paid_on_little_playing_time_is_skipped():
+    out = engine_v2.compute_valuation_v2(
+        _fs(last_fee=_last_fee(minutes_at_transfer=300))
+    )
+    assert out.fee_anchor.applied is False
+    assert "playing time" in out.fee_anchor.reason
+
+
+def test_unknown_pre_move_stats_reduce_the_weight():
+    known = engine_v2.compute_valuation_v2(
+        _fs(last_fee=_last_fee(fee=200_000_000.0))
+    )
+    unknown = engine_v2.compute_valuation_v2(
+        _fs(last_fee=_last_fee(fee=200_000_000.0, minutes_at_transfer=None))
+    )
+    assert unknown.fee_anchor.applied is True
+    assert unknown.fee_anchor.weight == pytest.approx(known.fee_anchor.weight * 0.6)
+
+
+def test_outgrown_fee_is_skipped():
+    base = engine_v2.compute_valuation_v2(_fs(age=22))
+    out = engine_v2.compute_valuation_v2(
+        _fs(
+            age=22,
+            last_fee=_last_fee(
+                fee=60_000_000.0,
+                years=3.0,
+                score_at_transfer=base.performance.score - 20,
+            ),
+        )
+    )
+    assert out.fee_anchor.applied is False
+    assert "outgrown" in out.fee_anchor.reason
+
+
+def test_expiring_contract_pulls_the_anchor_down():
+    short = engine_v2.compute_valuation_v2(
+        _fs(contract_years_remaining=0.5, last_fee=_last_fee(fee=200_000_000.0))
+    )
+    long = engine_v2.compute_valuation_v2(
+        _fs(contract_years_remaining=4.0, last_fee=_last_fee(fee=200_000_000.0))
+    )
+    assert short.fee_anchor.anchor_value < long.fee_anchor.anchor_value
+
+
+def test_release_clause_still_caps_after_the_anchor():
+    out = engine_v2.compute_valuation_v2(
+        _fs(release_clause_gbp=170_000_000.0, last_fee=_last_fee(fee=1_000_000_000.0))
+    )
+    assert out.drivers[-1].key == "release_clause"
+    assert out.fair_value == 170_000_000
+
+
+def test_no_fee_means_no_anchor_driver():
+    out = engine_v2.compute_valuation_v2(_fs())
+    assert "fee_anchor" not in {d.key for d in out.drivers}
+    assert out.fair_value == engine_v2.compute_valuation_v2(
+        _fs(), use_fee_anchor=False
+    ).fair_value
+
+
+def test_use_fee_anchor_false_reproduces_v2():
+    with_fee = _fs(last_fee=_last_fee(fee=1_000_000_000.0))
+    assert (
+        engine_v2.compute_valuation_v2(with_fee, use_fee_anchor=False).fair_value
+        == engine_v2.compute_valuation_v2(_fs()).fair_value
+    )
+
+
 # ── Engine: orchestration ─────────────────────────────────────────────────────
 
 
@@ -292,6 +554,7 @@ def test_drivers_rebuild_the_value():
         recent_games=[RecentGame(8.4, 90)] * 5,
         games_missed_injured=20,
         games_available_total=60,
+        last_fee=_last_fee(fee=200_000_000.0),
     )
     out = engine_v2.compute_valuation_v2(fs, [_comp(1.3) for _ in range(5)])
     rebuilt = out.drivers[0].value_after
@@ -301,7 +564,7 @@ def test_drivers_rebuild_the_value():
     assert abs(rebuilt - out.fair_value) <= 50_000
     keys = [d.key for d in out.drivers]
     assert keys[:4] == ["anchor", "league", "performance", "age"]
-    assert {"form", "contract", "availability", "market"} <= set(keys)
+    assert {"form", "contract", "availability", "market", "fee_anchor"} <= set(keys)
 
 
 def test_expiring_contract_halves_value():
@@ -608,6 +871,184 @@ async def test_market_rate_applied_end_to_end(db):
     assert market["factor"] > 1.0
 
 
+async def test_service_stores_and_serves_the_fee_anchor(client, db):
+    viewer = await _register(client, "anchor_viewer@test.com", club_name="Anchor FC")
+    p = await _player(db)
+    await _stats(db, p)
+    db.add(
+        PlayerTransfer(
+            player_id=p.id,
+            vendor="api_sports_v3",
+            transfer_date=date.today() - timedelta(days=365),
+            transfer_type="Transfer",
+            fee_display="€ 60M",
+            team_out_name="A",
+            team_in_name="B",
+        )
+    )
+    await db.commit()
+
+    row = await service.compute_and_store_valuation(db, p, comps=[])
+    assert row.inputs_json["fee_anchor"]["applied"] is True
+    assert row.inputs_json["features"]["last_fee"]["source"] == "REPORTED"
+    assert row.model_version == "market-v3"
+
+    resp = await client.get(f"/valuation/players/{p.id}", headers=_auth_headers(viewer))
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["fee_anchor"]["applied"] is True
+    assert any(d["key"] == "fee_anchor" for d in data["drivers"])
+
+
+async def test_fee_anchor_switched_off_stores_a_market_v2_row(client, db, monkeypatch):
+    """Production ships with the anchor off: the same player with the same fee
+    is valued, labelled and replayed exactly as market-v2."""
+    from app.config import settings
+
+    viewer = await _register(client, "anchor_off@test.com", club_name="Anchor Off FC")
+    p = await _player(db)
+    await _stats(db, p)
+    db.add(
+        PlayerTransfer(
+            player_id=p.id,
+            vendor="api_sports_v3",
+            transfer_date=date.today() - timedelta(days=365),
+            transfer_type="Transfer",
+            fee_display="€ 60M",
+            team_out_name="A",
+            team_in_name="B",
+        )
+    )
+    await db.commit()
+
+    on = await service.compute_and_store_valuation(db, p, comps=[])
+    assert on.inputs_json["fee_anchor"]["applied"] is True
+
+    monkeypatch.setattr(settings, "valuation_fee_anchor_enabled", False)
+    off = await service.compute_and_store_valuation(db, p, comps=[])
+    await db.commit()
+    assert off.model_version == "market-v2"
+    assert off.inputs_json["fee_anchor"] is None
+    assert off.inputs_json["features"]["last_fee"] is None
+    assert all(d["key"] != "fee_anchor" for d in off.inputs_json["drivers"])
+    assert off.fair_value != on.fair_value
+
+    # The value is the engine's without the anchor, and the row replays from
+    # its own inputs with no knowledge of the switch.
+    fs = features_from_snapshot(on.inputs_json["features"])
+    assert float(off.fair_value) == engine_v2.compute_valuation_v2(
+        fs, [], use_fee_anchor=False
+    ).fair_value
+    replay = engine_v2.compute_valuation_v2(
+        features_from_snapshot(off.inputs_json["features"]),
+        market=MarketRate(**off.inputs_json["market"]),
+    )
+    assert replay.fair_value == float(off.fair_value)
+
+    # The batch job honours the switch too, and never loads the fees.
+    counts = await service.compute_all_valuations(db)
+    assert counts["fee_anchored"] == 0
+
+    # The last fee is still shown beside the value; there is no anchor to explain.
+    resp = await client.get(f"/valuation/players/{p.id}", headers=_auth_headers(viewer))
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["model_version"] == "market-v2"
+    assert data["fee_anchor"] is None
+    assert data["last_transfer"]["source"] == "API-Football"
+
+
+async def test_own_transfer_still_never_enters_market_rate(db):
+    when = date.today() - timedelta(days=200)
+    target = await _player(db, name="Self Priced")
+    await _stats(db, target, season=str(reference_season(when)))
+    db.add(
+        PlayerTransfer(
+            player_id=target.id,
+            vendor="api_sports_v3",
+            transfer_date=when,
+            transfer_type="Transfer",
+            fee_display="€ 50M",
+        )
+    )
+    for i in range(4):
+        other = await _player(db, name=f"Comparable {i}")
+        await _stats(db, other, season=str(reference_season(when)))
+        db.add(
+            PlayerTransfer(
+                player_id=other.id,
+                vendor="api_sports_v3",
+                transfer_date=when,
+                transfer_type="Transfer",
+                fee_display="€ 60M",
+            )
+        )
+    await db.commit()
+
+    comps = await build_comparables_index(db)
+    assert str(target.id) in {c.player_id for c in comps}  # his own fee is in the index
+    market = engine_v2.market_rate(
+        comps, player_id=str(target.id), position="FWD", age=25, score=80.0, coef=1.0
+    )
+    assert market.comps_used == 4
+    assert str(target.id) not in {c["player_id"] for c in market.top_comps}
+
+
+async def test_last_fee_context_uses_pre_move_seasons_only(db):
+    from app.players.last_fee import last_transfer_fees
+    from app.stats.models import PlayerStats
+
+    p = await _player(db, name="Pre Move")
+    await _stats(
+        db,
+        p,
+        season="2023",
+        minutes=2700,
+        goals=4,
+        assists=1,
+        shots_on_target=10,
+        key_passes=10,
+        dribbles_success=10,
+    )
+    await _stats(
+        db,
+        p,
+        season="2025",
+        minutes=2700,
+        goals=30,
+        assists=12,
+        shots_on_target=70,
+        key_passes=60,
+        dribbles_success=80,
+    )
+    db.add(
+        PlayerTransfer(
+            player_id=p.id,
+            vendor="api_sports_v3",
+            transfer_date=date(2024, 7, 15),
+            transfer_type="Transfer",
+            fee_display="€ 40M",
+        )
+    )
+    await db.commit()
+
+    fee = (await last_transfer_fees(db, [p.id]))[p.id]
+    stats = (
+        (await db.execute(select(PlayerStats).where(PlayerStats.player_id == p.id)))
+        .scalars()
+        .all()
+    )
+    last_fee = build_last_fee(p, fee, list(stats), date.today())
+    expected = engine_v2.performance_evidence(
+        build_seasons(str(p.id), "FWD", 25, list(stats), up_to_season=2023)
+    )
+    assert last_fee.score_at_transfer == pytest.approx(expected.score)
+    assert last_fee.minutes_at_transfer == pytest.approx(expected.weighted_minutes)
+    # The far better 2025 season did not exist when the buyer paid the fee.
+    full = engine_v2.performance_evidence(build_seasons(str(p.id), "FWD", 25, list(stats)))
+    assert full.score > last_fee.score_at_transfer + 10
+
+
 async def test_v2_row_replays_exactly_from_inputs_json(client, club, db):
     club_id = await _get_club_id(client, _auth_headers(club))
     p = await _player(db, age=20)
@@ -631,6 +1072,16 @@ async def test_v2_row_replays_exactly_from_inputs_json(client, club, db):
                 rating=Decimal("7.1"),
             )
         )
+    # A last fee in the snapshot, so replay runs the market-v3 anchor too.
+    db.add(
+        PlayerTransfer(
+            player_id=p.id,
+            vendor="api_sports_v3",
+            transfer_date=date.today() - timedelta(days=400),
+            transfer_type="Transfer",
+            fee_display="€ 70M",
+        )
+    )
     await db.commit()
     await service.compute_and_store_valuation(db, p, comps=[_comp(1.2) for _ in range(5)])
 
@@ -639,6 +1090,7 @@ async def test_v2_row_replays_exactly_from_inputs_json(client, club, db):
         .scalars()
         .one()
     )
+    assert row.inputs_json["fee_anchor"]["applied"] is True
     replay = engine_v2.compute_valuation_v2(
         features_from_snapshot(row.inputs_json["features"]),
         now=row.computed_at,
@@ -665,8 +1117,17 @@ def test_backtest_rows_predict_each_model_leave_one_out():
         assert r["comps_used"] == 5  # the other five, never itself
         assert r["v2_market"] > r["v2_intrinsic"]  # market paid above model
         assert r["v1"] > 0
+        # No earlier fee on these comps: the anchor is neutral and changes nothing.
+        assert r["prev_fee_gbp"] is None
+        assert r["anchor_applied"] is False
+        assert r["v3_anchor"] == r["v2_market"]
     summary = _metrics([(r["v2_market"], r["actual"]) for r in rows])
     assert summary["n"] == 5 and summary["median_bias_pct"] < 0  # shrinkage → still under
+
+    with_fee = [_comp(1.4, reference=_season(), prev_fee=_last_fee(fee=200_000_000.0))]
+    anchored = backtest_rows(with_fee)
+    assert anchored[0]["anchor_applied"] is True
+    assert anchored[0]["v3_anchor"] != anchored[0]["v2_market"]
 
 
 async def test_unlisted_league_player_keeps_domestic_row_alongside_european_games(db):

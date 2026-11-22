@@ -103,7 +103,7 @@ Done when: a club can plan its next window in TransferX (renew, sell, buy) withi
 ## Built alongside the plan
 
 - **2026-10-05 to 10-06 — AI analyst, phases A and B:** [`../ai-analyst/`](../ai-analyst/README.md).
-- **2026-10-07 — valuation model v2:** [`../valuation-model-v2.md`](../valuation-model-v2.md), calibration TODO.
+- **2026-10-07 — valuation model v2:** [`../valuation/model.md`](../valuation/model.md), calibration TODO.
 - **2026-10-10 to 10-11 — scheduled data refresh, Admin Jobs and Errors, Slack:** [`../scheduled-data-refresh.md`](../scheduled-data-refresh.md).
 - **Smaller changes:** buying and selling lanes on the board, and "in play" on My Club's squad.
 
