@@ -367,6 +367,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **Club crests on the offer page.** The "Manchester United → Tottenham" line and the message senders showed a grey dot instead of each club's crest, because the offer's club summary left out `crest_url` (the deal page had it). It now carries it. An anonymous buyer's summary is still removed whole for the seller, so their crest never reaches them.
 - **Only TransferX staff can write player data** ([code review](./reviews/2026-11-17-code-review-fix-spec.md), item 1). Any signed-in account, including a self-registered agent, could:
   - overwrite a player's stats and form, which feed the valuation;
   - add snapshots;
