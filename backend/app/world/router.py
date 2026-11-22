@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from app.auth.models import User
 from app.common.schemas import Paginated
 from app.database import get_db
-from app.deps import get_current_user, get_optional_user
+from app.deps import get_current_superuser, get_optional_user
 from app.fixtures.models import Fixture
 from app.players.schemas import PlayerResponse
 from app.players import service as players_service
@@ -140,7 +140,7 @@ async def list_leagues(
 async def upsert_league(
     body: LeagueCreateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_superuser),
 ):
     league = await service.upsert_league(
         db,

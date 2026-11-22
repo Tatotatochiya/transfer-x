@@ -14,19 +14,12 @@ from app.analytics.schemas import (
     TopPage,
     UserActivityRow,
 )
+from app.common.client_ip import client_ip
 from app.database import get_db
 from app.deps import get_current_superuser, get_optional_user
 from app.auth.models import User
 
 router = APIRouter(tags=["analytics"])
-
-
-def _get_client_ip(request: Request) -> str | None:
-    """Extract real client IP, respecting X-Forwarded-For from reverse proxies."""
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
-    return request.client.host if request.client else None
 
 
 # ── Ingest (no auth required — fire-and-forget from client) ──────────────────
@@ -39,7 +32,7 @@ async def ingest_events(
     current_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    ip = _get_client_ip(request)
+    ip = client_ip(request)
     ua = request.headers.get("User-Agent", "")[:512]
     user_id = current_user.id if current_user else None
     await analytics_service.record_events(db, body.events, user_id=user_id, ip_address=ip, user_agent=ua)

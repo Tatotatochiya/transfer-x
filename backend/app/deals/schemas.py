@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.agents.models import AgreementStatus, CommissionPayer, NegotiationStatus  # noqa: F401 (re-exported)
 from app.common.schemas import WhoseMove
+from app.config import settings
 from app.deals.models import ClauseStatus, ClauseType, DealStage, DealStatus, DealType, MedicalStatus
 
 
@@ -182,9 +183,11 @@ class PersonalTermsResponse(BaseModel):
 
 
 class SetPersonalTermsRequest(BaseModel):
-    wage_weekly: Decimal | None = None
-    signing_bonus: Decimal | None = None
-    length_years: int | None = None
+    # A wage below the offer's releases the buyer's committed wage, so a zero
+    # or negative one would free budget for nothing (review item 15).
+    wage_weekly: Decimal | None = Field(default=None, gt=0)
+    signing_bonus: Decimal | None = Field(default=None, ge=0)
+    length_years: int | None = Field(default=None, ge=1, le=settings.max_contract_years)
     # A line to the other side with a proposal or counter, shown in the history.
     note: str | None = Field(default=None, max_length=200)
 

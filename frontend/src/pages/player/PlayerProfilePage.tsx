@@ -325,7 +325,7 @@ export default function PlayerProfilePage() {
               {([["wage", "Weekly wage (£)"], ["bonus", "Signing bonus (£)"], ["years", "Contract length (years)"]] as const).map(([k, label]) => (
                 <div key={k}>
                   <label htmlFor={`counter-${k}`} className="mb-1 block text-small font-medium text-text-secondary">{label}</label>
-                  <input id={`counter-${k}`} type="number" min={k === "years" ? 1 : 0} value={counter[k]}
+                  <input id={`counter-${k}`} type="number" min={k === "years" ? 1 : 0} max={k === "years" ? 5 : undefined} value={counter[k]}
                     onChange={(e) => setCounter((c) => ({ ...c, [k]: e.target.value }))}
                     className="w-full rounded-lg bg-surface px-3 py-2 text-input lg:text-body text-text ring-1 ring-input-border" />
                 </div>

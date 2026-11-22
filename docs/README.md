@@ -45,7 +45,7 @@ Each area has its own `README.md` explaining its own scope in more detail. [`PRO
 
 ### Reviews
 
-Dated reviews of the product as a whole live in [`reviews/`](./reviews/). The latest is the [product and production-readiness review of 15 November 2026](./reviews/2026-11-15-product-and-readiness-review.md).
+Dated reviews of the product as a whole live in [`reviews/`](./reviews/). The latest is the [product and production-readiness review of 15 November 2026](./reviews/2026-11-15-product-and-readiness-review.md), followed by the [code review fix spec of 17 November 2026](./reviews/2026-11-17-code-review-fix-spec.md).
 
 ### Tracking documents
 

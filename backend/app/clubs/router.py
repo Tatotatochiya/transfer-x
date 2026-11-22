@@ -41,7 +41,6 @@ from app.database import get_db
 from app.deps import get_optional_user
 from app.players import service as players_service
 from app.players.schemas import ActiveDealStub, ContractResponse, PlayerDetailResponse
-from app.world import service as world_service
 
 router = APIRouter(tags=["clubs"])
 
@@ -195,44 +194,6 @@ async def update_my_club_player(
         await db.refresh(active_contract)
         data.active_contract = ContractResponse.model_validate(active_contract)
     return data
-
-
-@router.post("/from-world-team/{world_team_id}", response_model=ClubResponse, status_code=status.HTTP_201_CREATED)
-async def claim_world_team_as_club(
-    world_team_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> ClubResponse:
-    """Create a marketplace Club pre-populated from a WorldTeam record.
-
-    Fails with 409 if the user already has a club, or 404 if the world team doesn't exist.
-    """
-    existing, _ = await clubs_service.get_club_and_role_for_user(db, current_user.id)
-    if existing is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="You already have a club. Transfer or dissolve it first.",
-        )
-
-    team = await world_service.get_world_team_by_id(db, world_team_id)
-    if team is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="World team not found")
-
-    club = await clubs_service.create_club(
-        db,
-        user_id=current_user.id,
-        name=team.name,
-        role=clubs_service.ClubRole.BOTH,
-    )
-    # Carry over world-team metadata
-    club.country = team.country
-    club.league_name = team.league_name
-    club.crest_url = team.crest_url
-
-    await clubs_service.create_club_finance(db, club.id)
-    await db.commit()
-    await db.refresh(club)
-    return ClubResponse.model_validate(club).model_copy(update={"my_role": "OWNER"})
 
 
 # ── Team management (TRA-86, all TEAM_MANAGE) ────────────────────────────────

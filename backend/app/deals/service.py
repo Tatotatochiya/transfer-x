@@ -693,9 +693,12 @@ async def _apply_consented_terms(
             transfer_amount=bonus, wage_weekly=max(Decimal("0"), wage_delta),
         )
     if wage_delta < 0:
+        # Release no more than this deal committed: the offer's wage, which
+        # old_wage is. A lower agreed wage frees only the difference.
+        release = min(-wage_delta, old_wage)
         fin = await clubs_module.service.get_finance_for_update(db, deal.buyer_club_id)
         if fin:
-            fin.wage_committed_weekly = max(Decimal("0"), fin.wage_committed_weekly + wage_delta)
+            fin.wage_committed_weekly = max(Decimal("0"), fin.wage_committed_weekly - release)
 
     deal.agreed_wage_weekly = new_wage if new_wage > 0 else deal.agreed_wage_weekly
     deal.signing_bonus = bonus if bonus > 0 else None
@@ -1477,6 +1480,20 @@ async def get_personal_terms(db: AsyncSession, deal_id: uuid.UUID) -> PersonalTe
     return result.scalar_one_or_none()
 
 
+def check_terms_values(wage_weekly: Decimal | None, signing_bonus: Decimal | None, length_years: int | None) -> None:
+    """The request schema's limits, again for callers that skip it (the demo's
+    house sides): a positive wage, no negative bonus, a contract of one year
+    up to `max_contract_years`."""
+    from app.config import settings
+
+    if wage_weekly is not None and wage_weekly <= 0:
+        raise ValueError("The weekly wage must be more than zero")
+    if signing_bonus is not None and signing_bonus < 0:
+        raise ValueError("The signing bonus can't be negative")
+    if length_years is not None and not 1 <= length_years <= settings.max_contract_years:
+        raise ValueError(f"The contract must run 1 to {settings.max_contract_years} years")
+
+
 async def set_personal_terms(
     db: AsyncSession,
     deal: Deal,
@@ -1504,6 +1521,7 @@ async def set_personal_terms(
         raise ValueError("Deal is not in PERSONAL_TERMS stage")
     if side not in ("BUYER", "PLAYER"):
         raise ValueError("Unknown side")
+    check_terms_values(wage_weekly, signing_bonus, length_years)
 
     pt = await get_personal_terms(db, deal.id)
     if pt is None:

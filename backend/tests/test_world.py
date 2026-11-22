@@ -13,8 +13,16 @@ from tests.conftest import _auth_headers, _register
 
 
 @pytest_asyncio.fixture
-async def world_user(client: AsyncClient) -> dict:
-    return await _register(client, "world@test.com", club_name="World FC")
+async def world_user(client: AsyncClient, db) -> dict:
+    """Staff: the write endpoints here are staff-only (review item 1)."""
+    from sqlalchemy import select
+
+    from app.auth.models import User
+
+    tokens = await _register(client, "world@test.com", club_name="World FC")
+    (await db.execute(select(User).where(User.email == "world@test.com"))).scalar_one().is_superuser = True
+    await db.commit()
+    return tokens
 
 
 def _league_payload(vendor="api-football", league_id="39", name="Premier League", **kwargs):
