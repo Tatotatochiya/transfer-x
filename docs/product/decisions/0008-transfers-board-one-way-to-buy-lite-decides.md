@@ -17,12 +17,12 @@ A club's transfers were spread over six pages: Listings, My Listings, Offers sen
 
    | Column | What's in it |
    |---|---|
-   | Talking | Open enquiries; the club's listed players with no offer yet |
+   | Listed | Open enquiries; the club's listed players with no offer yet |
    | Offers | Offers sent or received that are still open; auction bids |
    | Fee agreed | Deals at the agreement stage |
    | Personal terms | Deals at agent negotiation or personal terms |
    | Paperwork | Deals at paperwork or confirmed (signature), with the medical and registration |
-   | Done | Completed transfers |
+   | Completed | Completed transfers |
 
    Filter by Buying, Selling or Both. Collapsed deals, rejected, withdrawn or expired offers, and ended listings go in a Closed drawer, not a column.
 

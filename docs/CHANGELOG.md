@@ -268,6 +268,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Transfers board stage names: "Listed" and "Completed".** The first stage, which holds your listed players with no offers yet and open enquiries, is now "Listed" (it was "Talking"). The last is "Completed" (it was "Done"), and a completed row's label reads "Completed" (it was "Complete"). The stage keys (`talking`, `done`) are unchanged. The AI analyst uses the same names.
 - **Escalations aren't emailed for now.** An escalated reminder, and the "transfer stuck" notice to the people told, arrive in-app and by push only; a first reminder is still emailed. On the shared demo environment escalations went to seeded agents' addresses, some on real-looking domains ([move reminders](./feature_spec/move-reminders/README.md)).
 - **Colours mean one thing.** Positions, account roles, contract state, deal stages, stat groups and chart series are neutral; blue is only for what you can tap (switches that are on included); red is "needs you", errors and destructive actions; violet is only the AI (✦ buttons, advice, fit scores, AI search), no longer shared with the Agent badge. Tints come from tokens, not opacity.
 - **Dark mode's accent is blue**, like light mode's (it was emerald, the same family as "done" green), with dark text on primary buttons.

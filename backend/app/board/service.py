@@ -26,12 +26,12 @@ from app.sales import service as sales_service
 from app.sales.models import SaleStatus, SaleType
 
 COLUMNS = [
-    ("talking", "Talking"),
+    ("talking", "Listed"),
     ("offers", "Offers"),
     ("fee_agreed", "Fee agreed"),
     ("terms", "Personal terms"),
     ("paperwork", "Paperwork"),
-    ("done", "Done"),
+    ("done", "Completed"),
 ]
 RANK = {key: i for i, (key, _) in enumerate(COLUMNS)}
 DEAL_COLUMN = {

@@ -18,7 +18,7 @@ const card = (side: "BUYING" | "SELLING", name: string, column: string) => ({
 
 const board = {
   columns: [
-    { key: "talking", label: "Talking", cards: [card("BUYING", "K. Havertz", "talking"), card("SELLING", "Á. Pécsi", "talking")] },
+    { key: "talking", label: "Listed", cards: [card("BUYING", "K. Havertz", "talking"), card("SELLING", "Á. Pécsi", "talking")] },
     { key: "agreed", label: "Agreed", cards: [] },
   ],
   closed: [],
@@ -42,7 +42,7 @@ function renderBoard(path: string) {
 
 const listBoard = {
   columns: [
-    { key: "talking", label: "Talking", cards: [{ ...card("BUYING", "T. Talk", "talking"), kind: "enquiry", link: "/enquiries/t" }] },
+    { key: "talking", label: "Listed", cards: [{ ...card("BUYING", "T. Talk", "talking"), kind: "enquiry", link: "/enquiries/t" }] },
     { key: "offers", label: "Offers", cards: [
       { ...card("SELLING", "G. Słonina", "offers"), whose_move: "your", detail: "Countered · your move", link: "/offers/g" },
       { ...card("SELLING", "L. Listed", "offers"), kind: "listing", counterparty: null, detail: "Listed", link: "/sales/l" },
@@ -50,7 +50,7 @@ const listBoard = {
     { key: "fee_agreed", label: "Fee agreed", cards: [] },
     { key: "terms", label: "Personal terms", cards: [{ ...card("BUYING", "P. Terms", "terms"), kind: "deal", detail: "Personal terms", link: "/deals/p" }] },
     { key: "paperwork", label: "Paperwork", cards: [] },
-    { key: "done", label: "Done", cards: [{ ...card("BUYING", "D. Done", "done"), kind: "deal", detail: "Transfer complete", link: "/deals/d" }] },
+    { key: "done", label: "Completed", cards: [{ ...card("BUYING", "D. Done", "done"), kind: "deal", detail: "Transfer complete", link: "/deals/d" }] },
   ],
   closed: [],
   counts: { buying: 3, selling: 2, your_move: 1 },
@@ -79,7 +79,7 @@ describe("BoardPage list (below 1280px)", () => {
   it("stage chips show only stages with transfers, filter, and write ?stage=", async () => {
     renderBoard("/board?side=BOTH");
     const chips = await screen.findByRole("radiogroup", { name: "Stage" });
-    expect(within(chips).getAllByRole("radio").map((c) => c.textContent)).toEqual(["All5", "Talking1", "Offers2", "Personal terms1"]);
+    expect(within(chips).getAllByRole("radio").map((c) => c.textContent)).toEqual(["All5", "Listed1", "Offers2", "Personal terms1"]);
     await userEvent.click(within(chips).getByRole("radio", { name: /Offers/ }));
     expect(location).toContain("stage=offers");
     expect(screen.queryByRole("link", { name: /^T\. Talk/ })).not.toBeInTheDocument();
@@ -153,17 +153,17 @@ describe("BoardPage board (from 1280px)", () => {
     await screen.findByRole("region", { name: "Buying" });
     expect(screen.getAllByRole("region", { name: "Agreed: none" })).toHaveLength(2);
     // Talking has a card in each lane, and stays open in both.
-    expect(screen.getAllByRole("region", { name: "Talking" })).toHaveLength(2);
+    expect(screen.getAllByRole("region", { name: "Listed" })).toHaveLength(2);
     const oneLane = { ...board, columns: [{ ...board.columns[0], cards: [board.columns[0].cards[0]] }, board.columns[1]] };
     api.get.mockResolvedValue({ data: oneLane });
     await userEvent.click(screen.getByRole("radio", { name: "Buying" }));
     await userEvent.click(screen.getByRole("radio", { name: "Both" }));
-    expect(await screen.findAllByRole("region", { name: "Talking" })).toHaveLength(2);
+    expect(await screen.findAllByRole("region", { name: "Listed" })).toHaveLength(2);
   });
 
   it("the waiting strip lists your-move cards and opens the pop-up; it's absent with none", async () => {
     const mine = { ...card("SELLING", "D. Mukasa", "talking"), whose_move: "your", detail: "Offer received · your move" };
-    api.get.mockResolvedValue({ data: { ...board, columns: [{ key: "talking", label: "Talking", cards: [mine] }], counts: { buying: 0, selling: 1, your_move: 1 } } });
+    api.get.mockResolvedValue({ data: { ...board, columns: [{ key: "talking", label: "Listed", cards: [mine] }], counts: { buying: 0, selling: 1, your_move: 1 } } });
     renderBoard("/board?side=BOTH");
     const strip = await screen.findByRole("region", { name: "Waiting on you" });
     expect(strip).toHaveTextContent("D. Mukasa · Offer received");
@@ -193,7 +193,7 @@ describe("BoardPage colours", () => {
   it("your move is red, chased cards say so in red, and the other side's stalled cards are amber", async () => {
     const mine = { ...card("SELLING", "D. Mukasa", "talking"), whose_move: "your", detail: "Offer received · your move", chased: "ESCALATED" };
     const stalled = { ...card("BUYING", "L. Hall", "talking"), whose_move: "their", updated_at: new Date(Date.now() - 5 * 86_400_000).toISOString() };
-    api.get.mockReset().mockResolvedValue({ data: { ...board, columns: [{ key: "talking", label: "Talking", cards: [mine, stalled] }] } });
+    api.get.mockReset().mockResolvedValue({ data: { ...board, columns: [{ key: "talking", label: "Listed", cards: [mine, stalled] }] } });
     render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={["/board?side=BOTH"]}><BoardPage /></MemoryRouter></QueryClientProvider>);
 
     expect((await screen.findByText("Offer received · your move")).className).toContain("text-danger-text");
