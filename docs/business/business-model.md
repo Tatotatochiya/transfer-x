@@ -30,6 +30,11 @@ Out of scope: billing implementation (see `../engineering/` once billing is buil
 ## Pricing model
 
 > **TODO:** Decide and document the pricing model — options considered typically include per-seat SaaS subscription, per-transaction fee, and data licensing. Document the decision and the reasoning, not just the conclusion.
+>
+> Input for this decision: the [leagues and club teams spec](../feature_spec/leagues-and-club-teams/README.md#33-what-this-means-for-pricing-for-the-pricing-decision), §3.3, proposes:
+> - billing the club as an organisation, with its teams included or as add-ons;
+> - pricing by division;
+> - letting EFL clubs take part as counterparties before they are customers.
 
 ## Packaging
 

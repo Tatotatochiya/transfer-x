@@ -42,6 +42,8 @@ This is a factual list of what the software supports today, not a statement of m
 > **TODO:** Which tier of club is TransferX built for? (e.g. professional leagues such as Premier League/Championship/European clubs, vs. lower-league/semi-pro clubs.) This is a real open decision, not yet settled in the documentation.
 >
 > Historical planning notes point in different directions at different points in the project's history — this needs a single, current, owned answer rather than an inferred one.
+>
+> Input for this decision: the [leagues and club teams spec](../feature_spec/leagues-and-club-teams/README.md#3-fit-with-the-business-model), §3, sets out why the EFL matters to a transfer marketplace and how the women's game fits.
 
 ## Competitive landscape
 
