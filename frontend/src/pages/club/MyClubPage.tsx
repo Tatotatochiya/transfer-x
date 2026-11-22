@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Club, FairValueSignal, Loan, Paginated, PlayerDetail, PlayerForm } from "../../types/api";
@@ -26,6 +26,7 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useOpenListings } from "../../hooks/useListing";
 import FallbackImage from "../../components/ui/FallbackImage";
+import ClubColoursField, { colourError } from "../../components/clubs/ClubColoursField";
 
 type Tab = "squad" | "stats" | "listings" | "fixtures";
 
@@ -68,6 +69,7 @@ function readDensity(): SquadDensity {
 
 export default function MyClubPage() {
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const queryClient = useQueryClient();
   const { can } = useClubCapabilities();
   const [tab, setTab] = useState<Tab>("squad");
@@ -182,6 +184,8 @@ export default function MyClubPage() {
   const [city, setCity]       = useState("");
   const [league, setLeague]   = useState("");
   const [crestUrl, setCrestUrl] = useState("");
+  const [brandPrimary, setBrandPrimary] = useState("");
+  const [brandSecondary, setBrandSecondary] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
   function openEdit() {
@@ -191,9 +195,19 @@ export default function MyClubPage() {
     setCity(club.city ?? "");
     setLeague(club.league_name ?? "");
     setCrestUrl(club.crest_url ?? "");
+    setBrandPrimary(club.brand_primary ?? "");
+    setBrandSecondary(club.brand_secondary ?? "");
     setFormError(null);
     setEditing(true);
   }
+
+  // The Dashboard's "Add club colours" link: open the form at the colours.
+  useEffect(() => {
+    if (hash !== "#club-colours" || !club || !can("CLUB_ADMIN")) return;
+    openEdit();
+    requestAnimationFrame(() => document.getElementById("club-colours")?.scrollIntoView({ block: "start" }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hash, club?.id]);
 
   const updateMutation = useMutation({
     mutationFn: (body: object) => api.patch<Club>("/clubs/me", body).then((r) => r.data),
@@ -213,6 +227,10 @@ export default function MyClubPage() {
     if (city)     body.city         = city;
     if (league)   body.league_name  = league;
     if (crestUrl) body.crest_url    = crestUrl;
+    if (colourError(brandPrimary) || colourError(brandSecondary)) return; // shown under the field
+    // "" removes a colour; only what changed is sent.
+    if (brandPrimary !== (club?.brand_primary ?? ""))     body.brand_primary   = brandPrimary;
+    if (brandSecondary !== (club?.brand_secondary ?? "")) body.brand_secondary = brandSecondary;
     updateMutation.mutate(body);
   }
 
@@ -399,6 +417,11 @@ export default function MyClubPage() {
                 />
               </div>
             ))}
+            {club && (
+              <ClubColoursField club={{ ...club, crest_url: crestUrl || club.crest_url }}
+                primary={brandPrimary} secondary={brandSecondary}
+                onChange={(p, s) => { setBrandPrimary(p); setBrandSecondary(s); }} />
+            )}
             <div className="sm:col-span-2 lg:col-span-3">
               {formError && <p className="mb-3 text-body text-danger-text">{formError}</p>}
               <div className="flex gap-3">

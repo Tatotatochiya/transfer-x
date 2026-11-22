@@ -263,6 +263,9 @@ export interface Club {
   city: string | null;
   league_name: string | null;
   crest_url: string | null;
+  /** The club's own colours, '#RRGGBB' (its own view only): the Dashboard band and the sidebar crest ring. */
+  brand_primary?: string | null;
+  brand_secondary?: string | null;
   role: ClubRole;
   verified: boolean;
   created_at: string;

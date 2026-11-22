@@ -249,7 +249,7 @@ The card is `id="needs-you"`, `rounded-2xl bg-surface`. It has `ring-1 ring-dang
 - **"Also" rows** (not counted), under a `text-caption font-semibold text-text-muted` "Also" divider, in this order:
   1. **Contracts running out:** players with `days_remaining ≤ 60` from the existing expiring-contracts query who aren't listed. `ExpiringContractItem` has no listed flag: use the open listings the page already loads (`useOpenListings`). "{Name}'s contract ends in {n} days", with a "List" button when `can("MARKET_WRITE")` (opens `ListPlayerModal`, as today). Show at most 2, then "+N more" linking to `/club`.
   2. **Setup:** when `OnboardingChecklist` would show (steps remaining, not dismissed), "Finish setting up your club · {done} of {total}", with "Continue". It opens a `Sheet` with the full `OnboardingChecklist`. Export a `useOnboardingSteps()` hook from that file so the row and the sheet share one source.
-  3. **Name:** when `NamePrompt` would show, "Add your name so your team sees who did what", with "Add name" (to `/account#name`) and a "Not now" text button using the same session key. `NamePrompt` renders from `AppShell` on every page: it returns `null` on `/dashboard` only, and stays everywhere else.
+  3. **Name:** when `NamePrompt` would show, "Add your name so your team sees who did what", with "Add name" (to `/account#name`) and a "Not now" text button using the same session key. `NamePrompt` is mounted in `AppShell` but already shows on `/dashboard` only, so it moves into this row: export its "should it show" and "Not now" logic as a hook (`useNamePrompt`) and remove `NamePrompt` from `AppShell`.
 - **Empty state** (no counted rows): "Nothing needs you right now." in `text-body text-text-secondary`. Then the Also rows, if any.
 - **Cap:** at most 5 counted rows; then "Show all {N}" expands in place.
 
@@ -504,7 +504,7 @@ Checked against `main` at `fda513f` before building. Changed from the handoff:
 - **Sidebar badge.** There are two badges, Transfers and Approvals. "Needs you" equals their sum.
 - **Phone target.** Measured with no banner showing.
 - **Code facts settled:**
-  - `NamePrompt` is hidden on the Dashboard only.
+  - `NamePrompt` moves into Needs you; it already showed on the Dashboard only.
   - The demo journal needs nothing.
   - Club edits aren't audited.
   - The listed state comes from `useOpenListings`.
