@@ -341,6 +341,19 @@ async def active_demo_ids(db: AsyncSession, table: str) -> set[uuid.UUID]:
     return out
 
 
+async def fee_evidence_deals(db: AsyncSession):
+    """A condition on Deal for the deals whose fee is evidence of a player's
+    price (his last transfer, comparable sales): `shared_deals`, and none at
+    all while `transferx_deal_fees_enabled` is off, where deals are tests."""
+    from sqlalchemy import false
+
+    from app.config import settings
+
+    if not settings.transferx_deal_fees_enabled:
+        return false()
+    return await shared_deals(db)
+
+
 async def shared_deals(db: AsyncSession):
     """A condition on Deal for figures everyone sees (valuations, comparable
     transfers, Recent Transfers): leaves out deals an open demo made and

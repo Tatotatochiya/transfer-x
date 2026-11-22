@@ -5,7 +5,8 @@ Shown next to the model's value wherever a price is (team feedback,
 permanent move with a known fee wins:
 - API-Football's transfer history (player_transfers), whose fee is a string
   such as "€ 116.6M", converted to pounds at the valuation model's rates;
-- a completed TransferX deal, unless it's a demo or test transfer.
+- a completed TransferX deal, unless it's a demo or test transfer, or the
+  environment's deals don't count as fees (`transferx_deal_fees_enabled`).
 Loans, free transfers and moves with no fee on record don't count: they say
 nothing about his price.
 
@@ -75,7 +76,7 @@ async def last_transfer_fees(db: AsyncSession, player_ids) -> dict[uuid.UUID, di
     admin endpoints only."""
     from app.clubs.models import Club
     from app.deals.models import Deal, DealStatus, DealType
-    from app.demo.service import shared_deals
+    from app.demo.service import fee_evidence_deals
     from app.players.models import PlayerTransfer
 
     ids = list(player_ids)
@@ -129,7 +130,7 @@ async def last_transfer_fees(db: AsyncSession, player_ids) -> dict[uuid.UUID, di
         deals = (await db.execute(select(Deal).where(
             Deal.player_id.in_(chunk), Deal.status == DealStatus.COMPLETED,
             Deal.deal_type == DealType.PERMANENT,
-            Deal.agreed_fee > 0, Deal.completed_at.is_not(None), await shared_deals(db)))).scalars().all()
+            Deal.agreed_fee > 0, Deal.completed_at.is_not(None), await fee_evidence_deals(db)))).scalars().all()
         if deals:
             names = dict((await db.execute(select(Club.id, Club.name).where(
                 Club.id.in_({c for d in deals for c in (d.buyer_club_id, d.seller_club_id) if c}))) ).all())
