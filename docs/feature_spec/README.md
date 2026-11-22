@@ -33,6 +33,7 @@ Statuses verified against the code and `CHANGELOG.md` on 2026-10-11. Once a spec
 | Spec | Status |
 |---|---|
 | [`phased-plan-2026-q4/`](./phased-plan-2026-q4/README.md): the current plan, Phase 0 to Phase 5, and the decisions needed. [Phase 0 runbook](./phased-plan-2026-q4/phase-0-runbook.md) for the real-phone test | Active: Phases 0, 1 and 3 done (except the phone test and two-factor sign-in); 2, 4, 5 not started |
+| [`club-dashboard/`](./club-dashboard/README.md): the Dashboard as the club's front door: its band in its own colours, Needs you, Money, Your squad, Transfers in progress | Built 2026-11-22 (branch `club-dashboard`) |
 | [`leagues-and-club-teams/`](./leagues-and-club-teams/README.md): the Championship, League One and League Two (Phase A); a club as an organisation with teams (B); women's teams (C); with the business decisions they need | Draft: decisions D1 to D6 needed; nothing built |
 | [`ai-analyst/`](./ai-analyst/README.md): Ask TransferX as an analyst: read-only, club-scoped tools, tables, charts, Excel, "Ask about this" | Phases A and B built; Phase C not started |
 | [`valuation/`](./valuation/README.md): the fair-value model ([`model.md`](./valuation/model.md)), market data and the last-fee anchor, the `market-v3` plan and log | `market-v2` shipped 2026-10-07, calibrated 2026-10-17; `market-v3` built 2026-11-10 and switched off until its production backtest is reviewed |

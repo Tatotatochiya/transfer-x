@@ -174,20 +174,25 @@ export default function DashboardPage() {
         <div className="order-3 md:col-span-2 xl:order-none xl:row-start-2">
           <TeamCards teams={teams} />
         </div>
-        <div className="order-4 self-start md:col-span-2 xl:order-none xl:col-span-1 xl:col-start-1 xl:row-span-4 xl:row-start-3">
+        <div className="order-4 self-start md:col-span-2 xl:order-none xl:col-span-1 xl:col-start-1 xl:row-start-3">
           <TransfersInProgress board={board} />
         </div>
-        <div className="order-7 empty:hidden md:col-span-2 xl:order-none xl:col-span-1 xl:col-start-2 xl:row-start-3">
-          <BriefingCard />
-        </div>
-        <div className="order-5 empty:hidden xl:order-none xl:col-start-2 xl:row-start-4">
-          <MarketForYou hits={shortlistHits ?? []} />
-        </div>
-        <div className="order-6 empty:hidden sm:order-8 md:col-span-2 xl:order-none xl:col-span-1 xl:col-start-2 xl:row-start-5">
-          <ScoutReportPanel />
-        </div>
-        <div className="order-8 empty:hidden sm:order-6 xl:order-none xl:col-start-2 xl:row-start-6">
-          <RecentlyCompleted deals={completedDeals?.items ?? []} myClubId={myClub.id} limit={sm ? 2 : 1} />
+        {/* The right column from 1280px. Below that it isn't a box at all
+            (display: contents), so its cards take their places in the one
+            column by `order`. */}
+        <div className="contents xl:col-start-2 xl:row-start-3 xl:flex xl:flex-col xl:gap-5 xl:self-start">
+          <div className="order-7 empty:hidden md:col-span-2 xl:order-none">
+            <BriefingCard />
+          </div>
+          <div className="order-5 empty:hidden xl:order-none">
+            <MarketForYou hits={shortlistHits ?? []} />
+          </div>
+          <div className="order-6 empty:hidden sm:order-8 md:col-span-2 xl:order-none">
+            <ScoutReportPanel />
+          </div>
+          <div className="order-8 empty:hidden sm:order-6 xl:order-none">
+            <RecentlyCompleted deals={completedDeals?.items ?? []} myClubId={myClub.id} limit={sm ? 2 : 1} />
+          </div>
         </div>
       </div>
 

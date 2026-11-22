@@ -91,7 +91,8 @@ beforeEach(() => {
 describe("DashboardPage", () => {
   it("opens with the club's band: its name is the h1, in its colours", async () => {
     renderWithProviders(<DashboardPage />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Arsenal" })).toBeInTheDocument();
+    // The file's first render also loads its modules: allow more than the default second.
+    expect(await screen.findByRole("heading", { level: 1, name: "Arsenal" }, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Dashboard" })).toBeNull();
     const band = screen.getByTestId("club-band");
     expect(band).toHaveStyle({ backgroundColor: "#DB0007", color: "#FFFFFF" });

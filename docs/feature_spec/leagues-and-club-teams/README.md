@@ -214,6 +214,7 @@ Club (organisation)                 Team (squad that plays in a competition)
 
 - **Team switcher.** Shown only when a club has more than one team: in the top bar, with "All teams" for those who can see more than one. Lite mode, the Transfers board, the Dashboard, My Club (squad), Finance and the AI analyst all follow it.
 - **A club with one team sees no change.** That's every club today, and every EFL club in Phase A.
+- **The Dashboard is ready for teams.** Its squad card takes a list of teams (`TeamCards`, `squadSummary`; [club dashboard spec §5](../club-dashboard/README.md#5-teams-aligned-with-adr-0013)). Phase B builds one entry per team the viewer can see; the heading becomes "Your teams".
 - **Notifications and reminders** say the team when the club has more than one: "Chelsea Women: Arsenal Women countered…"
 
 ### 6.6 Migration and rollout

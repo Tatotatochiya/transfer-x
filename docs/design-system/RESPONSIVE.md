@@ -55,7 +55,24 @@ nav fits a 13-inch laptop (about 790px of page) without scrolling:
 - The drawer traps focus while open and returns focus to the hamburger on close.
 - Body scroll locks while the drawer is open.
 
+## Club Dashboard
+
+One grid; each block renders once ([spec §4.7](../feature_spec/club-dashboard/README.md)).
+
+| Width | Layout |
+|---|---|
+| **≥ 1280** | Band. Two columns, `minmax(0,1.55fr) minmax(0,1fr)`:<br>• Needs you │ Money<br>• Your squad, full width<br>• Transfers in progress │ a stacked column of briefing, For you in the market, scout report, Recently completed |
+| **640–1279** | One column: band, banners, Needs you, Money (3 tiles), Your squad, Transfers in progress (4 rows), For you in the market, Recently completed, briefing, scout report. From 768px the market and recent cards sit side by side |
+| **< 640** | One column: band, banners, Needs you, Money (2 tiles), Your squad, Transfers in progress (3 rows), For you in the market, scout report, briefing, Recently completed (1) |
+
+- 1024–1279 uses the tablet layout, because the sidebar leaves about 728px.
+- Below 1280px the order is set with `order`; from 1280px blocks are placed explicitly.
+- The right column's wrapper is `display: contents` below 1280px, so its cards join the single column.
+- On a 390 × 844 phone, with no banner showing, "Needs you" starts within 220px of the top. On the demo data it starts at 200px, and the page is 1,330px long (target ≤ 1,700).
+
 ## Grids, tier by tier
+
+The agent dashboard keeps the four tiers.
 
 | Tier | Desktop | Tablet | Mobile |
 |---|---|---|---|

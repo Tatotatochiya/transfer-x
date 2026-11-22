@@ -1,7 +1,7 @@
 ---
 title: "Club Dashboard: the club's front door"
 last_updated: 2026-11-22
-status: Active (building)
+status: Implemented 2026-11-22
 owner: "TODO — assign a Product Owner"
 ---
 
@@ -511,3 +511,17 @@ Checked against `main` at `fda513f` before building. Changed from the handoff:
   - Crest suggestions use a cache-busting query.
 - **Section headings.** `text-section`.
 - **Transfers in progress.** Includes the Listed stage.
+
+## 15. As built (22 Nov 2026)
+
+Built on branch `club-dashboard`, following §10's order. Where it differs from the sections above:
+
+- **The colour setting lives in `components/clubs/`**, the repo's folder, not `components/club/`. The band's "Add club colours" link opens My Club's edit form at the colours (`/club#club-colours`).
+- **`ClubBand` was built in step 3,** because My Club's preview uses it. In the preview its heading is a `<p>`, so My Club keeps a single `h1`.
+- **The browser title.** No page sets one (it's "TransferX" everywhere), so removing the header changed nothing and no title system was added.
+- **The checklist's steps** for owners, scouts, managers and sporting directors moved into `useOnboardingSteps()` in `OnboardingChecklist.tsx`. The checklist card and the Dashboard row both read it. Agents and players are unchanged.
+- **The name prompt** is now `useNamePrompt()`. `NamePrompt` is no longer mounted in `AppShell`.
+- **Kept, not deleted:** `WaitingOnYouBand`, `WorkingPanel`, `ReferencePanel` and `FigureCard`. The agent dashboard (and the listing page, for `FigureCard`) still use them.
+- **No My Club page test.** There wasn't one to extend, and the page loads many queries. The colour behaviour is tested on `ClubColoursField` (suggestions, the contrast line, the inline error, removing). The admin-only rule is the existing "Edit profile" gate.
+- **The several-teams layout** is built but not exercised: a 3-column grid, and a sideways scroller on phones. The scroller has no dot indicators yet; add them with Phase B.
+- **Measured on local demo data** (390 × 844, no banner): "Needs you" at 200px, the page 1,330px long, no text under 13px, and no sideways scroll at 390, 768, 1024 or 1280.

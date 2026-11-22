@@ -252,7 +252,6 @@ export function BriefingCard() {
   return (
     <AIPanel
       title="Today's briefing"
-      className="mb-6"
       action={!data && <AskButton label="Brief me" onClick={() => setAsked(true)} loading={isFetching} />}
     >
       {!asked && <p className="text-small text-text-muted">A short summary of what needs you today and what changed overnight.</p>}

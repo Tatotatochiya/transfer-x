@@ -130,6 +130,21 @@ Positions are categories: every position uses `--pos-*` tokens that are neutral 
 `#eef0f3`; dark `#cbd5e1` on `#1e293b`). The letters (GK, DEF, MID, FWD) carry the meaning. Account
 roles (`--role-club-*`, `--role-agent-*`) are neutral the same way.
 
+### Club colours
+
+A club's own colours (`brand_primary`, `brand_secondary`, set by a club admin in My Club) are the **one exception** to the colour roles.
+
+- **Where they may appear: two places only.**
+  - The Dashboard band (`ClubBand`): the background is the primary, and the 6px bottom stripe is the secondary.
+  - The sidebar's crest ring: a 2px ring in the primary.
+- **How they're applied:** as inline styles from `lib/brandColour`, never as a token or a Tailwind class.
+- **Where they never appear:**
+  - buttons, links, tabs, badges, charts, or any text outside the band;
+  - another club's pages (other clubs never receive them).
+- **Band text** is white or ink (`#14171F`, fixed: `--ink` turns light in dark mode), whichever reaches 4.5:1. If neither does, the band is darkened in 8% steps until white does.
+- **Dark mode** starts from the primary 25% darker.
+- **Guard:** the Dashboard test checks that no element outside the band carries the primary.
+
 ## Neutral dark
 
 `#14171f` doubles as the ink colour and as the fill for the one dark element that survives — the
