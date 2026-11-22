@@ -172,6 +172,12 @@ class Settings(BaseSettings):
     # new valuation rows are computed and labelled exactly as market-v2. The
     # staff-entered fees and the fee's provenance work either way.
     valuation_fee_anchor_enabled: bool = False
+    # Whether transfers completed on TransferX count as real fees: a player's
+    # last transfer, the comparable sales and the anchor. Off while an
+    # environment's deals are tests (Railway is a demo environment, and its
+    # testers complete deals with real players). Turn on where real clubs
+    # transact. Recent Transfers lists them either way.
+    transferx_deal_fees_enabled: bool = False
 
 
 settings = Settings()

@@ -167,6 +167,31 @@ async def test_a_later_transferx_deal_wins_unless_its_a_test(client: AsyncClient
     assert (await last_transfer_fees(db, [p.id]))[p.id]["source"] == "API-Football"
 
 
+async def test_transferx_deals_are_not_fees_where_deals_are_tests(client: AsyncClient, db, monkeypatch):
+    """A demo environment's completed deals are testers' play: off by default,
+    they are neither a player's last transfer nor a comparable sale."""
+    from app.config import settings
+    from app.deals.models import Deal, DealStage, DealStatus
+    from app.players.last_fee import last_transfer_fees
+    from app.valuation.features_v2 import build_comparables_index
+    from tests.test_deals import _get_club_id
+
+    buyer = await _register(client, "play_buyer@fee-example.com", club_name="Play Buyers")
+    seller = await _register(client, "play_seller@fee-example.com", club_name="Play Sellers")
+    p = await _player(db)
+    db.add(_move(p, date(2023, 7, 15), "€ 116.6M"))
+    db.add(Deal(buyer_club_id=uuid.UUID(await _get_club_id(client, _auth_headers(buyer))),
+                seller_club_id=uuid.UUID(await _get_club_id(client, _auth_headers(seller))),
+                player_id=p.id, agreed_fee=Decimal(30_000_000), status=DealStatus.COMPLETED,
+                stage=DealStage.COMPLETED, completed_at=datetime(2026, 8, 30, 12, tzinfo=timezone.utc)))
+    await db.commit()
+    assert (await last_transfer_fees(db, [p.id]))[p.id]["source"] == "TransferX"
+
+    monkeypatch.setattr(settings, "transferx_deal_fees_enabled", False)
+    assert (await last_transfer_fees(db, [p.id]))[p.id]["source"] == "API-Football"
+    assert all(c.source != "TRANSFERX" for c in await build_comparables_index(db))
+
+
 async def test_the_player_page_and_the_value_api_show_it(client: AsyncClient, db):
     from app.valuation.models import PlayerValuation, ValuationConfidence
 

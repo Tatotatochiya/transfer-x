@@ -27,6 +27,9 @@ settings.slack_webhook_url = None
 # The market-v3 last-fee anchor ships off (config.py); the suite tests the
 # model with it on, and test_valuation_v2 covers the off switch.
 settings.valuation_fee_anchor_enabled = True
+# TransferX deals count as fees where real clubs transact (off by default, for
+# a demo environment); the suite tests that, and test_last_fee covers off.
+settings.transferx_deal_fees_enabled = True
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
