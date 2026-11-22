@@ -63,12 +63,16 @@ def format_fee_display(amount: float, currency: str) -> str:
 
 async def last_transfer_fees(db: AsyncSession, player_ids) -> dict[uuid.UUID, dict]:
     """{player_id: {"fee_gbp", "fee_display", "date", "from", "to", "source",
-                    "source_key", "basis"[ , "source_note"][, "later_free_move"]}}
+                    "source_key", "basis"[, "later_free_move"]}}
     for the players with a known last fee; the rest are absent.
 
     A staff-entered row for the same move (within 60 days) replaces the vendor's
     figure; otherwise the newest dated move wins, as before. `later_free_move`
-    is the ISO date of a later permanent free move, when there is one."""
+    is the ISO date of a later permanent free move, when there is one.
+
+    The row is public (the player ledger is open to signed-out visitors), so a
+    staff row's source note and URL stay out of it: staff read them from the
+    admin endpoints only."""
     from app.clubs.models import Club
     from app.deals.models import Deal, DealStatus, DealType
     from app.demo.service import shared_deals
@@ -111,9 +115,8 @@ async def last_transfer_fees(db: AsyncSession, player_ids) -> dict[uuid.UUID, di
             if t.vendor == _MANUAL_VENDOR:
                 offer(t.player_id, {"fee_gbp": round(gbp), "fee_display": t.fee_display,
                                     "date": t.transfer_date, "from": t.team_out_name,
-                                    "to": t.team_in_name, "source": "Manual",
-                                    "source_key": "MANUAL", "basis": t.fee_basis or "PERMANENT",
-                                    "source_note": t.source_note})
+                                    "to": t.team_in_name, "source": "Staff-entered",
+                                    "source_key": "MANUAL", "basis": t.fee_basis or "PERMANENT"})
             elif not any(abs((t.transfer_date - d).days) <= 60
                          for d in manual_dates.get(t.player_id, [])):
                 offer(t.player_id, {"fee_gbp": round(gbp), "fee_display": t.fee_display,

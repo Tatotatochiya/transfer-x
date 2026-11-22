@@ -6,8 +6,8 @@ table (vendor = 'manual') and will survive the vendor sync once the code that
 reads these columns is deployed. Additive and nullable, so it is safe to deploy
 ahead of the code.
 
-Revision ID: 0112
-Revises: 0111
+Revision ID: 0114
+Revises: 0113
 Create Date: 2026-11-13
 """
 from typing import Sequence, Union
@@ -15,8 +15,8 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0112"
-down_revision: Union[str, None] = "0111"
+revision: str = "0114"
+down_revision: Union[str, None] = "0113"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

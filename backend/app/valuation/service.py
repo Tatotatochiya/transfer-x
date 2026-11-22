@@ -118,7 +118,9 @@ async def compute_and_store_valuation(
     if comps is None:
         comps = await build_comparables_index(db)
 
-    outcome = engine_v2.compute_valuation_v2(features, comps)
+    # Both guards, so neither alone can turn the anchor on: the fee isn't
+    # loaded while the setting is off, and the engine is told the setting too.
+    outcome = engine_v2.compute_valuation_v2(features, comps, use_fee_anchor=anchor_on)
     breakdown = engine.compute_breakdown(features.latest)
 
     row = PlayerValuation(

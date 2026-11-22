@@ -313,7 +313,7 @@ Built on Phase B. A club adds a WOMEN team. Staff link it to its real-world team
 - [Product ADR 0013 (proposed): a club is an organisation with teams](../../product/decisions/0013-a-club-is-an-organisation-with-teams.md)
 - [`../../business/business-model.md`](../../business/business-model.md), [`../../business/target-users-and-market.md`](../../business/target-users-and-market.md): the open pricing and segment decisions that §3 informs
 - [`../../reviews/2026-11-15-product-and-readiness-review.md`](../../reviews/2026-11-15-product-and-readiness-review.md): §5.1, working with clubs that aren't on TransferX; §8, data vendors
-- [`../valuation-model-v2.md`](../valuation-model-v2.md): the model whose coefficients and floor Phase A changes
+- [`../valuation/model.md`](../valuation/model.md): the model whose coefficients and floor Phase A changes
 - [`../scheduled-data-refresh.md`](../scheduled-data-refresh.md): the refresh that Phase A extends
 - [`../club-team-roles-and-onboarding.md`](../club-team-roles-and-onboarding.md): club roles, which Phase B scopes to teams
 - [Product ADR 0010](../../product/decisions/0010-deals-run-all-year-windows-hold-completion.md): windows hold completion, which Phase C keys by country and kind

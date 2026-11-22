@@ -324,3 +324,33 @@ Reviewed and accepted as built: the engine against B3/R3/R4 (rule order, weights
 4. Read-only, with a production `DATABASE_URL` in the session's environment only: `scripts.valuation_backtest --csv`, `--grid`, and `scripts.valuation_outcome_report`, outputs to the temp directory.
 5. Show the product owner; record the answers to the plan's three questions here; fill the `TODO` table in `docs/feature_spec/valuation/model.md`.
 6. Set `VALUATION_FEE_ANCHOR_ENABLED=true` on `backend` and `stats-worker`. `market-v3` rows appear from the next daily recompute.
+
+## 12. Round 4 — review fixes before merging, 2026-11-22
+
+A review of the pull request (#77) asked for these changes before it merged. **Where this section disagrees with §1–§11, this section is current.**
+
+| # | Finding | Done |
+|---|---|---|
+| 1 | **Migration id collision, again.** `main` gained `0112_move_stalled_notification` and `0113_term_counters` after Round 3, so `0112_manual_transfer_fees` gave Alembic two heads (`alembic heads` printed `0112` and `0113`) and the deploy's `alembic upgrade head` would have failed | Renamed to `0114_manual_transfer_fees.py`, `revision = "0114"`, `down_revision = "0113"`. `alembic heads` → `0114 (head)`. Upgraded, downgraded and upgraded again on a copy of the local database |
+| 2 | **The staff note was public.** `source_note` was in `last_transfer` on the player ledger, which signed-out visitors can call, and on `/valuation/players`. The player page showed it as a tooltip. A note may hold internal remarks | The note and URL never leave the admin endpoints. `last_transfer.source` reads **"Staff-entered"** (was "Manual"). The admin form's label is "Source note (staff only)". Tests check that neither the public ledger nor the valuation carries it |
+| 3 | **The admin fee endpoints turned every error into a 400** with the exception's text | They catch `ValueError` only; anything else is a 500 |
+| 4 | Fees stored as display text lose precision and drift with exchange rates | **No change.** Six significant figures is about £100 on a £41m fee, and `GBP_PER` holds fixed rates, applied the same way to API-Football's fees |
+| 5 | `compute_valuation_v2(use_fee_anchor=True)` by default | The engine's default stays on, so a stored row replays from its own inputs: a row with a last fee was anchored. `service.compute_and_store_valuation` now passes the setting explicitly, as a second guard beside not loading the fee |
+| 6 | Removing a staff fee needed no reason | `DELETE /admin/players/{id}/transfer-fees/{fee}` takes `{"reason"}` (5 to 500 characters), recorded in the audit event. The admin page asks for it in the standard reason dialog |
+| 7 | Links to the moved valuation specs | One link on `main` pointed at the old path (`leagues-and-club-teams`); fixed. No relative link in `docs/` is broken |
+
+### Outcome report on local data (2026-11-22)
+
+`scripts.valuation_outcome_report`, read-only, against a copy of the **local** database (an older snapshot than production):
+
+- **Coverage:** 1,113 players valued. 124 have a last fee, and the anchor applied to 54.
+- **Effect:** 40 players moved by more than 10%. The median change where applied was −7.2%. Factors span the full bounds, ×0.70 to ×1.60.
+- **Repeat-transfer backtest, anchor-applied rows (n = 10, under the plan's 15):**
+  - accuracy within 25% stays at 40%;
+  - the median bias worsens from −8.4% to **−24.5%**.
+- **The largest falls come from data, not the method:**
+  - fees the snapshot has as the latest when a later, larger move exists (Ekitike, Isak);
+  - an apparent loan fee read as a sale (Xavi Simons);
+  - fees that were cheap for a reason (an expiring contract, for example).
+
+**Recommendation:** merge with the anchor **off**, as Round 3 decided. Staff can then correct the fees the report shows are wrong. Run the report and backtest against production before setting `VALUATION_FEE_ANCHOR_ENABLED=true`. Steps 2 to 6 of the rollout above stand, with `0114` in place of `0112`.

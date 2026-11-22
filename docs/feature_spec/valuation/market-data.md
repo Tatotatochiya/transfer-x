@@ -13,7 +13,7 @@ Phase 1 — the last-fee anchor, `market-v3` and the fee display — is implemen
 
 | This spec | What shipped |
 |---|---|
-| `transfer_fee_observations` table and canonical fee columns on `player_transfers` | **Not built.** Staff-entered fees are ordinary `player_transfers` rows with `vendor = 'manual'`, carrying `fee_basis`, `source_note`, `source_url` and `entered_by_user_id` (migration `0112`). API-Football rows and completed TransferX deals are read directly. A staff row suppresses the vendor's figure for the same move when the dates are within 60 days |
+| `transfer_fee_observations` table and canonical fee columns on `player_transfers` | **Not built.** Staff-entered fees are ordinary `player_transfers` rows with `vendor = 'manual'`, carrying `fee_basis`, `source_note`, `source_url` and `entered_by_user_id` (migration `0114`). API-Football rows and completed TransferX deals are read directly. A staff row suppresses the vendor's figure for the same move when the dates are within 60 days |
 | Observations with `is_reported` / `verified_at` / source priority | Only `vendor` and the staff columns distinguish provenance. Staff rows weigh 0.80 in the anchor (`MANUAL`); API-Football reports weigh 0.65 (`REPORTED`); completed TransferX deals weigh 1.00 (`TRANSFERX`) |
 | `fee_basis` per observation | Stored on the row as `PERMANENT` or `RELEASE_CLAUSE`; a release clause carries basis weight 0.40 |
 | `player_valuations` fee columns (`fee_anchor_value`, `last_fee_gbp`, …) | **Not added.** The result lives in `inputs_json["fee_anchor"]` and `inputs_json["features"]["last_fee"]`, which replay the stored row exactly; `model_version = 'market-v3'` marks the version |
@@ -25,7 +25,7 @@ Phase 1 — the last-fee anchor, `market-v3` and the fee display — is implemen
 | `external_values`, `market_consensus`, provider adapters | Not built. PlayerElo is the recommended pilot and the next step |
 | Admin → Data providers page | Only a **Transfer fees** card on the admin player page: list, add and delete staff rows, each audited |
 
-Exposed to clients as `fee_anchor` on valuation responses (`applied`, `factor`, `weight`, `anchor_value`, `fee_today`, `reason`) and as `source_note` / `basis` on `last_transfer`. `source_note` is **shown to clubs** as the provenance of the fee (and to signed-out viewers of a public player); `source_url` is admin-only and never leaves the admin endpoints. The admin endpoints are `GET`/`POST`/`DELETE /admin/players/{player_id}/transfer-fees` (superuser only); an add or delete recomputes that player's valuation, after a confirmation step in the UI.
+Exposed to clients as `fee_anchor` on valuation responses (`applied`, `factor`, `weight`, `anchor_value`, `fee_today`, `reason`) and as `basis` on `last_transfer`, whose `source` reads "Staff-entered" for a staff row. `source_note` and `source_url` are for staff only and never leave the admin endpoints (changed on review, 2026-11-22: the player ledger is open to signed-out visitors, and a note may hold internal remarks). The admin endpoints are `GET`/`POST`/`DELETE /admin/players/{player_id}/transfer-fees` (superuser only). `DELETE` takes a JSON body `{"reason"}` (5 to 500 characters), recorded in the audit trail. An add or delete recomputes that player's valuation.
 
 ## Purpose
 

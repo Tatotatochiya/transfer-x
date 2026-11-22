@@ -158,7 +158,7 @@ A robust fit of the gap against the score gave ×2.16 at 50, falling 5.9% a poin
 
 **Backtest, `market-v3` (pending).** The comparison is implemented in `scripts/valuation_backtest.py`: for players with an earlier fee-bearing permanent move it prints `v2_market` and `v3_anchor` side by side (n, median |error|, ±25%, ±50%, median bias), split by whether the anchor applied, plus a count of skip reasons. The deciding sample is the rows where the anchor **applied**; under 15, the default constants stand. `--grid` sweeps REPORTED credibility {0.50, 0.65, 0.80, 0.90} × recency years {2, 3, 4, 5} (16 settings) in memory, with `v2_market` recomputed on each setting's applied rows. `scripts/valuation_outcome_report.py` prints named players' before/after values with the reason, the 10 largest rises and falls among anchor-applied players, and the min/max factor against the bounds.
 
-Neither has been run: no production `DATABASE_URL` was available to the build (the env file supplied on 2026-11-13 holds only the local Docker database). That is why the anchor ships switched off. Both scripts are read-only and compute the anchor in memory whatever the switch says, so they can run against production as soon as migration `0112` is deployed there:
+Neither has been run: no production `DATABASE_URL` was available to the build (the env file supplied on 2026-11-13 holds only the local Docker database). That is why the anchor ships switched off. Both scripts are read-only and compute the anchor in memory whatever the switch says, so they can run against production as soon as migration `0114` is deployed there:
 
 ```powershell
 cd D:\Repo\transfer-x\backend

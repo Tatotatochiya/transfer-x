@@ -545,9 +545,7 @@ export interface LastTransfer {
   date: string;
   from: string | null;
   to: string | null;
-  source: "API-Football" | "TransferX" | "Manual";
-  /** Where a staff-entered fee came from. Null on vendor and TransferX figures. */
-  source_note?: string | null;
+  source: "API-Football" | "TransferX" | "Staff-entered";
   /** "PERMANENT" | "RELEASE_CLAUSE". Null on figures that predate the field. */
   basis?: string | null;
 }

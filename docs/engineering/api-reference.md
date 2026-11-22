@@ -47,7 +47,7 @@ Verified against the router mounts in `backend/app/main.py` on 2026-11-10.
 | `/lite` | Lite home, buy page (search by name, the club's shortlist and players of interest, shortlist add and remove), offer cards, held sends, team contact, email confirmations |
 | `/demo` | Demo mode: your run (start, reset, keep, house clubs' speed and rivals), house clubs and play-as, making a house club answer an offer now; staff side under `/admin/demo` ([spec](../feature_spec/demo-mode.md)) |
 | `/ai` | The assistant, Ask TransferX (`/ai/ask`), the analyst (`/ai/analyst`, `/ai/analyst/export`) |
-| `/valuation` | Fair-value reads and staff recompute. Responses carry `fee_anchor` (the last-fee anchor's result and reason; `null` on `market-v2` rows, which is every row while `VALUATION_FEE_ANCHOR_ENABLED` is off) and `last_transfer` with `source_note` and `basis` |
+| `/valuation` | Fair-value reads and staff recompute. Responses carry `fee_anchor` (the last-fee anchor's result and reason; `null` on `market-v2` rows, which is every row while `VALUATION_FEE_ANCHOR_ENABLED` is off) and `last_transfer` with `basis` (a staff-entered fee's source is labelled "Staff-entered"; its note stays in the admin endpoints) |
 | `/agents`, `/mandates`, `/negotiations` | Agents, mandates, agent negotiation messages |
 | `/scouting` | Shortlists and interest |
 | `/notifications` | Notifications, preferences, push subscriptions |

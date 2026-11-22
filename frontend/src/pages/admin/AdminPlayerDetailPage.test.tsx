@@ -68,7 +68,7 @@ describe("AdminPlayerDetailPage transfer fees", () => {
     expect(await screen.findByText("BBC Sport, 15 Jul 2023")).toBeInTheDocument();
     expect(screen.getByText("£ 105M")).toBeInTheDocument();
     expect(screen.getByText("€ 40M")).toBeInTheDocument();
-    expect(screen.getByText("Manual")).toBeInTheDocument();
+    expect(screen.getByText("Staff-entered")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Remove the fee/ })).toHaveLength(1);
   });
 
@@ -83,7 +83,7 @@ describe("AdminPlayerDetailPage transfer fees", () => {
     fireEvent.change(screen.getByLabelText("Transfer date"), { target: { value: "2023-07-15" } });
     await user.type(screen.getByLabelText("From club"), "Ajax");
     await user.type(screen.getByLabelText("To club"), "Arsenal");
-    await user.type(screen.getByLabelText("Source note (shown to clubs)"), "BBC Sport, 15 Jul 2023");
+    await user.type(screen.getByLabelText("Source note (staff only)"), "BBC Sport, 15 Jul 2023");
     await user.click(screen.getByRole("button", { name: "Record fee" }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/admin/players/p1/transfer-fees", {
@@ -98,7 +98,7 @@ describe("AdminPlayerDetailPage transfer fees", () => {
     }));
   });
 
-  it("removes a staff-entered fee only after the confirmation step", async () => {
+  it("removes a staff-entered fee only after the confirmation step, with a reason", async () => {
     serve();
     renderPage();
     await screen.findByText("£ 105M");
@@ -107,8 +107,11 @@ describe("AdminPlayerDetailPage transfer fees", () => {
     await user.click(screen.getByRole("button", { name: "Remove the fee from 2023-07-15" }));
     expect(api.delete).not.toHaveBeenCalled();
     expect(screen.getByText("His model value is recalculated straight away.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove" })).toBeDisabled();  // no reason yet
+    await user.type(screen.getByRole("textbox", { name: /^Why\?/ }), "Wrong figure, see statement");
     await user.click(screen.getByRole("button", { name: "Remove" }));
     await waitFor(() =>
-      expect(api.delete).toHaveBeenCalledWith("/admin/players/p1/transfer-fees/f-manual"));
+      expect(api.delete).toHaveBeenCalledWith("/admin/players/p1/transfer-fees/f-manual",
+        { data: { reason: "Wrong figure, see statement" } }));
   });
 });

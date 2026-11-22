@@ -71,8 +71,8 @@ async def test_a_staff_entered_fee_replaces_the_vendors_figure_for_the_same_move
     await db.commit()
     got = (await last_transfer_fees(db, [p.id]))[p.id]
     assert (got["source"], got["fee_display"], got["fee_gbp"], got["basis"]) == (
-        "Manual", "£ 105M", 105_000_000, "PERMANENT")
-    assert got["source_note"] == "BBC Sport, 20 Jul 2023"
+        "Staff-entered", "£ 105M", 105_000_000, "PERMANENT")
+    assert "source_note" not in got, "the staff note is admin-only"
     assert (got["from"], got["to"]) == ("Ajax", "Arsenal")
 
 
@@ -94,7 +94,7 @@ async def test_a_release_clause_basis_is_carried_through(db):
     db.add(_manual(p, date(2023, 7, 15), "€ 60M", basis="RELEASE_CLAUSE"))
     await db.commit()
     got = (await last_transfer_fees(db, [p.id]))[p.id]
-    assert (got["source"], got["basis"], got["fee_gbp"]) == ("Manual", "RELEASE_CLAUSE", round(60_000_000 / 1.17))
+    assert (got["source"], got["basis"], got["fee_gbp"]) == ("Staff-entered", "RELEASE_CLAUSE", round(60_000_000 / 1.17))
 
 
 async def test_the_newest_paid_move_wins_and_loans_and_free_moves_dont_count(db):

@@ -17,13 +17,13 @@ describe("FactsStrip last transfer", () => {
     expect(cell).toHaveTextContent("API-Football");
   });
 
-  it("names a staff-entered source and puts its note in the cell title", () => {
+  it("names a staff-entered source, without its note", () => {
     renderWithProviders(<FactsStrip player={player} fairValue={null} form={{ score: null, trend: null }} isMyPlayer={false}
       valuationPending={false} onSaveValuation={vi.fn()}
-      lastTransfer={{ fee_gbp: 105_000_000, fee_display: "£ 105M", date: "2023-07-15", from: "Ajax", to: "Arsenal", source: "Manual", source_note: "BBC Sport, 15 Jul 2023" }} />);
+      lastTransfer={{ fee_gbp: 105_000_000, fee_display: "£ 105M", date: "2023-07-15", from: "Ajax", to: "Arsenal", source: "Staff-entered" }} />);
     const cell = screen.getByText("Last transfer").parentElement!;
-    expect(cell).toHaveTextContent("Manual");
-    expect(cell).toHaveAttribute("title", "BBC Sport, 15 Jul 2023");
+    expect(cell).toHaveTextContent("Staff-entered");
+    expect(cell).not.toHaveAttribute("title");
   });
 
   it("says when there's no fee on record", () => {

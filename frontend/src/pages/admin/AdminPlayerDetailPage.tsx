@@ -13,7 +13,7 @@ import { formatDate, getApiError } from "../../lib/utils";
 import { positionVariant } from "../../lib/badges";
 import type { PlayerPosition } from "../../types/enums";
 import FallbackImage from "../../components/ui/FallbackImage";
-import { useConfirm } from "../../context/ConfirmContext";
+import { useAskReason } from "../../context/ConfirmContext";
 
 /** GET /admin/players/{id}: the player plus every contract, past and present. */
 type AdminPlayer = Player & {
@@ -55,7 +55,7 @@ export default function AdminPlayerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const confirm = useConfirm();
+  const askReason = useAskReason();
 
   const { data: player, isLoading } = useQuery<AdminPlayer>({
     queryKey: ["admin", "players", id],
@@ -88,7 +88,8 @@ export default function AdminPlayerDetailPage() {
   });
 
   const removeFee = useMutation({
-    mutationFn: (feeId: string) => api.delete(`/admin/players/${id}/transfer-fees/${feeId}`),
+    mutationFn: ({ feeId, reason }: { feeId: string; reason: string }) =>
+      api.delete(`/admin/players/${id}/transfer-fees/${feeId}`, { data: { reason } }),
     onSuccess: invalidateFeeDependents,
   });
 
@@ -148,12 +149,14 @@ export default function AdminPlayerDetailPage() {
   }
 
   async function handleRemoveFee(fee: TransferFee) {
-    const ok = await confirm({
+    const reason = await askReason({
       title: "Remove this fee?",
       message: "His model value is recalculated straight away.",
+      reasonLabel: "Why?",
+      placeholder: "e.g. Wrong figure: the club's statement says £38m",
       confirmLabel: "Remove",
     });
-    if (ok) removeFee.mutate(fee.id);
+    if (reason) removeFee.mutate({ feeId: fee.id, reason });
   }
 
   function handleAddFee(e: React.FormEvent) {
@@ -384,7 +387,7 @@ export default function AdminPlayerDetailPage() {
                     </td>
                     <td className="py-2 pr-3 tabular-nums text-text">{fee.fee_display ?? "—"}</td>
                     <td className="py-2 pr-3 text-text-secondary">
-                      {fee.vendor === "manual" ? "Manual" : "API-Football"}
+                      {fee.vendor === "manual" ? "Staff-entered" : "API-Football"}
                     </td>
                     <td className="py-2 pr-3 text-text-muted">
                       {fee.source_url ? (
@@ -451,7 +454,7 @@ export default function AdminPlayerDetailPage() {
               onChange={(e) => setFeeForm({ ...feeForm, to_club: e.target.value })} className={feeInput} />
           </div>
           <div>
-            <label htmlFor="fee-note" className={feeLabel}>Source note (shown to clubs)</label>
+            <label htmlFor="fee-note" className={feeLabel}>Source note (staff only)</label>
             <input id="fee-note" required minLength={5} maxLength={500} placeholder="e.g. BBC Sport, 15 Jul 2023"
               value={feeForm.source_note}
               onChange={(e) => setFeeForm({ ...feeForm, source_note: e.target.value })} className={feeInput} />

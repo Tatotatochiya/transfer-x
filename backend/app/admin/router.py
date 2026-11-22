@@ -805,7 +805,9 @@ async def add_transfer_fee(
         )
         await valuation_service.compute_and_store_valuation(db, player)
         await db.commit()
-    except Exception as exc:
+    except ValueError as exc:
+        # The request is validated above; a ValueError is the valuation's own
+        # refusal. Anything else is a fault, a 500, not the user's mistake.
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     return _transfer_fee_response(transfer)
@@ -816,11 +818,13 @@ async def add_transfer_fee(
 async def delete_transfer_fee(
     player_id: uuid.UUID,
     transfer_id: uuid.UUID,
+    body: AdminReasonRequest,
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """Remove a staff-entered fee (a mistake, or a better figure replaces it).
-    Vendor rows are not ours to delete."""
+    Vendor rows are not ours to delete. Why is recorded, as for other staff
+    corrections."""
     from app.players.last_fee import fee_gbp
     from app.players.models import Player, PlayerTransfer
     from app.valuation import service as valuation_service
@@ -842,12 +846,13 @@ async def delete_transfer_fee(
                      "from": transfer.team_out_name, "to": transfer.team_in_name,
                      "fee_display": transfer.fee_display, "fee_gbp": fee_gbp(transfer.fee_display),
                      "fee_basis": transfer.fee_basis, "source_note": transfer.source_note},
+            reason=body.reason,
         )
         await db.delete(transfer)
         await db.flush()
         await valuation_service.compute_and_store_valuation(db, player)
         await db.commit()
-    except Exception as exc:
+    except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 

@@ -37,8 +37,7 @@ class LastTransfer(BaseModel):
     date: str
     from_club: str | None = Field(None, alias="from")
     to_club: str | None = Field(None, alias="to")
-    source: str  # "API-Football" | "TransferX" | "Manual"
-    source_note: str | None = None  # where a staff-entered fee came from
+    source: str  # "API-Football" | "TransferX" | "Staff-entered"
     basis: str | None = None  # "PERMANENT" | "RELEASE_CLAUSE"
 
     model_config = {"populate_by_name": True}

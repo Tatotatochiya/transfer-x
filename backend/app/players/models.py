@@ -184,7 +184,7 @@ class PlayerTransfer(Base):
     team_out_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     team_out_crest_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     fee_display: Mapped[str | None] = mapped_column(String(100), nullable=True)  # e.g. "€50M", "Free", "Loan"
-    # Staff-entered fees (migration 0112): the basis, where the figure came
+    # Staff-entered fees (migration 0114): the basis, where the figure came
     # from, and who entered it. Null on vendor rows.
     fee_basis: Mapped[str | None] = mapped_column(String(20), nullable=True)  # PERMANENT, RELEASE_CLAUSE
     source_note: Mapped[str | None] = mapped_column(String(500), nullable=True)

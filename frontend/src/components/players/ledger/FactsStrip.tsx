@@ -30,11 +30,9 @@ function timeLeft(iso: string): string {
   return [years ? `${years} yr` : "", months ? `${months} mo` : ""].filter(Boolean).join(" ") + " left";
 }
 
-function Cell({ label, value, sub, title, valueClass = "text-text" }: {
-  label: string; value: ReactNode; sub?: ReactNode; title?: string; valueClass?: string;
-}) {
+function Cell({ label, value, sub, valueClass = "text-text" }: { label: string; value: ReactNode; sub?: ReactNode; valueClass?: string }) {
   return (
-    <div title={title} className="flex min-w-0 flex-col gap-0.5 px-3.5 py-2.5 shadow-[-1px_0_0_var(--color-rule-faint)]">
+    <div className="flex min-w-0 flex-col gap-0.5 px-3.5 py-2.5 shadow-[-1px_0_0_var(--color-rule-faint)]">
       <span className="text-caption font-semibold text-text-secondary">{label}</span>
       <span className={`truncate text-body font-bold tabular-nums ${valueClass}`}>{value}</span>
       {sub != null && <span className="truncate text-small text-text-muted">{sub}</span>}
@@ -78,7 +76,6 @@ export default function FactsStrip({
       <Cell label="Model value" value={fairValue ? money(fairValue.fair_value) : "—"}
         sub={fairValue ? `Range ${money(fairValue.fair_value_low)}–${money(fairValue.fair_value_high)}` : "Not enough recent data"} />
       <Cell label="Last transfer" value={lastTransfer ? money(lastTransfer.fee_gbp) : "—"}
-        title={lastTransfer?.source_note ?? undefined}
         sub={lastTransfer
           ? [monthYear(lastTransfer.date), lastTransfer.from && lastTransfer.to ? `${lastTransfer.from} → ${lastTransfer.to}` : null,
               lastTransfer.source]

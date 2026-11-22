@@ -563,7 +563,11 @@ def compute_valuation_v2(
 ) -> ValuationOutcomeV2:
     """`market` replays a stored market result instead of recomputing it from
     `comps` — how a persisted row is reproduced from its own inputs_json
-    without storing the whole comparables index."""
+    without storing the whole comparables index.
+
+    `use_fee_anchor` defaults to on so a replay follows its own inputs: a row
+    stored with a last fee was anchored, one without wasn't. A fresh valuation
+    passes the setting explicitly (`service.compute_and_store_valuation`)."""
     if now is None:
         now = datetime.now(timezone.utc)
     position, age = fs.position, fs.age

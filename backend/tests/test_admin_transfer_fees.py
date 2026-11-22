@@ -52,13 +52,19 @@ def _url(player_id) -> str:
 # ── Permissions and validation ───────────────────────────────────────────────
 
 
+async def _delete(client, url: str, headers: dict, reason: str | None = "Wrong figure, see statement"):
+    """DELETE with the reason the endpoint requires (httpx's delete() takes no body)."""
+    return await client.request("DELETE", url, json={"reason": reason} if reason is not None else None,
+                                headers=headers)
+
+
 async def test_the_fee_endpoints_are_superuser_only(client: AsyncClient, db):
     regular = await _register(client, "fee_regular@test.com", club_name="Regular FC")
     p = await _player(db)
     h = _auth_headers(regular)
     assert (await client.get(_url(p.id), headers=h)).status_code == 403
     assert (await client.post(_url(p.id), json=_body(), headers=h)).status_code == 403
-    assert (await client.delete(f"{_url(p.id)}/{uuid.uuid4()}", headers=h)).status_code == 403
+    assert (await _delete(client, f"{_url(p.id)}/{uuid.uuid4()}", h)).status_code == 403
 
 
 async def test_an_unknown_player_is_a_404(client, db, admin):
@@ -109,12 +115,16 @@ async def test_adding_a_fee_shows_it_as_the_last_transfer(client, db, admin):
     assert {r["vendor"] for r in rows} == {"manual", "api_sports_v3"}
 
     valuation = (await client.get(f"/valuation/players/{p.id}", headers=admin["headers"])).json()
-    assert valuation["last_transfer"]["source"] == "Manual"
-    assert valuation["last_transfer"]["source_note"] == "BBC Sport, 15 Jul 2023"
+    assert valuation["last_transfer"]["source"] == "Staff-entered"
     assert valuation["fee_anchor"]["applied"] is True
 
+    # The note is the staff's: never in the public ledger or the valuation,
+    # signed in or not. The admin list above still has it.
     ledger = (await client.get(f"/players/market/{p.id}/ledger", headers=admin["headers"])).json()
-    assert ledger["last_transfer"]["source"] == "Manual"
+    assert ledger["last_transfer"]["source"] == "Staff-entered"
+    public = (await client.get(f"/players/market/{p.id}/ledger")).text
+    assert "BBC Sport" not in public and "BBC Sport" not in str(valuation)
+    assert rows[0]["source_note"] == "BBC Sport, 15 Jul 2023"
 
 
 async def test_an_older_staff_fee_does_not_become_the_last_transfer(client, db, admin):
@@ -185,9 +195,9 @@ async def test_deleting_the_staff_fee_restores_the_vendors_figure(client, db, ad
 
     # Same move as the vendor row (within 60 days): the staff figure wins.
     valuation = (await client.get(f"/valuation/players/{p.id}", headers=admin["headers"])).json()
-    assert valuation["last_transfer"]["source"] == "Manual"
+    assert valuation["last_transfer"]["source"] == "Staff-entered"
 
-    resp = await client.delete(f"{_url(p.id)}/{created['id']}", headers=admin["headers"])
+    resp = await _delete(client, f"{_url(p.id)}/{created['id']}", admin["headers"])
     assert resp.status_code == 204, resp.text
     valuation = (await client.get(f"/valuation/players/{p.id}", headers=admin["headers"])).json()
     assert valuation["last_transfer"]["source"] == "API-Football"
@@ -195,7 +205,7 @@ async def test_deleting_the_staff_fee_restores_the_vendors_figure(client, db, ad
 
     remaining = (await client.get(_url(p.id), headers=admin["headers"])).json()
     assert [r["vendor"] for r in remaining] == ["api_sports_v3"]
-    resp = await client.delete(f"{_url(p.id)}/{remaining[0]['id']}", headers=admin["headers"])
+    resp = await _delete(client, f"{_url(p.id)}/{remaining[0]['id']}", admin["headers"])
     assert resp.status_code == 400
     assert resp.json()["detail"] == "Only staff-entered fees can be removed"
 
@@ -204,14 +214,14 @@ async def test_a_fee_cannot_be_deleted_through_another_player(client, db, admin)
     p = await _player(db)
     other = await _player(db, name="Other Player")
     created = (await client.post(_url(p.id), json=_body(), headers=admin["headers"])).json()
-    resp = await client.delete(f"{_url(other.id)}/{created['id']}", headers=admin["headers"])
+    resp = await _delete(client, f"{_url(other.id)}/{created['id']}", admin["headers"])
     assert resp.status_code == 404
 
 
 async def test_each_add_and_delete_is_audited(client, db, admin):
     p = await _player(db)
     created = (await client.post(_url(p.id), json=_body(), headers=admin["headers"])).json()
-    await client.delete(f"{_url(p.id)}/{created['id']}", headers=admin["headers"])
+    await _delete(client, f"{_url(p.id)}/{created['id']}", admin["headers"])
 
     added = (await db.execute(select(AuditEvent).where(
         AuditEvent.action == "admin.player.transfer_fee_added"))).scalars().all()
@@ -224,6 +234,16 @@ async def test_each_add_and_delete_is_audited(client, db, admin):
     assert added[0].payload_json["source_note"] == "BBC Sport, 15 Jul 2023"
     assert removed[0].payload_json["fee_display"] == "£ 105M"
     assert removed[0].payload_json["source_note"] == "BBC Sport, 15 Jul 2023"
+    assert removed[0].payload_json["reason"] == "Wrong figure, see statement"
+
+
+async def test_removing_a_fee_needs_a_reason(client, db, admin):
+    p = await _player(db)
+    created = (await client.post(_url(p.id), json=_body(), headers=admin["headers"])).json()
+    url = f"{_url(p.id)}/{created['id']}"
+    assert (await _delete(client, url, admin["headers"], reason=None)).status_code == 422
+    assert (await _delete(client, url, admin["headers"], reason="oops")).status_code == 422  # under 5
+    assert len((await client.get(_url(p.id), headers=admin["headers"])).json()) == 1
 
 
 # ── Vendor sync ───────────────────────────────────────────────────────────────
@@ -257,4 +277,4 @@ async def test_a_staff_fee_survives_the_vendor_refresh(client, db, admin):
     assert {r["vendor"] for r in rows} == {"manual", "api_sports_v3"}
     # The staff figure still wins for the same move.
     valuation = (await client.get(f"/valuation/players/{p.id}", headers=admin["headers"])).json()
-    assert valuation["last_transfer"]["source"] == "Manual"
+    assert valuation["last_transfer"]["source"] == "Staff-entered"
