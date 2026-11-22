@@ -42,6 +42,10 @@ class Club(Base):
     city: Mapped[str | None] = mapped_column(String(100), nullable=True)
     league_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     crest_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # The club's own colours, '#RRGGBB', for its Dashboard band and the
+    # sidebar's crest ring only (feature_spec/club-dashboard). Null: no colours.
+    brand_primary: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    brand_secondary: Mapped[str | None] = mapped_column(String(7), nullable=True)
     role: Mapped[ClubRole] = mapped_column(
         SAEnum(ClubRole, name="clubrole"), nullable=False, default=ClubRole.BOTH
     )
