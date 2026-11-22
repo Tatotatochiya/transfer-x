@@ -29,6 +29,7 @@ In scope: product-level decisions (what to build, what not to build, scope trade
 - [0010 — Deals run all year; a country's transfer window holds only completion](./0010-deals-run-all-year-windows-hold-completion.md)
 - [0011 — Auctions are retired; clubs choose among offers](./0011-auctions-retired.md)
 - [0012 — The agent's commission and personal terms are negotiated; ending a transfer is confirmed](./0012-commission-and-personal-terms-are-negotiated.md)
+- [0013 — A club is an organisation with teams](./0013-a-club-is-an-organisation-with-teams.md) (proposed)
 
 > **TODO:** Add further decisions here as `NNNN-short-title.md`, following the short template: Context, Decision, Alternatives considered, Consequences. Link it from this table.
 
