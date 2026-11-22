@@ -8,7 +8,7 @@ const card = (over: Partial<BoardCard>): BoardCard => ({
   whose_move: "their", deadline: null, link: "/offers/e", updated_at: "2026-11-10T10:00:00Z", others: 0, ...over,
 });
 
-const labels = { talking: "Talking", offers: "Offers", fee_agreed: "Fee agreed", terms: "Personal terms", paperwork: "Paperwork", done: "Done" };
+const labels = { talking: "Listed", offers: "Offers", fee_agreed: "Fee agreed", terms: "Personal terms", paperwork: "Paperwork", done: "Completed" };
 
 describe("groupOf", () => {
   it("your move → yours; a listing → listed; done → done, even if yours; else in progress", () => {
@@ -49,7 +49,7 @@ describe("stageCounts", () => {
   it("counts the open stages in order, omitting zero and done", () => {
     const rows = [card({ column: "terms" }), card({ column: "talking" }), card({ column: "terms" }), card({ column: "done" })];
     expect(stageCounts(rows, labels)).toEqual([
-      { key: "talking", label: "Talking", count: 1 }, { key: "terms", label: "Personal terms", count: 2 }]);
+      { key: "talking", label: "Listed", count: 1 }, { key: "terms", label: "Personal terms", count: 2 }]);
   });
 
   it("follows the rows it's given (after the side and search filters)", () => {
@@ -68,7 +68,7 @@ describe("detailAfterStage", () => {
 
 describe("boardRows", () => {
   it("keeps the API's order inside each column", () => {
-    const board: Board = { columns: [{ key: "talking", label: "Talking", cards: [card({ player_name: "b" }), card({ player_name: "a" })] },
+    const board: Board = { columns: [{ key: "talking", label: "Listed", cards: [card({ player_name: "b" }), card({ player_name: "a" })] },
       { key: "offers", label: "Offers", cards: [card({ player_name: "c" })] }], closed: [], counts: { buying: 3, selling: 0, your_move: 0 } };
     expect(boardRows(board).map((r) => r.player_name)).toEqual(["b", "a", "c"]);
   });

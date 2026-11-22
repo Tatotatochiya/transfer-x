@@ -47,7 +47,7 @@ export default function TransferRow({ card, side, stageLabel, layout }: {
 }) {
   const yours = card.whose_move === "your";
   const done = stageStep(card.column) === 6;
-  const stage = done ? "Complete" : stageLabel;
+  const stage = done ? "Completed" : stageLabel;
   const detail = detailAfterStage(card, stageLabel);
   const left = timeLeft(card.deadline);
   const party = partyText(card, side);

@@ -9,7 +9,7 @@ export default function StageSteps({ column, label }: { column: string; label: s
   const step = stageStep(column);
   const done = step === 6;
   return (
-    <span role="img" aria-label={done ? "Complete" : `Stage ${step} of 5: ${label}`} className="inline-flex shrink-0 gap-[3px]">
+    <span role="img" aria-label={done ? "Completed" : `Stage ${step} of 5: ${label}`} className="inline-flex shrink-0 gap-[3px]">
       {[1, 2, 3, 4, 5].map((n) => (
         <span
           key={n}

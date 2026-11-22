@@ -33,7 +33,7 @@ Written against `Tatotatochiya/transfer-x` `main` at `81c1034` (14 Nov 2026).
 - 9 of 12 visible column slots say "None".
 - The first card sits at about 725px of an 844px screen, under the name banner, title, buttons, switch and search.
 
-On a tablet only 2.5 columns fit. On a 1280 laptop all six fit, but names are cut to "R. Gr…" and "M. …", and Paperwork and Done are empty in both lanes.
+On a tablet only 2.5 columns fit. On a 1280 laptop all six fit, but names are cut to "R. Gr…" and "M. …", and Paperwork and Completed are empty in both lanes.
 
 **Goal.**
 - **Below 1280px:** the same data as **a list grouped by whose move it is**, with each transfer's stage shown on its row and stage chips to filter. Tapping a row opens the transfer's page.
@@ -91,7 +91,7 @@ On a tablet only 2.5 columns fit. On a 1280 laptop all six fit, but names are cu
 
 - **D1. List below 1280px, board from 1280px.** Use `useMediaQuery("(min-width: 1280px)")` (as `DealDetailPage` does for 1024). **Why 1280, not 1024:** the sidebar appears at `lg` (1024), leaving about 728px of content at 1024 wide. Six columns at about 110px each is worse than a list. At 1280 there's about 984px.
 - **D2. Group by whose move it is**, not by stage. Stage becomes a property of the row. This follows the deal and offer room redesigns: what needs you comes first.
-- **D3. Stage is neutral.** Five short grey bars and the stage name. Completed transfers use the Done colour (success); that's the only coloured stage.
+- **D3. Stage is neutral.** Five short grey bars and the stage name. Completed transfers use the Completed colour (success); that's the only coloured stage.
 - **D4. Below 1280px a row is a link** to the transfer's page (offer, deal, enquiry or listing). The pop-up (`CardDetail`, with the conversation) stays for laptops only. The offer and deal pages are built for phones now, so the pop-up is an extra step.
 - **D5. The phone header shrinks:**
   - title and one line of counts
@@ -145,7 +145,7 @@ export function stageCounts(rows: BoardCard[], labels: Record<string, string>): 
 | `listed` | Listed, no offers yet | — | Most recently updated |
 | `done` | Completed | — | Most recently updated |
 
-Use the column labels from the API (`board.columns[].label`) for stage names; don't hard-code them. Done cards don't get a chip. The "Completed" group is enough.
+Use the column labels from the API (`board.columns[].label`) for stage names; don't hard-code them. Completed cards don't get a chip. The "Completed" group is enough.
 
 **The detail line.** Show `card.detail` after the stage name, **unless** it equals the stage label, case-insensitive. ("Fee agreed" on a Fee agreed card says nothing new.) Today's detail strings join with " · ". Keep them as they come: "Countered · your move". (The mock writes "Countered, your move"; follow the API.)
 
@@ -171,7 +171,7 @@ Use the column labels from the API (`board.columns[].label`) for stage names; do
 ### 4.2 Stage chips
 
 - A single row that scrolls sideways if it overflows: `overflow-x-auto`, scrollbar hidden, `-mx-4 px-4` on phones so chips run to the edge.
-- First chip "All N", then one chip per stage from `stageCounts`, in stage order: "Talking 1 · Offers 1 · Fee agreed 1 · Personal terms 2".
+- First chip "All N", then one chip per stage from `stageCounts`, in stage order: "Listed 1 · Offers 1 · Fee agreed 1 · Personal terms 2".
 - Chip style:
   - `min-h-9` (36px; the row is a scroller, so 36 is fine, but keep `px-3`)
   - `rounded-full`, `text-small font-semibold`
@@ -362,7 +362,7 @@ At **390 × 844, 768 × 1024, 1024 × 768 and 1280 × 800**, light and dark, sig
 - Search: on phones it opens and closes, the clear button works, and the no-results message shows.
 - ⋯ menu: New listing and History work. Keyboard: Tab, Enter, Escape.
 - 1024: the list, with the sidebar showing.
-- 1280: the board, Paperwork and Done collapsed, "R. Gravenberch" and "M. Caicedo" in full, the waiting strip opening the pop-up.
+- 1280: the board, Paperwork and Completed collapsed, "R. Gravenberch" and "M. Caicedo" in full, the waiting strip opening the pop-up.
 - Text at 200% zoom on 1280 drops to the list layout without breaking.
 - The name banner shows on the Dashboard only.
 
@@ -397,7 +397,7 @@ Branch `transfers-board-mobile`. New `frontend/src/components/board/`: `types.ts
 
 Checked at 390 × 844, 768 × 1024, 1024 × 768 and 1280 × 800, light and dark, with demo data:
 - First row's top edge at **297px** at 390. No sideways scrolling at any width except the chip row.
-- At 1280: Fee agreed, Paperwork and Done collapsed in both lanes; names in full; the waiting strip opens the pop-up.
+- At 1280: Fee agreed, Paperwork and Completed collapsed in both lanes; names in full; the waiting strip opens the pop-up.
 - No text under 13px on `/board` at 390 or 1280.
 
 ### Deviations
