@@ -17,7 +17,8 @@ import type {
 } from "../../types/api";
 import Card from "../../components/ui/Card";
 import ClubLink from "../../components/ui/ClubLink";
-import PageHeader from "../../components/ui/PageHeader";
+import ClubBand from "../../components/dashboard/ClubBand";
+import { timeLeft } from "../../lib/timeLeft";
 import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import Spinner from "../../components/ui/Spinner";
 import TransferWindowBanner from "../../components/transfers/TransferWindowBanner";
@@ -91,6 +92,17 @@ function StandingFiguresTier({ myClub, squadCount, squadNote, windowStatus }: {
       <FigureCard label="Squad" value={String(squadCount)} note={squadNote} />
     </div>
   );
+}
+
+/** The band's window pill (feature_spec/club-dashboard §4.1). */
+export function windowText(status: TransferWindowStatus | undefined): string | null {
+  if (!status) return null;
+  if (!status.enforced) return "Window: no deadline set";
+  if (status.is_open && status.current_window) {
+    const left = timeLeft(status.current_window.closes_at);
+    return left ? `${status.current_window.name} · ${left.text}` : status.current_window.name;
+  }
+  return "Window closed";
 }
 
 const POSITION_TARGETS = [
@@ -332,9 +344,12 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Dashboard"
-        subtitle={`${myClub.name}${myClub.league_name ? ` · ${myClub.league_name}` : ""}`}
+      <ClubBand
+        club={myClub}
+        firstName={user?.first_name ?? null}
+        waitingCount={waitingItems.length}
+        windowText={windowText(windowStatus)}
+        canAddColours={can("CLUB_ADMIN")}
       />
 
       <TransferWindowBanner />

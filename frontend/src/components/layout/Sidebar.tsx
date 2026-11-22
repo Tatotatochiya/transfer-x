@@ -390,6 +390,7 @@ function AccountMenu({ onLogout }: { onLogout: () => void }) {
           role={identity.role}
           isSuperuser={identity.isSuperuser}
           size="sm"
+          ringColour={identity.brandPrimary}
         />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-caption font-semibold text-text">{name}</span>
