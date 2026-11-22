@@ -165,9 +165,9 @@ def test_trend_computed():
 # ── Sync tests with mocked API ─────────────────────────────────────────────────
 
 
-async def test_sync_player_creates_snapshot(client: AsyncClient, db, user_tokens):
+async def test_sync_player_creates_snapshot(client: AsyncClient, db, superuser):
     """Sync player, verify snapshot created in DB."""
-    headers = _auth_headers(user_tokens)
+    headers = _auth_headers(superuser)
 
     # Create player via API
     player_resp = await client.post(
@@ -212,9 +212,9 @@ async def test_sync_player_creates_snapshot(client: AsyncClient, db, user_tokens
     assert len(snaps) == 1
 
 
-async def test_sync_player_no_vendor_id(client: AsyncClient, db, user_tokens):
+async def test_sync_player_no_vendor_id(client: AsyncClient, db, superuser):
     """Player without vendor_id → 400."""
-    headers = _auth_headers(user_tokens)
+    headers = _auth_headers(superuser)
 
     player_resp = await client.post(
         "/players", json={"name": "No Vendor Player", "position": "GK"}, headers=headers
@@ -238,9 +238,9 @@ async def test_sync_player_no_vendor_id(client: AsyncClient, db, user_tokens):
     assert "vendor_id" in resp.json()["detail"]
 
 
-async def test_sync_player_creates_stats(client: AsyncClient, db, user_tokens):
+async def test_sync_player_creates_stats(client: AsyncClient, db, superuser):
     """Sync player, verify PlayerStats row created with correct goals/assists."""
-    headers = _auth_headers(user_tokens)
+    headers = _auth_headers(superuser)
 
     player_resp = await client.post(
         "/players", json={"name": "Stats Player", "position": "FWD"}, headers=headers

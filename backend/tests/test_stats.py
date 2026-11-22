@@ -11,8 +11,16 @@ from tests.conftest import _auth_headers, _register
 
 
 @pytest_asyncio.fixture
-async def stats_user(client: AsyncClient) -> dict:
-    return await _register(client, "stats@test.com", club_name="Stats FC")
+async def stats_user(client: AsyncClient, db) -> dict:
+    """Staff: the write endpoints here are staff-only (review item 1)."""
+    from sqlalchemy import select
+
+    from app.auth.models import User
+
+    tokens = await _register(client, "stats@test.com", club_name="Stats FC")
+    (await db.execute(select(User).where(User.email == "stats@test.com"))).scalar_one().is_superuser = True
+    await db.commit()
+    return tokens
 
 
 async def _create_player(client: AsyncClient, headers: dict, name: str = "Stats Player") -> dict:

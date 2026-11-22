@@ -366,6 +366,21 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
   - Checked live: the seller and a third club were refused, the buyer's record let the deal advance to Paperwork, and the seller was notified. (`backend/app/deals/router.py`, `backend/app/deals/service.py`, `frontend/src/pages/deals/DealDetailPage.tsx`)
 
 ### Fixed
+- **Only TransferX staff can write player data** ([code review](./reviews/2026-11-17-code-review-fix-spec.md), item 1). Any signed-in account, including a self-registered agent, could:
+  - overwrite a player's stats and form, which feed the valuation;
+  - add snapshots;
+  - change the vendor sync state;
+  - add leagues;
+  - trigger an API-Football sync, which spends the daily quota.
+
+  All six endpoints now need a staff account.
+- **Personal terms must be sensible** (item 15). A wage of zero or less, a negative signing bonus, or a contract outside 1 to 5 years is refused, both by the request and in `deals/service.check_terms_values`.
+  - Before this, a buying club could propose a large negative wage and record the consent itself, which cleared its committed wage figure.
+  - A lower agreed wage now releases only the difference from the offer's wage.
+  - The maximum length is the `MAX_CONTRACT_YEARS` setting, and the forms stop at 5.
+- **The client's address behind Railway's proxy** (item 8). Analytics took the first `X-Forwarded-For` entry, which the client can forge. The browser-error limiter keyed on the proxy's address, so every signed-out caller shared one allowance.
+  - Both now use `common/client_ip.client_ip`, which takes the entry the proxy appended (`TRUSTED_PROXY_HOPS`, 1 on Railway, 0 elsewhere).
+  - The browser-error and AI rate limiters now forget idle callers instead of growing for the life of the process.
 - **A confirmed transfer still holds the player.** Once a deal was confirmed (paperwork done, waiting to complete), the checks that stop a player being sold twice looked only for deals "in progress": the selling club could list him again, another club could bid, and accepting that bid would start a second deal. His page also offered "List for sale" instead of the deal. Every such check (listing, offers, direct signings, approvals, Lite, the player page, the squad table) now counts a confirmed deal as active (`deals/service.OPEN_DEAL_STATUSES`).
 - **"Completes when the window opens", not "Signature · your move".** A confirmed deal held by a closed window (or a real-world move) showed on the Board as waiting on your signature and counted as your move. It's now nobody's move, labelled "Completes when the window opens", and left off the Dashboard's "Waiting on you"; a confirmed deal that can complete reads "Ready to complete · your move".
 - **One suggested counter, and it doesn't drift.** The counter box's "Suggested" figure and the offer advisor's suggested counter could differ (£18.5M against £19M), and the advisor's figure could change between visits for the same offer, because the model chose it. Now TransferX works out one figure (`lite/service.suggested_counter_fee`) and the advisor must use it. For a seller it never undercuts a better bid already on the table, and under a listed asking price it is that price, not the model's value. The advisor's cache also refreshes when a competing bid changes.
@@ -452,6 +467,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 
 
 ### Removed
+- **"Register as my club" on a world team's page** ([code review](./reviews/2026-11-17-code-review-fix-spec.md), item 2). `POST /clubs/from-world-team/{id}` let any signed-in user without a club, such as an agent or a player, create a club with a real team's name, league and crest. That got around the invitation-only club sign-up. The endpoint and the button are gone. Staff create clubs from Admin, and clubs join by invitation.
 - **Auctions** ([product ADR 0011](./product/decisions/0011-auctions-retired.md)). Clubs don't sell players by auction: they hear offers and choose, weighing more than the fee. Every new listing is open to offers, and its optional date is now labelled "Offers by" (the "best offers by Friday" a club sets when several want a player). `POST /sales` refuses `AUCTION`. Removed with it: placing, accepting and listing bids (`/sales/{id}/bids…`), the auction order book, outbid and auction-ending notifications (hidden from settings; old ones still read), auction cards on the board and dashboard, bids in the budget commitments, bid approvals, the "Auctions" filter on Listings, and the demo house clubs' auction bidding. Past auctions, bids and the deals they produced stay as history ("Auction deal", Transfer Activity's filter). Migration `0109` winds down what was live: an open auction becomes open to offers with the same deadline, active bids are turned down and their budget given back, and pending bid approvals are cancelled. A collapsed deal from an old auction re-lists him open to offers and tells the clubs that made offers on it.
 - **The classic list pages** (Transfers in progress, Enquiries, My Offers, Offers Received, My Listings) and their "Classic views" sidebar group. Their addresses redirect to the board, with Buying or Selling chosen. Detail pages are unchanged.
 ### Changed

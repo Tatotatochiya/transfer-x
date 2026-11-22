@@ -59,7 +59,7 @@ function ProposeTermsForm({ actions, onCancel, initial, submitLabel }: {
       </div>
       <div>
         <label htmlFor="pt-years" className="mb-1 block text-small font-medium text-text-secondary">Contract length (years)</label>
-        <input id="pt-years" type="number" min={1} max={10} value={years} onChange={(e) => setYears(e.target.value)} className={INPUT} />
+        <input id="pt-years" type="number" min={1} max={5} value={years} onChange={(e) => setYears(e.target.value)} className={INPUT} />
       </div>
       {initial && <NoteField id="pt-note" value={note} onChange={setNote} />}
       <div className="flex flex-wrap gap-2 sm:col-span-3">

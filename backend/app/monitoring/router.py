@@ -12,6 +12,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
+from app.common.client_ip import client_ip
 from app.database import get_db
 from app.deps import get_current_superuser
 from app.monitoring.models import ErrorEvent, ErrorIssue, JobRun, JobRunLog, RequestMinute
@@ -309,6 +310,18 @@ async def request_health(hours: int = Query(24, ge=1, le=336), db: AsyncSession 
 
 CLIENT_ERRORS_PER_MINUTE = 20
 _client_hits: dict[str, list[float]] = {}
+_client_hits_swept = 0.0
+
+
+def _sweep_client_hits(now: float) -> None:
+    """Drop callers with no hit in the last minute, at most once a minute,
+    so the dict doesn't grow for the life of the process."""
+    global _client_hits_swept
+    if now - _client_hits_swept < 60:
+        return
+    _client_hits_swept = now
+    for key in [k for k, hits in _client_hits.items() if not hits or now - hits[-1] >= 60]:
+        del _client_hits[key]
 
 
 class ClientError(BaseModel):
@@ -330,8 +343,9 @@ async def client_error(body: ClientError, request: Request, authorization: str |
             user_id = auth_service.decode_access_token(authorization[7:]).get("sub")
         except Exception:  # noqa: BLE001
             user_id = None
-    key = user_id or (request.client.host if request.client else "unknown")
+    key = user_id or client_ip(request) or "unknown"
     now = time.monotonic()
+    _sweep_client_hits(now)
     hits = [t for t in _client_hits.get(key, []) if now - t < 60]
     if len(hits) >= CLIENT_ERRORS_PER_MINUTE:
         _client_hits[key] = hits

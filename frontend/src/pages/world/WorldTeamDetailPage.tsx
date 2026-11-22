@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { Club, FairValueSignal, Paginated, Player, PlayerForm, PlayerStats, WorldTeam } from "../../types/api";
 import { useAuthStore } from "../../store/auth";
@@ -164,35 +164,17 @@ type Tab = "squad" | "stats" | "fixtures";
 export default function WorldTeamDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { accessToken, user } = useAuthStore();
   const isAuthenticated = !!accessToken;
   const isPlayerAccount = user?.user_type === "PLAYER";
 
-  const [claimError, setClaimError] = useState<string | null>(null);
-
   // Check if the current user already has a club
-  const { data: myClub, isLoading: myClubLoading } = useQuery<Club>({
+  const { data: myClub } = useQuery<Club>({
     queryKey: ["clubs", "me"],
     queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
     enabled: isAuthenticated,
     retry: false,
     staleTime: 60_000,
-  });
-
-  const claimMutation = useMutation({
-    mutationFn: (worldTeamId: string) =>
-      api.post<Club>(`/clubs/from-world-team/${worldTeamId}`).then((r) => r.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clubs", "me"] });
-      navigate("/club");
-    },
-    onError: (err: unknown) => {
-      const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        "Failed to claim club.";
-      setClaimError(msg);
-    },
   });
 
   const { data: team, isLoading, isError } = useQuery<WorldTeam>({
@@ -318,23 +300,7 @@ export default function WorldTeamDetailPage() {
               </div>
             </div>
 
-            {/* Claim button — only for authenticated users without a club */}
-            {isAuthenticated && !myClubLoading && !myClub && id && (
-              <div className="shrink-0">
-                <button
-                  disabled={claimMutation.isPending}
-                  onClick={() => { setClaimError(null); claimMutation.mutate(id); }}
-                  className="flex items-center gap-2 rounded-lg bg-success-bg px-4 py-2 text-body font-semibold text-success-text ring-1 ring-success-ring hover:brightness-95 transition-colors disabled:opacity-50"
-                >
-                  {claimMutation.isPending ? "Registering…" : "Register as my club"}
-                </button>
-                {claimError && (
-                  <p className="mt-1.5 text-small text-danger-text">{claimError}</p>
-                )}
-              </div>
-            )}
-
-            {/* Already has a club — can't claim */}
+            {/* The signed-in user's own club, for context */}
             {isAuthenticated && myClub && (
               <span className="shrink-0 rounded-lg bg-surface-inset px-3 py-2 text-caption text-text-muted ring-1 ring-border">
                 Your club: {myClub.name}
