@@ -39,6 +39,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** The theme, or light outside a ThemeProvider (tests, previews). */
+export function useThemeName(): Theme {
+  return useContext(ThemeContext)?.theme ?? "light";
+}
+
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider");

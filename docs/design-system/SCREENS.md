@@ -53,76 +53,25 @@ Route: `/board` ([product ADR 0008](../product/decisions/0008-transfers-board-on
 
 ## Dashboard
 
-Route: `/dashboard`. The reference implementation of the four tiers.
-Subtitle format: `"{Club} · {Division} · Summer window closes in {countdown}"`.
-Right of the header, 13px muted: `"Updated {n} minutes ago"`.
+Route: `/dashboard`. The club's front door, rebuilt on 22 November 2026 ([spec](../feature_spec/club-dashboard/README.md)). In order on every device:
 
-### Tier 1 — "Waiting on you"
+1. **The club's band** (`ClubBand`). It holds:
+   - the crest on a white disc, and the club's name as the page `h1` (`text-title-sm sm:text-title`);
+   - league and season, and the city from 1280px;
+   - from 640px, the "N waiting on you" pill;
+   - from 1280px, the window pill.
 
-Card: radius 12, `0 1px 2px rgba(16,24,40,0.06), 0 0 0 1px #f7ccc7`. 18px below.
+   It's in the club's own colours (see [TOKENS.md, Club colours](./TOKENS.md#club-colours)), or a plain white card when none are set, with "Add club colours" for a club admin.
+2. **Banners:** the transfer window and deadline-day banners, when they show.
+3. **Needs you** (`NeedsYouCard`):
+   - counted rows are exactly the server's `waiting_on_you`, which also drives the sidebar's Transfers and Approvals badges;
+   - under "Also", never counted: your own requests awaiting approval, contracts ending within 60 days (with List), Finish setting up (the checklist in a sheet) and Add your name.
+4. **Money** (`MoneyCard`): transfer budget free, wage room a week, and what's held in open offers and deals. Bars are neutral, turning to warning under 10% left.
+5. **Your squad** (`TeamCards`): one card per team; one, "First team", until clubs have teams ([ADR 0013](../product/decisions/0013-a-club-is-an-organisation-with-teams.md)).
+6. **Transfers in progress:** the Transfers board's rows, each transfer once, your move first.
+7. **The right column:** Today's briefing, For you in the market, the scout report, and Recently completed.
 
-Band header: `12px 20px`, background `#ffeeeb`, bottom border `1px solid #fedbd7`.
-8px round dot `#c53637`, then `"Waiting on you — {count}"` at 13px/700 `#970818`.
-Right, 12px muted: `"Sorted by deadline"`.
-
-Row: `14px 20px`, bottom rule `#f0f1f3`, flex with 16px gap, wrapping.
-
-| Element | Width | Content |
-|---|---|---|
-| Label block | `flex: 1 1 300px` | Title 15px/600; description 13px `#667085` |
-| Amount | `flex: 0 1 130px` | Label 11px muted; value 16px/700 |
-| Deadline | `flex: 0 1 130px` | Label 11px muted `"Deadline"`; value 14px/700, coloured |
-| Action | auto | Primary button, `nowrap` |
-
-Deadline colour: under 24h `#ac1922`; waiting on this user with no hard deadline `#006925`;
-otherwise `#475467`.
-
-Sort by deadline ascending, items with no deadline last. Cap at 5 with a
-`"View all {n} →"` link; do not paginate.
-
-Empty state: replace the whole card with one line of 14px `#475467` — `"Nothing is waiting on
-you."` Keep the rest of the page unchanged.
-
-### Tier 2 — Standing figures
-
-`repeat(auto-fit, minmax(180px, 1fr))`, 14px gap, 18px below.
-
-Card: white, radius 12, ring, `16px 20px`. Label 12px/600 `#475467`; value 28px/700 `-0.01em`,
-6px below; note 12px muted, 3px below; optional 6px bar 10px below.
-
-The four: Transfer budget free (bar, `#007b2a`) · Wage room per week (bar, `#215fbc`) · Window
-closes in (no bar) · Squad (no bar, note carries gaps and expiries).
-
-### Tier 3 — Working panels
-
-`repeat(auto-fit, minmax(320px, 1fr))`, 16px gap, 18px below. Three panels: "My open listings",
-"Active offers", "Active deals".
-
-Card header `15px 18px`, bottom rule: title 14px/700, right `"View all →"` 12px/600 accent.
-Body `6px 18px 14px`.
-
-Row: `11px 0`, bottom rule `#f5f6f7`, flex 12px gap.
-Left (`flex: 1 1 130px`): name 14px/600; sub 12px `#667085`.
-Right, aligned right: value 14px/700; **whose-move label** 12px/600 in its state colour.
-
-Three rows per panel, then the header link carries the rest.
-
-### Tier 4 — Reference panels
-
-`repeat(auto-fit, minmax(280px, 1fr))`, 16px gap. Background `#fbfbfc`, ring `#eaecf0`.
-Header `13px 18px`: title 13px/600 `#475467`, right link 12px muted.
-Row `9px 0`: left 13px `#344054` + 11px muted sub; right 13px/600 coloured.
-
-Three panels: "Squad needs" · "Shortlist on market" · "Expiring contracts".
-
-### Completed transfers
-
-Full-width table card. Columns: Player (with position suffix) · From · To · Fee (right) ·
-Completed (right). Three rows.
-
-Mobile card priority: Player + Fee, then From → To on one line, then date.
-
----
+Layout by width is in [RESPONSIVE.md](./RESPONSIVE.md#club-dashboard).
 
 ## Offer inbox
 

@@ -85,7 +85,14 @@ async def update_my_club(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
     # TRA-151: CLUB_ADMIN — owner and sporting director may edit club details.
     await ensure_club_capability(db, current_user, Capability.CLUB_ADMIN)
-    await clubs_service.update_club(db, club, **body.model_dump(exclude_none=True))
+    updates = body.model_dump(exclude_none=True)
+    # The colours can be removed: "" clears one (update_club skips None, so
+    # it's set here). Every other field keeps ignoring None and "".
+    for field in ("brand_primary", "brand_secondary"):
+        if updates.get(field) == "":
+            del updates[field]
+            setattr(club, field, None)
+    await clubs_service.update_club(db, club, **updates)
     await db.commit()
     await db.refresh(club)
     return ClubResponse.model_validate(club).model_copy(update={"my_role": my_role})

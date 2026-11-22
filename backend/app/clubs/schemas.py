@@ -3,7 +3,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+import re
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.clubs.models import ClubRole, StaffRole
 
@@ -60,6 +62,9 @@ class ClubResponse(BaseModel):
     city: str | None
     league_name: str | None
     crest_url: str | None
+    # The club's own colours: only on its own view, never on the public one.
+    brand_primary: str | None = None
+    brand_secondary: str | None = None
     role: ClubRole
     verified: bool
     created_at: datetime
@@ -89,12 +94,28 @@ class ClubMembershipResponse(BaseModel):
     capabilities: list[str]
 
 
+_HEX = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+
 class ClubUpdateRequest(BaseModel):
     name: str | None = None
     country: str | None = None
     city: str | None = None
     league_name: str | None = None
     crest_url: str | None = None
+    # '#RRGGBB', stored in upper case. "" clears it (None means "unchanged",
+    # as for every field here).
+    brand_primary: str | None = None
+    brand_secondary: str | None = None
+
+    @field_validator("brand_primary", "brand_secondary")
+    @classmethod
+    def _hex_colour(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return v
+        if not _HEX.match(v):
+            raise ValueError("Use a colour like #DB0007")
+        return v.upper()
 
 
 # ── Team management (TRA-86) ─────────────────────────────────────────────────

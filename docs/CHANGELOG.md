@@ -25,6 +25,18 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **The Dashboard is the club's front door** ([spec](./feature_spec/club-dashboard/README.md)). It opens with a band in the club's own colours, holding the crest, the club's name, the league and the season, and "N waiting on you". Then, in order on every device:
+  - **Needs you:** exactly what the sidebar's badges count. Under "Also", never counted: your own requests awaiting approval, contracts ending within 60 days (with List), Finish setting up (the checklist opens in a sheet) and Add your name.
+  - **Money:** transfer budget free, wage room a week, and what's held in open offers and deals.
+  - **Your squad:** players, average age, the position split, contracts ending in 6 months, players aged 21 or under, and squad needs. It's one card per team, ready for clubs with teams.
+  - **Transfers in progress:** the Transfers board's rows, each once, your move first. This replaces the three listings, offers and deals panels.
+  - **For you in the market, Recently completed,** the briefing and the scout report.
+
+  On a phone, "Needs you" now starts at about 200px from the top (it was about 690px), and the page is about 1,330px long (it was about 2,360px).
+- **Club colours.** A club admin sets a primary and a secondary colour in My Club → Edit profile. The form offers suggestions read from the crest, swatches with hex inputs, a live preview, and a line saying how the text reads.
+  - **Where they show:** only the Dashboard band and the sidebar's crest ring. Buttons, links and statuses keep TransferX's colours ([TOKENS.md](./design-system/TOKENS.md#club-colours)).
+  - **Band text:** white or ink, whichever reaches 4.5:1. In dark mode the band is 25% darker.
+  - **Backend:** `clubs.brand_primary` and `clubs.brand_secondary` (migration `0115`), set through `PATCH /clubs/me` by a club admin. They're validated as `#RRGGBB` and `""` clears one. They never appear on the public club views.
 - **Notifications you can filter.** The notifications page gains:
   - a search box for a player or club, which also matches the wording and ignores accents ("pecsi" finds Á. Pécsi);
   - chips for **Unread**, **Your move / Heads-up / For your information**, and a category (Offers, Deals, Reminders, Loans, Squad, Team);

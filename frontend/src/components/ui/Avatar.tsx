@@ -17,6 +17,8 @@ interface AvatarProps {
   isSuperuser?: boolean;
   size?: "sm" | "md";
   className?: string;
+  /** A club's own primary colour: a 2px ring, its only use outside the Dashboard band. */
+  ringColour?: string | null;
 }
 
 const SIZE_CLASSES: Record<"sm" | "md", string> = {
@@ -26,7 +28,7 @@ const SIZE_CLASSES: Record<"sm" | "md", string> = {
 
 /** Club crest, or role-coloured initials. Shared by the sidebar footer and
  * the mobile top bar so identity rendering can't drift between the two. */
-export default function Avatar({ name, crestUrl, role, isSuperuser, size = "md", className = "" }: AvatarProps) {
+export default function Avatar({ name, crestUrl, role, isSuperuser, size = "md", className = "", ringColour }: AvatarProps) {
   const roleClass = role ? ROLE_STYLE[role] : "bg-accent-avatar text-accent";
   const ringClass = isSuperuser ? "ring-2 ring-danger-ring" : "";
 
@@ -35,6 +37,7 @@ export default function Avatar({ name, crestUrl, role, isSuperuser, size = "md",
       className={`flex shrink-0 items-center justify-center overflow-hidden font-bold ${
         role === "CLUB" ? "rounded-lg" : "rounded-full"
       } ${SIZE_CLASSES[size]} ${roleClass} ${ringClass} ${className}`}
+      style={ringColour && !isSuperuser ? { boxShadow: `0 0 0 2px ${ringColour}` } : undefined}
     >
       {crestUrl ? (
         <FallbackImage src={crestUrl} name={name ?? "?"} kind="club" sizeClass="h-full w-full" colorClass="" />

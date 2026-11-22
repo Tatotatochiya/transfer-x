@@ -10,6 +10,8 @@ export interface Identity {
   name: string | null;
   subLabel: string | null;
   crestUrl: string | null;
+  /** The club's own primary colour, for the sidebar's crest ring only. */
+  brandPrimary: string | null;
   isSuperuser: boolean;
   isLoading: boolean;
 }
@@ -46,7 +48,7 @@ export function useIdentity(): Identity {
 
   // A TransferX staff account has no club: say so, rather than ask for one.
   if (isStaffAccount) {
-    return { role: null, name: user?.email ?? null, subLabel: "TransferX staff", crestUrl: null, isSuperuser, isLoading: false };
+    return { role: null, name: user?.email ?? null, subLabel: "TransferX staff", crestUrl: null, brandPrimary: null, isSuperuser, isLoading: false };
   }
   if (isClub) {
     // TRA-151: staff members see their role in the identity footer —
@@ -61,6 +63,7 @@ export function useIdentity(): Identity {
       name: clubQuery.data?.name ?? null,
       subLabel: staffLabel,
       crestUrl: clubQuery.data?.crest_url ?? null,
+      brandPrimary: clubQuery.data?.brand_primary ?? null,
       isSuperuser,
       isLoading: clubQuery.isLoading,
     };
@@ -71,6 +74,7 @@ export function useIdentity(): Identity {
       name: agentQuery.data?.display_name ?? null,
       subLabel: agentQuery.data?.agency_name ?? null,
       crestUrl: null,
+      brandPrimary: null,
       isSuperuser,
       isLoading: agentQuery.isLoading,
     };
@@ -81,9 +85,10 @@ export function useIdentity(): Identity {
       name: playerQuery.data?.name ?? null,
       subLabel: null,
       crestUrl: null,
+      brandPrimary: null,
       isSuperuser,
       isLoading: playerQuery.isLoading,
     };
   }
-  return { role: null, name: null, subLabel: null, crestUrl: null, isSuperuser, isLoading: false };
+  return { role: null, name: null, subLabel: null, crestUrl: null, brandPrimary: null, isSuperuser, isLoading: false };
 }

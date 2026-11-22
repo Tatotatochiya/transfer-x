@@ -1,249 +1,122 @@
 import { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import OnboardingChecklist from "../../components/OnboardingChecklist";
 import { useQuery } from "@tanstack/react-query";
+
 import api from "../../lib/api";
 import type {
-  Club,
-  Deal,
-  ExpiringContractItem,
-  Offer,
-  Paginated,
-  PendingApproval,
-  Player,
-  Sale,
-  ShortlistHit,
-  TransferWindowStatus,
+  Club, Deal, ExpiringContractItem, Paginated, PendingApproval, Player, ShortlistHit, TransferWindowStatus,
 } from "../../types/api";
+import type { Board } from "../../components/board/types";
 import Card from "../../components/ui/Card";
-import ClubLink from "../../components/ui/ClubLink";
-import PageHeader from "../../components/ui/PageHeader";
-import ResponsiveTable, { type ResponsiveColumn } from "../../components/ui/ResponsiveTable";
 import Spinner from "../../components/ui/Spinner";
+import Sheet from "../../components/ui/Sheet";
+import Button from "../../components/ui/Button";
 import TransferWindowBanner from "../../components/transfers/TransferWindowBanner";
 import DeadlineBanner from "../../components/deadline/DeadlineBanner";
-import { formatCompact, formatDate } from "../../lib/utils";
+import { ClubChecklist, useOnboardingSteps } from "../../components/OnboardingChecklist";
+import { useNamePrompt } from "../../components/account/NamePrompt";
+import ClubBand from "../../components/dashboard/ClubBand";
+import NeedsYouCard from "../../components/dashboard/NeedsYouCard";
+import MoneyCard from "../../components/dashboard/MoneyCard";
+import TeamCards from "../../components/dashboard/TeamCards";
+import TransfersInProgress from "../../components/dashboard/TransfersInProgress";
+import MarketForYou from "../../components/dashboard/MarketForYou";
+import RecentlyCompleted from "../../components/dashboard/RecentlyCompleted";
+import { squadSummary } from "../../components/dashboard/squadSummary";
+import { ScoutReportPanel } from "../../components/ai/ScoutReportPanel";
+import { BriefingCard } from "../../components/ai/Assistant";
+import ListPlayerModal from "../../components/sales/ListPlayerModal";
 import { useAuth } from "../../hooks/useAuth";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
-import { ScoutReportPanel } from "../../components/ai/ScoutReportPanel";
-import { offerWhoseMove, type WhoseMove } from "../../lib/whoseMove";
-import WaitingOnYouBand, { type WaitingItem } from "../../components/dashboard/WaitingOnYouBand";
-import { BriefingCard } from "../../components/ai/Assistant";
 import { useClubDashboard } from "../../hooks/useClubDashboard";
-import { buyerLabel } from "../../lib/buyerIdentity";
-import type { DashboardItem } from "../../types/api";
-
-// B2 returns the situation in `reason`; the button verb comes from the kind.
-const WAITING_ACTION_LABEL: Record<DashboardItem["kind"], string> = {
-  approval: "Review",
-  offer:    "Respond",
-  deal:     "Open",
-  enquiry:  "Reply",
-};
-
-const WAITING_FALLBACK_TITLE: Record<DashboardItem["kind"], string> = {
-  approval: "Approval request",
-  offer:    "Offer",
-  deal:     "Deal",
-  enquiry:  "Enquiry",
-};
-import FigureCard from "../../components/dashboard/FigureCard";
-import WorkingPanel from "../../components/dashboard/WorkingPanel";
-import ReferencePanel from "../../components/dashboard/ReferencePanel";
-import ListPlayerModal from "../../components/sales/ListPlayerModal";
 import { useOpenListings } from "../../hooks/useListing";
-import { offerHeadline } from "../../lib/offerTerms";
-import Money from "../../components/ui/Money";
-import PlayerLink from "../../components/ui/PlayerLink";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { timeLeft } from "../../lib/timeLeft";
 
-// ── Tier 2 — Standing figures ────────────────────────────────────────────────
-
-function StandingFiguresTier({ myClub, squadCount, squadNote, windowStatus }: {
-  myClub: Club; squadCount: number; squadNote: string; windowStatus?: TransferWindowStatus;
-}) {
-  const finance = myClub.finance;
-  const transferFree = finance ? Number(finance.transfer_remaining) : 0;
-  const transferTotal = finance ? Number(finance.transfer_budget_total) : 0;
-  const wageFree = finance ? Number(finance.wage_remaining_weekly) : 0;
-  const wageTotal = finance ? Number(finance.wage_budget_total_weekly) : 0;
-
-  const windowLabel = !windowStatus?.enforced
-    ? "No window enforced"
-    : windowStatus.is_open && windowStatus.current_window
-    ? windowStatus.current_window.name
-    : "Closed";
-
-  return (
-    <div className="mb-[18px] grid grid-cols-2 gap-3.5 sm:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]">
-      <FigureCard
-        label="Transfer budget free"
-        value={<Money value={transferFree} compact stacked />}
-        note={`of ${formatCompact(transferTotal)}`}
-        bar={{ pct: transferTotal > 0 ? (transferFree / transferTotal) * 100 : 0, colour: "bg-text-secondary" }}
-      />
-      <FigureCard
-        label="Wage room / wk"
-        value={formatCompact(wageFree)}
-        note={`of ${formatCompact(wageTotal)}`}
-        bar={{ pct: wageTotal > 0 ? (wageFree / wageTotal) * 100 : 0, colour: "bg-text-secondary" }}
-      />
-      <FigureCard label="Window closes in" value={windowLabel} note={myClub.league_name ?? undefined} />
-      <FigureCard label="Squad" value={String(squadCount)} note={squadNote} />
-    </div>
-  );
+/** The band's window pill (feature_spec/club-dashboard §4.1). */
+export function windowText(status: TransferWindowStatus | undefined): string | null {
+  if (!status) return null;
+  if (!status.enforced) return "Window: no deadline set";
+  if (status.is_open && status.current_window) {
+    const left = timeLeft(status.current_window.closes_at);
+    return left ? `${status.current_window.name} · ${left.text}` : status.current_window.name;
+  }
+  return "Window closed";
 }
 
-const POSITION_TARGETS = [
-  { pos: "GK", min: 2, label: "Goalkeepers" },
-  { pos: "DEF", min: 4, label: "Defenders" },
-  { pos: "MID", min: 4, label: "Midfielders" },
-  { pos: "FWD", min: 3, label: "Forwards" },
-];
+/** Money held for these: the buying side's open offers and deals. */
+const HOLDING = new Set(["offers", "fee_agreed", "terms", "paperwork"]);
 
-// ── Completed transfers ──────────────────────────────────────────────────────
-
-interface CompletedRow { id: string; player: string; playerId: string | null; photoUrl: string | null; position: string | null; from: Deal["seller_club"]; to: Deal["buyer_club"]; fee: number; completedAt: string | null; }
-
-function CompletedTransfersTable({ deals, total }: { deals: Deal[]; total: number }) {
-  const navigate = useNavigate();
-  const rows: CompletedRow[] = deals.map((d) => ({
-    id: d.id, player: d.player?.name ?? "—", playerId: d.player?.id ?? null, photoUrl: d.player?.photo_url ?? null, position: d.player?.position ?? null,
-    from: d.seller_club, to: d.buyer_club, fee: d.agreed_fee, completedAt: d.completed_at,
-  }));
-
-  const columns: ResponsiveColumn<CompletedRow>[] = [
-    { key: "player", header: "Player", priority: 1, render: (r) => (
-      <span className="inline-flex items-center gap-2 font-medium text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-small text-text-muted">{r.position}</span>}</span>
-    ) },
-    { key: "from", header: "From", priority: 4, render: (r) => r.from ? <ClubLink id={r.from.id} name={r.from.name} /> : <span className="text-text-muted">Free agent</span> },
-    { key: "to", header: "To", priority: 3, render: (r) => r.to ? <ClubLink id={r.to.id} name={r.to.name} /> : "—" },
-    { key: "fee", header: "Fee", priority: 2, className: "text-right", render: (r) => <span className="font-bold text-text">{formatCompact(r.fee)}</span> },
-    { key: "completed", header: "Completed", priority: 5, className: "text-right", render: (r) => <span className="text-text-muted text-small">{r.completedAt ? formatDate(r.completedAt) : "—"}</span> },
-  ];
-
-  if (rows.length === 0) return null;
-
-  return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-section font-bold text-text">Completed transfers</h2>
-        {total > rows.length && (
-          <button onClick={() => navigate("/board")} className="text-small font-semibold text-accent hover:text-accent-hover">
-            View all {total} →
-          </button>
-        )}
-      </div>
-      <ResponsiveTable
-        columns={columns}
-        rows={rows}
-        rowKey={(r) => r.id}
-        onRowClick={(r) => navigate(`/deals/${r.id}`)}
-        renderCard={(r) => (
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 text-body font-semibold text-text"><PlayerLink id={r.playerId} name={r.player} photoUrl={r.photoUrl} />{r.position && <span className="text-small text-text-muted">{r.position}</span>}</span>
-              <span className="text-body font-bold text-text">{formatCompact(r.fee)}</span>
-            </div>
-            <p className="mt-0.5 text-small text-text-muted">
-              {r.from ? r.from.name : "Free agent"} → {r.to ? r.to.name : "—"}
-            </p>
-            {r.completedAt && <p className="mt-0.5 text-small text-text-muted">{formatDate(r.completedAt)}</p>}
-          </div>
-        )}
-      />
-    </div>
-  );
-}
-
-// ── Main page ─────────────────────────────────────────────────────────────────
-
+/**
+ * The club's front door (feature_spec/club-dashboard): its band, then what
+ * needs you, money, the squad, transfers in progress, the market and recent
+ * activity. Queries and layout only; each block is its own component.
+ *
+ * One grid, each block rendered once. Below 1280px it's one column (the
+ * market and recent cards side by side from 768px), ordered by `order`:
+ * phones end market, scout report, briefing, recent; from 640px market,
+ * recent, briefing, scout report. From 1280px blocks are placed in two columns.
+ */
 export default function DashboardPage() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { can } = useClubCapabilities();
+  const sm = useMediaQuery("(min-width: 640px)");
 
   const { data: myClub, isLoading: clubLoading } = useQuery<Club>({
     queryKey: ["clubs", "me"],
     queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
     staleTime: 60_000,
   });
-
-  // "List" on an expiring contract opens the same modal as the squad row.
-  const [listTarget, setListTarget] = useState<{ id: string; name: string } | null>(null);
-  const closeList = useCallback(() => setListTarget(null), []);
-  const { byPlayer: listedIds } = useOpenListings(myClub?.id);
-
   const { data: windowStatus } = useQuery<TransferWindowStatus>({
     queryKey: ["transfer-window", "status"],
     queryFn: () => api.get<TransferWindowStatus>("/transfers/window/status").then((r) => r.data),
     staleTime: 60_000,
   });
-
-  const { data: openSales } = useQuery<Paginated<Sale>>({
-    queryKey: ["dashboard", "my-sales"],
-    queryFn: () => api.get<Paginated<Sale>>("/sales", { params: { seller_club_id: myClub?.id, status: "OPEN", page_size: 20 } }).then((r) => r.data),
+  // The Transfers board's own query: same key, one cache entry.
+  const { data: board } = useQuery<Board>({
+    queryKey: ["board", "BOTH"],
+    queryFn: () => api.get<Board>("/board", { params: { side: "BOTH" } }).then((r) => r.data),
     enabled: !!myClub,
   });
-
-  const { data: receivedOffers } = useQuery<Paginated<Offer>>({
-    queryKey: ["dashboard", "offers-received"],
-    queryFn: () => api.get<Paginated<Offer>>("/offers/received", { params: { page_size: 20 } }).then((r) => r.data),
-    enabled: !!myClub,
-  });
-
-  const { data: sentOffers } = useQuery<Paginated<Offer>>({
-    queryKey: ["dashboard", "offers-sent"],
-    queryFn: () => api.get<Paginated<Offer>>("/offers/sent", { params: { page_size: 20 } }).then((r) => r.data),
-    enabled: !!myClub,
-  });
-
-  const { data: activeDeals } = useQuery<Paginated<Deal>>({
-    queryKey: ["dashboard", "active-deals"],
-    queryFn: () => api.get<Paginated<Deal>>("/deals", { params: { deal_status: "IN_PROGRESS", page_size: 20 } }).then((r) => r.data),
-    enabled: !!myClub,
-  });
-
   const { data: completedDeals } = useQuery<Paginated<Deal>>({
     queryKey: ["dashboard", "completed-deals"],
     queryFn: () => api.get<Paginated<Deal>>("/deals", { params: { deal_status: "COMPLETED", page_size: 3 } }).then((r) => r.data),
     staleTime: 120_000,
   });
-
   const { data: squadData } = useQuery<Paginated<Player>>({
     queryKey: ["clubs", myClub?.id, "squad"],
     queryFn: () => api.get<Paginated<Player>>(`/clubs/${myClub!.id}/players`, { params: { page_size: 100 } }).then((r) => r.data),
     enabled: !!myClub,
   });
-
   const { data: shortlistHits } = useQuery<ShortlistHit[]>({
     queryKey: ["scouting", "market-hits"],
     queryFn: () => api.get<ShortlistHit[]>("/scouting/market-hits").then((r) => r.data),
     staleTime: 60_000,
   });
-
   const { data: expiringContracts } = useQuery<ExpiringContractItem[]>({
     queryKey: ["clubs", "me", "expiring-contracts"],
     queryFn: () => api.get<ExpiringContractItem[]>("/clubs/me/expiring-contracts", { params: { within_days: 180 } }).then((r) => r.data),
     staleTime: 300_000,
   });
-
-  // Phase 4c: Sporting Director/Owner (APPROVE_ACTIONS) get pending team
-  // requests in Tier 1 — genuinely their move. Managers/other staff get a
-  // quiet pointer to their own pending requests instead, since nothing here
-  // is waiting on them to decide (README.md's Tier 1 definition).
+  const isApprover = can("APPROVE_ACTIONS");
+  // Someone who doesn't approve sees their own requests waiting on an approver.
   const { data: pendingApprovals } = useQuery<PendingApproval[]>({
     queryKey: ["clubs", "me", "approvals", "PENDING"],
     queryFn: () => api.get<PendingApproval[]>("/clubs/me/approvals", { params: { approval_status: "PENDING" } }).then((r) => r.data),
     enabled: !!myClub,
   });
-
-  // Shares its cache entry with the sidebar's badges — same key, one request.
+  // Shares its cache entry with the sidebar's badges: same key, one request.
   const { data: dashboard } = useClubDashboard(!!myClub);
+  const { byPlayer: listedIds } = useOpenListings(myClub?.id);
+  const onboarding = useOnboardingSteps();
+  const namePrompt = useNamePrompt();
+
+  const [listTarget, setListTarget] = useState<{ id: string; name: string } | null>(null);
+  const closeList = useCallback(() => setListTarget(null), []);
+  const [setupOpen, setSetupOpen] = useState(false);
 
   if (clubLoading) {
     return <div className="flex items-center justify-center py-20"><Spinner size="lg" /></div>;
   }
-
   if (!myClub) {
     return (
       <Card tier={4}>
@@ -252,133 +125,82 @@ export default function DashboardPage() {
     );
   }
 
-  const myClubId = myClub.id;
-  const sales = openSales?.items ?? [];
-  // /offers/received and /offers/sent return every status when unfiltered;
-  // offerWhoseMove only ever resolves "neither" for a terminal status, so
-  // this doubles as the active-offers filter without a second status list.
-  const offers = [...(receivedOffers?.items ?? []), ...(sentOffers?.items ?? [])]
-    .filter((o) => offerWhoseMove(o, myClubId) !== "neither");
-  const deals = activeDeals?.items ?? [];
-  const players = squadData?.items ?? [];
-  const isApprover = can("APPROVE_ACTIONS");
-  const approvals = pendingApprovals ?? [];
-  const myPendingApprovals = approvals.filter((a) => a.requested_by_user_id === user?.id);
-
-  // ── Tier 1 ──
-  // Server-derived (B2). This was four separate client-side whose-move passes
-  // over the queries below; those queries stay because tiers 2-4 need their
-  // rows, but the *verdict* now comes from one place — otherwise the sidebar
-  // badge and this band can disagree while both are "right".
-  const waitingItems: WaitingItem[] = (dashboard?.waiting_on_you ?? []).map((item) => ({
-    key: `${item.kind}-${item.id}`,
-    title: item.player_name ?? WAITING_FALLBACK_TITLE[item.kind],
-    player: item.player_id && item.player_name ? { id: item.player_id, photoUrl: item.player_photo_url ?? null } : undefined,
-    description: item.club_name ? `${item.reason} · ${item.club_name}` : item.reason,
-    amount: item.amount,
-    deadline: item.deadline,
-    actionLabel: WAITING_ACTION_LABEL[item.kind],
-    onClick: () => navigate(item.link),
-  }));
-
-  // ── Tier 2 ──
-  const posCounts = Object.fromEntries(POSITION_TARGETS.map((t) => [t.pos, players.filter((p) => p.position === t.pos).length]));
-  const gaps = POSITION_TARGETS.filter((t) => (posCounts[t.pos] ?? 0) < t.min);
-  const squadNote = gaps.length > 0 ? `${gaps.length} position gap${gaps.length === 1 ? "" : "s"}` : "Fully covered";
-
-  // ── Tier 3 ──
-  const listingRows = sales.slice(0, 3).map((s) => ({
-    key: s.id, onClick: () => navigate(`/sales/${s.id}`),
-    name: s.player?.name ?? "—", player: { id: s.player?.id, photoUrl: s.player?.photo_url }, sub: s.deadline ? `Offers by ${formatDate(s.deadline)}` : "Open to offers",
-    value: s.asking_price != null ? formatCompact(s.asking_price) : "—",
-    // A listing is never anyone's move: its offers are, and show as offers.
-    move: "neither" as WhoseMove,
-  }));
-  const offerRows = offers.slice(0, 3).map((o) => ({
-    key: o.id, onClick: () => navigate(`/offers/${o.id}`),
-    name: o.player?.name ?? "—", player: { id: o.player?.id, photoUrl: o.player?.photo_url },
-    sub: o.from_club_id === myClubId ? `to ${o.to_club?.name ?? "—"}` : `from ${buyerLabel(o, "—")}`,
-    value: offerHeadline(o, formatCompact),
-    move: offerWhoseMove(o, myClubId), idleSince: o.last_action_at,
-  }));
-  const dealRows = deals.slice(0, 3).map((d) => ({
-    key: d.id, onClick: () => navigate(`/deals/${d.id}`),
-    name: d.player?.name ?? "—", player: { id: d.player?.id, photoUrl: d.player?.photo_url }, sub: d.stage.replace(/_/g, " ").toLowerCase(),
-    value: formatCompact(d.agreed_fee), move: d.whose_move ?? "neither", idleSince: d.updated_at,
-  }));
-
-  // ── Tier 4 ──
-  const squadNeedRows = gaps.map((g) => ({
-    key: g.pos, onClick: () => navigate(`/players/market?position=${g.pos}`),
-    label: g.label, sub: `${posCounts[g.pos] ?? 0} of ${g.min} minimum`,
-    value: `Need ${g.min - (posCounts[g.pos] ?? 0)}`, valueColour: "text-danger-text",
-  }));
-  const shortlistRows = (shortlistHits ?? []).slice(0, 5).map((h) => ({
-    key: `${h.player_id}-${h.sale_id}`, onClick: () => navigate(`/sales/${h.sale_id}`),
-    label: h.player_name, sub: h.shortlist_name,
-    value: h.asking_price != null ? formatCompact(h.asking_price) : "TBD", valueColour: "text-warning-text",
-  }));
-  // A player about to leave for nothing is the moment to sell or loan him, so
-  // the list action sits on the row rather than a page away.
-  const expiringRows = (expiringContracts ?? []).slice(0, 5).map((c) => ({
-    key: c.player_id, onClick: () => navigate(`/players/market/${c.player_id}`),
-    label: c.player_name, sub: formatDate(c.end_date),
-    value: listedIds.has(c.player_id) ? `${c.days_remaining}d · listed` : `${c.days_remaining}d`,
-    valueColour: c.days_remaining <= 60 ? "text-danger-text" : c.days_remaining <= 120 ? "text-warning-text" : "text-text-secondary",
-    action: listedIds.has(c.player_id) || !can("MARKET_WRITE")
-      ? undefined
-      : { label: "List", onClick: () => setListTarget({ id: c.player_id, name: c.player_name }) },
-  }));
+  const waiting = dashboard?.waiting_on_you ?? [];
+  const myPending = isApprover ? 0 : (pendingApprovals ?? []).filter((a) => a.requested_by_user_id === user?.id).length;
+  const expiringSoon = (expiringContracts ?? [])
+    .filter((c) => c.days_remaining <= 60 && !listedIds.has(c.player_id))
+    .map((c) => ({ player_id: c.player_id, player_name: c.player_name, days_remaining: c.days_remaining }));
+  const committedNames = (board?.columns ?? [])
+    .filter((col) => HOLDING.has(col.key))
+    .flatMap((col) => col.cards)
+    .filter((c) => c.side === "BUYING")
+    .map((c) => c.player_name);
+  const teams = [{
+    key: "first",
+    name: "First team",
+    summary: squadSummary(squadData?.items ?? [], expiringContracts ?? []),
+  }];
 
   return (
-    <div>
-      <PageHeader
-        title="Dashboard"
-        subtitle={`${myClub.name}${myClub.league_name ? ` · ${myClub.league_name}` : ""}`}
+    <div className="space-y-4 xl:space-y-5">
+      <ClubBand
+        club={myClub}
+        firstName={user?.first_name ?? null}
+        waitingCount={waiting.length}
+        windowText={windowText(windowStatus)}
+        canAddColours={can("CLUB_ADMIN")}
       />
-
-      <TransferWindowBanner />
-      <DeadlineBanner />
-      <OnboardingChecklist />
-
-      <BriefingCard />
-
-      <WaitingOnYouBand items={waitingItems} />
-
-      {!isApprover && myPendingApprovals.length > 0 && (
-        <button
-          onClick={() => navigate("/club/approvals")}
-          className="mb-[18px] block text-body text-text-muted hover:text-text-secondary transition-colors"
-        >
-          {myPendingApprovals.length} of your request{myPendingApprovals.length === 1 ? "" : "s"} {myPendingApprovals.length === 1 ? "is" : "are"} awaiting approval →
-        </button>
-      )}
-
-      <StandingFiguresTier
-        myClub={myClub}
-        squadCount={players.length}
-        squadNote={squadNote}
-        windowStatus={windowStatus}
-      />
-
-      <div className="mb-[18px] grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-        <WorkingPanel title="My open listings" linkTo="/board?side=SELLING" rows={listingRows} />
-        <WorkingPanel title="Active offers" linkTo="/board" rows={offerRows} />
-        <WorkingPanel title="Active deals" linkTo="/board" rows={dealRows} />
+      {/* Banners sit between the band and Needs you, unchanged; empty ones take no space. */}
+      <div className="empty:hidden [&>*]:mb-0">
+        <TransferWindowBanner />
+        <DeadlineBanner />
       </div>
 
-      <div className="mb-[18px] grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-        <ReferencePanel title="Squad needs" linkTo="/players/market" linkLabel="Browse" rows={squadNeedRows} />
-        <ReferencePanel title="Shortlist on market" linkTo="/scouting/shortlists" linkLabel="View" rows={shortlistRows} />
-        <ReferencePanel title="Expiring contracts" linkTo="/club" linkLabel="View squad" rows={expiringRows} />
-        <ListPlayerModal open={!!listTarget} onClose={closeList} player={listTarget ?? undefined} />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] xl:gap-5">
+        <div className="order-1 md:col-span-2 xl:order-none xl:col-span-1 xl:col-start-1 xl:row-start-1">
+          <NeedsYouCard
+            items={waiting}
+            myPendingApprovals={myPending}
+            expiring={expiringSoon}
+            onList={can("MARKET_WRITE") ? (c) => setListTarget({ id: c.player_id, name: c.player_name }) : undefined}
+            setup={onboarding ? { done: onboarding.done, total: onboarding.steps.length } : null}
+            onOpenSetup={() => setSetupOpen(true)}
+            namePrompt={namePrompt}
+          />
+        </div>
+        <div className="order-2 md:col-span-2 xl:order-none xl:col-span-1 xl:col-start-2 xl:row-start-1">
+          <MoneyCard finance={myClub.finance} committedNames={committedNames} />
+        </div>
+        <div className="order-3 md:col-span-2 xl:order-none xl:row-start-2">
+          <TeamCards teams={teams} />
+        </div>
+        <div className="order-4 self-start md:col-span-2 xl:order-none xl:col-span-1 xl:col-start-1 xl:row-start-3">
+          <TransfersInProgress board={board} />
+        </div>
+        {/* The right column from 1280px. Below that it isn't a box at all
+            (display: contents), so its cards take their places in the one
+            column by `order`. */}
+        <div className="contents xl:col-start-2 xl:row-start-3 xl:flex xl:flex-col xl:gap-5 xl:self-start">
+          <div className="order-7 empty:hidden md:col-span-2 xl:order-none">
+            <BriefingCard />
+          </div>
+          <div className="order-5 empty:hidden xl:order-none">
+            <MarketForYou hits={shortlistHits ?? []} />
+          </div>
+          <div className="order-6 empty:hidden sm:order-8 md:col-span-2 xl:order-none">
+            <ScoutReportPanel />
+          </div>
+          <div className="order-8 empty:hidden sm:order-6 xl:order-none">
+            <RecentlyCompleted deals={completedDeals?.items ?? []} myClubId={myClub.id} limit={sm ? 2 : 1} />
+          </div>
+        </div>
       </div>
 
-      <div className="mb-[18px]">
-        <ScoutReportPanel />
-      </div>
-
-      <CompletedTransfersTable deals={completedDeals?.items ?? []} total={completedDeals?.total ?? 0} />
+      <ListPlayerModal open={!!listTarget} onClose={closeList} player={listTarget ?? undefined} />
+      <Sheet open={setupOpen} onClose={() => setSetupOpen(false)} title="Finish setting up" closeLabel="Close"
+        footer={<Button variant="secondary" onClick={() => setSetupOpen(false)}>Close</Button>}>
+        <ClubChecklist onDismiss={() => setSetupOpen(false)} />
+      </Sheet>
     </div>
   );
 }

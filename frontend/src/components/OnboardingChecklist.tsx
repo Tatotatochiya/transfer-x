@@ -23,7 +23,7 @@ import type {
  * user id. Zero new backend endpoints.
  */
 
-interface Step {
+export interface Step {
   id: string;
   label: string;
   done: boolean;
@@ -48,10 +48,12 @@ function ChecklistShell({
   userId,
   title,
   steps,
+  onDismiss,
 }: {
   userId: string;
   title: string;
   steps: Step[];
+  onDismiss?: () => void;
 }) {
   const navigate = useNavigate();
   const dismissKey = `onboarding-dismissed-${userId}`;
@@ -74,6 +76,7 @@ function ChecklistShell({
       /* ignore */
     }
     setDismissed(true);
+    onDismiss?.();
   }
 
   function open(step: Step) {
@@ -136,31 +139,50 @@ function ChecklistShell({
 
 // ── Club (owner + staff, on the dashboard) ────────────────────────────────────
 
-function ClubChecklist({ userId }: { userId: string }) {
+export interface Onboarding {
+  userId: string;
+  title: string;
+  steps: Step[];
+  done: number;
+  /** Hides it for good, as the checklist's own Dismiss does. */
+  dismiss: () => void;
+}
+
+/**
+ * The club checklist's steps, for the checklist and for the Dashboard's
+ * "Finish setting up" row (feature_spec/club-dashboard §4.2). Null when
+ * there's nothing to show: not a club member, READONLY, all done, or dismissed.
+ */
+export function useOnboardingSteps(): Onboarding | null {
+  const { user, isClub, isSuperuser } = useAuth();
   const { role } = useClubCapabilities();
+  const userId = user?.id ?? "";
+  const onClub = !!user && isClub && !isSuperuser;
+  const isOwner = onClub && role === "OWNER";
+  const isScout = onClub && role === "SCOUT";
+  const dismissKey = `onboarding-dismissed-${userId}`;
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(dismissKey) === "1"; } catch { return false; }
+  });
 
   const { data: club } = useQuery<Club>({
     queryKey: ["clubs", "me"],
     queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
+    enabled: onClub,
     staleTime: 60_000,
   });
-
-  const isOwner = role === "OWNER";
-
   const { data: team } = useQuery<TeamResponse>({
     queryKey: ["clubs", "me", "staff"],
     queryFn: () => api.get<TeamResponse>("/clubs/me/staff").then((r) => r.data),
     enabled: isOwner,
     staleTime: 60_000,
   });
-
   const { data: verifications } = useQuery<VerificationRequest[]>({
     queryKey: ["verification", "mine"],
     queryFn: () => api.get<VerificationRequest[]>("/verification/requests/mine").then((r) => r.data),
     enabled: isOwner,
     staleTime: 60_000,
   });
-
   const { data: mySales } = useQuery<Paginated<Sale>>({
     queryKey: ["sales", { sellerClubId: club?.id, forOnboarding: true }],
     queryFn: () =>
@@ -170,7 +192,6 @@ function ClubChecklist({ userId }: { userId: string }) {
     enabled: isOwner && !!club?.id,
     staleTime: 60_000,
   });
-
   const { data: sentOffers } = useQuery<Paginated<Offer>>({
     queryKey: ["offers", "sent", { forOnboarding: true }],
     queryFn: () =>
@@ -178,19 +199,34 @@ function ClubChecklist({ userId }: { userId: string }) {
     enabled: isOwner,
     staleTime: 60_000,
   });
-
   const { data: squadCheck } = useQuery<{ total: number; needs_attention: number; confirmed: number }>({
     queryKey: ["clubs", "me", "squad-check"],
     queryFn: () => api.get("/clubs/me/squad-check").then((r) => r.data),
     enabled: isOwner,
     staleTime: 60_000,
   });
+  const { data: shortlists } = useQuery<{ id: string }[]>({
+    queryKey: ["scouting", "shortlists"],
+    queryFn: () => api.get<{ id: string }[]>("/scouting/shortlists").then((r) => r.data),
+    enabled: isScout,
+    staleTime: 60_000,
+  });
 
-  if (!club || !role) return null;
+  const dismiss = () => {
+    try { localStorage.setItem(dismissKey, "1"); } catch { /* ignore */ }
+    setDismissed(true);
+  };
+  const built = (title: string, steps: Step[]): Onboarding | null => {
+    const done = steps.filter((s) => s.done).length;
+    if (dismissed || steps.length === 0 || done === steps.length) return null;
+    return { userId, title, steps, done, dismiss };
+  };
+
+  if (!onClub || !club || !role) return null;
 
   if (isOwner) {
     if (!team || !verifications) return null;
-    const steps: Step[] = [
+    return built("Get your club set up", [
       {
         id: "club-profile",
         label: "Complete your club profile (crest and country)",
@@ -229,17 +265,30 @@ function ClubChecklist({ userId }: { userId: string }) {
         done: (mySales?.total ?? 0) > 0 || (sentOffers?.total ?? 0) > 0,
         to: "/players/market",
       },
-    ];
-    return <ChecklistShell userId={userId} title="Get your club set up" steps={steps} />;
+    ]);
   }
 
-  // Staff personas — role-appropriate; READONLY gets no checklist at all
-  // (no empty checklist for a role with nothing to do).
-  if (role === "SCOUT") {
-    return <ScoutChecklist userId={userId} />;
+  // Staff personas: role-appropriate; READONLY gets no checklist at all.
+  if (isScout) {
+    if (!shortlists) return null;
+    return built("Start scouting", [
+      {
+        id: "scout-shortlist",
+        label: "Create your first shortlist",
+        done: shortlists.length > 0,
+        to: "/scouting/shortlists",
+      },
+      {
+        id: "scout-market",
+        label: "Browse the player market",
+        done: readFlag(userId, "scout-market"),
+        to: "/players/market",
+        visitFlag: true,
+      },
+    ]);
   }
   if (role === "MANAGER" || role === "SPORTING_DIRECTOR") {
-    const steps: Step[] = [
+    return built("Find your way around", [
       {
         id: "staff-market",
         label: "Tour the player market",
@@ -254,35 +303,19 @@ function ClubChecklist({ userId }: { userId: string }) {
         to: "/board",
         visitFlag: true,
       },
-    ];
-    return <ChecklistShell userId={userId} title="Find your way around" steps={steps} />;
+    ]);
   }
   return null;
 }
 
-function ScoutChecklist({ userId }: { userId: string }) {
-  const { data: shortlists } = useQuery<{ id: string }[]>({
-    queryKey: ["scouting", "shortlists"],
-    queryFn: () => api.get<{ id: string }[]>("/scouting/shortlists").then((r) => r.data),
-    staleTime: 60_000,
-  });
-  if (!shortlists) return null;
-  const steps: Step[] = [
-    {
-      id: "scout-shortlist",
-      label: "Create your first shortlist",
-      done: shortlists.length > 0,
-      to: "/scouting/shortlists",
-    },
-    {
-      id: "scout-market",
-      label: "Browse the player market",
-      done: readFlag(userId, "scout-market"),
-      to: "/players/market",
-      visitFlag: true,
-    },
-  ];
-  return <ChecklistShell userId={userId} title="Start scouting" steps={steps} />;
+/** The club checklist as a card; the Dashboard shows it in a sheet. */
+export function ClubChecklist({ onDismiss }: { onDismiss?: () => void } = {}) {
+  const ob = useOnboardingSteps();
+  if (!ob) return null;
+  return (
+    <ChecklistShell userId={ob.userId} title={ob.title} steps={ob.steps}
+      onDismiss={() => { ob.dismiss(); onDismiss?.(); }} />
+  );
 }
 
 // ── Agent ─────────────────────────────────────────────────────────────────────
@@ -377,7 +410,7 @@ function PlayerChecklist({ userId }: { userId: string }) {
 export default function OnboardingChecklist() {
   const { user, isClub, isAgent, isPlayer, isSuperuser } = useAuth();
   if (!user || isSuperuser) return null;
-  if (isClub) return <ClubChecklist userId={user.id} />;
+  if (isClub) return <ClubChecklist />;
   if (isAgent) return <AgentChecklist userId={user.id} />;
   if (isPlayer) return <PlayerChecklist userId={user.id} />;
   return null;

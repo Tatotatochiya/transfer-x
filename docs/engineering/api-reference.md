@@ -34,7 +34,7 @@ Verified against the router mounts in `backend/app/main.py` on 2026-11-10.
 |---|---|
 | `/auth` | Sign-in, refresh, sessions and devices, invitations (`/auth/invitations/{token}`), password reset, account data |
 | `/users/me/preferences` | Lite and display preferences (`lite`) |
-| `/clubs` | Clubs, `/clubs/me/*` (membership, staff, finance, commitments, contract cliff, squad check, dashboard, approvals and the approval policy) |
+| `/clubs` | Clubs, `/clubs/me/*` (membership, staff, finance, commitments, contract cliff, squad check, dashboard, approvals and the approval policy). `GET`/`PATCH /clubs/me` carry `brand_primary` and `brand_secondary` (`#RRGGBB`, upper case; `""` clears one; `CLUB_ADMIN` to set). They're never on the public club views |
 | `/players` | Players, the market, contracts, ledger, invitations; batch stats and form under `/players/stats/batch` and `/players/form/batch` |
 | `/sales` | Listings (open to offers; auctions and bids retired, product ADR 0011) |
 | `/offers` | Offers, counters, messages, the order book |
