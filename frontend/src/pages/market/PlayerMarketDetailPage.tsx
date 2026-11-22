@@ -38,11 +38,12 @@ import { PlayerFitCard } from "../../components/ai/PlayerFitCard";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import FallbackImage from "../../components/ui/FallbackImage";
+import { isOpenDeal } from "../../lib/openDeal";
 
 // ── Deal banner ───────────────────────────────────────────────────────────────
 
 function DealBanner({ deal }: { deal: ActiveDealStub }) {
-  if (deal.status === "IN_PROGRESS") {
+  if (isOpenDeal(deal)) {
     return (
       <div className="mb-4 flex items-start gap-3 rounded-xl bg-warning-bg px-5 py-4 ring-1 ring-warning-ring">
         <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-warning-bg text-warning-text font-bold text-caption">!</div>
@@ -696,7 +697,7 @@ export default function PlayerMarketDetailPage() {
 
       {/* A finished transfer, or one in progress the viewer isn't on (the
           two clubs on it get the sentence above and a link instead). */}
-      {player.active_deal && (player.active_deal.status !== "IN_PROGRESS" || situation.dealBanner) && (
+      {player.active_deal && (!isOpenDeal(player.active_deal) || situation.dealBanner) && (
         <DealBanner deal={player.active_deal} />
       )}
 

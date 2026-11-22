@@ -88,9 +88,12 @@ export function useWebSocket(): void {
             queryClient.invalidateQueries({ queryKey: ["offers", "sent"] });
             queryClient.invalidateQueries({ queryKey: ["offers", "competition"] });
             queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+            // Who holds the move changed: the reminder line follows it (MoveReminder).
+            queryClient.invalidateQueries({ queryKey: ["reminders", "offer", msg.id] });
             break;
 
           case "DEAL_UPDATED":
+            queryClient.invalidateQueries({ queryKey: ["reminders", "deal", msg.id] });
             queryClient.invalidateQueries({ queryKey: ["deals", msg.id] });
             queryClient.invalidateQueries({ queryKey: ["deals"] });
             queryClient.invalidateQueries({ queryKey: ["dashboard"] });

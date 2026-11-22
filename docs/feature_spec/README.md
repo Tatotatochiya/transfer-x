@@ -33,6 +33,7 @@ Statuses verified against the code and `CHANGELOG.md` on 2026-10-11. Once a spec
 | Spec | Status |
 |---|---|
 | [`phased-plan-2026-q4/`](./phased-plan-2026-q4/README.md): the current plan, Phase 0 to Phase 5, and the decisions needed. [Phase 0 runbook](./phased-plan-2026-q4/phase-0-runbook.md) for the real-phone test | Active: Phases 0, 1 and 3 done (except the phone test and two-factor sign-in); 2, 4, 5 not started |
+| [`leagues-and-club-teams/`](./leagues-and-club-teams/README.md): the Championship, League One and League Two (Phase A); a club as an organisation with teams (B); women's teams (C); with the business decisions they need | Draft: decisions D1 to D6 needed; nothing built |
 | [`ai-analyst/`](./ai-analyst/README.md): Ask TransferX as an analyst: read-only, club-scoped tools, tables, charts, Excel, "Ask about this" | Phases A and B built; Phase C not started |
 | [`valuation/`](./valuation/README.md): the fair-value model ([`model.md`](./valuation/model.md)), market data and the last-fee anchor, the `market-v3` plan and log | `market-v2` shipped 2026-10-07, calibrated 2026-10-17; `market-v3` built 2026-11-10 and switched off until its production backtest is reviewed |
 | [`scheduled-data-refresh.md`](./scheduled-data-refresh.md): twice-daily API-Football refresh in the `stats-worker`, Admin Jobs and Errors, request health, Slack | Live 2026-10-11; Slack webhook pending |
@@ -47,6 +48,7 @@ Statuses verified against the code and `CHANGELOG.md` on 2026-10-11. Once a spec
 | [`move-reminders/`](./move-reminders/README.md): chase whoever holds the move on an offer, deal or enquiry; escalate after two ignored reminders or a week; automatic reminders at 3 and 7 days | 2026-11-12 |
 | [`type-and-colour/`](./type-and-colour/README.md): seven text roles with a 13px floor, one meaning per colour, one compact money format, and the guard test | 2026-11-11 |
 | [`player-actions/`](./player-actions/README.md): one blue button, the top bar as navigation and the player page's actions by situation | 2026-11-10 |
+| [`transfers-board-mobile/`](./transfers-board-mobile/README.md): the Transfers board as a list grouped by whose move it is below 1280px (stage bars, stage chips, a ⋯ menu), a roomier board from 1280px (empty columns collapse, a "Waiting on you" strip); the name banner on the Dashboard only | 2026-11-14 |
 | [`browse-players-focus/`](./browse-players-focus/README.md): Browse Players, players first (search, toolbar, chips, filters sheet, phone rows), plus server sort, image fallbacks and the grid fix | 2026-11-09 |
 | [`offer-room-focus/`](./offer-room-focus/README.md): the offer page, answer first (status card, counter sheet, where it stands, Raise your offer) | 2026-11-09 |
 | [`deal-room-focus/`](./deal-room-focus/README.md): the deal room, answer first (header, status card, progress, sections) | 2026-11-08 |

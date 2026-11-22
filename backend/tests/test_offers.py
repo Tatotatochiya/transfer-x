@@ -972,6 +972,39 @@ async def test_seller_cannot_identify_an_anonymous_buyer(
 
 
 @pytest.mark.asyncio
+async def test_the_offer_carries_both_crests_but_never_an_anonymous_buyers(
+    client: AsyncClient, buyer: dict, seller: dict, db
+):
+    """The offer page shows each club's crest beside its name. It had none:
+    the offer's club summary left `crest_url` out."""
+    import uuid
+
+    from app.clubs.models import Club
+
+    await _give_budget(db)
+    buy_headers, sel_headers = _auth_headers(buyer), _auth_headers(seller)
+    player = await _create_player(client, sel_headers)
+    seller_club_id = await _get_seller_club_id(client, sel_headers)
+    buyer_club_id = (await client.get("/clubs/me", headers=buy_headers)).json()["id"]
+    buyer_crest, seller_crest = "https://crests.test/buyer.png", "https://crests.test/seller.png"
+    (await db.get(Club, uuid.UUID(buyer_club_id))).crest_url = buyer_crest
+    (await db.get(Club, uuid.UUID(seller_club_id))).crest_url = seller_crest
+    await db.commit()
+
+    resp = await client.post("/offers", headers=buy_headers, json={
+        "player_id": player["id"], "to_club_id": seller_club_id, "fee_amount": 5_000_000})
+    assert resp.status_code == 201, resp.text
+    seen = (await client.get(f"/offers/{resp.json()['id']}", headers=sel_headers)).json()
+    assert (seen["from_club"]["crest_url"], seen["to_club"]["crest_url"]) == (buyer_crest, seller_crest)
+
+    await client.post(f"/offers/{resp.json()['id']}/withdraw", headers=buy_headers)
+    anon = await _make_anonymous_offer(client, buy_headers, sel_headers, player["id"], seller_club_id)
+    seen = (await client.get(f"/offers/{anon['id']}", headers=sel_headers)).json()
+    assert buyer_crest not in json.dumps(seen), "an anonymous buyer's crest would identify them"
+    assert seen["to_club"]["crest_url"] == seller_crest
+
+
+@pytest.mark.asyncio
 async def test_anonymous_buyer_still_sees_their_own_identity(
     client: AsyncClient, buyer: dict, seller: dict, db
 ):

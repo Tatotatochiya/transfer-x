@@ -94,6 +94,16 @@ class Settings(BaseSettings):
         # comma-separated: https://a.com,https://b.com
         return [origin.strip() for origin in v.split(",") if origin.strip()]
 
+    # How many proxies in front of the app append to X-Forwarded-For. The
+    # client's address is the entry that many places from the right; anything
+    # further left was sent by the client and can be forged. Railway's edge is
+    # one hop, so it defaults to 1 there and to 0 (the socket address) elsewhere.
+    trusted_proxy_hops: int = 1 if os.environ.get("RAILWAY_ENVIRONMENT") else 0
+
+    # The longest contract personal terms may propose. FIFA's rules cap a
+    # professional contract at five years; a national rule may differ.
+    max_contract_years: int = 5
+
     # Vendor / API-Sports
     apisports_key: str | None = None
     api_football_base_url: str = "https://v3.football.api-sports.io"

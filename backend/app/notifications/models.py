@@ -68,6 +68,9 @@ class NotificationType(str, enum.Enum):
     # were ignored or it has waited a week (docs/feature_spec/move-reminders).
     MOVE_REMINDER = "MOVE_REMINDER"
     MOVE_ESCALATED = "MOVE_ESCALATED"
+    # An escalation, told to someone who can help but isn't holding it up
+    # (an agent's player, the other club): informed, not on the hook.
+    MOVE_STALLED = "MOVE_STALLED"
 
 
 class Notification(Base):

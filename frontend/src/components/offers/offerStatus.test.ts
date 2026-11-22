@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Offer, OfferEvent, OrderBook } from "../../types/api";
 import type { LiteOfferCard } from "../../hooks/useLite";
-import { buyerRanking, deadlineText, getOfferStatus, type OfferViewer } from "./offerStatus";
+import { buyerRanking, deadlineText, getOfferStatus, sellerRanking, type OfferViewer } from "./offerStatus";
 
 const BUYER = "buyer-club";
 const SELLER = "seller-club";
 const NOW = new Date("2026-11-09T10:00:00");
 
-const ev = (event_type: OfferEvent["event_type"], actor: string, payload: Record<string, unknown> = {}): OfferEvent =>
+const ev = (event_type: OfferEvent["event_type"], actor: string | null, payload: Record<string, unknown> = {}): OfferEvent =>
   ({ id: `${event_type}-${Math.random()}`, offer_id: "o", event_type, actor_club_id: actor, payload, created_at: "2026-11-08T09:00:00Z" });
 
 function offer(over: Partial<Offer> = {}): Offer {
@@ -168,11 +168,38 @@ describe("getOfferStatus: waiting", () => {
 
 describe("getOfferStatus: closed", () => {
   it("rejected by me, by them, and for a non-party", () => {
-    const o = offer({ status: "REJECTED", last_actor_club_id: SELLER });
+    // Rejecting isn't a move: the last actor is still the buyer who bid.
+    const o = offer({ status: "REJECTED", last_actor_club_id: BUYER,
+      events: [ev("SENT", BUYER), ev("REJECTED", SELLER)] });
     expect(getOfferStatus(o, seller()).headline).toBe("You rejected Meridian FC's £4.2M offer");
     expect(getOfferStatus(o, buyer()).headline).toBe("Ashfield United rejected your £4.2M offer");
     expect(getOfferStatus(o, { ...buyer(), side: null, myClubId: "x" }).headline).toBe("This offer was rejected");
     expect(getOfferStatus(o, seller()).tone).toBe("closed");
+  });
+
+  it("a buyer turning down the seller's counter reads as the buyer's rejection", () => {
+    const o = offer({ status: "REJECTED", last_actor_club_id: SELLER,
+      events: [ev("SENT", BUYER), ev("COUNTERED", SELLER), ev("REJECTED", BUYER)] });
+    expect(getOfferStatus(o, buyer()).headline).toBe("You rejected Ashfield United's £4.2M offer");
+    expect(getOfferStatus(o, seller()).headline).toBe("Meridian FC rejected your £4.2M offer");
+  });
+
+  it("a rival's offer turned down when he signed elsewhere was the seller's doing", () => {
+    const o = offer({ status: "REJECTED", last_actor_club_id: BUYER,
+      events: [ev("SENT", BUYER), ev("REJECTED", null, { reason: "player_signed_elsewhere" })] });
+    expect(getOfferStatus(o, buyer()).headline).toBe("Ashfield United rejected your £4.2M offer");
+  });
+
+  it("an anonymous buyer's rejection, its id masked from the seller, is still theirs", () => {
+    const o = offer({ status: "REJECTED", last_actor_club_id: SELLER,
+      events: [ev("SENT", null), ev("COUNTERED", SELLER), ev("REJECTED", null)] });
+    expect(getOfferStatus(o, seller()).headline).toBe("Meridian FC rejected your £4.2M offer");
+  });
+
+  it("without events, the side that didn't make the last move rejected", () => {
+    const o = offer({ status: "REJECTED", last_actor_club_id: BUYER, events: [] });
+    expect(getOfferStatus(o, seller()).headline).toBe("You rejected Meridian FC's £4.2M offer");
+    expect(getOfferStatus(o, buyer()).headline).toBe("Ashfield United rejected your £4.2M offer");
   });
 
   it("withdrawn, for both sides", () => {
@@ -243,3 +270,23 @@ describe("buyerRanking", () => {
   });
 });
 
+
+describe("sellerRanking", () => {
+  const entry = (id: string, rank: number, fee: number, name: string) =>
+    ({ id, rank, fee_amount: fee, club: { id: name, name, crest_url: null }, kind: "offer", wage_weekly: null,
+      status: "SENT", is_countered: false, is_active: true, last_action_at: "2026-11-14T10:00:00Z" });
+  const book = (entries: ReturnType<typeof entry>[]): OrderBook =>
+    ({ role: "seller", active_count: entries.length, entries, summary: "", tiers: [], your_rank: null, is_leading: false, your_entry: null } as unknown as OrderBook);
+  const two = book([entry("leeds", 1, 19_000_000, "Leeds"), entry("bou", 2, 16_500_000, "Bournemouth")]);
+
+  it("says whether this offer is the best, and by how much the best beats it", () => {
+    expect(sellerRanking(two, "leeds")).toEqual({ short: "Best of 2", sentence: "It's the best of 2 offers." });
+    expect(sellerRanking(two, "bou")).toEqual({ short: "2nd of 2", sentence: "Leeds have offered £2.5M more (£19M)." });
+    expect(sellerRanking(book([entry("only", 1, 5_000_000, "Leeds")]), "only")?.short).toBe("Only offer");
+  });
+
+  it("puts the sentence in the seller's your-move card", () => {
+    const v = getOfferStatus(offer(), { ...seller(), standing: sellerRanking(two, "bou") });
+    expect(v.body).toContain("Leeds have offered £2.5M more (£19M).");
+  });
+});

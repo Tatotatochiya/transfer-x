@@ -8,6 +8,7 @@ import { useClubCapabilities } from "../../hooks/useClubCapabilities";
 import { useDealActions } from "../../hooks/useDealActions";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import DealStaffTools from "../../components/admin/DealStaffTools";
+import DemoDealControls from "../../components/demo/DemoDealControls";
 import AgentNegotiationWorkspace from "../../components/deals/AgentNegotiationWorkspace";
 import AgreedOfferHistory from "../../components/deals/AgreedOfferHistory";
 import CollapseDealDialog from "../../components/deals/CollapseDealDialog";
@@ -252,8 +253,9 @@ export default function DealDetailPage() {
         <DealStatusCard
           view={view} deal={deal} viewerSide={isAgent ? null : viewerSide} actions={actions}
           onOpenMessages={openMessages} onShowSchedule={showSchedule} onRecordMedical={() => setMedicalOpen(true)}
-          reminder={view.tone === "wait" && (isParty || isAgent) ? <MoveReminder subjectType="deal" subjectId={deal.id} /> : undefined}
+          reminder={(view.tone === "wait" || view.tone === "you") && (isParty || isAgent) ? <MoveReminder subjectType="deal" subjectId={deal.id} /> : undefined}
         />
+        <DemoDealControls dealId={deal.id} waiting={view.tone === "wait" && isParty} waitingOn={view.overline} />
       </div>
       <div className="mt-3">
         <DealProgress deal={deal} negotiation={negotiation} />

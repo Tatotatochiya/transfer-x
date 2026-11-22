@@ -142,3 +142,12 @@ describe("playerSituation: extras", () => {
   });
 });
 
+
+describe("playerSituation: a confirmed deal waiting to complete", () => {
+  it("still counts: his club gets the deal, not a listing", () => {
+    const confirmed = { ...deal("arsenal", ME), status: "PENDING_COMPLETION", stage: "CONFIRMED" } as ActiveDealStub;
+    const s = playerSituation(input({ isMyPlayer: true, canList: true, listingsKnown: true, activeDeal: confirmed }));
+    expect(s.primary).toMatchObject({ key: "view-deal", label: "View the deal", to: "/deals/d1" });
+    expect(s.row).toBe(6);
+  });
+});

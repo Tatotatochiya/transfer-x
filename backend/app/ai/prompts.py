@@ -152,7 +152,9 @@ Advise the viewer on their next move. Return JSON:
 - "suggested_terms": object or null. Only when recommending "counter": the terms to propose, using only these
   keys, each a number or null for unchanged: "fee_amount", "wage_weekly", "contract_years", "sell_on_pct"
   (a fraction, 0.1 = 10%), "loan_fee", "wage_split_pct" (fraction the borrowing club pays), "option_to_buy".
-  Anchor every figure to the facts (current terms, model range, guide price, budget).
+  Anchor every figure to the facts (current terms, model range, guide price, budget). When the facts give a
+  "suggested_counter_fee", that is the fee to propose ("fee_amount"), and the reasons should explain it; do not
+  name a different fee.
 - "reasons": list of 2-4 short strings
 - "watch_outs": list of 0-3 short strings
 """

@@ -33,8 +33,8 @@ A mandate is the formal relationship between an agent and a player — it establ
 
 **What it authorises**
 - **Deals start with the agent.** A deal for a mandated player starts at `AGENT_NEGOTIATION`, and the agent is invited into the deal room.
-- **Commission.** The agent negotiates commission with the buying club.
-- **Personal terms.** The agent proposes the player's terms, and can answer them for the player whether or not the player has an account ([ADR 0007](../decisions/0007-players-join-by-invitation-agents-can-answer.md)).
+- **Commission.** The agent negotiates commission with the buying club: proposals and counters until one side accepts or the club walks away.
+- **Personal terms.** The agent proposes the player's terms, which the buying club accepts, counters or declines; he answers the club's terms for the player whether or not the player has an account ([ADR 0007](../decisions/0007-players-join-by-invitation-agents-can-answer.md), [ADR 0012](../decisions/0012-commission-and-personal-terms-are-negotiated.md)).
 - **Free agents.** The agent can invite a free-agent client to TransferX.
 - **Alerts.** The agent gets client alerts (contract expiry, valuation change, club interest) every six hours.
 
@@ -46,7 +46,7 @@ When a deal reaches the `AGENT_NEGOTIATION` stage (see [`transfer-lifecycle.md`]
 
 As of [ADR 0002](../decisions/0002-single-capture-point-for-personal-terms.md), this stage no longer also negotiates personal terms — those are captured once, at `PERSONAL_TERMS`, whether or not an agent is involved. The agent still runs that step too when mandated (proposing terms via `set_personal_terms`), it's just a separate stage rather than a parallel track here.
 
-The club must agree before the deal can advance; declining collapses the deal.
+The club accepts, **counters** (a percentage and who pays, with a note) or declines. A counter is the agent's to accept or answer with a new proposal; every round is kept and shown on the deal card. The commission must be agreed before the deal can advance; declining, which is confirmed first, collapses the deal ([ADR 0012](../decisions/0012-commission-and-personal-terms-are-negotiated.md)).
 
 The agent and the buying club exchange proposals and messages in the deal room's negotiation panel (`/negotiations`). Each side sees its own and the other's commission terms. The player doesn't see commission. Agents start on their **Pipeline** page, which lists every client deal waiting on them.
 

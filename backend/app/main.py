@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.common import jobs as _jobs  # noqa: F401 — registers SchedulerJobRun
+from app.world import models as _world_models  # noqa: F401 — registers WorldTeam before deals/service.py configures the mappers
 from app.admin import router as admin_router
 from app.fx import router as fx_router
 from app.ai import router as ai_router

@@ -167,7 +167,7 @@ async def sync_team(
 async def sync_player(
     player_id: uuid.UUID,
     body: SyncPlayerRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ):
     """Sync stats for one player. Requires player to have vendor_id set."""

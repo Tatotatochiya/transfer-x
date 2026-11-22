@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.agents.models import AgreementStatus, CommissionPayer, NegotiationStatus  # noqa: F401 (re-exported)
 from app.common.schemas import WhoseMove
+from app.config import settings
 from app.deals.models import ClauseStatus, ClauseType, DealStage, DealStatus, DealType, MedicalStatus
 
 
@@ -165,6 +166,9 @@ class PersonalTermsResponse(BaseModel):
     signing_bonus: Decimal | None = None
     length_years: int | None = None
     player_consent: AgreementStatus
+    # Whose terms these are: "BUYER" (the buying club's) or "PLAYER" (his
+    # side's: the player or his agent). The other side answers (ADR 0012).
+    proposed_by: str = "BUYER"
     player_has_account: bool
     agreed_at: datetime | None = None
     created_at: datetime
@@ -179,9 +183,20 @@ class PersonalTermsResponse(BaseModel):
 
 
 class SetPersonalTermsRequest(BaseModel):
-    wage_weekly: Decimal | None = None
-    signing_bonus: Decimal | None = None
-    length_years: int | None = None
+    # A wage below the offer's releases the buyer's committed wage, so a zero
+    # or negative one would free budget for nothing (review item 15).
+    wage_weekly: Decimal | None = Field(default=None, gt=0)
+    signing_bonus: Decimal | None = Field(default=None, ge=0)
+    length_years: int | None = Field(default=None, ge=1, le=settings.max_contract_years)
+    # A line to the other side with a proposal or counter, shown in the history.
+    note: str | None = Field(default=None, max_length=200)
+
+
+class TermsRespondRequest(BaseModel):
+    """The buying club's answer to the player side's terms."""
+    agreement: AgreementStatus
+    # On a decline, which ends the transfer: shown to the other side.
+    reason: str | None = Field(default=None, max_length=500)
 
 
 class DealAgentSummary(BaseModel):
@@ -206,6 +221,8 @@ class AgentNegotiationResponse(BaseModel):
     commission_payer: CommissionPayer | None = None
     additional_conditions: str | None = None
     club_agreement: AgreementStatus
+    # Whose terms are on the table: "AGENT" or "BUYER" (a counter). ADR 0012.
+    proposed_by: str = "AGENT"
     created_at: datetime
     agreed_at: datetime | None = None
     model_config = {"from_attributes": True}
@@ -216,10 +233,31 @@ class UpdateNegotiationTermsRequest(BaseModel):
     commission_amount: Decimal | None = None
     commission_payer: CommissionPayer | None = None
     additional_conditions: str | None = None
+    note: str | None = Field(default=None, max_length=200)
 
 
 class NegotiationRespondRequest(BaseModel):
     agreement: AgreementStatus
+    # On a decline, which ends the transfer: shown to the other side.
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class CommissionCounterRequest(BaseModel):
+    """The buying club's counter to the agent's commission."""
+    commission_pct: Decimal = Field(ge=0, lt=1)
+    commission_payer: CommissionPayer
+    note: str | None = Field(default=None, max_length=200)
+
+
+class TermProposalResponse(BaseModel):
+    """One round of a negotiation (ADR 0012). `terms` holds money as strings."""
+    id: uuid.UUID
+    kind: str
+    side: str
+    terms: dict
+    note: str | None = None
+    created_at: datetime
+    model_config = {"from_attributes": True}
 
 
 class PlayerConsentRequest(BaseModel):
@@ -227,6 +265,8 @@ class PlayerConsentRequest(BaseModel):
     # Required when the buying club records the player's agreement: the signed
     # terms, uploaded to the deal room first.
     evidence_attachment_id: uuid.UUID | None = None
+    # On a decline, which ends the transfer: shown to the other side.
+    reason: str | None = Field(default=None, max_length=500)
 
 
 # ── Update deal request (TRA-56) ──────────────────────────────────────────────

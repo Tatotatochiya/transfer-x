@@ -443,9 +443,9 @@ export interface Player {
 
 export interface ActiveDealStub {
   id: string;
-  // Any deal status. The player endpoint only ever returns IN_PROGRESS or
-  // COMPLETED, but the offer embed deliberately includes COLLAPSED — that is
-  // the whole point of it.
+  // Any deal status. The player endpoint returns an open deal (IN_PROGRESS,
+  // or PENDING_COMPLETION once confirmed) or a recent COMPLETED one; the offer
+  // embed deliberately includes COLLAPSED — that is the whole point of it.
   status: DealStatus;
   stage: string | null;
   buyer_club: ClubMinimal | null;
@@ -754,6 +754,8 @@ export interface PersonalTerms {
   signing_bonus: number | null;
   length_years: number | null;
   player_consent: AgreementStatus;
+  /** Whose terms these are: the buying club's, or the player side's (his agent or himself). The other side answers. */
+  proposed_by: "BUYER" | "PLAYER";
   player_has_account: boolean;
   agreed_at: string | null;
   created_at: string;
@@ -794,8 +796,24 @@ export interface AgentNegotiation {
   commission_payer: CommissionPayer | null;
   additional_conditions: string | null;
   club_agreement: AgreementStatus;
+  /** Whose terms are on the table: the agent's, or the buying club's counter (ADR 0012). */
+  proposed_by: "AGENT" | "BUYER";
   created_at: string;
   agreed_at: string | null;
+}
+
+/** One round of a deal's commission or personal-terms negotiation (ADR 0012). Money as strings. */
+export interface TermProposal {
+  id: string;
+  kind: "COMMISSION" | "PERSONAL_TERMS";
+  side: "AGENT" | "BUYER" | "PLAYER";
+  terms: {
+    commission_pct?: string | null; commission_amount?: string | null; commission_payer?: string | null;
+    additional_conditions?: string | null;
+    wage_weekly?: string | null; signing_bonus?: string | null; length_years?: number | null;
+  };
+  note: string | null;
+  created_at: string;
 }
 
 // ── TRA-81: deal room ──────────────────────────────────────────────────────────
@@ -907,6 +925,8 @@ export interface Deal {
   commission_payer: CommissionPayer | null;
   commission_agent_id: string | null;
   // TRA-60
+  /** Whose move it is for your club, from the server (compute_deal_whose_move). */
+  whose_move?: "your" | "their" | "neither";
   personal_terms: PersonalTerms | null;
   // TRA-61
   medical_check: MedicalCheck | null;

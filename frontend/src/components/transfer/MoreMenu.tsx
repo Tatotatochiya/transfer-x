@@ -13,6 +13,8 @@ export interface MoreMenuItem {
   dividerBefore?: boolean;
   /** Set on every item to make a single-choice menu (menuitemradio). */
   checked?: boolean;
+  /** Something you can create (the board's "+ New listing"): accent text. */
+  accent?: boolean;
 }
 
 const TRIGGER = "min-h-11 rounded-lg bg-surface px-3.5 text-body font-semibold text-text-secondary ring-1 ring-inset ring-input-border hover:text-text lg:min-h-10";
@@ -31,8 +33,11 @@ export default function MoreMenu({
   menuLabel = "More actions",
   triggerClassName = TRIGGER,
   align = "right",
+  triggerAriaLabel,
 }: {
   items: MoreMenuItem[];
+  /** The trigger's accessible name, when its label is only an icon. */
+  triggerAriaLabel?: string;
   label?: ReactNode;
   menuLabel?: string;
   triggerClassName?: string;
@@ -100,6 +105,7 @@ export default function MoreMenu({
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={triggerAriaLabel}
         onClick={(e) => { focusFirst.current = e.detail === 0; setOpen((o) => !o); }}
         onKeyDown={onButtonKeyDown}
         className={triggerClassName}
@@ -118,7 +124,8 @@ export default function MoreMenu({
             <Fragment key={item.label}>
               {item.dividerBefore && i > 0 && <div role="separator" className="my-1 h-px bg-rule" />}
               {item.to ? (
-                <Link to={item.to} role="menuitem" tabIndex={-1} className={`${ITEM} ${item.danger ? "text-danger-text-alt" : ""}`}>
+                <Link to={item.to} role="menuitem" tabIndex={-1}
+                  className={item.accent ? ITEM.replace("text-text ", "font-semibold text-accent ") : `${ITEM} ${item.danger ? "text-danger-text-alt" : ""}`}>
                   {item.label}
                 </Link>
               ) : (

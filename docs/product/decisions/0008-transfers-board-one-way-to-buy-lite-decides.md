@@ -17,12 +17,12 @@ A club's transfers were spread over six pages: Listings, My Listings, Offers sen
 
    | Column | What's in it |
    |---|---|
-   | Talking | Open enquiries; the club's listed players with no offer yet |
+   | Listed | Open enquiries; the club's listed players with no offer yet |
    | Offers | Offers sent or received that are still open; auction bids |
    | Fee agreed | Deals at the agreement stage |
    | Personal terms | Deals at agent negotiation or personal terms |
    | Paperwork | Deals at paperwork or confirmed (signature), with the medical and registration |
-   | Done | Completed transfers |
+   | Completed | Completed transfers |
 
    Filter by Buying, Selling or Both. Collapsed deals, rejected, withdrawn or expired offers, and ended listings go in a Closed drawer, not a column.
 
@@ -46,3 +46,7 @@ The board now covers what the five list pages did:
 - "+ New listing" and "History" in its header.
 
 So the pages are gone. Their addresses redirect to the board: `/offers/received` and `/sales/mine` with Selling chosen, `/offers/sent` with Buying, and `/deals` and `/enquiries` with Both. The detail pages (an offer, a deal, an enquiry, a listing) are unchanged. The public Listings browse stays under "Find players".
+
+## Update, 2026-11-14: a list below 1280px
+
+Below 1280px the board shows as a list grouped by whose move it is (Waiting on you, In progress, Listed, Completed), with the same data and the board's columns as each row's stage, filterable by stage chips. Rows open the transfer's page. From 1280px it's the board, with empty columns collapsed and a "Waiting on you" strip ([spec](../../feature_spec/transfers-board-mobile/README.md)).

@@ -13,6 +13,7 @@ import { useOpenListings } from "../../hooks/useListing";
 import { formatCompactCurrency, getApiError } from "../../lib/utils";
 import { useListingAdvice } from "../../hooks/useAssistant";
 import Spinner from "../ui/Spinner";
+import { isOpenDeal } from "../../lib/openDeal";
 
 // What the club will consider. Transfer first: it is what a listing always
 // meant before loans could be listed.
@@ -98,7 +99,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
   function unavailable(p: PlayerDetail): string | null {
     if (listed.has(p.id)) return "already listed";
     if (loansIn.some((l) => l.player_id === p.id)) return "on loan here";
-    if (p.active_deal?.status === "IN_PROGRESS") return "transfer pending";
+    if (isOpenDeal(p.active_deal)) return "transfer pending";
     return null;
   }
 

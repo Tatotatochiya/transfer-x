@@ -45,18 +45,24 @@ When tier 1 is empty it's a single line, "Nothing is waiting on you", with no il
 
 ## "Whose move"
 
-Every row that represents a live negotiation shows **Your move**, **Their move** or **Neither**. A colour is never the only signal: each state has a text label.
+Every row that represents a live negotiation shows **Your move**, **Their move** or **Neither**. A colour is never the only signal: each state has a text label. **Your move** is red (needs you), **Their move** grey, turning amber "Stalled" after 3 days; never blue, which is only for what you can tap.
 
-The value is a `whose_move` field computed on the server, so the dashboard, the board, the lists, the sidebar counts and the daily digest all agree:
+The value is a `whose_move` field computed on the server, so the dashboard, the board, the lists, the sidebar counts and the daily digest all agree. The frontend reads it; it doesn't work it out again (except for offers listed without it, `lib/whoseMove.ts`):
 - `compute_offer_whose_move` (offers);
 - `compute_deal_whose_move` (deals);
 - `compute_sale_whose_move` (listings);
 - `enquiries.service.whose_move` (enquiries).
 
-**Deals in particular:**
+**Deals in particular** (2026-11-14, from whose terms are on the table, [ADR 0012](../product/decisions/0012-commission-and-personal-terms-are-negotiated.md)):
+- **Agent commission**, for the buying club: yours when the agent's proposal is waiting for you, or once it's agreed (move it on); theirs while the agent proposes or answers your counter. The selling club isn't part of it: neither.
+- **Personal terms**, for the buying club: yours to propose them when there's no agent, to answer the player side's terms, or to record the answer of a player with no account or agent; theirs while your terms are with the player or his agent. Once agreed, yours for both clubs (either moves it on). Otherwise neither for the selling club.
 - **Paperwork** is yours while any of your checklist steps are outstanding.
 - **Confirmed** is yours.
-- **Agent negotiation** is theirs, until the agent has been silent for 72 hours; then it's yours to chase.
+- **Agreement** is neither (either club may move it on, and neither is waited on). A stalled move is chased with a [reminder](../feature_spec/move-reminders/README.md), not by flipping whose move it is.
+
+## Ending a transfer
+
+Any answer that ends a transfer (declining the agent's commission, declining personal terms for the player or as the player, the buying club declining the player side's terms, or recording that the player declined) opens `EndTransferDialog` before anything is sent. It says the deal collapses and who is told, offers **Counter instead** where a counter is possible, and takes an optional reason that both sides see. On the status card a decline is the quiet third action, in red, under Accept and Counter. `src/test/endTransfer.test.ts` fails if a DECLINED answer is sent from a file that doesn't use the dialog ([ADR 0012](../product/decisions/0012-commission-and-personal-terms-are-negotiated.md)). Rejecting or withdrawing an offer, and collapsing a deal, have their own confirmations.
 
 ## Settled decisions
 

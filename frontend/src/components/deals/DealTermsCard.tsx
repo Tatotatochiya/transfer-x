@@ -135,7 +135,9 @@ export default function DealTermsCard({
             note={<>
               {years != null && <span>{years}-year contract</span>}
               {wageFromProposal && terms?.player_consent !== "AGREED" && (
-                <span className="block text-warning-text">Proposed · waiting for {P}</span>
+                <span className="block text-warning-text">
+                  Proposed · waiting for {terms?.proposed_by === "PLAYER" ? deal.buyer_club?.name ?? "the buying club" : P}
+                </span>
               )}
             </>}
           />
@@ -185,7 +187,7 @@ export default function DealTermsCard({
 
         {terms && (
           <Row
-            label="Player consent"
+            label="Terms agreed"
             value={terms.player_consent === "AGREED" ? <span className="text-success-text">Agreed</span>
               : terms.player_consent === "DECLINED" ? <span className="text-danger-text">Declined</span>
               : <span className="text-warning-text">Waiting</span>}

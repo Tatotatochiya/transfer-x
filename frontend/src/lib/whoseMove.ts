@@ -1,23 +1,13 @@
-import type { Deal, Offer } from "../types/api";
+import type { Offer } from "../types/api";
 
 export type WhoseMove = "your" | "their" | "neither";
 
 /**
- * Client-side "whose move" derivation — a stand-in for the backend
- * `whose_move` field (B1) proposed in docs/design-system/README.md,
- * which doesn't exist yet. Every rule here is the literal rule from that
- * doc; this is real logic against the real API shapes, not a placeholder.
- *
- * TODO(B1): once the backend field ships, every call site should read it
- * directly and this whole file can be deleted — that's the point of having
- * exactly one place this logic lives, per README.md's own instruction.
+ * "Whose move" labels, and the offer rule for offers listed without the
+ * server's field. Deals read `whose_move` from the server
+ * (compute_deal_whose_move), the one place that rule lives
+ * (docs/design-system/README.md, "Whose move").
  */
-
-const AGENT_SILENCE_HOURS = 72;
-
-function hoursSince(iso: string): number {
-  return (Date.now() - new Date(iso).getTime()) / 3_600_000;
-}
 
 const OFFER_TERMINAL_STATUSES = new Set(["ACCEPTED", "REJECTED", "WITHDRAWN", "EXPIRED"]);
 
@@ -26,65 +16,6 @@ const OFFER_TERMINAL_STATUSES = new Set(["ACCEPTED", "REJECTED", "WITHDRAWN", "E
 export function offerWhoseMove(offer: Offer, myClubId: string): WhoseMove {
   if (OFFER_TERMINAL_STATUSES.has(offer.status)) return "neither";
   return offer.last_actor_club_id === myClubId ? "their" : "your";
-}
-
-/** Deal at CONFIRMED (either participant can execute) → your move. Deal at
- * AGENT_NEGOTIATION with the agent silent >=72h → your move (chasing is an
- * action — the resolved DECISIONS.md default). PAPERWORK is the clubs' own
- * checklist → your move while your club has a step left, their move while
- * only theirs do. PERSONAL_TERMS waits on the player → neither. AGREEMENT
- * has no per-club "last actor" signal available on this shape → neither,
- * rather than guessing. Mirrors compute_deal_whose_move on the server. */
-export function dealWhoseMove(deal: Deal, myClubId: string): WhoseMove {
-  if (deal.status === "COMPLETED" || deal.status === "COLLAPSED") return "neither";
-
-  switch (deal.stage) {
-    case "CONFIRMED":
-      return "your";
-    case "AGENT_NEGOTIATION":
-      // No agent-response timestamp on this shape (list responses don't
-      // embed AgentNegotiation) — updated_at is the best available proxy
-      // for "how long has this state persisted".
-      return hoursSince(deal.updated_at) >= AGENT_SILENCE_HOURS ? "your" : "their";
-    case "PAPERWORK": {
-      const mySide = myClubId === deal.buyer_club_id ? "buyer" : myClubId === deal.seller_club_id ? "seller" : null;
-      const open = (deal.paperwork ?? []).filter((s) => !s.done);
-      if (open.some((s) => s.owner === mySide)) return "your";
-      return open.length > 0 ? "their" : "neither";
-    }
-    case "PERSONAL_TERMS":
-      return "neither";
-    default:
-      return "neither";
-  }
-}
-
-/** Human-readable reason to sit beside a deal's whose-move label on the
- * deals list (SCREENS.md: "You — signature", "Agent — 4 days idle"). Mirrors
- * dealWhoseMove's own stage/threshold logic exactly — kept as a second
- * function rather than a tuple return so existing dealWhoseMove call sites
- * (badges, filters) don't have to unpack a reason they don't use. */
-export function dealWhoseMoveReason(deal: Deal): string {
-  if (deal.status === "COMPLETED" || deal.status === "COLLAPSED") return "";
-
-  switch (deal.stage) {
-    case "CONFIRMED":
-      return "You — signature";
-    case "AGENT_NEGOTIATION": {
-      const days = Math.floor(hoursSince(deal.updated_at) / 24);
-      return hoursSince(deal.updated_at) >= AGENT_SILENCE_HOURS
-        ? `Agent — ${days} day${days === 1 ? "" : "s"} idle`
-        : "Agent — negotiating";
-    }
-    case "PERSONAL_TERMS":
-      return "Player — consent pending";
-    case "PAPERWORK": {
-      const left = (deal.paperwork ?? []).filter((s) => !s.done).length;
-      return `Clubs — paperwork, ${left} step${left === 1 ? "" : "s"} left`;
-    }
-    default:
-      return "Clubs — agreeing terms";
-  }
 }
 
 export const WHOSE_MOVE_LABEL: Record<WhoseMove, string> = {

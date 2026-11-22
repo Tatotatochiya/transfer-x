@@ -1049,22 +1049,22 @@ async def test_deal_whose_move_confirmed_is_your_move(client: AsyncClient, buyer
 
 
 @pytest.mark.asyncio
-async def test_deal_whose_move_agent_negotiation_uses_72h_proxy(client: AsyncClient, buyer: dict, seller: dict, db):
-    from app.deals.models import DealStage
-
+async def test_deal_whose_move_at_personal_terms_without_an_agent(client: AsyncClient, buyer: dict, seller: dict, db):
+    """No agent: the buying club proposes, the player answers if he has an
+    account, otherwise the club records his answer (its move)."""
     deal = await _create_deal_via_offer(client, buyer, seller, db)
+    buy_h, sel_h = _auth_headers(buyer), _auth_headers(seller)
+    await client.post(f"/deals/{deal['id']}/advance", headers=buy_h)
 
-    await _set_deal(
-        db, deal["id"], stage=DealStage.AGENT_NEGOTIATION, updated_at=datetime.now(timezone.utc)
-    )
-    fresh = await client.get(f"/deals/{deal['id']}", headers=_auth_headers(buyer))
-    assert fresh.json()["whose_move"] == "their"
+    async def move(h):
+        return (await client.get(f"/deals/{deal['id']}", headers=h)).json()["whose_move"]
 
-    await _set_deal(
-        db, deal["id"], updated_at=datetime.now(timezone.utc) - timedelta(hours=73)
-    )
-    stale = await client.get(f"/deals/{deal['id']}", headers=_auth_headers(buyer))
-    assert stale.json()["whose_move"] == "your"
+    assert (await move(buy_h), await move(sel_h)) == ("your", "neither")  # propose terms
+    await client.put(f"/deals/{deal['id']}/personal-terms", headers=buy_h,
+                     json={"wage_weekly": 50000, "signing_bonus": 0, "length_years": 4})
+    assert await move(buy_h) == "your"  # no account, no agent: the club records his answer
+    await _register_player_account(client, "wm-player@test.com", deal["player_id"])
+    assert await move(buy_h) == "their"  # he answers himself
 
 
 @pytest.mark.asyncio

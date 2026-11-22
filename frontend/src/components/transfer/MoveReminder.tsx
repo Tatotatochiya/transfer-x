@@ -6,6 +6,7 @@ import { formatDate, getApiError } from "../../lib/utils";
 import { useToast } from "../../context/ToastContext";
 import Button from "../ui/Button";
 import Modal from "../ui/Modal";
+import { ChasedBadge, SentBadge, StalledBadge, stalledDays } from "./ReminderBadges";
 
 export type ReminderSubject = "offer" | "deal" | "enquiry";
 
@@ -18,6 +19,8 @@ export interface ReminderState {
   would_escalate: boolean;
   preview: string | null;
   last: { at: string; by: string; escalated: boolean; note: string | null; by_you?: boolean } | null;
+  /** A reminder sent to the viewer: they hold the move. */
+  to_you?: { at: string; by: string; escalated: boolean; note: string | null } | null;
 }
 
 const NOTE_MAX = 200;
@@ -59,7 +62,8 @@ export default function MoveReminder({ subjectType, subjectId, lite = false, cla
     mutationFn: () => api.post<ReminderState>(`/reminders/${subjectType}/${subjectId}`, { note: note.trim() || null }).then((r) => r.data),
     onSuccess: (next) => {
       queryClient.setQueryData(key, next);
-      if (subjectType === "deal") queryClient.invalidateQueries({ queryKey: ["deals", subjectId, "audit-log"] });
+      // The timeline gains the reminder; in a demo, the house club may already have answered it.
+      queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "reminders" });
       addToast(`${st?.would_escalate ? "Escalated to" : "Reminder sent to"} ${st?.holder?.name ?? "them"}.`, "success");
       setOpen(false);
       setNote("");
@@ -67,6 +71,19 @@ export default function MoveReminder({ subjectType, subjectId, lite = false, cla
     onError: (err: unknown) => addToast(getApiError(err, "Could not send the reminder."), "error"),
   });
 
+  // Being chased: red, with who and when. No button: it's their move.
+  if (st?.to_you && st.reason === "It's your move.") {
+    const r = st.to_you;
+    return (
+      <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
+        <ChasedBadge escalated={r.escalated} />
+        <p className={`min-w-0 ${lite ? "text-lite-caption" : "text-small"} text-text-secondary`}>
+          {r.by} {r.escalated ? "escalated this to you" : "reminded you"} {when(r.at)}.
+          {r.note && <span className="text-text-muted"> “{r.note}”</span>}
+        </p>
+      </div>
+    );
+  }
   if (!st?.holder || (!st.can_send && !st.last) || st.reason === "It's your move.") return null;
 
   const last = st.last;
@@ -78,7 +95,10 @@ export default function MoveReminder({ subjectType, subjectId, lite = false, cla
 
   return (
     <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ${className}`}>
-      <div className={`min-w-0 ${text} text-text-secondary`}>
+      <div className={`flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 ${text} text-text-secondary`}>
+        {last
+          ? <SentBadge escalated={last.escalated} stalled={stalledDays(st.waiting_since) != null} />
+          : <StalledBadge since={st.waiting_since} />}
         {lastLine && <p>{lastLine}{last?.note && <span className="text-text-muted"> “{last.note}”</span>}</p>}
         {!st.can_send && st.next_allowed_at && st.reason && <p className="text-text-muted">{st.reason.replace(/^You reminded them [^.]*\. /, "")}</p>}
         {st.can_send && !lastLine && st.waiting_since && (
@@ -94,7 +114,10 @@ export default function MoveReminder({ subjectType, subjectId, lite = false, cla
       <Modal open={open} onClose={() => setOpen(false)} title={st.would_escalate ? `Escalate to ${st.holder.name}` : `Remind ${st.holder.name}`}>
         <div className="space-y-4 px-6 py-5">
           <div>
-            <p className="text-caption font-semibold text-text-secondary">They'll get, by notification, email and push</p>
+            <p className="text-caption font-semibold text-text-secondary">
+              {/* Escalations aren't emailed for now (move-reminders §6). */}
+              {st.would_escalate ? "They'll get, by notification and push" : "They'll get, by notification, email and push"}
+            </p>
             <p className="mt-1 rounded-lg bg-surface-inset px-3 py-2.5 text-body text-text">{st.preview}</p>
             {st.would_escalate && (
               <p className="mt-2 text-small text-text-secondary">

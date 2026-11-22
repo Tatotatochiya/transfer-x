@@ -29,13 +29,21 @@ from sqlalchemy import event, inspect, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ClauseElement
 
+# A run's own rows: the ones it inserted, and deals a tester adopted into it
+# (service.adopt_deal). Changes to either belong to the run, and the house
+# plays the other side of them.
+RUN_ROW_OPS = ("insert", "adopt")
+
 SKIP_TABLES = frozenset({
     "demo_runs", "demo_changes", "audit_events", "job_runs", "job_run_logs", "scheduler_job_runs",
     "error_issues", "error_events", "request_minutes", "analytics_events", "assistant_queries",
     "ai_suggestion_events", "vendor_sync_states", "vendor_sync_runs", "vendor_fetch_log",
     "refresh_tokens", "push_deliveries", "player_views", "player_search_views",
 })
-SKIP_COLUMNS = frozenset({("users", "last_active_at")})
+# Bookkeeping that later saves move on by themselves, so reset neither
+# restores nor checks them: a deal's updated_at is set by the database on
+# every save, and by a negotiation round (deals/service.record_round).
+SKIP_COLUMNS = frozenset({("users", "last_active_at"), ("deals", "updated_at")})
 
 ACTIVE_CACHE_SECONDS = 5
 _active = {"until": 0.0, "any": False}
@@ -131,7 +139,7 @@ def _run_inserting(conn, keys: list[tuple[str, str]]):
     for table, pks in by_table.items():
         row = conn.execute(
             select(DemoChange.run_id).join(DemoRun, DemoRun.id == DemoChange.run_id)
-            .where(DemoRun.status == "ACTIVE", DemoChange.op == "insert",
+            .where(DemoRun.status == "ACTIVE", DemoChange.op.in_(RUN_ROW_OPS),
                    DemoChange.table_name == table, DemoChange.pk.in_(pks)).limit(1)).first()
         if row is not None:
             return row[0]

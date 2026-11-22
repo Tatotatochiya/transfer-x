@@ -23,6 +23,9 @@ COOLDOWN = timedelta(hours=48)
 DEADLINE_SHOW_AFTER = timedelta(hours=2)
 DEADLINE_COOLDOWN = timedelta(hours=12)
 DEADLINE_WINDOW = timedelta(hours=72)
+# In a demo (app/demo) nothing waits a day: a reminder makes the house answer now.
+DEMO_SHOW_AFTER = timedelta(0)
+DEMO_COOLDOWN = timedelta(minutes=1)
 ESCALATE_AFTER = timedelta(days=7)
 ESCALATE_AFTER_IGNORED = 2
 AUTO_FIRST = timedelta(days=3)
@@ -239,10 +242,13 @@ async def holders(db: AsyncSession, s: Subject) -> list[Holder]:
         neg = await deals_service.get_agent_negotiation(db, d.id)
         agent_id = neg.agent_id if neg else d.commission_agent_id
         proposed = neg is not None and (neg.commission_pct is not None or neg.commission_amount is not None)
-        if agent_id and (not proposed or neg.club_agreement == AgreementStatus.DECLINED):
-            again = proposed and neg.club_agreement == AgreementStatus.DECLINED
+        if agent_id and not proposed:
             h = await _agent_holder(db, agent_id, "deal:AGENT_NEGOTIATION:propose-commission",
-                                    f"{'a new' if again else 'your'} commission proposal for {P}")
+                                    f"your commission proposal for {P}")
+            return [h] if h else []
+        if agent_id and neg.proposed_by == "BUYER" and neg.club_agreement == AgreementStatus.PENDING:
+            h = await _agent_holder(db, agent_id, "deal:AGENT_NEGOTIATION:answer-counter",
+                                    f"an answer to the commission counter for {P}")
             return [h] if h else []
         if proposed and neg.club_agreement == AgreementStatus.PENDING:
             return [await _club_holder(db, buyer, "deal:AGENT_NEGOTIATION:answer-commission",
@@ -263,6 +269,9 @@ async def holders(db: AsyncSession, s: Subject) -> list[Holder]:
             if seller is not None:
                 out.append(await _club_holder(db, seller, "deal:PERSONAL_TERMS:advance", f"moving {P}'s deal on to paperwork"))
             return out
+        if terms.player_consent == AgreementStatus.PENDING and terms.proposed_by == "PLAYER":
+            return [await _club_holder(db, buyer, "deal:PERSONAL_TERMS:answer-player",
+                                       f"an answer to {P}'s personal terms")]
         if terms.player_consent == AgreementStatus.PENDING:
             if terms.agent_id:
                 h = await _agent_holder(db, terms.agent_id, "deal:PERSONAL_TERMS:answer", f"an answer to {P}'s personal terms")
@@ -331,6 +340,15 @@ class State:
     would_escalate: bool
     last: MoveReminder | None
     preview: str | None
+    # The latest reminder sent to the viewer since the move last moved.
+    to_you: MoveReminder | None = None
+
+
+async def _in_demo(db: AsyncSession, s: Subject) -> bool:
+    from app.demo.service import open_demo_rows
+
+    table = {"offer": "offers", "deal": "deals", "enquiry": "enquiries"}[s.type]
+    return s.obj.id in await open_demo_rows(db, table)
 
 
 async def state_for(db: AsyncSession, s: Subject, v: Viewer, now: datetime | None = None) -> State:
@@ -343,9 +361,13 @@ async def state_for(db: AsyncSession, s: Subject, v: Viewer, now: datetime | Non
     reminders = await _reminders_since(db, s, since) if since else []
     last = reminders[-1] if reminders else None
 
+    to_you = next((r for r in reversed(reminders)
+                   if (r.holder_kind == "club" and r.holder_id == v.club_id)
+                   or (r.holder_kind == "agent" and r.holder_id == v.agent_id)), None)
+
     def out(can, reason=None, nxt=None, esc=False):
         preview = message_for(s, holder, sender_label(s, v, holder), now, esc) if holder else None
-        return State(holder, since if holder else None, can, reason, nxt, esc, last, preview)
+        return State(holder, since if holder else None, can, reason, nxt, esc, last, preview, to_you)
 
     if mine:
         return out(False, "It's your move.")
@@ -353,9 +375,12 @@ async def state_for(db: AsyncSession, s: Subject, v: Viewer, now: datetime | Non
         return out(False, "Nobody else is holding this up.")
     if not v.can_act:
         return out(False, "Your role can't act on this transfer.")
-    deadline = await _deadline_soon(db, s, now)
-    show_after = DEADLINE_SHOW_AFTER if deadline else SHOW_AFTER
-    cooldown = DEADLINE_COOLDOWN if deadline else COOLDOWN
+    if await _in_demo(db, s):
+        show_after, cooldown = DEMO_SHOW_AFTER, DEMO_COOLDOWN
+    elif await _deadline_soon(db, s, now):
+        show_after, cooldown = DEADLINE_SHOW_AFTER, DEADLINE_COOLDOWN
+    else:
+        show_after, cooldown = SHOW_AFTER, COOLDOWN
     if now - since < show_after:
         return out(False, f"You can send a reminder from {_when(since + show_after, now)}.", since + show_after)
     mine_sent = [r for r in reminders if _same_side(r, v)]
@@ -522,7 +547,7 @@ async def _notify(db, s: Subject, holder: Holder, v: Viewer | None, text: str, n
             extra.append(uid)
         for club_id in s.party_clubs:
             if club_id != sender_club:
-                extra += await club_recipient_user_ids(db, club_id, type_)
+                extra += await club_recipient_user_ids(db, club_id, NotificationType.MOVE_STALLED)
     elif holder.kind == "player":
         if s.agent_ids:
             from app.auth.models import AgentProfile
@@ -531,13 +556,13 @@ async def _notify(db, s: Subject, holder: Holder, v: Viewer | None, text: str, n
             if uid:
                 extra.append(uid)
         elif getattr(s.obj, "seller_club_id", None):
-            extra += await club_recipient_user_ids(db, s.obj.seller_club_id, type_)
+            extra += await club_recipient_user_ids(db, s.obj.seller_club_id, NotificationType.MOVE_STALLED)
     for uid in extra:
         if uid in told:
             continue
         told.add(uid)
         await create_notification(
-            db, recipient_user_id=uid, type=type_, message=fyi, link=s.link,
+            db, recipient_user_id=uid, type=NotificationType.MOVE_STALLED, message=fyi, link=s.link,
             related_player_id=player_id, title="A transfer is stuck", body=why,
             group_key=f"remind:{s.type}:{s.obj.id}",
         )
@@ -560,6 +585,15 @@ async def send_automatic(db: AsyncSession, now: datetime | None = None) -> int:
         select(Deal.id).where(Deal.status == DealStatus.IN_PROGRESS))).scalars()]
     ids += [("enquiry", i) for i in (await db.execute(
         select(Enquiry.id).where(Enquiry.status == EnquiryStatus.OPEN))).scalars()]
+
+    # Demo transactions (app/demo): the house answers them itself, and a
+    # reminder about one would outlive the demo's reset.
+    from app.demo.service import open_demo_rows
+
+    in_demo = {("offer", i) for i in await open_demo_rows(db, "offers")}
+    in_demo |= {("deal", i) for i in await open_demo_rows(db, "deals")}
+    in_demo |= {("enquiry", i) for i in await open_demo_rows(db, "enquiries")}
+    ids = [k for k in ids if k not in in_demo]
 
     sent = 0
     for kind, sid in ids:

@@ -49,6 +49,8 @@ export interface OfferViewer {
   now?: Date;
   /** The buyer's place among the open offers, from the order book once loaded. */
   ranking?: BuyerRanking | null;
+  /** The seller's: where this offer stands among the open ones (sellerRanking). */
+  standing?: BuyerRanking | null;
 }
 
 const DAY = 86_400_000;
@@ -78,6 +80,28 @@ export function buyerRanking(book: OrderBook | null | undefined): BuyerRanking |
   if (n <= 1) return { short: "Only offer", sentence: "Yours is the only offer." };
   if (book.is_leading) return { short: "Leading", sentence: `Yours is the leading offer of ${n}.` };
   return { short: `${ordinal(book.your_rank)} of ${n}`, sentence: `You're ${ordinal(book.your_rank)} of ${n} offers.` };
+}
+
+/**
+ * Where this offer stands among the open offers for the seller's player, so
+ * the "Other bids" tab and the status card say it without a click. The seller
+ * already sees every offer in its order book.
+ */
+export function sellerRanking(book: OrderBook | null | undefined, offerId: string): BuyerRanking | null {
+  if (!book || book.role !== "seller") return null;
+  const n = book.active_count;
+  const mine = book.entries.find((e) => e.id === offerId);
+  if (!mine || mine.fee_amount == null) return null;
+  if (n <= 1) return { short: "Only offer", sentence: "It's the only offer for him." };
+  if (mine.rank === 1) return { short: `Best of ${n}`, sentence: `It's the best of ${n} offers.` };
+  const best = book.entries.find((e) => e.rank === 1 && e.id !== offerId);
+  const more = best?.fee_amount != null ? Number(best.fee_amount) - Number(mine.fee_amount) : null;
+  return {
+    short: `${ordinal(mine.rank)} of ${n}`,
+    sentence: best && more != null && more > 0
+      ? `${best.club?.name ?? "Another club"} ${best.club ? "have" : "has"} offered ${formatCompact(more)} more (${formatCompact(Number(best.fee_amount))}).`
+      : `It's ${ordinal(mine.rank)} of ${n} offers.`,
+  };
 }
 
 /** The first letter upper-cased: a masked buyer ("an undisclosed club") can open a sentence. */
@@ -158,7 +182,17 @@ export function getOfferStatus(offer: Offer, viewer: OfferViewer): OfferStatusVi
     };
   }
   if (offer.status === "REJECTED") {
-    const mine = !!myClubId && offer.last_actor_club_id === myClubId;
+    // Who rejected is on the rejection event. Rejecting isn't a move, so
+    // last_actor_club_id still names whoever made the last offer or counter:
+    // the other side. An event with no actor is either an anonymous buyer
+    // (masked for the seller) or a rival's offer turned down when the player
+    // signed elsewhere, which was the seller's doing.
+    const rejected = [...(offer.events ?? [])].reverse().find((e) => e.event_type === "REJECTED");
+    const rejecter = !rejected
+      ? (offer.last_actor_club_id && offer.last_actor_club_id !== myClubId ? myClubId : null)
+      : rejected.actor_club_id
+        ?? (rejected.payload?.reason === "player_signed_elsewhere" ? offer.to_club_id : null);
+    const mine = !!myClubId && rejecter === myClubId;
     return {
       ...base, tone: "closed", overline: "Rejected", meta: formatDate(offer.last_action_at), body: closedBody,
       headline: !side ? "This offer was rejected"
@@ -223,6 +257,7 @@ export function getOfferStatus(offer: Offer, viewer: OfferViewer): OfferStatusVi
     }
 
     const body: string[] = [];
+    if (side === "seller" && viewer.standing) body.push(viewer.standing.sentence);
     // The gap to the seller's own figure: its asking price where it listed
     // one (the number the market saw), else its private valuation. Both are
     // the selling club's alone (§9): never read for the buyer.

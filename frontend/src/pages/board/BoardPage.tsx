@@ -1,53 +1,28 @@
-import { useState } from "react";
-import AskAboutButton from "../../components/ai/AskAboutButton";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import api from "../../lib/api";
-import { formatCompactCurrency } from "../../lib/utils";
-import { timeLeft } from "../../lib/timeLeft";
-import { Estimate } from "../../components/ui/Money";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import EmptyState from "../../components/ui/EmptyState";
-import PageHeader from "../../components/ui/PageHeader";
 import Spinner from "../../components/ui/Spinner";
 import Button from "../../components/ui/Button";
-import Modal from "../../components/ui/Modal";
-import ConversationPanel, { type ConversationContext } from "../../components/conversation/ConversationPanel";
-import PlayerLink from "../../components/ui/PlayerLink";
+import { Card, CardDetail, Columns, SIDE_STYLE } from "../../components/board/BoardColumns";
+import BoardMoreMenu from "../../components/board/BoardMoreMenu";
+import StageChips from "../../components/board/StageChips";
+import TransferList, { ClosedList } from "../../components/board/TransferList";
+import WaitingStrip from "../../components/board/WaitingStrip";
+import { boardRows, stageCounts, stageLabels, yourMoveRows } from "../../components/board/boardList";
+import type { Board, BoardCard, Side } from "../../components/board/types";
+
+export type { Board, BoardCard } from "../../components/board/types";
 
 /**
  * The Transfers board (Phase 3, product ADR 0008): every player the club is
  * buying or selling, once, at its furthest point. Backend: app/board.
+ * Below 1280px it's a list grouped by whose move it is, with stage chips;
+ * from 1280px the stage columns (README_TRANSFERS).
  */
-
-type Side = "BOTH" | "BUYING" | "SELLING";
-type WhoseMove = "your" | "their" | "neither";
-
-export interface BoardCard {
-  key: string;
-  side: "BUYING" | "SELLING";
-  column: string;
-  kind: "enquiry" | "listing" | "offer" | "deal";
-  entity_id: string;
-  player_id: string;
-  player_name: string;
-  player_position: string | null;
-  player_photo_url?: string | null;
-  counterparty: string | null;
-  amount: string | number | null;
-  detail: string;
-  whose_move: WhoseMove;
-  deadline: string | null;
-  link: string;
-  updated_at: string | null;
-  others: number;
-}
-
-interface Board {
-  columns: { key: string; label: string; cards: BoardCard[] }[];
-  closed: BoardCard[];
-  counts: { buying: number; selling: number; your_move: number };
-}
 
 const SIDE_KEY = "transferx-board-side";
 
@@ -60,153 +35,42 @@ function readSide(): Side {
   }
 }
 
-const SIDE_STYLE: Record<BoardCard["side"], { label: string; tag: string; bar: string }> = {
-  // Categories, so neutral: the label says which (TOKENS.md colour roles).
-  BUYING: { label: "Buying", tag: "bg-surface-inset text-text-secondary", bar: "bg-text-secondary" },
-  SELLING: { label: "Selling", tag: "bg-surface-inset text-text-secondary", bar: "bg-text-secondary" },
-};
-
-function SideTag({ side }: { side: BoardCard["side"] }) {
+function SideSwitch({ side, onChange, full }: { side: Side; onChange: (s: Side) => void; full?: boolean }) {
   return (
-    <span className={`mr-1 inline-block rounded px-1.5 py-px text-caption font-semibold ${SIDE_STYLE[side].tag}`}>
-      {SIDE_STYLE[side].label}
-    </span>
-  );
-}
-
-function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; onOpen: (c: BoardCard) => void }) {
-  const yours = card.whose_move === "your";
-  const left = timeLeft(card.deadline);
-  return (
-    // A clickable card rather than a <button>: the player's name inside is
-    // a link to his profile, and a link can't sit inside a button.
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label={`${card.player_name}: ${card.detail}`}
-      onClick={() => onOpen(card)}
-      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(card); } }}
-      className={`w-full cursor-pointer rounded-xl bg-surface p-3 text-left ring-1 transition-colors hover:ring-accent-ring focus-visible:outline-2 focus-visible:outline-accent ${
-        yours ? "ring-accent-ring" : "ring-border"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <p className="flex min-w-0 items-center gap-1.5 text-body font-semibold text-text">
-          <PlayerLink id={card.player_id} name={card.player_name} photoUrl={card.player_photo_url ?? null} size="md" />
-          {card.player_position && <span className="shrink-0 text-small font-normal text-text-muted">{card.player_position}</span>}
-        </p>
-        {yours && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" aria-label="Your move" />}
-      </div>
-      {(card.counterparty || showSide) && (
-        <p className="mt-0.5 truncate text-small text-text-muted">
-          {showSide && <SideTag side={card.side} />}
-          {showSide && card.counterparty && " "}
-          {card.counterparty && (card.side === "BUYING" ? `from ${card.counterparty}` : `to ${card.counterparty}`)}
-        </p>
-      )}
-      {card.amount != null && (
-        <p className="mt-1.5 text-body font-bold tabular-nums text-text">
-          {formatCompactCurrency(Number(card.amount))}
-          <Estimate value={card.amount} />
-        </p>
-      )}
-      <p className={`mt-1 text-caption ${yours ? "font-semibold text-accent" : "text-text-secondary"}`}>{card.detail}</p>
-      {(left || card.others > 0) && (
-        <p className="mt-1 flex flex-wrap gap-x-2 text-small text-text-muted">
-          {left && <span className={left.urgent ? "font-semibold text-danger-text" : ""}>{left.text}</span>}
-          {card.others > 0 && <span>+{card.others} more</span>}
-        </p>
-      )}
+    <div role="radiogroup" aria-label="Show" className={`flex rounded-lg bg-surface-inset p-0.5 ring-1 ring-border ${full ? "w-full" : ""}`}>
+      {(["BOTH", "BUYING", "SELLING"] as Side[]).map((s) => (
+        <button
+          key={s}
+          role="radio"
+          aria-checked={side === s}
+          onClick={() => onChange(s)}
+          className={`rounded-md px-3 text-body font-medium ${full ? "min-h-11 flex-1" : "py-1.5"} ${
+            side === s ? "bg-surface text-text shadow-sm" : "text-text-secondary"}`}
+        >
+          {s === "BOTH" ? "Both" : s === "BUYING" ? "Buying" : "Selling"}
+        </button>
+      ))}
     </div>
   );
 }
 
-const OPEN_LABEL: Record<BoardCard["kind"], string> = {
-  enquiry: "Open the enquiry", offer: "Open the offer", deal: "Open the deal", listing: "Open the listing",
-};
-
-/** A card opened: its summary, a way to the full page, and the transfer's
- *  conversation (enquiries, offers and deals have one; listings don't). */
-function CardDetail({ card, onClose }: { card: BoardCard; onClose: () => void }) {
-  const navigate = useNavigate();
-  const context: ConversationContext | null =
-    card.kind === "offer" ? { offerId: card.entity_id }
-      : card.kind === "deal" ? { dealId: card.entity_id }
-      : card.kind === "enquiry" ? { enquiryId: card.entity_id } : null;
-  return (
-    <Modal open onClose={onClose} title={card.player_name} size="lg">
-      <div className="space-y-4 px-6 py-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-small">
-            <PlayerLink id={card.player_id} name={card.player_name} photoUrl={card.player_photo_url ?? null} size="lg"
-              className="mb-2 text-body font-semibold text-text" />
-            <p className="text-text-secondary">
-              {card.side === "BUYING" ? "Buying" : "Selling"}
-              {card.counterparty && (card.side === "BUYING" ? ` from ${card.counterparty}` : ` to ${card.counterparty}`)}
-              {card.amount != null && <> · <span className="font-semibold text-text">{formatCompactCurrency(Number(card.amount))}</span></>}
-            </p>
-            <p className={card.whose_move === "your" ? "font-semibold text-accent" : "text-text-muted"}>{card.detail}</p>
-          </div>
-          <div className="flex gap-2">
-            {card.kind === "deal" || card.kind === "offer"
-              ? <AskAboutButton size="sm" about={card.kind} id={card.entity_id} name={card.player_name} />
-              : <AskAboutButton size="sm" about="player" id={card.player_id} name={card.player_name} />}
-            <Button size="sm" onClick={() => navigate(card.link)}>{OPEN_LABEL[card.kind]}</Button>
-          </div>
-        </div>
-        {context ? (
-          <div className="border-t border-rule-faint pt-4">
-            <h3 className="mb-3 text-section font-bold text-text">Conversation</h3>
-            <ConversationPanel context={context} compact />
-          </div>
-        ) : (
-          <p className="text-small text-text-muted">Conversations start with an enquiry or an offer.</p>
-        )}
-      </div>
-    </Modal>
-  );
-}
-
-function Columns({ columns, pick, showSide, onOpen }: {
-  columns: Board["columns"];
-  pick: (c: BoardCard) => boolean;
-  showSide: boolean;
-  onOpen: (c: BoardCard) => void;
-}) {
-  return (
-    <div className="-mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-3 md:mx-0 md:scroll-px-0 md:px-0">
-      {columns.map((col) => {
-        const cards = col.cards.filter(pick);
-        return (
-          <section key={col.key} aria-label={col.label} className="w-[260px] shrink-0 snap-start lg:w-auto lg:min-w-0 lg:flex-1">
-            <h3 className="mb-2 flex items-baseline justify-between px-1 text-section font-bold text-text">
-              {col.label}
-              <span className="tabular-nums">{cards.length}</span>
-            </h3>
-            <div className="flex flex-col gap-2">
-              {cards.map((c) => <Card key={c.key} card={c} showSide={showSide} onOpen={onOpen} />)}
-              {cards.length === 0 && (
-                <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-small text-text-muted">None</p>
-              )}
-            </div>
-          </section>
-        );
-      })}
-    </div>
-  );
-}
+const ICON_BUTTON = "inline-flex h-11 w-11 items-center justify-center rounded-lg bg-surface text-text-secondary ring-1 ring-inset ring-input-border hover:text-text";
 
 export default function BoardPage() {
   const navigate = useNavigate();
   // ?side= wins (links from the old list pages, the assistant), else the
   // choice remembered in this browser.
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const urlSide = params.get("side");
   const [side, setSideState] = useState<Side>(() =>
     urlSide === "BUYING" || urlSide === "SELLING" || urlSide === "BOTH" ? urlSide : readSide());
   const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [showClosed, setShowClosed] = useState(false);
   const [opened, setOpened] = useState<BoardCard | null>(null);
+  const wide = useMediaQuery("(min-width: 1280px)");
+  const sm = useMediaQuery("(min-width: 640px)");
   const setSide = (s: Side) => {
     setSideState(s);
     try { localStorage.setItem(SIDE_KEY, s); } catch { /* the choice still applies here */ }
@@ -221,101 +85,207 @@ export default function BoardPage() {
   const matches = (c: BoardCard) =>
     !needle || c.player_name.toLowerCase().includes(needle) || (c.counterparty ?? "").toLowerCase().includes(needle);
 
+  // The list (below 1280px): rows after the side and search filters, then the stage chip.
+  const labels = data ? stageLabels(data) : {};
+  const rows = data ? boardRows(data).filter(matches) : [];
+  const stages = stageCounts(rows, labels);
+  const urlStage = params.get("stage");
+  const stage = urlStage && stages.some((s) => s.key === urlStage) ? urlStage : null;
+  const setStage = (key: string | null) => setParams((p) => {
+    const next = new URLSearchParams(p);
+    if (key) next.set("stage", key); else next.delete("stage");
+    return next;
+  }, { replace: true });
+  // A picked stage that's dropped to zero (a search, a side change) falls back to All.
+  useEffect(() => {
+    if (data && urlStage && !stage) setStage(null);
+  }, [data, urlStage, stage]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = stage ? rows.filter((r) => r.column === stage) : rows;
+  useEffect(() => { if (searchOpen) searchRef.current?.focus(); }, [searchOpen]);
+
+  const counts = data && (
+    <p className="mt-[3px] text-small text-text-secondary">
+      <span className={data.counts.your_move > 0 ? "font-semibold text-danger-text" : undefined}>
+        {data.counts.your_move} waiting on you
+      </span>
+      {` · ${data.counts.buying} buying · ${data.counts.selling} selling`}
+    </p>
+  );
+  const title = <h1 className="text-title-sm font-bold tracking-[-0.01em] text-text sm:text-title">Transfers</h1>;
+  const searchToggle = (
+    <button type="button" aria-label="Find a player or club" aria-expanded={searchOpen || !!search}
+      onClick={() => setSearchOpen((o) => !o)} className={ICON_BUTTON}>
+      <svg aria-hidden viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <circle cx="9" cy="9" r="5.5" /><path d="m13.5 13.5 3.5 3.5" strokeLinecap="round" />
+      </svg>
+    </button>
+  );
+  const searchField = !wide && total > 0 && (searchOpen || search) && (
+    <div className="relative">
+      <input
+        ref={searchRef}
+        type="search"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        onBlur={() => { if (!search) setSearchOpen(false); }}
+        placeholder="Find a player or club"
+        aria-label="Find a player or club on the board"
+        className="w-full min-h-11 rounded-lg bg-surface pl-3 pr-11 text-input text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+      />
+      {search && (
+        <button type="button" aria-label="Clear" onClick={() => { setSearch(""); setSearchOpen(false); }}
+          className="absolute right-0 top-0 h-11 w-11 text-text-muted hover:text-text">×</button>
+      )}
+    </div>
+  );
+
+  const header = wide ? (
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+      <div>{title}{counts}</div>
+      <div className="flex flex-wrap items-center gap-2">
+        {total > 0 && (
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Find a player or club"
+            aria-label="Find a player or club on the board"
+            className="w-64 rounded-lg bg-surface px-3 py-1.5 text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
+          />
+        )}
+        <SideSwitch side={side} onChange={setSide} />
+        <Button size="sm" variant="secondary" onClick={() => navigate("/board/history")}>History</Button>
+        <Button size="sm" onClick={() => navigate("/sales/new")}>+ New listing</Button>
+      </div>
+    </div>
+  ) : sm ? (
+    <div className="mb-4 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>{title}{counts}</div>
+        <div className="flex items-center gap-2">
+          <SideSwitch side={side} onChange={setSide} />
+          {total > 0 && searchToggle}
+          <BoardMoreMenu />
+        </div>
+      </div>
+      {searchField}
+    </div>
+  ) : (
+    <div className="mb-3 space-y-2.5">
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          {title}
+          <div className="flex items-center gap-2">{total > 0 && searchToggle}<BoardMoreMenu /></div>
+        </div>
+        {counts}
+      </div>
+      <SideSwitch side={side} onChange={setSide} full />
+      {searchField}
+    </div>
+  );
+
+  const closed = data && data.closed.length > 0 && (
+    <div className="mt-6">
+      <button
+        type="button"
+        onClick={() => setShowClosed((v) => !v)}
+        aria-expanded={showClosed}
+        className="text-body font-semibold text-text-secondary hover:text-text"
+      >
+        Closed ({data.closed.length}) {showClosed ? "▾" : "▸"}
+      </button>
+      <button type="button" onClick={() => navigate("/board/history")} className="ml-4 text-body font-semibold text-accent hover:underline">
+        Full history →
+      </button>
+      {showClosed && (wide ? (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {data.closed.map((c) => <Card key={`${c.key}:${c.entity_id}`} card={c} showSide={side === "BOTH"} onOpen={setOpened} />)}
+        </div>
+      ) : (
+        <div className="mt-3"><ClosedList rows={data.closed} side={side} labels={labels} layout={sm ? "tablet" : "phone"} /></div>
+      ))}
+    </div>
+  );
+
+  function list() {
+    if (rows.length === 0) {
+      return (
+        <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-small text-text-secondary">
+          No transfers match “{search.trim()}”.{" "}
+          <button type="button" onClick={() => { setSearch(""); setSearchOpen(false); }} className="font-semibold text-accent hover:underline">
+            Clear search
+          </button>
+        </div>
+      );
+    }
+    return (
+      <>
+        <div className="mb-3"><StageChips total={rows.length} stages={stages} selected={stage} onSelect={setStage} /></div>
+        <TransferList rows={shown} side={side} labels={labels} layout={sm ? "tablet" : "phone"} />
+        {stage && (
+          <p className="mt-4 text-small text-text-secondary">
+            Showing {labels[stage] ?? stage} ·{" "}
+            <button type="button" onClick={() => setStage(null)} className="font-semibold text-accent hover:underline">
+              Show all {rows.length}
+            </button>
+          </p>
+        )}
+      </>
+    );
+  }
+
+  function columns(board: Board) {
+    // A column empty in every lane shown collapses, the same in both lanes so they line up.
+    const collapsed = new Set(board.columns.filter((c) => !c.cards.some(matches)).map((c) => c.key));
+    return (
+      <>
+        {board.counts.your_move > 0 && <WaitingStrip rows={yourMoveRows(rows)} onOpen={setOpened} />}
+        {/* Both sides: a lane each, so it's never a guess which way a card goes. */}
+        {side === "BOTH"
+          ? (["BUYING", "SELLING"] as const).map((lane) => (
+            <section key={lane} aria-label={SIDE_STYLE[lane].label} className="mb-5">
+              <h2 className="mb-2 flex items-center gap-2 text-body font-bold text-text">
+                <span className={`h-4 w-1 rounded-full ${SIDE_STYLE[lane].bar}`} aria-hidden />
+                {SIDE_STYLE[lane].label}
+                <span className="text-caption font-semibold tabular-nums text-text-muted">
+                  {lane === "BUYING" ? board.counts.buying : board.counts.selling}
+                </span>
+                <span className="text-small font-normal text-text-muted">
+                  {lane === "BUYING" ? "· players you're signing" : "· your players, to other clubs"}
+                </span>
+              </h2>
+              {(lane === "BUYING" ? board.counts.buying : board.counts.selling) === 0 ? (
+                <p className="rounded-xl border border-dashed border-border px-3 py-3 text-small text-text-muted">
+                  {lane === "BUYING" ? "Nothing you're buying at the moment." : "Nothing you're selling at the moment."}
+                </p>
+              ) : <Columns columns={board.columns} pick={(c) => c.side === lane && matches(c)} collapsed={collapsed} showSide={false} onOpen={setOpened} />}
+            </section>
+          ))
+          : <Columns columns={board.columns} pick={matches} collapsed={collapsed} showSide={false} onOpen={setOpened} />}
+      </>
+    );
+  }
+
   return (
     <div>
-      <PageHeader
-        title="Transfers"
-        subtitle={data ? `${data.counts.your_move} waiting on you · ${data.counts.buying} buying · ${data.counts.selling} selling` : undefined}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="secondary" onClick={() => navigate("/board/history")}>History</Button>
-          <Button size="sm" onClick={() => navigate("/sales/new")}>+ New listing</Button>
-          <div role="radiogroup" aria-label="Show" className="flex rounded-lg bg-surface-inset p-0.5 ring-1 ring-border">
-            {(["BOTH", "BUYING", "SELLING"] as Side[]).map((s) => (
-              <button
-                key={s}
-                role="radio"
-                aria-checked={side === s}
-                onClick={() => setSide(s)}
-                className={`rounded-md px-3 py-1.5 text-body font-medium ${side === s ? "bg-surface text-text shadow-sm" : "text-text-secondary"}`}
-              >
-                {s === "BOTH" ? "Both" : s === "BUYING" ? "Buying" : "Selling"}
-              </button>
-            ))}
-          </div>
-          </div>
-        }
-      />
-
-      {total > 0 && (
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Find a player or club on the board"
-          aria-label="Find a player or club on the board"
-          className="mb-4 w-full max-w-sm rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
-        />
-      )}
-
+      {header}
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : isError || !data ? (
         <EmptyState title="Couldn't load the board" body="Try again in a moment." />
+      ) : total === 0 ? (
+        <>
+          <EmptyState
+            title="Nothing in progress"
+            body="Players you list, enquire about or make offers for appear here, one card each."
+            action={{ label: "Browse players", to: "/players/market" }}
+          />
+          {closed}
+        </>
       ) : (
         <>
-          {total === 0 && (
-            <div className="mb-4">
-              <EmptyState
-                title="Nothing in progress"
-                body="Players you list, enquire about or make offers for appear here, one card each."
-                action={{ label: "Browse players", to: "/players/market" }}
-              />
-            </div>
-          )}
-          {/* Both sides: a lane each, so it's never a guess which way a card goes. */}
-          {side === "BOTH" && total > 0
-            ? (["BUYING", "SELLING"] as const).map((lane) => (
-              <section key={lane} aria-label={SIDE_STYLE[lane].label} className="mb-5">
-                <h2 className="mb-2 flex items-center gap-2 text-body font-bold text-text">
-                  <span className={`h-4 w-1 rounded-full ${SIDE_STYLE[lane].bar}`} aria-hidden />
-                  {SIDE_STYLE[lane].label}
-                  <span className="text-caption font-semibold tabular-nums text-text-muted">
-                    {lane === "BUYING" ? data.counts.buying : data.counts.selling}
-                  </span>
-                  <span className="text-small font-normal text-text-muted">
-                    {lane === "BUYING" ? "· players you're signing" : "· your players, to other clubs"}
-                  </span>
-                </h2>
-                {(lane === "BUYING" ? data.counts.buying : data.counts.selling) === 0 ? (
-                  <p className="rounded-xl border border-dashed border-border px-3 py-3 text-small text-text-muted">
-                    {lane === "BUYING" ? "Nothing you're buying at the moment." : "Nothing you're selling at the moment."}
-                  </p>
-                ) : <Columns columns={data.columns} pick={(c) => c.side === lane && matches(c)} showSide={false} onOpen={setOpened} />}
-              </section>
-            ))
-            : <Columns columns={data.columns} pick={matches} showSide={false} onOpen={setOpened} />}
-
-          {data.closed.length > 0 && (
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={() => setShowClosed((v) => !v)}
-                aria-expanded={showClosed}
-                className="text-body font-semibold text-text-secondary hover:text-text"
-              >
-                Closed ({data.closed.length}) {showClosed ? "▾" : "▸"}
-              </button>
-              <button type="button" onClick={() => navigate("/board/history")} className="ml-4 text-body font-semibold text-accent hover:underline">
-                Full history →
-              </button>
-              {showClosed && (
-                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  {data.closed.map((c) => <Card key={`${c.key}:${c.entity_id}`} card={c} showSide={side === "BOTH"} onOpen={setOpened} />)}
-                </div>
-              )}
-            </div>
-          )}
+          {wide ? columns(data) : list()}
+          {closed}
         </>
       )}
       {opened && <CardDetail card={opened} onClose={() => setOpened(null)} />}

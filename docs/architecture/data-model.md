@@ -37,9 +37,9 @@ Verified against `backend/app/*/models.py` on 2026-10-11.
 | `enquiries` | `Enquiry`, `EnquiryMessage` |
 | `reminders` | `MoveReminder` (who reminded whom about which move, escalated or automatic; the cooldown and escalation count read it) |
 | `conversation` | `ConversationRead` (how far each person has read a transfer's conversation, keyed by player and buying club; migration `0110`) |
-| `deals` | `Deal`, `DealClause`, `DealInstalment`, `PersonalTerms`, `MedicalCheck`, `DealNote`; the deal room: `DealTermsVersion`, `DealComment`, `DealAttachment` |
+| `deals` | `Deal`, `DealClause`, `DealInstalment`, `PersonalTerms` (`proposed_by`: whose terms are on the table), `TermProposal` (every round of the commission and personal-terms negotiations, ADR 0012), `MedicalCheck`, `DealNote`; the deal room: `DealTermsVersion`, `DealComment`, `DealAttachment` |
 | `loans` | `PlayerLoan` |
-| `agents`, `mandates` | `AgentDealInvitation`, `AgentNegotiation`, `NegotiationMessage`, `AgentCommission`; `Mandate`, `ClientAlert` |
+| `agents`, `mandates` | `AgentDealInvitation`, `AgentNegotiation` (`proposed_by`: the agent's proposal or the club's counter), `NegotiationMessage`, `AgentCommission`; `Mandate`, `ClientAlert` |
 | `approvals` | `PendingApproval` |
 | `lite` | `UserPreference`, `HeldAction` (sends held for undo), `ActionToken` (decisions from email) |
 | `notifications` | `Notification`, `NotificationPreference`, `PushSubscription`, `PushDelivery` |

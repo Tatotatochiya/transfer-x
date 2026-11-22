@@ -276,8 +276,8 @@ async def money(ctx: Ctx) -> ToolResult:
 
 # ── Our transfers ─────────────────────────────────────────────────────────────
 
-_COLUMNS = {"talking": "Talking", "offers": "Offers", "fee_agreed": "Fee agreed", "terms": "Personal terms",
-            "paperwork": "Paperwork", "done": "Done"}
+_COLUMNS = {"talking": "Listed", "offers": "Offers", "fee_agreed": "Fee agreed", "terms": "Personal terms",
+            "paperwork": "Paperwork", "done": "Completed"}
 
 
 async def transfers(ctx: Ctx, side: str = "BOTH", stage: str | None = None, your_move: bool | None = None,

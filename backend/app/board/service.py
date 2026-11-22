@@ -12,9 +12,10 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.board.schemas import BoardCard, BoardColumn, BoardResponse
+from app.board.schemas import BoardCard, BoardColumn, BoardOther, BoardResponse
 from app.common.masking import buyer_name
 from app.common.schemas import WhoseMove
 from app.deals import service as deals_service
@@ -25,12 +26,12 @@ from app.sales import service as sales_service
 from app.sales.models import SaleStatus, SaleType
 
 COLUMNS = [
-    ("talking", "Talking"),
+    ("talking", "Listed"),
     ("offers", "Offers"),
     ("fee_agreed", "Fee agreed"),
     ("terms", "Personal terms"),
     ("paperwork", "Paperwork"),
-    ("done", "Done"),
+    ("done", "Completed"),
 ]
 RANK = {key: i for i, (key, _) in enumerate(COLUMNS)}
 DEAL_COLUMN = {
@@ -113,6 +114,7 @@ async def _offer_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, hist
 
 async def _deal_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, history: bool = False) -> list[BoardCard]:
     deals, _ = await deals_service.list_deals(db, club_id=club_id, page=1, page_size=_PAGE)
+    holds = await deals_service.completion_holds(db, deals)
     cards = []
     for d in deals:
         if d.player is None:
@@ -131,14 +133,19 @@ async def _deal_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, histo
             column, move, detail = "done", WhoseMove.NEITHER, "Transfer complete"
         else:
             column = DEAL_COLUMN.get(d.stage, "fee_agreed")
-            move = deals_service.compute_deal_whose_move(d, club_id)
+            hold = holds.get(d.id)
+            move = deals_service.compute_deal_whose_move(d, club_id, held=hold is not None)
             outstanding = deals_service.outstanding_paperwork_for(d, club_id)
             if d.stage == DealStage.CONFIRMED:
-                detail = "Signature" + (" · your move" if move == WhoseMove.YOUR else f" · waiting on {other or 'them'}")
+                # Paperwork's done: completing is all that's left, unless a
+                # closed window or a real-world move holds it.
+                detail = ("Completes when the window opens" if hold == "window"
+                          else "On hold: he's moved in real life" if hold == "real_world"
+                          else "Ready to complete" + (" · your move" if move == WhoseMove.YOUR else ""))
             elif outstanding:
                 detail = f"You: {_PAPERWORK.get(outstanding[0], 'paperwork')}"
             elif d.stage == DealStage.AGENT_NEGOTIATION:
-                detail = "Agent negotiation"
+                detail = "Agent commission" + (" · your move" if move == WhoseMove.YOUR else "")
             elif d.stage == DealStage.PERSONAL_TERMS:
                 detail = "Personal terms" + (" · your move" if move == WhoseMove.YOUR else "")
             elif d.stage == DealStage.PAPERWORK:
@@ -204,6 +211,27 @@ async def _listing_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, hi
     return cards
 
 
+async def _mark_chased(db: AsyncSession, club_id: uuid.UUID, cards: list[BoardCard]) -> None:
+    """Flag the club's-move cards someone has reminded it about since they last
+    moved, in one query (move reminders)."""
+    from app.reminders.models import MoveReminder
+
+    mine = [c for c in cards if c.whose_move == WhoseMove.YOUR and c.kind in ("offer", "deal", "enquiry")]
+    if not mine:
+        return
+    rows = (await db.execute(
+        select(MoveReminder.subject_id, MoveReminder.escalated, MoveReminder.created_at).where(
+            MoveReminder.holder_kind == "club", MoveReminder.holder_id == club_id,
+            MoveReminder.subject_id.in_([c.entity_id for c in mine]),
+        )
+    )).all()
+    for c in mine:
+        since = _aware(c.updated_at)
+        hits = [r for r in rows if r.subject_id == c.entity_id and (since is None or _aware(r.created_at) >= since)]
+        if hits:
+            c.chased = "ESCALATED" if any(r.escalated for r in hits) else "REMINDED"
+
+
 async def get_board(db: AsyncSession, club_id: uuid.UUID, side: str = "BOTH") -> BoardResponse:
     now = datetime.now(timezone.utc)
     all_cards = (
@@ -222,7 +250,11 @@ async def get_board(db: AsyncSession, club_id: uuid.UUID, side: str = "BOTH") ->
     for key, cards in active.items():
         cards.sort(key=lambda c: _Entry(c).sort_key, reverse=True)
         top = cards[0]
-        top.others = sum(1 for c in cards[1:] if c.column == top.column)
+        same = [c for c in cards[1:] if c.column == top.column]
+        top.others = len(same)
+        top.other_items = [BoardOther(kind=c.kind, entity_id=c.entity_id, counterparty=c.counterparty,
+                                      amount=c.amount, detail=c.detail, whose_move=c.whose_move, link=c.link)
+                           for c in same]
         shown.append(top)
     drawer = []
     for key, cards in closed.items():
@@ -230,6 +262,8 @@ async def get_board(db: AsyncSession, club_id: uuid.UUID, side: str = "BOTH") ->
             continue  # active again on this side: the live card is enough
         cards.sort(key=lambda c: _aware(c.updated_at) or now, reverse=True)
         drawer.append(cards[0])
+
+    await _mark_chased(db, club_id, shown)
 
     def order(c: BoardCard):
         # Your move first, then soonest deadline, then most recent.

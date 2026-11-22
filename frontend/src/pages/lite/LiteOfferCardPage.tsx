@@ -19,6 +19,7 @@ import AskTeamButton from "../../components/lite/AskTeamButton";
 import { SwipeNav, WaitingHeader } from "../../components/lite/WaitingNav";
 import PlayerLink from "../../components/ui/PlayerLink";
 import DemoOfferControls from "../../components/demo/DemoOfferControls";
+import MoveReminder from "../../components/transfer/MoveReminder";
 
 type Mode = "answer" | "accept" | "counter" | "reject";
 
@@ -141,6 +142,7 @@ export default function LiteOfferCardPage() {
           {card.side === "seller" ? "Offer received" : "Reply to your offer"} · {left.text}
         </p>
       )}
+      {open && <MoveReminder lite subjectType="offer" subjectId={card.offer_id} />}
       <ActionCardShell
         pill={pill}
         tone={card.side === "seller" ? "received" : "ready"}

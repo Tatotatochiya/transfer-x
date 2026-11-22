@@ -46,6 +46,7 @@ describe("MoveReminder", () => {
     expect(await screen.findByText("Waiting on Sofia Reyes since 9 Nov 2026.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Send a reminder" }));
     expect(screen.getByText(base.preview!)).toBeInTheDocument();
+    expect(screen.getByText("They'll get, by notification, email and push")).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("Add a note (optional)"), "By Friday");
     await userEvent.click(screen.getByRole("button", { name: "Send reminder" }));
 
@@ -63,6 +64,22 @@ describe("MoveReminder", () => {
     expect(await screen.findByText("TransferX reminded Sofia Reyes on 10 Nov 2026.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Escalate" }));
     expect(screen.getByText("The player and the other club are told too.")).toBeInTheDocument();
+    expect(screen.getByText("They'll get, by notification and push")).toBeInTheDocument();
+  });
+
+  it("the side being chased sees who reminded them, in red, and no button", async () => {
+    api.get.mockResolvedValue({ data: { ...base, holder: null, can_send: false, reason: "It's your move.",
+      to_you: { at: new Date().toISOString(), by: "An undisclosed club", escalated: true, note: "Please answer" } } });
+    renderWithProviders(<MoveReminder subjectType="offer" subjectId="o1" />);
+    expect(await screen.findByText("An undisclosed club escalated this to you today.", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Escalated").className).toContain("bg-danger-bg");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("the waiting side: amber Stalled before anyone reminds them", async () => {
+    api.get.mockResolvedValue({ data: { ...base, waiting_since: new Date(Date.now() - 4 * 86_400_000).toISOString() } });
+    renderWithProviders(<MoveReminder subjectType="deal" subjectId="d1" />);
+    expect((await screen.findByText("Stalled · 4 days")).className).toContain("bg-warning-bg");
   });
 
   it("Lite says Remind them", async () => {

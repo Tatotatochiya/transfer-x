@@ -46,7 +46,7 @@ export default function AgentNegotiationWorkspace({
   }>({
     commission_pct:        negotiation?.commission_pct        != null ? String(negotiation.commission_pct)        : "",
     commission_amount:     negotiation?.commission_amount     != null ? String(negotiation.commission_amount)     : "",
-    commission_payer:      negotiation?.commission_payer      ?? "BUYER",
+    commission_payer:      negotiation?.commission_payer === "PLAYER" ? "PLAYER" : "BUYER",
     additional_conditions: negotiation?.additional_conditions ?? "",
   });
 
@@ -94,7 +94,7 @@ export default function AgentNegotiationWorkspace({
               onChange={(e) => setDraft((d) => ({ ...d, commission_pct: e.target.value }))}
               className="w-full rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             />
-            <label className="block text-caption text-text-muted pt-1">Commission amount (€)</label>
+            <label className="block text-caption text-text-muted pt-1">Commission amount (£)</label>
             <CurrencyInput
               value={draft.commission_amount}
               onChange={(v) => setDraft((d) => ({ ...d, commission_amount: v }))}
@@ -107,7 +107,6 @@ export default function AgentNegotiationWorkspace({
               className="w-full rounded-lg bg-surface px-3 py-1.5 text-input lg:text-body text-text ring-1 ring-input-border focus:outline-none focus:ring-accent"
             >
               <option value="BUYER">Buying club</option>
-              <option value="SELLER">Selling club</option>
               <option value="PLAYER">Player</option>
             </select>
             <label className="block text-caption text-text-muted pt-1">Additional conditions</label>
@@ -171,7 +170,7 @@ export default function AgentNegotiationWorkspace({
               setDraft({
                 commission_pct:        negotiation?.commission_pct        != null ? String(negotiation.commission_pct)        : "",
                 commission_amount:     negotiation?.commission_amount     != null ? String(negotiation.commission_amount)     : "",
-                commission_payer:      negotiation?.commission_payer      ?? "BUYER",
+                commission_payer:      negotiation?.commission_payer === "PLAYER" ? "PLAYER" : "BUYER",
                 additional_conditions: negotiation?.additional_conditions ?? "",
               });
               setEditing(true);

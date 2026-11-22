@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
 from app.database import get_db
-from app.deps import get_current_user, get_optional_user
+from app.deps import get_current_superuser, get_current_user, get_optional_user
 from app.players import service as players_service
 from app.stats import service
 from app.stats.schemas import (
@@ -87,7 +87,7 @@ async def upsert_player_stats(
     player_id: uuid.UUID,
     body: PlayerStatsUpsertRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_superuser),
 ):
     await _get_player_or_404(db, player_id)
     stats = await service.upsert_player_stats(
@@ -128,7 +128,7 @@ async def upsert_player_form(
     player_id: uuid.UUID,
     body: PlayerFormUpsertRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_superuser),
 ):
     await _get_player_or_404(db, player_id)
     form = await service.upsert_player_form(
@@ -160,7 +160,7 @@ async def create_snapshot(
     player_id: uuid.UUID,
     body: SnapshotCreateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_superuser),
 ):
     await _get_player_or_404(db, player_id)
     snapshot = await service.create_snapshot(db, player_id, body.vendor, body.payload)
@@ -186,7 +186,7 @@ async def upsert_vendor_sync_state(
     vendor: str,
     body: VendorSyncStateUpsertRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_superuser),
 ):
     state = await service.upsert_vendor_sync_state(db, vendor, success=body.success, error=body.error)
     await db.commit()

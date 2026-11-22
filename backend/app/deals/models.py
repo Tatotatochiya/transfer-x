@@ -1,9 +1,9 @@
 import enum
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, func
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -173,6 +173,15 @@ class Deal(Base):
     medical_check: Mapped["MedicalCheck | None"] = relationship(
         "MedicalCheck", back_populates="deal", uselist=False, cascade="all, delete-orphan"
     )
+    # Read-only, for whose move it is (service.compute_deal_whose_move): the
+    # agent's commission negotiation, and whether the player has an account.
+    agent_negotiation: Mapped["app.agents.models.AgentNegotiation | None"] = relationship(  # type: ignore[name-defined]
+        "AgentNegotiation", uselist=False, viewonly=True,
+    )
+    player_profile: Mapped["app.auth.models.PlayerProfile | None"] = relationship(  # type: ignore[name-defined]
+        "PlayerProfile", uselist=False, viewonly=True,
+        primaryjoin="Deal.player_id == foreign(PlayerProfile.player_id)",
+    )
 
     @property
     def is_auction_deal(self) -> bool:
@@ -318,4 +327,33 @@ class PersonalTerms(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
+    # Whose terms are on the table: "BUYER" (the buying club's offer) or
+    # "PLAYER" (the player's side: the player or his agent). The other side
+    # answers; player_consent AGREED means both sides agreed. Null on rows from
+    # before counters (2026-11-14): read as "BUYER", the player side answering.
+    proposed_by: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
     deal: Mapped["Deal"] = relationship("Deal", back_populates="personal_terms")
+
+
+class TermProposal(Base):
+    """One round of a negotiation on a deal: the agent's commission
+    ("COMMISSION") or the player's personal terms ("PERSONAL_TERMS"), proposed
+    or countered by one side ("AGENT", "BUYER" or "PLAYER"). The latest round
+    is what's on the table; the rest is the history both sides see."""
+    __tablename__ = "term_proposals"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deal_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    side: Mapped[str] = mapped_column(String(10), nullable=False)
+    # COMMISSION: commission_pct, commission_amount, commission_payer, additional_conditions.
+    # PERSONAL_TERMS: wage_weekly, signing_bonus, length_years. Money as strings.
+    terms: Mapped[dict] = mapped_column(JSON, nullable=False)
+    note: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    # Set here, to the microsecond, so rounds made in the same second keep their order.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)

@@ -10,6 +10,18 @@ from app.common.schemas import WhoseMove
 ColumnKey = Literal["talking", "offers", "fee_agreed", "terms", "paperwork", "done"]
 
 
+class BoardOther(BaseModel):
+    """Another open item for the same player in the same column (a second
+    offer for him, say): enough to tell them apart and open it."""
+    kind: Literal["enquiry", "listing", "offer", "deal"]
+    entity_id: uuid.UUID
+    counterparty: str | None = None  # masked as on its own card
+    amount: Decimal | None = None
+    detail: str
+    whose_move: WhoseMove = WhoseMove.NEITHER
+    link: str
+
+
 class BoardCard(BaseModel):
     """One player the club is buying or selling, at its furthest point
     (product ADR 0008)."""
@@ -32,6 +44,11 @@ class BoardCard(BaseModel):
     # Other open items for the same player in the same column (e.g. three
     # offers received): the card shows the most pressing one.
     others: int = 0
+    # Those items themselves, most pressing first, so the board can open any of them.
+    other_items: list[BoardOther] = []
+    # Your move, and the other side has chased it since it last moved
+    # (docs/feature_spec/move-reminders): shown in red on the card.
+    chased: Literal["REMINDED", "ESCALATED"] | None = None
 
 
 class BoardColumn(BaseModel):

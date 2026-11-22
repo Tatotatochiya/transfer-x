@@ -31,13 +31,13 @@ function deal(over: Partial<Deal> = {}): Deal {
 
 const terms = (over: Partial<PersonalTerms> = {}): PersonalTerms => ({
   id: "t", deal_id: "d1", agent_id: null, wage_weekly: 38_000, signing_bonus: null, length_years: 4,
-  player_consent: "PENDING", player_has_account: false, agreed_at: null, created_at: "2026-11-05T10:00:00Z",
+  player_consent: "PENDING", proposed_by: "BUYER", player_has_account: false, agreed_at: null, created_at: "2026-11-05T10:00:00Z",
   buyer_club_id: "b", buyer_club_name: "Meridian FC", consent_evidence_attachment_id: null, ...over,
 });
 
 const neg = (over: Partial<AgentNegotiation> = {}): AgentNegotiation => ({
   id: "n", deal_id: "d1", agent_id: "a", status: "IN_PROGRESS" as AgentNegotiation["status"], commission_pct: 0.06,
-  commission_amount: 324_000, commission_payer: "BUYER", additional_conditions: null, club_agreement: "PENDING",
+  commission_amount: 324_000, commission_payer: "BUYER", additional_conditions: null, club_agreement: "PENDING", proposed_by: "AGENT",
   created_at: "2026-11-02T10:00:00Z", agreed_at: null, ...over,
 });
 
@@ -194,8 +194,25 @@ describe("getDealStatus: personal terms", () => {
 
   it("the agent answers for him", () => {
     const v = getDealStatus(pt(terms({ agent_id: "a", player_has_account: true })), viewer({ side: null, isAgent: true }));
-    expect(v).toMatchObject({ tone: "you", headline: "Answer for Bram Wouters", body: "He can answer himself, or you can answer for him." });
+    expect(v).toMatchObject({ tone: "you", headline: "Meridian FC offers Bram Wouters £38,000/wk for 4 years",
+      body: "He can answer himself, or you can answer for him." });
     expect(v.primary).toMatchObject({ kind: "player-consent", agreement: "AGREED" });
+    expect(v.secondary).toEqual({ kind: "counter-terms", label: "Counter" });
+    expect(v.tertiary).toMatchObject({ kind: "player-consent", agreement: "DECLINED", danger: true });
+  });
+
+  it("the player side's terms are the buying club's to answer (ADR 0012)", () => {
+    const asked = pt(terms({ agent_id: "a", proposed_by: "PLAYER", wage_weekly: 60_000 }),
+      { agent: { id: "a", display_name: "Luka Brandt", agency_name: "LB Sports" } });
+    const buyer = getDealStatus(asked, viewer());
+    expect(buyer).toMatchObject({ tone: "you", headline: "Luka Brandt asks for £60,000/wk for 4 years",
+      primary: { kind: "terms-respond", agreement: "AGREED", label: "Accept terms" },
+      secondary: { kind: "counter-terms", label: "Counter" },
+      tertiary: { kind: "terms-respond", agreement: "DECLINED", label: "Decline", danger: true } });
+    expect(getDealStatus(asked, viewer({ side: null, isAgent: true })))
+      .toMatchObject({ tone: "wait", overline: "Waiting on Meridian FC", headline: "Meridian FC is answering your terms" });
+    expect(getDealStatus(asked, viewer({ side: "seller" })))
+      .toMatchObject({ tone: "wait", headline: "Meridian FC is answering Bram Wouters's terms" });
   });
 
   it("the player himself is sent to his page to answer", () => {
@@ -217,10 +234,14 @@ describe("getDealStatus: agent negotiation", () => {
   const an = (over: Partial<Deal> = {}) => deal({ stage: "AGENT_NEGOTIATION", agent, ...over });
   const agentViewer = (n: AgentNegotiation | null) => viewer({ side: null, isAgent: true, negotiation: n });
 
-  it("the agent proposes, waits, and resends after a decline", () => {
+  it("the agent proposes, waits, and answers the club's counter", () => {
     expect(getDealStatus(an(), agentViewer(neg({ commission_pct: null, commission_amount: null }))).headline).toBe("Propose your commission");
     expect(getDealStatus(an(), agentViewer(neg()))).toMatchObject({ tone: "wait", body: "You asked for 6.0% (£324,000)." });
-    expect(getDealStatus(an(), agentViewer(neg({ club_agreement: "DECLINED" }))).headline).toBe("Meridian FC declined your proposal");
+    const countered = neg({ proposed_by: "BUYER", commission_pct: 0.04, commission_amount: 216_000 });
+    expect(getDealStatus(an(), agentViewer(countered))).toMatchObject({ tone: "you",
+      headline: "Meridian FC countered with 4.0% (£216,000)", primary: { kind: "agent-accept", label: "Accept counter" } });
+    expect(getDealStatus(an(), viewer({ negotiation: countered })))
+      .toMatchObject({ tone: "wait", overline: "Waiting on the agent", headline: "Luka Brandt is answering your counter of 4.0% (£216,000)" });
   });
 
   it("once agreed, the agent and the buyer move on; the seller waits (Q1)", () => {
@@ -239,7 +260,8 @@ describe("getDealStatus: agent negotiation", () => {
     expect(v).toMatchObject({ tone: "you", headline: "Luka Brandt asks for 6.0% (£324,000)",
       body: "Paid by the buying club. Conditions: Paid in two parts" });
     expect(v.primary).toMatchObject({ kind: "commission-respond", agreement: "AGREED", label: "Accept proposal" });
-    expect(v.secondary).toMatchObject({ kind: "commission-respond", agreement: "DECLINED", danger: true });
+    expect(v.secondary).toEqual({ kind: "commission-counter", label: "Counter" });
+    expect(v.tertiary).toMatchObject({ kind: "commission-respond", agreement: "DECLINED", danger: true });
     expect(getDealStatus(an(), viewer({ side: "seller", negotiation: neg() })))
       .toMatchObject({ tone: "wait", headline: "Meridian FC is answering the agent's commission proposal" });
   });

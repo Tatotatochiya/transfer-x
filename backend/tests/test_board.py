@@ -109,3 +109,28 @@ async def test_history_keeps_everything_that_ended_and_can_be_searched(client: A
     assert (await client.get("/board/history", params={"outcome": "completed"}, headers=buyer)).json()["total"] == 0
     assert (await client.get("/board/history", params={"side": "SELLING"}, headers=buyer)).json()["total"] == 0
     assert (await client.get("/board/history", params={"side": "SELLING"}, headers=seller)).json()["total"] == 2
+
+
+async def test_a_second_offer_for_the_same_player_is_listed_on_his_card(client: AsyncClient, db):
+    """Two offers for one player: one card, the most pressing first, and the
+    other listed with what tells it apart and a link to it."""
+    seller = _auth_headers(await _register(client, "two_seller@test.com", club_name="Two Sellers"))
+    leeds = _auth_headers(await _register(client, "two_leeds@test.com", club_name="Two Leeds"))
+    bourne = _auth_headers(await _register(client, "two_bourne@test.com", club_name="Two Bournemouth"))
+    await _give_budget(db)
+    player = await _create_player_for_seller(client, seller)
+    seller_club = await _get_club_id(client, seller)
+    ids = {}
+    for name, h, fee in (("Two Leeds", leeds, 19_000_000), ("Two Bournemouth", bourne, 16_500_000)):
+        r = await client.post("/offers", headers=h, json={"player_id": player["id"], "to_club_id": seller_club, "fee_amount": fee})
+        assert r.status_code == 201, r.text
+        ids[name] = r.json()["id"]
+
+    (card,) = _cards(await _board(client, seller), "offers")
+    assert card["others"] == 1 and len(card["other_items"]) == 1
+    other = card["other_items"][0]
+    shown = {card["entity_id"], other["entity_id"]}
+    assert shown == set(ids.values())
+    assert other["link"] == f"/offers/{other['entity_id']}"
+    assert other["counterparty"] in ("Two Leeds", "Two Bournemouth") and other["counterparty"] != card["counterparty"]
+    assert float(other["amount"]) in (19_000_000, 16_500_000) and other["detail"]

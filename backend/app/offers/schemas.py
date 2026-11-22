@@ -14,6 +14,9 @@ from app.players.schemas import ActiveDealStub
 class ClubSummary(BaseModel):
     id: uuid.UUID
     name: str
+    # The offer page shows it beside the name. A masked buyer's whole summary
+    # is dropped (router._mask_buyer), so its crest never reaches the seller.
+    crest_url: str | None = None
     model_config = {"from_attributes": True}
 
 
