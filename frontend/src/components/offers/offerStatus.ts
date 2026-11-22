@@ -182,7 +182,17 @@ export function getOfferStatus(offer: Offer, viewer: OfferViewer): OfferStatusVi
     };
   }
   if (offer.status === "REJECTED") {
-    const mine = !!myClubId && offer.last_actor_club_id === myClubId;
+    // Who rejected is on the rejection event. Rejecting isn't a move, so
+    // last_actor_club_id still names whoever made the last offer or counter:
+    // the other side. An event with no actor is either an anonymous buyer
+    // (masked for the seller) or a rival's offer turned down when the player
+    // signed elsewhere, which was the seller's doing.
+    const rejected = [...(offer.events ?? [])].reverse().find((e) => e.event_type === "REJECTED");
+    const rejecter = !rejected
+      ? (offer.last_actor_club_id && offer.last_actor_club_id !== myClubId ? myClubId : null)
+      : rejected.actor_club_id
+        ?? (rejected.payload?.reason === "player_signed_elsewhere" ? offer.to_club_id : null);
+    const mine = !!myClubId && rejecter === myClubId;
     return {
       ...base, tone: "closed", overline: "Rejected", meta: formatDate(offer.last_action_at), body: closedBody,
       headline: !side ? "This offer was rejected"
