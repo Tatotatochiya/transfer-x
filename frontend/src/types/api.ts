@@ -918,6 +918,9 @@ export interface Deal {
   paperwork: PaperworkStep[];
   /** When a deal awaiting completion is flagged as overdue (CONFIRMED stage). */
   sla_deadline?: string | null;
+  /** When the deal collapses unless it has completed: by default the buying
+   *  club's window close (product ADR 0014). Null when it never does. */
+  expires_at?: string | null;
   recall_allowed: boolean;
   // TRA-57
   sell_on_pct: number | null;

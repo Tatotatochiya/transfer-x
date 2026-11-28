@@ -135,6 +135,11 @@ class Deal(Base):
     # PENDING_COMPLETION) — gives staff an SLA window to actually execute it.
     sla_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sla_escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When the deal collapses if it hasn't completed: the buying club's
+    # window close (product ADR 0014, migration 0118). Null for deals that
+    # don't wait for a window (free agents, pre-contracts) or with no windows.
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    expiry_warned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

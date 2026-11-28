@@ -156,6 +156,7 @@ async def _deal_cards(db: AsyncSession, club_id: uuid.UUID, now: datetime, histo
             key=f"{'BUYING' if buying else 'SELLING'}:{d.player_id}", side="BUYING" if buying else "SELLING",
             column=column, kind="deal", entity_id=d.id, counterparty=other, amount=d.agreed_fee,
             detail=detail, whose_move=move, link=f"/deals/{d.id}", updated_at=updated,
+            deadline=d.expires_at if column not in ("closed", "done") else None,
         ), d.player)))
     return cards
 

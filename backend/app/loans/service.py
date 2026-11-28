@@ -322,6 +322,8 @@ async def _start_conversion(db: AsyncSession, loan: PlayerLoan, *, player: Playe
         stage=DealStage.AGREEMENT,
     )
     db.add(deal)
+    from app.deals.service import set_window_expiry
+    await set_window_expiry(db, deal)  # collapses at the window's close (ADR 0014)
     await db.flush()
 
     # Reserve the fee against the buyer, exactly as accepting an offer would.

@@ -39,7 +39,7 @@ A transfer begins with a selling club listing a player (see [`negotiation-and-of
 | `PAPERWORK` | The clubs' checklist: each signs the transfer agreement, and the buying club records a passed medical and submits the registration. The last step confirms the deal; staff can override. See [`deal-completion.md`](./deal-completion.md). |
 | `CONFIRMED` | Paperwork complete; ready for the transfer to be executed. |
 | `COMPLETED` | The transfer is finalized. For a **permanent** deal the player's contract moves to the buying club. For a **loan** the registration moves but ownership does not — see [Deal types](#deal-types) below. |
-| `COLLAPSED` | A deal status rather than a stage: any deal not yet completed can collapse, when either party withdraws or a required consent is declined. Reserved money is released. Every answer that ends a transfer is confirmed first, with an optional reason both sides see. |
+| `COLLAPSED` | A deal status rather than a stage: any deal not yet completed can collapse. That happens when either party withdraws, when a required consent is declined, or when the buying club's transfer window closes before the deal completes ([product ADR 0014](../decisions/0014-offers-and-deals-run-out-at-the-window-close.md)). Reserved money is released. Every answer that ends a transfer is confirmed first, with an optional reason both sides see. |
 
 **When a transfer stalls.** Whoever is waiting can remind whoever holds the move: the other club,
 a club with paperwork outstanding, the agent, or the player ([`move-reminders`](../../feature_spec/move-reminders/README.md)).
@@ -48,6 +48,8 @@ deal. After two ignored reminders or a week, it escalates: an agent's player and
 told, a player's agent (or the selling club), and a club's owner and sporting directors. TransferX
 also reminds automatically at 3 and 7 days without movement. Confirmed deals are left to their
 completion deadline (`deal_sla`).
+
+**When the window closes.** A deal between two clubs collapses if it hasn't completed when the buying club's window closes. A deal made between windows has until the next window closes. When it collapses, the budget is released and the listing re-opens. Both clubs are warned two days before. The deal page shows the time with a live countdown, and so does the deal's row on the board. Free agents and pre-contracts don't expire (job `expire_deals`, [product ADR 0014](../decisions/0014-offers-and-deals-run-out-at-the-window-close.md)).
 
 > **TODO:** Keep this table in sync with the actual stage machine as it evolves — see [`../../architecture/data-model.md`](../../architecture/data-model.md) for the authoritative technical definition.
 

@@ -2,7 +2,8 @@ import AskAboutButton from "../ai/AskAboutButton";
 import { useNavigate } from "react-router-dom";
 
 import { formatCompactCurrency } from "../../lib/utils";
-import { timeLeft } from "../../lib/timeLeft";
+import { countdownLeft } from "../../lib/timeLeft";
+import { useNow } from "../../hooks/useNow";
 import { Estimate } from "../ui/Money";
 import Button from "../ui/Button";
 import Modal from "../ui/Modal";
@@ -34,8 +35,9 @@ function SideTag({ side }: { side: BoardCard["side"] }) {
 // "Your move" is red (needs you), never blue: blue is only for what you can
 // tap (TOKENS.md colour roles). Hover and focus stay accent.
 export function Card({ card, showSide, onOpen }: { card: BoardCard; showSide: boolean; onOpen: (c: BoardCard) => void }) {
+  const now = useNow();
   const yours = card.whose_move === "your";
-  const left = timeLeft(card.deadline);
+  const left = countdownLeft(card.deadline, now);
   return (
     // A clickable card rather than a <button>: the player's name inside is
     // a link to his profile, and a link can't sit inside a button.

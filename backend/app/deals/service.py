@@ -908,6 +908,63 @@ async def check_deal_sla_breaches(db: AsyncSession) -> int:
     return count
 
 
+WINDOW_CLOSED_REASON = "The transfer window closed before the deal completed."
+_EXPIRY_WARNING = timedelta(hours=48)
+
+
+async def set_window_expiry(db: AsyncSession, deal: Deal, now: datetime | None = None) -> None:
+    """Give a deal that waits for a window the date it collapses unless it
+    has completed: the buying club's window close (product ADR 0014)."""
+    from app.transfer_window import service as window_service
+
+    if deal.expires_at is None and window_service.waits_for_window(deal):
+        deal.expires_at = await window_service.window_close_for(db, deal.buyer_club_id, now)
+
+
+async def expire_deals(db: AsyncSession) -> int:
+    """Job: open deals past their window close collapse, budgets released, and
+    both clubs are told. Two days before, both clubs are warned once. Open
+    deals made before expiry existed get their date on the first run."""
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+
+    now = datetime.now(timezone.utc)
+    open_ = (await db.execute(
+        select(Deal).options(selectinload(Deal.player))
+        .where(Deal.status.in_([DealStatus.IN_PROGRESS, DealStatus.PENDING_COMPLETION]))
+    )).scalars().all()
+
+    async def tell(deal: Deal, ntype, message: str, **kw) -> None:
+        for club_id in {deal.buyer_club_id, deal.seller_club_id} - {None}:
+            await notif_service.notify_club(
+                db, club_id, type=ntype, message=message, link=f"/deals/{deal.id}",
+                related_player_id=deal.player_id, **kw,
+            )
+
+    collapsed = 0
+    for deal in open_:
+        await set_window_expiry(db, deal, now)
+        if deal.expires_at is None:
+            continue
+        due = deal.expires_at if deal.expires_at.tzinfo else deal.expires_at.replace(tzinfo=timezone.utc)
+        name = deal.player.name if deal.player else "the player"
+        if due <= now:
+            await collapse_deal(
+                db, deal, actor_club_id=deal.buyer_club_id, is_staff=True, by_club=False,
+                reason=WINDOW_CLOSED_REASON,
+            )
+            await tell(deal, NotificationType.DEAL_COLLAPSED,
+                       f"Deal for {name} has collapsed: the transfer window closed before it completed")
+            collapsed += 1
+        elif due - now <= _EXPIRY_WARNING and deal.expiry_warned_at is None:
+            deal.expiry_warned_at = now
+            await tell(deal, NotificationType.DEAL_EXPIRING,
+                       f"The deal for {name} collapses when the window closes unless it completes",
+                       group_key=f"deal:{deal.id}", deadline_at=due)
+    await db.flush()
+    return collapsed
+
+
 async def collapse_deal(
     db: AsyncSession,
     deal: Deal,

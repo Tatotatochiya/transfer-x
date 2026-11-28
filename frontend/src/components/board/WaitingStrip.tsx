@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 
-import { timeLeft } from "../../lib/timeLeft";
+import { countdownLeft } from "../../lib/timeLeft";
+import { useNow } from "../../hooks/useNow";
 import type { BoardCard } from "./types";
 
 /**
@@ -8,6 +9,7 @@ import type { BoardCard } from "./types";
  * (README_TRANSFERS §5): each opens the card's pop-up, as the card does.
  */
 export default function WaitingStrip({ rows, onOpen }: { rows: BoardCard[]; onOpen: (c: BoardCard) => void }) {
+  const now = useNow();
   if (rows.length === 0) return null;
   return (
     <div role="region" aria-label="Waiting on you"
@@ -16,7 +18,7 @@ export default function WaitingStrip({ rows, onOpen }: { rows: BoardCard[]; onOp
         <span aria-hidden className="h-2 w-2 rounded-full bg-danger" />Waiting on you
       </span>
       {rows.map((c, i) => {
-        const left = timeLeft(c.deadline);
+        const left = countdownLeft(c.deadline, now);
         const what = c.detail.replace(/\s*·\s*your move$/i, "");
         return (
           <Fragment key={c.key}>

@@ -25,6 +25,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **Offers and deals show when they run out, with a live countdown.** The offer and deal pages show the exact time and count down every second. Board rows show the time left and keep counting.
 - **A listing can exclude clubs or leagues** (migration `0117`). Listing a player has an optional "Not available to" section, where the seller names clubs and picks domestic leagues.
   - **Offers:** while he's listed, those clubs can't make any offer for him. The refusal is neutral.
   - **Alerts:** those clubs aren't sent his "now available" shortlist alert.
@@ -294,6 +295,10 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **Offers and deals run out when the buying club's transfer window closes** ([product ADR 0014](./product/decisions/0014-offers-and-deals-run-out-at-the-window-close.md), migration `0118`). This amends ADR 0010.
+  - **Offers:** by default an offer expires when the window closes. Between windows, it expires when the next window closes. With no windows set up, it lasts 7 days as before.
+  - **Deals:** a deal between two clubs that hasn't completed by then collapses automatically, with its budget released. Both clubs are warned two days before (`DEAL_EXPIRING`), and the job is `expire_deals`.
+  - **Open deals today:** deals already open get their date the first time the job runs.
 - **The ranking is on the offer page's open tab.** The buyer's "Ranking · 2nd of 4" (the seller's "Other bids · n") now heads the Terms tab, above the terms. It used to sit behind Messages in the desktop rail and in a third tab on phones. The rail is messages only, and phones have two tabs.
 - **Transfers board stage names: "Listed" and "Completed".** The first stage, which holds your listed players with no offers yet and open enquiries, is now "Listed" (it was "Talking"). The last is "Completed" (it was "Done"), and a completed row's label reads "Completed" (it was "Complete"). The stage keys (`talking`, `done`) are unchanged. The AI analyst uses the same names.
 - **Escalations aren't emailed for now.** An escalated reminder, and the "transfer stuck" notice to the people told, arrive in-app and by push only; a first reminder is still emailed. On the shared demo environment escalations went to seeded agents' addresses, some on real-looking domains ([move reminders](./feature_spec/move-reminders/README.md)).

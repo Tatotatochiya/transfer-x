@@ -13,6 +13,7 @@ import AgentNegotiationWorkspace from "../../components/deals/AgentNegotiationWo
 import AgreedOfferHistory from "../../components/deals/AgreedOfferHistory";
 import CollapseDealDialog from "../../components/deals/CollapseDealDialog";
 import DealHeader from "../../components/deals/DealHeader";
+import ExpiryLine from "../../components/transfer/ExpiryLine";
 import DealMoreMenu from "../../components/deals/DealMoreMenu";
 import DealNotes from "../../components/deals/DealNotes";
 import DealProgress from "../../components/deals/DealProgress";
@@ -248,6 +249,11 @@ export default function DealDetailPage() {
   return (
     <div>
       <DealHeader deal={deal} moreMenu={moreMenu} />
+      {/* Product ADR 0014: an uncompleted deal collapses when the buying
+          club's window closes. */}
+      {isActive && deal.expires_at && (
+        <div className="mt-2"><ExpiryLine at={deal.expires_at} label="Collapses unless completed by" /></div>
+      )}
 
       <div className="mt-4">
         <DealStatusCard

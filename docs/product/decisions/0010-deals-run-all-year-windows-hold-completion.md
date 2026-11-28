@@ -7,6 +7,8 @@ owner: "TODO — assign a Product Owner"
 
 # ADR 0010: Deals Run All Year; a Country's Transfer Window Holds Only Completion
 
+> **Amended by [ADR 0014](./0014-offers-and-deals-run-out-at-the-window-close.md) (2026-11-28):** offers and deals now run out when the buying club's window closes. A deal that hasn't completed by then collapses; it no longer waits for the next window.
+
 ## Context
 
 Until 2026-11-07 a configured transfer window blocked offers, listings, Lite bids and direct signings outside it, while a deal agreed inside a window could complete at any time. Real football works the other way round. Clubs talk, bid and agree fees all year; deals agreed in spring "go through when the window opens". What a window controls is **registration**: a player can't be registered at his new club until it opens. An unattached player can be registered outside a window in most leagues, including the Premier League.

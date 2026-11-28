@@ -54,6 +54,7 @@ export const TYPE_LABELS: Record<string, string> = {
   DEAL_COLLAPSED:       "Deal collapsed",
   SALE_REOPENED:        "A sale you bid on is open again after its deal collapsed",
   DEAL_SLA_BREACHED:    "A deal's paperwork is past its expected deadline",
+  DEAL_EXPIRING:        "A deal collapses when the window closes unless it completes",
   DEAL_PERSONAL_TERMS_SENT: "Personal terms sent for the player's answer",
   DEAL_SELL_ON:         "A sell-on clause pays out to you",
   DEAL_AGENT_INVITED:   "You are invited to negotiate a transfer",
@@ -100,7 +101,7 @@ const TYPE_GROUPS: { label: string; types: string[] }[] = [
   },
   {
     label: "Deals",
-    types: ["DEAL_COMPLETED", "DEAL_COLLAPSED", "DEAL_PERSONAL_TERMS_SENT", "PERSONAL_TERMS_DECISION", "DEAL_PAPERWORK", "DEAL_SLA_BREACHED", "INSTALMENT_DUE", "DEAL_CLAUSE_TRIGGERED", "DEAL_SELL_ON", "NEGOTIATION_MESSAGE", "DEAL_AGENT_INVITED"],
+    types: ["DEAL_COMPLETED", "DEAL_COLLAPSED", "DEAL_PERSONAL_TERMS_SENT", "PERSONAL_TERMS_DECISION", "DEAL_PAPERWORK", "DEAL_SLA_BREACHED", "DEAL_EXPIRING", "INSTALMENT_DUE", "DEAL_CLAUSE_TRIGGERED", "DEAL_SELL_ON", "NEGOTIATION_MESSAGE", "DEAL_AGENT_INVITED"],
   },
   { label: "Scouting", types: ["PLAYER_AVAILABLE"] },
   { label: "Representation", types: ["REPRESENTATION_STARTED", "REPRESENTATION_REVOKED", "REPRESENTATION_EXPIRED"] },
