@@ -64,6 +64,62 @@ def check_offer_matches_listing(sale: Sale, *, is_loan: bool) -> None:
         raise ValueError("This player is listed for loan only — make a loan offer instead")
 
 
+MAX_EXCLUDED_CLUBS = 50
+MAX_EXCLUDED_LEAGUES = 20
+# Neutral on purpose: an excluded club isn't told it was excluded, or why.
+NOT_TAKING_OFFERS = "His club isn't taking offers from your club for him."
+
+
+def _league_key(name: str | None) -> str:
+    return (name or "").strip().casefold()
+
+
+async def clean_exclusions(
+    db: AsyncSession, *, seller_club_id: uuid.UUID, club_ids: list[uuid.UUID], leagues: list[str]
+) -> tuple[list[str], list[str]]:
+    """The exclusions a listing stores: real clubs other than the seller,
+    leagues trimmed and without repeats (ignoring case)."""
+    from app.clubs.models import Club
+
+    ids = list(dict.fromkeys(club_ids))
+    if len(ids) > MAX_EXCLUDED_CLUBS:
+        raise ValueError(f"Exclude at most {MAX_EXCLUDED_CLUBS} clubs")
+    if seller_club_id in ids:
+        raise ValueError("You can't exclude your own club")
+    if ids:
+        found = set((await db.execute(select(Club.id).where(Club.id.in_(ids)))).scalars())
+        if len(found) != len(ids):
+            raise ValueError("One of the excluded clubs isn't on TransferX")
+    names: dict[str, str] = {}
+    for name in leagues:
+        if _league_key(name) and _league_key(name) not in names:
+            names[_league_key(name)] = name.strip()[:200]
+    if len(names) > MAX_EXCLUDED_LEAGUES:
+        raise ValueError(f"Exclude at most {MAX_EXCLUDED_LEAGUES} leagues")
+    return [str(i) for i in ids], list(names.values())
+
+
+def excludes(sale: Sale, club) -> bool:
+    """Whether this listing shuts `club` out: named, or in an excluded league."""
+    if str(club.id) in (sale.excluded_club_ids or []):
+        return True
+    league = _league_key(club.league_name)
+    return bool(league) and league in {_league_key(n) for n in sale.excluded_leagues or []}
+
+
+async def check_buyer_not_excluded(db: AsyncSession, player_id: uuid.UUID, buyer_club_id: uuid.UUID) -> None:
+    """While he is listed, an excluded club can't make any offer for him —
+    against the listing or not — or exclusion would be one click to get round."""
+    from app.clubs.models import Club
+
+    sale = await get_open_sale_for_player(db, player_id)
+    if sale is None or not (sale.excluded_club_ids or sale.excluded_leagues):
+        return
+    club = (await db.execute(select(Club).where(Club.id == buyer_club_id))).scalar_one_or_none()
+    if club is not None and excludes(sale, club):
+        raise ValueError(NOT_TAKING_OFFERS)
+
+
 async def create_sale(
     db: AsyncSession,
     *,
@@ -75,8 +131,13 @@ async def create_sale(
     deadline: datetime | None = None,
     notes: str | None = None,
     availability: ListingAvailability = ListingAvailability.TRANSFER,
+    excluded_club_ids: list[uuid.UUID] | None = None,
+    excluded_leagues: list[str] | None = None,
 ) -> Sale:
     validate_listing_terms(sale_type=sale_type, availability=availability, asking_price=asking_price)
+    club_ids, leagues = await clean_exclusions(
+        db, seller_club_id=seller_club_id, club_ids=excluded_club_ids or [], leagues=excluded_leagues or []
+    )
     if deadline is not None:
         due = deadline if deadline.tzinfo else deadline.replace(tzinfo=timezone.utc)
         if due <= datetime.now(timezone.utc):
@@ -90,6 +151,8 @@ async def create_sale(
         reserve_price=reserve_price,
         deadline=deadline,
         notes=notes,
+        excluded_club_ids=club_ids,
+        excluded_leagues=leagues,
         status=SaleStatus.OPEN,
     )
     db.add(sale)

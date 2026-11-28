@@ -25,6 +25,10 @@ class SaleCreateRequest(BaseModel):
     notes: str | None = None
     # The guide price came from the listing assistant; audited, not binding.
     ai_assisted: bool = False
+    # Clubs and domestic leagues that can't make an offer for him while he's
+    # listed (sales.service.check_buyer_not_excluded). Seller and staff only.
+    excluded_club_ids: list[uuid.UUID] = []
+    excluded_leagues: list[str] = []
 
     @field_validator("asking_price", "reserve_price", mode="before")
     @classmethod
@@ -39,6 +43,11 @@ class SellerClubSummary(BaseModel):
     name: str
 
     model_config = {"from_attributes": True}
+
+
+class ExcludedClub(BaseModel):
+    id: uuid.UUID
+    name: str
 
 
 class PlayerSummary(BaseModel):
@@ -79,6 +88,9 @@ class SaleResponse(BaseModel):
     # Player-scoped (not sale-scoped) on purpose: it stays correct for listings
     # closed before deals began carrying sale_id.
     active_deal: ActiveDealStub | None = None
+    # Who the seller shut out. Empty for everyone but the seller and staff.
+    excluded_clubs: list[ExcludedClub] = []
+    excluded_leagues: list[str] = []
 
     model_config = {"from_attributes": True}
 

@@ -67,6 +67,13 @@ async def update_club(db: AsyncSession, club: Club, **fields) -> Club:
     return club
 
 
+async def list_domestic_leagues(db: AsyncSession) -> list[str]:
+    rows = await db.execute(select(Club.league_name).where(Club.league_name.is_not(None)).distinct())
+    # masking_league drops cups and European competitions, and trims.
+    names = {Club(league_name=n).masking_league for n in rows.scalars()} - {None}
+    return sorted(names, key=str.casefold)
+
+
 async def list_clubs(
     db: AsyncSession,
     search: str | None,

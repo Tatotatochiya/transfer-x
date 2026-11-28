@@ -25,6 +25,11 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **A listing can exclude clubs or leagues** (migration `0117`). Listing a player has an optional "Not available to" section, where the seller names clubs and picks domestic leagues.
+  - **Offers:** while he's listed, those clubs can't make any offer for him. The refusal is neutral.
+  - **Alerts:** those clubs aren't sent his "now available" shortlist alert.
+  - **Who sees it:** only the seller and staff see the list. It's shown on the listing page.
+  - **Endpoints:** new `GET /clubs/leagues` lists domestic leagues for the picker. See [`negotiation-and-offers.md`](./product/workflows/negotiation-and-offers.md#listing-a-player).
 - **A buyer hears when another club's offer changes their place** (`OFFER_COMPETITION`, migration `0116`). Two cases send it:
   - **The first rival appears:** "Another club has made an offer for M. Caicedo. Yours is now 2nd of 2."
   - **They lose the lead:** "Your offer for M. Caicedo is no longer the leading one. Yours is now 2nd of 3."

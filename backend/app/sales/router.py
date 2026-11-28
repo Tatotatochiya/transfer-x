@@ -64,6 +64,23 @@ def _enrich_sale_response(
     )
 
 
+async def _with_exclusions(db: AsyncSession, resp: SaleResponse, sale: Sale, *, is_seller_or_staff: bool) -> SaleResponse:
+    """Who the listing shuts out — detail and create only, for the seller and
+    staff. An excluded club is never shown that it was."""
+    if not is_seller_or_staff or not (sale.excluded_club_ids or sale.excluded_leagues):
+        return resp
+    from sqlalchemy import select
+
+    from app.clubs.models import Club
+    from app.sales.schemas import ExcludedClub
+
+    ids = [uuid.UUID(i) for i in sale.excluded_club_ids or []]
+    names = dict((await db.execute(select(Club.id, Club.name).where(Club.id.in_(ids)))).all()) if ids else {}
+    resp.excluded_clubs = [ExcludedClub(id=i, name=names[i]) for i in ids if i in names]
+    resp.excluded_leagues = list(sale.excluded_leagues or [])
+    return resp
+
+
 # ── List + detail ─────────────────────────────────────────────────────────────
 
 
@@ -114,6 +131,9 @@ async def get_sale(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
     viewer_club_id, is_staff = await _resolve_viewer(db, current_user)
     resp = _enrich_sale_response(sale, viewer_club_id=viewer_club_id, is_staff=is_staff)
+    resp = await _with_exclusions(
+        db, resp, sale, is_seller_or_staff=is_staff or viewer_club_id == sale.seller_club_id
+    )
 
     # TRA-91: fair-value signal embed. Null for player-account and anonymous
     # viewers (D6 — the /valuation endpoints require the same). Divergence vs
@@ -228,6 +248,8 @@ async def create_sale(
             deadline=body.deadline,
             notes=body.notes,
             availability=body.availability,
+            excluded_club_ids=body.excluded_club_ids,
+            excluded_leagues=body.excluded_leagues,
         )
         if body.ai_assisted:
             from app.audit import service as audit_service
@@ -254,7 +276,8 @@ async def create_sale(
         )
 
     sale = await service.get_sale_by_id(db, sale.id)
-    return _enrich_sale_response(sale, viewer_club_id=club.id, is_staff=current_user.is_superuser)
+    resp = _enrich_sale_response(sale, viewer_club_id=club.id, is_staff=current_user.is_superuser)
+    return await _with_exclusions(db, resp, sale, is_seller_or_staff=True)
 
 
 # ── Withdraw ──────────────────────────────────────────────────────────────────

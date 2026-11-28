@@ -197,6 +197,7 @@ async def create_offer(db: AsyncSession, user: User, club, body: OfferCreateRequ
             obligation_to_buy=body.obligation_to_buy, recall_allowed=body.recall_allowed,
             no_fee_reason=body.no_fee_reason, obligation_conditions=body.obligation_conditions,
             sale_id=body.sale_id, instalments=body.instalments, clauses=body.clauses, sell_on_pct=body.sell_on_pct,
+            from_club_id=club.id,
         )
     except ValueError as exc:
         raise OfferActionError(400, str(exc))

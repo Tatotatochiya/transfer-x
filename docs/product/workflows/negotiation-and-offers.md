@@ -1,6 +1,6 @@
 ---
 title: "Workflow: Negotiation & Offers"
-last_updated: 2026-11-08
+last_updated: 2026-11-28
 status: Draft
 owner: "TODO — assign a Product Owner"
 ---
@@ -46,6 +46,12 @@ A club lists a player from wherever he is: **List** on his squad row, **List for
 - **Defaults:** Open to Offers, no price, no "Offers by" date.
 - **The model's estimate** appears beside the price as a one-click suggestion. It is never pre-filled. The reasons are in [product ADR 0003](../decisions/0003-listing-a-player.md).
 - **A player has at most one open listing**, enforced by the database. A listing cannot be edited: to change its price or type, withdraw it and list again.
+- **Not available to (optional):** the seller can shut out named clubs and whole domestic leagues (migration `0117`). While the listing is open, an excluded club can't make any offer for him, whether against the listing or a direct approach. That way, leaving the listing out of the offer doesn't get round the exclusion.
+  - **What the excluded club sees:** the refusal is neutral ("His club isn't taking offers from your club for him."). The club still sees that he's listed, and isn't told it was excluded or why.
+  - **Shortlist alert:** an excluded club with him on its shortlist isn't told he's available.
+  - **Who sees the list:** only the seller and staff (`GET /sales/{id}` and the create response).
+  - **League matching:** a club's league is matched on its domestic league name, ignoring case. The picker (`GET /clubs/leagues`) leaves out cups and European competitions.
+  - **When it ends:** the exclusion ends with the listing. It doesn't affect offers made before the listing, and it can't be edited: withdraw and list again.
 
 ## Before an offer: enquiries
 
