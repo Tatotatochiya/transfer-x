@@ -64,7 +64,7 @@ A club can ask about any TransferX player before making an offer: openly, or ano
    - Above the club's approval threshold, the offer waits for the owner or sporting director to approve it.
    - Players at clubs outside TransferX can't be offered for.
 2. **Responses.** The seller accepts, rejects or counters. A counter can change any term except the deal type, and is validated like a new offer. Either side can keep countering, and the buyer can improve its own offer or withdraw it.
-3. **Expiry.** An offer past its expiry is closed by the `expire_stale_offers` job, and the reservation is released.
+3. **Expiry.** By default an offer expires when the buying club's transfer window closes. Between windows, it expires when the next window closes. With no windows set up for the buying club's country, it lasts 7 days. The buyer can choose an earlier time ([product ADR 0014](../decisions/0014-offers-and-deals-run-out-at-the-window-close.md)). The offer page shows the exact time with a live countdown. An offer past its expiry is closed by the `expire_stale_offers` job, and the reservation is released.
 4. **Acceptance.** The terms are copied onto a new deal ([transfer lifecycle](./transfer-lifecycle.md)). Rival buyers' offers on the same player are closed and their reservations released, and an anonymous buyer is revealed to the seller. The offer page then sends both clubs to the deal.
 
 The whole conversation for a transfer (enquiry, offer messages, deal room) reads as one thread on the board ([architecture ADR 0008](../../architecture/decisions/0008-one-conversation-read-across-existing-messages.md)).

@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 
 import { formatCompactCurrency } from "../../lib/utils";
-import { timeLeft } from "../../lib/timeLeft";
+import { countdownLeft } from "../../lib/timeLeft";
+import { useNow } from "../../hooks/useNow";
 import { Estimate } from "../ui/Money";
 import FallbackImage from "../ui/FallbackImage";
 import { ChasedBadge, StalledBadge, stalledDays } from "../transfer/ReminderBadges";
@@ -45,11 +46,12 @@ export default function TransferRow({ card, side, stageLabel, layout }: {
   stageLabel: string;
   layout: "phone" | "tablet";
 }) {
+  const now = useNow();
   const yours = card.whose_move === "your";
   const done = stageStep(card.column) === 6;
   const stage = done ? "Completed" : stageLabel;
   const detail = detailAfterStage(card, stageLabel);
-  const left = timeLeft(card.deadline);
+  const left = countdownLeft(card.deadline, now);
   const party = partyText(card, side);
   const fee = card.amount != null ? formatCompactCurrency(Number(card.amount)) : null;
   const label = [card.player_name, party, fee, stage, detail, left?.text].filter(Boolean).join(", ");

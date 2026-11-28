@@ -28,6 +28,8 @@ class NotificationType(str, enum.Enum):
     DEAL_COLLAPSED = "DEAL_COLLAPSED"
     SALE_REOPENED = "SALE_REOPENED"
     DEAL_SLA_BREACHED = "DEAL_SLA_BREACHED"
+    # The window closes soon and the deal collapses then unless it completes.
+    DEAL_EXPIRING = "DEAL_EXPIRING"
     DEAL_SELL_ON = "DEAL_SELL_ON"
     DEAL_AGENT_INVITED = "DEAL_AGENT_INVITED"
     DEAL_PERSONAL_TERMS_SENT = "DEAL_PERSONAL_TERMS_SENT"

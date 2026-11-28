@@ -272,6 +272,20 @@ async def _deal_sla_job() -> None:
             logger.exception("Error in deal SLA job")
 
 
+async def _expire_deals_job() -> None:
+    """Deals collapse at the buying club's window close (product ADR 0014)."""
+    from app.deals.service import expire_deals
+
+    async with AsyncSessionLocal() as db:
+        try:
+            async with db.begin():
+                count = await expire_deals(db)
+            if count:
+                logger.info("Collapsed %d deal(s) at their window's close", count)
+        except Exception:
+            logger.exception("Error in deal expiry job")
+
+
 async def _real_world_alerts_job() -> None:
     """Tell clubs when API-Football has their players at other clubs
     (players/real_world.py). Hourly; a club hears again only when the list
@@ -361,6 +375,10 @@ async def lifespan(app: FastAPI):
     _scheduler.add_job(
         _expire_stale_offers_job, "interval", minutes=5, id="expire_stale_offers",
         next_run_time=datetime.now(timezone.utc) + timedelta(seconds=3),
+    )
+    _scheduler.add_job(
+        _expire_deals_job, "interval", minutes=5, id="expire_deals",
+        next_run_time=datetime.now(timezone.utc) + timedelta(seconds=20),
     )
     # Every 2 seconds: a held Lite action goes out within ~2s of its undo
     # window closing. One instance at a time, so an action is never sent twice.

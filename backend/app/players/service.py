@@ -174,6 +174,8 @@ async def trigger_release_clause(db: AsyncSession, player: Player, *, buyer_club
         stage=DealStage.AGREEMENT,
     )
     db.add(deal)
+    from app.deals.service import set_window_expiry
+    await set_window_expiry(db, deal)  # collapses at the window's close (ADR 0014)
     await db.flush()
 
     await reject_offers_for_player(db, player.id)
@@ -297,6 +299,8 @@ async def create_pre_contract_deal(db: AsyncSession, player: Player, *, buyer_cl
         stage=DealStage.AGREEMENT,
     )
     db.add(deal)
+    from app.deals.service import set_window_expiry
+    await set_window_expiry(db, deal)  # collapses at the window's close (ADR 0014)
     await db.flush()
 
     await reject_offers_for_player(db, player.id)

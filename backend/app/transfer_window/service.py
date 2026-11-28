@@ -83,6 +83,18 @@ async def get_next_window(
     return _next(await windows_for(db, country), now or _now())
 
 
+async def window_close_for(
+    db: AsyncSession, club_id: uuid.UUID | None, now: datetime | None = None,
+) -> datetime | None:
+    """When offers and deals for `club_id` (the buying club, which registers
+    the player) run out by default (product ADR 0014): its current window's
+    close, else the next window's, else None — no windows set up for it."""
+    now = now or _now()
+    windows = await windows_for(db, await club_country(db, club_id))
+    w = _current(windows, now) or _next(windows, now)
+    return _utc(w.closes_at) if w else None
+
+
 async def any_window_exists(db: AsyncSession, country: str | None = None) -> bool:
     return bool(await windows_for(db, country))
 

@@ -18,6 +18,7 @@ import OfferStanding, { RoundsList } from "../../components/offers/OfferStanding
 import OfferTermsCard, { OfferAdvice } from "../../components/offers/OfferTermsCard";
 import CounterForm from "../../components/offers/CounterForm";
 import RaiseOfferForm from "../../components/offers/RaiseOfferForm";
+import ExpiryLine from "../../components/transfer/ExpiryLine";
 import { buyerRanking, deadlineText, getOfferStatus, otherName, sellerRanking } from "../../components/offers/offerStatus";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useClubCapabilities } from "../../hooks/useClubCapabilities";
@@ -260,6 +261,9 @@ export default function OfferDetailPage() {
   return (
     <div>
       <OfferHeader offer={offer} moreMenu={moreMenu} />
+      {isActive && offer.expires_at && (
+        <div className="mt-2"><ExpiryLine at={offer.expires_at} label="Offer expires" /></div>
+      )}
 
       <div className="mt-4">
         <OfferStatusCard

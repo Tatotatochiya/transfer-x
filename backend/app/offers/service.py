@@ -549,6 +549,12 @@ async def create_offer(
         wage_weekly = await loan_wage_basis(db, player_id)
 
     now = datetime.now(timezone.utc)
+    # By default an offer lasts until the buying club's window closes (product
+    # ADR 0014); with no windows set up for it, a week.
+    if expires_at is None:
+        from app.transfer_window import service as window_service
+
+        expires_at = await window_service.window_close_for(db, from_club_id, now)
     exp = expires_at or (now + timedelta(days=_OFFER_EXPIRY_DAYS))
 
     offer = Offer(
@@ -1080,6 +1086,8 @@ async def accept_offer(
         sell_on_pct=offer.sell_on_pct,
     )
     db.add(deal)
+    from app.deals.service import set_window_expiry
+    await set_window_expiry(db, deal)  # collapses at the window's close (ADR 0014)
     await db.flush()
 
     # The structure the clubs agreed becomes the deal's. The deal room only

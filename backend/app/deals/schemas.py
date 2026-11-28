@@ -353,6 +353,8 @@ class DealResponse(BaseModel):
     # Item 5: completion SLA
     sla_deadline: datetime | None = None
     sla_escalated_at: datetime | None = None
+    # The deal collapses then unless it has completed (product ADR 0014).
+    expires_at: datetime | None = None
     player: PlayerSummary | None = None
     deal_notes: list[DealNoteResponse] = []
     # B1

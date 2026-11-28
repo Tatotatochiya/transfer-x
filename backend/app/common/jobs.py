@@ -31,6 +31,7 @@ class SchedulerJobRun(Base):
 JOB_LABELS = {
     "close_expired_sales": "Close sales past their deadline",
     "expire_stale_offers": "Expire offers past their deadline",
+    "expire_deals": "Collapse deals at their window's close; warn two days before",
     "release_held_pushes": "Send pushes held for quiet hours",
     "execute_held_actions": "Send Lite actions once their undo window closes",
     "morning_summary": "Morning summary pushes",
