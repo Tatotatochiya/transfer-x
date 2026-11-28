@@ -25,6 +25,13 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 ## [Unreleased]
 
 ### Added
+- **A buyer hears when another club's offer changes their place** (`OFFER_COMPETITION`, migration `0116`). Two cases send it:
+  - **The first rival appears:** "Another club has made an offer for M. Caicedo. Yours is now 2nd of 2."
+  - **They lose the lead:** "Your offer for M. Caicedo is no longer the leading one. Yours is now 2nd of 3."
+
+  It never names the other club or its fee: only the facts the Ranking card already shows, at the moment they change. A seller's counter doesn't send it, because an asking figure isn't a bid. Slipping further back from 2nd doesn't send it either.
+  - **Delivery:** in-app and a silent push (heads-up); not emailed.
+  - **The link:** opens the offer at its ranking. The notification's club is the seller the buyer is dealing with.
 - **The Dashboard is the club's front door** ([spec](./feature_spec/club-dashboard/README.md)). It opens with a band in the club's own colours, holding the crest, the club's name, the league and the season, and "N waiting on you". Then, in order on every device:
   - **Needs you:** exactly what the sidebar's badges count. Under "Also", never counted: your own requests awaiting approval, contracts ending within 60 days (with List), Finish setting up (the checklist opens in a sheet) and Add your name.
   - **Money:** transfer budget free, wage room a week, and what's held in open offers and deals.
@@ -282,6 +289,7 @@ Maintained by the [`documentation-standards`](../.claude/skills/documentation-st
 - **List from the War Room.** Each expiring-contract row gets a **List** button, or shows "listed" if he already is.
 
 ### Changed
+- **The ranking is on the offer page's open tab.** The buyer's "Ranking · 2nd of 4" (the seller's "Other bids · n") now heads the Terms tab, above the terms. It used to sit behind Messages in the desktop rail and in a third tab on phones. The rail is messages only, and phones have two tabs.
 - **Transfers board stage names: "Listed" and "Completed".** The first stage, which holds your listed players with no offers yet and open enquiries, is now "Listed" (it was "Talking"). The last is "Completed" (it was "Done"), and a completed row's label reads "Completed" (it was "Complete"). The stage keys (`talking`, `done`) are unchanged. The AI analyst uses the same names.
 - **Escalations aren't emailed for now.** An escalated reminder, and the "transfer stuck" notice to the people told, arrive in-app and by push only; a first reminder is still emailed. On the shared demo environment escalations went to seeded agents' addresses, some on real-looking domains ([move reminders](./feature_spec/move-reminders/README.md)).
 - **Valuation docs live in one folder,** [`feature_spec/valuation/`](./feature_spec/valuation/README.md): the model (`model.md`, was `valuation-model-v2.md`), the fair-value signal, market data (`market-data.md`), the sample report, and the `market-v3` brief, execution plan and log, which were at the repo root. Links and code comments follow. `.gitignore` now covers `*.env`.

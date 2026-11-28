@@ -18,6 +18,8 @@ class NotificationType(str, enum.Enum):
     OFFER_COUNTERED = "OFFER_COUNTERED"
     OFFER_WITHDRAWN = "OFFER_WITHDRAWN"
     OFFER_EXPIRING = "OFFER_EXPIRING"
+    # Another club's offer changed your place among the offers for a player. Never names it.
+    OFFER_COMPETITION = "OFFER_COMPETITION"
     OFFER_MESSAGE = "OFFER_MESSAGE"
     AUCTION_BID_RECEIVED = "AUCTION_BID_RECEIVED"
     AUCTION_ENDING = "AUCTION_ENDING"

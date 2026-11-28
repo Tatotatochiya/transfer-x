@@ -97,7 +97,7 @@ describe("DashboardPage", () => {
     const band = screen.getByTestId("club-band");
     expect(band).toHaveStyle({ backgroundColor: "#DB0007", color: "#FFFFFF" });
     expect(within(band).getByText("1 waiting on you")).toBeInTheDocument();
-  });
+  }, 10_000); // its wait is 5s: the test's own limit must be longer, or a loaded run times it out first
 
   it("uses ink on a light primary", async () => {
     serve(club({ brand_primary: "#F5C400", brand_secondary: "#14171F" }));

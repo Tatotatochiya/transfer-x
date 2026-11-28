@@ -34,9 +34,10 @@ type Tab = "terms" | "messages" | "bids" | "history";
 /**
  * One offer, answer first (offer-room-focus): who and how much, what they
  * just changed, what you can do about it, and how far apart you are — before
- * any scrolling. Below 1024px the sections are tabs and a counter opens in a
- * sheet; from 1024px messages and other bids sit in a rail and a counter
- * opens inside the status card.
+ * any scrolling. Where the offer stands among the others (the buyer's ranking,
+ * the seller's other bids) heads the Terms tab, the one that's open. Below
+ * 1024px the sections are tabs and a counter opens in a sheet; from 1024px
+ * messages sit in a rail and a counter opens inside the status card.
  */
 export default function OfferDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -50,8 +51,11 @@ export default function OfferDetailPage() {
   const [prefill, setPrefill] = useState<SuggestedTerms | null>(null);
   const [roundsOpen, setRoundsOpen] = useState(param === "history");
   const [mainTab, setMainTab] = useState<"terms" | "history">(param === "history" ? "history" : "terms");
-  const [railTab, setRailTab] = useState<"messages" | "bids">(param === "bids" ? "bids" : "messages");
   const [askedSuggestion, setAskedSuggestion] = useState(false);
+  // "bids" was a tab of its own; the ranking now heads Terms, so old links land there.
+  useEffect(() => {
+    if (param === "bids") requestAnimationFrame(() => document.getElementById("offer-ranking")?.scrollIntoView({ block: "start" }));
+  }, [param]);
 
   // A push tapped on a phone opens the one-screen decision (the Lite offer
   // card) rather than this full page (mobile notifications §7.3, 4c). Wider
@@ -91,7 +95,8 @@ export default function OfferDetailPage() {
   const actions = useOfferActions(offer);
   const { data: aiStatus } = useAIStatus();
   const advice = useOfferAdvice(offer?.id ?? "", offer?.last_action_at ?? "", askedSuggestion && !!offer);
-  // The rail's "Other bids · n": read from the order book's own cache entry once it has loaded.
+  // The ranking card's heading ("Ranking · 2nd of 3", "Other bids · Best of 3"):
+  // read from the order book's own cache entry once it has loaded.
   const bookKey = offer?.sale_id ? ["sales", offer.sale_id, "order-book"] : ["offers", "competition", offer?.player_id];
   const { data: book } = useQuery<OrderBook>({
     queryKey: bookKey,
@@ -158,9 +163,8 @@ export default function OfferDetailPage() {
   function writeTab(t: Tab) {
     setParams((p) => { const n = new URLSearchParams(p); n.set("tab", t); return n; }, { replace: true });
   }
-  const section: "terms" | "messages" | "bids" = param === "messages" || param === "bids" ? param : "terms";
+  const section: "terms" | "messages" = param === "messages" ? param : "terms";
   function openMessages() {
-    if (isDesktop) setRailTab("messages");
     writeTab("messages");
     if (!isDesktop) requestAnimationFrame(() => document.getElementById("offer-sections")?.scrollIntoView({ block: "start" }));
   }
@@ -223,8 +227,23 @@ export default function OfferDetailPage() {
   const termsHeading = !isParty ? "The offer" : change && change.actorClubId === myClubId ? "Your offer"
     : change ? "Their offer" : isBuyer ? "Your offer" : "Their offer";
 
+  const bids = isSeller ? (
+    <SellerOrderBook saleId={offer.sale_id ?? undefined} playerId={offer.sale_id ? undefined : offer.player_id}
+      isOpen={isActive} selectedId={offer.id} />
+  ) : (
+    <BuyerOrderBook saleId={offer.sale_id ?? undefined} playerId={offer.sale_id ? undefined : offer.player_id} />
+  );
+  const bidsHeading = isSeller ? (standing ? `Other bids · ${standing.short}` : book?.active_count != null ? `Other bids · ${book.active_count}` : "Other bids")
+    : ranking ? `Ranking · ${ranking.short}` : "Ranking";
   const terms = (
     <div className="space-y-4">
+      {isParty && (
+        <section id="offer-ranking" aria-labelledby="offer-ranking-heading"
+          className="scroll-mt-20 overflow-hidden rounded-xl bg-surface ring-1 ring-border">
+          <h2 id="offer-ranking-heading" className="border-b border-rule px-4 py-3 text-section font-bold text-text">{bidsHeading}</h2>
+          {bids}
+        </section>
+      )}
       <OfferTermsCard offer={offer} heading={termsHeading} />
       {isParty && isActive && (
         <OfferAdvice offer={offer} canCounter={canAct} onUseTerms={applyAdvisorTerms} />
@@ -238,19 +257,6 @@ export default function OfferDetailPage() {
     <ConversationPanel context={{ offerId: offer.id }} timeline={offerTimeline(offer)}
       placeholder="Write a message… (e.g. why your latest terms are fair)" />
   );
-  const bids = isSeller ? (
-    <SellerOrderBook saleId={offer.sale_id ?? undefined} playerId={offer.sale_id ? undefined : offer.player_id}
-      isOpen={isActive} selectedId={offer.id} />
-  ) : (
-    <BuyerOrderBook saleId={offer.sale_id ?? undefined} playerId={offer.sale_id ? undefined : offer.player_id} />
-  );
-  // The buyer's place is in the tab's own name, so it rarely needs opening.
-  // The phone's three tabs are ~115px each, so there it's the place alone
-  // ("2nd of 4"); the status card says it in full.
-  const bidsLabel = isSeller ? (standing ? `Other bids · ${standing.short}` : book?.active_count != null ? `Other bids · ${book.active_count}` : "Other bids")
-    : ranking ? `Ranking · ${ranking.short}` : "Ranking";
-  const bidsTab = isSeller ? (standing ? standing.short : "Other bids") : ranking ? ranking.short : "Ranking";
-
   return (
     <div>
       <OfferHeader offer={offer} moreMenu={moreMenu} />
@@ -296,22 +302,12 @@ export default function OfferDetailPage() {
               </div>
             ) : terms}
           </div>
-          <aside aria-label="Messages and other bids" className="sticky top-20 flex max-h-[calc(100vh-104px)] flex-col rounded-xl bg-surface ring-1 ring-border">
-            <div className="p-3">
-              <SegmentedControl
-                idPrefix="offer-rail" ariaLabel="Messages and other bids" size="sm"
-                items={[
-                  { key: "messages", label: "Messages", badge: unread, badgeLabel: "unread" },
-                  { key: "bids", label: bidsLabel },
-                ]}
-                active={railTab}
-                onChange={(k) => { setRailTab(k as typeof railTab); writeTab(k as Tab); }}
-              />
-            </div>
-            <div role="tabpanel" id={`offer-rail-panel-${railTab}`} aria-labelledby={`offer-rail-tab-${railTab}`}
-              className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-3.5">
-              {railTab === "messages" ? messages : bids}
-            </div>
+          <aside aria-labelledby="offer-rail-heading" className="sticky top-20 flex max-h-[calc(100vh-104px)] flex-col rounded-xl bg-surface ring-1 ring-border">
+            <h2 id="offer-rail-heading" className="flex items-center gap-2 px-3.5 pt-3.5 pb-2 text-section font-bold text-text">
+              Messages
+              {unread > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-caption font-bold leading-none text-on-accent tabular-nums">{unread}<span className="sr-only"> unread</span></span>}
+            </h2>
+            <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-3.5">{messages}</div>
           </aside>
         </div>
       ) : (
@@ -319,15 +315,13 @@ export default function OfferDetailPage() {
           <div className="mb-4">
             <SegmentedControl
               idPrefix="offer-section" ariaLabel="Offer sections"
-              items={[{ key: "terms", label: "Terms" }, { key: "messages", label: "Messages", badge: unread, badgeLabel: "unread" }, { key: "bids", label: bidsTab }]}
+              items={[{ key: "terms", label: "Terms" }, { key: "messages", label: "Messages", badge: unread, badgeLabel: "unread" }]}
               active={section}
               onChange={(k) => writeTab(k as Tab)}
             />
           </div>
           <div role="tabpanel" id={`offer-section-panel-${section}`} aria-labelledby={`offer-section-tab-${section}`}>
-            {section === "messages" ? <div className="rounded-xl bg-surface p-4 ring-1 ring-border">{messages}</div>
-              : section === "bids" ? <div className="rounded-xl bg-surface ring-1 ring-border">{bids}</div>
-              : terms}
+            {section === "messages" ? <div className="rounded-xl bg-surface p-4 ring-1 ring-border">{messages}</div> : terms}
           </div>
         </div>
       )}

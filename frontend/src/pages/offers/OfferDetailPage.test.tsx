@@ -249,27 +249,32 @@ describe("OfferDetailPage, answer first", () => {
     expect(await screen.findByRole("tab", { name: "Messages, 3 unread" })).toBeInTheDocument();
   });
 
-  it("the waiting buyer sees their ranking in the tab's name and the status card", async () => {
+  it("the buyer's ranking heads the Terms tab, the one that's open, and the status card says it", async () => {
     me = BUYER;
     book = { role: "buyer", active_count: 4, your_rank: 2, is_leading: false, tiers: [], entries: [], your_entry: null };
     renderPage();
     expect(await screen.findByText(/^You're 2nd of 4 offers\./)).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "2nd of 4" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Ranking · 2nd of 4" })).toBeInTheDocument();
+    // Two tabs now: the ranking isn't a tab of its own.
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Terms", "Messages"]);
+    expect(screen.getByRole("tab", { name: "Terms" })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("from 1024px the rail's tab names the ranking in full", async () => {
+  it("from 1024px the ranking is in the main column and the rail is messages only", async () => {
     desktop(true);
     me = BUYER;
     book = { role: "buyer", active_count: 4, your_rank: 1, is_leading: true, tiers: [], entries: [], your_entry: null };
     renderPage();
-    expect(await screen.findByRole("tab", { name: "Ranking · Leading" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Ranking · Leading" })).toBeInTheDocument();
+    const rail = screen.getByRole("complementary", { name: /Messages/ });
+    expect(within(rail).queryByText(/Ranking/)).toBeNull();
   });
 
-  it("the seller's rail tab counts the other bids", async () => {
+  it("the seller sees the other bids counted above the terms", async () => {
     desktop(true);
     book = { role: "seller", active_count: 3, entries: [], summary: "" };
     renderPage();
-    expect(await screen.findByRole("tab", { name: "Other bids · 3" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Other bids · 3" })).toBeInTheDocument();
     expect(screen.queryByText(/of \d offers/)).toBeNull();
   });
 });

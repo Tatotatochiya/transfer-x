@@ -250,6 +250,7 @@ async def create_offer(db: AsyncSession, user: User, club, body: OfferCreateRequ
         return ActionResult(approval=approval)
 
     try:
+        before = await service.competition_positions(db, body.player_id)
         offer = await service.create_offer(
             db, player_id=body.player_id, from_club_id=club.id, to_club_id=body.to_club_id, sale_id=body.sale_id,
             fee_amount=body.fee_amount, wage_weekly=body.wage_weekly, contract_years=body.contract_years,
@@ -261,6 +262,7 @@ async def create_offer(db: AsyncSession, user: User, club, body: OfferCreateRequ
             obligation_conditions=body.obligation_conditions, instalments=body.instalments,
             clauses=body.clauses, sell_on_pct=body.sell_on_pct,
         )
+        await service.notify_competition(db, offer.player_id, before, actor_club_id=club.id)
         await notify_offer(
             db, offer, recipient_club_id=offer.to_club_id, ntype=NotificationType.OFFER_RECEIVED,
             message="You have received a new offer", push=await push_copy.offer_received(db, offer),
@@ -285,6 +287,7 @@ async def create_offer(db: AsyncSession, user: User, club, body: OfferCreateRequ
 
 async def counter_offer(db: AsyncSession, user: User, club, offer, body: OfferCounterRequest) -> ActionResult:
     previous = push_copy.offer_amount(offer)[0]
+    before = await service.competition_positions(db, offer.player_id)
     try:
         await service.counter_offer(
             db, offer, actor_club_id=club.id, fee_amount=body.fee_amount, wage_weekly=body.wage_weekly,
@@ -298,6 +301,12 @@ async def counter_offer(db: AsyncSession, user: User, club, offer, body: OfferCo
             instalments=body.instalments, clauses=body.clauses, sell_on_pct=body.sell_on_pct,
             remove_sell_on=("sell_on_pct" in body.model_fields_set and body.sell_on_pct is None),
         )
+        # Only a buyer's own counter moves the competition: a seller's counter
+        # is its asking figure, not a bid, so it mustn't tell the others
+        # they've been overtaken.
+        if str(club.id) == str(offer.from_club_id):
+            await db.flush()
+            await service.notify_competition(db, offer.player_id, before, actor_club_id=club.id)
         other_club_id = offer.to_club_id if offer.from_club_id == club.id else offer.from_club_id
         await notify_offer(
             db, offer, recipient_club_id=other_club_id, ntype=NotificationType.OFFER_COUNTERED,
@@ -321,11 +330,14 @@ async def counter_offer(db: AsyncSession, user: User, club, offer, body: OfferCo
 async def improve_offer(db: AsyncSession, user: User, club, offer, body: OfferImproveRequest) -> ActionResult:
     """Item 2: the buyer raises their own pending offer without waiting for a reply."""
     previous = push_copy.offer_amount(offer)[0]
+    before = await service.competition_positions(db, offer.player_id)
     try:
         await service.improve_own_offer(
             db, offer, actor_club_id=club.id, fee_amount=body.fee_amount, wage_weekly=body.wage_weekly,
             add_ons=body.add_ons, loan_fee=body.loan_fee,
         )
+        await db.flush()
+        await service.notify_competition(db, offer.player_id, before, actor_club_id=club.id)
         await notify_offer(
             db, offer, recipient_club_id=offer.to_club_id, ntype=NotificationType.OFFER_COUNTERED,
             message="The buyer has raised their offer",
