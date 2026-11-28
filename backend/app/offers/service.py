@@ -1430,6 +1430,68 @@ def loan_summary_parts(active_offers: list[Offer]) -> list[str]:
     return [f"{loans} loan {'approach' if loans == 1 else 'approaches'}"] if loans else []
 
 
+async def competition_positions(db: AsyncSession, player_id: uuid.UUID) -> dict[str, tuple[str, int | None, int]]:
+    """{offer_id: (buyer_club_id, rank, of)} for every open offer on a player,
+    ranked as the buyer's order book ranks them (`get_offer_competition`): by
+    fee, highest first, equal fees sharing a place; an offer with no fee has
+    no place. `of` counts every open offer."""
+    active = list((await db.execute(select(Offer).where(
+        Offer.player_id == player_id, Offer.status.in_([OfferStatus.SENT, OfferStatus.COUNTERED]),
+    ))).scalars())
+    amounts = sorted((o.fee_amount for o in active if o.fee_amount is not None), reverse=True)
+    return {
+        str(o.id): (str(o.from_club_id), amounts.index(o.fee_amount) + 1 if o.fee_amount is not None else None, len(active))
+        for o in active
+    }
+
+
+async def notify_competition(
+    db: AsyncSession,
+    player_id: uuid.UUID,
+    before: dict[str, tuple[str, int | None, int]],
+    *,
+    actor_club_id: uuid.UUID,
+) -> None:
+    """Tell other buyers when their place among the offers for a player
+    changes because of someone else's offer: the first rival appears, or they
+    lose the lead. Never who, never how much: the same facts their Ranking
+    card already shows, at the moment they change. Call before commit, after
+    the offer change has been flushed."""
+    from app.notifications import service as notif_service
+    from app.notifications.models import NotificationType
+    from app.players.models import Player
+
+    after = await competition_positions(db, player_id)
+    player = await db.get(Player, player_id)
+    name = player.name if player else "the player"
+    for offer_id, (club_id, rank, of) in after.items():
+        if club_id == str(actor_club_id) or offer_id not in before:
+            continue  # the club that acted, or an offer that's new
+        _, was_rank, was_of = before[offer_id]
+        place = "the leading offer" if rank == 1 else f"{_ordinal(rank)} of {of}" if rank else None
+        if was_of == 1 and of > 1:
+            title = f"Another club has made an offer for {name}"
+            body = f"Yours is now {place}." if place else "Your offer is no longer the only one."
+        elif was_rank == 1 and rank != 1:
+            title = f"Your offer for {name} is no longer the leading one"
+            body = f"Yours is now {place}." if place else ""
+        else:
+            continue
+        offer = await db.get(Offer, uuid.UUID(offer_id))
+        await notif_service.notify_club(
+            db, uuid.UUID(club_id), type=NotificationType.OFFER_COMPETITION,
+            message=f"{title}. {body}".strip(), link=f"/offers/{offer_id}?tab=bids",
+            related_player_id=player_id,
+            # The club this buyer is dealing with, the seller: never the rival.
+            related_club_id=offer.to_club_id if offer else None,
+            title=title, body=body or None, group_key=f"offer:{offer_id}",
+        )
+
+
+def _ordinal(n: int) -> str:
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
 async def get_offer_competition(
     db: AsyncSession,
     player_id: uuid.UUID,

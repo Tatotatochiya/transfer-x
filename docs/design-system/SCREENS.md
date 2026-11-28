@@ -298,9 +298,13 @@ payment, add-ons and sell-on sit behind a disclosure. Raise your offer uses the 
 valuation and your latest figure, with the gap shaded, and every round (a disclosure on phones,
 the Offer history tab from 1024px).
 
-**Sections** — below 1024px a segmented control, Terms · Messages · Other bids (the buyer:
-their place, "2nd of 4" / "Leading" / "Only offer"). From 1024px, Terms · Offer history tabs and a 340px sticky rail with Messages ·
-"Other bids · n" (the buyer: "Ranking · 2nd of 4"). A waiting buyer's status card also says it ("You're 2nd of 4 offers."). `?tab=` names the section. Non-parties see the terms and the read-only thread only.
+**Sections.**
+- **The ranking heads the Terms tab, the one that's open.** It's a card headed "Ranking · 2nd of 4" (or "Leading", "Only offer") for the buyer, and "Other bids · n" for the seller, above the terms. It changed on 28 November 2026; before then it sat behind Messages in the rail.
+- **Below 1024px:** a segmented control with Terms and Messages.
+- **From 1024px:** Terms and Offer history tabs, plus a 340px sticky rail of messages only.
+- **Status card:** a waiting buyer's status card also says it ("You're 2nd of 4 offers.").
+- **`?tab=`** names the section. `?tab=bids` (old links, and the competition notification) opens Terms at the ranking.
+- **Non-parties** see the terms and the read-only thread only.
 
 ## Deal room
 

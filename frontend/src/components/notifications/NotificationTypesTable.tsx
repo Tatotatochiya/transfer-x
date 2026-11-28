@@ -45,6 +45,7 @@ export const TYPE_LABELS: Record<string, string> = {
   OFFER_COUNTERED:      "Counter-offer received",
   OFFER_WITHDRAWN:      "Offer withdrawn by other party",
   OFFER_EXPIRING:       "Offer expiring soon",
+  OFFER_COMPETITION:    "Your place among the offers changed",
   OFFER_MESSAGE:        "New message in a negotiation",
   AUCTION_BID_RECEIVED: "Bid received on your auction",
   AUCTION_ENDING:       "Auction ending soon",
@@ -95,7 +96,7 @@ const TYPE_GROUPS: { label: string; types: string[] }[] = [
   { label: "Daily summary", types: ["DAILY_DIGEST"] },
   {
     label: "Offers",
-    types: ["SALE_REOPENED", "ENQUIRY_RECEIVED", "ENQUIRY_REPLIED", "OFFER_RECEIVED", "OFFER_ACCEPTED", "OFFER_REJECTED", "OFFER_COUNTERED", "OFFER_WITHDRAWN", "OFFER_EXPIRING", "OFFER_MESSAGE", "RELEASE_CLAUSE_TRIGGERED"],
+    types: ["SALE_REOPENED", "ENQUIRY_RECEIVED", "ENQUIRY_REPLIED", "OFFER_RECEIVED", "OFFER_ACCEPTED", "OFFER_REJECTED", "OFFER_COUNTERED", "OFFER_WITHDRAWN", "OFFER_EXPIRING", "OFFER_COMPETITION", "OFFER_MESSAGE", "RELEASE_CLAUSE_TRIGGERED"],
   },
   {
     label: "Deals",
