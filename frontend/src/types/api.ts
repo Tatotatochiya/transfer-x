@@ -513,6 +513,10 @@ export interface Sale {
   // Detail endpoint only, and only once the listing is no longer OPEN — explains
   // what resolved it. Null when nothing did (withdrawn, expired unsold).
   active_deal?: ActiveDealStub | null;
+  /** Clubs and leagues that can't make an offer for him while he's listed.
+   *  Detail and create only; empty for everyone but the seller and staff. */
+  excluded_clubs?: { id: string; name: string }[];
+  excluded_leagues?: string[];
 }
 
 // ── Fair-value signal (TRA-91/92) ─────────────────────────────────────────────

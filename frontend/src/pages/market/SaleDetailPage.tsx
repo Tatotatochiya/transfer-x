@@ -202,6 +202,17 @@ export default function SaleDetailPage() {
         <p className="text-small text-text-secondary border-t border-rule pt-3">{sale.notes}</p>
       )}
 
+      {/* Only the seller is sent this; an excluded club is never shown it was. */}
+      {isSeller && ((sale.excluded_clubs?.length ?? 0) > 0 || (sale.excluded_leagues?.length ?? 0) > 0) && (
+        <div className="border-t border-rule pt-3 text-small">
+          <p className="font-semibold text-text-secondary">Not available to</p>
+          <p className="mt-0.5 text-text">
+            {[...(sale.excluded_clubs ?? []).map((c) => c.name), ...(sale.excluded_leagues ?? []).map((l) => `${l} clubs`)].join(", ")}
+          </p>
+          <p className="mt-0.5 text-text-muted">They can't make an offer for him while he's listed. Only your club sees this.</p>
+        </div>
+      )}
+
       {/* Seller actions */}
       {isSeller && isOpen && canMarketWrite && (
         <div className="border-t border-rule pt-3">

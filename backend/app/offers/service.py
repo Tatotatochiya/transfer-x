@@ -406,6 +406,7 @@ async def check_new_offer(
     instalments: list | None = None,
     clauses: list | None = None,
     sell_on_pct: Decimal | None = None,
+    from_club_id: uuid.UUID | None = None,
 ) -> None:
     """Every rule a new offer's terms must pass. Separate from `create_offer`
     so the router can run it before capturing a spending approval — otherwise
@@ -427,6 +428,13 @@ async def check_new_offer(
             "He plays for a club that is not on TransferX, so no one could answer an offer. "
             "Shortlist him to follow his form and contract."
         )
+
+    # His listing may shut this club out (by name or league). It applies to
+    # any offer while he's listed, not only one made against the listing.
+    if from_club_id is not None:
+        from app.sales import service as sales_service
+
+        await sales_service.check_buyer_not_excluded(db, player_id, from_club_id)
 
     obligation_conditions = (obligation_conditions or "").strip() or None
     reject_client_loan_wage(deal_type, wage_weekly)
@@ -530,6 +538,7 @@ async def create_offer(
         instalments=instalments,
         clauses=clauses,
         sell_on_pct=sell_on_pct,
+        from_club_id=from_club_id,
     )
     reason = (no_fee_reason or "").strip()
     instalments = sorted((_as_json(i) for i in instalments or []), key=lambda r: r["due_date"])

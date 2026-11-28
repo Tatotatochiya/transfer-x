@@ -370,6 +370,15 @@ async def notify_player_available(db: AsyncSession, player_id: uuid.UUID) -> Non
     interest_club_ids = {pi.club_id for pi in interest_result.scalars()}
 
     club_ids = shortlist_club_ids | interest_club_ids
+    # Clubs his listing shuts out aren't told he's available.
+    from app.clubs.models import Club
+    from app.sales import service as sales_service
+
+    sale = await sales_service.get_open_sale_for_player(db, player_id)
+    if club_ids and sale is not None and (sale.excluded_club_ids or sale.excluded_leagues):
+        clubs = (await db.execute(select(Club).where(Club.id.in_(club_ids)))).scalars()
+        shut_out = {str(c.id) for c in clubs if sales_service.excludes(sale, c)}
+        club_ids = {c for c in club_ids if str(c) not in shut_out}
     if not club_ids:
         return
 

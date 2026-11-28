@@ -127,6 +127,16 @@ async def list_clubs(
     )
 
 
+@router.get("/leagues", response_model=list[str])
+async def list_club_leagues(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[str]:
+    """The domestic leagues clubs on TransferX play in, A–Z — for a listing's
+    "exclude leagues" picker. Cups and European competitions are left out."""
+    return await clubs_service.list_domestic_leagues(db)
+
+
 @router.get("/{club_id}", response_model=ClubPublicResponse)
 async def get_club(club_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> ClubPublicResponse:
     club = await clubs_service.get_club_by_id(db, club_id)

@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, Text, Uuid, func, text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Numeric, String, Text, Uuid, func, text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -82,6 +82,12 @@ class Sale(Base):
     )
     deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Clubs and domestic leagues the seller won't deal with (migration 0117):
+    # while the listing is open, none of them can make an offer for him, and
+    # they aren't told why. Club ids as strings; league names as the seller
+    # picked them. Seller and staff only (sales.router._enrich_sale_response).
+    excluded_club_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
+    excluded_leagues: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
     # Set when TransferX staff cancelled the listing from the admin panel, so
     # it reads differently from a seller's own withdrawal (migration 0092).
     staff_cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)

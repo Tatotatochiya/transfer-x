@@ -8,6 +8,7 @@ import Button from "../ui/Button";
 import CurrencyInput from "../ui/CurrencyInput";
 import Modal from "../ui/Modal";
 import TransferWindowBanner from "../transfers/TransferWindowBanner";
+import ExclusionsField, { NO_EXCLUSIONS, type Exclusions } from "./ExclusionsField";
 import { useToast } from "../../context/ToastContext";
 import { useOpenListings } from "../../hooks/useListing";
 import { formatCompactCurrency, getApiError } from "../../lib/utils";
@@ -60,6 +61,7 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
   // "Offers by": optional; the listing expires then.
   const [offersUntil, setOffersUntil] = useState("");
   const [notes, setNotes] = useState("");
+  const [exclusions, setExclusions] = useState<Exclusions>(NO_EXCLUSIONS);
   const [error, setError] = useState<string | null>(null);
   // The pricing assistant: asked for on demand, and remembered if the club
   // takes its price, so the listing is audited as AI-assisted.
@@ -75,7 +77,6 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
     queryKey: ["clubs", "me"],
     queryFn: () => api.get<Club>("/clubs/me").then((r) => r.data),
     staleTime: 60_000,
-    enabled: picking,
   });
 
   const { data: squad, isLoading: squadLoading } = useQuery<Paginated<PlayerDetail>>({
@@ -148,6 +149,8 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
       sale_type: "OPEN_TO_OFFERS",
       availability,
       ...(notes && { notes }),
+      ...(exclusions.clubs.length > 0 && { excluded_club_ids: exclusions.clubs.map((c) => c.id) }),
+      ...(exclusions.leagues.length > 0 && { excluded_leagues: exclusions.leagues }),
     };
 
     // A loan-only listing has no asking price: clubs propose the loan terms.
@@ -351,6 +354,8 @@ export function ListPlayerForm({ player, defaultPlayerId, onDone, onCancel }: Li
           className={`${INPUT_CLASS} resize-none`}
         />
       </div>
+
+      <ExclusionsField value={exclusions} onChange={setExclusions} ownClubId={club?.id} />
 
       {error && <p className="text-body text-danger-text">{error}</p>}
 
